@@ -13,10 +13,11 @@ import (
 
 // Returns a list of the dashboards for your account. If you include
 // DashboardNamePrefix , only those dashboards with names starting with the prefix
-// are listed. Otherwise, all dashboards in your account are listed. ListDashboards
-// returns up to 1000 results on one page. If there are more than 1000 dashboards,
-// you can call ListDashboards again and include the value you received for
-// NextToken in the first call, to receive the next 1000 results.
+// are listed. Otherwise, all dashboards in your account are listed.
+//
+// ListDashboards returns up to 1000 results on one page. If there are more than
+// 1000 dashboards, you can call ListDashboards again and include the value you
+// received for NextToken in the first call, to receive the next 1000 results.
 func (c *Client) ListDashboards(ctx context.Context, params *ListDashboardsInput, optFns ...func(*Options)) (*ListDashboardsOutput, error) {
 	if params == nil {
 		params = &ListDashboardsInput{}
@@ -115,6 +116,12 @@ func (c *Client) addOperationListDashboardsMiddlewares(stack *middleware.Stack, 
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListDashboards(options.Region), middleware.Before); err != nil {
 		return err
 	}
@@ -135,14 +142,6 @@ func (c *Client) addOperationListDashboardsMiddlewares(stack *middleware.Stack, 
 	}
 	return nil
 }
-
-// ListDashboardsAPIClient is a client that implements the ListDashboards
-// operation.
-type ListDashboardsAPIClient interface {
-	ListDashboards(context.Context, *ListDashboardsInput, ...func(*Options)) (*ListDashboardsOutput, error)
-}
-
-var _ ListDashboardsAPIClient = (*Client)(nil)
 
 // ListDashboardsPaginatorOptions is the paginator options for ListDashboards
 type ListDashboardsPaginatorOptions struct {
@@ -195,6 +194,9 @@ func (p *ListDashboardsPaginator) NextPage(ctx context.Context, optFns ...func(*
 	params := *p.params
 	params.NextToken = p.nextToken
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListDashboards(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -213,6 +215,14 @@ func (p *ListDashboardsPaginator) NextPage(ctx context.Context, optFns ...func(*
 
 	return result, nil
 }
+
+// ListDashboardsAPIClient is a client that implements the ListDashboards
+// operation.
+type ListDashboardsAPIClient interface {
+	ListDashboards(context.Context, *ListDashboardsInput, ...func(*Options)) (*ListDashboardsOutput, error)
+}
+
+var _ ListDashboardsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListDashboards(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

@@ -11,17 +11,22 @@ import (
 )
 
 // Attaches a resource-based permission policy to a secret. A resource-based
-// policy is optional. For more information, see Authentication and access control
-// for Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html)
-// For information about attaching a policy in the console, see Attach a
-// permissions policy to a secret (https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access_resource-based-policies.html)
-// . Secrets Manager generates a CloudTrail log entry when you call this action. Do
+// policy is optional. For more information, see [Authentication and access control for Secrets Manager]
+//
+// For information about attaching a policy in the console, see [Attach a permissions policy to a secret].
+//
+// Secrets Manager generates a CloudTrail log entry when you call this action. Do
 // not include sensitive information in request parameters because it might be
-// logged. For more information, see Logging Secrets Manager events with CloudTrail (https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieve-ct-entries.html)
-// . Required permissions: secretsmanager:PutResourcePolicy . For more information,
-// see IAM policy actions for Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_iam-permissions.html#reference_iam-permissions_actions)
-// and Authentication and access control in Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html)
-// .
+// logged. For more information, see [Logging Secrets Manager events with CloudTrail].
+//
+// Required permissions: secretsmanager:PutResourcePolicy . For more information,
+// see [IAM policy actions for Secrets Manager]and [Authentication and access control in Secrets Manager].
+//
+// [Authentication and access control in Secrets Manager]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html
+// [Logging Secrets Manager events with CloudTrail]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieve-ct-entries.html
+// [Attach a permissions policy to a secret]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access_resource-based-policies.html
+// [IAM policy actions for Secrets Manager]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_iam-permissions.html#reference_iam-permissions_actions
+// [Authentication and access control for Secrets Manager]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html
 func (c *Client) PutResourcePolicy(ctx context.Context, params *PutResourcePolicyInput, optFns ...func(*Options)) (*PutResourcePolicyOutput, error) {
 	if params == nil {
 		params = &PutResourcePolicyInput{}
@@ -40,34 +45,42 @@ func (c *Client) PutResourcePolicy(ctx context.Context, params *PutResourcePolic
 type PutResourcePolicyInput struct {
 
 	// A JSON-formatted string for an Amazon Web Services resource-based policy. For
-	// example policies, see Permissions policy examples (https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access_examples.html)
-	// .
+	// example policies, see [Permissions policy examples].
+	//
+	// [Permissions policy examples]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access_examples.html
 	//
 	// This member is required.
 	ResourcePolicy *string
 
-	// The ARN or name of the secret to attach the resource-based policy. For an ARN,
-	// we recommend that you specify a complete ARN rather than a partial ARN. See
-	// Finding a secret from a partial ARN (https://docs.aws.amazon.com/secretsmanager/latest/userguide/troubleshoot.html#ARN_secretnamehyphen)
-	// .
+	// The ARN or name of the secret to attach the resource-based policy.
+	//
+	// For an ARN, we recommend that you specify a complete ARN rather than a partial
+	// ARN. See [Finding a secret from a partial ARN].
+	//
+	// [Finding a secret from a partial ARN]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/troubleshoot.html#ARN_secretnamehyphen
 	//
 	// This member is required.
 	SecretId *string
 
 	// Specifies whether to block resource-based policies that allow broad access to
 	// the secret, for example those that use a wildcard for the principal. By default,
-	// public policies aren't blocked. Resource policy validation and the
-	// BlockPublicPolicy parameter help protect your resources by preventing public
-	// access from being granted through the resource policies that are directly
-	// attached to your secrets. In addition to using these features, carefully inspect
-	// the following policies to confirm that they do not grant public access:
+	// public policies aren't blocked.
+	//
+	// Resource policy validation and the BlockPublicPolicy parameter help protect
+	// your resources by preventing public access from being granted through the
+	// resource policies that are directly attached to your secrets. In addition to
+	// using these features, carefully inspect the following policies to confirm that
+	// they do not grant public access:
+	//
 	//   - Identity-based policies attached to associated Amazon Web Services
 	//   principals (for example, IAM roles)
+	//
 	//   - Resource-based policies attached to associated Amazon Web Services
 	//   resources (for example, Key Management Service (KMS) keys)
-	// To review permissions to your secrets, see Determine who has permissions to
-	// your secrets (https://docs.aws.amazon.com/secretsmanager/latest/userguide/determine-acccess_examine-iam-policies.html)
-	// .
+	//
+	// To review permissions to your secrets, see [Determine who has permissions to your secrets].
+	//
+	// [Determine who has permissions to your secrets]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/determine-acccess_examine-iam-policies.html
 	BlockPublicPolicy *bool
 
 	noSmithyDocumentSerde
@@ -140,6 +153,12 @@ func (c *Client) addOperationPutResourcePolicyMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpPutResourcePolicyValidationMiddleware(stack); err != nil {

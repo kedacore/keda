@@ -45,8 +45,10 @@ type DescribeAnomalyDetectorsInput struct {
 	Dimensions []types.Dimension
 
 	// The maximum number of results to return in one operation. The maximum value
-	// that you can specify is 100. To retrieve the remaining results, make another
-	// call with the returned NextToken value.
+	// that you can specify is 100.
+	//
+	// To retrieve the remaining results, make another call with the returned NextToken
+	// value.
 	MaxResults *int32
 
 	// Limits the results to only the anomaly detection models that are associated
@@ -135,6 +137,12 @@ func (c *Client) addOperationDescribeAnomalyDetectorsMiddlewares(stack *middlewa
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDescribeAnomalyDetectorsValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -159,20 +167,14 @@ func (c *Client) addOperationDescribeAnomalyDetectorsMiddlewares(stack *middlewa
 	return nil
 }
 
-// DescribeAnomalyDetectorsAPIClient is a client that implements the
-// DescribeAnomalyDetectors operation.
-type DescribeAnomalyDetectorsAPIClient interface {
-	DescribeAnomalyDetectors(context.Context, *DescribeAnomalyDetectorsInput, ...func(*Options)) (*DescribeAnomalyDetectorsOutput, error)
-}
-
-var _ DescribeAnomalyDetectorsAPIClient = (*Client)(nil)
-
 // DescribeAnomalyDetectorsPaginatorOptions is the paginator options for
 // DescribeAnomalyDetectors
 type DescribeAnomalyDetectorsPaginatorOptions struct {
 	// The maximum number of results to return in one operation. The maximum value
-	// that you can specify is 100. To retrieve the remaining results, make another
-	// call with the returned NextToken value.
+	// that you can specify is 100.
+	//
+	// To retrieve the remaining results, make another call with the returned NextToken
+	// value.
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token
@@ -234,6 +236,9 @@ func (p *DescribeAnomalyDetectorsPaginator) NextPage(ctx context.Context, optFns
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeAnomalyDetectors(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -252,6 +257,14 @@ func (p *DescribeAnomalyDetectorsPaginator) NextPage(ctx context.Context, optFns
 
 	return result, nil
 }
+
+// DescribeAnomalyDetectorsAPIClient is a client that implements the
+// DescribeAnomalyDetectors operation.
+type DescribeAnomalyDetectorsAPIClient interface {
+	DescribeAnomalyDetectors(context.Context, *DescribeAnomalyDetectorsInput, ...func(*Options)) (*DescribeAnomalyDetectorsOutput, error)
+}
+
+var _ DescribeAnomalyDetectorsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeAnomalyDetectors(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

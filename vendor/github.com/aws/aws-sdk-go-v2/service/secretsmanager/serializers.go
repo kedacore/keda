@@ -1766,6 +1766,11 @@ func awsAwsjson11_serializeOpDocumentPutSecretValueInput(v *PutSecretValueInput,
 		ok.String(*v.ClientRequestToken)
 	}
 
+	if v.RotationToken != nil {
+		ok := object.Key("RotationToken")
+		ok.String(*v.RotationToken)
+	}
+
 	if v.SecretBinary != nil {
 		ok := object.Key("SecretBinary")
 		ok.Base64EncodeBytes(v.SecretBinary)

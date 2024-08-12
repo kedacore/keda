@@ -13,9 +13,12 @@ import (
 )
 
 // List all tags on an Amazon DynamoDB resource. You can call ListTagsOfResource
-// up to 10 times per second, per account. For an overview on tagging DynamoDB
-// resources, see Tagging for DynamoDB (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Tagging.html)
-// in the Amazon DynamoDB Developer Guide.
+// up to 10 times per second, per account.
+//
+// For an overview on tagging DynamoDB resources, see [Tagging for DynamoDB] in the Amazon DynamoDB
+// Developer Guide.
+//
+// [Tagging for DynamoDB]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Tagging.html
 func (c *Client) ListTagsOfResource(ctx context.Context, params *ListTagsOfResourceInput, optFns ...func(*Options)) (*ListTagsOfResourceOutput, error) {
 	if params == nil {
 		params = &ListTagsOfResourceInput{}
@@ -118,6 +121,12 @@ func (c *Client) addOperationListTagsOfResourceMiddlewares(stack *middleware.Sta
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpListTagsOfResourceValidationMiddleware(stack); err != nil {

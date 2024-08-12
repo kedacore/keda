@@ -29,13 +29,13 @@ func (c *Client) ImportTable(ctx context.Context, params *ImportTableInput, optF
 
 type ImportTableInput struct {
 
-	// The format of the source data. Valid values for ImportFormat are CSV ,
+	//  The format of the source data. Valid values for ImportFormat are CSV ,
 	// DYNAMODB_JSON or ION .
 	//
 	// This member is required.
 	InputFormat types.InputFormat
 
-	// The S3 bucket that provides the source for the import.
+	//  The S3 bucket that provides the source for the import.
 	//
 	// This member is required.
 	S3BucketSource *types.S3BucketSource
@@ -46,19 +46,22 @@ type ImportTableInput struct {
 	TableCreationParameters *types.TableCreationParameters
 
 	// Providing a ClientToken makes the call to ImportTableInput idempotent, meaning
-	// that multiple identical calls have the same effect as one single call. A client
-	// token is valid for 8 hours after the first request that uses it is completed.
-	// After 8 hours, any request with the same client token is treated as a new
-	// request. Do not resubmit the same request with the same client token for more
-	// than 8 hours, or the result might not be idempotent. If you submit a request
-	// with the same client token but a change in other parameters within the 8-hour
-	// idempotency window, DynamoDB returns an IdempotentParameterMismatch exception.
+	// that multiple identical calls have the same effect as one single call.
+	//
+	// A client token is valid for 8 hours after the first request that uses it is
+	// completed. After 8 hours, any request with the same client token is treated as a
+	// new request. Do not resubmit the same request with the same client token for
+	// more than 8 hours, or the result might not be idempotent.
+	//
+	// If you submit a request with the same client token but a change in other
+	// parameters within the 8-hour idempotency window, DynamoDB returns an
+	// IdempotentParameterMismatch exception.
 	ClientToken *string
 
-	// Type of compression to be used on the input coming from the imported table.
+	//  Type of compression to be used on the input coming from the imported table.
 	InputCompressionType types.InputCompressionType
 
-	// Additional properties that specify how the input is formatted,
+	//  Additional properties that specify how the input is formatted,
 	InputFormatOptions *types.InputFormatOptions
 
 	noSmithyDocumentSerde
@@ -66,7 +69,7 @@ type ImportTableInput struct {
 
 type ImportTableOutput struct {
 
-	// Represents the properties of the table created for the import, and parameters
+	//  Represents the properties of the table created for the import, and parameters
 	// of the import. The import parameters include import status, how many items were
 	// processed, and how many errors were encountered.
 	//
@@ -132,6 +135,12 @@ func (c *Client) addOperationImportTableMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opImportTableMiddleware(stack, options); err != nil {
