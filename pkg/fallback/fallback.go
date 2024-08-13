@@ -72,7 +72,7 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, me
 	switch {
 	case !isFallbackEnabled(scaledObject, metricSpec):
 		return nil, false, suppressedError
-	case !validateFallback(scaledObject):
+	case !HasValidFallback(scaledObject):
 		log.Info("Failed to validate ScaledObject Spec. Please check that parameters are positive integers", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 		return nil, false, suppressedError
 	case *healthStatus.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold:
@@ -82,11 +82,7 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, me
 	}
 }
 
-func fallbackExistsInScaledObject(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) bool {
-	if !isFallbackEnabled(scaledObject, metricSpec) || !validateFallback(scaledObject) {
-		return false
-	}
-
+func fallbackExistsInScaledObject(scaledObject *kedav1alpha1.ScaledObject) bool {
 	for _, element := range scaledObject.Status.Health {
 		if element.Status == kedav1alpha1.HealthStatusFailing && *element.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold {
 			return true
@@ -96,7 +92,7 @@ func fallbackExistsInScaledObject(scaledObject *kedav1alpha1.ScaledObject, metri
 	return false
 }
 
-func validateFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
+func HasValidFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
 	modifierChecking := true
 	if scaledObject.IsUsingModifiers() {
 		value, err := strconv.ParseInt(scaledObject.Spec.Advanced.ScalingModifiers.Target, 10, 64)
@@ -132,7 +128,12 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpe
 func updateStatus(ctx context.Context, client runtimeclient.Client, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus, metricSpec v2.MetricSpec) {
 	patch := runtimeclient.MergeFrom(scaledObject.DeepCopy())
 
-	if fallbackExistsInScaledObject(scaledObject, metricSpec) {
+	if !isFallbackEnabled(scaledObject, metricSpec) || !HasValidFallback(scaledObject) {
+		log.V(1).Info("Fallback is not enabled, hence skipping the health update to the scaledobject", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
+		return
+	}
+
+	if fallbackExistsInScaledObject(scaledObject) {
 		status.Conditions.SetFallbackCondition(metav1.ConditionTrue, "FallbackExists", "At least one trigger is falling back on this scaled object")
 	} else {
 		status.Conditions.SetFallbackCondition(metav1.ConditionFalse, "NoFallbackFound", "No fallbacks are active on this scaled object")

@@ -13,20 +13,32 @@ import (
 
 // You can use SendMessageBatch to send up to 10 messages to the specified queue
 // by assigning either identical or different values to each message (or by not
-// assigning values at all). This is a batch version of SendMessage . For a FIFO
-// queue, multiple messages within a single batch are enqueued in the order they
-// are sent. The result of sending each message is reported individually in the
-// response. Because the batch request can result in a combination of successful
-// and unsuccessful actions, you should check for batch errors even when the call
-// returns an HTTP status code of 200 . The maximum allowed individual message size
-// and the maximum total payload size (the sum of the individual lengths of all of
-// the batched messages) are both 256 KiB (262,144 bytes). A message can include
-// only XML, JSON, and unformatted text. The following Unicode characters are
-// allowed: #x9 | #xA | #xD | #x20 to #xD7FF | #xE000 to #xFFFD | #x10000 to
-// #x10FFFF Any characters not included in this list will be rejected. For more
-// information, see the W3C specification for characters (http://www.w3.org/TR/REC-xml/#charsets)
-// . If you don't specify the DelaySeconds parameter for an entry, Amazon SQS uses
+// assigning values at all). This is a batch version of SendMessage. For a FIFO queue,
+// multiple messages within a single batch are enqueued in the order they are sent.
+//
+// The result of sending each message is reported individually in the response.
+// Because the batch request can result in a combination of successful and
+// unsuccessful actions, you should check for batch errors even when the call
+// returns an HTTP status code of 200 .
+//
+// The maximum allowed individual message size and the maximum total payload size
+// (the sum of the individual lengths of all of the batched messages) are both 256
+// KiB (262,144 bytes).
+//
+// A message can include only XML, JSON, and unformatted text. The following
+// Unicode characters are allowed. For more information, see the [W3C specification for characters].
+//
+// #x9 | #xA | #xD | #x20 to #xD7FF | #xE000 to #xFFFD | #x10000 to #x10FFFF
+//
+// Amazon SQS does not throw an exception or completely reject the message if it
+// contains invalid characters. Instead, it replaces those invalid characters with
+// U+FFFD before storing the message in the queue, as long as the message body
+// contains at least one valid character.
+//
+// If you don't specify the DelaySeconds parameter for an entry, Amazon SQS uses
 // the default value for the queue.
+//
+// [W3C specification for characters]: http://www.w3.org/TR/REC-xml/#charsets
 func (c *Client) SendMessageBatch(ctx context.Context, params *SendMessageBatchInput, optFns ...func(*Options)) (*SendMessageBatchOutput, error) {
 	if params == nil {
 		params = &SendMessageBatchInput{}
@@ -49,8 +61,9 @@ type SendMessageBatchInput struct {
 	// This member is required.
 	Entries []types.SendMessageBatchRequestEntry
 
-	// The URL of the Amazon SQS queue to which batched messages are sent. Queue URLs
-	// and names are case-sensitive.
+	// The URL of the Amazon SQS queue to which batched messages are sent.
+	//
+	// Queue URLs and names are case-sensitive.
 	//
 	// This member is required.
 	QueueUrl *string
@@ -58,13 +71,11 @@ type SendMessageBatchInput struct {
 	noSmithyDocumentSerde
 }
 
-// For each message in the batch, the response contains a
-// SendMessageBatchResultEntry tag if the message succeeds or a
-// BatchResultErrorEntry tag if the message fails.
+// For each message in the batch, the response contains a SendMessageBatchResultEntry tag if the message
+// succeeds or a BatchResultErrorEntrytag if the message fails.
 type SendMessageBatchOutput struct {
 
-	// A list of BatchResultErrorEntry items with error details about each message
-	// that can't be enqueued.
+	// A list of BatchResultErrorEntry items with error details about each message that can't be enqueued.
 	//
 	// This member is required.
 	Failed []types.BatchResultErrorEntry
@@ -136,6 +147,12 @@ func (c *Client) addOperationSendMessageBatchMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpSendMessageBatchValidationMiddleware(stack); err != nil {

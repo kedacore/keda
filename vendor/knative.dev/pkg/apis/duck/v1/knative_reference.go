@@ -102,7 +102,6 @@ func (kr *KReference) Validate(ctx context.Context) *apis.FieldError {
 					Details: fmt.Sprintf("parent namespace: %q does not match ref: %q", parentNS, kr.Namespace),
 				})
 			}
-
 		}
 	}
 	return errs

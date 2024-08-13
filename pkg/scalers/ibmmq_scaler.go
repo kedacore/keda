@@ -31,6 +31,7 @@ type IBMMQScaler struct {
 	metricType         v2.MetricTargetType
 	metadata           *IBMMQMetadata
 	defaultHTTPTimeout time.Duration
+	httpClient         *http.Client
 	logger             logr.Logger
 }
 
@@ -45,6 +46,13 @@ type IBMMQMetadata struct {
 	activationQueueDepth int64
 	tlsDisabled          bool
 	triggerIndex         int
+
+	// TLS
+	ca          string
+	cert        string
+	key         string
+	keyPassword string
+	unsafeSsl   bool
 }
 
 // CommandResponse Full structured response from MQ admin REST query
@@ -75,16 +83,31 @@ func NewIBMMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing IBM MQ metadata: %w", err)
 	}
 
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.tlsDisabled)
+
+	// Configure TLS if cert and key are specified
+	if meta.cert != "" && meta.key != "" {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, meta.unsafeSsl)
+		if err != nil {
+			return nil, err
+		}
+		httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
+	}
+
 	return &IBMMQScaler{
 		metricType:         metricType,
 		metadata:           meta,
 		defaultHTTPTimeout: config.GlobalHTTPTimeout,
+		httpClient:         httpClient,
 		logger:             InitializeLogger(config, "ibm_mq_scaler"),
 	}, nil
 }
 
 // Close closes and returns nil
 func (s *IBMMQScaler) Close(context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
@@ -144,24 +167,38 @@ func parseIBMMQMetadata(config *scalersconfig.ScalerConfig) (*IBMMQMetadata, err
 		fmt.Println("No tls setting defined - setting default")
 		meta.tlsDisabled = defaultTLSDisabled
 	}
-	val, ok := config.AuthParams["username"]
-	switch {
-	case ok && val != "":
+
+	if val, ok := config.AuthParams["username"]; ok && val != "" {
 		meta.username = val
-	case config.TriggerMetadata["usernameFromEnv"] != "":
-		meta.username = config.ResolvedEnv[config.TriggerMetadata["usernameFromEnv"]]
-	default:
+	} else if val, ok := config.TriggerMetadata["usernameFromEnv"]; ok && val != "" {
+		meta.username = config.ResolvedEnv[val]
+	} else {
 		return nil, fmt.Errorf("no username given")
 	}
-	pwdValue, booleanValue := config.AuthParams["password"] // booleanValue reports whether the type assertion succeeded or not
-	switch {
-	case booleanValue && pwdValue != "":
-		meta.password = pwdValue
-	case config.TriggerMetadata["passwordFromEnv"] != "":
-		meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
-	default:
+
+	if val, ok := config.AuthParams["password"]; ok && val != "" {
+		meta.password = val
+	} else if val, ok := config.TriggerMetadata["passwordFromEnv"]; ok && val != "" {
+		meta.password = config.ResolvedEnv[val]
+	} else {
 		return nil, fmt.Errorf("no password given")
 	}
+
+	// TLS config (optional)
+	meta.ca = config.AuthParams["ca"]
+	meta.cert = config.AuthParams["cert"]
+	meta.key = config.AuthParams["key"]
+	meta.keyPassword = config.AuthParams["keyPassword"]
+
+	meta.unsafeSsl = false
+	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
+		boolVal, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse unsafeSsl value. Must be either true or false")
+		}
+		meta.unsafeSsl = boolVal
+	}
+
 	meta.triggerIndex = config.TriggerIndex
 	return &meta, nil
 }
@@ -178,11 +215,10 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 	}
 	req.Header.Set("ibm-mq-rest-csrf-token", "value")
 	req.Header.Set("Content-Type", "application/json")
+
 	req.SetBasicAuth(s.metadata.username, s.metadata.password)
 
-	client := kedautil.CreateHTTPClient(s.defaultHTTPTimeout, s.metadata.tlsDisabled)
-
-	resp, err := client.Do(req)
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return 0, fmt.Errorf("failed to contact MQ via REST: %w", err)
 	}
@@ -190,7 +226,7 @@ func (s *IBMMQScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return 0, fmt.Errorf("failed to ready body of request: %w", err)
+		return 0, fmt.Errorf("failed to read body of request: %w", err)
 	}
 
 	var response CommandResponse

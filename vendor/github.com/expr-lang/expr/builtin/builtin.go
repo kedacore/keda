@@ -472,9 +472,27 @@ var Builtins = []*Function{
 	{
 		Name: "now",
 		Func: func(args ...any) (any, error) {
-			return time.Now(), nil
+			if len(args) == 0 {
+				return time.Now(), nil
+			}
+			if len(args) == 1 {
+				if tz, ok := args[0].(*time.Location); ok {
+					return time.Now().In(tz), nil
+				}
+			}
+			return nil, fmt.Errorf("invalid number of arguments (expected 0, got %d)", len(args))
 		},
-		Types: types(new(func() time.Time)),
+		Validate: func(args []reflect.Type) (reflect.Type, error) {
+			if len(args) == 0 {
+				return timeType, nil
+			}
+			if len(args) == 1 {
+				if args[0] != nil && args[0].AssignableTo(locationType) {
+					return timeType, nil
+				}
+			}
+			return anyType, fmt.Errorf("invalid number of arguments (expected 0, got %d)", len(args))
+		},
 	},
 	{
 		Name: "duration",
@@ -486,9 +504,17 @@ var Builtins = []*Function{
 	{
 		Name: "date",
 		Func: func(args ...any) (any, error) {
+			tz, ok := args[0].(*time.Location)
+			if ok {
+				args = args[1:]
+			}
+
 			date := args[0].(string)
 			if len(args) == 2 {
 				layout := args[1].(string)
+				if tz != nil {
+					return time.ParseInLocation(layout, date, tz)
+				}
 				return time.Parse(layout, date)
 			}
 			if len(args) == 3 {
@@ -515,18 +541,43 @@ var Builtins = []*Function{
 				time.RFC1123,
 			}
 			for _, layout := range layouts {
-				t, err := time.Parse(layout, date)
-				if err == nil {
-					return t, nil
+				if tz == nil {
+					t, err := time.Parse(layout, date)
+					if err == nil {
+						return t, nil
+					}
+				} else {
+					t, err := time.ParseInLocation(layout, date, tz)
+					if err == nil {
+						return t, nil
+					}
 				}
 			}
 			return nil, fmt.Errorf("invalid date %s", date)
 		},
-		Types: types(
-			new(func(string) time.Time),
-			new(func(string, string) time.Time),
-			new(func(string, string, string) time.Time),
-		),
+		Validate: func(args []reflect.Type) (reflect.Type, error) {
+			if len(args) < 1 {
+				return anyType, fmt.Errorf("invalid number of arguments (expected at least 1, got %d)", len(args))
+			}
+			if args[0] != nil && args[0].AssignableTo(locationType) {
+				args = args[1:]
+			}
+			if len(args) > 3 {
+				return anyType, fmt.Errorf("invalid number of arguments (expected at most 3, got %d)", len(args))
+			}
+			return timeType, nil
+		},
+	},
+	{
+		Name: "timezone",
+		Func: func(args ...any) (any, error) {
+			tz, err := time.LoadLocation(args[0].(string))
+			if err != nil {
+				return nil, err
+			}
+			return tz, nil
+		},
+		Types: types(time.LoadLocation),
 	},
 	{
 		Name: "first",

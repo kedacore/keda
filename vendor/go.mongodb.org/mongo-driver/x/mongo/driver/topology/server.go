@@ -125,6 +125,7 @@ type Server struct {
 
 	processErrorLock sync.Mutex
 	rttMonitor       *rttMonitor
+	monitorOnce      sync.Once
 }
 
 // updateTopologyCallback is a callback used to create a server that should be called when the parent Topology instance
@@ -285,10 +286,10 @@ func (s *Server) Disconnect(ctx context.Context) error {
 	close(s.done)
 	s.cancelCheck()
 
-	s.rttMonitor.disconnect()
 	s.pool.close(ctx)
 
 	s.closewg.Wait()
+	s.rttMonitor.disconnect()
 	atomic.StoreInt64(&s.state, serverDisconnected)
 
 	return nil
@@ -661,8 +662,8 @@ func (s *Server) update() {
 		transitionedFromNetworkError := desc.LastError != nil && unwrapConnectionError(desc.LastError) != nil &&
 			previousDescription.Kind != description.Unknown
 
-		if isStreamingEnabled(s) && isStreamable(s) && !s.rttMonitor.started {
-			s.rttMonitor.connect()
+		if isStreamingEnabled(s) && isStreamable(s) {
+			s.monitorOnce.Do(s.rttMonitor.connect)
 		}
 
 		if isStreamable(s) || connectionIsStreaming || transitionedFromNetworkError {
