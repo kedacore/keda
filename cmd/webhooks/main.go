@@ -156,4 +156,8 @@ func setupWebhook(mgr manager.Manager) {
 		setupLog.Error(err, "unable to create webhook", "webhook", "CloudEventSource")
 		os.Exit(1)
 	}
+	if err := (&eventingv1alpha1.ClusterCloudEventSource{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "ClusterCloudEventSource")
+		os.Exit(1)
+	}
 }
