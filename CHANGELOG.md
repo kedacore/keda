@@ -57,6 +57,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **Beanstalkd**: Introduce new beanstalkd scaler ([#5901](https://github.com/kedacore/keda/issues/5901))
 - **CloudEventSource**: Introduce ClusterCloudEventSource ([#3533](https://github.com/kedacore/keda/issues/3533))
 
 #### Experimental
