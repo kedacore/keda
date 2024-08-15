@@ -71,7 +71,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Metrics API**: Prometheus metrics can have multiple labels ([#6077](https://github.com/kedacore/keda/issues/6077))
 
 ### Deprecations
 
