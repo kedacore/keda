@@ -456,6 +456,9 @@ github.com/aws/smithy-go/time
 github.com/aws/smithy-go/transport/http
 github.com/aws/smithy-go/transport/http/internal/io
 github.com/aws/smithy-go/waiter
+# github.com/beanstalkd/go-beanstalk v0.2.0
+## explicit; go 1.14
+github.com/beanstalkd/go-beanstalk
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
