@@ -210,7 +210,7 @@ func TestGetTubeStats(t *testing.T) {
 
 		assert.NoError(t, err)
 
-		ctx := context.TODO()
+		ctx := context.Background()
 		_, active, err := s.GetMetricsAndActivity(ctx, "Metric")
 
 		assert.NoError(t, err)
@@ -231,7 +231,7 @@ func TestGetTubeStatsNotFound(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	ctx := context.TODO()
+	ctx := context.Background()
 	_, active, err := s.GetMetricsAndActivity(ctx, "Metric")
 
 	assert.NoError(t, err)
@@ -239,7 +239,7 @@ func TestGetTubeStatsNotFound(t *testing.T) {
 }
 
 func createTestServer(t *testing.T, response []byte) {
-	list, err := net.Listen("tcp", ":3000")
+	list, err := net.Listen("tcp", "localhost:3000")
 	if err != nil {
 		t.Fatal(err)
 	}
