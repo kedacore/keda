@@ -299,7 +299,7 @@ func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64,
 				continue
 			}
 			// The name has been already validated,
-			// so we can skip it and check the other metrics
+			// so we can skip it and check the other labels
 			if matcher.Name == "__name__" {
 				continue
 			}
