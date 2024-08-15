@@ -264,9 +264,6 @@ func GetValueFromResponse(body []byte, valueLocation string, format APIFormat) (
 
 // getValueFromPrometheusResponse uses provided valueLocation to access the numeric value in provided body
 func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64, error) {
-	familiesParser := expfmt.TextParser{}
-	metricss, _ := parser.ParseMetric(string(body))
-
 	matchers, err := parser.ParseMetricSelector(valueLocation)
 	if err != nil {
 		return 0, err
@@ -277,16 +274,16 @@ func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64,
 			metricName = v.Value
 		}
 	}
-	_ = metricss
 	// Ensure EOL
 	reader := strings.NewReader(strings.ReplaceAll(string(body), "\r\n", "\n"))
+	familiesParser := expfmt.TextParser{}
 	families, err := familiesParser.TextToMetricFamilies(reader)
 	if err != nil {
 		return 0, err
 	}
 	family, ok := families[metricName]
 	if !ok {
-		return 0, fmt.Errorf("metric %s not found", metricName)
+		return 0, fmt.Errorf("metric '%s' not found", metricName)
 	}
 
 	metrics := family.GetMetric()
