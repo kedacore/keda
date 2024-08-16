@@ -29,15 +29,16 @@ type seleniumGridScaler struct {
 type seleniumGridScalerMetadata struct {
 	triggerIndex int
 
-	URL                 string `keda:"name=url,                      order=triggerMetadata;authParams"`
-	BrowserName         string `keda:"name=browserName,              order=triggerMetadata"`
-	SessionBrowserName  string `keda:"name=sessionBrowserName,       order=triggerMetadata, optional"`
-	ActivationThreshold int64  `keda:"name=activationThreshold,      order=triggerMetadata, optional"`
-	BrowserVersion      string `keda:"name=browserVersion,           order=triggerMetadata, optional, default=latest"`
-	UnsafeSsl           bool   `keda:"name=unsafeSsl,                order=triggerMetadata, optional, default=false"`
-	PlatformName        string `keda:"name=platformName,             order=triggerMetadata, optional, default=linux"`
-	SessionsPerNode     int64  `keda:"name=sessionsPerNode,          order=triggerMetadata, optional, default=1"`
-	SetSessionsFromHub  bool   `keda:"name=setSessionsFromHub,       order=triggerMetadata, optional, default=false"`
+	URL                   string `keda:"name=url,                     order=triggerMetadata;authParams"`
+	BrowserName           string `keda:"name=browserName,             order=triggerMetadata"`
+	SessionBrowserName    string `keda:"name=sessionBrowserName,      order=triggerMetadata, optional"`
+	ActivationThreshold   int64  `keda:"name=activationThreshold,     order=triggerMetadata, optional"`
+	BrowserVersion        string `keda:"name=browserVersion,          order=triggerMetadata, optional, default=latest"`
+	UnsafeSsl             bool   `keda:"name=unsafeSsl,               order=triggerMetadata, optional, default=false"`
+	PlatformName          string `keda:"name=platformName,            order=triggerMetadata, optional, default=linux"`
+	SessionsPerNode       int64  `keda:"name=sessionsPerNode,         order=triggerMetadata, optional, default=1"`
+	SetSessionsFromHub    bool   `keda:"name=setSessionsFromHub,      order=triggerMetadata, optional, default=false"`
+	SessionBrowserVersion string `keda:"name=sessionBrowserVersion,   order=triggerMetadata, optional"`
 
 	TargetValue int64
 }
@@ -130,6 +131,9 @@ func parseSeleniumGridScalerMetadata(config *scalersconfig.ScalerConfig) (*selen
 	if meta.SessionBrowserName == "" {
 		meta.SessionBrowserName = meta.BrowserName
 	}
+	if meta.SessionBrowserVersion == "" {
+		meta.SessionBrowserVersion = meta.BrowserVersion
+	}
 	return meta, nil
 }
 
@@ -195,14 +199,14 @@ func (s *seleniumGridScaler) getSessionsCount(ctx context.Context, logger logr.L
 	if err != nil {
 		return -1, err
 	}
-	v, err := getCountFromSeleniumResponse(b, s.metadata.BrowserName, s.metadata.BrowserVersion, s.metadata.SessionBrowserName, s.metadata.PlatformName, s.metadata.SessionsPerNode, s.metadata.SetSessionsFromHub, logger)
+	v, err := getCountFromSeleniumResponse(b, s.metadata.BrowserName, s.metadata.BrowserVersion, s.metadata.SessionBrowserName, s.metadata.PlatformName, s.metadata.SessionsPerNode, s.metadata.SetSessionsFromHub, s.metadata.SessionBrowserVersion, logger)
 	if err != nil {
 		return -1, err
 	}
 	return v, nil
 }
 
-func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string, platformName string, sessionsPerNode int64, setSessionsFromHub bool, logger logr.Logger) (int64, error) {
+func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string, platformName string, sessionsPerNode int64, setSessionsFromHub bool, sessionBrowserVersion string, logger logr.Logger) (int64, error) {
 	var count int64
 	var slots int64
 	var seleniumResponse = seleniumResponse{}
@@ -258,7 +262,7 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 		if err := json.Unmarshal([]byte(session.Capabilities), &capability); err == nil {
 			var platformNameMatches = capability.PlatformName == "" || strings.EqualFold(capability.PlatformName, platformName)
 			if capability.BrowserName == sessionBrowserName {
-				if strings.HasPrefix(capability.BrowserVersion, browserVersion) && platformNameMatches {
+				if strings.HasPrefix(capability.BrowserVersion, sessionBrowserVersion) && platformNameMatches {
 					count++
 				} else if browserVersion == DefaultBrowserVersion && platformNameMatches {
 					count++

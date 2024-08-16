@@ -66,7 +66,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- selenium-grid: introduce new parameters setSessionsFromHub and sessionsPerNode. ([#6080](https://github.com/kedacore/keda/issues/6080))
+- selenium-grid: introduce new parameters setSessionsFromHub, sessionsPerNode and sessionBrowserVersion. ([#6080](https://github.com/kedacore/keda/issues/6080))
 
 ### Fixes
 
