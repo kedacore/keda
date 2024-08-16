@@ -170,7 +170,7 @@ spec:
             command:
             - /bin/sh
             - -c
-            - "/opt/mssql-tools/bin/sqlcmd -S . -U sa -P '{{.MssqlPassword}}' -Q 'SELECT @@Version'"
+            - "/opt/mssql-tools18/bin/sqlcmd -S . -C -U sa -P '{{.MssqlPassword}}' -Q 'SELECT @@Version'"
 `
 
 	mssqlServiceTemplate = `apiVersion: v1
@@ -261,12 +261,12 @@ func TestMssqlScaler(t *testing.T) {
 	require.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, mssqlServerName, testNamespace, 1, 60, 3),
 		"replica count should be %d after 3 minutes", 1)
 
-	createDatabaseCommand := fmt.Sprintf("/opt/mssql-tools/bin/sqlcmd -S . -U sa -P \"%s\" -Q \"CREATE DATABASE [%s]\"", mssqlPassword, mssqlDatabase)
+	createDatabaseCommand := fmt.Sprintf("/opt/mssql-tools18/bin/sqlcmd -S . -C -U sa -P \"%s\" -Q \"CREATE DATABASE [%s]\"", mssqlPassword, mssqlDatabase)
 
 	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, mssqlServerPodName, testNamespace, createDatabaseCommand, 60, 3)
 	require.True(t, ok, "executing a command on MS SQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
 
-	createTableCommand := fmt.Sprintf("/opt/mssql-tools/bin/sqlcmd -S . -U sa -P \"%s\" -d %s -Q \"CREATE TABLE tasks ([id] int identity primary key, [status] varchar(10))\"",
+	createTableCommand := fmt.Sprintf("/opt/mssql-tools18/bin/sqlcmd -S . -C -U sa -P \"%s\" -d %s -Q \"CREATE TABLE tasks ([id] int identity primary key, [status] varchar(10))\"",
 		mssqlPassword, mssqlDatabase)
 	ok, out, errOut, err = WaitForSuccessfulExecCommandOnSpecificPod(t, mssqlServerPodName, testNamespace, createTableCommand, 60, 3)
 	require.True(t, ok, "executing a command on MS SQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)

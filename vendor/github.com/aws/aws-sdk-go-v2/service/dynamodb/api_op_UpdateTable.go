@@ -13,11 +13,17 @@ import (
 )
 
 // Modifies the provisioned throughput settings, global secondary indexes, or
-// DynamoDB Streams settings for a given table. This operation only applies to
-// Version 2019.11.21 (Current) (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.V2.html)
-// of global tables. You can only perform one of the following operations at once:
+// DynamoDB Streams settings for a given table.
+//
+// For global tables, this operation only applies to global tables using Version
+// 2019.11.21 (Current version).
+//
+// You can only perform one of the following operations at once:
+//
 //   - Modify the provisioned throughput settings of the table.
+//
 //   - Remove a global secondary index from the table.
+//
 //   - Create a new global secondary index on the table. After the index begins
 //     backfilling, you can use UpdateTable to perform other operations.
 //
@@ -59,12 +65,15 @@ type UpdateTableInput struct {
 	// provisioned capacity values must be set. The initial provisioned capacity values
 	// are estimated based on the consumed read and write capacity of your table and
 	// global secondary indexes over the past 30 minutes.
+	//
 	//   - PROVISIONED - We recommend using PROVISIONED for predictable workloads.
-	//   PROVISIONED sets the billing mode to Provisioned Mode (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadWriteCapacityMode.html#HowItWorks.ProvisionedThroughput.Manual)
-	//   .
+	//   PROVISIONED sets the billing mode to [Provisioned capacity mode].
+	//
 	//   - PAY_PER_REQUEST - We recommend using PAY_PER_REQUEST for unpredictable
-	//   workloads. PAY_PER_REQUEST sets the billing mode to On-Demand Mode (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadWriteCapacityMode.html#HowItWorks.OnDemand)
-	//   .
+	//   workloads. PAY_PER_REQUEST sets the billing mode to [On-demand capacity mode].
+	//
+	// [Provisioned capacity mode]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/provisioned-capacity-mode.html
+	// [On-demand capacity mode]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/on-demand-capacity-mode.html
 	BillingMode types.BillingMode
 
 	// Indicates whether deletion protection is to be enabled (true) or disabled
@@ -73,29 +82,44 @@ type UpdateTableInput struct {
 
 	// An array of one or more global secondary indexes for the table. For each index
 	// in the array, you can request one action:
+	//
 	//   - Create - add a new global secondary index to the table.
+	//
 	//   - Update - modify the provisioned throughput settings of an existing global
 	//   secondary index.
+	//
 	//   - Delete - remove a global secondary index from the table.
+	//
 	// You can create or delete only one global secondary index per UpdateTable
-	// operation. For more information, see Managing Global Secondary Indexes (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.OnlineOps.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// operation.
+	//
+	// For more information, see [Managing Global Secondary Indexes] in the Amazon DynamoDB Developer Guide.
+	//
+	// [Managing Global Secondary Indexes]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.OnlineOps.html
 	GlobalSecondaryIndexUpdates []types.GlobalSecondaryIndexUpdate
+
+	// Updates the maximum number of read and write units for the specified table in
+	// on-demand capacity mode. If you use this parameter, you must specify
+	// MaxReadRequestUnits , MaxWriteRequestUnits , or both.
+	OnDemandThroughput *types.OnDemandThroughput
 
 	// The new provisioned throughput settings for the specified table or index.
 	ProvisionedThroughput *types.ProvisionedThroughput
 
 	// A list of replica update actions (create, delete, or update) for the table.
-	// This property only applies to Version 2019.11.21 (Current) (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.V2.html)
-	// of global tables.
+	//
+	// For global tables, this property only applies to global tables using Version
+	// 2019.11.21 (Current version).
 	ReplicaUpdates []types.ReplicationGroupUpdate
 
 	// The new server-side encryption settings for the specified table.
 	SSESpecification *types.SSESpecification
 
-	// Represents the DynamoDB Streams configuration for the table. You receive a
-	// ValidationException if you try to enable a stream on a table that already has a
-	// stream, or if you try to disable a stream on a table that doesn't have a stream.
+	// Represents the DynamoDB Streams configuration for the table.
+	//
+	// You receive a ValidationException if you try to enable a stream on a table that
+	// already has a stream, or if you try to disable a stream on a table that doesn't
+	// have a stream.
 	StreamSpecification *types.StreamSpecification
 
 	// The table class of the table to be updated. Valid values are STANDARD and
@@ -173,6 +197,12 @@ func (c *Client) addOperationUpdateTableMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateTableValidationMiddleware(stack); err != nil {

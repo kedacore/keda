@@ -144,6 +144,19 @@ const (
 	flagReserved1       = 0x0004
 )
 
+// Expiration. These constants can be used to set a messages expiration TTL.
+// They should be viewed as a clarification of the expiration functionality in
+// messages and their usage is not enforced by this pkg.
+//
+// The server requires a string value that is interpreted by the server as
+// milliseconds. If no value is set, which translates to the nil value of
+// string, the message will never expire by itself. This does not influence queue
+// configured TTL configurations.
+const (
+	NeverExpire       string = ""  // empty value means never expire
+	ImmediatelyExpire string = "0" // 0 means immediately expire
+)
+
 // Queue captures the current server state of the queue on the server returned
 // from Channel.QueueDeclare or Channel.QueueInspect.
 type Queue struct {
@@ -162,18 +175,25 @@ type Publishing struct {
 	Headers Table
 
 	// Properties
-	ContentType     string    // MIME content type
-	ContentEncoding string    // MIME content encoding
-	DeliveryMode    uint8     // Transient (0 or 1) or Persistent (2)
-	Priority        uint8     // 0 to 9
-	CorrelationId   string    // correlation identifier
-	ReplyTo         string    // address to to reply to (ex: RPC)
-	Expiration      string    // message expiration spec
-	MessageId       string    // message identifier
-	Timestamp       time.Time // message timestamp
-	Type            string    // message type name
-	UserId          string    // creating user id - ex: "guest"
-	AppId           string    // creating application id
+	ContentType     string // MIME content type
+	ContentEncoding string // MIME content encoding
+	DeliveryMode    uint8  // Transient (0 or 1) or Persistent (2)
+	Priority        uint8  // 0 to 9
+	CorrelationId   string // correlation identifier
+	ReplyTo         string // address to to reply to (ex: RPC)
+	// Expiration represents the message TTL in milliseconds. A value of "0"
+	// indicates that the message will immediately expire if the message arrives
+	// at its destination and the message is not directly handled by a consumer
+	// that currently has the capacatity to do so. If you wish the message to
+	// not expire on its own, set this value to any ttl value, empty string or
+	// use the corresponding constants NeverExpire and ImmediatelyExpire. This
+	// does not influence queue configured TTL values.
+	Expiration string
+	MessageId  string    // message identifier
+	Timestamp  time.Time // message timestamp
+	Type       string    // message type name
+	UserId     string    // creating user id - ex: "guest"
+	AppId      string    // creating application id
 
 	// The application specific payload of the message
 	Body []byte
@@ -533,3 +553,16 @@ type bodyFrame struct {
 }
 
 func (f *bodyFrame) channel() uint16 { return f.ChannelId }
+
+type heartbeatDuration struct {
+	value    time.Duration
+	hasValue bool
+}
+
+func newHeartbeatDurationFromSeconds(s int) heartbeatDuration {
+	v := time.Duration(s) * time.Second
+	return heartbeatDuration{
+		value:    v,
+		hasValue: true,
+	}
+}
