@@ -183,6 +183,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewStackdriverScaler(ctx, config)
 	case "gcp-storage":
 		return scalers.NewGcsScaler(config)
+	case "gitlab-runner":
+		return scalers.NewGitLabRunnerScaler(config)
 	case "github-runner":
 		return scalers.NewGitHubRunnerScaler(config)
 	case "graphite":
