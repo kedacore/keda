@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
-      - uses: tspascoal/get-user-teams-membership@v2
+      - uses: tspascoal/get-user-teams-membership@ba78054988f58bea69b7c6136d563236f8ed2fc0 # v2.1.0
         id: checkUserMember
         with:
           username: ${{ github.actor }}
@@ -108,7 +108,7 @@ jobs:
           make e2e-regex-check
 
       - name: React to comment with failure
-        uses: dkershner6/reaction-action@v2
+        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2.2.1
         if: steps.regex-validation.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -130,7 +130,7 @@ jobs:
         run: exit 1
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
@@ -173,7 +173,7 @@ jobs:
           gh pr checkout ${{ needs.triage.outputs.pr_num }}
           git checkout ${{ needs.triage.outputs.commit_sha }}
 
-      - uses: oNaiPs/secrets-to-env-action@v1
+      - uses: oNaiPs/secrets-to-env-action@2fe98aa2e8f610341c3dd916aff27b218b92f6f8 # v1
         with:
           secrets: ${{ toJSON(secrets) }}
 
@@ -218,7 +218,7 @@ jobs:
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
 
       - name: React to comment with success
-        uses: dkershner6/reaction-action@v2
+        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2.2.1
         if: steps.test.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -236,7 +236,7 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
       - name: React to comment with failure
-        uses: dkershner6/reaction-action@v2
+        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2.2.1
         if: steps.test.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

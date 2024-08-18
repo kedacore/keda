@@ -13,6 +13,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+permissions: 
+  contents: read
+  
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,13 +27,13 @@ jobs:
       - run: go version
       - name: Get branch name
         id: branch-name
-        uses: tj-actions/branch-names@v8
-      - uses: fossas/fossa-action@main
+        uses: tj-actions/branch-names@6871f53176ad61624f978536bbf089c574dc19a2 # v8.0.1
+      - uses: fossas/fossa-action@d61e2f7aeb88d20f89dcbfaa97d30bb7786b824d # main
         name: Scanning with FOSSA
         with:
           api-key: ${{ env.fossa-key }}
           branch: ${{ steps.branch-name.outputs.current_branch }}
-      - uses: fossas/fossa-action@main
+      - uses: fossas/fossa-action@d61e2f7aeb88d20f89dcbfaa97d30bb7786b824d # main
         name: Executing tests with FOSSA
         with:
           api-key: ${{ env.fossa-key }}

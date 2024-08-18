@@ -72,6 +72,7 @@ Here is an overview of all new **experimental** features:
 ### Fixes
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Fixed the token-permission and pinned-dependencies issue reported by the scorecard. ([#6085](https://github.com/kedacore/keda/issues/6085))
 
 ### Deprecations
 

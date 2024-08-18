@@ -31,6 +31,9 @@ on:
         required: true
         type: boolean
 
+permissions:  
+  contents: read
+
 jobs:
   trivy-scan:
     name: Trivy - ${{ inputs.runs-on }} - ${{ inputs.scan-type }} ${{ inputs.image-ref }}
@@ -51,7 +54,7 @@ jobs:
           trivy-config: trivy.yml
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@429e1977040da7a23b6822b13c129cd1ba93dbb2 # v3.26.2
         if: ${{ inputs.publish }}
         with:
           sarif_file: ${{ inputs.output }}
