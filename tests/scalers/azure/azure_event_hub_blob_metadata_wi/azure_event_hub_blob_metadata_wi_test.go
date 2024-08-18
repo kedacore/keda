@@ -48,9 +48,11 @@ type templateData struct {
 	DeploymentName          string
 	TriggerAuthName         string
 	ScaledObjectName        string
-	AccountName             string
 	CheckpointContainerName string
 	ConsumerGroup           string
+	AccountName             string
+	EventHubName            string
+	EventHubNamespaceName   string
 }
 
 const (
@@ -197,9 +199,11 @@ func getTemplateData(eventHubHelper azurehelper.EventHubHelper) (templateData, [
 			CheckpointContainerName: checkpointContainerName,
 			DeploymentName:          deploymentName,
 			ScaledObjectName:        scaledObjectName,
-			AccountName:             accountName,
 			TriggerAuthName:         triggerAuthName,
 			ConsumerGroup:           eventhubConsumerGroup,
+			AccountName:             accountName,
+			EventHubName:            eventHubHelper.EventHub(),
+			EventHubNamespaceName:   eventHubHelper.EventHubNamespace(),
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
