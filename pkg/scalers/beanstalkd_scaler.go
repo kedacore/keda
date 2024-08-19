@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"strconv"
 	"time"
 
 	beanstalk "github.com/beanstalkd/go-beanstalk"
@@ -26,22 +25,22 @@ const (
 	beanstalkdNetworkProtocol                  = "tcp"
 )
 
-type beanstalkdScaler struct {
+type BeanstalkdScaler struct {
 	metricType v2.MetricTargetType
-	metadata   *beanstalkdMetadata
+	metadata   *BeanstalkdMetadata
 	connection *beanstalk.Conn
 	tube       *beanstalk.Tube
 	logger     logr.Logger
 }
 
-type beanstalkdMetadata struct {
-	server          string
-	tube            string
-	value           float64
-	activationValue float64
-	includeDelayed  bool
-	timeout         time.Duration
-	triggerIndex    int
+type BeanstalkdMetadata struct {
+	Server          string  `keda:"name=server, order=triggerMetadata"`
+	Tube            string  `keda:"name=tube, order=triggerMetadata"`
+	Value           float64 `keda:"name=value, order=triggerMetadata"`
+	ActivationValue float64 `keda:"name=activationValue, order=triggerMetadata, optional"`
+	IncludeDelayed  bool    `keda:"name=includeDelayed, order=triggerMetadata, optional"`
+	Timeout         uint    `keda:"name=timeout, order=triggerMetadata, optional, default=30"`
+	TriggerIndex    int
 }
 
 // TubeStats represents a set of tube statistics.
@@ -55,7 +54,7 @@ type tubeStats struct {
 }
 
 func NewBeanstalkdScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
-	s := &beanstalkdScaler{}
+	s := &BeanstalkdScaler{}
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
@@ -71,98 +70,32 @@ func NewBeanstalkdScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 	s.metadata = meta
 
-	conn, err := beanstalk.DialTimeout(beanstalkdNetworkProtocol, s.metadata.server, s.metadata.timeout)
+	timeout := time.Duration(s.metadata.Timeout) * time.Second
+
+	conn, err := beanstalk.DialTimeout(beanstalkdNetworkProtocol, s.metadata.Server, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to beanstalkd: %w", err)
 	}
 
 	s.connection = conn
 
-	s.tube = beanstalk.NewTube(s.connection, meta.tube)
+	s.tube = beanstalk.NewTube(s.connection, meta.Tube)
 
 	return s, nil
 }
 
-func parseBeanstalkdMetadata(config *scalersconfig.ScalerConfig) (*beanstalkdMetadata, error) {
-	meta := beanstalkdMetadata{}
+func parseBeanstalkdMetadata(config *scalersconfig.ScalerConfig) (*BeanstalkdMetadata, error) {
+	meta := &BeanstalkdMetadata{}
 
-	if err := parseServerValue(config, &meta); err != nil {
-		return nil, err
+	meta.TriggerIndex = config.TriggerIndex
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing beanstalkd metadata: %w", err)
 	}
 
-	if val, ok := config.TriggerMetadata["tube"]; ok {
-		meta.tube = val
-	} else {
-		return nil, fmt.Errorf("no queue name given")
-	}
-
-	if err := parseTimeout(config, &meta); err != nil {
-		return nil, err
-	}
-
-	meta.includeDelayed = false
-	if val, ok := config.TriggerMetadata["includeDelayed"]; ok {
-		boolVal, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse includeDelayed value. Must be either true or false")
-		}
-		meta.includeDelayed = boolVal
-	}
-
-	value, valuePresent := config.TriggerMetadata[beanstalkdValueConfigName]
-	activationValue, activationValuePresent := config.TriggerMetadata[beanstalkdActivationValueTriggerConfigName]
-
-	if activationValuePresent {
-		activation, err := strconv.ParseFloat(activationValue, 64)
-		if err != nil {
-			return nil, fmt.Errorf("can't parse %s: %w", beanstalkdActivationValueTriggerConfigName, err)
-		}
-		meta.activationValue = activation
-	}
-
-	if !valuePresent {
-		return nil, fmt.Errorf("%s must be specified", beanstalkdValueConfigName)
-	}
-	triggerValue, err := strconv.ParseFloat(value, 64)
-	if err != nil {
-		return nil, fmt.Errorf("can't parse %s: %w", beanstalkdValueConfigName, err)
-	}
-	meta.value = triggerValue
-
-	meta.triggerIndex = config.TriggerIndex
-
-	return &meta, nil
+	return meta, nil
 }
 
-func parseServerValue(config *scalersconfig.ScalerConfig, meta *beanstalkdMetadata) error {
-	switch {
-	case config.AuthParams["server"] != "":
-		meta.server = config.AuthParams["server"]
-	case config.TriggerMetadata["server"] != "":
-		meta.server = config.TriggerMetadata["server"]
-	default:
-		return fmt.Errorf("no server setting given")
-	}
-	return nil
-}
-
-func parseTimeout(config *scalersconfig.ScalerConfig, meta *beanstalkdMetadata) error {
-	if val, ok := config.TriggerMetadata["timeout"]; ok {
-		timeoutMS, err := strconv.Atoi(val)
-		if err != nil {
-			return fmt.Errorf("unable to parse timeout: %w", err)
-		}
-		if timeoutMS <= 0 {
-			return fmt.Errorf("timeout must be greater than 0: %w", err)
-		}
-		meta.timeout = time.Duration(timeoutMS) * time.Millisecond
-	} else {
-		meta.timeout = config.GlobalHTTPTimeout
-	}
-	return nil
-}
-
-func (s *beanstalkdScaler) getTubeStats(ctx context.Context) (*tubeStats, error) {
+func (s *BeanstalkdScaler) getTubeStats(ctx context.Context) (*tubeStats, error) {
 	errCh := make(chan error)
 	statsCh := make(chan *tubeStats)
 
@@ -202,7 +135,7 @@ func (s *beanstalkdScaler) getTubeStats(ctx context.Context) (*tubeStats, error)
 	}
 }
 
-func (s *beanstalkdScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (s *BeanstalkdScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	stats, err := s.getTubeStats(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error interacting with beanstalkd: %w", err)
@@ -210,22 +143,22 @@ func (s *beanstalkdScaler) GetMetricsAndActivity(ctx context.Context, metricName
 
 	totalJobs := stats.JobsReady + stats.JobsReserved
 
-	if s.metadata.includeDelayed {
+	if s.metadata.IncludeDelayed {
 		totalJobs += stats.JobsDelayed
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(totalJobs))
-	isActive := float64(totalJobs) > s.metadata.activationValue
+	isActive := float64(totalJobs) > s.metadata.ActivationValue
 
 	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
 }
 
-func (s *beanstalkdScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+func (s *BeanstalkdScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, util.NormalizeString(fmt.Sprintf("beanstalkd-%s", url.QueryEscape(s.metadata.tube)))),
+			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, util.NormalizeString(fmt.Sprintf("beanstalkd-%s", url.QueryEscape(s.metadata.Tube)))),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.Value),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: beanstalkdMetricType,
@@ -234,7 +167,7 @@ func (s *beanstalkdScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 	return []v2.MetricSpec{metricSpec}
 }
 
-func (s *beanstalkdScaler) Close(context.Context) error {
+func (s *BeanstalkdScaler) Close(context.Context) error {
 	if s.connection != nil {
 		err := s.connection.Close()
 		if err != nil {

@@ -159,11 +159,11 @@ func TestBeanstalkdParseMetadata(t *testing.T) {
 		}
 		if err == nil {
 			if val, ok := testData.metadata["includeDelayed"]; !ok {
-				assert.Equal(t, false, meta.includeDelayed)
+				assert.Equal(t, false, meta.IncludeDelayed)
 			} else {
 				boolVal, err := strconv.ParseBool(val)
 				if err != nil {
-					assert.Equal(t, boolVal, meta.includeDelayed)
+					assert.Equal(t, boolVal, meta.IncludeDelayed)
 				}
 			}
 		}
@@ -176,7 +176,7 @@ func TestBeanstalkdGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("could not parse metadata", err)
 		}
-		mockBeanstalkdScaler := beanstalkdScaler{
+		mockBeanstalkdScaler := BeanstalkdScaler{
 			metadata:   meta,
 			connection: nil,
 			tube:       nil,
