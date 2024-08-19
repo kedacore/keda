@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 // CloudEventType contains the list of cloudevent types
-// +kubebuilder:validation:Enum=keda.scaledobject.ready.v1;keda.scaledobject.failed.v1
+// +kubebuilder:validation:Enum=keda.scaledobject.ready.v1;keda.scaledobject.failed.v1;keda.scaledobject.removed.v1;keda.scaledjob.ready.v1;keda.scaledjob.failed.v1;keda.scaledjob.removed.v1
 type CloudEventType string
 
 const (
