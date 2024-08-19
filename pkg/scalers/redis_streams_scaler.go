@@ -55,20 +55,29 @@ type redisStreamsScaler struct {
 type redisStreamsMetadata struct {
 	scaleFactor               scaleFactor
 	triggerIndex              int
-	TargetPendingEntriesCount int64               `keda:"name=pendingEntriesCount,       order=triggerMetadata, optional"`
-	TargetStreamLength        int64               `keda:"name=streamLength,       order=triggerMetadata, optional"`
+	TargetPendingEntriesCount int64               `keda:"name=pendingEntriesCount,       order=triggerMetadata, optional, default=5"`
+	TargetStreamLength        int64               `keda:"name=streamLength,       order=triggerMetadata, optional, default=5"`
 	TargetLag                 int64               `keda:"name=lagCount,       order=triggerMetadata, optional"`
 	StreamName                string              `keda:"name=stream,       order=triggerMetadata"`
 	ConsumerGroupName         string              `keda:"name=consumerGroup,       order=triggerMetadata, optional"`
 	DatabaseIndex             int                 `keda:"name=databaseIndex,       order=triggerMetadata, optional"`
 	ConnectionInfo            redisConnectionInfo `keda:"optional"`
 	ActivationLagCount        int64               `keda:"name=activationLagCount,       order=triggerMetadata, optional"`
+	MetadataEnableTLS         string              `keda:"name=enableTLS,       order=triggerMetadata, optional"`
+	AuthParamEnableTLS        string              `keda:"name=tls,       order=authParams, optional"`
 }
 
 func (r *redisStreamsMetadata) Validate() error {
 	err := validateRedisAddress(&r.ConnectionInfo)
 	if err != nil {
 		return err
+	}
+
+	err = r.ConnectionInfo.SetEnableTLS(r.MetadataEnableTLS, r.AuthParamEnableTLS)
+	if err != nil {
+		return err
+	} else {
+		r.MetadataEnableTLS, r.AuthParamEnableTLS = "", ""
 	}
 
 	if r.StreamName == "" {
@@ -87,18 +96,10 @@ func (r *redisStreamsMetadata) Validate() error {
 			}
 		} else {
 			r.scaleFactor = xPendingFactor
-
-			if r.TargetPendingEntriesCount == 0 {
-				r.TargetPendingEntriesCount = defaultTargetEntries
-			}
 		}
 	} else {
 		r.scaleFactor = xLengthFactor
 		r.TargetPendingEntriesCount = 0
-
-		if r.TargetStreamLength == 0 {
-			r.TargetStreamLength = defaultTargetEntries
-		}
 	}
 
 	return nil
@@ -293,11 +294,6 @@ var (
 )
 
 func parseRedisStreamsMetadata(config *scalersconfig.ScalerConfig) (*redisStreamsMetadata, error) {
-	config, err := parseTLSConfigIntoConnectionInfo(config)
-	if err != nil {
-		return nil, err
-	}
-
 	meta := &redisStreamsMetadata{}
 	meta.triggerIndex = config.TriggerIndex
 	if err := config.TypedConfig(meta); err != nil {

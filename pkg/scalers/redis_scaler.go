@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/redis/go-redis/v9"
@@ -55,12 +54,12 @@ type redisConnectionInfo struct {
 	SentinelMaster   string   `keda:"name=sentinelMaster,       order=triggerMetadata;authParams;resolvedEnv"`
 	Hosts            []string `keda:"name=host;hosts,       order=triggerMetadata;resolvedEnv;authParams"`
 	Ports            []string `keda:"name=port;ports,       order=triggerMetadata;resolvedEnv;authParams"`
-	EnableTLS        bool     `keda:"name=enableTLS;tls,       order=triggerMetadata;authParams, optional, default=false"`
-	UnsafeSsl        bool     `keda:"name=unsafeSsl,       order=triggerMetadata, optional, default=false"`
-	Cert             string   `keda:"name=Cert;cert,       order=authParams"`
-	Key              string   `keda:"name=key,       order=authParams"`
-	KeyPassword      string   `keda:"name=keyPassword,       order=authParams"`
-	Ca               string   `keda:"name=ca,       order=authParams"`
+	EnableTLS        bool
+	UnsafeSsl        bool   `keda:"name=unsafeSsl,       order=triggerMetadata, optional, default=false"`
+	Cert             string `keda:"name=Cert;cert,       order=authParams"`
+	Key              string `keda:"name=key,       order=authParams"`
+	KeyPassword      string `keda:"name=keyPassword,       order=authParams"`
+	Ca               string `keda:"name=ca,       order=authParams"`
 }
 
 type redisMetadata struct {
@@ -68,12 +67,54 @@ type redisMetadata struct {
 	ActivationListLength int64               `keda:"name=activationListLength,       order=triggerMetadata, optional"`
 	ListName             string              `keda:"name=listName,       order=triggerMetadata"`
 	DatabaseIndex        int                 `keda:"name=databaseIndex,       order=triggerMetadata, optional"`
+	MetadataEnableTLS    string              `keda:"name=enableTLS,       order=triggerMetadata, optional"`
+	AuthParamEnableTLS   string              `keda:"name=tls,       order=authParams, optional"`
 	ConnectionInfo       redisConnectionInfo `keda:"optional"`
 	triggerIndex         int
 }
 
+func (rci *redisConnectionInfo) SetEnableTLS(metadataEnableTLS string, authParamEnableTLS string) error {
+	EnableTLS := defaultEnableTLS
+
+	if metadataEnableTLS != "" && authParamEnableTLS != "" {
+		return errors.New("unable to set `tls` in both ScaledObject and TriggerAuthentication together")
+	}
+
+	if metadataEnableTLS != "" {
+		tls, err := strconv.ParseBool(metadataEnableTLS)
+		if err != nil {
+			return fmt.Errorf("EnableTLS parsing error %w", err)
+		}
+		EnableTLS = tls
+	}
+
+	// parse tls config defined in auth params
+	if authParamEnableTLS != "" {
+		switch authParamEnableTLS {
+		case stringEnable:
+			EnableTLS = true
+		case stringDisable:
+			EnableTLS = false
+		default:
+			return fmt.Errorf("error incorrect TLS value given, got %s", authParamEnableTLS)
+		}
+	}
+	rci.EnableTLS = EnableTLS
+	return nil
+}
+
 func (r *redisMetadata) Validate() error {
 	err := validateRedisAddress(&r.ConnectionInfo)
+
+	if err != nil {
+		return err
+	}
+
+	err = r.ConnectionInfo.SetEnableTLS(r.MetadataEnableTLS, r.AuthParamEnableTLS)
+	if err == nil {
+		r.MetadataEnableTLS, r.AuthParamEnableTLS = "", ""
+	}
+
 	return err
 }
 
@@ -190,40 +231,7 @@ func createRedisScalerWithClient(client *redis.Client, meta *redisMetadata, scri
 	}
 }
 
-func parseTLSConfigIntoConnectionInfo(config *scalersconfig.ScalerConfig) (*scalersconfig.ScalerConfig, error) {
-	EnableTLS := defaultEnableTLS
-	if val, ok := config.TriggerMetadata["enableTLS"]; ok {
-		tls, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("EnableTLS parsing error %w", err)
-		}
-		EnableTLS = tls
-	}
-
-	// parse tls config defined in auth params
-	if val, ok := config.AuthParams["tls"]; ok {
-		val = strings.TrimSpace(val)
-		if EnableTLS {
-			return nil, errors.New("unable to set `tls` in both ScaledObject and TriggerAuthentication together")
-		}
-		switch val {
-		case stringEnable:
-			config.AuthParams["tls"] = stringTrue
-		case stringDisable:
-			config.AuthParams["tls"] = "false"
-		default:
-			return nil, fmt.Errorf("error incorrect TLS value given, got %s", val)
-		}
-	}
-	return config, nil
-}
-
 func parseRedisMetadata(config *scalersconfig.ScalerConfig) (*redisMetadata, error) {
-	config, err := parseTLSConfigIntoConnectionInfo(config)
-	if err != nil {
-		return nil, err
-	}
-
 	meta := &redisMetadata{}
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing redis metadata: %w", err)
