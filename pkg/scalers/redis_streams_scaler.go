@@ -25,12 +25,6 @@ const (
 )
 
 const (
-	// defaults
-	defaultDBIndex            = 0
-	defaultTargetEntries      = 5
-	defaultTargetLag          = 5
-	defaultActivationLagCount = 0
-
 	// metadata names
 	lagMetadata                      = "lagCount"
 	pendingEntriesCountMetadata      = "pendingEntriesCount"
@@ -76,9 +70,8 @@ func (r *redisStreamsMetadata) Validate() error {
 	err = r.ConnectionInfo.SetEnableTLS(r.MetadataEnableTLS, r.AuthParamEnableTLS)
 	if err != nil {
 		return err
-	} else {
-		r.MetadataEnableTLS, r.AuthParamEnableTLS = "", ""
 	}
+	r.MetadataEnableTLS, r.AuthParamEnableTLS = "", ""
 
 	if r.StreamName == "" {
 		return ErrRedisMissingStreamName
