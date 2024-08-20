@@ -68,7 +68,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Selenium Scaler**: introduce new parameters setSessionsFromHub, sessionsPerNode and sessionBrowserVersion. ([#6080](https://github.com/kedacore/keda/issues/6080))
 
 ### Fixes
 
