@@ -12,8 +12,9 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deletes an existing backup of a table. You can call DeleteBackup at a maximum
-// rate of 10 times per second.
+// Deletes an existing backup of a table.
+//
+// You can call DeleteBackup at a maximum rate of 10 times per second.
 func (c *Client) DeleteBackup(ctx context.Context, params *DeleteBackupInput, optFns ...func(*Options)) (*DeleteBackupOutput, error) {
 	if params == nil {
 		params = &DeleteBackupInput{}
@@ -106,6 +107,12 @@ func (c *Client) addOperationDeleteBackupMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteBackupValidationMiddleware(stack); err != nil {

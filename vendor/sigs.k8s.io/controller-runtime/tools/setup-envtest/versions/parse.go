@@ -17,8 +17,6 @@ var (
 
 	// ConcreteVersionRE matches a concrete version anywhere in the string.
 	ConcreteVersionRE = regexp.MustCompile(`(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)`)
-	// OnlyConcreteVersionRE matches a string that's just a concrete version.
-	OnlyConcreteVersionRE = regexp.MustCompile(`^` + ConcreteVersionRE.String() + `$`)
 )
 
 // FromExpr extracts a version from a string in the form of a semver version,

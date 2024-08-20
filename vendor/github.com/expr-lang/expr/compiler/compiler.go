@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"regexp"
 
@@ -329,22 +330,46 @@ func (c *compiler) IntegerNode(node *ast.IntegerNode) {
 	case reflect.Int:
 		c.emitPush(node.Value)
 	case reflect.Int8:
+		if node.Value > math.MaxInt8 || node.Value < math.MinInt8 {
+			panic(fmt.Sprintf("constant %d overflows int8", node.Value))
+		}
 		c.emitPush(int8(node.Value))
 	case reflect.Int16:
+		if node.Value > math.MaxInt16 || node.Value < math.MinInt16 {
+			panic(fmt.Sprintf("constant %d overflows int16", node.Value))
+		}
 		c.emitPush(int16(node.Value))
 	case reflect.Int32:
+		if node.Value > math.MaxInt32 || node.Value < math.MinInt32 {
+			panic(fmt.Sprintf("constant %d overflows int32", node.Value))
+		}
 		c.emitPush(int32(node.Value))
 	case reflect.Int64:
 		c.emitPush(int64(node.Value))
 	case reflect.Uint:
+		if node.Value < 0 {
+			panic(fmt.Sprintf("constant %d overflows uint", node.Value))
+		}
 		c.emitPush(uint(node.Value))
 	case reflect.Uint8:
+		if node.Value > math.MaxUint8 || node.Value < 0 {
+			panic(fmt.Sprintf("constant %d overflows uint8", node.Value))
+		}
 		c.emitPush(uint8(node.Value))
 	case reflect.Uint16:
+		if node.Value > math.MaxUint16 || node.Value < 0 {
+			panic(fmt.Sprintf("constant %d overflows uint16", node.Value))
+		}
 		c.emitPush(uint16(node.Value))
 	case reflect.Uint32:
+		if node.Value < 0 {
+			panic(fmt.Sprintf("constant %d overflows uint32", node.Value))
+		}
 		c.emitPush(uint32(node.Value))
 	case reflect.Uint64:
+		if node.Value < 0 {
+			panic(fmt.Sprintf("constant %d overflows uint64", node.Value))
+		}
 		c.emitPush(uint64(node.Value))
 	default:
 		c.emitPush(node.Value)
@@ -566,8 +591,8 @@ func (c *compiler) BinaryNode(node *ast.BinaryNode) {
 }
 
 func (c *compiler) equalBinaryNode(node *ast.BinaryNode) {
-	l := kind(node.Left)
-	r := kind(node.Right)
+	l := kind(node.Left.Type())
+	r := kind(node.Right.Type())
 
 	leftIsSimple := isSimpleType(node.Left)
 	rightIsSimple := isSimpleType(node.Right)
@@ -701,9 +726,44 @@ func (c *compiler) SliceNode(node *ast.SliceNode) {
 }
 
 func (c *compiler) CallNode(node *ast.CallNode) {
-	for _, arg := range node.Arguments {
-		c.compile(arg)
+	fn := node.Callee.Type()
+	if kind(fn) == reflect.Func {
+		fnInOffset := 0
+		fnNumIn := fn.NumIn()
+		switch callee := node.Callee.(type) {
+		case *ast.MemberNode:
+			if prop, ok := callee.Property.(*ast.StringNode); ok {
+				if _, ok = callee.Node.Type().MethodByName(prop.Value); ok && callee.Node.Type().Kind() != reflect.Interface {
+					fnInOffset = 1
+					fnNumIn--
+				}
+			}
+		case *ast.IdentifierNode:
+			if t, ok := c.config.Types[callee.Value]; ok && t.Method {
+				fnInOffset = 1
+				fnNumIn--
+			}
+		}
+		for i, arg := range node.Arguments {
+			c.compile(arg)
+			if k := kind(arg.Type()); k == reflect.Ptr || k == reflect.Interface {
+				var in reflect.Type
+				if fn.IsVariadic() && i >= fnNumIn-1 {
+					in = fn.In(fn.NumIn() - 1).Elem()
+				} else {
+					in = fn.In(i + fnInOffset)
+				}
+				if k = kind(in); k != reflect.Ptr && k != reflect.Interface {
+					c.emit(OpDeref)
+				}
+			}
+		}
+	} else {
+		for _, arg := range node.Arguments {
+			c.compile(arg)
+		}
 	}
+
 	if ident, ok := node.Callee.(*ast.IdentifierNode); ok {
 		if c.config != nil {
 			if fn, ok := c.config.Functions[ident.Value]; ok {
@@ -1136,7 +1196,7 @@ func (c *compiler) PairNode(node *ast.PairNode) {
 }
 
 func (c *compiler) derefInNeeded(node ast.Node) {
-	switch kind(node) {
+	switch kind(node.Type()) {
 	case reflect.Ptr, reflect.Interface:
 		c.emit(OpDeref)
 	}
@@ -1155,8 +1215,7 @@ func (c *compiler) optimize() {
 	}
 }
 
-func kind(node ast.Node) reflect.Kind {
-	t := node.Type()
+func kind(t reflect.Type) reflect.Kind {
 	if t == nil {
 		return reflect.Invalid
 	}

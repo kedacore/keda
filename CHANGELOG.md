@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.15.1](#v2151)
 - [v2.15.0](#v2150)
 - [v2.14.1](#v2141)
 - [v2.14.0](#v2140)
@@ -56,7 +57,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **CloudEventSource**: Introduce ClusterCloudEventSource ([#3533](https://github.com/kedacore/keda/issues/3533))
+- **CloudEventSource**: Provide CloudEvents around the management of ScaledJobs resources ([#3523](https://github.com/kedacore/keda/issues/3523))
 
 #### Experimental
 
@@ -89,6 +91,18 @@ New deprecation(s):
 ### Other
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.15.1
+
+### Fixes
+
+- **General**: Hashicorp Vault PKI doesn't fail with due to KeyPair mismatch ([#6028](https://github.com/kedacore/keda/issues/6028))
+- **JetStream**: Consumer leader change is correctly detected ([#6042](https://github.com/kedacore/keda/issues/6042))
+
+
+### Other
+
+- **General**: Bump deps and k8s deps to 0.29.7 ([#6035](https://github.com/kedacore/keda/pull/6035))
 
 ## v2.15.0
 

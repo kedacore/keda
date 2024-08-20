@@ -12,14 +12,18 @@ import (
 )
 
 // For a secret that is replicated to other Regions, deletes the secret replicas
-// from the Regions you specify. Secrets Manager generates a CloudTrail log entry
-// when you call this action. Do not include sensitive information in request
-// parameters because it might be logged. For more information, see Logging
-// Secrets Manager events with CloudTrail (https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieve-ct-entries.html)
-// . Required permissions: secretsmanager:RemoveRegionsFromReplication . For more
-// information, see IAM policy actions for Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_iam-permissions.html#reference_iam-permissions_actions)
-// and Authentication and access control in Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html)
-// .
+// from the Regions you specify.
+//
+// Secrets Manager generates a CloudTrail log entry when you call this action. Do
+// not include sensitive information in request parameters because it might be
+// logged. For more information, see [Logging Secrets Manager events with CloudTrail].
+//
+// Required permissions: secretsmanager:RemoveRegionsFromReplication . For more
+// information, see [IAM policy actions for Secrets Manager]and [Authentication and access control in Secrets Manager].
+//
+// [Authentication and access control in Secrets Manager]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html
+// [Logging Secrets Manager events with CloudTrail]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieve-ct-entries.html
+// [IAM policy actions for Secrets Manager]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_iam-permissions.html#reference_iam-permissions_actions
 func (c *Client) RemoveRegionsFromReplication(ctx context.Context, params *RemoveRegionsFromReplicationInput, optFns ...func(*Options)) (*RemoveRegionsFromReplicationOutput, error) {
 	if params == nil {
 		params = &RemoveRegionsFromReplicationInput{}
@@ -117,6 +121,12 @@ func (c *Client) addOperationRemoveRegionsFromReplicationMiddlewares(stack *midd
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpRemoveRegionsFromReplicationValidationMiddleware(stack); err != nil {

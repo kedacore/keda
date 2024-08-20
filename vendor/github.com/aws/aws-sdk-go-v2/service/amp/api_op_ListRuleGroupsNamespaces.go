@@ -45,10 +45,12 @@ type ListRuleGroupsNamespacesInput struct {
 
 	// The token for the next set of items to return. You receive this token from a
 	// previous call, and use it to get the next page of results. The other parameters
-	// must be the same as the initial call. For example, if your initial request has
-	// maxResults of 10, and there are 12 rule groups namespaces to return, then your
-	// initial request will return 10 and a nextToken . Using the next token in a
-	// subsequent call will return the remaining 2 namespaces.
+	// must be the same as the initial call.
+	//
+	// For example, if your initial request has maxResults of 10, and there are 12
+	// rule groups namespaces to return, then your initial request will return 10 and a
+	// nextToken . Using the next token in a subsequent call will return the remaining
+	// 2 namespaces.
 	NextToken *string
 
 	noSmithyDocumentSerde
@@ -128,6 +130,12 @@ func (c *Client) addOperationListRuleGroupsNamespacesMiddlewares(stack *middlewa
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpListRuleGroupsNamespacesValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -151,14 +159,6 @@ func (c *Client) addOperationListRuleGroupsNamespacesMiddlewares(stack *middlewa
 	}
 	return nil
 }
-
-// ListRuleGroupsNamespacesAPIClient is a client that implements the
-// ListRuleGroupsNamespaces operation.
-type ListRuleGroupsNamespacesAPIClient interface {
-	ListRuleGroupsNamespaces(context.Context, *ListRuleGroupsNamespacesInput, ...func(*Options)) (*ListRuleGroupsNamespacesOutput, error)
-}
-
-var _ ListRuleGroupsNamespacesAPIClient = (*Client)(nil)
 
 // ListRuleGroupsNamespacesPaginatorOptions is the paginator options for
 // ListRuleGroupsNamespaces
@@ -225,6 +225,9 @@ func (p *ListRuleGroupsNamespacesPaginator) NextPage(ctx context.Context, optFns
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListRuleGroupsNamespaces(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -243,6 +246,14 @@ func (p *ListRuleGroupsNamespacesPaginator) NextPage(ctx context.Context, optFns
 
 	return result, nil
 }
+
+// ListRuleGroupsNamespacesAPIClient is a client that implements the
+// ListRuleGroupsNamespaces operation.
+type ListRuleGroupsNamespacesAPIClient interface {
+	ListRuleGroupsNamespaces(context.Context, *ListRuleGroupsNamespacesInput, ...func(*Options)) (*ListRuleGroupsNamespacesOutput, error)
+}
+
+var _ ListRuleGroupsNamespacesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListRuleGroupsNamespaces(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

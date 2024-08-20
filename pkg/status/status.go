@@ -44,6 +44,8 @@ func SetStatusConditions(ctx context.Context, client runtimeclient.StatusClient,
 			obj.Status.Conditions = *conditions
 		case *eventingv1alpha1.CloudEventSource:
 			obj.Status.Conditions = *conditions
+		case *eventingv1alpha1.ClusterCloudEventSource:
+			obj.Status.Conditions = *conditions
 		default:
 		}
 		return nil
@@ -182,6 +184,12 @@ func TransformObject(ctx context.Context, client runtimeclient.StatusClient, log
 		patch = runtimeclient.MergeFrom(obj.DeepCopy())
 		if err := transform(obj, target); err != nil {
 			logger.Error(err, "failed to patch CloudEventSource")
+			return err
+		}
+	case *eventingv1alpha1.ClusterCloudEventSource:
+		patch = runtimeclient.MergeFrom(obj.DeepCopy())
+		if err := transform(obj, target); err != nil {
+			logger.Error(err, "failed to patch ClusterCloudEventSource")
 			return err
 		}
 	default:
