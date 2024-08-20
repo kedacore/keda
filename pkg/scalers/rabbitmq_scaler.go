@@ -41,7 +41,7 @@ const (
 	rabbitMetricType                       = "External"
 	rabbitRootVhostPath                    = "/%2F"
 	rmqTLSEnable                           = "enable"
-	connectionName                         = "keda-rabbitmq-external-scaler"
+	connectionName                         = "keda"
 )
 
 const (
