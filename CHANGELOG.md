@@ -58,6 +58,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - **CloudEventSource**: Introduce ClusterCloudEventSource ([#3533](https://github.com/kedacore/keda/issues/3533))
+- **CloudEventSource**: Provide CloudEvents around the management of ScaledJobs resources ([#3523](https://github.com/kedacore/keda/issues/3523))
 
 #### Experimental
 
@@ -75,11 +76,13 @@ Here is an overview of all new **experimental** features:
 
 ### Deprecations
 
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
 You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
 
 New deprecation(s):
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- IBM MQ Scaler: Remove and deprecate unused variables in IBM MQ scaler ([#6033](https://github.com/kedacore/keda/issues/6033))
 
 ### Breaking Changes
 
