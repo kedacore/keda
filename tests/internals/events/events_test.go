@@ -28,6 +28,9 @@ var (
 	scaledObjectName                    = fmt.Sprintf("%s-so", testName)
 	scaledObjectTargetNotFoundName      = fmt.Sprintf("%s-so-target-error", testName)
 	scaledObjectTargetNoSubresourceName = fmt.Sprintf("%s-so-target-no-subresource", testName)
+
+	scaledJobName    = fmt.Sprintf("%s-sj", testName)
+	scaledJobErrName = fmt.Sprintf("%s-sj-target-error", testName)
 )
 
 type templateData struct {
@@ -38,6 +41,8 @@ type templateData struct {
 	DeploymentName                      string
 	MonitoredDeploymentName             string
 	DaemonsetName                       string
+	ScaledJobName                       string
+	ScaledJobErrName                    string
 }
 
 const (
@@ -155,6 +160,69 @@ spec:
         podSelector: 'app={{.DeploymentName}}'
         value: '1'
 `
+
+	scaledJobTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: {{.ScaledJobName}}
+  namespace: {{.TestNamespace}}
+spec:
+  jobTargetRef:
+    template:
+      spec:
+        containers:
+          - name: external-executor
+            image: busybox
+            command:
+            - sleep
+            - "30"
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Never
+    backoffLimit: 1
+  pollingInterval: 5
+  minReplicaCount: 0
+  maxReplicaCount: 8
+  successfulJobsHistoryLimit: 0
+  failedJobsHistoryLimit: 0
+  triggers:
+    - type: kubernetes-workload
+      metadata:
+        podSelector: 'app={{.MonitoredDeploymentName}}'
+        value: '1'
+`
+
+	scaledJobErrTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: {{.ScaledJobErrName}}
+  namespace: {{.TestNamespace}}
+spec:
+  jobTargetRef:
+    template:
+      spec:
+        containers:
+          - name: external-executor
+            image: busybox
+            command:
+            - sleep
+            - "30"
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Never
+    backoffLimit: 1
+  pollingInterval: 5
+  minReplicaCount: 0
+  maxReplicaCount: 8
+  successfulJobsHistoryLimit: 0
+  failedJobsHistoryLimit: 0
+  triggers:
+    - type: cpu
+      name: x
+      metadata:
+        typex: Utilization
+        value: "50"
+`
 )
 
 func TestEvents(t *testing.T) {
@@ -172,6 +240,8 @@ func TestEvents(t *testing.T) {
 	testTargetNotFoundErr(t, kc, data)
 	testTargetNotSupportEventErr(t, kc, data)
 
+	testScaledJobNormalEvent(t, kc, data)
+	testScaledJobTargetNotSupportEventErr(t, kc, data)
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
@@ -185,6 +255,8 @@ func getTemplateData() (templateData, []Template) {
 		ScaledObjectName:                    scaledObjectName,
 		ScaledObjectTargetNotFoundName:      scaledObjectTargetNotFoundName,
 		ScaledObjectTargetNoSubresourceName: scaledObjectTargetNoSubresourceName,
+		ScaledJobName:                       scaledJobName,
+		ScaledJobErrName:                    scaledJobErrName,
 	}, []Template{}
 }
 
@@ -210,6 +282,10 @@ func testNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) 
 	checkingEvent(t, scaledObjectName, 0, eventreason.KEDAScalersStarted, fmt.Sprintf(message.ScalerIsBuiltMsg, "kubernetes-workload"))
 	checkingEvent(t, scaledObjectName, 1, eventreason.KEDAScalersStarted, message.ScalerStartMsg)
 	checkingEvent(t, scaledObjectName, 2, eventreason.ScaledObjectReady, message.ScalerReadyMsg)
+
+	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
+	KubectlDeleteWithTemplate(t, data, "monitoredDeploymentName", monitoredDeploymentTemplate)
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
 func testTargetNotFoundErr(t *testing.T, _ *kubernetes.Clientset, data templateData) {
@@ -227,4 +303,30 @@ func testTargetNotSupportEventErr(t *testing.T, _ *kubernetes.Clientset, data te
 	KubectlApplyWithTemplate(t, data, "scaledObjectTargetNotSupportTemplate", scaledObjectTargetNotSupportTemplate)
 	checkingEvent(t, scaledObjectTargetNoSubresourceName, -2, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNoSubresourceMsg)
 	checkingEvent(t, scaledObjectTargetNoSubresourceName, -1, eventreason.ScaledObjectCheckFailed, message.ScaleTargetErrMsg)
+}
+
+func testScaledJobNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing ScaledJob normal event ---")
+
+	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "monitoredDeploymentName", monitoredDeploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
+
+	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 2, testNamespace)
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, 2, 60, 1),
+		"replica count should be 2 after 1 minute")
+	checkingEvent(t, scaledJobName, 0, eventreason.KEDAScalersStarted, fmt.Sprintf(message.ScalerIsBuiltMsg, "kubernetes-workload"))
+	checkingEvent(t, scaledJobName, 1, eventreason.KEDAScalersStarted, message.ScalerStartMsg)
+	checkingEvent(t, scaledJobName, 2, eventreason.ScaledJobReady, message.ScaledJobReadyMsg)
+
+	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
+	KubectlDeleteWithTemplate(t, data, "monitoredDeploymentName", monitoredDeploymentTemplate)
+	KubectlDeleteWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
+}
+
+func testScaledJobTargetNotSupportEventErr(t *testing.T, _ *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing target not support error event ---")
+
+	KubectlApplyWithTemplate(t, data, "scaledJobErrTemplate", scaledJobErrTemplate)
+	checkingEvent(t, scaledJobErrName, -1, eventreason.ScaledJobCheckFailed, "Failed to ensure ScaledJob is correctly created")
 }
