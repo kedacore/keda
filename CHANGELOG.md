@@ -68,6 +68,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
+- **RabbitMQ Scaler**: Add connection name for AMQP ([#5958](https://github.com/kedacore/keda/issues/5958))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Fixes
