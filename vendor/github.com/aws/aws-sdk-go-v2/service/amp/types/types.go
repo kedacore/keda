@@ -15,9 +15,11 @@ type AlertManagerDefinitionDescription struct {
 	// This member is required.
 	CreatedAt *time.Time
 
-	// The actual alert manager definition. For details about the alert manager
-	// definition, see AlertManagedDefinitionData (https://docs.aws.amazon.com/prometheus/latest/APIReference/yaml-AlertManagerDefinitionData.html)
-	// .
+	// The actual alert manager definition.
+	//
+	// For details about the alert manager definition, see [AlertManagedDefinitionData].
+	//
+	// [AlertManagedDefinitionData]: https://docs.aws.amazon.com/prometheus/latest/APIReference/yaml-AlertManagerDefinitionData.html
 	//
 	// This member is required.
 	Data []byte
@@ -158,9 +160,11 @@ type RuleGroupsNamespaceDescription struct {
 	// This member is required.
 	CreatedAt *time.Time
 
-	// The rule groups file used in the namespace. For details about the rule groups
-	// namespace structure, see RuleGroupsNamespaceData (https://docs.aws.amazon.com/prometheus/latest/APIReference/yaml-RuleGroupsNamespaceData.html)
-	// .
+	// The rule groups file used in the namespace.
+	//
+	// For details about the rule groups namespace structure, see [RuleGroupsNamespaceData].
+	//
+	// [RuleGroupsNamespaceData]: https://docs.aws.amazon.com/prometheus/latest/APIReference/yaml-RuleGroupsNamespaceData.html
 	//
 	// This member is required.
 	Data []byte
@@ -238,8 +242,7 @@ type RuleGroupsNamespaceSummary struct {
 }
 
 // A scrape configuration for a scraper, base 64 encoded. For more information,
-// see Scraper configuration in the Amazon Managed Service for Prometheus User
-// Guide.
+// see Scraper configurationin the Amazon Managed Service for Prometheus User Guide.
 //
 // The following types satisfy this interface:
 //

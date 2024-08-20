@@ -13,6 +13,45 @@ import (
 	"github.com/expr-lang/expr/parser"
 )
 
+// ParseCheck parses input expression and checks its types. Also, it applies
+// all provided patchers. In case of error, it returns error with a tree.
+func ParseCheck(input string, config *conf.Config) (*parser.Tree, error) {
+	tree, err := parser.ParseWithConfig(input, config)
+	if err != nil {
+		return tree, err
+	}
+
+	if len(config.Visitors) > 0 {
+		for i := 0; i < 1000; i++ {
+			more := false
+			for _, v := range config.Visitors {
+				// We need to perform types check, because some visitors may rely on
+				// types information available in the tree.
+				_, _ = Check(tree, config)
+
+				ast.Walk(&tree.Node, v)
+
+				if v, ok := v.(interface {
+					ShouldRepeat() bool
+				}); ok {
+					more = more || v.ShouldRepeat()
+				}
+			}
+			if !more {
+				break
+			}
+		}
+	}
+	_, err = Check(tree, config)
+	if err != nil {
+		return tree, err
+	}
+
+	return tree, nil
+}
+
+// Check checks types of the expression tree. It returns type of the expression
+// and error if any. If config is nil, then default configuration will be used.
 func Check(tree *parser.Tree, config *conf.Config) (t reflect.Type, err error) {
 	if config == nil {
 		config = conf.New(nil)
@@ -1005,7 +1044,7 @@ func (v *checker) checkArguments(
 			continue
 		}
 
-		if !t.AssignableTo(in) && kind(t) != reflect.Interface {
+		if !(t.AssignableTo(in) || deref.Type(t).AssignableTo(in)) && kind(t) != reflect.Interface {
 			return anyType, &file.Error{
 				Location: arg.Location(),
 				Message:  fmt.Sprintf("cannot use %v as argument (type %v) to call %v ", t, in, name),
@@ -1039,9 +1078,11 @@ func traverseAndReplaceIntegerNodesWithIntegerNodes(node *ast.Node, newType refl
 	case *ast.IntegerNode:
 		(*node).SetType(newType)
 	case *ast.UnaryNode:
+		(*node).SetType(newType)
 		unaryNode := (*node).(*ast.UnaryNode)
 		traverseAndReplaceIntegerNodesWithIntegerNodes(&unaryNode.Node, newType)
 	case *ast.BinaryNode:
+		// TODO: Binary node return type is dependent on the type of the operands. We can't just change the type of the node.
 		binaryNode := (*node).(*ast.BinaryNode)
 		switch binaryNode.Operator {
 		case "+", "-", "*":

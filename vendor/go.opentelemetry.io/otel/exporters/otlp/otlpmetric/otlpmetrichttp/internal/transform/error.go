@@ -58,7 +58,7 @@ func (e *multiErr) append(err error) {
 	// Do not use errors.As here, this should only be flattened one layer. If
 	// there is a *multiErr several steps down the chain, all the errors above
 	// it will be discarded if errors.As is used instead.
-	switch other := err.(type) {
+	switch other := err.(type) { //nolint:errorlint
 	case *multiErr:
 		// Flatten err errors into e.
 		e.errs = append(e.errs, other.errs...)

@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/admin"
 	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
@@ -67,6 +69,7 @@ type azureServiceBusMetadata struct {
 	entityNameRegex         *regexp.Regexp
 	operation               string
 	triggerIndex            int
+	timeout                 time.Duration
 }
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
@@ -97,6 +100,7 @@ func parseAzureServiceBusMetadata(config *scalersconfig.ScalerConfig, logger log
 	meta := azureServiceBusMetadata{}
 	meta.entityType = none
 	meta.targetLength = defaultTargetMessageCount
+	meta.timeout = config.GlobalHTTPTimeout
 
 	// get target metric value
 	if val, ok := config.TriggerMetadata[messageCountMetricName]; ok {
@@ -294,15 +298,21 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error
 	}
 	var err error
 	var client *admin.Client
+	opts := &admin.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: kedautil.CreateHTTPClient(s.metadata.timeout, false),
+		},
+	}
+
 	switch s.podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		client, err = admin.NewClientFromConnectionString(s.metadata.connection, nil)
+		client, err = admin.NewClientFromConnectionString(s.metadata.connection, opts)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		creds, chainedErr := azure.NewChainedCredential(s.logger, s.podIdentity.GetIdentityID(), s.podIdentity.GetIdentityTenantID(), s.podIdentity.Provider)
+		creds, chainedErr := azure.NewChainedCredential(s.logger, s.podIdentity)
 		if chainedErr != nil {
 			return nil, chainedErr
 		}
-		client, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, creds, nil)
+		client, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, creds, opts)
 	default:
 		err = fmt.Errorf("incorrect podIdentity type")
 	}

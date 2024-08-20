@@ -12,7 +12,7 @@ import (
 	smithytime "github.com/aws/smithy-go/time"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	smithywaiter "github.com/aws/smithy-go/waiter"
-	"github.com/jmespath/go-jmespath"
+	jmespath "github.com/jmespath/go-jmespath"
 	"time"
 )
 
@@ -112,6 +112,12 @@ func (c *Client) addOperationDescribeWorkspaceMiddlewares(stack *middleware.Stac
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDescribeWorkspaceValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -135,14 +141,6 @@ func (c *Client) addOperationDescribeWorkspaceMiddlewares(stack *middleware.Stac
 	}
 	return nil
 }
-
-// DescribeWorkspaceAPIClient is a client that implements the DescribeWorkspace
-// operation.
-type DescribeWorkspaceAPIClient interface {
-	DescribeWorkspace(context.Context, *DescribeWorkspaceInput, ...func(*Options)) (*DescribeWorkspaceOutput, error)
-}
-
-var _ DescribeWorkspaceAPIClient = (*Client)(nil)
 
 // WorkspaceActiveWaiterOptions are waiter options for WorkspaceActiveWaiter
 type WorkspaceActiveWaiterOptions struct {
@@ -176,12 +174,13 @@ type WorkspaceActiveWaiterOptions struct {
 
 	// Retryable is function that can be used to override the service defined
 	// waiter-behavior based on operation output, or returned error. This function is
-	// used by the waiter to decide if a state is retryable or a terminal state. By
-	// default service-modeled logic will populate this option. This option can thus be
-	// used to define a custom waiter state with fall-back to service-modeled waiter
-	// state mutators.The function returns an error in case of a failure state. In case
-	// of retry state, this function returns a bool value of true and nil error, while
-	// in case of success it returns a bool value of false and nil error.
+	// used by the waiter to decide if a state is retryable or a terminal state.
+	//
+	// By default service-modeled logic will populate this option. This option can
+	// thus be used to define a custom waiter state with fall-back to service-modeled
+	// waiter state mutators.The function returns an error in case of a failure state.
+	// In case of retry state, this function returns a bool value of true and nil
+	// error, while in case of success it returns a bool value of false and nil error.
 	Retryable func(context.Context, *DescribeWorkspaceInput, *DescribeWorkspaceOutput, error) (bool, error)
 }
 
@@ -258,7 +257,13 @@ func (w *WorkspaceActiveWaiter) WaitForOutput(ctx context.Context, params *Descr
 		}
 
 		out, err := w.client.DescribeWorkspace(ctx, params, func(o *Options) {
+			baseOpts := []func(*Options){
+				addIsWaiterUserAgent,
+			}
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range baseOpts {
+				opt(o)
+			}
 			for _, opt := range options.ClientOptions {
 				opt(o)
 			}
@@ -382,12 +387,13 @@ type WorkspaceDeletedWaiterOptions struct {
 
 	// Retryable is function that can be used to override the service defined
 	// waiter-behavior based on operation output, or returned error. This function is
-	// used by the waiter to decide if a state is retryable or a terminal state. By
-	// default service-modeled logic will populate this option. This option can thus be
-	// used to define a custom waiter state with fall-back to service-modeled waiter
-	// state mutators.The function returns an error in case of a failure state. In case
-	// of retry state, this function returns a bool value of true and nil error, while
-	// in case of success it returns a bool value of false and nil error.
+	// used by the waiter to decide if a state is retryable or a terminal state.
+	//
+	// By default service-modeled logic will populate this option. This option can
+	// thus be used to define a custom waiter state with fall-back to service-modeled
+	// waiter state mutators.The function returns an error in case of a failure state.
+	// In case of retry state, this function returns a bool value of true and nil
+	// error, while in case of success it returns a bool value of false and nil error.
 	Retryable func(context.Context, *DescribeWorkspaceInput, *DescribeWorkspaceOutput, error) (bool, error)
 }
 
@@ -464,7 +470,13 @@ func (w *WorkspaceDeletedWaiter) WaitForOutput(ctx context.Context, params *Desc
 		}
 
 		out, err := w.client.DescribeWorkspace(ctx, params, func(o *Options) {
+			baseOpts := []func(*Options){
+				addIsWaiterUserAgent,
+			}
 			o.APIOptions = append(o.APIOptions, apiOptions...)
+			for _, opt := range baseOpts {
+				opt(o)
+			}
 			for _, opt := range options.ClientOptions {
 				opt(o)
 			}
@@ -528,6 +540,14 @@ func workspaceDeletedStateRetryable(ctx context.Context, input *DescribeWorkspac
 
 	return true, nil
 }
+
+// DescribeWorkspaceAPIClient is a client that implements the DescribeWorkspace
+// operation.
+type DescribeWorkspaceAPIClient interface {
+	DescribeWorkspace(context.Context, *DescribeWorkspaceInput, ...func(*Options)) (*DescribeWorkspaceOutput, error)
+}
+
+var _ DescribeWorkspaceAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opDescribeWorkspace(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

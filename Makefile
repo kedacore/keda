@@ -52,7 +52,7 @@ GO_LDFLAGS="-X=github.com/kedacore/keda/v2/version.GitCommit=$(GIT_COMMIT) -X=gi
 COSIGN_FLAGS ?= -y -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_DATE=${DATE}
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.28
+ENVTEST_K8S_VERSION = 1.30
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -73,11 +73,11 @@ all: build
 ##@ Test
 .PHONY: install-test-deps
 install-test-deps:
-	go install github.com/jstemmer/go-junit-report/v2@latest
+	go install gotest.tools/gotestsum@latest
 
 .PHONY: test
 test: manifests generate fmt vet envtest install-test-deps ## Run tests and export the result to junit format.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -v 2>&1 ./... -coverprofile cover.out | go-junit-report -iocopy -set-exit-code -out report.xml
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" gotestsum --format standard-quiet --rerun-fails --junitfile report.xml
 
 .PHONY:
 az-login:
@@ -321,6 +321,7 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 MOCKGEN ?= $(LOCALBIN)/mockgen
 PROTOCGEN ?= $(LOCALBIN)/protoc-gen-go
 PROTOCGEN_GRPC ?= $(LOCALBIN)/protoc-gen-go-grpc
+GO_JUNIT_REPORT ?= $(LOCALBIN)/go-junit-report
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Install controller-gen from vendor dir if necessary.
@@ -349,6 +350,10 @@ $(PROTOCGEN): $(LOCALBIN)
 $(PROTOCGEN_GRPC): $(LOCALBIN)
 	GOBIN=$(LOCALBIN) go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
+.PHONY: go-junit-report
+go-junit-report: $(GO_JUNIT_REPORT) ## Install go-junit-report from vendor dir if necessary.
+$(GO_JUNIT_REPORT): $(LOCALBIN)
+	test -s $(LOCALBIN)/go-junit-report || GOBIN=$(LOCALBIN) go install github.com/jstemmer/go-junit-report/v2
 
 ##################################################
 # General                                        #
