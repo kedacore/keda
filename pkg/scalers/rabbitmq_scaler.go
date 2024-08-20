@@ -41,6 +41,7 @@ const (
 	rabbitMetricType                       = "External"
 	rabbitRootVhostPath                    = "/%2F"
 	rmqTLSEnable                           = "enable"
+	connectionName                         = "keda-rabbitmq-external-scaler"
 )
 
 const (
@@ -445,21 +446,25 @@ func parseTrigger(meta *rabbitMQMetadata, config *scalersconfig.ScalerConfig) (*
 }
 
 // getConnectionAndChannel returns an amqp connection. If enableTLS is true tls connection is made using
-//
-//	the given ceClient cert, ceClient key,and CA certificate. If clientKeyPassword is not empty the provided password will be used to
-//
+// the given ceClient cert, ceClient key,and CA certificate. If clientKeyPassword is not empty the provided password will be used to
 // decrypt the given key. If enableTLS is disabled then amqp connection will be created without tls.
 func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connection, *amqp.Channel, error) {
-	var conn *amqp.Connection
-	var err error
-	if meta.enableTLS {
-		tlsConfig, configErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, meta.unsafeSsl)
-		if configErr == nil {
-			conn, err = amqp.DialTLS(host, tlsConfig)
-		}
-	} else {
-		conn, err = amqp.Dial(host)
+	amqpConfig := amqp.Config{
+		Properties: amqp.Table{
+			"connection_name": connectionName,
+		},
 	}
+
+	if meta.enableTLS {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, meta.unsafeSsl)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		amqpConfig.TLSClientConfig = tlsConfig
+	}
+
+	conn, err := amqp.DialConfig(host, amqpConfig)
 	if err != nil {
 		return nil, nil, err
 	}
