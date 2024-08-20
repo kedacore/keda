@@ -58,6 +58,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - **CloudEventSource**: Introduce ClusterCloudEventSource ([#3533](https://github.com/kedacore/keda/issues/3533))
+- **CloudEventSource**: Provide CloudEvents around the management of ScaledJobs resources ([#3523](https://github.com/kedacore/keda/issues/3523))
 
 #### Experimental
 
