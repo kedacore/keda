@@ -91,7 +91,7 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- Pulsar: remove `msgBacklog` trigger name #6059
 
 ### Other
 
