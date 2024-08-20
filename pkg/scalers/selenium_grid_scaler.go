@@ -216,27 +216,7 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	}
 
 	if setSessionsFromHub {
-		var nodes = seleniumResponse.Data.NodesInfo.Nodes
-	slots:
-		for _, node := range nodes {
-			var stereotypes = []stereotype{}
-			if err := json.Unmarshal([]byte(node.Stereotypes), &stereotypes); err == nil {
-				for _, stereotype := range stereotypes {
-					if stereotype.Stereotype.BrowserName == browserName {
-						var platformNameMatches = stereotype.Stereotype.PlatformName == "" || strings.EqualFold(stereotype.Stereotype.PlatformName, platformName)
-						if strings.HasPrefix(stereotype.Stereotype.BrowserVersion, browserVersion) && platformNameMatches {
-							slots = stereotype.Slots
-							break slots
-						} else if len(strings.TrimSpace(stereotype.Stereotype.BrowserVersion)) == 0 && browserVersion == DefaultBrowserVersion && platformNameMatches {
-							slots = stereotype.Slots
-							break slots
-						}
-					}
-				}
-			} else {
-				logger.Error(err, fmt.Sprintf("Error when unmarshalling stereotypes: %s", err))
-			}
-		}
+		slots = getSlotsFromSeleniumResponse(seleniumResponse, browserName, browserVersion, platformName, logger)
 	}
 
 	var sessionQueueRequests = seleniumResponse.Data.SessionsInfo.SessionQueueRequests
@@ -289,4 +269,31 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	}
 
 	return count, nil
+}
+
+func getSlotsFromSeleniumResponse(seleniumResponse seleniumResponse, browserName string, browserVersion string, platformName string, logger logr.Logger) int64 {
+	var slots int64
+
+	var nodes = seleniumResponse.Data.NodesInfo.Nodes
+slots:
+	for _, node := range nodes {
+		var stereotypes = []stereotype{}
+		if err := json.Unmarshal([]byte(node.Stereotypes), &stereotypes); err == nil {
+			for _, stereotype := range stereotypes {
+				if stereotype.Stereotype.BrowserName == browserName {
+					var platformNameMatches = stereotype.Stereotype.PlatformName == "" || strings.EqualFold(stereotype.Stereotype.PlatformName, platformName)
+					if strings.HasPrefix(stereotype.Stereotype.BrowserVersion, browserVersion) && platformNameMatches {
+						slots = stereotype.Slots
+						break slots
+					} else if len(strings.TrimSpace(stereotype.Stereotype.BrowserVersion)) == 0 && browserVersion == DefaultBrowserVersion && platformNameMatches {
+						slots = stereotype.Slots
+						break slots
+					}
+				}
+			}
+		} else {
+			logger.Error(err, fmt.Sprintf("Error when unmarshalling stereotypes: %s", err))
+		}
+	}
+	return slots
 }
