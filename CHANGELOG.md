@@ -66,7 +66,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- **General**: Add internal metric for `latency_seconds_bucket` ([#5812](https://github.com/kedacore/keda/pull/5812))
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Fixes
 
