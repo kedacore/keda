@@ -723,9 +723,7 @@ func (s *rabbitMQScaler) anonymizeRabbitMQError(err error) error {
 }
 
 // connectionName is used to provide a deterministic AMQP connection name when
-// connecting to RabbitMQ. As far as I can tell, there are no restrictions
-// on the connection name:
-// https://github.com/rabbitmq/rabbitmq-server/blob/main/deps/amqp_client/src/amqp_connection.erl#L185-L196
+// connecting to RabbitMQ
 func connectionName(config *scalersconfig.ScalerConfig) string {
 	return fmt.Sprintf("keda-%s-%s", config.ScalableObjectNamespace, config.ScalableObjectName)
 }
