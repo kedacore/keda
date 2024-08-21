@@ -41,7 +41,6 @@ const (
 	rabbitMetricType                       = "External"
 	rabbitRootVhostPath                    = "/%2F"
 	rmqTLSEnable                           = "enable"
-	connectionName                         = "keda"
 )
 
 const (
@@ -70,6 +69,7 @@ type rabbitMQScaler struct {
 
 type rabbitMQMetadata struct {
 	queueName             string
+	connectionName        string        // name used for the AMQP connection
 	mode                  string        // QueueLength or MessageRate
 	value                 float64       // trigger value (queue length or publish/sec. rate)
 	activationValue       float64       // activation value
@@ -233,7 +233,9 @@ func resolveTLSAuthParams(config *scalersconfig.ScalerConfig, meta *rabbitMQMeta
 }
 
 func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadata, error) {
-	meta := rabbitMQMetadata{}
+	meta := rabbitMQMetadata{
+		connectionName: connectionName(config),
+	}
 
 	// Resolve protocol type
 	if err := resolveProtocol(config, &meta); err != nil {
@@ -451,7 +453,7 @@ func parseTrigger(meta *rabbitMQMetadata, config *scalersconfig.ScalerConfig) (*
 func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connection, *amqp.Channel, error) {
 	amqpConfig := amqp.Config{
 		Properties: amqp.Table{
-			"connection_name": connectionName,
+			"connection_name": meta.connectionName,
 		},
 	}
 
@@ -718,4 +720,12 @@ func getMaximum(q []queueInfo) (int, int, float64) {
 func (s *rabbitMQScaler) anonymizeRabbitMQError(err error) error {
 	errorMessage := fmt.Sprintf("error inspecting rabbitMQ: %s", err)
 	return fmt.Errorf(rabbitMQAnonymizePattern.ReplaceAllString(errorMessage, "user:password@"))
+}
+
+// connectionName is used to provide a deterministic AMQP connection name when
+// connecting to RabbitMQ. As far as I can tell, there are no restrictions
+// on the connection name:
+// https://github.com/rabbitmq/rabbitmq-server/blob/main/deps/amqp_client/src/amqp_connection.erl#L185-L196
+func connectionName(config *scalersconfig.ScalerConfig) string {
+	return fmt.Sprintf("keda-%s-%s", config.ScalableObjectNamespace, config.ScalableObjectName)
 }
