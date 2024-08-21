@@ -60,7 +60,7 @@ jobs:
         run: make clientset-verify
 
       - name: Verify generated Manifests are up to date
-        run: make verify-manifests
+        run: rm -f bin/controller-gen && make verify-manifests
 
       - name: Build
         run: make build
