@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
@@ -916,7 +917,6 @@ func testScalableObjectMetrics(t *testing.T) {
 	} else {
 		t.Errorf("scaledobject metric not available")
 	}
-
 }
 
 func testScalerActiveMetric(t *testing.T) {
