@@ -21,7 +21,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
-	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
@@ -887,6 +886,37 @@ func testScalableObjectMetrics(t *testing.T) {
 	} else {
 		t.Errorf("scaledobject metric not available")
 	}
+	if val, ok := family["keda_internal_scale_loop_latency_seconds_bucket"]; ok {
+		var found bool
+		metrics := val.GetMetric()
+
+		// check scaledobject loop
+		found = false
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == labelType && *label.Value == "scaledobject" {
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+
+		// check scaledjob loop
+		found = false
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == labelType && *label.Value == "scaledjob" {
+					found = true
+				}
+			}
+		}
+		assert.Equal(t, true, found)
+	} else {
+		t.Errorf("scaledobject metric not available")
+	}
+
 }
 
 func testScalerActiveMetric(t *testing.T) {
