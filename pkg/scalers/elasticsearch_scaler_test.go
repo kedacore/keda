@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,25 +37,25 @@ var testCases = []parseElasticsearchMetadataTestData{
 		name:          "must provide either endpoint addresses or cloud config",
 		metadata:      map[string]string{},
 		authParams:    map[string]string{},
-		expectedError: ErrElasticsearchMissingAddressesOrCloudConfig,
+		expectedError: fmt.Errorf("must provide either endpoint addresses or cloud config"),
 	},
 	{
 		name:          "no apiKey given",
 		metadata:      map[string]string{"cloudID": "my-cluster:xxxxxxxxxxx"},
 		authParams:    map[string]string{},
-		expectedError: ErrScalerConfigMissingField,
+		expectedError: fmt.Errorf("no apiKey specified"),
 	},
 	{
 		name:          "can't provide endpoint addresses and cloud config at the same time",
 		metadata:      map[string]string{"addresses": "http://localhost:9200", "cloudID": "my-cluster:xxxxxxxxxxx"},
 		authParams:    map[string]string{"username": "admin", "apiKey": "xxxxxxxxx"},
-		expectedError: ErrElasticsearchConfigConflict,
+		expectedError: fmt.Errorf("can't provide endpoint addresses and cloud config at the same time"),
 	},
 	{
 		name:          "no index given",
 		metadata:      map[string]string{"addresses": "http://localhost:9200"},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: ErrScalerConfigMissingField,
+		expectedError: fmt.Errorf("no index specified"),
 	},
 	{
 		name: "no searchTemplateName given",
@@ -65,7 +64,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"index":     "index1",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: ErrScalerConfigMissingField,
+		expectedError: fmt.Errorf("no searchTemplateName specified"),
 	},
 	{
 		name: "no valueLocation given",
@@ -75,7 +74,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"searchTemplateName": "searchTemplateName",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: ErrScalerConfigMissingField,
+		expectedError: fmt.Errorf("no valueLocation specified"),
 	},
 	{
 		name: "no targetValue given",
@@ -86,7 +85,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"valueLocation":      "toto",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: ErrScalerConfigMissingField,
+		expectedError: fmt.Errorf("no targetValue given"),
 	},
 	{
 		name: "invalid targetValue",
@@ -98,7 +97,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"targetValue":        "AA",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: strconv.ErrSyntax,
+		expectedError: fmt.Errorf("targetValue parsing error"),
 	},
 	{
 		name: "invalid activationTargetValue",
@@ -111,7 +110,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"activationTargetValue": "AA",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: strconv.ErrSyntax,
+		expectedError: fmt.Errorf("activationTargetValue parsing error"),
 	},
 	{
 		name: "all fields ok",
@@ -130,17 +129,17 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"password": "password",
 		},
 		expectedMetadata: &elasticsearchMetadata{
-			addresses:             []string{"http://localhost:9200"},
-			unsafeSsl:             true,
-			indexes:               []string{"index1"},
-			username:              "admin",
-			password:              "password",
-			searchTemplateName:    "myAwesomeSearch",
-			parameters:            []string{"param1:value1"},
-			valueLocation:         "hits.hits[0]._source.value",
-			targetValue:           12.2,
-			activationTargetValue: 3.33,
-			metricName:            "s0-elasticsearch-myAwesomeSearch",
+			Addresses:             []string{"http://localhost:9200"},
+			UnsafeSsl:             true,
+			Indexes:               []string{"index1"},
+			Username:              "admin",
+			Password:              "password",
+			SearchTemplateName:    "myAwesomeSearch",
+			Parameters:            []string{"param1:value1"},
+			ValueLocation:         "hits.hits[0]._source.value",
+			TargetValue:           12.2,
+			ActivationTargetValue: 3.33,
+			MetricName:            "s0-elasticsearch-myAwesomeSearch",
 		},
 		expectedError: nil,
 	},
@@ -160,16 +159,16 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"password": "password",
 		},
 		expectedMetadata: &elasticsearchMetadata{
-			addresses:          []string{"http://localhost:9200"},
-			unsafeSsl:          false,
-			indexes:            []string{"index1", "index2"},
-			username:           "admin",
-			password:           "password",
-			searchTemplateName: "myAwesomeSearch",
-			parameters:         []string{"param1:value1"},
-			valueLocation:      "hits.hits[0]._source.value",
-			targetValue:        12,
-			metricName:         "s0-elasticsearch-myAwesomeSearch",
+			Addresses:          []string{"http://localhost:9200"},
+			UnsafeSsl:          false,
+			Indexes:            []string{"index1", "index2"},
+			Username:           "admin",
+			Password:           "password",
+			SearchTemplateName: "myAwesomeSearch",
+			Parameters:         []string{"param1:value1"},
+			ValueLocation:      "hits.hits[0]._source.value",
+			TargetValue:        12,
+			MetricName:         "s0-elasticsearch-myAwesomeSearch",
 		},
 		expectedError: nil,
 	},
@@ -189,16 +188,16 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"password": "password",
 		},
 		expectedMetadata: &elasticsearchMetadata{
-			addresses:          []string{"http://localhost:9200"},
-			unsafeSsl:          false,
-			indexes:            []string{"index1", "index2"},
-			username:           "admin",
-			password:           "password",
-			searchTemplateName: "myAwesomeSearch",
-			parameters:         []string{"param1:value1"},
-			valueLocation:      "hits.hits[0]._source.value",
-			targetValue:        12,
-			metricName:         "s0-elasticsearch-myAwesomeSearch",
+			Addresses:          []string{"http://localhost:9200"},
+			UnsafeSsl:          false,
+			Indexes:            []string{"index1", "index2"},
+			Username:           "admin",
+			Password:           "password",
+			SearchTemplateName: "myAwesomeSearch",
+			Parameters:         []string{"param1:value1"},
+			ValueLocation:      "hits.hits[0]._source.value",
+			TargetValue:        12,
+			MetricName:         "s0-elasticsearch-myAwesomeSearch",
 		},
 		expectedError: nil,
 	},
@@ -218,16 +217,16 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"password": "password",
 		},
 		expectedMetadata: &elasticsearchMetadata{
-			addresses:          []string{"http://localhost:9200", "http://localhost:9201"},
-			unsafeSsl:          false,
-			indexes:            []string{"index1"},
-			username:           "admin",
-			password:           "password",
-			searchTemplateName: "myAwesomeSearch",
-			parameters:         []string{"param1:value1"},
-			valueLocation:      "hits.hits[0]._source.value",
-			targetValue:        12,
-			metricName:         "s0-elasticsearch-myAwesomeSearch",
+			Addresses:          []string{"http://localhost:9200", "http://localhost:9201"},
+			UnsafeSsl:          false,
+			Indexes:            []string{"index1"},
+			Username:           "admin",
+			Password:           "password",
+			SearchTemplateName: "myAwesomeSearch",
+			Parameters:         []string{"param1:value1"},
+			ValueLocation:      "hits.hits[0]._source.value",
+			TargetValue:        12,
+			MetricName:         "s0-elasticsearch-myAwesomeSearch",
 		},
 		expectedError: nil,
 	},
@@ -247,16 +246,16 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"password": "password",
 		},
 		expectedMetadata: &elasticsearchMetadata{
-			addresses:          []string{"http://localhost:9200", "http://localhost:9201"},
-			unsafeSsl:          false,
-			indexes:            []string{"index1"},
-			username:           "admin",
-			password:           "password",
-			searchTemplateName: "myAwesomeSearch",
-			parameters:         []string{"param1:value1"},
-			valueLocation:      "hits.hits[0]._source.value",
-			targetValue:        12,
-			metricName:         "s0-elasticsearch-myAwesomeSearch",
+			Addresses:          []string{"http://localhost:9200", "http://localhost:9201"},
+			UnsafeSsl:          false,
+			Indexes:            []string{"index1"},
+			Username:           "admin",
+			Password:           "password",
+			SearchTemplateName: "myAwesomeSearch",
+			Parameters:         []string{"param1:value1"},
+			ValueLocation:      "hits.hits[0]._source.value",
+			TargetValue:        12,
+			MetricName:         "s0-elasticsearch-myAwesomeSearch",
 		},
 		expectedError: nil,
 	},
@@ -279,16 +278,16 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"ELASTICSEARCH_PASSWORD": "password",
 		},
 		expectedMetadata: &elasticsearchMetadata{
-			addresses:          []string{"http://localhost:9200", "http://localhost:9201"},
-			unsafeSsl:          false,
-			indexes:            []string{"index1"},
-			username:           "admin",
-			password:           "password",
-			searchTemplateName: "myAwesomeSearch",
-			parameters:         []string{"param1:value1"},
-			valueLocation:      "hits.hits[0]._source.value",
-			targetValue:        12,
-			metricName:         "s0-elasticsearch-myAwesomeSearch",
+			Addresses:          []string{"http://localhost:9200", "http://localhost:9201"},
+			UnsafeSsl:          false,
+			Indexes:            []string{"index1"},
+			Username:           "admin",
+			Password:           "password",
+			SearchTemplateName: "myAwesomeSearch",
+			Parameters:         []string{"param1:value1"},
+			ValueLocation:      "hits.hits[0]._source.value",
+			TargetValue:        12,
+			MetricName:         "s0-elasticsearch-myAwesomeSearch",
 		},
 		expectedError: nil,
 	},
@@ -307,7 +306,7 @@ func TestParseElasticsearchMetadata(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				fmt.Println(tc.name)
-				assert.Equal(t, tc.expectedMetadata, metadata)
+				assert.Equal(t, tc.expectedMetadata, &metadata)
 			}
 		})
 	}
@@ -329,16 +328,16 @@ func TestUnsafeSslDefaultValue(t *testing.T) {
 			"password": "password",
 		},
 		expectedMetadata: &elasticsearchMetadata{
-			addresses:          []string{"http://localhost:9200"},
-			unsafeSsl:          false,
-			indexes:            []string{"index1"},
-			username:           "admin",
-			password:           "password",
-			searchTemplateName: "myAwesomeSearch",
-			parameters:         []string{"param1:value1"},
-			valueLocation:      "hits.hits[0]._source.value",
-			targetValue:        12,
-			metricName:         "s0-elasticsearch-myAwesomeSearch",
+			Addresses:          []string{"http://localhost:9200"},
+			UnsafeSsl:          false,
+			Indexes:            []string{"index1"},
+			Username:           "admin",
+			Password:           "password",
+			SearchTemplateName: "myAwesomeSearch",
+			Parameters:         []string{"param1:value1"},
+			ValueLocation:      "hits.hits[0]._source.value",
+			TargetValue:        12,
+			MetricName:         "s0-elasticsearch-myAwesomeSearch",
 		},
 		expectedError: nil,
 	}
@@ -347,7 +346,7 @@ func TestUnsafeSslDefaultValue(t *testing.T) {
 		AuthParams:      tc.authParams,
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, tc.expectedMetadata, metadata)
+	assert.Equal(t, tc.expectedMetadata, &metadata)
 }
 
 func TestBuildQuery(t *testing.T) {
@@ -443,7 +442,8 @@ func TestBuildQuery(t *testing.T) {
 				AuthParams:      tc.authParams,
 			})
 			assert.NoError(t, err)
-			assert.Equal(t, tc.expectedQuery, buildQuery(metadata))
+			scaler := elasticsearchScaler{metadata: metadata}
+			assert.Equal(t, tc.expectedQuery, buildQuery(&scaler.metadata))
 		})
 	}
 }
@@ -462,7 +462,8 @@ func TestElasticsearchGetMetricSpecForScaling(t *testing.T) {
 			TriggerIndex:    testData.triggerIndex,
 		})
 		if testData.metadataTestData.expectedError != nil {
-			assert.ErrorIs(t, err, testData.metadataTestData.expectedError)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), testData.metadataTestData.expectedError.Error())
 			continue
 		}
 		if err != nil {
