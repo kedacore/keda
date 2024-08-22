@@ -62,7 +62,7 @@ const (
 
 // separators for map and slice elements
 const (
-	elemSeparator       = ","
+	elemSeparator       = ",;"
 	elemKeyValSeparator = "="
 )
 
@@ -208,7 +208,9 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 			enumMap[e] = true
 		}
 		missingMap := make(map[string]bool)
-		split := strings.Split(valFromConfig, elemSeparator)
+		split := strings.FieldsFunc(valFromConfig, func(r rune) bool {
+			return strings.ContainsRune(elemSeparator, r)
+		})
 		for _, s := range split {
 			s := strings.TrimSpace(s)
 			if !enumMap[s] {
@@ -224,7 +226,9 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 		for _, e := range params.ExclusiveSet {
 			exclusiveMap[e] = true
 		}
-		split := strings.Split(valFromConfig, elemSeparator)
+		split := strings.FieldsFunc(valFromConfig, func(r rune) bool {
+			return strings.ContainsRune(elemSeparator, r)
+		})
 		exclusiveCount := 0
 		for _, s := range split {
 			s := strings.TrimSpace(s)
@@ -276,7 +280,9 @@ func setConfigValueURLParams(params Params, valFromConfig string, field reflect.
 // setConfigValueMap is a function that sets the value of the map field
 func setConfigValueMap(params Params, valFromConfig string, field reflect.Value) error {
 	field.Set(reflect.MakeMap(reflect.MapOf(field.Type().Key(), field.Type().Elem())))
-	split := strings.Split(valFromConfig, elemSeparator)
+	split := strings.FieldsFunc(valFromConfig, func(r rune) bool {
+		return strings.ContainsRune(elemSeparator, r)
+	})
 	for _, s := range split {
 		s := strings.TrimSpace(s)
 		kv := strings.Split(s, elemKeyValSeparator)
@@ -342,7 +348,9 @@ func setConfigValueRange(params Params, valFromConfig string, field reflect.Valu
 // setConfigValueSlice is a function that sets the value of the slice field
 func setConfigValueSlice(params Params, valFromConfig string, field reflect.Value) error {
 	elemIfc := reflect.New(field.Type().Elem()).Interface()
-	split := strings.Split(valFromConfig, elemSeparator)
+	split := strings.FieldsFunc(valFromConfig, func(r rune) bool {
+		return strings.ContainsRune(elemSeparator, r)
+	})
 	for i, s := range split {
 		s := strings.TrimSpace(s)
 		if canRange(s, params.RangeSeparator, field) {
