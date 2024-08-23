@@ -37,25 +37,25 @@ var testCases = []parseElasticsearchMetadataTestData{
 		name:          "must provide either endpoint addresses or cloud config",
 		metadata:      map[string]string{},
 		authParams:    map[string]string{},
-		expectedError: fmt.Errorf("must provide either endpoint addresses or cloud config"),
+		expectedError: fmt.Errorf("must provide either cloud config or endpoint addresses"),
 	},
 	{
 		name:          "no apiKey given",
 		metadata:      map[string]string{"cloudID": "my-cluster:xxxxxxxxxxx"},
 		authParams:    map[string]string{},
-		expectedError: fmt.Errorf("no apiKey specified"),
+		expectedError: fmt.Errorf("both cloudID and apiKey must be provided when cloudID or apiKey is used"),
 	},
 	{
 		name:          "can't provide endpoint addresses and cloud config at the same time",
 		metadata:      map[string]string{"addresses": "http://localhost:9200", "cloudID": "my-cluster:xxxxxxxxxxx"},
 		authParams:    map[string]string{"username": "admin", "apiKey": "xxxxxxxxx"},
-		expectedError: fmt.Errorf("can't provide endpoint addresses and cloud config at the same time"),
+		expectedError: fmt.Errorf("can't provide both cloud config and endpoint addresses"),
 	},
 	{
 		name:          "no index given",
 		metadata:      map[string]string{"addresses": "http://localhost:9200"},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: fmt.Errorf("no index specified"),
+		expectedError: fmt.Errorf("missing required parameter"),
 	},
 	{
 		name: "no searchTemplateName given",
@@ -64,7 +64,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"index":     "index1",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: fmt.Errorf("no searchTemplateName specified"),
+		expectedError: fmt.Errorf("missing required parameter"),
 	},
 	{
 		name: "no valueLocation given",
@@ -74,7 +74,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"searchTemplateName": "searchTemplateName",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: fmt.Errorf("no valueLocation specified"),
+		expectedError: fmt.Errorf("missing required parameter"),
 	},
 	{
 		name: "no targetValue given",
@@ -85,7 +85,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"valueLocation":      "toto",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: fmt.Errorf("no targetValue given"),
+		expectedError: fmt.Errorf("missing required parameter"),
 	},
 	{
 		name: "invalid targetValue",
@@ -97,7 +97,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"targetValue":        "AA",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: fmt.Errorf("targetValue parsing error"),
+		expectedError: fmt.Errorf("unable to set param"),
 	},
 	{
 		name: "invalid activationTargetValue",
@@ -110,7 +110,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"activationTargetValue": "AA",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: fmt.Errorf("activationTargetValue parsing error"),
+		expectedError: fmt.Errorf("unable to set param"),
 	},
 	{
 		name: "all fields ok",
@@ -302,7 +302,8 @@ func TestParseElasticsearchMetadata(t *testing.T) {
 				ResolvedEnv:     tc.resolvedEnv,
 			})
 			if tc.expectedError != nil {
-				assert.ErrorIs(t, err, tc.expectedError)
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedError.Error())
 			} else {
 				assert.NoError(t, err)
 				fmt.Println(tc.name)

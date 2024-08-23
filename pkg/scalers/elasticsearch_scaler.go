@@ -27,15 +27,15 @@ type elasticsearchScaler struct {
 }
 
 type elasticsearchMetadata struct {
-	Addresses             []string `keda:"name=address;addresses,     order=authParams;triggerMetadata, optional"`
+	Addresses             []string `keda:"name=address,               order=authParams;triggerMetadata, optional"`
 	UnsafeSsl             bool     `keda:"name=unsafeSsl,             order=triggerMetadata, default=false"`
 	Username              string   `keda:"name=username,              order=authParams;triggerMetadata, optional"`
 	Password              string   `keda:"name=password,              order=authParams;resolvedEnv;triggerMetadata, optional"`
 	CloudID               string   `keda:"name=cloudID,               order=authParams;triggerMetadata, optional"`
 	APIKey                string   `keda:"name=apiKey,                order=authParams;triggerMetadata, optional"`
-	Indexes               []string `keda:"name=index;indexes,         order=authParams;triggerMetadata"`
+	Index                 []string `keda:"name=index,                 order=authParams;triggerMetadata"`
 	SearchTemplateName    string   `keda:"name=searchTemplateName,    order=authParams;triggerMetadata"`
-	Parameters            []string `keda:"name=parameter;parameters,  order=triggerMetadata, optional"`
+	Parameters            []string `keda:"name=parameters,            order=triggerMetadata, optional"`
 	ValueLocation         string   `keda:"name=valueLocation,         order=authParams;triggerMetadata"`
 	TargetValue           float64  `keda:"name=targetValue,           order=authParams;triggerMetadata"`
 	ActivationTargetValue float64  `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
@@ -50,6 +50,9 @@ func (m *elasticsearchMetadata) Validate() error {
 	}
 	if (m.CloudID == "" && m.APIKey == "") && (len(m.Addresses) == 0 && m.Username == "" && m.Password == "") {
 		return fmt.Errorf("must provide either cloud config or endpoint addresses")
+	}
+	if (m.CloudID != "" && m.APIKey == "") || (m.CloudID == "" && m.APIKey != "") {
+		return fmt.Errorf("both cloudID and apiKey must be provided when cloudID or apiKey is used")
 	}
 	return nil
 }
