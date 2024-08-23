@@ -131,7 +131,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 		expectedMetadata: &elasticsearchMetadata{
 			Addresses:             []string{"http://localhost:9200"},
 			UnsafeSsl:             true,
-			Indexes:               []string{"index1"},
+			Index:                 []string{"index1"},
 			Username:              "admin",
 			Password:              "password",
 			SearchTemplateName:    "myAwesomeSearch",
@@ -161,7 +161,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 		expectedMetadata: &elasticsearchMetadata{
 			Addresses:          []string{"http://localhost:9200"},
 			UnsafeSsl:          false,
-			Indexes:            []string{"index1", "index2"},
+			Index:              []string{"index1", "index2"},
 			Username:           "admin",
 			Password:           "password",
 			SearchTemplateName: "myAwesomeSearch",
@@ -190,7 +190,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 		expectedMetadata: &elasticsearchMetadata{
 			Addresses:          []string{"http://localhost:9200"},
 			UnsafeSsl:          false,
-			Indexes:            []string{"index1", "index2"},
+			Index:              []string{"index1", "index2"},
 			Username:           "admin",
 			Password:           "password",
 			SearchTemplateName: "myAwesomeSearch",
@@ -219,7 +219,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 		expectedMetadata: &elasticsearchMetadata{
 			Addresses:          []string{"http://localhost:9200", "http://localhost:9201"},
 			UnsafeSsl:          false,
-			Indexes:            []string{"index1"},
+			Index:              []string{"index1"},
 			Username:           "admin",
 			Password:           "password",
 			SearchTemplateName: "myAwesomeSearch",
@@ -248,7 +248,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 		expectedMetadata: &elasticsearchMetadata{
 			Addresses:          []string{"http://localhost:9200", "http://localhost:9201"},
 			UnsafeSsl:          false,
-			Indexes:            []string{"index1"},
+			Index:              []string{"index1"},
 			Username:           "admin",
 			Password:           "password",
 			SearchTemplateName: "myAwesomeSearch",
@@ -280,7 +280,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 		expectedMetadata: &elasticsearchMetadata{
 			Addresses:          []string{"http://localhost:9200", "http://localhost:9201"},
 			UnsafeSsl:          false,
-			Indexes:            []string{"index1"},
+			Index:              []string{"index1"},
 			Username:           "admin",
 			Password:           "password",
 			SearchTemplateName: "myAwesomeSearch",
@@ -331,7 +331,7 @@ func TestUnsafeSslDefaultValue(t *testing.T) {
 		expectedMetadata: &elasticsearchMetadata{
 			Addresses:          []string{"http://localhost:9200"},
 			UnsafeSsl:          false,
-			Indexes:            []string{"index1"},
+			Index:              []string{"index1"},
 			Username:           "admin",
 			Password:           "password",
 			SearchTemplateName: "myAwesomeSearch",

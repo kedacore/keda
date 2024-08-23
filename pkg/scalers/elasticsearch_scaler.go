@@ -142,7 +142,7 @@ func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (float64, erro
 	// Run the templated search
 	res, err := s.esClient.SearchTemplate(
 		&body,
-		s.esClient.SearchTemplate.WithIndex(s.metadata.Indexes...),
+		s.esClient.SearchTemplate.WithIndex(s.metadata.Index...),
 		s.esClient.SearchTemplate.WithContext(ctx),
 	)
 	if err != nil {
@@ -167,7 +167,9 @@ func buildQuery(metadata *elasticsearchMetadata) map[string]interface{} {
 	for _, p := range metadata.Parameters {
 		kv := strings.SplitN(p, ":", 2)
 		if len(kv) == 2 {
-			parameters[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+			key := strings.TrimSpace(kv[0])
+			value := strings.TrimSpace(kv[1])
+			parameters[key] = value
 		}
 	}
 	query := map[string]interface{}{
