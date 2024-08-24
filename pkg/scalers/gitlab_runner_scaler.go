@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -17,11 +16,6 @@ import (
 )
 
 const (
-	// externalMetricType is the type of the external metric.
-	defaultTargetPipelineQueueLength = 1
-	// defaultGitlabAPIURL is the default GitLab API base URL.
-	defaultGitlabAPIURL = "https://gitlab.com"
-
 	// pipelineWaitingForResourceStatus is the status of the pipelines that are waiting for resources.
 	pipelineWaitingForResourceStatus = "waiting_for_resource"
 
@@ -39,11 +33,11 @@ type gitlabRunnerScaler struct {
 }
 
 type gitlabRunnerMetadata struct {
-	gitlabAPIURL        *url.URL
-	personalAccessToken string
-	projectID           string
+	gitlabAPIURL        *url.URL `keda:"name=gitlabAPIURL, order=triggerMetadata, default=https://gitlab.com, optional"`
+	personalAccessToken string   `keda:"name=personalAccessToken, order=authParams"`
+	projectID           string   `keda:"name=projectID, order=triggerMetadata"`
 
-	targetPipelineQueueLength int64
+	targetPipelineQueueLength int64 `keda:"name=targetPipelineQueueLength, order=triggerMetadata, default=1"`
 	triggerIndex              int
 }
 
@@ -61,6 +55,10 @@ func NewGitLabRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing GitLab Runner metadata: %w", err)
 	}
 
+	uri := constructGitlabAPIPipelinesURL(*meta.gitlabAPIURL, meta.projectID, pipelineWaitingForResourceStatus)
+
+	meta.gitlabAPIURL = &uri
+
 	return &gitlabRunnerScaler{
 		metricType: metricType,
 		metadata:   meta,
@@ -70,51 +68,14 @@ func NewGitLabRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 }
 
 func parseGitLabRunnerMetadata(config *scalersconfig.ScalerConfig) (*gitlabRunnerMetadata, error) {
-	meta := &gitlabRunnerMetadata{}
-	meta.targetPipelineQueueLength = defaultTargetWorkflowQueueLength
-
-	// Get the projectID
-	projectIDValue, err := getValueFromMetaOrEnv("projectID", config.TriggerMetadata, config.ResolvedEnv)
-	if err != nil {
-		return nil, err
-	}
-
-	meta.projectID = projectIDValue
-
-	// Get the targetWorkflowQueueLength
-	targetWorkflowQueueLength, err := getInt64ValueFromMetaOrEnv("targetWorkflowQueueLength", config)
-	if err != nil || targetWorkflowQueueLength == 0 {
-		meta.targetPipelineQueueLength = defaultTargetPipelineQueueLength
-	}
-	meta.targetPipelineQueueLength = targetWorkflowQueueLength
-
-	// Get the personalAccessToken
-	personalAccessToken, ok := config.AuthParams["personalAccessToken"]
-	if !ok || personalAccessToken == "" {
-		return nil, errors.New("no personalAccessToken provided")
-	}
-
-	meta.personalAccessToken = personalAccessToken
-
-	// Get the GitLab API URL
-	gitlabAPIURLValue, err := getValueFromMetaOrEnv("gitlabAPIURL", config.TriggerMetadata, config.ResolvedEnv)
-	if err != nil || gitlabAPIURLValue == "" {
-		gitlabAPIURLValue = defaultGitlabAPIURL
-	}
-
-	gitlabAPIURL, err := url.Parse(gitlabAPIURLValue)
-	if err != nil {
-		return nil, fmt.Errorf("parsing gitlabAPIURL: %w", err)
-	}
-
-	// Construct the GitLab API URL
-	uri := constructGitlabAPIPipelinesURL(*gitlabAPIURL, projectIDValue, pipelineWaitingForResourceStatus)
-
-	meta.gitlabAPIURL = &uri
+	meta := gitlabRunnerMetadata{}
 
 	meta.triggerIndex = config.TriggerIndex
+	if err := config.TypedConfig(&meta); err != nil {
+		return nil, fmt.Errorf("error parsing gitlabRunner metadata: %w", err)
+	}
 
-	return meta, nil
+	return &meta, nil
 }
 
 func (s *gitlabRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
