@@ -33,12 +33,12 @@ type gitlabRunnerScaler struct {
 }
 
 type gitlabRunnerMetadata struct {
-	gitlabAPIURL        *url.URL `keda:"name=gitlabAPIURL, order=triggerMetadata, default=https://gitlab.com, optional"`
-	personalAccessToken string   `keda:"name=personalAccessToken, order=authParams"`
-	projectID           string   `keda:"name=projectID, order=triggerMetadata"`
+	GitLabAPIURL        *url.URL `keda:"name=gitlabAPIURL, order=triggerMetadata, default=https://gitlab.com, optional"`
+	PersonalAccessToken string   `keda:"name=personalAccessToken, order=authParams"`
+	ProjectID           string   `keda:"name=projectID, order=triggerMetadata"`
 
-	targetPipelineQueueLength int64 `keda:"name=targetPipelineQueueLength, order=triggerMetadata, default=1"`
-	triggerIndex              int
+	TargetPipelineQueueLength int64 `keda:"name=targetPipelineQueueLength, order=triggerMetadata, default=1, optional"`
+	TriggerIndex              int
 }
 
 // NewGitLabRunnerScaler creates a new GitLab Runner Scaler
@@ -55,10 +55,6 @@ func NewGitLabRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing GitLab Runner metadata: %w", err)
 	}
 
-	uri := constructGitlabAPIPipelinesURL(*meta.gitlabAPIURL, meta.projectID, pipelineWaitingForResourceStatus)
-
-	meta.gitlabAPIURL = &uri
-
 	return &gitlabRunnerScaler{
 		metricType: metricType,
 		metadata:   meta,
@@ -70,10 +66,14 @@ func NewGitLabRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 func parseGitLabRunnerMetadata(config *scalersconfig.ScalerConfig) (*gitlabRunnerMetadata, error) {
 	meta := gitlabRunnerMetadata{}
 
-	meta.triggerIndex = config.TriggerIndex
+	meta.TriggerIndex = config.TriggerIndex
 	if err := config.TypedConfig(&meta); err != nil {
 		return nil, fmt.Errorf("error parsing gitlabRunner metadata: %w", err)
 	}
+
+	uri := constructGitlabAPIPipelinesURL(*meta.GitLabAPIURL, meta.ProjectID, pipelineWaitingForResourceStatus)
+
+	meta.GitLabAPIURL = &uri
 
 	return &meta, nil
 }
@@ -88,15 +88,15 @@ func (s *gitlabRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricNa
 
 	metric := GenerateMetricInMili(metricName, float64(queueLen))
 
-	return []external_metrics.ExternalMetricValue{metric}, queueLen >= s.metadata.targetPipelineQueueLength, nil
+	return []external_metrics.ExternalMetricValue{metric}, queueLen >= s.metadata.TargetPipelineQueueLength, nil
 }
 
 func (s *gitlabRunnerScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("gitlab-runner-%s", s.metadata.projectID))),
+			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("gitlab-runner-%s", s.metadata.ProjectID))),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetPipelineQueueLength),
+		Target: GetMetricTarget(s.metricType, s.metadata.TargetPipelineQueueLength),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
@@ -129,7 +129,7 @@ func (s *gitlabRunnerScaler) getPipelineCount(ctx context.Context, uri string) (
 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("PRIVATE-TOKEN", s.metadata.personalAccessToken)
+	req.Header.Set("PRIVATE-TOKEN", s.metadata.PersonalAccessToken)
 
 	res, err := s.httpClient.Do(req)
 	if err != nil {
@@ -156,7 +156,7 @@ func (s *gitlabRunnerScaler) getPipelineQueueLength(ctx context.Context) (int64,
 
 	page := 1
 	for ; page < maxGitlabAPIPageCount; page++ {
-		pagedURL := pagedURL(*s.metadata.gitlabAPIURL, fmt.Sprint(page))
+		pagedURL := pagedURL(*s.metadata.GitLabAPIURL, fmt.Sprint(page))
 
 		gitlabPipelinesLen, err := s.getPipelineCount(ctx, pagedURL.String())
 		if err != nil {
