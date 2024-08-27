@@ -283,7 +283,7 @@ func TestGitLabRunnerScaler_GetMetricsAndActivity(t *testing.T) {
 			metrics, active, err := scaler.GetMetricsAndActivity(context.Background(), "gitlab-runner-queue-length")
 			if tc.expectError {
 				assert.Error(t, err)
-				assert.Nil(t, metrics, "Expected no metrics")
+				assert.Empty(t, metrics, "Expected no metrics")
 				assert.False(t, active, "Expected not active")
 			} else {
 				assert.NoError(t, err)
