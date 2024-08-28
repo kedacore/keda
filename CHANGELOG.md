@@ -91,7 +91,7 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- Pulsar: remove `msgBacklog` trigger name #6059
+- **Pulsar Scaler**: remove `msgBacklog` trigger name ([#6059](https://github.com/kedacore/keda/issues/6059))
 
 ### Other
 
