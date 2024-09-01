@@ -1,3 +1,17 @@
+## 2.20.1
+
+### Fixes
+- make BeSpecEvent duration matcher more forgiving [d6f9640]
+
+## 2.20.0
+
+### Features
+- Add buildvcs flag [be5ab95]
+
+### Maintenance
+- Add update-deps to makefile [d303d14]
+- bump all dependencies [7a50221]
+
 ## 2.19.1
 
 ### Fixes
