@@ -666,7 +666,7 @@ func (s *Server) update() {
 			s.monitorOnce.Do(s.rttMonitor.connect)
 		}
 
-		if isStreamable(s) || connectionIsStreaming || transitionedFromNetworkError {
+		if isStreamingEnabled(s) && (isStreamable(s) || connectionIsStreaming) || transitionedFromNetworkError {
 			continue
 		}
 
