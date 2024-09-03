@@ -132,7 +132,7 @@ func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parsePulsarMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (pulsarMetadata, error) {
+func parsePulsarMetadata(config *scalersconfig.ScalerConfig, _ logr.Logger) (pulsarMetadata, error) {
 	meta := pulsarMetadata{}
 	switch {
 	case config.TriggerMetadata["adminURLFromEnv"] != "":

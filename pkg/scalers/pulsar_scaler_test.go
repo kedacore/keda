@@ -156,14 +156,7 @@ func TestParsePulsarMetadata(t *testing.T) {
 		}
 
 		var testDataMsgBacklogThreshold int64
-		// FIXME: msgBacklog support DEPRECATED to be removed in v2.14
-		if val, ok := testData.metadata["msgBacklog"]; ok {
-			testDataMsgBacklogThreshold, err = strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				t.Errorf("error parseing msgBacklog: %v", err)
-			}
-			// END FiXME
-		} else if val, ok := testData.metadata["msgBacklogThreshold"]; ok {
+		if val, ok := testData.metadata["msgBacklogThreshold"]; ok {
 			testDataMsgBacklogThreshold, err = strconv.ParseInt(val, 10, 64)
 			if err != nil {
 				t.Errorf("error parseing msgBacklogThreshold: %v", err)
