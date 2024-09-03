@@ -255,7 +255,7 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	data.JobCount = 80
 	removeBeanstalkdJobs(t, kc, &data)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 3000, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 5),
 		"replica count should be 2 after 5 minutes")
 
 	// Remove remaining beanstalkd jobs
