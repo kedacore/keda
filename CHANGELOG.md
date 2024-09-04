@@ -78,6 +78,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **General**: Add AWS region to the AWS Config Cache key ([#6128](https://github.com/kedacore/keda/issues/6128))
 - **Metrics API**: Prometheus metrics can have multiple labels ([#6077](https://github.com/kedacore/keda/issues/6077))
 
 ### Deprecations
