@@ -395,7 +395,7 @@ func testScaledJobTargetNotSupportEventErr(t *testing.T, _ *kubernetes.Clientset
 	checkingEvent(t, testNamespace, scaledJobErrName, -1, eventreason.ScaledJobCheckFailed, "Failed to ensure ScaledJob is correctly created")
 }
 
-func testTriggerAuthenticationEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testTriggerAuthenticationEvent(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing ScaledJob normal event ---")
 
 	KubectlApplyWithTemplate(t, data, "secretTemplate", secretTemplate)
@@ -421,5 +421,4 @@ func testTriggerAuthenticationEvent(t *testing.T, kc *kubernetes.Clientset, data
 	KubectlDeleteWithTemplate(t, data, "secret2Template", secret2Template)
 	KubectlDeleteWithTemplate(t, data, "triggerAuthenticationTemplate", triggerAuthenticationTemplate)
 	KubectlDeleteWithTemplate(t, data, "clusterTriggerAuthenticationTemplate", clusterTriggerAuthenticationTemplate)
-
 }
