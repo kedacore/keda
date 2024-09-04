@@ -62,7 +62,7 @@ const (
 
 // separators for map and slice elements
 const (
-	elemSeparator       = ",;"
+	elemSeparator       = ","
 	elemKeyValSeparator = "="
 )
 
@@ -76,6 +76,7 @@ const (
 	enumTag         = "enum"
 	exclusiveSetTag = "exclusiveSet"
 	rangeTag        = "range"
+	separatorTag    = "separator"
 )
 
 // Params is a struct that represents the parameter list that can be used in the keda tag
@@ -109,6 +110,9 @@ type Params struct {
 
 	// RangeSeparator is the 'range' tag parameter defining the separator for range values
 	RangeSeparator string
+
+	// Separator is the tag parameter to define which separator will be used
+	Separator string
 }
 
 // IsNested is a function that returns true if the parameter is nested
@@ -208,9 +212,11 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 			enumMap[e] = true
 		}
 		missingMap := make(map[string]bool)
-		split := strings.FieldsFunc(valFromConfig, func(r rune) bool {
-			return strings.ContainsRune(elemSeparator, r)
-		})
+		separator := elemSeparator
+		if params.Separator != "" {
+			separator = params.Separator
+		}
+		split := strings.Split(valFromConfig, separator)
 		for _, s := range split {
 			s := strings.TrimSpace(s)
 			if !enumMap[s] {
@@ -226,9 +232,11 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 		for _, e := range params.ExclusiveSet {
 			exclusiveMap[e] = true
 		}
-		split := strings.FieldsFunc(valFromConfig, func(r rune) bool {
-			return strings.ContainsRune(elemSeparator, r)
-		})
+		separator := elemSeparator
+		if params.Separator != "" {
+			separator = params.Separator
+		}
+		split := strings.Split(valFromConfig, separator)
 		exclusiveCount := 0
 		for _, s := range split {
 			s := strings.TrimSpace(s)
@@ -280,9 +288,11 @@ func setConfigValueURLParams(params Params, valFromConfig string, field reflect.
 // setConfigValueMap is a function that sets the value of the map field
 func setConfigValueMap(params Params, valFromConfig string, field reflect.Value) error {
 	field.Set(reflect.MakeMap(reflect.MapOf(field.Type().Key(), field.Type().Elem())))
-	split := strings.FieldsFunc(valFromConfig, func(r rune) bool {
-		return strings.ContainsRune(elemSeparator, r)
-	})
+	separator := elemSeparator
+	if params.Separator != "" {
+		separator = params.Separator
+	}
+	split := strings.Split(valFromConfig, separator)
 	for _, s := range split {
 		s := strings.TrimSpace(s)
 		kv := strings.Split(s, elemKeyValSeparator)
@@ -348,9 +358,11 @@ func setConfigValueRange(params Params, valFromConfig string, field reflect.Valu
 // setConfigValueSlice is a function that sets the value of the slice field
 func setConfigValueSlice(params Params, valFromConfig string, field reflect.Value) error {
 	elemIfc := reflect.New(field.Type().Elem()).Interface()
-	split := strings.FieldsFunc(valFromConfig, func(r rune) bool {
-		return strings.ContainsRune(elemSeparator, r)
-	})
+	separator := elemSeparator
+	if params.Separator != "" {
+		separator = params.Separator
+	}
+	split := strings.Split(valFromConfig, separator)
 	for i, s := range split {
 		s := strings.TrimSpace(s)
 		if canRange(s, params.RangeSeparator, field) {
@@ -480,6 +492,10 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 			}
 			if len(tsplit) == 2 {
 				params.RangeSeparator = strings.TrimSpace(tsplit[1])
+			}
+		case separatorTag:
+			if len(tsplit) > 1 {
+				params.Separator = strings.TrimSpace(tsplit[1])
 			}
 		case "":
 			continue

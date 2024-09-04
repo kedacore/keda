@@ -70,7 +70,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 		name:          "no index given",
 		metadata:      map[string]string{"addresses": "http://localhost:9200"},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: fmt.Errorf("missing required parameter"),
+		expectedError: fmt.Errorf("missing required parameter \"index\""),
 	},
 	{
 		name: "no searchTemplateName given",
@@ -79,7 +79,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"index":     "index1",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: fmt.Errorf("missing required parameter"),
+		expectedError: fmt.Errorf("missing required parameter \"searchTemplateName\""),
 	},
 	{
 		name: "no valueLocation given",
@@ -89,7 +89,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"searchTemplateName": "searchTemplateName",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: fmt.Errorf("missing required parameter"),
+		expectedError: fmt.Errorf("missing required parameter \"valueLocation\""),
 	},
 	{
 		name: "no targetValue given",
@@ -100,7 +100,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"valueLocation":      "toto",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: fmt.Errorf("missing required parameter"),
+		expectedError: fmt.Errorf("missing required parameter \"targetValue\""),
 	},
 	{
 		name: "invalid targetValue",
@@ -112,7 +112,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"targetValue":        "AA",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: fmt.Errorf("unable to set param"),
+		expectedError: fmt.Errorf("unable to set param \"targetValue\""),
 	},
 	{
 		name: "invalid activationTargetValue",
@@ -125,7 +125,7 @@ var testCases = []parseElasticsearchMetadataTestData{
 			"activationTargetValue": "AA",
 		},
 		authParams:    map[string]string{"username": "admin"},
-		expectedError: fmt.Errorf("unable to set param"),
+		expectedError: fmt.Errorf("unable to set param \"activationTargetValue\""),
 	},
 	{
 		name: "all fields ok",

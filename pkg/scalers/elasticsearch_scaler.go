@@ -33,9 +33,9 @@ type elasticsearchMetadata struct {
 	Password              string   `keda:"name=password,              order=authParams;resolvedEnv;triggerMetadata, optional"`
 	CloudID               string   `keda:"name=cloudID,               order=authParams;triggerMetadata, optional"`
 	APIKey                string   `keda:"name=apiKey,                order=authParams;triggerMetadata, optional"`
-	Index                 []string `keda:"name=index,                 order=authParams;triggerMetadata"`
+	Index                 []string `keda:"name=index,                 order=authParams;triggerMetadata, separator=;"`
 	SearchTemplateName    string   `keda:"name=searchTemplateName,    order=authParams;triggerMetadata"`
-	Parameters            []string `keda:"name=parameters,            order=triggerMetadata, optional"`
+	Parameters            []string `keda:"name=parameters,            order=triggerMetadata, optional, separator=;"`
 	ValueLocation         string   `keda:"name=valueLocation,         order=authParams;triggerMetadata"`
 	TargetValue           float64  `keda:"name=targetValue,           order=authParams;triggerMetadata"`
 	ActivationTargetValue float64  `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
