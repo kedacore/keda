@@ -34,7 +34,7 @@ func TestGetCredentialsReturnNewItemAndStoreItIfNotExist(t *testing.T) {
 			TriggerUniqueKey: "test-key",
 		},
 	}
-	cacheKey := cache.getCacheKey(config.awsAuthorization)
+	cacheKey := cache.getCacheKey(config.awsRegion, config.awsAuthorization)
 	_, err := cache.GetCredentials(context.Background(), config.awsRegion, config.awsAuthorization)
 	assert.NoError(t, err)
 	assert.Contains(t, cache.items, cacheKey)
@@ -52,7 +52,7 @@ func TestGetCredentialsReturnCachedItemIfExist(t *testing.T) {
 	}
 	cfg := aws.Config{}
 	cfg.AppID = "test1-app"
-	cacheKey := cache.getCacheKey(config.awsAuthorization)
+	cacheKey := cache.getCacheKey(config.awsRegion, config.awsAuthorization)
 	cache.items[cacheKey] = cacheEntry{
 		config: &cfg,
 		usages: map[string]bool{
@@ -76,14 +76,14 @@ func TestRemoveCachedEntryRemovesCachedItemIfNotUsages(t *testing.T) {
 	}
 	cfg := aws.Config{}
 	cfg.AppID = "test2-app"
-	cacheKey := cache.getCacheKey(config.awsAuthorization)
+	cacheKey := cache.getCacheKey(config.awsRegion, config.awsAuthorization)
 	cache.items[cacheKey] = cacheEntry{
 		config: &cfg,
 		usages: map[string]bool{
 			config.awsAuthorization.TriggerUniqueKey: true,
 		},
 	}
-	cache.RemoveCachedEntry(config.awsAuthorization)
+	cache.RemoveCachedEntry(config.awsRegion, config.awsAuthorization)
 	assert.NotContains(t, cache.items, cacheKey)
 }
 
@@ -98,7 +98,7 @@ func TestRemoveCachedEntryNotRemoveCachedItemIfUsages(t *testing.T) {
 	}
 	cfg := aws.Config{}
 	cfg.AppID = "test3-app"
-	cacheKey := cache.getCacheKey(config.awsAuthorization)
+	cacheKey := cache.getCacheKey(config.awsRegion, config.awsAuthorization)
 	cache.items[cacheKey] = cacheEntry{
 		config: &cfg,
 		usages: map[string]bool{
@@ -106,6 +106,29 @@ func TestRemoveCachedEntryNotRemoveCachedItemIfUsages(t *testing.T) {
 			"other-usage":                            true,
 		},
 	}
-	cache.RemoveCachedEntry(config.awsAuthorization)
+	cache.RemoveCachedEntry(config.awsRegion, config.awsAuthorization)
 	assert.Contains(t, cache.items, cacheKey)
+}
+
+func TestCredentialsShouldBeCachedPerRegion(t *testing.T) {
+	cache := newSharedConfigsCache()
+	cache.logger = logr.Discard()
+	config1 := awsConfigMetadata{
+		awsRegion: "test4-region1",
+		awsAuthorization: AuthorizationMetadata{
+			TriggerUniqueKey: "test4-key1",
+		},
+	}
+	config2 := awsConfigMetadata{
+		awsRegion: "test4-region2",
+		awsAuthorization: AuthorizationMetadata{
+			TriggerUniqueKey: "test4-key2",
+		},
+	}
+	cred1, err1 := cache.GetCredentials(context.Background(), config1.awsRegion, config1.awsAuthorization)
+	cred2, err2 := cache.GetCredentials(context.Background(), config2.awsRegion, config2.awsAuthorization)
+
+	assert.NoError(t, err1)
+	assert.NoError(t, err2)
+	assert.NotEqual(t, cred1, cred2, "Credentials should be stored per region")
 }

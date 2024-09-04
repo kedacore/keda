@@ -109,5 +109,5 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 }
 
 func (ash *AwsSecretManagerHandler) Stop() {
-	awsutils.ClearAwsConfig(ash.awsMetadata)
+	awsutils.ClearAwsConfig(ash.secretManager.Region, ash.awsMetadata)
 }

@@ -68,12 +68,12 @@ func newSharedConfigsCache() sharedConfigCache {
 
 // getCacheKey returns a unique key based on given AuthorizationMetadata.
 // As it can contain sensitive data, the key is hashed to not expose secrets
-func (a *sharedConfigCache) getCacheKey(awsAuthorization AuthorizationMetadata) string {
-	key := "keda"
+func (a *sharedConfigCache) getCacheKey(awsRegion string, awsAuthorization AuthorizationMetadata) string {
+	key := "keda-" + awsRegion
 	if awsAuthorization.AwsAccessKeyID != "" {
-		key = fmt.Sprintf("%s-%s-%s", awsAuthorization.AwsAccessKeyID, awsAuthorization.AwsSecretAccessKey, awsAuthorization.AwsSessionToken)
+		key = fmt.Sprintf("%s-%s-%s-%s", awsAuthorization.AwsAccessKeyID, awsAuthorization.AwsSecretAccessKey, awsAuthorization.AwsSessionToken, awsRegion)
 	} else if awsAuthorization.AwsRoleArn != "" {
-		key = awsAuthorization.AwsRoleArn
+		key = fmt.Sprintf("%s-%s", awsAuthorization.AwsRoleArn, awsRegion)
 	}
 	// to avoid sensitive data as key and to use a constant key size,
 	// we hash the key with sha3
@@ -89,7 +89,7 @@ func (a *sharedConfigCache) getCacheKey(awsAuthorization AuthorizationMetadata) 
 func (a *sharedConfigCache) GetCredentials(ctx context.Context, awsRegion string, awsAuthorization AuthorizationMetadata) (*aws.Config, error) {
 	a.Lock()
 	defer a.Unlock()
-	key := a.getCacheKey(awsAuthorization)
+	key := a.getCacheKey(awsRegion, awsAuthorization)
 	if cachedEntry, exists := a.items[key]; exists {
 		cachedEntry.usages[awsAuthorization.TriggerUniqueKey] = true
 		a.items[key] = cachedEntry
@@ -125,10 +125,10 @@ func (a *sharedConfigCache) GetCredentials(ctx context.Context, awsRegion string
 // RemoveCachedEntry removes the usage of an AuthorizationMetadata from the cached item.
 // If there isn't any usage of a given cached item (because there isn't any trigger using the aws.Config),
 // we also remove it from the cache
-func (a *sharedConfigCache) RemoveCachedEntry(awsAuthorization AuthorizationMetadata) {
+func (a *sharedConfigCache) RemoveCachedEntry(awsRegion string, awsAuthorization AuthorizationMetadata) {
 	a.Lock()
 	defer a.Unlock()
-	key := a.getCacheKey(awsAuthorization)
+	key := a.getCacheKey(awsRegion, awsAuthorization)
 	if cachedEntry, exists := a.items[key]; exists {
 		// Delete the TriggerUniqueKey from usages
 		delete(cachedEntry.usages, awsAuthorization.TriggerUniqueKey)

@@ -214,7 +214,7 @@ func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 }
 
 func (s *awsCloudwatchScaler) Close(context.Context) error {
-	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
+	awsutils.ClearAwsConfig(s.metadata.AwsRegion, s.metadata.awsAuthorization)
 	return nil
 }
 
