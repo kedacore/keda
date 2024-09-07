@@ -19,7 +19,7 @@ jobs:
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: oNaiPs/secrets-to-env-action@v1
+      - uses: oNaiPs/secrets-to-env-action@2fe98aa2e8f610341c3dd916aff27b218b92f6f8 # v1
         with:
           secrets: ${{ toJSON(secrets) }}
 
