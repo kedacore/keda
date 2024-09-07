@@ -62,7 +62,8 @@ const (
 
 // separators for map and slice elements
 const (
-	elemSeparator       = ","
+	elemSeparator = ","
+	// TODO: support custom separator https://github.com/kedacore/keda/pull/5961/files#r1694991497
 	elemKeyValSeparator = "="
 )
 
