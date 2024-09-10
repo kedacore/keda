@@ -71,7 +71,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Azure Event Hub Scaler**: Checkpointer errors are correctly handled ([#6084](https://github.com/kedacore/keda/issues/6084))
 
 ### Deprecations
 
