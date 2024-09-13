@@ -61,6 +61,7 @@ import (
 // +kubebuilder:rbac:groups="",resources=pods;services;services;secrets;external,verbs=get;list;watch
 // +kubebuilder:rbac:groups="apps",resources=deployments/scale;statefulsets/scale,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups="",resources="serviceaccounts",verbs=list;watch
+// +kubebuilder:rbac:groups="*",resources="*",verbs=get
 // +kubebuilder:rbac:groups="apps",resources=deployments;statefulsets,verbs=list;watch
 // +kubebuilder:rbac:groups="coordination.k8s.io",namespace=keda,resources=leases,verbs=get;list;watch;update;patch;create;delete
 // +kubebuilder:rbac:groups="",resources="limitranges",verbs=list;watch
