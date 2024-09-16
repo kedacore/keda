@@ -157,7 +157,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "couchdb":
 		return scalers.NewCouchDBScaler(ctx, config)
 	case "cpu":
-		return scalers.NewCPUMemoryScaler(corev1.ResourceCPU, config)
+		return scalers.NewCPUMemoryScaler(corev1.ResourceCPU, config, client)
 	case "cron":
 		return scalers.NewCronScaler(config)
 	case "datadog":
@@ -202,7 +202,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "loki":
 		return scalers.NewLokiScaler(config)
 	case "memory":
-		return scalers.NewCPUMemoryScaler(corev1.ResourceMemory, config)
+		return scalers.NewCPUMemoryScaler(corev1.ResourceMemory, config, client)
 	case "metrics-api":
 		return scalers.NewMetricsAPIScaler(config)
 	case "mongodb":
