@@ -362,8 +362,12 @@ func getValueFromMetaOrEnv(key string, metadata map[string]string, env map[strin
 	if val, ok := metadata[key]; ok && val != "" {
 		return val, nil
 	} else if val, ok := metadata[key+"FromEnv"]; ok && val != "" {
-		return env[val], nil
+		if envVal, ok := env[val]; ok && envVal != "" {
+			return envVal, nil
+		}
+		return "", fmt.Errorf("%s %s env variable value is empty", key, val)
 	}
+
 	return "", fmt.Errorf("no %s given", key)
 }
 

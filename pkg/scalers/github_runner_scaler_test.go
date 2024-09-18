@@ -110,6 +110,8 @@ var testGitHubRunnerMetadata = []parseGitHubRunnerMetadataTestData{
 	{"missing applicationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "installationID": "1"}, true, true, "applicationID, installationID and applicationKey must be given"},
 	// all good
 	{"missing applicationKey", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1", "installationID": "1"}, true, true, "applicationID, installationID and applicationKey must be given"},
+	{"missing runnerScope Env", map[string]string{"githubApiURL": "https://api.github.com", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "runnerScopeFromEnv": "EMPTY"}, true, true, "runnerScope EMPTY env variable value is empty"},
+	{"missing owner Env", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "ownerFromEnv": "EMPTY"}, true, true, "owner EMPTY env variable value is empty"},
 }
 
 func TestGitHubRunnerParseMetadata(t *testing.T) {
