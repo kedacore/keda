@@ -21,7 +21,7 @@ type cpuMemoryScaler struct {
 	metadata     *cpuMemoryMetadata
 	resourceName v1.ResourceName
 	logger       logr.Logger
-	client       client.Client
+	kubeClient   client.Client
 }
 
 type cpuMemoryMetadata struct {
@@ -37,7 +37,7 @@ type cpuMemoryMetadata struct {
 }
 
 // NewCPUMemoryScaler creates a new cpuMemoryScaler
-func NewCPUMemoryScaler(resourceName v1.ResourceName, config *scalersconfig.ScalerConfig, client client.Client) (Scaler, error) {
+func NewCPUMemoryScaler(resourceName v1.ResourceName, config *scalersconfig.ScalerConfig, kubeClient client.Client) (Scaler, error) {
 	logger := InitializeLogger(config, "cpu_memory_scaler")
 
 	meta, parseErr := parseResourceMetadata(config, logger)
@@ -49,7 +49,7 @@ func NewCPUMemoryScaler(resourceName v1.ResourceName, config *scalersconfig.Scal
 		metadata:     meta,
 		resourceName: resourceName,
 		logger:       logger,
-		client:       client,
+		kubeClient:   kubeClient,
 	}, nil
 }
 
@@ -121,7 +121,7 @@ func (s *cpuMemoryScaler) Close(context.Context) error {
 func (s *cpuMemoryScaler) getHPA(ctx context.Context) (*v2.HorizontalPodAutoscaler, error) {
 	if s.metadata.ScalableObjectType == "ScaledObject" {
 		scaledObject := &kedav1alpha1.ScaledObject{}
-		err := s.client.Get(ctx, types.NamespacedName{
+		err := s.kubeClient.Get(ctx, types.NamespacedName{
 			Name:      s.metadata.ScalableObjectName,
 			Namespace: s.metadata.ScalableObjectNamespace,
 		}, scaledObject)
@@ -131,7 +131,7 @@ func (s *cpuMemoryScaler) getHPA(ctx context.Context) (*v2.HorizontalPodAutoscal
 		}
 
 		hpa := &v2.HorizontalPodAutoscaler{}
-		err = s.client.Get(ctx, types.NamespacedName{
+		err = s.kubeClient.Get(ctx, types.NamespacedName{
 			Name:      scaledObject.Status.HpaName,
 			Namespace: s.metadata.ScalableObjectNamespace,
 		}, hpa)
@@ -143,7 +143,7 @@ func (s *cpuMemoryScaler) getHPA(ctx context.Context) (*v2.HorizontalPodAutoscal
 		return hpa, nil
 	} else if s.metadata.ScalableObjectType == "ScaledJob" {
 		scaledJob := &kedav1alpha1.ScaledJob{}
-		err := s.client.Get(ctx, types.NamespacedName{
+		err := s.kubeClient.Get(ctx, types.NamespacedName{
 			Name:      s.metadata.ScalableObjectName,
 			Namespace: s.metadata.ScalableObjectNamespace,
 		}, scaledJob)
