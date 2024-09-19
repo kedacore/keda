@@ -79,6 +79,7 @@ None.
 - **New Relic Scaler** Store forgotten logger ([#3945](https://github.com/kedacore/keda/issues/3945))
 - **Prometheus Scaler:** Treat Inf the same as Null result ([#3644](https://github.com/kedacore/keda/issues/3644))
 - **NATS Jetstream:** Correctly count messages that should be redelivered (waiting for ack) towards keda value ([#3787](https://github.com/kedacore/keda/issues/3787))
+- **General:** Fix: update the logic for PausedReplicasPredicate to handle empty annotations ([#6062](https://github.com/kedacore/keda/issues/6062))
 
 ### Deprecations
 

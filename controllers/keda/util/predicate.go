@@ -20,15 +20,19 @@ func (PausedReplicasPredicate) Update(e event.UpdateEvent) bool {
 
 	newAnnotations := e.ObjectNew.GetAnnotations()
 	oldAnnotations := e.ObjectOld.GetAnnotations()
-	if newAnnotations != nil && oldAnnotations != nil {
-		if newVal, ok1 := newAnnotations[PausedReplicasAnnotation]; ok1 {
-			if oldVal, ok2 := oldAnnotations[PausedReplicasAnnotation]; ok2 {
-				return newVal != oldVal
-			}
-			return true
-		}
+
+	newPausedValue := ""
+	oldPausedValue := ""
+
+	if newAnnotations != nil {
+		newPausedValue = newAnnotations[PausedReplicasAnnotation]
 	}
-	return false
+
+	if oldAnnotations != nil {
+		oldPausedValue = oldAnnotations[PausedReplicasAnnotation]
+	}
+
+	return newPausedValue != oldPausedValue
 }
 
 type ScaleObjectReadyConditionPredicate struct {
