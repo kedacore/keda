@@ -448,12 +448,14 @@ func setupGitHubApp(config *scalersconfig.ScalerConfig) (*int64, *int64, *string
 	var instID *int64
 	var appKey *string
 
-	if val, err := getInt64ValueFromMetaOrEnv("applicationID", config); err == nil && val != -1 {
-		appID = &val
+	appIDVal, appIDErr := getInt64ValueFromMetaOrEnv("applicationID", config)
+	if appIDErr == nil && appIDVal != -1 {
+		appID = &appIDVal
 	}
 
-	if val, err := getInt64ValueFromMetaOrEnv("installationID", config); err == nil && val != -1 {
-		instID = &val
+	instIDVal, instIDErr := getInt64ValueFromMetaOrEnv("installationID", config)
+	if instIDErr == nil && instIDVal != -1 {
+		instID = &instIDVal
 	}
 
 	if val, ok := config.AuthParams["appKey"]; ok && val != "" {
@@ -462,7 +464,15 @@ func setupGitHubApp(config *scalersconfig.ScalerConfig) (*int64, *int64, *string
 
 	if (appID != nil || instID != nil || appKey != nil) &&
 		(appID == nil || instID == nil || appKey == nil) {
-		return nil, nil, nil, fmt.Errorf("applicationID, installationID and applicationKey must be given")
+		if appIDErr != nil {
+			return nil, nil, nil, appIDErr
+		}
+
+		if instIDErr != nil {
+			return nil, nil, nil, instIDErr
+		}
+
+		return nil, nil, nil, fmt.Errorf("no applicationKey given")
 	}
 
 	return appID, instID, appKey, nil
