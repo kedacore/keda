@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -83,6 +84,9 @@ type rabbitMQMetadata struct {
 	timeout               time.Duration // custom http timeout for a specific trigger
 	triggerIndex          int           // scaler index
 
+	username string
+	password string
+
 	// TLS
 	ca          string
 	cert        string
@@ -149,12 +153,20 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	if meta.protocol == amqpProtocol {
 		// Override vhost if requested.
 		host := meta.host
-		if meta.vhostName != "" {
+		if meta.vhostName != "" || (meta.username != "" && meta.password != "") {
 			hostURI, err := amqp.ParseURI(host)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing rabbitmq connection string: %w", err)
 			}
-			hostURI.Vhost = meta.vhostName
+			if meta.vhostName != "" {
+				hostURI.Vhost = meta.vhostName
+			}
+
+			if meta.username != "" && meta.password != "" {
+				hostURI.Username = meta.username
+				hostURI.Password = meta.password
+			}
+
 			host = hostURI.String()
 		}
 
@@ -232,6 +244,28 @@ func resolveTLSAuthParams(config *scalersconfig.ScalerConfig, meta *rabbitMQMeta
 	return nil
 }
 
+func resolveAuth(config *scalersconfig.ScalerConfig, meta *rabbitMQMetadata) error {
+	if val, err := getParameterFromConfigV2(config, "username", reflect.TypeOf(meta.username),
+		UseAuthentication(true), UseResolvedEnv(true), IsOptional(true)); err != nil {
+		return err
+	} else {
+		meta.username = val.(string)
+	}
+
+	if val, err := getParameterFromConfigV2(config, "password", reflect.TypeOf(meta.username),
+		UseAuthentication(true), UseResolvedEnv(true), IsOptional(true)); err != nil {
+		return err
+	} else {
+		meta.password = val.(string)
+	}
+
+	if (meta.username != "" || meta.password != "") && (meta.username == "" || meta.password == "") {
+		return fmt.Errorf("username and password must be given together")
+	}
+
+	return nil
+}
+
 func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadata, error) {
 	meta := rabbitMQMetadata{
 		connectionName: connectionName(config),
@@ -249,6 +283,11 @@ func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadat
 
 	// Resolve TLS authentication parameters
 	if err := resolveTLSAuthParams(config, &meta); err != nil {
+		return nil, err
+	}
+
+	// Resolve username and password
+	if err := resolveAuth(config, &meta); err != nil {
 		return nil, err
 	}
 
@@ -595,6 +634,10 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP(ctx context.Context) (*queueInfo, e
 
 	vhost, subpaths := getVhostAndPathFromURL(parsedURL.Path, s.metadata.vhostName)
 	parsedURL.Path = subpaths
+
+	if s.metadata.username != "" && s.metadata.password != "" {
+		parsedURL.User = url.UserPassword(s.metadata.username, s.metadata.password)
+	}
 
 	var getQueueInfoManagementURI string
 	if s.metadata.useRegex {
