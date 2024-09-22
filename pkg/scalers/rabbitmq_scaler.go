@@ -245,19 +245,19 @@ func resolveTLSAuthParams(config *scalersconfig.ScalerConfig, meta *rabbitMQMeta
 }
 
 func resolveAuth(config *scalersconfig.ScalerConfig, meta *rabbitMQMetadata) error {
-	if val, err := getParameterFromConfigV2(config, "username", reflect.TypeOf(meta.username),
-		UseAuthentication(true), UseResolvedEnv(true), IsOptional(true)); err != nil {
+	usernameVal, err := getParameterFromConfigV2(config, "username", reflect.TypeOf(meta.username),
+		UseAuthentication(true), UseResolvedEnv(true), IsOptional(true))
+	if err != nil {
 		return err
-	} else {
-		meta.username = val.(string)
 	}
+	meta.username = usernameVal.(string)
 
-	if val, err := getParameterFromConfigV2(config, "password", reflect.TypeOf(meta.username),
-		UseAuthentication(true), UseResolvedEnv(true), IsOptional(true)); err != nil {
+	passwordVal, err := getParameterFromConfigV2(config, "password", reflect.TypeOf(meta.username),
+		UseAuthentication(true), UseResolvedEnv(true), IsOptional(true))
+	if err != nil {
 		return err
-	} else {
-		meta.password = val.(string)
 	}
+	meta.password = passwordVal.(string)
 
 	if (meta.username != "" || meta.password != "") && (meta.username == "" || meta.password == "") {
 		return fmt.Errorf("username and password must be given together")
