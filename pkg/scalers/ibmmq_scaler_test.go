@@ -51,6 +51,8 @@ var testIBMMQMetadata = []parseIBMMQMetadataTestData{
 	{map[string]string{}, true, map[string]string{}},
 	// Properly formed metadata
 	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	// Properly formed metadata with 2 queues
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue1, testQueue2", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Invalid queueDepth using a string
 	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "AA"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Invalid activationQueueDepth using a string
@@ -89,7 +91,7 @@ func TestIBMMQParseMetadata(t *testing.T) {
 			t.Error("Expected error but got success")
 			fmt.Println(testData)
 		}
-		if metadata != (ibmmqMetadata{}) && metadata.Password != "" && metadata.Password != testData.authParams["password"] {
+		if metadata.Password != "" && metadata.Password != testData.authParams["password"] {
 			t.Error("Expected password from configuration but found something else: ", metadata.Password)
 			fmt.Println(testData)
 		}
@@ -216,7 +218,8 @@ func TestIBMMQScalerGetQueueDepthViaHTTP(t *testing.T) {
 
 			scaler := ibmmqScaler{
 				metadata: ibmmqMetadata{
-					Host: server.URL,
+					Host:      server.URL,
+					QueueName: []string{"TEST.QUEUE"},
 				},
 				httpClient: server.Client(),
 			}
