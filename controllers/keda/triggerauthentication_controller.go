@@ -18,18 +18,21 @@ package keda
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/common/message"
+	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/util"
@@ -38,7 +41,7 @@ import (
 // TriggerAuthenticationReconciler reconciles a TriggerAuthentication object
 type TriggerAuthenticationReconciler struct {
 	client.Client
-	record.EventRecorder
+	eventemitter.EventHandler
 }
 
 type triggerAuthMetricsData struct {
@@ -81,7 +84,10 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 	r.updatePromMetrics(triggerAuthentication, req.NamespacedName.String())
 
 	if triggerAuthentication.ObjectMeta.Generation == 1 {
-		r.EventRecorder.Event(triggerAuthentication, corev1.EventTypeNormal, eventreason.TriggerAuthenticationAdded, "New TriggerAuthentication configured")
+		r.Emit(triggerAuthentication, req.NamespacedName.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationCreatedType, eventreason.TriggerAuthenticationAdded, message.TriggerAuthenticationCreatedMsg)
+	} else {
+		msg := fmt.Sprintf(message.TriggerAuthenticationUpdatedMsg, triggerAuthentication.Name)
+		r.Emit(triggerAuthentication, req.NamespacedName.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationUpdatedType, eventreason.TriggerAuthenticationUpdated, msg)
 	}
 
 	return ctrl.Result{}, nil

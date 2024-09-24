@@ -746,3 +746,16 @@ func TestRegexQueueMissingError(t *testing.T) {
 		}
 	}
 }
+
+func TestConnectionName(t *testing.T) {
+	c := scalersconfig.ScalerConfig{
+		ScalableObjectNamespace: "test-namespace",
+		ScalableObjectName:      "test-name",
+	}
+
+	connectionName := connectionName(&c)
+
+	if connectionName != "keda-test-namespace-test-name" {
+		t.Error("Expected connection name to be keda-test-namespace-test-name but got", connectionName)
+	}
+}

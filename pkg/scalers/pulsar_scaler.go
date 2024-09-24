@@ -43,7 +43,6 @@ type pulsarMetadata struct {
 }
 
 const (
-	msgBacklogMetricName       = "msgBacklog"
 	pulsarMetricType           = "External"
 	defaultMsgBacklogThreshold = 10
 	enable                     = "enable"
@@ -133,7 +132,7 @@ func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parsePulsarMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (pulsarMetadata, error) {
+func parsePulsarMetadata(config *scalersconfig.ScalerConfig, _ logr.Logger) (pulsarMetadata, error) {
 	meta := pulsarMetadata{}
 	switch {
 	case config.TriggerMetadata["adminURLFromEnv"] != "":
@@ -182,23 +181,13 @@ func parsePulsarMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger)
 
 	meta.msgBacklogThreshold = defaultMsgBacklogThreshold
 
-	// FIXME: msgBacklog support DEPRECATED to be removed in v2.14
-	fmt.Println(config.TriggerMetadata)
-	if val, ok := config.TriggerMetadata[msgBacklogMetricName]; ok {
-		logger.V(1).Info("\"msgBacklog\" is deprecated and will be removed in v2.14, please use \"msgBacklogThreshold\" instead")
+	if val, ok := config.TriggerMetadata["msgBacklogThreshold"]; ok {
 		t, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return meta, fmt.Errorf("error parsing %s: %w", msgBacklogMetricName, err)
-		}
-		meta.msgBacklogThreshold = t
-	} else if val, ok := config.TriggerMetadata["msgBacklogThreshold"]; ok {
-		t, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return meta, fmt.Errorf("error parsing %s: %w", msgBacklogMetricName, err)
+			return meta, fmt.Errorf("error parsing %s: %w", "msgBacklogThreshold", err)
 		}
 		meta.msgBacklogThreshold = t
 	}
-	// END FIXME
 
 	// For backwards compatibility, we need to map "tls: enable" to
 	if tls, ok := config.TriggerMetadata["tls"]; ok {
@@ -212,7 +201,7 @@ func parsePulsarMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger)
 	}
 	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
 	if err != nil {
-		return meta, fmt.Errorf("error parsing %s: %w", msgBacklogMetricName, err)
+		return meta, fmt.Errorf("error parsing %s: %w", "msgBacklogThreshold", err)
 	}
 
 	if auth != nil && auth.EnableOAuth {

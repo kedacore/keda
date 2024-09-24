@@ -69,6 +69,7 @@ type rabbitMQScaler struct {
 
 type rabbitMQMetadata struct {
 	queueName             string
+	connectionName        string        // name used for the AMQP connection
 	mode                  string        // QueueLength or MessageRate
 	value                 float64       // trigger value (queue length or publish/sec. rate)
 	activationValue       float64       // activation value
@@ -232,7 +233,9 @@ func resolveTLSAuthParams(config *scalersconfig.ScalerConfig, meta *rabbitMQMeta
 }
 
 func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadata, error) {
-	meta := rabbitMQMetadata{}
+	meta := rabbitMQMetadata{
+		connectionName: connectionName(config),
+	}
 
 	// Resolve protocol type
 	if err := resolveProtocol(config, &meta); err != nil {
@@ -445,22 +448,25 @@ func parseTrigger(meta *rabbitMQMetadata, config *scalersconfig.ScalerConfig) (*
 }
 
 // getConnectionAndChannel returns an amqp connection. If enableTLS is true tls connection is made using
-//
-//	the given ceClient cert, ceClient key,and CA certificate. If clientKeyPassword is not empty the provided password will be used to
-//
+// the given ceClient cert, ceClient key,and CA certificate. If clientKeyPassword is not empty the provided password will be used to
 // decrypt the given key. If enableTLS is disabled then amqp connection will be created without tls.
 func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connection, *amqp.Channel, error) {
-	var conn *amqp.Connection
-	var err error
-	if meta.enableTLS {
-		tlsConfig, configErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, meta.unsafeSsl)
-		if configErr != nil {
-			return nil, nil, configErr
-		}
-		conn, err = amqp.DialTLS(host, tlsConfig)
-	} else {
-		conn, err = amqp.Dial(host)
+	amqpConfig := amqp.Config{
+		Properties: amqp.Table{
+			"connection_name": meta.connectionName,
+		},
 	}
+
+	if meta.enableTLS {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, meta.unsafeSsl)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		amqpConfig.TLSClientConfig = tlsConfig
+	}
+
+	conn, err := amqp.DialConfig(host, amqpConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -714,4 +720,10 @@ func getMaximum(q []queueInfo) (int, int, float64) {
 func (s *rabbitMQScaler) anonymizeRabbitMQError(err error) error {
 	errorMessage := fmt.Sprintf("error inspecting rabbitMQ: %s", err)
 	return fmt.Errorf(rabbitMQAnonymizePattern.ReplaceAllString(errorMessage, "user:password@"))
+}
+
+// connectionName is used to provide a deterministic AMQP connection name when
+// connecting to RabbitMQ
+func connectionName(config *scalersconfig.ScalerConfig) string {
+	return fmt.Sprintf("keda-%s-%s", config.ScalableObjectNamespace, config.ScalableObjectName)
 }
