@@ -42,14 +42,14 @@ var testSplunkObservabilityMetadata = []parseSplunkObservabilityMetadataTestData
 	// Valid meta dada but no auth params, fail.
 	{validSplunkObservabilityMetadata, map[string]string{}, true},
 	// Missing 'query' field, fail
-	{map[string]string{"duration": "10", "targetValue": "200.0", "queryAggregator": "avg", "ActivationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
+	{map[string]string{"duration": "10", "targetValue": "200.0", "queryAggregator": "avg", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
 	// Missing 'duration' field, fail
-	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "targetValue": "200.0", "queryAggregator": "avg", "ActivationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
+	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "targetValue": "200.0", "queryAggregator": "avg", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
 	// Missing 'targetValue' field, fail
-	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "queryAggregator": "avg", "ActivationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
+	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "queryAggregator": "avg", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
 	// Missing 'queryAggregator' field, fail
-	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "ActivationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
-	// Missing 'ActivationTargetValue' field, fail
+	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
+	// Missing 'activationTargetValue' field, fail
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "avg"}, validSplunkObservabilityAuthParams, true},
 }
 

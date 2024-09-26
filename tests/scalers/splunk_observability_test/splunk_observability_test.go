@@ -9,9 +9,8 @@ import (
 	"testing"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -150,18 +149,12 @@ func getPodCount(kc *kubernetes.Clientset, namespace string) int {
 	return len(pods.Items)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing activation ---")
-
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
-}
-
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, namespace string) {
 	t.Log("--- testing scale out ---")
 	t.Log("waiting for 3 minutes")
 	time.Sleep(time.Duration(180) * time.Second)
 
-	assert.True(t, getPodCount(kc, testNamespace) > minReplicaCount, "number of pods in deployment should be more than %d after 3 minutes", minReplicaCount)
+	assert.True(t, getPodCount(kc, namespace) > minReplicaCount, "number of pods in deployment should be more than %d after 3 minutes", minReplicaCount)
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
@@ -189,16 +182,4 @@ func getTemplateData() (templateData, []Template) {
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 		}
-}
-
-func getScaledObjectTemplateData(targetValue, activationTargetValue string) templateData {
-	return templateData{
-		TestNamespace:         testNamespace,
-		DeploymentName:        deploymentName,
-		ScaledObjectName:      scaledObjectName,
-		MinReplicaCount:       fmt.Sprintf("%v", minReplicaCount),
-		MaxReplicaCount:       fmt.Sprintf("%v", maxReplicaCount),
-		TargetValue:           targetValue,
-		ActivationTargetValue: activationTargetValue,
-	}
 }

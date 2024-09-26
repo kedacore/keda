@@ -8,11 +8,12 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"github.com/signalfx/signalflow-client-go/v2/signalflow"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 type splunkObservabilityMetadata struct {
@@ -55,8 +56,8 @@ func newSplunkO11yConnection(meta *splunkObservabilityMetadata, logger logr.Logg
 		signalflow.StreamURLForRealm(meta.Realm),
 		signalflow.AccessToken(meta.AccessToken),
 		signalflow.OnError(func(err error) {
-			error_msg := fmt.Sprintf("error in SignalFlow client: %v\n", err)
-			logger.Info(error_msg)
+			errorMsg := fmt.Sprintf("error in SignalFlow client: %v\n", err)
+			logger.Info(errorMsg)
 		}))
 	if err != nil {
 		return nil, fmt.Errorf("error creating SignalFlow client: %w", err)
@@ -145,7 +146,7 @@ func (s *splunkObservabilityScaler) getQueryResult() (float64, error) {
 	}
 }
 
-func (s *splunkObservabilityScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (s *splunkObservabilityScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult()
 
 	if err != nil {
