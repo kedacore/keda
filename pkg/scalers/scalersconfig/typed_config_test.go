@@ -216,14 +216,16 @@ func TestSlice(t *testing.T) {
 
 	sc := &ScalerConfig{
 		TriggerMetadata: map[string]string{
-			"sliceVal":           "1,2,3",
-			"sliceValWithSpaces": "1, 2, 3",
+			"sliceVal":                   "1,2,3",
+			"sliceValWithSpaces":         "1, 2, 3",
+			"sliceValWithOtherSeparator": "1;2;3",
 		},
 	}
 
 	type testStruct struct {
-		SliceVal           []int `keda:"name=sliceVal, order=triggerMetadata"`
-		SliceValWithSpaces []int `keda:"name=sliceValWithSpaces, order=triggerMetadata"`
+		SliceVal                   []int `keda:"name=sliceVal, order=triggerMetadata"`
+		SliceValWithSpaces         []int `keda:"name=sliceValWithSpaces, order=triggerMetadata"`
+		SliceValWithOtherSeparator []int `keda:"name=sliceValWithOtherSeparator, order=triggerMetadata, separator=;"`
 	}
 
 	ts := testStruct{}
@@ -237,6 +239,10 @@ func TestSlice(t *testing.T) {
 	Expect(ts.SliceValWithSpaces[0]).To(Equal(1))
 	Expect(ts.SliceValWithSpaces[1]).To(Equal(2))
 	Expect(ts.SliceValWithSpaces[2]).To(Equal(3))
+	Expect(ts.SliceValWithOtherSeparator).To(HaveLen(3))
+	Expect(ts.SliceValWithOtherSeparator[0]).To(Equal(1))
+	Expect(ts.SliceValWithOtherSeparator[1]).To(Equal(2))
+	Expect(ts.SliceValWithOtherSeparator[2]).To(Equal(3))
 }
 
 // TestEnum tests the enum type
