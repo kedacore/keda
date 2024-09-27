@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/stretchr/testify/assert"
 )
@@ -12,6 +13,8 @@ var (
 	temporalEndpoint  = "localhost:7233"
 	temporalNamespace = "v2"
 	temporalQueueName = "default"
+
+	logger = logr.Discard()
 )
 
 type parseTemporalMetadataTestData struct {
@@ -51,7 +54,7 @@ func TestTemporalGetMetricSpecForScaling(t *testing.T) {
 		meta, err := parseTemporalMetadata(&scalersconfig.ScalerConfig{
 			TriggerMetadata: testData.metadataTestData.metadata,
 			TriggerIndex:    testData.triggerIndex,
-		})
+		}, logger)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -127,7 +130,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 			config := &scalersconfig.ScalerConfig{
 				TriggerMetadata: c.metadata,
 			}
-			meta, err := parseTemporalMetadata(config)
+			meta, err := parseTemporalMetadata(config, logger)
 			if c.wantErr == true && err != nil {
 				t.Log("Expected error, got err")
 			} else {
