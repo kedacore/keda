@@ -274,7 +274,7 @@ func checkMessage(t *testing.T, count int, client *azservicebus.Client) {
 	found := false
 	for _, message := range messages {
 		event := messaging.CloudEvent{}
-		err = json.Unmarshal([]byte(message.Body), &event)
+		err = json.Unmarshal(message.Body, &event)
 		assert.NoErrorf(t, err, "cannot retrieve message - %s", err)
 		if expectedSubject == *event.Subject &&
 			expectedSource == event.Source &&
