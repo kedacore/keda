@@ -42,6 +42,7 @@ var (
 	clusterName             = "test-cluster"
 	expectedSubject         = fmt.Sprintf("/%s/%s/scaledobject/%s", clusterName, namespace, scaledObjectName)
 	expectedSource          = fmt.Sprintf("/%s/keda/keda", clusterName)
+	expectedType            = "keda.scaledobject.ready.v1"
 	monitoredDeploymentName = "monitored-deployment"
 	sutDeploymentName       = "sut-deployment"
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
@@ -270,13 +271,17 @@ func checkMessage(t *testing.T, count int, client *azservicebus.Client) {
 	assert.NoErrorf(t, err, "cannot receive messages - %s", err)
 	assert.NotEmpty(t, messages)
 
-	var message = string(messages[0].Body)
+	found := false
+	for _, message := range messages {
+		event := messaging.CloudEvent{}
+		err = json.Unmarshal([]byte(message.Body), &event)
+		assert.NoErrorf(t, err, "cannot retrieve message - %s", err)
+		if expectedSubject == *event.Subject &&
+			expectedSource == event.Source &&
+			expectedType == event.Type {
+			found = true
+		}
+	}
 
-	event := messaging.CloudEvent{}
-	err = json.Unmarshal([]byte(message), &event)
-	assert.NoErrorf(t, err, "cannot retrieve message - %s", err)
-
-	assert.Equal(t, expectedSubject, *event.Subject)
-	assert.Equal(t, expectedSource, event.Source)
-	assert.Equal(t, "keda.scaledobject.ready.v1", event.Type)
+	assert.True(t, found)
 }
