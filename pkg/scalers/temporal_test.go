@@ -48,22 +48,36 @@ var temporalMetricIdentifiers = []temporalMetricIdentifier{
 	{&testTemporalMetadata[4], 1, "s1-temporal-v2-default"},
 }
 
+func TestTemporalParseMetadata(t *testing.T) {
+	for _, testData := range testTemporalMetadata {
+		metadata := &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata}
+		_, err := parseTemporalMetadata(metadata, logger)
+
+		if err != nil && !testData.isError {
+			t.Error("Expected success but got err", err)
+		}
+		if err == nil && testData.isError {
+			t.Error("Expected error but got success")
+		}
+	}
+}
+
 func TestTemporalGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range temporalMetricIdentifiers {
-		ctx := context.Background()
-		meta, err := parseTemporalMetadata(&scalersconfig.ScalerConfig{
+		metadata, err := parseTemporalMetadata(&scalersconfig.ScalerConfig{
 			TriggerMetadata: testData.metadataTestData.metadata,
 			TriggerIndex:    testData.triggerIndex,
 		}, logger)
+
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockTemporalScaler := temporalScaler{
-			metadata: meta,
+		mockScaler := temporalScaler{
+			metadata: metadata,
 		}
-
-		metricSpec := mockTemporalScaler.GetMetricSpecForScaling(ctx)
+		metricSpec := mockScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
+
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
 		}
@@ -72,24 +86,28 @@ func TestTemporalGetMetricSpecForScaling(t *testing.T) {
 
 func TestParseTemporalMetadata(t *testing.T) {
 	cases := []struct {
-		name     string
-		metadata map[string]string
-		wantMeta *temporalMetadata
-		wantErr  bool
+		name       string
+		metadata   map[string]string
+		wantMeta   *temporalMetadata
+		authParams map[string]string
+		wantErr    bool
 	}{
-		{
-			name:     "empty metadata",
-			wantMeta: nil,
-			wantErr:  true,
-		},
 		{
 			name: "empty queue name",
 			metadata: map[string]string{
 				"endpoint":  "test:7233",
 				"namespace": "default",
 			},
-			wantMeta: nil,
-			wantErr:  true,
+			wantMeta: &temporalMetadata{
+				Endpoint:               "test:7233",
+				Namespace:              "default",
+				QueueName:              "",
+				TargetQueueSize:        5,
+				ActivationLagThreshold: 0,
+				AllActive:              true,
+				Unversioned:            true,
+			},
+			wantErr: true,
 		},
 		{
 			name: "empty namespace",
@@ -98,10 +116,13 @@ func TestParseTemporalMetadata(t *testing.T) {
 				"queueName": "testxx",
 			},
 			wantMeta: &temporalMetadata{
-				endpoint:        "test:7233",
-				namespace:       "default",
-				queueName:       "testxx",
-				targetQueueSize: 5,
+				Endpoint:               "test:7233",
+				Namespace:              "default",
+				QueueName:              "testxx",
+				TargetQueueSize:        5,
+				ActivationLagThreshold: 0,
+				AllActive:              true,
+				Unversioned:            true,
 			},
 			wantErr: false,
 		},
@@ -114,11 +135,56 @@ func TestParseTemporalMetadata(t *testing.T) {
 				"activationTargetQueueSize": "12",
 			},
 			wantMeta: &temporalMetadata{
-				endpoint:               "test:7233",
-				namespace:              "default",
-				queueName:              "testxx",
-				targetQueueSize:        5,
-				activationLagThreshold: 12,
+				Endpoint:               "test:7233",
+				Namespace:              "default",
+				QueueName:              "testxx",
+				TargetQueueSize:        5,
+				ActivationLagThreshold: 12,
+				AllActive:              true,
+				Unversioned:            true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "apiKey should not be empty",
+			metadata: map[string]string{
+				"endpoint":  "test:7233",
+				"namespace": "default",
+				"queueName": "testxx",
+				"apiKey":    "test01",
+			},
+			wantMeta: &temporalMetadata{
+				Endpoint:               "test:7233",
+				Namespace:              "default",
+				QueueName:              "testxx",
+				TargetQueueSize:        5,
+				ActivationLagThreshold: 0,
+				AllActive:              true,
+				Unversioned:            true,
+				ApiKey:                 "test01",
+			},
+			authParams: map[string]string{
+				"apiKey": "test01",
+			},
+			wantErr: false,
+		},
+		{
+			name: "queue type should not be empty",
+			metadata: map[string]string{
+				"endpoint":   "test:7233",
+				"namespace":  "default",
+				"queueName":  "testxx",
+				"queueTypes": "workflow,activity",
+			},
+			wantMeta: &temporalMetadata{
+				Endpoint:               "test:7233",
+				Namespace:              "default",
+				QueueName:              "testxx",
+				TargetQueueSize:        5,
+				ActivationLagThreshold: 0,
+				AllActive:              true,
+				Unversioned:            true,
+				QueueTypes:             []string{"workflow", "activity"},
 			},
 			wantErr: false,
 		},
@@ -129,6 +195,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			config := &scalersconfig.ScalerConfig{
 				TriggerMetadata: c.metadata,
+				AuthParams:      c.authParams,
 			}
 			meta, err := parseTemporalMetadata(config, logger)
 			if c.wantErr == true && err != nil {
@@ -139,4 +206,20 @@ func TestParseTemporalMetadata(t *testing.T) {
 			assert.Equal(t, c.wantMeta, meta)
 		})
 	}
+}
+
+func TestTemporalDefaultQueueTypes(t *testing.T) {
+	metadata, err := parseTemporalMetadata(&scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"endpoint": "localhost:7233", "queueName": "testcc",
+		},
+	}, logger)
+
+	assert.NoError(t, err, "error should be nil")
+	assert.Empty(t, metadata.QueueTypes, "queueTypes should be empty")
+
+	assert.Len(t, getQueueTypes(metadata.QueueTypes), 3, "all queue types should be there")
+
+	metadata.QueueTypes = []string{"workflow"}
+	assert.Len(t, getQueueTypes(metadata.QueueTypes), 1, "only one type should be there")
 }

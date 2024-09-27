@@ -2,11 +2,8 @@ package scalers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -17,14 +14,6 @@ import (
 	"google.golang.org/grpc"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-)
-
-const (
-	temporalDefaultTargetQueueLength     = 5
-	temporalDefaultActivationQueueLength = 0
-	temporalDefaultNamespace             = "default"
-	temporalDefaultSelectAllActive       = true
-	temporalDefaultSelectUnversioned     = true
 )
 
 var (
@@ -43,17 +32,29 @@ type temporalScaler struct {
 }
 
 type temporalMetadata struct {
-	activationLagThreshold int64
-	endpoint               string
-	namespace              string
-	triggerIndex           int
-	targetQueueSize        int64
-	queueName              string
-	queueTypes             []string
-	buildIDs               []string
-	allActive              bool
-	unversioned            bool
-	apiKey                 *string
+	ActivationLagThreshold int64    `keda:"name=activationTargetQueueSize, order=triggerMetadata, default=0"`
+	Endpoint               string   `keda:"name=endpoint,       order=triggerMetadata;resolvedEnv"`
+	Namespace              string   `keda:"name=namespace,      order=triggerMetadata, default=default"`
+	TargetQueueSize        int64    `keda:"name=targetQueueSize, order=triggerMetadata, default=5"`
+	QueueName              string   `keda:"name=queueName,      order=triggerMetadata"`
+	QueueTypes             []string `keda:"name=queueTypes,      order=triggerMetadata, optional"`
+	BuildIDs               []string `keda:"name=buildIds,      order=triggerMetadata, optional"`
+	AllActive              bool     `keda:"name=selectAllActive,      order=triggerMetadata, default=true"`
+	Unversioned            bool     `keda:"name=selectUnversioned,    order=triggerMetadata, default=true"`
+	ApiKey                 string   `keda:"name=apiKey,         order=authParams;triggerMetadata, optional"`
+
+	triggerIndex int
+}
+
+func (a *temporalMetadata) Validate() error {
+	if a.TargetQueueSize <= 0 {
+		return fmt.Errorf("targetQueueSize must be a positive number")
+	}
+	if a.ActivationLagThreshold < 0 {
+		return fmt.Errorf("activationTargetQueueSize must be a positive number")
+	}
+
+	return nil
 }
 
 func NewTemporalScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
@@ -90,17 +91,19 @@ func (s *temporalScaler) Close(_ context.Context) error {
 }
 
 func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(fmt.Sprintf("temporal-%s-%s", s.metadata.namespace, s.metadata.queueName))
+	metricName := kedautil.NormalizeString(fmt.Sprintf("temporal-%s-%s", s.metadata.Namespace, s.metadata.QueueName))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetQueueSize),
+		Target: GetMetricTarget(s.metricType, s.metadata.TargetQueueSize),
 	}
+
 	metricSpec := v2.MetricSpec{
 		External: externalMetric,
 		Type:     externalMetricType,
 	}
+
 	return []v2.MetricSpec{metricSpec}
 }
 
@@ -112,23 +115,23 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 
 	metric := GenerateMetricInMili(metricName, float64(queueSize))
 
-	return []external_metrics.ExternalMetricValue{metric}, queueSize > s.metadata.activationLagThreshold, nil
+	return []external_metrics.ExternalMetricValue{metric}, queueSize > s.metadata.ActivationLagThreshold, nil
 }
 
 func (s *temporalScaler) getQueueSize(ctx context.Context) (int64, error) {
-	queueType := getQueueTypes(s.metadata.queueTypes)
-
 	var selection *sdk.TaskQueueVersionSelection
-	if s.metadata.allActive || s.metadata.unversioned || len(s.metadata.buildIDs) > 0 {
+	if s.metadata.AllActive || s.metadata.Unversioned || len(s.metadata.BuildIDs) > 0 {
 		selection = &sdk.TaskQueueVersionSelection{
-			AllActive:   s.metadata.allActive,
-			Unversioned: s.metadata.unversioned,
-			BuildIDs:    s.metadata.buildIDs,
+			AllActive:   s.metadata.AllActive,
+			Unversioned: s.metadata.Unversioned,
+			BuildIDs:    s.metadata.BuildIDs,
 		}
 	}
 
+	queueType := getQueueTypes(s.metadata.QueueTypes)
+
 	resp, err := s.tcl.DescribeTaskQueueEnhanced(ctx, sdk.DescribeTaskQueueEnhancedOptions{
-		TaskQueue:      s.metadata.queueName,
+		TaskQueue:      s.metadata.QueueName,
 		ReportStats:    true,
 		Versions:       selection,
 		TaskQueueTypes: queueType,
@@ -175,8 +178,8 @@ func getCombinedBacklogCount(description sdk.TaskQueueDescription) int64 {
 
 func getTemporalClient(meta *temporalMetadata) (sdk.Client, error) {
 	return sdk.Dial(sdk.Options{
-		HostPort:  meta.endpoint,
-		Namespace: meta.namespace,
+		HostPort:  meta.Endpoint,
+		Namespace: meta.Namespace,
 		Logger:    sdklog.NewStructuredLogger(slog.Default()),
 		ConnectionOptions: sdk.ConnectionOptions{
 			DialOptions: []grpc.DialOption{
@@ -188,75 +191,11 @@ func getTemporalClient(meta *temporalMetadata) (sdk.Client, error) {
 	})
 }
 
-func parseTemporalMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*temporalMetadata, error) {
-	meta := &temporalMetadata{}
-	meta.activationLagThreshold = temporalDefaultActivationQueueLength
-	meta.targetQueueSize = temporalDefaultTargetQueueLength
-
-	if config.TriggerMetadata["endpoint"] == "" {
-		return nil, errors.New("no Temporal gRPC endpoint provided")
-	}
-	meta.endpoint = config.TriggerMetadata["endpoint"]
-
-	if config.TriggerMetadata["namespace"] == "" {
-		meta.namespace = temporalDefaultNamespace
-	} else {
-		meta.namespace = config.TriggerMetadata["namespace"]
+func parseTemporalMetadata(config *scalersconfig.ScalerConfig, _ logr.Logger) (*temporalMetadata, error) {
+	meta := &temporalMetadata{triggerIndex: config.TriggerIndex}
+	if err := config.TypedConfig(meta); err != nil {
+		return meta, fmt.Errorf("error parsing temporal metadata: %w", err)
 	}
 
-	if size, ok := config.TriggerMetadata["targetQueueSize"]; ok {
-		queueSize, err := strconv.ParseInt(size, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("invalid targetQueueSize - must be an integer")
-		}
-		meta.targetQueueSize = queueSize
-	}
-
-	if size, ok := config.TriggerMetadata["activationTargetQueueSize"]; ok {
-		activationTargetQueueSize, err := strconv.ParseInt(size, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("invalid activationTargetQueueSize - must be an integer")
-		}
-		meta.activationLagThreshold = activationTargetQueueSize
-	}
-
-	if queueName, ok := config.TriggerMetadata["queueName"]; ok {
-		meta.queueName = queueName
-	} else {
-		return nil, errors.New("no queueName provided")
-	}
-
-	// if buildIds is provided, it will be used to filter the queue and make sure
-	// selectAllActive and selectUnversioned are set to false to avoid considering
-	if buildIds, ok := config.TriggerMetadata["buildIds"]; ok && buildIds != "" {
-		meta.buildIDs = strings.Split(buildIds, ",")
-	}
-
-	if val, ok := config.TriggerMetadata["selectAllActive"]; ok && val != "" {
-		allActive, err := strconv.ParseBool(val)
-		if err != nil {
-			meta.allActive = temporalDefaultSelectAllActive
-			logger.Error(err, "Error parsing Temoral queue metadata selectAllActive, using default %n", temporalDefaultSelectAllActive)
-		} else {
-			meta.allActive = allActive
-		}
-	}
-
-	if val, ok := config.TriggerMetadata["selectUnversioned"]; ok && val != "" {
-		unversioned, err := strconv.ParseBool(val)
-		if err != nil {
-			meta.unversioned = temporalDefaultSelectUnversioned
-			logger.Error(err, "Error parsing Temoral queue metadata selectUnversioned, using default %n", temporalDefaultSelectUnversioned)
-		} else {
-			meta.unversioned = unversioned
-		}
-	}
-
-	// optional, valide queueTypes are workflow, activity, nexus
-	if val, ok := config.TriggerMetadata["queueTypes"]; ok && val != "" {
-		meta.queueTypes = strings.Split(val, ",")
-	}
-
-	meta.triggerIndex = config.TriggerIndex
 	return meta, nil
 }
