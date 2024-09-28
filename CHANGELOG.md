@@ -78,6 +78,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **AWS Secret Manager**: Pod identity overrides are honored ([#6195](https://github.com/kedacore/keda/issues/6195))
 - **Metrics API**: Prometheus metrics can have multiple labels ([#6077](https://github.com/kedacore/keda/issues/6077))
 
 ### Deprecations
