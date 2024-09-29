@@ -131,6 +131,27 @@ spec:
       desiredReplicas: '1'
 `
 
+	customHpaScaledObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: {{.HpaName}}
+  triggers:
+  - type: cron
+    metadata:
+      timezone: Etc/UTC
+      start: 0 * * * *
+      end: 1 * * * *
+      desiredReplicas: '1'
+  `
+
 	hpaTemplate = `
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -179,6 +200,8 @@ func TestScaledObjectValidations(t *testing.T) {
 
 	testScaledWorkloadByOtherScaledObject(t, data)
 
+	testManagedHpaByOtherScaledObject(t, data)
+
 	testScaledWorkloadByOtherHpa(t, data)
 
 	testScaledWorkloadByOtherHpaWithOwnershipTransfer(t, data)
@@ -215,6 +238,24 @@ func testScaledWorkloadByOtherScaledObject(t *testing.T, data templateData) {
 	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
 	assert.Contains(t, err.Error(), fmt.Sprintf("the workload '%s' of type 'apps/v1.Deployment' is already managed by the ScaledObject '%s", deploymentName, scaledObject1Name))
+
+	data.ScaledObjectName = scaledObject1Name
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+}
+
+func testManagedHpaByOtherScaledObject(t *testing.T, data templateData) {
+	t.Log("--- already managed hpa by other scaledobject---")
+
+	data.HpaName = hpaName
+
+	data.ScaledObjectName = scaledObject1Name
+	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", customHpaScaledObjectTemplate)
+	assert.NoErrorf(t, err, "cannot deploy the scaledObject - %s", err)
+
+	data.ScaledObjectName = scaledObject2Name
+	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", customHpaScaledObjectTemplate)
+	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
+	assert.Contains(t, err.Error(), fmt.Sprintf("the HPA '%s' is already managed by the ScaledObject '%s", hpaName, scaledObject1Name))
 
 	data.ScaledObjectName = scaledObject1Name
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
