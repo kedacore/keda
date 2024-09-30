@@ -253,6 +253,7 @@ func testManagedHpaByOtherScaledObject(t *testing.T, data templateData) {
 	assert.NoErrorf(t, err, "cannot deploy the scaledObject - %s", err)
 
 	data.ScaledObjectName = scaledObject2Name
+	data.DeploymentName = fmt.Sprintf("%s-other-deployment", testName)
 	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", customHpaScaledObjectTemplate)
 	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
 	assert.Contains(t, err.Error(), fmt.Sprintf("the HPA '%s' is already managed by the ScaledObject '%s", hpaName, scaledObject1Name))
