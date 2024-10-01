@@ -880,8 +880,8 @@ github.com/apache/arrow/go/v12 v12.0.0/go.mod h1:d+tV/eHZZ7Dz7RPrFKtPK02tpr+c9/P
 github.com/apache/thrift v0.16.0/go.mod h1:PHK3hniurgQaNMZYaCLEqXKsYK8upmhPbmdP2FXSqgU=
 github.com/apapsch/go-jsonmerge/v2 v2.0.0 h1:axGnT1gRIfimI7gJifB699GoE/oq+F2MU7Dml6nw9rQ=
 github.com/apapsch/go-jsonmerge/v2 v2.0.0/go.mod h1:lvDnEdqiQrp0O42VQGgmlKpxL1AP2+08jFMw88y4klk=
-github.com/arangodb/go-driver v1.6.2 h1:3o4inejwR7VMmsKvQJ6hepx4au9sUT6C/RDrXykuD1g=
-github.com/arangodb/go-driver v1.6.2/go.mod h1:2BCE6y3DNSLqIXnDvf4CR6WdzZZloYudEy+sasimLiQ=
+github.com/arangodb/go-driver v1.6.4 h1:tuizDP620e3OFaoFkEh07n4bHSTvCOvm5qVGQ/+zMrs=
+github.com/arangodb/go-driver v1.6.4/go.mod h1:oLZCzkEGh82I2XBcMkrDtqsMXFg6QkIRgbqLGalh6jc=
 github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e h1:Xg+hGrY2LcQBbxd0ZFdbGSyRKTYMZCfBbw/pMJFOk1g=
 github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e/go.mod h1:mq7Shfa/CaixoDxiyAAc5jZ6CVBAyPaNQCGS7mkj4Ho=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
