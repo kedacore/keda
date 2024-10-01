@@ -58,7 +58,7 @@ func (a *temporalMetadata) Validate() error {
 	return nil
 }
 
-func NewTemporalScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "temporal_scaler")
 
 	metricType, err := GetMetricTargetType(config)
@@ -71,7 +71,7 @@ func NewTemporalScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("failed to parse Temporal metadata: %w", err)
 	}
 
-	c, err := getTemporalClient(meta)
+	c, err := getTemporalClient(ctx, meta)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Temporal client connection: %w", err)
 	}
@@ -177,7 +177,7 @@ func getCombinedBacklogCount(description sdk.TaskQueueDescription) int64 {
 	return count
 }
 
-func getTemporalClient(meta *temporalMetadata) (sdk.Client, error) {
+func getTemporalClient(ctx context.Context, meta *temporalMetadata) (sdk.Client, error) {
 	options := sdk.Options{
 		HostPort:  meta.Endpoint,
 		Namespace: meta.Namespace,
@@ -211,7 +211,7 @@ func getTemporalClient(meta *temporalMetadata) (sdk.Client, error) {
 		DialOptions: dialOptions,
 	}
 
-	return sdk.Dial(options)
+	return sdk.DialContext(ctx, options)
 }
 
 func parseTemporalMetadata(config *scalersconfig.ScalerConfig, _ logr.Logger) (*temporalMetadata, error) {

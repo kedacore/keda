@@ -252,7 +252,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "stan":
 		return scalers.NewStanScaler(config)
 	case "temporal":
-		return scalers.NewTemporalScaler(config)
+		return scalers.NewTemporalScaler(ctx, config)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
