@@ -83,8 +83,8 @@ type Params struct {
 	// FieldName is the name of the field in the struct
 	FieldName string
 
-	// Name is the 'name' tag parameter defining the key in triggerMetadata, resolvedEnv or authParams
-	Name []string
+	// Names is the 'name' tag parameter defining the key in triggerMetadata, resolvedEnv or authParams
+	Names []string
 
 	// Optional is the 'optional' tag parameter defining if the parameter is optional
 	Optional bool
@@ -114,9 +114,14 @@ type Params struct {
 	Separator string
 }
 
+// Name returns the name of the parameter (or comma separated list of names if it has multiple)
+func (p Params) Name() string {
+	return strings.Join(p.Names, ",")
+}
+
 // IsNested is a function that returns true if the parameter is nested
 func (p Params) IsNested() bool {
-	return len(p.Name) == 0
+	return len(p.Names) == 0
 }
 
 // IsDeprecated is a function that returns true if the parameter is deprecated
@@ -188,7 +193,7 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) e
 func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 	valFromConfig, exists := sc.configParamValue(params)
 	if exists && params.IsDeprecated() {
-		return fmt.Errorf("parameter %q is deprecated%v", params.Name, params.DeprecatedMessage())
+		return fmt.Errorf("parameter %q is deprecated%v", params.Name(), params.DeprecatedMessage())
 	}
 	if !exists && params.Default != "" {
 		exists = true
@@ -201,9 +206,9 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 		if len(params.Order) == 0 {
 			apo := maps.Keys(allowedParsingOrderMap)
 			slices.Sort(apo)
-			return fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name, apo)
+			return fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name(), apo)
 		}
-		return fmt.Errorf("missing required parameter %q in %v", params.Name, params.Order)
+		return fmt.Errorf("missing required parameter %q in %v", params.Name(), params.Order)
 	}
 	if params.Enum != nil {
 		enumMap := make(map[string]bool)
@@ -219,7 +224,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 			}
 		}
 		if len(missingMap) > 0 {
-			return fmt.Errorf("parameter %q value %q must be one of %v", params.Name, valFromConfig, params.Enum)
+			return fmt.Errorf("parameter %q value %q must be one of %v", params.Name(), valFromConfig, params.Enum)
 		}
 	}
 	if params.ExclusiveSet != nil {
@@ -236,7 +241,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 			}
 		}
 		if exclusiveCount > 1 {
-			return fmt.Errorf("parameter %q value %q must contain only one of %v", params.Name, valFromConfig, params.ExclusiveSet)
+			return fmt.Errorf("parameter %q value %q must contain only one of %v", params.Name(), valFromConfig, params.ExclusiveSet)
 		}
 	}
 	if params.IsNested() {
@@ -250,7 +255,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 		return sc.parseTypedConfig(field.Addr().Interface(), params.Optional)
 	}
 	if err := setConfigValueHelper(params, valFromConfig, field); err != nil {
-		return fmt.Errorf("unable to set param %q value %q: %w", params.Name, valFromConfig, err)
+		return fmt.Errorf("unable to set param %q value %q: %w", params.Name(), valFromConfig, err)
 	}
 	return nil
 }
@@ -406,7 +411,7 @@ func setConfigValueHelper(params Params, valFromConfig string, field reflect.Val
 func (sc *ScalerConfig) configParamValue(params Params) (string, bool) {
 	for _, po := range params.Order {
 		var m map[string]string
-		for _, key := range params.Name {
+		for _, key := range params.Names {
 			switch po {
 			case TriggerMetadata:
 				m = sc.TriggerMetadata
@@ -459,7 +464,7 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 			}
 		case nameTag:
 			if len(tsplit) > 1 {
-				params.Name = strings.Split(strings.TrimSpace(tsplit[1]), tagValueSeparator)
+				params.Names = strings.Split(strings.TrimSpace(tsplit[1]), tagValueSeparator)
 			}
 		case deprecatedTag:
 			if len(tsplit) == 1 {
