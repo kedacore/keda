@@ -1,5 +1,11 @@
 # Release History
 
+## 1.7.2 (2024-09-11)
+
+### Bugs Fixed
+
+- Fixed a bug where cancelling RenewMessageLock() calls could cause hangs in future RenewMessageLock calls. (PR#23400)
+
 ## 1.7.1 (2024-05-20)
 
 ### Bugs Fixed
