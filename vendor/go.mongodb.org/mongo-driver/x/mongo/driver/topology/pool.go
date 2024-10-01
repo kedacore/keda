@@ -9,6 +9,7 @@ package topology
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -788,17 +789,27 @@ var (
 //
 // It calls the package-global BGReadCallback function, if set, with the
 // address, timings, and any errors that occurred.
-func bgRead(pool *pool, conn *connection) {
-	var start, read time.Time
-	start = time.Now()
-	errs := make([]error, 0)
-	connClosed := false
+func bgRead(pool *pool, conn *connection, size int32) {
+	var err error
+	start := time.Now()
 
 	defer func() {
+		read := time.Now()
+		errs := make([]error, 0)
+		connClosed := false
+		if err != nil {
+			errs = append(errs, err)
+			connClosed = true
+			err = conn.close()
+			if err != nil {
+				errs = append(errs, fmt.Errorf("error closing conn after reading: %w", err))
+			}
+		}
+
 		// No matter what happens, always check the connection back into the
 		// pool, which will either make it available for other operations or
 		// remove it from the pool if it was closed.
-		err := pool.checkInNoEvent(conn)
+		err = pool.checkInNoEvent(conn)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("error checking in: %w", err))
 		}
@@ -808,34 +819,28 @@ func bgRead(pool *pool, conn *connection) {
 		}
 	}()
 
-	err := conn.nc.SetReadDeadline(time.Now().Add(BGReadTimeout))
+	err = conn.nc.SetReadDeadline(time.Now().Add(BGReadTimeout))
 	if err != nil {
-		errs = append(errs, fmt.Errorf("error setting a read deadline: %w", err))
-
-		connClosed = true
-		err := conn.close()
-		if err != nil {
-			errs = append(errs, fmt.Errorf("error closing conn after setting read deadline: %w", err))
-		}
-
+		err = fmt.Errorf("error setting a read deadline: %w", err)
 		return
 	}
 
-	// The context here is only used for cancellation, not deadline timeout, so
-	// use context.Background(). The read timeout is set by calling
-	// SetReadDeadline above.
-	_, _, err = conn.read(context.Background())
-	read = time.Now()
-	if err != nil {
-		errs = append(errs, fmt.Errorf("error reading: %w", err))
-
-		connClosed = true
-		err := conn.close()
+	if size == 0 {
+		var sizeBuf [4]byte
+		_, err = io.ReadFull(conn.nc, sizeBuf[:])
 		if err != nil {
-			errs = append(errs, fmt.Errorf("error closing conn after reading: %w", err))
+			err = fmt.Errorf("error reading the message size: %w", err)
+			return
 		}
-
-		return
+		size, err = conn.parseWmSizeBytes(sizeBuf)
+		if err != nil {
+			return
+		}
+		size -= 4
+	}
+	_, err = io.CopyN(io.Discard, conn.nc, int64(size))
+	if err != nil {
+		err = fmt.Errorf("error discarding %d byte message: %w", size, err)
 	}
 }
 
@@ -886,9 +891,10 @@ func (p *pool) checkInNoEvent(conn *connection) error {
 	// means that connections in "awaiting response" state are checked in but
 	// not usable, which is not covered by the current pool events. We may need
 	// to add pool event information in the future to communicate that.
-	if conn.awaitingResponse {
-		conn.awaitingResponse = false
-		go bgRead(p, conn)
+	if conn.awaitRemainingBytes != nil {
+		size := *conn.awaitRemainingBytes
+		conn.awaitRemainingBytes = nil
+		go bgRead(p, conn, size)
 		return nil
 	}
 
