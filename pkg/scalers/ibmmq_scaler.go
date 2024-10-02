@@ -150,6 +150,10 @@ func (s *ibmmqScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 		}
 		defer resp.Body.Close()
 
+		if resp.StatusCode == http.StatusUnauthorized {
+			return 0, fmt.Errorf("authentication failed: incorrect username or password")
+		}
+
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return 0, fmt.Errorf("failed to read body of request for queue %s: %w", queueName, err)
