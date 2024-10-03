@@ -209,6 +209,10 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"sasl": "gssapi", "username": "admin", "password": "admin", "kerberosConfig": "<config>", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
 	// failure, SASL GSSAPI/keytab + TLS missing username
 	{map[string]string{"sasl": "gssapi", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "tst.com", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
+	// success, SASL GSSAPI/disableFast
+	{map[string]string{"sasl": "gssapi", "username": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "tst.com", "kerberosDisableFAST": "true"}, false, false},
+	// failure, SASL GSSAPI/disableFast incorrect
+	{map[string]string{"sasl": "gssapi", "username": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "tst.com", "kerberosDisableFAST": "notabool"}, true, false},
 }
 var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	// success, SASL plaintext
