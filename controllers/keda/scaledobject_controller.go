@@ -58,6 +58,7 @@ import (
 // +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs="*"
 // +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=events,verbs="*"
+// +kubebuilder:rbac:groups="",resources=serviceaccounts/token,verbs=create;get
 // +kubebuilder:rbac:groups="",resources=pods;services;services;secrets;external,verbs=get;list;watch
 // +kubebuilder:rbac:groups="*",resources="*/scale",verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups="",resources="serviceaccounts",verbs=list;watch
