@@ -19,12 +19,18 @@ package resolver
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/aws/smithy-go/ptr"
 	"github.com/go-logr/logr"
+	"github.com/golang-jwt/jwt/v5"
 	appsv1 "k8s.io/api/apps/v1"
+	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -37,6 +43,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -50,6 +57,19 @@ const (
 	appsGroup             = "apps"
 	deploymentKind        = "Deployment"
 	statefulSetKind       = "StatefulSet"
+)
+
+type triggerAuthType interface {
+	SetAnnotations(map[string]string)
+	GetAnnotations() map[string]string
+}
+
+type tokenStatus int
+
+const (
+	tokenStatusValid tokenStatus = iota
+	tokenStatusInvalid
+	tokenStatusUnknown
 )
 
 var (
@@ -183,9 +203,9 @@ func ResolveContainerEnv(ctx context.Context, client client.Client, logger logr.
 // ResolveAuthRefAndPodIdentity provides authentication parameters and pod identity needed authenticate scaler with the environment.
 func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, logger logr.Logger,
 	triggerAuthRef *kedav1alpha1.AuthenticationRef, podTemplateSpec *corev1.PodTemplateSpec,
-	namespace string, secretsLister corev1listers.SecretLister) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
+	namespace string, authClientSet *authentication.AuthClientSet) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
 	if podTemplateSpec != nil {
-		authParams, podIdentity, err := resolveAuthRef(ctx, client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace, secretsLister)
+		authParams, podIdentity, err := resolveAuthRef(ctx, client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace, authClientSet)
 
 		if err != nil {
 			return authParams, podIdentity, err
@@ -225,14 +245,14 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 		return authParams, podIdentity, nil
 	}
 
-	return resolveAuthRef(ctx, client, logger, triggerAuthRef, nil, namespace, secretsLister)
+	return resolveAuthRef(ctx, client, logger, triggerAuthRef, nil, namespace, authClientSet)
 }
 
 // resolveAuthRef provides authentication parameters needed authenticate scaler with the environment.
 // based on authentication method defined in TriggerAuthentication, authParams and podIdentity is returned
 func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logger,
 	triggerAuthRef *kedav1alpha1.AuthenticationRef, podSpec *corev1.PodSpec,
-	namespace string, secretsLister corev1listers.SecretLister) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
+	namespace string, authClientSet *authentication.AuthClientSet) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
 	result := make(map[string]string)
 	podIdentity := kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}
 	var err error
@@ -251,7 +271,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 						result[e.Parameter] = ""
 						continue
 					}
-					env, err := ResolveContainerEnv(ctx, client, logger, podSpec, e.ContainerName, namespace, secretsLister)
+					env, err := ResolveContainerEnv(ctx, client, logger, podSpec, e.ContainerName, namespace, authClientSet.SecretLister)
 					if err != nil {
 						result[e.Parameter] = ""
 					} else {
@@ -266,7 +286,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 			}
 			if triggerAuthSpec.SecretTargetRef != nil {
 				for _, e := range triggerAuthSpec.SecretTargetRef {
-					result[e.Parameter] = resolveAuthSecret(ctx, client, logger, e.Name, triggerNamespace, e.Key, secretsLister)
+					result[e.Parameter] = resolveAuthSecret(ctx, client, logger, e.Name, triggerNamespace, e.Key, authClientSet.SecretLister)
 				}
 			}
 			if triggerAuthSpec.HashiCorpVault != nil && len(triggerAuthSpec.HashiCorpVault.Secrets) > 0 {
@@ -292,7 +312,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 			}
 			if triggerAuthSpec.AzureKeyVault != nil && len(triggerAuthSpec.AzureKeyVault.Secrets) > 0 {
 				vaultHandler := NewAzureKeyVaultHandler(triggerAuthSpec.AzureKeyVault)
-				err := vaultHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister)
+				err := vaultHandler.Initialize(ctx, client, logger, triggerNamespace, authClientSet.SecretLister)
 				if err != nil {
 					logger.Error(err, "error authenticating to Azure Key Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
 					return result, podIdentity, err
@@ -311,7 +331,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 			}
 			if triggerAuthSpec.GCPSecretManager != nil && len(triggerAuthSpec.GCPSecretManager.Secrets) > 0 {
 				secretManagerHandler := NewGCPSecretManagerHandler(triggerAuthSpec.GCPSecretManager)
-				err := secretManagerHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister)
+				err := secretManagerHandler.Initialize(ctx, client, logger, triggerNamespace, authClientSet.SecretLister)
 				if err != nil {
 					logger.Error(err, "error authenticating to GCP Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name)
 				} else {
@@ -332,7 +352,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 			}
 			if triggerAuthSpec.AwsSecretManager != nil && len(triggerAuthSpec.AwsSecretManager.Secrets) > 0 {
 				awsSecretManagerHandler := NewAwsSecretManagerHandler(triggerAuthSpec.AwsSecretManager)
-				err := awsSecretManagerHandler.Initialize(ctx, client, logger, triggerNamespace, secretsLister, podSpec)
+				err := awsSecretManagerHandler.Initialize(ctx, client, logger, triggerNamespace, authClientSet.SecretLister, podSpec)
 				defer awsSecretManagerHandler.Stop()
 				if err != nil {
 					logger.Error(err, "error authenticating to Aws Secret Manager", "triggerAuthRef.Name", triggerAuthRef.Name)
@@ -348,10 +368,34 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 					}
 				}
 			}
+			if triggerAuthSpec.BoundServiceAccountToken != nil {
+				for _, e := range triggerAuthSpec.BoundServiceAccountToken {
+					result[e.Parameter] = resolveBoundServiceAccountToken(ctx, client, logger, triggerNamespace, &e, triggerAuthRef, authClientSet)
+				}
+			}
 		}
 	}
 
 	return result, podIdentity, err
+}
+
+func getTriggerAuth(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.AuthenticationRef, namespace string) (triggerAuthType, string, error) {
+	if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
+		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
+		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
+		if err != nil {
+			return nil, "", err
+		}
+		return triggerAuth, namespace, nil
+	} else if triggerAuthRef.Kind == "ClusterTriggerAuthentication" {
+		triggerAuth := &kedav1alpha1.ClusterTriggerAuthentication{}
+		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name}, triggerAuth)
+		if err != nil {
+			return nil, "", err
+		}
+		return triggerAuth, kedaNamespace, nil
+	}
+	return nil, "", fmt.Errorf("unknown trigger auth kind %s", triggerAuthRef.Kind)
 }
 
 func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.AuthenticationRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, string, error) {
@@ -600,6 +644,168 @@ func resolveAuthSecret(ctx context.Context, client client.Client, logger logr.Lo
 	}
 
 	return string(result)
+}
+
+func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, logger logr.Logger, namespace string, bsat *kedav1alpha1.BoundServiceAccountToken, triggerAuthRef *kedav1alpha1.AuthenticationRef, acs *authentication.AuthClientSet) string {
+	serviceAccountName, expiry := bsat.ServiceAccountName, bsat.Expiry
+	if serviceAccountName == "" {
+		logger.Error(fmt.Errorf("error trying to get token"), "serviceAccountName is required")
+		return ""
+	}
+	var err error
+	var expirySeconds *int64 = ptr.Int64(3600)
+	if expiry != "" {
+		duration, err := time.ParseDuration(expiry)
+		if err != nil {
+			logger.Error(err, "error trying to parse expiry duration", "expiry", expiry)
+			return ""
+		}
+		// convert duration to seconds
+		expirySeconds = ptr.Int64(int64(duration.Seconds()))
+	}
+
+	triggerAuth, _, err := getTriggerAuth(ctx, client, triggerAuthRef, namespace)
+	if err != nil {
+		logger.Error(err, "error trying to get [cluster]triggerAuth", "TriggerAuth.Namespace", namespace, "TriggerAuth.Name", triggerAuthRef.Name)
+		return ""
+	}
+	currentAnnotations := triggerAuth.GetAnnotations()
+	encodedToken := currentAnnotations["keda-serviceAccountToken"]
+
+	// check if service account exists in the namespace
+	serviceAccount := &corev1.ServiceAccount{}
+	err = client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
+	if err != nil {
+		logger.Error(err, "error trying to get service account from namespace", "ServiceAccount.Namespace", namespace, "ServiceAccount.Name", serviceAccountName)
+		return ""
+	}
+
+	// check if token is already referenced in the TriggerAuthentication annotation
+	if encodedToken != "" {
+		tokenValid := checkTokenValidity(ctx, logger, encodedToken, expirySeconds, acs)
+		if tokenValid == tokenStatusInvalid {
+			// token is invalid, or if more than 50% of the token's expiry has passed, create new token
+			return generateAndAnnotateNewToken(ctx, client, logger, serviceAccountName, namespace, expirySeconds, triggerAuth, acs)
+		} else if tokenValid == tokenStatusValid {
+			return encodedToken
+		} else {
+			return ""
+		}
+	} else {
+		// token doesn't exist; create new token and embed it in the the TriggerAuth
+		logger.Info("Token doesn't exist; creating new token and embedding it in the triggerauth", "ServiceAccount.Namespace", namespace, "ServiceAccount.Name", serviceAccountName)
+		return generateAndAnnotateNewToken(ctx, client, logger, serviceAccountName, namespace, expirySeconds, triggerAuth, acs)
+	}
+}
+
+func generateAndAnnotateNewToken(ctx context.Context, client client.Client, logger logr.Logger, serviceAccountName, namespace string, expirySeconds *int64, triggerAuth triggerAuthType, acs *authentication.AuthClientSet) string {
+	newToken := generateToken(ctx, serviceAccountName, namespace, expirySeconds, acs)
+	// encode and embed the new token in the TriggerAuth
+	encodedToken := base64.StdEncoding.EncodeToString([]byte(newToken))
+	currentAnnotations := triggerAuth.GetAnnotations()
+	currentAnnotations["keda-serviceAccountToken"] = encodedToken
+	triggerAuth.SetAnnotations(currentAnnotations)
+	switch underlyingTriggerAuth := triggerAuth.(type) {
+	case *kedav1alpha1.TriggerAuthentication:
+		err := client.Update(ctx, underlyingTriggerAuth)
+		if err != nil {
+			logger.Error(err, "error trying to update TriggerAuth", "TriggerAuth.Namespace", namespace, "TriggerAuth.Name", underlyingTriggerAuth.Name)
+			return ""
+		}
+		return newToken
+	case *kedav1alpha1.ClusterTriggerAuthentication:
+		err := client.Update(ctx, underlyingTriggerAuth)
+		if err != nil {
+			logger.Error(err, "error trying to update ClusterTriggerAuth", "ClusterTriggerAuth.Name", underlyingTriggerAuth.Name)
+			return ""
+		}
+		return newToken
+	}
+	return ""
+}
+
+func checkTokenValidity(ctx context.Context, logger logr.Logger, encodedToken string, expiry *int64, acs *authentication.AuthClientSet) tokenStatus {
+	byteToken, err := base64.StdEncoding.DecodeString(encodedToken)
+	if err != nil {
+		logger.Error(err, "error trying to base64 decode token", "Token", encodedToken)
+		return tokenStatusInvalid
+	}
+	token := string(byteToken)
+
+	// verify the token
+	tr := &authenticationv1.TokenReview{
+		Spec: authenticationv1.TokenReviewSpec{
+			Token: token,
+		},
+	}
+	result, err := acs.TokenReviewInterface.Create(ctx, tr, metav1.CreateOptions{})
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		// try again
+		logger.Error(err, "retrying to verify token", "Token", token)
+		return tokenStatusUnknown
+	}
+
+	if err != nil {
+		logger.Error(err, "error trying to verify token", "Token", token)
+		return tokenStatusInvalid
+	}
+
+	if result.Status.User.Username == "" || (!result.Status.Authenticated) {
+		logger.Error(fmt.Errorf("error trying to verify token"), "token is invalid", "Token", token)
+		return tokenStatusInvalid
+	}
+
+	// parse the token and check the expiry
+	jwtToken, _ := jwt.Parse(token, nil)
+	// err will always be non-nil since we can't verify the token without the public key, but we already verified using TokenReview API
+	// so only check if the jwt token is nil
+	if jwtToken == nil {
+		logger.Error(err, "jwt token parse resulted in an error", "token", token, "expiry", expiry)
+		return tokenStatusInvalid
+	}
+
+	claims, ok := jwtToken.Claims.(jwt.MapClaims)
+	if !ok {
+		logger.Error(nil, "jwt token claims are invalid", "token", token, "expiry", expiry)
+		return tokenStatusInvalid
+	}
+
+	exp, err := claims.GetExpirationTime()
+	if err != nil {
+		logger.Error(err, "error trying to parse expiry time from jwt token")
+		return tokenStatusInvalid
+	}
+
+	// rotate if more than 50% of the token's expiry has passed
+	expSeconds := exp.Unix()
+	currentTime := time.Now().Unix()
+	timeLeft := expSeconds - currentTime
+
+	if timeLeft < (*expiry / 2) {
+		logger.Info("Rotating token as more than 50% of the token's expiry has passed", "Expires at", exp, "Time left", timeLeft)
+		return tokenStatusInvalid
+	}
+
+	return tokenStatusValid
+}
+
+func generateToken(ctx context.Context, serviceAccountName, namespace string, expiry *int64, acs *authentication.AuthClientSet) string {
+	// create new token and embed it in the secret
+	token, err := acs.CoreV1Interface.ServiceAccounts(namespace).CreateToken(
+		ctx,
+		serviceAccountName,
+		&authenticationv1.TokenRequest{
+			Spec: authenticationv1.TokenRequestSpec{
+				ExpirationSeconds: expiry, // kubernetes prevents token expiry to be less than 10 minutes
+			},
+		},
+		metav1.CreateOptions{},
+	)
+	if err != nil {
+		log.Error(err, "error trying to create token for service account", "ServiceAccount.Name", serviceAccountName)
+		return ""
+	}
+	return token.Status.Token
 }
 
 // resolveServiceAccountAnnotation retrieves the value of a specific annotation

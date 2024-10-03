@@ -33,6 +33,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	mock_v1 "github.com/kedacore/keda/v2/pkg/mock/mock_secretlister"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 )
 
 var (
@@ -621,7 +622,12 @@ func TestResolveAuthRef(t *testing.T) {
 				test.soar,
 				test.podSpec,
 				namespace,
-				secretsLister)
+				&authentication.AuthClientSet{
+					SecretLister:         secretsLister,
+					CoreV1Interface:      nil,
+					TokenReviewInterface: nil,
+				},
+			)
 
 			if err != nil && !test.isError {
 				t.Errorf("Expected success because %s got error, %s", test.comment, err)
