@@ -71,40 +71,22 @@ spec:
         app: temporal
     spec:
       containers:
-        - name: ubuntu
-          image: ubuntu:latest
+        - name: temporal
+          image: temporalio/admin-tools:latest
           command: ["bash", "-c"]
           args:
             - |
-              apt-get update && apt-get install -y curl && \
-              curl -sSf https://temporal.download/cli.sh | sh && \
-              PATH="\$PATH:/root/.temporalio/bin" >> ~/.bashrc && \
-              source ~/.bashrc && \
               temporal server start-dev --namespace v2 --ip 0.0.0.0
           ports:
             - containerPort: 7233
           livenessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -ec
-                - test $(ps -ef | grep -v grep | grep "temporal server" | wc -l) -eq 1
+            tcpSocket:
+              port: 7233
             failureThreshold: 5
             initialDelaySeconds: 10
             periodSeconds: 30
             successThreshold: 1
-            timeoutSeconds: 1
-          readinessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -ec
-                - test $(ps -ef | grep -v grep | grep "temporal server" | wc -l) -eq 1
-            failureThreshold: 5
-            initialDelaySeconds: 10
-            periodSeconds: 30
-            successThreshold: 1
-            timeoutSeconds: 1
+            timeoutSeconds: 2
 `
 
 	scaledObjectTemplate = `
@@ -184,17 +166,17 @@ spec:
   backoffLimit: 4
 `
 
-	jobWorkeFlowTemplate = `
+	jobWorkFlowTemplate = `
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: workerflow
+  name: workflow
   namespace: {{.TestNamespace}}
 spec:
   template:
     spec:
       containers:
-      - name: workerflow
+      - name: workflow
         image: "prajithp/temporal-sample:1.0.0"
         imagePullPolicy: Always
         env:
@@ -207,6 +189,7 @@ spec:
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
+
 			TestNamespace:          testNamespace,
 			TemporalDeploymentName: TemporalDeploymentName,
 			ScaledObjectName:       scaledObjectName,
@@ -236,17 +219,17 @@ func TestTemporalScaler(t *testing.T) {
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
 
-	KubectlApplyWithTemplate(t, data, "jobWorkFlowActivation", jobWorkeFlowTemplate)
+	KubectlApplyWithTemplate(t, data, "jobWorkFlowActivation", jobWorkFlowTemplate)
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 1, 60, 3), "job count in namespace should be 1")
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 180)
-	KubectlDeleteWithTemplate(t, data, "jobWorkFlowActivation", jobWorkeFlowTemplate)
+	KubectlDeleteWithTemplate(t, data, "jobWorkFlowActivation", jobWorkFlowTemplate)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 
-	KubectlApplyWithTemplate(t, data, "jobWorkFlow", jobWorkeFlowTemplate)
+	KubectlApplyWithTemplate(t, data, "jobWorkFlow", jobWorkFlowTemplate)
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 1, 60, 3), "job count in namespace should be 1")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 3),
@@ -262,4 +245,5 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 5),
 		"replica count should be %d after 5 minutes", 0)
+
 }

@@ -33,16 +33,22 @@ type temporalScaler struct {
 }
 
 type temporalMetadata struct {
+	Endpoint                  string   `keda:"name=endpoint,                  order=triggerMetadata;resolvedEnv"`
+	Namespace                 string   `keda:"name=namespace,                 order=triggerMetadata;resolvedEnv, default=default"`
 	ActivationTargetQueueSize int64    `keda:"name=activationTargetQueueSize, order=triggerMetadata, default=0"`
-	Endpoint                  string   `keda:"name=endpoint,       order=triggerMetadata;resolvedEnv"`
-	Namespace                 string   `keda:"name=namespace,      order=triggerMetadata, default=default"`
-	TargetQueueSize           int64    `keda:"name=targetQueueSize, order=triggerMetadata, default=5"`
-	QueueName                 string   `keda:"name=queueName,      order=triggerMetadata"`
-	QueueTypes                []string `keda:"name=queueTypes,      order=triggerMetadata, optional"`
-	BuildIDs                  []string `keda:"name=buildIds,      order=triggerMetadata, optional"`
-	AllActive                 bool     `keda:"name=selectAllActive,      order=triggerMetadata, default=true"`
-	Unversioned               bool     `keda:"name=selectUnversioned,    order=triggerMetadata, default=true"`
-	APIKey                    string   `keda:"name=apiKey,         order=authParams;triggerMetadata, optional"`
+	TargetQueueSize           int64    `keda:"name=targetQueueSize,           order=triggerMetadata, default=5"`
+	QueueName                 string   `keda:"name=queueName,                 order=triggerMetadata;resolvedEnv"`
+	QueueTypes                []string `keda:"name=queueTypes,                order=triggerMetadata, optional"`
+	BuildIDs                  []string `keda:"name=buildIds,                  order=triggerMetadata;resolvedEnv, optional"`
+	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=true"`
+	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=true"`
+	APIKey                    string   `keda:"name=apiKey,                    order=authParams;resolvedEnv;triggerMetadata, optional"`
+
+	UnsafeSsl   bool   `keda:"name=unsafeSsl,                 order=triggerMetadata, optional"`
+	Cert        string `keda:"name=cert,                      order=authParams;resolvedEnv, optional"`
+	Key         string `keda:"name=key,                       order=authParams;resolvedEnv, optional"`
+	KeyPassword string `keda:"name=keyPassword,               order=authParams;resolvedEnv, optional"`
+	CA          string `keda:"name=ca,                        order=authParams;resolvedEnv, optional"`
 
 	triggerIndex int
 }
@@ -53,6 +59,10 @@ func (a *temporalMetadata) Validate() error {
 	}
 	if a.ActivationTargetQueueSize < 0 {
 		return fmt.Errorf("activationTargetQueueSize must be a positive number")
+	}
+
+	if (a.Cert == "") != (a.Key == "") {
+		return fmt.Errorf("both cert and key must be provided when using TLS")
 	}
 
 	return nil
@@ -71,7 +81,7 @@ func NewTemporalScaler(ctx context.Context, config *scalersconfig.ScalerConfig) 
 		return nil, fmt.Errorf("failed to parse Temporal metadata: %w", err)
 	}
 
-	c, err := getTemporalClient(ctx, meta)
+	c, err := getTemporalClient(ctx, meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Temporal client connection: %w", err)
 	}
@@ -177,11 +187,12 @@ func getCombinedBacklogCount(description sdk.TaskQueueDescription) int64 {
 	return count
 }
 
-func getTemporalClient(ctx context.Context, meta *temporalMetadata) (sdk.Client, error) {
+func getTemporalClient(ctx context.Context, meta *temporalMetadata, log logr.Logger) (sdk.Client, error) {
+	logHandler := logr.ToSlogHandler(log)
 	options := sdk.Options{
 		HostPort:  meta.Endpoint,
 		Namespace: meta.Namespace,
-		Logger:    sdklog.NewStructuredLogger(slog.Default()),
+		Logger:    sdklog.NewStructuredLogger(slog.New(logHandler)),
 	}
 
 	dialOptions := []grpc.DialOption{
@@ -209,6 +220,14 @@ func getTemporalClient(ctx context.Context, meta *temporalMetadata) (sdk.Client,
 
 	options.ConnectionOptions = sdk.ConnectionOptions{
 		DialOptions: dialOptions,
+	}
+
+	if meta.Cert != "" && meta.Key != "" {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.CA, meta.UnsafeSsl)
+		if err != nil {
+			return nil, err
+		}
+		options.ConnectionOptions.TLS = tlsConfig
 	}
 
 	return sdk.DialContext(ctx, options)

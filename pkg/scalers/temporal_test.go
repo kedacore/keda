@@ -86,11 +86,12 @@ func TestTemporalGetMetricSpecForScaling(t *testing.T) {
 
 func TestParseTemporalMetadata(t *testing.T) {
 	cases := []struct {
-		name       string
-		metadata   map[string]string
-		wantMeta   *temporalMetadata
-		authParams map[string]string
-		wantErr    bool
+		name        string
+		metadata    map[string]string
+		wantMeta    *temporalMetadata
+		authParams  map[string]string
+		resolvedEnv map[string]string
+		wantErr     bool
 	}{
 		{
 			name: "empty queue name",
@@ -151,7 +152,6 @@ func TestParseTemporalMetadata(t *testing.T) {
 				"endpoint":  "test:7233",
 				"namespace": "default",
 				"queueName": "testxx",
-				"apiKey":    "test01",
 			},
 			wantMeta: &temporalMetadata{
 				Endpoint:                  "test:7233",
@@ -188,6 +188,33 @@ func TestParseTemporalMetadata(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "read config from env",
+			resolvedEnv: map[string]string{
+				"endpoint":  "test:7233",
+				"namespace": "default",
+				"queueName": "testxx",
+			},
+			metadata: map[string]string{
+				"endpointFromEnv":  "endpoint",
+				"namespaceFromEnv": "namespace",
+				"queueNameFromEnv": "queueName",
+			},
+			wantMeta: &temporalMetadata{
+				Endpoint:                  "test:7233",
+				Namespace:                 "default",
+				QueueName:                 "testxx",
+				TargetQueueSize:           5,
+				ActivationTargetQueueSize: 0,
+				AllActive:                 true,
+				Unversioned:               true,
+				APIKey:                    "test01",
+			},
+			authParams: map[string]string{
+				"apiKey": "test01",
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, testCase := range cases {
@@ -196,6 +223,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 			config := &scalersconfig.ScalerConfig{
 				TriggerMetadata: c.metadata,
 				AuthParams:      c.authParams,
+				ResolvedEnv:     c.resolvedEnv,
 			}
 			meta, err := parseTemporalMetadata(config, logger)
 			if c.wantErr == true && err != nil {
