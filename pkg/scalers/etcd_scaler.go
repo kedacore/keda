@@ -45,6 +45,9 @@ type etcdMetadata struct {
 	ActivationValue             float64  `keda:"name=activationValue, order=triggerMetadata, optional, default=0"`
 	WatchProgressNotifyInterval int      `keda:"name=watchProgressNotifyInterval, order=triggerMetadata, optional, default=600"`
 
+	Username string `keda:"name=username,order=authParams;resolvedEnv, optional"`
+	Password string `keda:"name=password,order=authParams;resolvedEnv, optional"`
+
 	// TLS
 	EnableTLS   string `keda:"name=tls, order=authParams, optional, default=disable"`
 	Cert        string `keda:"name=cert, order=authParams, optional"`
@@ -67,6 +70,13 @@ func (meta *etcdMetadata) Validate() error {
 		}
 	} else if meta.EnableTLS != etcdTLSDisable {
 		return fmt.Errorf("incorrect value for TLS given: %s", meta.EnableTLS)
+	}
+
+	if meta.Password != "" && meta.Username == "" {
+		return errors.New("username must be provided with password")
+	}
+	if meta.Username != "" && meta.Password == "" {
+		return errors.New("password must be provided with username")
 	}
 
 	return nil
@@ -121,6 +131,8 @@ func getEtcdClients(metadata *etcdMetadata) (*clientv3.Client, error) {
 		Endpoints:   metadata.Endpoints,
 		DialTimeout: 5 * time.Second,
 		TLS:         tlsConfig,
+		Username:    metadata.Username,
+		Password:    metadata.Password,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to etcd server: %w", err)
