@@ -30,7 +30,7 @@ type ibmmqMetadata struct {
 	QueueName            []string `keda:"name=queueName;queueNames, order=triggerMetadata"`
 	QueueDepth           int64    `keda:"name=queueDepth,           order=triggerMetadata, default=20"`
 	ActivationQueueDepth int64    `keda:"name=activationQueueDepth, order=triggerMetadata, default=0"`
-	Operation            string   `keda:"name=operation,            order=triggerMetadata, default=max"`
+	Operation            string   `keda:"name=operation,            order=triggerMetadata, enum=max;avg;sum, default=max"`
 	Username             string   `keda:"name=username,             order=authParams;resolvedEnv;triggerMetadata"`
 	Password             string   `keda:"name=password,             order=authParams;resolvedEnv;triggerMetadata"`
 	UnsafeSsl            bool     `keda:"name=unsafeSsl,            order=triggerMetadata, default=false"`
@@ -191,7 +191,7 @@ func (s *ibmmqScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 	case maxOperation:
 		return maxDepth(depths), nil
 	default:
-		return 0, fmt.Errorf("operation mode %s must be one of %s, %s, %s", s.metadata.Operation, sumOperation, avgOperation, maxOperation)
+		return 0, nil
 	}
 }
 
