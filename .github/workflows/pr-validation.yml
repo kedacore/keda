@@ -14,9 +14,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: ARM64
+          - runner: oracle-aarch64-4cpu-16gb
             name: arm64
-          - runner: ubuntu-latest
+          - runner: equinix-4cpu-16gb
             name: amd64
     steps:
       - name: Check out code
@@ -81,9 +81,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: ARM64
+          - runner: oracle-aarch64-4cpu-16gb
             name: arm64
-          - runner: ubuntu-latest
+          - runner: equinix-4cpu-16gb
             name: amd64
     steps:
       - name: Check out code
@@ -112,9 +112,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: ARM64
+          - runner: oracle-aarch64-4cpu-16gb
             name: arm64
-          - runner: ubuntu-latest
+          - runner: equinix-4cpu-16gb
             name: amd64
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
@@ -151,7 +151,7 @@ jobs:
   trivy-scan:
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
-      runs-on: "ubuntu-latest"
+      runs-on: equinix-4cpu-16gb
       scan-type: "fs"
       format: "table"
       output: ""
