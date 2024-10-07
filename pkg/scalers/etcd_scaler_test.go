@@ -69,6 +69,12 @@ var parseEtcdAuthParamsTestDataset = []parseEtcdAuthParamsTestData{
 	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert"}, true, etcdTLSDisable},
 	// failure, TLS invalid
 	{map[string]string{"tls": "yes", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, etcdTLSDisable},
+	// success, username and password
+	{map[string]string{"username": "root", "password": "admin"}, false, etcdTLSDisable},
+	// failure, missing password
+	{map[string]string{"username": "root"}, true, etcdTLSDisable},
+	// failure, missing username
+	{map[string]string{"password": "admin"}, true, etcdTLSDisable},
 }
 
 var etcdMetricIdentifiers = []etcdMetricIdentifier{
