@@ -8,8 +8,9 @@ env:
 
 jobs:
   triage:
-    runs-on: ubuntu-latest
+    runs-on: equinix-2cpu-8gb
     name: Comment evaluate
+    container: ghcr.io/kedacore/keda-tools:1.22.5
     outputs:
       run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
       pr_num: ${{ steps.parser.outputs.pr_num }}
@@ -66,7 +67,7 @@ jobs:
 
   build-test-images:
     needs: triage
-    runs-on: ubuntu-latest
+    runs-on: equinix-4cpu-16gb
     name: Build images
     container: ghcr.io/kedacore/keda-tools:1.22.5
     if: needs.triage.outputs.run-e2e == 'true'
