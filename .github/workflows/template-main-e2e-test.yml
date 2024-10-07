@@ -6,7 +6,7 @@ on:
 jobs:
   e2e-tests:
     name: Run e2e test
-    runs-on: ARM64
+    runs-on: oracle-aarch64-4cpu-16gb
     # keda-tools is built from github.com/test-tools/tools/Dockerfile
     container: ghcr.io/kedacore/keda-tools:1.22.5
     concurrency: e2e-tests
@@ -33,7 +33,7 @@ jobs:
           AWS_RUN_IDENTITY_TESTS: true
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           GCP_RUN_IDENTITY_TESTS: true
-          ENABLE_OPENTELEMETRY : true
+          ENABLE_OPENTELEMETRY: true
         run: make e2e-test
 
       - name: Delete all e2e related namespaces
