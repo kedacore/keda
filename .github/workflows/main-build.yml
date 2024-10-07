@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     name: build
-    runs-on: ARM64
+    runs-on: equinix-4cpu-16gb
     permissions:
       contents: read
       packages: write
@@ -29,13 +29,13 @@ jobs:
           echo "build_cache=$(go env GOCACHE)" >> $GITHUB_OUTPUT
 
       - name: Go modules cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@2cdf405574d6ef1f33a1d12acccd3ae82f47b3f2 # v4.1.0
         with:
           path: ${{ steps.go-paths.outputs.mod_cache }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Go build cache
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@2cdf405574d6ef1f33a1d12acccd3ae82f47b3f2 # v4.1.0
         with:
           path: ${{ steps.go-paths.outputs.build_cache }}
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
@@ -91,9 +91,9 @@ jobs:
     needs: build
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
-      runs-on: 'ubuntu-latest'
-      scan-type: 'fs'
-      format: 'sarif'
+      runs-on: equinix-4cpu-16gb
+      scan-type: "fs"
+      format: "sarif"
       exit-code: 0
       publish: true
 
@@ -101,13 +101,13 @@ jobs:
     needs: build
     strategy:
       matrix:
-        runner: [ARM64, ubuntu-latest]
+        runner: [oracle-aarch64-4cpu-16gb, equinix-4cpu-16gb]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
-      scan-type: 'image'
+      scan-type: "image"
       image-ref: ghcr.io/kedacore/keda-metrics-apiserver:main
-      format: 'sarif'
+      format: "sarif"
       exit-code: 0
       publish: true
 
@@ -115,12 +115,12 @@ jobs:
     needs: build
     strategy:
       matrix:
-        runner: [ARM64, ubuntu-latest]
+        runner: [oracle-aarch64-4cpu-16gb, equinix-4cpu-16gb]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
-      scan-type: 'image'
+      scan-type: "image"
       image-ref: ghcr.io/kedacore/keda:main
-      format: 'sarif'
+      format: "sarif"
       exit-code: 0
       publish: true
