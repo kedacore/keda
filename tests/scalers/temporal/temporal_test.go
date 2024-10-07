@@ -29,6 +29,8 @@ var (
 )
 
 type templateData struct {
+	WorkFlowCommand        string
+	WorkFlowIterations     int
 	DeploymentName         string
 	TestNamespace          string
 	TemporalDeploymentName string
@@ -111,7 +113,7 @@ spec:
   - type: temporal
     metadata:
       namespace: default
-      queueName: hello-task-queue
+      queueName: "workflow_with_single_noop_activity:test"
       targetQueueSize: "2"
       activationTargetQueueSize: "3"
       endpoint: {{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233
@@ -136,34 +138,17 @@ spec:
         app: {{.DeploymentName}}
     spec:
       containers:
-      - name: nginx
-        image: nginxinc/nginx-unprivileged
-        ports:
-        - containerPort: 80
-`
-
-	jobWorkerTemplate = `
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: worker
-  namespace: {{.TestNamespace}}
-spec:
-  template:
-    spec:
-      containers:
       - name: worker
-        image: "prajithp/temporal-sample:1.0.0"
+        image: "temporaliotest/omes:go-ci-latest"
         imagePullPolicy: Always
-        env:
-        - name: TEMPORAL_ADDR
-          value: {{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233
-        - name: TEMPORAL_NAMESPACE
-          value: default
-        - name: MODE
-          value: WORKER
-      restartPolicy: OnFailure
-  backoffLimit: 4
+        command: ["/app/temporal-omes"]
+        args:
+        - "run-worker"
+        - "--language=go"
+        - "--server-address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
+        - "--run-id=test"
+        - "--scenario=workflow_with_single_noop_activity"
+        - "--dir-name=prepared"
 `
 
 	jobWorkFlowTemplate = `
@@ -177,19 +162,26 @@ spec:
     spec:
       containers:
       - name: workflow
-        image: "prajithp/temporal-sample:1.0.0"
+        image: "temporaliotest/omes:go-ci-latest"
         imagePullPolicy: Always
-        env:
-        - name: TEMPORAL_ADDR
-          value: {{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233
+        command: ["/app/temporal-omes"]
+        args:
+        - "{{.WorkFlowCommand}}"
+        {{- if eq .WorkFlowCommand "run-scenario"}}
+        - "--iterations={{.WorkFlowIterations}}"
+        {{- end}}
+        - "--scenario=workflow_with_single_noop_activity"
+        - "--run-id=test"
+        - "--server-address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
       restartPolicy: OnFailure
-  backoffLimit: 4
+  backoffLimit: 10
 `
 )
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-
+			WorkFlowCommand:        "run-scenario",
+			WorkFlowIterations:     2,
 			TestNamespace:          testNamespace,
 			TemporalDeploymentName: TemporalDeploymentName,
 			ScaledObjectName:       scaledObjectName,
@@ -224,11 +216,16 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 180)
 	KubectlDeleteWithTemplate(t, data, "jobWorkFlowActivation", jobWorkFlowTemplate)
+	data.WorkFlowCommand = "cleanup-scenario"
+	KubectlApplyWithTemplate(t, data, "jobWorkflowCleanup", jobWorkFlowTemplate)
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, 1, 60, 3), "job count in namespace should be 1")
+	KubectlDeleteWithTemplate(t, data, "jobWorkflowCleanup", jobWorkFlowTemplate)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 
+	data.WorkFlowIterations = 3
 	KubectlApplyWithTemplate(t, data, "jobWorkFlow", jobWorkFlowTemplate)
 	assert.True(t, WaitForJobCount(t, kc, testNamespace, 1, 60, 3), "job count in namespace should be 1")
 
@@ -239,11 +236,6 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale in ---")
 
-	KubectlApplyWithTemplate(t, data, "jobWorker", jobWorkerTemplate)
-	// workflow is already waiting for response from worker
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, 2, 60, 3), "job count in namespace should be 2")
-
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 5),
 		"replica count should be %d after 5 minutes", 0)
-
 }
