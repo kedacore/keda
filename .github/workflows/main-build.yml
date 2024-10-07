@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     name: build
-    runs-on: oracle-aarch64-4cpu-16gb
+    runs-on: equinix-4cpu-16gb
     permissions:
       contents: read
       packages: write
