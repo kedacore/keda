@@ -6,7 +6,7 @@ on:
 jobs:
   validate:
     name: Validate
-    runs-on: ubuntu-latest
+    runs-on: equinix-2cpu-8gb
     container: kedacore/build-tools:v1
     steps:
       - name: Check out code
