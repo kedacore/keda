@@ -2,11 +2,11 @@ name: release-build
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 jobs:
   build:
     name: Push Release
-    runs-on: ARM64
+    runs-on: oracle-aarch64-4cpu-16gb
     permissions:
       contents: write
       packages: write
