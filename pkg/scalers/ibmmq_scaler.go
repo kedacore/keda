@@ -30,6 +30,7 @@ type ibmmqMetadata struct {
 	QueueName            []string `keda:"name=queueName;queueNames, order=triggerMetadata"`
 	QueueDepth           int64    `keda:"name=queueDepth,           order=triggerMetadata, default=20"`
 	ActivationQueueDepth int64    `keda:"name=activationQueueDepth, order=triggerMetadata, default=0"`
+	Operation            string   `keda:"name=operation,            order=triggerMetadata, default=max"`
 	Username             string   `keda:"name=username,             order=authParams;resolvedEnv;triggerMetadata"`
 	Password             string   `keda:"name=password,             order=authParams;resolvedEnv;triggerMetadata"`
 	UnsafeSsl            bool     `keda:"name=unsafeSsl,            order=triggerMetadata, default=false"`
@@ -129,7 +130,7 @@ func parseIBMMQMetadata(config *scalersconfig.ScalerConfig) (ibmmqMetadata, erro
 }
 
 func (s *ibmmqScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
-	maxDepth := int64(0)
+	depths := make([]int64, 0, len(s.metadata.QueueName))
 	url := s.metadata.Host
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
@@ -179,12 +180,47 @@ func (s *ibmmqScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 		}
 
 		depth := int64(response.CommandResponse[0].Parameters.Curdepth)
-		if depth > maxDepth {
-			maxDepth = depth
-		}
+		depths = append(depths, depth)
 	}
 
-	return maxDepth, nil
+	switch s.metadata.Operation {
+	case sumOperation:
+		return sumDepths(depths), nil
+	case avgOperation:
+		return avgDepths(depths), nil
+	case maxOperation:
+		return maxDepth(depths), nil
+	default:
+		return 0, fmt.Errorf("operation mode %s must be one of %s, %s, %s", s.metadata.Operation, sumOperation, avgOperation, maxOperation)
+	}
+}
+
+func sumDepths(depths []int64) int64 {
+	var sum int64
+	for _, depth := range depths {
+		sum += depth
+	}
+	return sum
+}
+
+func avgDepths(depths []int64) int64 {
+	if len(depths) == 0 {
+		return 0
+	}
+	return sumDepths(depths) / int64(len(depths))
+}
+
+func maxDepth(depths []int64) int64 {
+	if len(depths) == 0 {
+		return 0
+	}
+	max := depths[0]
+	for _, depth := range depths[1:] {
+		if depth > max {
+			max = depth
+		}
+	}
+	return max
 }
 
 func (s *ibmmqScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
