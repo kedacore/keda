@@ -57,6 +57,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Replace wildcards in RBAC objects with explicit resources and verbs ([#6129](https://github.com/kedacore/keda/pull/6129))
 - **CloudEventSource**: Introduce ClusterCloudEventSource ([#3533](https://github.com/kedacore/keda/issues/3533))
 - **CloudEventSource**: Provide ClusterCloudEventSource around the management of ScaledJobs resources ([#3523](https://github.com/kedacore/keda/issues/3523))
 - **CloudEventSource**: Provide ClusterCloudEventSource around the management of TriggerAuthentication/ClusterTriggerAuthentication resources ([#3524](https://github.com/kedacore/keda/issues/3524))

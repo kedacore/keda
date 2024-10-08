@@ -57,7 +57,7 @@ func init() {
 	clusterTriggerAuthPromMetricsLock = &sync.Mutex{}
 }
 
-// +kubebuilder:rbac:groups=keda.sh,resources=clustertriggerauthentications;clustertriggerauthentications/status,verbs="*"
+// +kubebuilder:rbac:groups=keda.sh,resources=clustertriggerauthentications;clustertriggerauthentications/status,verbs=get;list;watch;update;patch
 
 // Reconcile performs reconciliation on the identified TriggerAuthentication resource based on the request information passed, returns the result and an error (if any).
 func (r *ClusterTriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
