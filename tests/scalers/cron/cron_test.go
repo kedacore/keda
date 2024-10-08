@@ -5,7 +5,6 @@ package cron_test
 
 import (
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
@@ -23,10 +22,6 @@ var (
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-
-	now   = time.Now().Local()
-	start = (now.Minute() + 1) % 60
-	end   = (start + 1) % 60
 )
 
 type templateData struct {
@@ -82,7 +77,7 @@ spec:
   triggers:
   - type: cron
     metadata:
-      timezone: Etc/UTC
+      timezone: UTC
       start: {{.StartMin}} * * * *
       end: {{.EndMin}} * * * *
       desiredReplicas: '4'
@@ -92,15 +87,20 @@ spec:
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
-
-	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+	CreateKubernetesResources(t, kc, testNamespace, data, []Template{
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+	})
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
-		"replica count should be 1 after 1 minute")
+		"replica count should be 1 within 1 minute")
+
+	t.Log("--- installing ScaledObject ---")
+	CreateKubernetesResources(t, kc, testNamespace, data, []Template{
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	})
 
 	// test scaling
 	testScaleOut(t, kc)
@@ -111,12 +111,16 @@ func TestScaler(t *testing.T) {
 }
 
 func getTemplateData() (templateData, []Template) {
+	now := time.Now().UTC()
+	start := (now.Minute()) % 60
+	end := (start + 1) % 60
+
 	return templateData{
 			TestNamespace:    testNamespace,
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
-			StartMin:         strconv.Itoa(start),
-			EndMin:           strconv.Itoa(end),
+			StartMin:         fmt.Sprintf("%d", start),
+			EndMin:           fmt.Sprintf("%d", end),
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
@@ -126,11 +130,11 @@ func getTemplateData() (templateData, []Template) {
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 2),
-		"replica count should be 4 after 1 minute")
+		"replica count should be 4 within 1 minute")
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
-		"replica count should be 1 after 1 minute")
+		"replica count should be 1 within 1 minute")
 }
