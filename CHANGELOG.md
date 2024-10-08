@@ -69,6 +69,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
+- **General**: Prevent multiple ScaledObjects managing one HPA ([#6130](https://github.com/kedacore/keda/issues/6130))
 - **AWS CloudWatch Scaler**: Add support for ignoreNullValues ([#5352](https://github.com/kedacore/keda/issues/5352))
 - **GCP Scalers**: Added custom time horizon in GCP scalers ([#5778](https://github.com/kedacore/keda/issues/5778))
 - **GitHub Scaler**: Fixed pagination, fetching repository list ([#5738](https://github.com/kedacore/keda/issues/5738))

@@ -277,6 +277,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error 
 		return err
 	}
 
+	incomingSoHpaName := getHpaName(*incomingSo)
 	for _, so := range soList.Items {
 		if so.Name == incomingSo.Name {
 			continue
@@ -295,6 +296,13 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error 
 			err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the ScaledObject '%s'", so.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), so.Name)
 			scaledobjectlog.Error(err, "validation error")
 			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object")
+			return err
+		}
+
+		if getHpaName(so) == incomingSoHpaName {
+			err = fmt.Errorf("the HPA '%s' is already managed by the ScaledObject '%s'", so.Spec.Advanced.HorizontalPodAutoscalerConfig.Name, so.Name)
+			scaledobjectlog.Error(err, "validation error")
+			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object-hpa")
 			return err
 		}
 	}
@@ -543,4 +551,12 @@ func isContainerResourceLimitSet(ctx context.Context, namespace string, triggerT
 		Error(nil, "no container limit range found in namespace")
 
 	return false
+}
+
+func getHpaName(so ScaledObject) string {
+	if so.Spec.Advanced == nil || so.Spec.Advanced.HorizontalPodAutoscalerConfig.Name == "" {
+		return fmt.Sprintf("keda-hpa-%s", so.Name)
+	}
+
+	return so.Spec.Advanced.HorizontalPodAutoscalerConfig.Name
 }
