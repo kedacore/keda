@@ -80,7 +80,7 @@ spec:
   selector:
     matchLabels:
       app: nginx
-  replicas: 1 
+  replicas: 1
   template:
     metadata:
       labels:
@@ -112,9 +112,9 @@ spec:
   - type: splunk-observability
     metricType: Value
     metadata:
-      query: "data('fdse-1989-tenable-test-metric').publish()"
+      query: "data('keda-test-metric').publish()"
       duration: "10"
-      targetValue: "250" 
+      targetValue: "250"
       activationTargetValue: "1.1"
       queryAggregator: "max" # 'min', 'max', or 'avg'
     authenticationRef:
@@ -123,6 +123,9 @@ spec:
 )
 
 func TestSplunkObservabilityScaler(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	defer cancel()
+
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 	t.Cleanup(func() {
@@ -137,33 +140,33 @@ func TestSplunkObservabilityScaler(t *testing.T) {
 		"replica count should be %d after 2 minutes", minReplicaCount)
 
 	// test scaling
-	testScaleOut(t, kc, testNamespace)
-	testScaleIn(t, kc)
+	testScaleOut(ctx, t, kc, testNamespace)
+	testScaleIn(ctx, t, kc)
 }
 
-func getPodCount(kc *kubernetes.Clientset, namespace string) int {
-	pods, err := kc.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+func getPodCount(ctx context.Context, kc *kubernetes.Clientset, namespace string) int {
+	pods, err := kc.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		panic(err.Error())
 	}
 	return len(pods.Items)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, namespace string) {
+func testScaleOut(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, namespace string) {
 	t.Log("--- testing scale out ---")
 	t.Log("waiting for 3 minutes")
 	time.Sleep(time.Duration(180) * time.Second)
 
-	assert.True(t, getPodCount(kc, namespace) > minReplicaCount, "number of pods in deployment should be more than %d after 3 minutes", minReplicaCount)
+	assert.True(t, getPodCount(ctx, kc, namespace) > minReplicaCount, "number of pods in deployment should be more than %d after 3 minutes", minReplicaCount)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+func testScaleIn(ctx context.Context, t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 
 	t.Log("waiting for 10 minutes")
 	time.Sleep(time.Duration(600) * time.Second)
 
-	assert.True(t, getPodCount(kc, testNamespace) > minReplicaCount, "number of pods in deployment should be less than %d after 10 minutes", maxReplicaCount)
+	assert.True(t, getPodCount(ctx, kc, testNamespace) > minReplicaCount, "number of pods in deployment should be less than %d after 10 minutes", maxReplicaCount)
 }
 
 func getTemplateData() (templateData, []Template) {

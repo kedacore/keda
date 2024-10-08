@@ -46,18 +46,15 @@ func parseSplunkObservabilityMetadata(config *scalersconfig.ScalerConfig) (*splu
 }
 
 func newSplunkO11yConnection(meta *splunkObservabilityMetadata, logger logr.Logger) (*signalflow.Client, error) {
-	logger.Info(fmt.Sprintf("meta: %+v\n", meta))
-
 	if meta.Realm == "" || meta.AccessToken == "" {
-		return nil, fmt.Errorf("error: Could not find splunk access token or ream")
+		return nil, fmt.Errorf("error: Could not find splunk access token or realm")
 	}
 
 	apiClient, err := signalflow.NewClient(
 		signalflow.StreamURLForRealm(meta.Realm),
 		signalflow.AccessToken(meta.AccessToken),
 		signalflow.OnError(func(err error) {
-			errorMsg := fmt.Sprintf("error in SignalFlow client: %v\n", err)
-			logger.Info(errorMsg)
+			logger.Error(err, "error in SignalFlow client")
 		}))
 	if err != nil {
 		return nil, fmt.Errorf("error creating SignalFlow client: %w", err)
@@ -91,7 +88,7 @@ func (s *splunkObservabilityScaler) getQueryResult() (float64, error) {
 		Program: s.metadata.Query,
 	})
 	if err != nil {
-		return -1, fmt.Errorf("error: could not execute signalflow query: %w", err)
+		return -1, fmt.Errorf("could not execute signalflow query: %w", err)
 	}
 
 	s.logger.Info("Started MTS stream.")
@@ -110,13 +107,13 @@ func (s *splunkObservabilityScaler) getQueryResult() (float64, error) {
 	s.logger.Info("Now iterating over results.")
 	for msg := range comp.Data() {
 		if len(msg.Payloads) == 0 {
-			s.logger.Info("No data retreived.")
+			s.logger.Info("No data retrieved.")
 			continue
 		}
 		for _, pl := range msg.Payloads {
 			value, ok := pl.Value().(float64)
 			if !ok {
-				return -1, fmt.Errorf("error: could not convert Splunk Observability metric value to float64")
+				return -1, fmt.Errorf("could not convert Splunk Observability metric value to float64")
 			}
 			s.logger.Info(fmt.Sprintf("Encountering value %.4f\n", value))
 			max = math.Max(max, value)
