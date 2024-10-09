@@ -18,7 +18,6 @@ limitations under the License.
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -276,7 +275,6 @@ func (s *azureEventHubScaler) GetUnprocessedEventCountInPartition(ctx context.Co
 	checkpoint, err = azure.GetCheckpointFromBlobStorage(ctx, s.blobStorageClient, s.metadata.eventHubInfo, partitionInfo.PartitionID)
 	if err != nil {
 		// if blob not found return the total partition event count
-		err = errors.Unwrap(err)
 		if bloberror.HasCode(err, bloberror.BlobNotFound, bloberror.ContainerNotFound) {
 			s.logger.V(1).Error(err, fmt.Sprintf("Blob container : %s not found to use checkpoint strategy, getting unprocessed event count without checkpoint", s.metadata.eventHubInfo.BlobContainer))
 			return GetUnprocessedEventCountWithoutCheckpoint(partitionInfo), azure.Checkpoint{}, nil
