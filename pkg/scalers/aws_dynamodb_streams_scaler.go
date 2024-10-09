@@ -169,7 +169,7 @@ func getDynamoDBStreamsArn(ctx context.Context, db dynamodb.DescribeTableAPIClie
 }
 
 func (s *awsDynamoDBStreamsScaler) Close(_ context.Context) error {
-	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
+	awsutils.ClearAwsConfig(s.metadata.awsRegion, s.metadata.awsAuthorization)
 	return nil
 }
 

@@ -143,7 +143,7 @@ func createKinesisClient(ctx context.Context, metadata *awsKinesisStreamMetadata
 }
 
 func (s *awsKinesisStreamScaler) Close(context.Context) error {
-	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
+	awsutils.ClearAwsConfig(s.metadata.awsRegion, s.metadata.awsAuthorization)
 	return nil
 }
 
