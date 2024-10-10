@@ -135,7 +135,8 @@ spec:
   - type: cpu
     metadata:
       type: Utilization
-      value: "50"
+      value: "10"
+			activationValue: "5"
   - type: kubernetes-workload
     metadata:
       podSelector: 'pod={{.WorkloadDeploymentName}}'
@@ -245,9 +246,18 @@ func scaleToZero(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicas, 60, 1),
 		"Replica count should be %v", maxReplicas)
 
-	// scale external trigger in (expect replicas back to 0 -- external trigger not active)
-	KubernetesScaleDeployment(t, kc, workloadDeploymentName, int64(minReplicas), testNamespace)
+	// activate cpu trigger
+	KubectlReplaceWithTemplate(t, data, "triggerJobTemplate", triggerJob)
 
+	// replica count should not change from maxReplicas
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, maxReplicas, 60)
+
+	// scale external trigger in (expect replicas to stay at maxReplicas -- external trigger not active)
+	KubernetesScaleDeployment(t, kc, workloadDeploymentName, int64(minReplicas), testNamespace)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, maxReplicas, 60)
+
+	// remove trigger job to deactivate cpu trigger
+	KubectlDeleteWithTemplate(t, data, "triggerJobTemplate", triggerJob)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicas, 60, 1),
 		"Replica count should be %v", minReplicas)
 }

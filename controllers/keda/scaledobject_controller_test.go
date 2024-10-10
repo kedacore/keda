@@ -790,19 +790,56 @@ var _ = Describe("ScaledObjectController", func() {
 		Eventually(func() error {
 			return k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
 		}).ShouldNot(HaveOccurred())
+
+		averageUtilization := int32(100)
 		hpa.Status.CurrentMetrics = []autoscalingv2.MetricStatus{
 			{
 				Type: autoscalingv2.ResourceMetricSourceType,
 				Resource: &autoscalingv2.ResourceMetricStatus{
 					Name: corev1.ResourceCPU,
 					Current: autoscalingv2.MetricValueStatus{
-						Value: resource.NewQuantity(int64(100), resource.DecimalSI),
+						Value:              resource.NewQuantity(int64(100), resource.DecimalSI),
+						AverageUtilization: &averageUtilization,
 					},
 				},
 			},
 		}
 		Eventually(func() error {
 			return k8sClient.Status().Update(ctx, hpa)
+		}).ShouldNot(HaveOccurred())
+
+		// create pod metrics
+		//podMetrics := &metrics.PodMetrics{
+		//	TypeMeta: metav1.TypeMeta{
+		//		Kind:       "PodMetrics",
+		//		APIVersion: "metrics.k8s.io/v1beta1",
+		//	},
+		//	ObjectMeta: metav1.ObjectMeta{
+		//		Name:      deploymentName,
+		//		Namespace: "default",
+		//		Labels: map[string]string{
+		//			"app": deploymentName,
+		//		},
+		//	},
+		//	Containers: []metrics.ContainerMetrics{
+		//		{
+		//			Name: deploymentName,
+		//			Usage: corev1.ResourceList{
+		//				corev1.ResourceCPU: resource.MustParse("100m"),
+		//			},
+		//		},
+		//	},
+		//}
+		//Eventually(func() error { return k8sClient.Create(ctx, podMetrics) }).ShouldNot(HaveOccurred())
+
+		so.Status.ScaleTargetGVKR = &kedav1alpha1.GroupVersionKindResource{
+			Group:    "apps",
+			Version:  "v1",
+			Resource: "deployments",
+			Kind:     "Deployment",
+		}
+		Eventually(func() error {
+			return k8sClient.Status().Update(ctx, so)
 		}).ShouldNot(HaveOccurred())
 
 		// hpa metrics will only left CPU metric
@@ -1463,6 +1500,11 @@ func generateDeployment(name string) *appsv1.Deployment {
 						{
 							Name:  name,
 							Image: name,
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU: resource.MustParse("100m"),
+								},
+							},
 						},
 					},
 				},

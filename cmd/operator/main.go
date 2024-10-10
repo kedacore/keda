@@ -30,6 +30,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/tools/cache"
+	metricsv1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -59,7 +60,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
+	utilruntime.Must(metricsv1beta1.AddToScheme(scheme))
 	utilruntime.Must(kedav1alpha1.AddToScheme(scheme))
 	utilruntime.Must(eventingv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
@@ -217,7 +218,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, eventRecorder, secretInformer.Lister())
+	podMetricsClient, err := k8s.InitPodMetricsClient(mgr)
+	if err != nil {
+		setupLog.Error(err, "unable to init metrics client")
+		os.Exit(1)
+	}
+
+	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, podMetricsClient, mgr.GetScheme(), globalHTTPTimeout, eventRecorder, secretInformer.Lister())
 	eventEmitter := eventemitter.NewEventEmitter(mgr.GetClient(), eventRecorder, k8sClusterName, secretInformer.Lister())
 
 	if err = (&kedacontrollers.ScaledObjectReconciler{
