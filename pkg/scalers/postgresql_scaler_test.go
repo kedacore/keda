@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
-
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
+	v2 "k8s.io/api/autoscaling/v2"
 )
 
 type parsePostgreSQLMetadataTestData struct {
@@ -46,11 +46,23 @@ var postgreSQLMetricIdentifiers = []postgreSQLMetricIdentifier{
 
 func TestPosgresSQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range postgreSQLMetricIdentifiers {
-		meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authParam, TriggerIndex: testData.scaleIndex})
+		config := &scalersconfig.ScalerConfig{
+			ResolvedEnv:     testData.resolvedEnv,
+			TriggerMetadata: testData.metadataTestData.metadata,
+			AuthParams:      testData.authParam,
+			TriggerIndex:    testData.scaleIndex,
+		}
+		meta, _, err := parsePostgreSQLMetadata(config)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockPostgresSQLScaler := postgreSQLScaler{"", meta, nil, kedav1alpha1.AuthPodIdentity{}, logr.Discard()}
+		mockPostgresSQLScaler := postgreSQLScaler{
+			metricType:  v2.AverageValueMetricType,
+			metadata:    meta,
+			connection:  nil,
+			podIdentity: kedav1alpha1.AuthPodIdentity{},
+			logger:      logr.Discard(),
+		}
 
 		metricSpec := mockPostgresSQLScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
@@ -80,13 +92,19 @@ var testPostgreSQLConnectionstring = []postgreSQLConnectionStringTestData{
 
 func TestPosgresSQLConnectionStringGeneration(t *testing.T) {
 	for _, testData := range testPostgreSQLConnectionstring {
-		meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParam, TriggerIndex: 0})
+		config := &scalersconfig.ScalerConfig{
+			ResolvedEnv:     testData.resolvedEnv,
+			TriggerMetadata: testData.metadata,
+			AuthParams:      testData.authParam,
+			TriggerIndex:    0,
+		}
+		meta, _, err := parsePostgreSQLMetadata(config)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 
-		if meta.connection != testData.connectionString {
-			t.Errorf("Error generating connectionString, expected '%s' and get '%s'", testData.connectionString, meta.connection)
+		if meta.Connection != testData.connectionString {
+			t.Errorf("Error generating connectionString, expected '%s' and got '%s'", testData.connectionString, meta.Connection)
 		}
 	}
 }
@@ -99,13 +117,23 @@ var testPodIdentityAzureWorkloadPostgreSQLConnectionstring = []postgreSQLConnect
 func TestPodIdentityAzureWorkloadPosgresSQLConnectionStringGeneration(t *testing.T) {
 	identityID := "IDENTITY_ID_CORRESPONDING_TO_USERNAME_FIELD"
 	for _, testData := range testPodIdentityAzureWorkloadPostgreSQLConnectionstring {
-		meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, IdentityID: &identityID}, AuthParams: testData.authParam, TriggerIndex: 0})
+		config := &scalersconfig.ScalerConfig{
+			ResolvedEnv:     testData.resolvedEnv,
+			TriggerMetadata: testData.metadata,
+			AuthParams:      testData.authParam,
+			TriggerIndex:    0,
+			PodIdentity: kedav1alpha1.AuthPodIdentity{
+				Provider:   kedav1alpha1.PodIdentityProviderAzureWorkload,
+				IdentityID: &identityID,
+			},
+		}
+		meta, _, err := parsePostgreSQLMetadata(config)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 
-		if meta.connection != testData.connectionString {
-			t.Errorf("Error generating connectionString, expected '%s' and get '%s'", testData.connectionString, meta.connection)
+		if meta.Connection != testData.connectionString {
+			t.Errorf("Error generating connectionString, expected '%s' and got '%s'", testData.connectionString, meta.Connection)
 		}
 	}
 }
@@ -155,7 +183,12 @@ var testPostgresMetadata = []parsePostgresMetadataTestData{
 
 func TestParsePosgresSQLMetadata(t *testing.T) {
 	for _, testData := range testPostgresMetadata {
-		_, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		config := &scalersconfig.ScalerConfig{
+			ResolvedEnv:     testData.resolvedEnv,
+			TriggerMetadata: testData.metadata,
+			AuthParams:      testData.authParams,
+		}
+		_, _, err := parsePostgreSQLMetadata(config)
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error", err)
 		}
