@@ -21,14 +21,18 @@ type cpuMemoryScaler struct {
 }
 
 type cpuMemoryMetadata struct {
-	MetricType         string `keda:"name=metricType,order=triggerMetadata,enum=Utilization;AverageValue"`
-	Value              string `keda:"name=value,order=triggerMetadata"`
-	ContainerName      string `keda:"name=containerName,order=triggerMetadata,optional"`
+	Type               string `keda:"name=type,          order=triggerMetadata, enum=Utilization;AverageValue, deprecated=use metricType instead, optional"`
+	Value              string `keda:"name=value,         order=triggerMetadata"`
+	ContainerName      string `keda:"name=containerName, order=triggerMetadata, optional"`
 	AverageValue       *resource.Quantity
 	AverageUtilization *int32
+	MetricType         v2.MetricTargetType
 }
 
 func (m *cpuMemoryMetadata) Validate() error {
+	if m.MetricType == "" {
+		return fmt.Errorf("metricType must be defined")
+	}
 	return nil
 }
 
@@ -55,13 +59,6 @@ func parseResourceMetadata(config *scalersconfig.ScalerConfig) (cpuMemoryMetadat
 		return meta, err
 	}
 
-	if config.MetricType != "" {
-		if meta.MetricType != "" {
-			return meta, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
-		}
-		meta.MetricType = string(config.MetricType)
-	}
-
 	switch v2.MetricTargetType(meta.MetricType) {
 	case v2.AverageValueMetricType:
 		averageValueQuantity := resource.MustParse(meta.Value)
@@ -72,6 +69,8 @@ func parseResourceMetadata(config *scalersconfig.ScalerConfig) (cpuMemoryMetadat
 			return meta, err
 		}
 		meta.AverageUtilization = utilizationNum
+	default:
+		return meta, fmt.Errorf("unknown metricType: %s", meta.MetricType)
 	}
 
 	return meta, nil
