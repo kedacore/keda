@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	v2 "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/api/core/v1"
@@ -13,12 +12,11 @@ import (
 )
 
 type parseCPUMemoryMetadataTestData struct {
-	metricType v2.MetricTargetType
+	metricType string
 	metadata   map[string]string
 	isError    bool
 }
 
-// A complete valid metadata example for reference
 var validCPUMemoryMetadata = map[string]string{
 	"type":  "Utilization",
 	"value": "50",
@@ -34,11 +32,11 @@ var testCPUMemoryMetadata = []parseCPUMemoryMetadataTestData{
 	{"", validCPUMemoryMetadata, false},
 	{"", validContainerCPUMemoryMetadata, false},
 	{"", map[string]string{"type": "Utilization", "value": "50"}, false},
-	{v2.UtilizationMetricType, map[string]string{"value": "50"}, false},
+	{"Utilization", map[string]string{"value": "50"}, false},
 	{"", map[string]string{"type": "AverageValue", "value": "50"}, false},
-	{v2.AverageValueMetricType, map[string]string{"value": "50"}, false},
+	{"AverageValue", map[string]string{"value": "50"}, false},
 	{"", map[string]string{"type": "Value", "value": "50"}, true},
-	{v2.ValueMetricType, map[string]string{"value": "50"}, true},
+	{"Value", map[string]string{"value": "50"}, true},
 	{"", map[string]string{"type": "AverageValue"}, true},
 	{"", map[string]string{"type": "xxx", "value": "50"}, true},
 }
@@ -47,9 +45,9 @@ func TestCPUMemoryParseMetadata(t *testing.T) {
 	for _, testData := range testCPUMemoryMetadata {
 		config := &scalersconfig.ScalerConfig{
 			TriggerMetadata: testData.metadata,
-			MetricType:      testData.metricType,
+			MetricType:      v2.MetricTargetType(testData.metricType),
 		}
-		_, err := parseResourceMetadata(config, logr.Discard())
+		_, err := parseResourceMetadata(config)
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
