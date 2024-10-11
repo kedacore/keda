@@ -32,11 +32,11 @@ const (
 // +kubebuilder:resource:path=scaledjobs,scope=Namespaced,shortName=sj
 // +kubebuilder:printcolumn:name="Min",type="integer",JSONPath=".spec.minReplicaCount"
 // +kubebuilder:printcolumn:name="Max",type="integer",JSONPath=".spec.maxReplicaCount"
-// +kubebuilder:printcolumn:name="Triggers",type="string",JSONPath=".spec.triggers[*].type"
-// +kubebuilder:printcolumn:name="Authentication",type="string",JSONPath=".spec.triggers[*].authenticationRef.name"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status"
 // +kubebuilder:printcolumn:name="Active",type="string",JSONPath=".status.conditions[?(@.type==\"Active\")].status"
 // +kubebuilder:printcolumn:name="Paused",type="string",JSONPath=".status.conditions[?(@.type==\"Paused\")].status"
+// +kubebuilder:printcolumn:name="TriggersNames",type="string",JSONPath=".status.triggersNames"
+// +kubebuilder:printcolumn:name="AuthenticationsNames",type="string",JSONPath=".status.authenticationsNames"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ScaledJob is the Schema for the scaledjobs API
@@ -81,6 +81,10 @@ type ScaledJobStatus struct {
 	Conditions Conditions `json:"conditions,omitempty"`
 	// +optional
 	Paused string `json:"Paused,omitempty"`
+	// +optional
+	TriggersNames *string `json:"triggersNames,omitempty"`
+	// +optional
+	AuthenticationsNames *string `json:"authenticationsNames,omitempty"`
 }
 
 // ScaledJobList contains a list of ScaledJob
