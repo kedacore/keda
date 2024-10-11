@@ -63,6 +63,10 @@ func parseResourceMetadata(config *scalersconfig.ScalerConfig, logger logr.Logge
 		return meta, err
 	}
 
+	if config.MetricType != "" {
+		meta.MetricType = config.MetricType
+	}
+
 	// This is deprecated and can be removed later
 	if meta.Type != "" {
 		logger.Info("The 'type' setting is DEPRECATED and will be removed in v2.18 - Use 'metricType' instead.")
