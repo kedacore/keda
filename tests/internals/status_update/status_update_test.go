@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"testing"
 
-	"k8s.io/client-go/kubernetes"
-
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
@@ -236,13 +234,13 @@ func TestScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// test
-	testTriggersAndAuthenticationsNames(t, kc)
+	testTriggersAndAuthenticationsNames(t)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
-func testTriggersAndAuthenticationsNames(t *testing.T, kc *kubernetes.Clientset) {
+func testTriggersAndAuthenticationsNames(t *testing.T) {
 	otherparameter := `-o jsonpath="{.status.triggersNames}"`
 	CheckKubectlGetResult(t, "ScaledObject", scaledObjectName, testNamespace, otherparameter, "metrics-api,corn")
 	otherparameter = `-o jsonpath="{.status.authenticationsNames}"`
