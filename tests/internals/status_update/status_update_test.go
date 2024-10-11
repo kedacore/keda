@@ -164,15 +164,15 @@ spec:
       name: {{.TriggerAuthName}}
   - type: corn
     metadata:
-      timezone: Asia/Kolkata  
-      start: 0 6 * * *       
-      end: 0 8 * * *       
+      timezone: Asia/Kolkata
+      start: 0 6 * * *
+      end: 0 8 * * *
       desiredReplicas: "9"
   - type: corn
     metadata:
-      timezone: Asia/Kolkata  
-      start: 0 22 * * *       
-      end: 0 23 * * *       
+      timezone: Asia/Kolkata
+      start: 0 22 * * *
+      end: 0 23 * * *
       desiredReplicas: "9"`
 
 	scaledJobTemplate = `
@@ -212,15 +212,15 @@ spec:
             name: {{.TriggerAuthName}}
         - type: corn
           metadata:
-            timezone: Asia/Kolkata  
-            start: 0 6 * * *       
-            end: 0 8 * * *       
+            timezone: Asia/Kolkata
+            start: 0 6 * * *
+            end: 0 8 * * *
             desiredReplicas: "9"
         - type: corn
           metadata:
-            timezone: Asia/Kolkata  
-            start: 0 22 * * *       
-            end: 0 23 * * *       
+            timezone: Asia/Kolkata
+            start: 0 22 * * *
+            end: 0 23 * * *
             desiredReplicas: "9"`
 )
 
