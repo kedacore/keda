@@ -113,7 +113,7 @@ spec:
   - type: temporal
     metadata:
       namespace: default
-      queueName: "workflow_with_single_noop_activity:test"
+      taskQueue: "workflow_with_single_noop_activity:test"
       targetQueueSize: "2"
       activationTargetQueueSize: "3"
       endpoint: {{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233

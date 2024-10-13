@@ -31,16 +31,16 @@ type temporalMetricIdentifier struct {
 var testTemporalMetadata = []parseTemporalMetadataTestData{
 	// nothing passed
 	{map[string]string{}, true},
-	// Missing queueName, should fail
+	// Missing taskQueue, should fail
 	{map[string]string{"endpoint": temporalEndpoint, "namespace": temporalNamespace}, true},
 	// Missing namespace, should success
-	{map[string]string{"endpoint": temporalEndpoint, "queueName": temporalQueueName}, false},
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName}, false},
 	// Missing endpoint, should fail
-	{map[string]string{"queueName": temporalQueueName, "namespace": temporalNamespace}, true},
+	{map[string]string{"taskQueue": temporalQueueName, "namespace": temporalNamespace}, true},
 	// All good.
-	{map[string]string{"endpoint": temporalEndpoint, "queueName": temporalQueueName, "namespace": temporalNamespace}, false},
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace}, false},
 	// All good + activationLagThreshold
-	{map[string]string{"endpoint": temporalEndpoint, "queueName": temporalQueueName, "namespace": temporalNamespace, "activationTargetQueueSize": "10"}, false},
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "activationTargetQueueSize": "10"}, false},
 }
 
 var temporalMetricIdentifiers = []temporalMetricIdentifier{
@@ -102,7 +102,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 			wantMeta: &temporalMetadata{
 				Endpoint:                  "test:7233",
 				Namespace:                 "default",
-				QueueName:                 "",
+				TaskQueue:                 "",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
 				AllActive:                 true,
@@ -114,12 +114,12 @@ func TestParseTemporalMetadata(t *testing.T) {
 			name: "empty namespace",
 			metadata: map[string]string{
 				"endpoint":  "test:7233",
-				"queueName": "testxx",
+				"taskQueue": "testxx",
 			},
 			wantMeta: &temporalMetadata{
 				Endpoint:                  "test:7233",
 				Namespace:                 "default",
-				QueueName:                 "testxx",
+				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
 				AllActive:                 true,
@@ -132,13 +132,13 @@ func TestParseTemporalMetadata(t *testing.T) {
 			metadata: map[string]string{
 				"endpoint":                  "test:7233",
 				"namespace":                 "default",
-				"queueName":                 "testxx",
+				"taskQueue":                 "testxx",
 				"activationTargetQueueSize": "12",
 			},
 			wantMeta: &temporalMetadata{
 				Endpoint:                  "test:7233",
 				Namespace:                 "default",
-				QueueName:                 "testxx",
+				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 12,
 				AllActive:                 true,
@@ -151,12 +151,12 @@ func TestParseTemporalMetadata(t *testing.T) {
 			metadata: map[string]string{
 				"endpoint":  "test:7233",
 				"namespace": "default",
-				"queueName": "testxx",
+				"taskQueue": "testxx",
 			},
 			wantMeta: &temporalMetadata{
 				Endpoint:                  "test:7233",
 				Namespace:                 "default",
-				QueueName:                 "testxx",
+				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
 				AllActive:                 true,
@@ -173,13 +173,13 @@ func TestParseTemporalMetadata(t *testing.T) {
 			metadata: map[string]string{
 				"endpoint":   "test:7233",
 				"namespace":  "default",
-				"queueName":  "testxx",
+				"taskQueue":  "testxx",
 				"queueTypes": "workflow,activity",
 			},
 			wantMeta: &temporalMetadata{
 				Endpoint:                  "test:7233",
 				Namespace:                 "default",
-				QueueName:                 "testxx",
+				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
 				AllActive:                 true,
@@ -193,17 +193,17 @@ func TestParseTemporalMetadata(t *testing.T) {
 			resolvedEnv: map[string]string{
 				"endpoint":  "test:7233",
 				"namespace": "default",
-				"queueName": "testxx",
+				"taskQueue": "testxx",
 			},
 			metadata: map[string]string{
 				"endpointFromEnv":  "endpoint",
 				"namespaceFromEnv": "namespace",
-				"queueNameFromEnv": "queueName",
+				"taskQueueFromEnv": "taskQueue",
 			},
 			wantMeta: &temporalMetadata{
 				Endpoint:                  "test:7233",
 				Namespace:                 "default",
-				QueueName:                 "testxx",
+				TaskQueue:                 "testxx",
 				TargetQueueSize:           5,
 				ActivationTargetQueueSize: 0,
 				AllActive:                 true,
@@ -239,7 +239,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 func TestTemporalDefaultQueueTypes(t *testing.T) {
 	metadata, err := parseTemporalMetadata(&scalersconfig.ScalerConfig{
 		TriggerMetadata: map[string]string{
-			"endpoint": "localhost:7233", "queueName": "testcc",
+			"endpoint": "localhost:7233", "taskQueue": "testcc",
 		},
 	}, logger)
 

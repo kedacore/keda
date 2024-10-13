@@ -37,9 +37,9 @@ type temporalMetadata struct {
 	Namespace                 string   `keda:"name=namespace,                 order=triggerMetadata;resolvedEnv, default=default"`
 	ActivationTargetQueueSize int64    `keda:"name=activationTargetQueueSize, order=triggerMetadata, default=0"`
 	TargetQueueSize           int64    `keda:"name=targetQueueSize,           order=triggerMetadata, default=5"`
-	QueueName                 string   `keda:"name=queueName,                 order=triggerMetadata;resolvedEnv"`
+	TaskQueue                 string   `keda:"name=taskQueue,                 order=triggerMetadata;resolvedEnv"`
 	QueueTypes                []string `keda:"name=queueTypes,                order=triggerMetadata, optional"`
-	BuildIDs                  []string `keda:"name=buildIds,                  order=triggerMetadata;resolvedEnv, optional"`
+	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional"`
 	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=true"`
 	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=true"`
 	APIKey                    string   `keda:"name=apiKey,                    order=authParams;resolvedEnv;triggerMetadata, optional"`
@@ -102,7 +102,7 @@ func (s *temporalScaler) Close(_ context.Context) error {
 }
 
 func (s *temporalScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(fmt.Sprintf("temporal-%s-%s", s.metadata.Namespace, s.metadata.QueueName))
+	metricName := kedautil.NormalizeString(fmt.Sprintf("temporal-%s-%s", s.metadata.Namespace, s.metadata.TaskQueue))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
@@ -131,18 +131,18 @@ func (s *temporalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 
 func (s *temporalScaler) getQueueSize(ctx context.Context) (int64, error) {
 	var selection *sdk.TaskQueueVersionSelection
-	if s.metadata.AllActive || s.metadata.Unversioned || len(s.metadata.BuildIDs) > 0 {
+	if s.metadata.AllActive || s.metadata.Unversioned || s.metadata.BuildID != "" {
 		selection = &sdk.TaskQueueVersionSelection{
 			AllActive:   s.metadata.AllActive,
 			Unversioned: s.metadata.Unversioned,
-			BuildIDs:    s.metadata.BuildIDs,
+			BuildIDs:    []string{s.metadata.BuildID},
 		}
 	}
 
 	queueType := getQueueTypes(s.metadata.QueueTypes)
 
 	resp, err := s.tcl.DescribeTaskQueueEnhanced(ctx, sdk.DescribeTaskQueueEnhancedOptions{
-		TaskQueue:      s.metadata.QueueName,
+		TaskQueue:      s.metadata.TaskQueue,
 		ReportStats:    true,
 		Versions:       selection,
 		TaskQueueTypes: queueType,
