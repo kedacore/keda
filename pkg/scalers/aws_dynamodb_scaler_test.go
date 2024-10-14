@@ -39,13 +39,13 @@ type parseDynamoDBMetadataTestData struct {
 
 var (
 	// ErrAwsDynamoNoTableName is returned when "tableName" is missing from the config.
-	ErrAwsDynamoNoTableName = errors.New("missing required parameter [\"tableName\"]")
+	ErrAwsDynamoNoTableName = errors.New(`missing required parameter "tableName"`)
 
 	// ErrAwsDynamoNoAwsRegion is returned when "awsRegion" is missing from the config.
-	ErrAwsDynamoNoAwsRegion = errors.New("missing required parameter [\"awsRegion\"]")
+	ErrAwsDynamoNoAwsRegion = errors.New(`missing required parameter "awsRegion"`)
 
 	// ErrAwsDynamoNoKeyConditionExpression is returned when "keyConditionExpression" is missing from the config.
-	ErrAwsDynamoNoKeyConditionExpression = errors.New("missing required parameter [\"keyConditionExpression\"]")
+	ErrAwsDynamoNoKeyConditionExpression = errors.New(`missing required parameter "keyConditionExpression"`)
 )
 
 var dynamoTestCases = []parseDynamoDBMetadataTestData{
@@ -114,7 +114,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"targetValue":               "no-valid",
 		},
 		authParams:    map[string]string{},
-		expectedError: errors.New("error parsing DynamoDb metadata: unable to set param [\"targetValue\"] value"),
+		expectedError: errors.New(`error parsing DynamoDb metadata: unable to set param "targetValue" value`),
 	},
 	{
 		name: "invalid activationTargetValue given",
@@ -128,7 +128,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"activationTargetValue":     "no-valid",
 		},
 		authParams:    map[string]string{},
-		expectedError: errors.New("unable to set param [\"activationTargetValue\"]"),
+		expectedError: errors.New(`unable to set param "activationTargetValue"`),
 	},
 	{
 		name: "malformed expressionAttributeNames",

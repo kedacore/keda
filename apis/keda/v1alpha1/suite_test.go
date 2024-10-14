@@ -118,7 +118,7 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	err = (&ScaledObject{}).SetupWebhookWithManager(mgr)
+	err = (&ScaledObject{}).SetupWebhookWithManager(mgr, false)
 	Expect(err).NotTo(HaveOccurred())
 	err = (&ScaledJob{}).SetupWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
