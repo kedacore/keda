@@ -75,7 +75,7 @@ spec:
       containers:
         - name: temporal
           image: temporalio/admin-tools:latest
-          command: ["temporal", "server", "start-dev", "--namespace", "v2", "--ip", "0.0.0.0"]
+          command: ["temporal", "server", "start-dev", "--ip", "0.0.0.0"]
           ports:
             - containerPort: 7233
           livenessProbe:
