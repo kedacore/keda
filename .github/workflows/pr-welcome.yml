@@ -15,7 +15,7 @@ permissions:
 jobs:
   pr_bot:
     name: PR Bot
-    runs-on: equinix-2cpu-8gb
+    runs-on: ubuntu-latest
     steps:
       - name: "Add welcome comment on PR #${{ github.event.number }} (draft)"
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
