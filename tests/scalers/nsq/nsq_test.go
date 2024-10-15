@@ -101,7 +101,7 @@ spec:
   template:
     spec:
       containers:
-      - image: docker.io/ulminator/tests-nsq:latest
+      - image: ghcr.io/kedacore/tests-nsq:latest
         name: {{.JobName}}
         args:
         - "--mode=producer"
