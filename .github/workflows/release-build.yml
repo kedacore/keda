@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     name: Push Release
-    runs-on: ubuntu-latest
+    runs-on: ARM64
     permissions:
       contents: write
       packages: write
