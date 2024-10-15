@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     name: Push Release
-    runs-on: equinix-4cpu-16gb
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       packages: write
