@@ -19,7 +19,7 @@ type parseEtcdMetadataTestData struct {
 type parseEtcdAuthParamsTestData struct {
 	authParams map[string]string
 	isError    bool
-	enableTLS  bool
+	enableTLS  string
 }
 
 type etcdMetricIdentifier struct {
@@ -56,19 +56,25 @@ var parseEtcdMetadataTestDataset = []parseEtcdMetadataTestData{
 
 var parseEtcdAuthParamsTestDataset = []parseEtcdAuthParamsTestData{
 	// success, TLS only
-	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
+	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, etcdTLSEnable},
 	// success, TLS cert/key and assumed public CA
-	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey"}, false, true},
+	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey"}, false, etcdTLSEnable},
 	// success, TLS cert/key + key password and assumed public CA
-	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey", "keyPassword": "keeyPassword"}, false, true},
+	{map[string]string{"tls": "enable", "cert": "ceert", "key": "keey", "keyPassword": "keeyPassword"}, false, etcdTLSEnable},
 	// success, TLS CA only
-	{map[string]string{"tls": "enable", "ca": "caaa"}, false, true},
+	{map[string]string{"tls": "enable", "ca": "caaa"}, false, etcdTLSEnable},
 	// failure, TLS missing cert
-	{map[string]string{"tls": "enable", "ca": "caaa", "key": "keey"}, true, false},
+	{map[string]string{"tls": "enable", "ca": "caaa", "key": "keey"}, true, etcdTLSDisable},
 	// failure, TLS missing key
-	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert"}, true, false},
+	{map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert"}, true, etcdTLSDisable},
 	// failure, TLS invalid
-	{map[string]string{"tls": "yes", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, false},
+	{map[string]string{"tls": "yes", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, etcdTLSDisable},
+	// success, username and password
+	{map[string]string{"username": "root", "password": "admin"}, false, etcdTLSDisable},
+	// failure, missing password
+	{map[string]string{"username": "root"}, true, etcdTLSDisable},
+	// failure, missing username
+	{map[string]string{"password": "admin"}, true, etcdTLSDisable},
 }
 
 var etcdMetricIdentifiers = []etcdMetricIdentifier{
@@ -83,10 +89,10 @@ func TestParseEtcdMetadata(t *testing.T) {
 			t.Error("Expected success but got error", err)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Errorf("Expected error but got success %v", testData)
 		}
-		if err == nil && !reflect.DeepEqual(meta.endpoints, testData.endpoints) {
-			t.Errorf("Expected  %v but got %v\n", testData.endpoints, meta.endpoints)
+		if err == nil && !reflect.DeepEqual(meta.Endpoints, testData.endpoints) {
+			t.Errorf("Expected  %v but got %v\n", testData.endpoints, meta.Endpoints)
 		}
 	}
 }
@@ -101,21 +107,21 @@ func TestParseEtcdAuthParams(t *testing.T) {
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
 		}
-		if meta.enableTLS != testData.enableTLS {
-			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, meta.enableTLS)
+		if meta != nil && meta.EnableTLS != testData.enableTLS {
+			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, meta.EnableTLS)
 		}
-		if meta.enableTLS {
-			if meta.ca != testData.authParams["ca"] {
-				t.Errorf("Expected ca to be set to %v but got %v\n", testData.authParams["ca"], meta.enableTLS)
+		if meta != nil && meta.EnableTLS == etcdTLSEnable {
+			if meta.Ca != testData.authParams["ca"] {
+				t.Errorf("Expected ca to be set to %v but got %v\n", testData.authParams["ca"], meta.EnableTLS)
 			}
-			if meta.cert != testData.authParams["cert"] {
-				t.Errorf("Expected cert to be set to %v but got %v\n", testData.authParams["cert"], meta.cert)
+			if meta.Cert != testData.authParams["cert"] {
+				t.Errorf("Expected cert to be set to %v but got %v\n", testData.authParams["cert"], meta.Cert)
 			}
-			if meta.key != testData.authParams["key"] {
-				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["key"], meta.key)
+			if meta.Key != testData.authParams["key"] {
+				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["key"], meta.Key)
 			}
-			if meta.keyPassword != testData.authParams["keyPassword"] {
-				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["keyPassword"], meta.key)
+			if meta.KeyPassword != testData.authParams["keyPassword"] {
+				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["keyPassword"], meta.Key)
 			}
 		}
 	}
