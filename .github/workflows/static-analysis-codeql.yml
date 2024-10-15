@@ -12,7 +12,7 @@ concurrency:
 jobs:
   codeQl:
     name: Analyze CodeQL Go
-    runs-on: equinix-4cpu-16gb
+    runs-on: ubuntu-latest
     container: ghcr.io/kedacore/keda-tools:1.22.5
     if: (github.actor != 'dependabot[bot]')
     steps:
