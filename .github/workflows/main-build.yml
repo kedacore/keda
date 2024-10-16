@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     name: build
-    runs-on: equinix-4cpu-16gb
+    runs-on: ARM64
     permissions:
       contents: read
       packages: write
@@ -91,7 +91,7 @@ jobs:
     needs: build
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
-      runs-on: equinix-4cpu-16gb
+      runs-on: ubuntu-latest
       scan-type: "fs"
       format: "sarif"
       exit-code: 0
@@ -101,7 +101,7 @@ jobs:
     needs: build
     strategy:
       matrix:
-        runner: [oracle-aarch64-4cpu-16gb, equinix-4cpu-16gb]
+        runner: [ARM64, ubuntu-latest]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
@@ -115,7 +115,7 @@ jobs:
     needs: build
     strategy:
       matrix:
-        runner: [oracle-aarch64-4cpu-16gb, equinix-4cpu-16gb]
+        runner: [ARM64, ubuntu-latest]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}

@@ -5,7 +5,7 @@ on:
       - opened
 jobs:
   track_issue:
-    runs-on: equinix-2cpu-8gb
+    runs-on: ubuntu-latest
     steps:
       - name: Get project data
         env:
