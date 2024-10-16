@@ -81,6 +81,7 @@ type kafkaMetadata struct {
 	realm               string
 	kerberosConfigPath  string
 	kerberosServiceName string
+	kerberosDisableFAST bool
 
 	// OAUTHBEARER
 	tokenProvider         kafkaSaslOAuthTokenProvider
@@ -409,6 +410,15 @@ func parseKerberosParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata
 		meta.kerberosServiceName = strings.TrimSpace(config.AuthParams["kerberosServiceName"])
 	}
 
+	meta.kerberosDisableFAST = false
+	if val, ok := config.AuthParams["kerberosDisableFAST"]; ok {
+		t, err := strconv.ParseBool(val)
+		if err != nil {
+			return fmt.Errorf("error parsing kerberosDisableFAST: %w", err)
+		}
+		meta.kerberosDisableFAST = t
+	}
+
 	meta.saslType = mode
 	return nil
 }
@@ -688,7 +698,12 @@ func getKafkaClientConfig(ctx context.Context, metadata kafkaMetadata) (*sarama.
 			config.Net.SASL.GSSAPI.AuthType = sarama.KRB5_USER_AUTH
 			config.Net.SASL.GSSAPI.Password = metadata.password
 		}
+
+		if metadata.kerberosDisableFAST {
+			config.Net.SASL.GSSAPI.DisablePAFXFAST = true
+		}
 	}
+
 	return config, nil
 }
 
