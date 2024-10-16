@@ -164,7 +164,7 @@ func (s *awsDynamoDBScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 }
 
 func (s *awsDynamoDBScaler) Close(context.Context) error {
-	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
+	awsutils.ClearAwsConfig(s.metadata.AwsRegion, s.metadata.awsAuthorization)
 	return nil
 }
 
