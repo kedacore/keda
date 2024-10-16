@@ -51,8 +51,6 @@ jobs:
           exit-code: ${{ inputs.exit-code }}
           severity: ${{ inputs.severity }}
           trivy-config: trivy.yml
-        env:
-          ACTIONS_RUNTIME_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Temporal fix -> https://github.com/aquasecurity/trivy-action/issues/389#issuecomment-2370823704
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
