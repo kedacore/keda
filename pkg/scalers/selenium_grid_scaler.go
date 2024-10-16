@@ -40,6 +40,10 @@ type seleniumGridScalerMetadata struct {
 	SetSessionsFromHub    bool   `keda:"name=setSessionsFromHub,      order=triggerMetadata, optional, default=false"`
 	SessionBrowserVersion string `keda:"name=sessionBrowserVersion,   order=triggerMetadata, optional"`
 
+	// auth
+	Username string `keda:"name=username, order=authParams;resolvedEnv;triggerMetadata, optional"`
+	Password string `keda:"name=password, order=authParams;resolvedEnv;triggerMetadata, optional"`
+
 	TargetValue int64
 }
 
@@ -183,6 +187,9 @@ func (s *seleniumGridScaler) getSessionsCount(ctx context.Context, logger logr.L
 	if err != nil {
 		return -1, err
 	}
+
+	// Add HTTP Auth
+	req.SetBasicAuth(s.metadata.Username, s.metadata.Password)
 
 	res, err := s.httpClient.Do(req)
 	if err != nil {

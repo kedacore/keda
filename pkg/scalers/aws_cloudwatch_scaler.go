@@ -37,6 +37,7 @@ type awsCloudwatchMetadata struct {
 	TargetMetricValue           float64 `keda:"name=targetMetricValue, order=triggerMetadata"`
 	ActivationTargetMetricValue float64 `keda:"name=activationTargetMetricValue, order=triggerMetadata, optional"`
 	MinMetricValue              float64 `keda:"name=minMetricValue, order=triggerMetadata"`
+	IgnoreNullValues            bool    `keda:"name=ignoreNullValues, order=triggerMetadata, optional, default=true"`
 
 	MetricCollectionTime int64  `keda:"name=metricCollectionTime, order=triggerMetadata, optional, default=300"`
 	MetricStat           string `keda:"name=metricStat, order=triggerMetadata, optional, default=Average"`
@@ -191,7 +192,6 @@ func computeQueryWindow(current time.Time, metricPeriodSec, metricEndTimeOffsetS
 
 func (s *awsCloudwatchScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricValue, err := s.GetCloudwatchMetrics(ctx)
-
 	if err != nil {
 		s.logger.Error(err, "Error getting metric value")
 		return []external_metrics.ExternalMetricValue{}, false, err
@@ -274,20 +274,28 @@ func (s *awsCloudwatchScaler) GetCloudwatchMetrics(ctx context.Context) (float64
 	}
 
 	output, err := s.cwClient.GetMetricData(ctx, &input)
-
 	if err != nil {
 		s.logger.Error(err, "Failed to get output")
 		return -1, err
 	}
 
 	s.logger.V(1).Info("Received Metric Data", "data", output)
+
+	// If no metric data results or the first result has no values, and ignoreNullValues is false,
+	// the scaler should return an error to prevent any further scaling actions.
+	if len(output.MetricDataResults) > 0 && len(output.MetricDataResults[0].Values) == 0 && !s.metadata.IgnoreNullValues {
+		emptyMetricsErrMsg := "empty metric data received, ignoreNullValues is false, returning error"
+		s.logger.Error(nil, emptyMetricsErrMsg)
+		return -1, fmt.Errorf(emptyMetricsErrMsg)
+	}
+
 	var metricValue float64
+
 	if len(output.MetricDataResults) > 0 && len(output.MetricDataResults[0].Values) > 0 {
 		metricValue = output.MetricDataResults[0].Values[0]
 	} else {
 		s.logger.Info("empty metric data received, returning minMetricValue")
 		metricValue = s.metadata.MinMetricValue
 	}
-
 	return metricValue, nil
 }
