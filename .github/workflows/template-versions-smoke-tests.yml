@@ -5,7 +5,7 @@ on:
 
 jobs:
   smoke-tests:
-    name: equinix-4cpu-16gb
+    name: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -19,6 +19,6 @@ jobs:
             kindImage: kindest/node:v1.28.9@sha256:dca54bc6a6079dd34699d53d7d4ffa2e853e46a20cd12d619a09207e35300bd0
     uses: kedacore/keda/.github/workflows/template-smoke-tests.yml@main
     with:
-      runs-on: equinix-4cpu-16gb
+      runs-on: ubuntu-latest
       kubernetesVersion: ${{ matrix.kubernetesVersion }}
       kindImage: ${{ matrix.kindImage }}

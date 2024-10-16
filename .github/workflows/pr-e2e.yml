@@ -8,7 +8,7 @@ env:
 
 jobs:
   triage:
-    runs-on: equinix-2cpu-8gb
+    runs-on: ubuntu-latest
     name: Comment evaluate
     container: ghcr.io/kedacore/keda-tools:1.22.5
     outputs:
@@ -67,7 +67,7 @@ jobs:
 
   build-test-images:
     needs: triage
-    runs-on: equinix-4cpu-16gb
+    runs-on: ubuntu-latest
     name: Build images
     container: ghcr.io/kedacore/keda-tools:1.22.5
     if: needs.triage.outputs.run-e2e == 'true'
@@ -147,7 +147,7 @@ jobs:
 
   run-test:
     needs: [triage, build-test-images]
-    runs-on: equinix-keda-runner
+    runs-on: e2e
     name: Execute e2e tests
     container: ghcr.io/kedacore/keda-tools:1.22.5
     if: needs.triage.outputs.run-e2e == 'true'

@@ -16,7 +16,7 @@ concurrency:
 jobs:
   check-creator:
     name: check-creator
-    runs-on: equinix-2cpu-8gb
+    runs-on: ubuntu-latest
     steps:
       - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
         name: Enqueue e2e
