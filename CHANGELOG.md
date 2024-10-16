@@ -79,8 +79,6 @@ Here is an overview of all new **experimental** features:
 - **Selenium Grid Scaler**: Add optional auth parameters `username`, `password`, `authType`, `accessToken` to configure a secure GraphQL endpoint ([#6144](https://github.com/kedacore/keda/issues/6144))
 - **Selenium Grid Scaler**: Add parameter `nodeMaxSessions` to configure scaler sync with `--max-sessions` capacity in the Node ([#6080](https://github.com/kedacore/keda/issues/6080))
 - **Selenium Grid Scaler**: Improve logic based on node stereotypes, node sessions and queue requests capabilities ([#6080](https://github.com/kedacore/keda/issues/6080))
-- **Selenium Scaler**: Add Support for Username and Password Authentication ([#6144](https://github.com/kedacore/keda/issues/6144))
-- **Selenium Scaler**: Introduce new parameters setSessionsFromHub, sessionsPerNode and sessionBrowserVersion. ([#6080](https://github.com/kedacore/keda/issues/6080))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Fixes
