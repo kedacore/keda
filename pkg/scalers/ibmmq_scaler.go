@@ -26,18 +26,19 @@ type ibmmqScaler struct {
 }
 
 type ibmmqMetadata struct {
-	Host                 string `keda:"name=host,                 order=triggerMetadata"`
-	QueueName            string `keda:"name=queueName,            order=triggerMetadata"`
-	QueueDepth           int64  `keda:"name=queueDepth,           order=triggerMetadata, default=20"`
-	ActivationQueueDepth int64  `keda:"name=activationQueueDepth, order=triggerMetadata, default=0"`
-	Username             string `keda:"name=username,             order=authParams;resolvedEnv;triggerMetadata"`
-	Password             string `keda:"name=password,             order=authParams;resolvedEnv;triggerMetadata"`
-	UnsafeSsl            bool   `keda:"name=unsafeSsl,            order=triggerMetadata, default=false"`
-	TLS                  bool   `keda:"name=tls,                  order=triggerMetadata, default=false"` // , deprecated=use unsafeSsl instead
-	CA                   string `keda:"name=ca,                   order=authParams, optional"`
-	Cert                 string `keda:"name=cert,                 order=authParams, optional"`
-	Key                  string `keda:"name=key,                  order=authParams, optional"`
-	KeyPassword          string `keda:"name=keyPassword,          order=authParams, optional"`
+	Host                 string   `keda:"name=host,                 order=triggerMetadata"`
+	QueueName            []string `keda:"name=queueName;queueNames, order=triggerMetadata"`
+	QueueDepth           int64    `keda:"name=queueDepth,           order=triggerMetadata, default=20"`
+	ActivationQueueDepth int64    `keda:"name=activationQueueDepth, order=triggerMetadata, default=0"`
+	Operation            string   `keda:"name=operation,            order=triggerMetadata, enum=max;avg;sum, default=max"`
+	Username             string   `keda:"name=username,             order=authParams;resolvedEnv;triggerMetadata"`
+	Password             string   `keda:"name=password,             order=authParams;resolvedEnv;triggerMetadata"`
+	UnsafeSsl            bool     `keda:"name=unsafeSsl,            order=triggerMetadata, default=false"`
+	TLS                  bool     `keda:"name=tls,                  order=triggerMetadata, default=false"` // , deprecated=use unsafeSsl instead
+	CA                   string   `keda:"name=ca,                   order=authParams, optional"`
+	Cert                 string   `keda:"name=cert,                 order=authParams, optional"`
+	Key                  string   `keda:"name=key,                  order=authParams, optional"`
+	KeyPassword          string   `keda:"name=keyPassword,          order=authParams, optional"`
 
 	triggerIndex int
 }
@@ -129,54 +130,101 @@ func parseIBMMQMetadata(config *scalersconfig.ScalerConfig) (ibmmqMetadata, erro
 }
 
 func (s *ibmmqScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
-	queue := s.metadata.QueueName
+	depths := make([]int64, 0, len(s.metadata.QueueName))
 	url := s.metadata.Host
 
-	var requestJSON = []byte(`{"type": "runCommandJSON", "command": "display", "qualifier": "qlocal", "name": "` + queue + `", "responseParameters" : ["CURDEPTH"]}`)
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(requestJSON))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
 	if err != nil {
-		return 0, fmt.Errorf("failed to request queue depth: %w", err)
+		return 0, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
 	req.Header.Set("ibm-mq-rest-csrf-token", "value")
 	req.Header.Set("Content-Type", "application/json")
-
 	req.SetBasicAuth(s.metadata.Username, s.metadata.Password)
 
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return 0, fmt.Errorf("failed to contact MQ via REST: %w", err)
-	}
-	defer resp.Body.Close()
+	for _, queueName := range s.metadata.QueueName {
+		requestJSON := []byte(`{"type": "runCommandJSON", "command": "display", "qualifier": "qlocal", "name": "` + queueName + `", "responseParameters" : ["CURDEPTH"]}`)
+		req.Body = io.NopCloser(bytes.NewBuffer(requestJSON))
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, fmt.Errorf("failed to read body of request: %w", err)
-	}
-
-	var response CommandResponse
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		return 0, fmt.Errorf("failed to parse JSON: %w", err)
-	}
-
-	if response.CommandResponse == nil || len(response.CommandResponse) == 0 {
-		return 0, fmt.Errorf("failed to parse response from REST call")
-	}
-
-	if response.CommandResponse[0].Parameters == nil {
-		var reason string
-		message := strings.Join(response.CommandResponse[0].Message, " ")
-		if message != "" {
-			reason = fmt.Sprintf(", reason: %s", message)
+		resp, err := s.httpClient.Do(req)
+		if err != nil {
+			return 0, fmt.Errorf("failed to contact MQ via REST for queue %s: %w", queueName, err)
 		}
-		return 0, fmt.Errorf("failed to get the current queue depth parameter%s", reason)
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusUnauthorized {
+			return 0, fmt.Errorf("authentication failed: incorrect username or password")
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return 0, fmt.Errorf("failed to read body of request for queue %s: %w", queueName, err)
+		}
+
+		var response CommandResponse
+		err = json.Unmarshal(body, &response)
+		if err != nil {
+			return 0, fmt.Errorf("failed to parse JSON for queue %s: %w", queueName, err)
+		}
+
+		if response.CommandResponse == nil || len(response.CommandResponse) == 0 {
+			return 0, fmt.Errorf("failed to parse response from REST call for queue %s", queueName)
+		}
+
+		if response.CommandResponse[0].Parameters == nil {
+			var reason string
+			message := strings.Join(response.CommandResponse[0].Message, " ")
+			if message != "" {
+				reason = fmt.Sprintf(", reason: %s", message)
+			}
+			return 0, fmt.Errorf("failed to get the current queue depth parameter for queue %s%s", queueName, reason)
+		}
+
+		depth := int64(response.CommandResponse[0].Parameters.Curdepth)
+		depths = append(depths, depth)
 	}
 
-	return int64(response.CommandResponse[0].Parameters.Curdepth), nil
+	switch s.metadata.Operation {
+	case sumOperation:
+		return sumDepths(depths), nil
+	case avgOperation:
+		return avgDepths(depths), nil
+	case maxOperation:
+		return maxDepth(depths), nil
+	default:
+		return 0, nil
+	}
+}
+
+func sumDepths(depths []int64) int64 {
+	var sum int64
+	for _, depth := range depths {
+		sum += depth
+	}
+	return sum
+}
+
+func avgDepths(depths []int64) int64 {
+	if len(depths) == 0 {
+		return 0
+	}
+	return sumDepths(depths) / int64(len(depths))
+}
+
+func maxDepth(depths []int64) int64 {
+	if len(depths) == 0 {
+		return 0
+	}
+	max := depths[0]
+	for _, depth := range depths[1:] {
+		if depth > max {
+			max = depth
+		}
+	}
+	return max
 }
 
 func (s *ibmmqScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(fmt.Sprintf("ibmmq-%s", s.metadata.QueueName))
+	metricName := kedautil.NormalizeString(fmt.Sprintf("ibmmq-%s", s.metadata.QueueName[0]))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
