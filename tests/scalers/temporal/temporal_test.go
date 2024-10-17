@@ -22,7 +22,7 @@ const (
 var (
 	testNamespace = fmt.Sprintf("%s-ns", testName)
 
-	TemporalDeploymentName = fmt.Sprintf("temporal-%s", testName)
+	temporalDeploymentName = fmt.Sprintf("temporal-%s", testName)
 
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
 	deploymentName   = fmt.Sprintf("%s", testName)
