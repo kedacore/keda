@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package kubernetes_workload_test
+package status_update_test
 
 import (
 	"fmt"
