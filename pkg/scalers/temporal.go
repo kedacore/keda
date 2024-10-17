@@ -43,12 +43,13 @@ type temporalMetadata struct {
 	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=true"`
 	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=true"`
 	APIKey                    string   `keda:"name=apiKey,                    order=authParams;resolvedEnv;triggerMetadata, optional"`
+	MinConnectTimeout         int      `keda:"name=minConnectTimeout,         order=triggerMetadata, default=5"`
 
 	UnsafeSsl   bool   `keda:"name=unsafeSsl,                 order=triggerMetadata, optional"`
-	Cert        string `keda:"name=cert,                      order=authParams;resolvedEnv, optional"`
-	Key         string `keda:"name=key,                       order=authParams;resolvedEnv, optional"`
-	KeyPassword string `keda:"name=keyPassword,               order=authParams;resolvedEnv, optional"`
-	CA          string `keda:"name=ca,                        order=authParams;resolvedEnv, optional"`
+	Cert        string `keda:"name=cert,                      order=authParams, optional"`
+	Key         string `keda:"name=key,                       order=authParams, optional"`
+	KeyPassword string `keda:"name=keyPassword,               order=authParams, optional"`
+	CA          string `keda:"name=ca,                        order=authParams, optional"`
 
 	triggerIndex int
 }
@@ -63,6 +64,10 @@ func (a *temporalMetadata) Validate() error {
 
 	if (a.Cert == "") != (a.Key == "") {
 		return fmt.Errorf("both cert and key must be provided when using TLS")
+	}
+
+	if a.MinConnectTimeout < 0 {
+		return fmt.Errorf("minConnectTimeout must be a positive number")
 	}
 
 	return nil
@@ -197,7 +202,7 @@ func getTemporalClient(ctx context.Context, meta *temporalMetadata, log logr.Log
 
 	dialOptions := []grpc.DialOption{
 		grpc.WithConnectParams(grpc.ConnectParams{
-			MinConnectTimeout: 5 * time.Second,
+			MinConnectTimeout: time.Duration(meta.MinConnectTimeout) * time.Second,
 		}),
 	}
 

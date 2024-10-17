@@ -196,7 +196,7 @@ func TestTemporalScaler(t *testing.T) {
 
 	KubectlApplyWithTemplate(t, data, "temporalServiceTemplate", temporalServiceTemplate)
 	KubectlApplyWithTemplate(t, data, "temporalDeploymentTemplate", temporalDeploymentTemplate)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, TemporalDeploymentName, testNamespace, 1, 30, 4), "temporal is not in a ready state")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, temporalDeploymentName, testNamespace, 1, 30, 4), "temporal is not in a ready state")
 
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 	testActivation(t, kc, data)

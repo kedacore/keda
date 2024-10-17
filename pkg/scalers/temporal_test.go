@@ -37,6 +37,8 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName}, false},
 	// Missing endpoint, should fail
 	{map[string]string{"taskQueue": temporalQueueName, "namespace": temporalNamespace}, true},
+	// invalid minConnectTimeout
+	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace, "minConnectTimeout": "-1"}, true},
 	// All good.
 	{map[string]string{"endpoint": temporalEndpoint, "taskQueue": temporalQueueName, "namespace": temporalNamespace}, false},
 	// All good + activationLagThreshold
@@ -44,8 +46,8 @@ var testTemporalMetadata = []parseTemporalMetadataTestData{
 }
 
 var temporalMetricIdentifiers = []temporalMetricIdentifier{
-	{&testTemporalMetadata[4], 0, "s0-temporal-v2-default"},
-	{&testTemporalMetadata[4], 1, "s1-temporal-v2-default"},
+	{&testTemporalMetadata[5], 0, "s0-temporal-v2-default"},
+	{&testTemporalMetadata[5], 1, "s1-temporal-v2-default"},
 }
 
 func TestTemporalParseMetadata(t *testing.T) {
@@ -107,6 +109,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				ActivationTargetQueueSize: 0,
 				AllActive:                 true,
 				Unversioned:               true,
+				MinConnectTimeout:         5,
 			},
 			wantErr: true,
 		},
@@ -124,6 +127,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				ActivationTargetQueueSize: 0,
 				AllActive:                 true,
 				Unversioned:               true,
+				MinConnectTimeout:         5,
 			},
 			wantErr: false,
 		},
@@ -143,6 +147,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				ActivationTargetQueueSize: 12,
 				AllActive:                 true,
 				Unversioned:               true,
+				MinConnectTimeout:         5,
 			},
 			wantErr: false,
 		},
@@ -162,6 +167,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				AllActive:                 true,
 				Unversioned:               true,
 				APIKey:                    "test01",
+				MinConnectTimeout:         5,
 			},
 			authParams: map[string]string{
 				"apiKey": "test01",
@@ -185,6 +191,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				AllActive:                 true,
 				Unversioned:               true,
 				QueueTypes:                []string{"workflow", "activity"},
+				MinConnectTimeout:         5,
 			},
 			wantErr: false,
 		},
@@ -209,6 +216,7 @@ func TestParseTemporalMetadata(t *testing.T) {
 				AllActive:                 true,
 				Unversioned:               true,
 				APIKey:                    "test01",
+				MinConnectTimeout:         5,
 			},
 			authParams: map[string]string{
 				"apiKey": "test01",
