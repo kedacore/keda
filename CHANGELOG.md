@@ -213,6 +213,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **General**: Allow ScaledObject.MinReplicaCount to be set to 0 ([#5570](https://github.com/kedacore/keda/issues/5570))
 - **General**: Fix CVE-2024-28180 in github.com/go-jose/go-jose/v3 ([#5617](https://github.com/kedacore/keda/pull/5617))
 - **General**: Fix fallback logic in formula-based evaluation ([#5666](https://github.com/kedacore/keda/issues/5666))
 - **General**: Fix wrong scaler active value and paused value that are pushed to OpenTelemetry ([#5705](https://github.com/kedacore/keda/issues/5705))
