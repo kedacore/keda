@@ -790,13 +790,16 @@ var _ = Describe("ScaledObjectController", func() {
 		Eventually(func() error {
 			return k8sClient.Get(context.Background(), types.NamespacedName{Name: getHPAName(so), Namespace: "default"}, hpa)
 		}).ShouldNot(HaveOccurred())
+
+		averageUtilization := int32(100)
 		hpa.Status.CurrentMetrics = []autoscalingv2.MetricStatus{
 			{
 				Type: autoscalingv2.ResourceMetricSourceType,
 				Resource: &autoscalingv2.ResourceMetricStatus{
 					Name: corev1.ResourceCPU,
 					Current: autoscalingv2.MetricValueStatus{
-						Value: resource.NewQuantity(int64(100), resource.DecimalSI),
+						Value:              resource.NewQuantity(int64(100), resource.DecimalSI),
+						AverageUtilization: &averageUtilization,
 					},
 				},
 			},
