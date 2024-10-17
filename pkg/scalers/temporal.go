@@ -40,8 +40,8 @@ type temporalMetadata struct {
 	TaskQueue                 string   `keda:"name=taskQueue,                 order=triggerMetadata;resolvedEnv"`
 	QueueTypes                []string `keda:"name=queueTypes,                order=triggerMetadata, optional"`
 	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional"`
-	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=true"`
-	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=true"`
+	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false"`
+	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false"`
 	APIKey                    string   `keda:"name=apiKey,                    order=authParams;resolvedEnv;triggerMetadata, optional"`
 	MinConnectTimeout         int      `keda:"name=minConnectTimeout,         order=triggerMetadata, default=5"`
 
