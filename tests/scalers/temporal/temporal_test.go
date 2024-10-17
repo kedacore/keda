@@ -180,7 +180,7 @@ func getTemplateData() (templateData, []Template) {
 			WorkFlowCommand:        "run-scenario",
 			WorkFlowIterations:     2,
 			TestNamespace:          testNamespace,
-			TemporalDeploymentName: TemporalDeploymentName,
+			TemporalDeploymentName: temporalDeploymentName,
 			ScaledObjectName:       scaledObjectName,
 			DeploymentName:         deploymentName,
 		}, []Template{
