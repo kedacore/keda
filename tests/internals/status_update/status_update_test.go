@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	testName = "kubernetes-workload-test"
+	testName = "status-update-test"
 )
 
 var (
