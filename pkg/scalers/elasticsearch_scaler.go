@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/elastic/go-elasticsearch/v7"
+	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/go-logr/logr"
 	"github.com/tidwall/gjson"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -34,7 +35,8 @@ type elasticsearchMetadata struct {
 	CloudID               string   `keda:"name=cloudID,               order=authParams;triggerMetadata, optional"`
 	APIKey                string   `keda:"name=apiKey,                order=authParams;triggerMetadata, optional"`
 	Index                 []string `keda:"name=index,                 order=authParams;triggerMetadata, separator=;"`
-	SearchTemplateName    string   `keda:"name=searchTemplateName,    order=authParams;triggerMetadata"`
+	SearchTemplateName    string   `keda:"name=searchTemplateName,    order=authParams;triggerMetadata, optional"`
+	Query                 string   `keda:"name=query,                 order=authParams;triggerMetadata, optional"`
 	Parameters            []string `keda:"name=parameters,            order=triggerMetadata, optional, separator=;"`
 	ValueLocation         string   `keda:"name=valueLocation,         order=authParams;triggerMetadata"`
 	TargetValue           float64  `keda:"name=targetValue,           order=authParams;triggerMetadata"`
@@ -57,6 +59,13 @@ func (m *elasticsearchMetadata) Validate() error {
 	if len(m.Addresses) > 0 && (m.Username == "" || m.Password == "") {
 		return fmt.Errorf("both username and password must be provided when addresses is used")
 	}
+	if m.SearchTemplateName == "" && m.Query == "" {
+		return fmt.Errorf("either searchTemplateName or query must be provided")
+	}
+	if m.SearchTemplateName != "" && m.Query != "" {
+		return fmt.Errorf("cannot provide both searchTemplateName and query")
+	}
+
 	return nil
 }
 
@@ -93,7 +102,12 @@ func parseElasticsearchMetadata(config *scalersconfig.ScalerConfig) (elasticsear
 		return meta, err
 	}
 
-	meta.MetricName = GenerateMetricNameWithIndex(config.TriggerIndex, util.NormalizeString(fmt.Sprintf("elasticsearch-%s", meta.SearchTemplateName)))
+	if meta.SearchTemplateName != "" {
+		meta.MetricName = GenerateMetricNameWithIndex(config.TriggerIndex, util.NormalizeString(fmt.Sprintf("elasticsearch-%s", meta.SearchTemplateName)))
+	} else {
+		meta.MetricName = GenerateMetricNameWithIndex(config.TriggerIndex, "elasticsearch-query")
+	}
+
 	meta.TriggerIndex = config.TriggerIndex
 
 	return meta, nil
@@ -137,17 +151,29 @@ func (s *elasticsearchScaler) Close(_ context.Context) error {
 // getQueryResult returns result of the scaler query
 func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (float64, error) {
 	// Build the request body.
-	var body bytes.Buffer
-	if err := json.NewEncoder(&body).Encode(buildQuery(&s.metadata)); err != nil {
-		s.logger.Error(err, "Error encoding query: %s", err)
+	var res *esapi.Response
+	var err error
+
+	if s.metadata.SearchTemplateName != "" {
+		// Using SearchTemplateName
+		var body bytes.Buffer
+		if err := json.NewEncoder(&body).Encode(buildQuery(&s.metadata)); err != nil {
+			s.logger.Error(err, "Error encoding query: %s", err)
+		}
+		res, err = s.esClient.SearchTemplate(
+			&body,
+			s.esClient.SearchTemplate.WithIndex(s.metadata.Index...),
+			s.esClient.SearchTemplate.WithContext(ctx),
+		)
+	} else {
+		// Using Query
+		res, err = s.esClient.Search(
+			s.esClient.Search.WithIndex(s.metadata.Index...),
+			s.esClient.Search.WithBody(strings.NewReader(s.metadata.Query)),
+			s.esClient.Search.WithContext(ctx),
+		)
 	}
 
-	// Run the templated search
-	res, err := s.esClient.SearchTemplate(
-		&body,
-		s.esClient.SearchTemplate.WithIndex(s.metadata.Index...),
-		s.esClient.SearchTemplate.WithContext(ctx),
-	)
 	if err != nil {
 		s.logger.Error(err, fmt.Sprintf("Could not query elasticsearch: %s", err))
 		return 0, err
