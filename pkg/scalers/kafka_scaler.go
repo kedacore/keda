@@ -49,8 +49,9 @@ type kafkaScaler struct {
 }
 
 const (
-	stringEnable  = "enable"
-	stringDisable = "disable"
+	stringEnable     = "enable"
+	stringDisable    = "disable"
+	defaultUnsafeSsl = false
 )
 
 type kafkaMetadata struct {

@@ -5,7 +5,7 @@
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [Building](#building)
-  - [Quick start with Visual Studio Code Remote - Containers](#quick-start-with-visual-studio-code-remote---containers)
+  - [Quick start with Visual Studio Code Dev Containers](#quick-start-with-visual-studio-code-dev-containers)
   - [Locally directly](#locally-directly)
 - [Deploying](#deploying)
   - [Custom KEDA locally outside cluster](#custom-keda-locally-outside-cluster)
@@ -25,14 +25,14 @@
 
 ## Building
 
-### Quick start with [Visual Studio Code Remote - Containers](https://code.visualstudio.com/docs/remote/containers)
+### Quick start with [Visual Studio Code Dev Containers](https://code.visualstudio.com/docs/remote/containers)
 
 This helps you pull and build quickly - dev containers launch the project inside a container with all the tooling
 required for a consistent and seamless developer experience.
 
 This means you don't have to install and configure your dev environment as the container handles this for you.
 
-To get started install [VSCode](https://code.visualstudio.com/) and the [Remote Containers extensions](
+To get started install [VSCode](https://code.visualstudio.com/) and the [Dev Containers extensions](
 https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 
 Clone the repo and launch code:
@@ -43,7 +43,7 @@ cd keda
 code .
 ```
 
-Once VSCode launches run `CTRL+SHIFT+P -> Remote-Containers: Reopen in container` and then use the integrated
+Once VSCode launches run `CTRL+SHIFT+P -> Dev Containers: Reopen in container` and then use the integrated
 terminal to run:
 
 ```bash

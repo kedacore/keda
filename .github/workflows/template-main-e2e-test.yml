@@ -33,7 +33,7 @@ jobs:
           AWS_RUN_IDENTITY_TESTS: true
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           GCP_RUN_IDENTITY_TESTS: true
-          ENABLE_OPENTELEMETRY : true
+          ENABLE_OPENTELEMETRY: true
         run: make e2e-test
 
       - name: Delete all e2e related namespaces

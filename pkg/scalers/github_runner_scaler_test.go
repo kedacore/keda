@@ -73,9 +73,9 @@ var testGitHubRunnerMetadata = []parseGitHubRunnerMetadataTestData{
 	// empty token
 	{"empty targetWorkflowQueueLength", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": REPO, "owner": "ownername", "repos": "reponame"}, true, false, ""},
 	// missing installationID From Env
-	{"missing installationID Env", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationIDFromEnv": "APP_ID"}, true, true, "applicationID, installationID and applicationKey must be given"},
+	{"missing installationID Env", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationIDFromEnv": "APP_ID"}, true, true, "error parsing installationID: no installationID given"},
 	// missing applicationID From Env
-	{"missing applicationId Env", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "installationIDFromEnv": "INST_ID"}, true, true, "applicationID, installationID and applicationKey must be given"},
+	{"missing applicationID Env", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "installationIDFromEnv": "INST_ID"}, true, true, "error parsing applicationID: no applicationID given"},
 	// nothing passed
 	{"empty, no envs", map[string]string{}, false, true, "no runnerScope given"},
 	//  empty githubApiURL
@@ -105,11 +105,15 @@ var testGitHubRunnerMetadata = []parseGitHubRunnerMetadataTestData{
 	// empty repos, no envs
 	{"empty repos, no envs", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "labels": "golang", "repos": "", "targetWorkflowQueueLength": "1"}, false, false, ""},
 	// missing installationID
-	{"missing installationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1"}, true, true, "applicationID, installationID and applicationKey must be given"},
+	{"missing installationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1"}, true, true, "error parsing installationID: no installationID given"},
 	// missing applicationID
-	{"missing applicationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "installationID": "1"}, true, true, "applicationID, installationID and applicationKey must be given"},
+	{"missing applicationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "installationID": "1"}, true, true, "error parsing applicationID: no applicationID given"},
 	// all good
-	{"missing applicationKey", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1", "installationID": "1"}, true, true, "applicationID, installationID and applicationKey must be given"},
+	{"missing applicationKey", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1", "installationID": "1"}, true, true, "no applicationKey given"},
+	{"missing runnerScope Env", map[string]string{"githubApiURL": "https://api.github.com", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "runnerScopeFromEnv": "EMPTY"}, true, true, "runnerScope EMPTY env variable value is empty"},
+	{"missing owner Env", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "ownerFromEnv": "EMPTY"}, true, true, "owner EMPTY env variable value is empty"},
+	{"wrong applicationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "id", "installationID": "1"}, true, true, "error parsing applicationID: strconv.ParseInt: parsing \"id\": invalid syntax"},
+	{"wrong installationID", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": ORG, "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1", "applicationID": "1", "installationID": "id"}, true, true, "error parsing installationID: strconv.ParseInt: parsing \"id\": invalid syntax"},
 }
 
 func TestGitHubRunnerParseMetadata(t *testing.T) {
