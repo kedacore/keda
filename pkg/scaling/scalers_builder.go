@@ -208,7 +208,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "mongodb":
 		return scalers.NewMongoDBScaler(ctx, config)
 	case "mssql":
-		return scalers.NewMSSQLScaler(config)
+		return scalers.NewMSSQLScaler(ctx, config)
 	case "mysql":
 		return scalers.NewMySQLScaler(config)
 	case "nats-jetstream":
