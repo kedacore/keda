@@ -26,7 +26,7 @@ type influxDBMetadata struct {
 	OrganizationName         string  `keda:"name=organizationName, order=triggerMetadata;resolvedEnv;authParams"`
 	Query                    string  `keda:"name=query, order=triggerMetadata"`
 	ServerURL                string  `keda:"name=serverURL, order=triggerMetadata;authParams"`
-	UnsafeSsl                bool    `keda:"name=UnsafeSsl, order=triggerMetadata, optional"`
+	UnsafeSsl                bool    `keda:"name=unsafeSsl, order=triggerMetadata, optional"`
 	ThresholdValue           float64 `keda:"name=thresholdValue, order=triggerMetadata, optional"`
 	ActivationThresholdValue float64 `keda:"name=activationThresholdValue, order=triggerMetadata, optional"`
 
