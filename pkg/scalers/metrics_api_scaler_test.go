@@ -125,6 +125,16 @@ func TestMetricsAPIGetMetricSpecForScaling(t *testing.T) {
 func TestGetValueFromResponse(t *testing.T) {
 	inputJSON := []byte(`{"components":[{"id": "82328e93e", "tasks": 32, "str": "64", "k":"1k","wrong":"NaN"}],"count":2.43}`)
 	inputYAML := []byte(`{components: [{id: 82328e93e, tasks: 32, str: '64', k: 1k, wrong: NaN}], count: 2.43}`)
+	inputPrometheus := []byte(`# HELP backend_queue_size Total number of items
+	# TYPE backend_queue_size counter
+	backend_queue_size{queueName="zero"} 0
+	backend_queue_size{queueName="one"} 1
+	backend_queue_size{queueName="two", instance="random"} 2
+	backend_queue_size{queueName="two", instance="zero"} 20
+	# HELP random_metric Random metric generate to include noise
+	# TYPE random_metric counter
+	random_metric 10
+	`)
 
 	testCases := []struct {
 		name      string
@@ -143,6 +153,12 @@ func TestGetValueFromResponse(t *testing.T) {
 		{name: "string", input: inputYAML, key: "components.0.str", format: YAMLFormat, expectVal: 64},
 		{name: "{}.[].{}", input: inputYAML, key: "components.0.tasks", format: YAMLFormat, expectVal: 32},
 		{name: "invalid data", input: inputYAML, key: "components.0.wrong", format: YAMLFormat, expectErr: true},
+
+		{name: "no labels", input: inputPrometheus, key: "random_metric", format: PrometheusFormat, expectVal: 10},
+		{name: "one label", input: inputPrometheus, key: "backend_queue_size{queueName=\"one\"}", format: PrometheusFormat, expectVal: 1},
+		{name: "multiple labels not queried", input: inputPrometheus, key: "backend_queue_size{queueName=\"two\"}", format: PrometheusFormat, expectVal: 2},
+		{name: "multiple labels queried", input: inputPrometheus, key: "backend_queue_size{queueName=\"two\", instance=\"zero\"}", format: PrometheusFormat, expectVal: 20},
+		{name: "invalid data", input: inputPrometheus, key: "backend_queue_size{invalid=test}", format: PrometheusFormat, expectErr: true},
 	}
 
 	for _, tc := range testCases {

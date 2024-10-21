@@ -25,7 +25,7 @@ jobs:
       - name: Install prerequisites
         run: |
           sudo apt update
-          sudo apt install curl make ca-certificates gcc libc-dev -y
+          sudo apt install curl make ca-certificates gcc libc-dev wget -y
         env:
           DEBIAN_FRONTEND: noninteractive
 
