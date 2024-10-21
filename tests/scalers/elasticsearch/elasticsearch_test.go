@@ -445,5 +445,3 @@ func getTemplateData() (templateData, []Template) {
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 		}
 }
-
-
