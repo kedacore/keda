@@ -18,7 +18,9 @@ import (
 )
 
 const (
-	host = "myHostSecret"
+	host             = "myHostSecret"
+	rabbitMQUsername = "myUsernameSecret"
+	rabbitMQPassword = "myPasswordSecret"
 )
 
 type parseRabbitMQMetadataTestData struct {
@@ -43,7 +45,9 @@ type rabbitMQMetricIdentifier struct {
 }
 
 var sampleRabbitMqResolvedEnv = map[string]string{
-	host: "amqp://user:sercet@somehost.com:5236/vhost",
+	host:             "amqp://user:sercet@somehost.com:5236/vhost",
+	rabbitMQUsername: "user",
+	rabbitMQPassword: "Password",
 }
 
 var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
@@ -151,6 +155,18 @@ var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
 	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert"}, true, true, false},
 	// failure, TLS invalid
 	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"tls": "yes", "ca": "caaa", "cert": "ceert", "key": "kee"}, true, true, false},
+	// success, username and password
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"username": "user", "password": "PASSWORD"}, false, false, false},
+	// failure, username but no password
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"username": "user"}, true, false, false},
+	// failure, password but no username
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"password": "PASSWORD"}, true, false, false},
+	// success, username and password from env
+	{map[string]string{"queueName": "sample", "hostFromEnv": host, "usernameFromEnv": rabbitMQUsername, "passwordFromEnv": rabbitMQPassword}, v1alpha1.AuthPodIdentity{}, map[string]string{}, false, false, false},
+	// failure, username from env but not password
+	{map[string]string{"queueName": "sample", "hostFromEnv": host, "usernameFromEnv": rabbitMQUsername}, v1alpha1.AuthPodIdentity{}, map[string]string{}, true, false, false},
+	// failure, password from env but not username
+	{map[string]string{"queueName": "sample", "hostFromEnv": host, "passwordFromEnv": rabbitMQPassword}, v1alpha1.AuthPodIdentity{}, map[string]string{}, true, false, false},
 	// success, WorkloadIdentity
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "http"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, false, false, true},
 	// failure, WoekloadIdentity not supported for amqp
