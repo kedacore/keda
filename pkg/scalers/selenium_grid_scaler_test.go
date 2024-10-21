@@ -11,11 +11,14 @@ import (
 
 func Test_getCountFromSeleniumResponse(t *testing.T) {
 	type args struct {
-		b                  []byte
-		browserName        string
-		sessionBrowserName string
-		browserVersion     string
-		platformName       string
+		b                     []byte
+		browserName           string
+		sessionBrowserName    string
+		browserVersion        string
+		platformName          string
+		sessionsPerNode       int64
+		setSessionsFromHub    bool
+		sessionBrowserVersion string
 	}
 	tests := []struct {
 		name    string
@@ -50,6 +53,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							"maxSession": 0,
 							"nodeCount": 0
 						},
+						"nodesInfo": {
+							"nodes": []
+						},
 						"sessionsInfo": {
 							"sessionQueueRequests": [],
 							"sessions": []
@@ -69,6 +75,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						"grid":{
 							"maxSession": 1,
 							"nodeCount": 1
+						},
+						"nodesInfo": {
+							"nodes": []
 						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
@@ -99,6 +108,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							"maxSession": 1,
 							"nodeCount": 1
 						},
+						"nodesInfo": {
+							"nodes": []
+						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
 							"sessions": []
@@ -122,6 +134,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							"maxSession": 4,
 							"nodeCount": 2
 						},
+						"nodesInfo": {
+							"nodes": []
+						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"]
 						}
@@ -143,6 +158,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						"grid":{
 							"maxSession": 4,
 							"nodeCount": 1
+						},
+						"nodesInfo": {
+							"nodes": []
 						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
@@ -178,6 +196,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							"maxSession": 3,
 							"nodeCount": 1
 						},
+						"nodesInfo": {
+							"nodes": []
+						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
 							"sessions": [
@@ -211,6 +232,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						"grid":{
 							"maxSession": 2,
 							"nodeCount": 2
+						},
+						"nodesInfo": {
+							"nodes": []
 						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}"],
@@ -246,6 +270,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							"maxSession": 2,
 							"nodeCount": 2
 						},
+						"nodesInfo": {
+							"nodes": []
+						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}"],
 							"sessions": [
@@ -279,6 +306,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						"grid":{
 							"maxSession": 2,
 							"nodeCount": 2
+						},
+						"nodesInfo": {
+							"nodes": []
 						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\"}","{\n  \"browserName\": \"chrome\"}","{\n  \"browserName\": \"chrome\"}"],
@@ -314,6 +344,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							"maxSession": 1,
 							"nodeCount": 1
 						},
+						"nodesInfo": {
+							"nodes": []
+						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
 							"sessions": [
@@ -342,6 +375,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						"grid":{
 							"maxSession": 1,
 							"nodeCount": 1
+						},
+						"nodesInfo": {
+							"nodes": []
 						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"MicrosoftEdge\",\n \"browserVersion\": \"91.0\"\n}","{\n  \"browserName\": \"MicrosoftEdge\",\n \"browserVersion\": \"91.0\"\n}"],
@@ -372,6 +408,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							"maxSession": 1,
 							"nodeCount": 1
 						},
+						"nodesInfo": {
+							"nodes": []
+						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
 							"sessions": [
@@ -400,6 +439,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						"grid":{
 							"maxSession": 3,
 							"nodeCount": 1
+						},
+						"nodesInfo": {
+							"nodes": []
 						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\"\n}"],
@@ -430,6 +472,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							"maxSession": 1,
 							"nodeCount": 1
 						},
+						"nodesInfo": {
+							"nodes": []
+						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"],
 							"sessions": []
@@ -453,6 +498,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							"maxSession": 1,
 							"nodeCount": 1
 						},
+						"nodesInfo": {
+							"nodes": []
+						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"],
 							"sessions": []
@@ -468,6 +516,96 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "sessions requests with matching browsername and platformName when setSessionsFromHub turned on and node with 2 slots matches should return count as 1",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid":{
+							"maxSession": 1,
+							"nodeCount": 1
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"stereotypes":"[{\"slots\":1,\"stereotype\":{\"browserName\":\"chrome\",\"platformName\":\"linux\"}}]"
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"],
+							"sessions": []
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "latest",
+				platformName:       "linux",
+				setSessionsFromHub: true,
+			},
+			want:    1,
+			wantErr: false,
+		},
+		{
+			name: "4 sessions requests with matching browsername and platformName when setSessionsFromHub turned on and node with 2 slots matches should return count as 2",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid":{
+							"maxSession": 1,
+							"nodeCount": 1
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"stereotypes":"[{\"slots\":2,\"stereotype\":{\"browserName\":\"chrome\",\"platformName\":\"linux\"}}]"
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"],
+							"sessions": []
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "latest",
+				platformName:       "linux",
+				setSessionsFromHub: true,
+			},
+			want:    2,
+			wantErr: false,
+		},
+		{
+			name: "4 sessions requests with matching browsername and platformName when setSessionsFromHub turned on, no nodes and sessionsPerNode=2 matches should return count as 2",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid":{
+							"maxSession": 1,
+							"nodeCount": 1
+						},
+						"nodesInfo": {
+							"nodes": []
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"],
+							"sessions": []
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "latest",
+				platformName:       "linux",
+				setSessionsFromHub: true,
+				sessionsPerNode:    2,
+			},
+			want:    2,
+			wantErr: false,
+		},
+		{
 			name: "sessions requests and active sessions with matching browsername and platformName should return count as 2",
 			args: args{
 				b: []byte(`{
@@ -475,6 +613,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						"grid":{
 							"maxSession": 1,
 							"nodeCount": 1
+						},
+						"nodesInfo": {
+							"nodes": []
 						},
 						"sessionsInfo": {
 							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\",\n \"browserVersion\": \"91.0\"\n}"],
@@ -501,10 +642,47 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			want:    2,
 			wantErr: false,
 		},
+		{
+			name: "sessions requests and active sessions with matching browsername, platformName and sessionBrowserVersion should return count as 3",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid":{
+							"maxSession": 1,
+							"nodeCount": 1
+						},
+						"nodesInfo": {
+							"nodes": []
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": ["{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}","{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\",\n \"browserVersion\": \"91.0\"\n}"],
+							"sessions": [
+								{
+									"id": "0f9c5a941aa4d755a54b84be1f6535b1",
+									"capabilities": "{\n  \"acceptInsecureCerts\": false,\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"91.0.4472.114\",\n  \"chrome\": {\n    \"chromedriverVersion\": \"91.0.4472.101 (af52a90bf87030dd1523486a1cd3ae25c5d76c9b-refs\\u002fbranch-heads\\u002f4472@{#1462})\",\n    \"userDataDir\": \"\\u002ftmp\\u002f.com.google.Chrome.DMqx9m\"\n  },\n  \"goog:chromeOptions\": {\n    \"debuggerAddress\": \"localhost:35839\"\n  },\n  \"networkConnectionEnabled\": false,\n  \"pageLoadStrategy\": \"normal\",\n  \"platformName\": \"linux\",\n  \"proxy\": {\n  },\n  \"se:cdp\": \"http:\\u002f\\u002flocalhost:35839\",\n  \"se:cdpVersion\": \"91.0.4472.114\",\n  \"se:vncEnabled\": true,\n  \"se:vncLocalAddress\": \"ws:\\u002f\\u002flocalhost:7900\\u002fwebsockify\",\n  \"setWindowRect\": true,\n  \"strictFileInteractability\": false,\n  \"timeouts\": {\n    \"implicit\": 0,\n    \"pageLoad\": 300000,\n    \"script\": 30000\n  },\n  \"unhandledPromptBehavior\": \"dismiss and notify\",\n  \"webauthn:extension:largeBlob\": true,\n  \"webauthn:virtualAuthenticators\": true\n}",
+									"nodeId": "d44dcbc5-0b2c-4d5e-abf4-6f6aa5e0983c"
+								},
+								{
+									"id": "0f9c5a941aa4d755a54b84be1f6535b1",
+									"capabilities": "{\n  \"acceptInsecureCerts\": false,\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"91.0.4472.114\",\n  \"chrome\": {\n    \"chromedriverVersion\": \"91.0.4472.101 (af52a90bf87030dd1523486a1cd3ae25c5d76c9b-refs\\u002fbranch-heads\\u002f4472@{#1462})\",\n    \"userDataDir\": \"\\u002ftmp\\u002f.com.google.Chrome.DMqx9m\"\n  },\n  \"goog:chromeOptions\": {\n    \"debuggerAddress\": \"localhost:35839\"\n  },\n  \"networkConnectionEnabled\": false,\n  \"pageLoadStrategy\": \"normal\",\n  \"platformName\": \"linux\",\n  \"proxy\": {\n  },\n  \"se:cdp\": \"http:\\u002f\\u002flocalhost:35839\",\n  \"se:cdpVersion\": \"91.0.4472.114\",\n  \"se:vncEnabled\": true,\n  \"se:vncLocalAddress\": \"ws:\\u002f\\u002flocalhost:7900\\u002fwebsockify\",\n  \"setWindowRect\": true,\n  \"strictFileInteractability\": false,\n  \"timeouts\": {\n    \"implicit\": 0,\n    \"pageLoad\": 300000,\n    \"script\": 30000\n  },\n  \"unhandledPromptBehavior\": \"dismiss and notify\",\n  \"webauthn:extension:largeBlob\": true,\n  \"webauthn:virtualAuthenticators\": true\n}",
+									"nodeId": "d44dcbc5-0b2c-4d5e-abf4-6f6aa5e0983c"
+								}
+							]
+						}
+					}
+				}`),
+				browserName:           "chrome",
+				sessionBrowserName:    "chrome",
+				sessionBrowserVersion: "91.0.4472.114",
+				platformName:          "linux",
+			},
+			want:    3,
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion, tt.args.sessionBrowserName, tt.args.platformName, logr.Discard())
+			got, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion, tt.args.sessionBrowserName, tt.args.platformName, tt.args.sessionsPerNode, tt.args.setSessionsFromHub, tt.args.sessionBrowserVersion, logr.Discard())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCountFromSeleniumResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -558,12 +736,14 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                "http://selenium-hub:4444/graphql",
-				BrowserName:        "chrome",
-				SessionBrowserName: "chrome",
-				TargetValue:        1,
-				BrowserVersion:     "latest",
-				PlatformName:       "linux",
+				URL:                   "http://selenium-hub:4444/graphql",
+				BrowserName:           "chrome",
+				SessionBrowserName:    "chrome",
+				TargetValue:           1,
+				BrowserVersion:        "latest",
+				PlatformName:          "linux",
+				SessionsPerNode:       1,
+				SessionBrowserVersion: "latest",
 			},
 		},
 		{
@@ -579,12 +759,14 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                "http://selenium-hub:4444/graphql",
-				BrowserName:        "MicrosoftEdge",
-				SessionBrowserName: "msedge",
-				TargetValue:        1,
-				BrowserVersion:     "latest",
-				PlatformName:       "linux",
+				URL:                   "http://selenium-hub:4444/graphql",
+				BrowserName:           "MicrosoftEdge",
+				SessionBrowserName:    "msedge",
+				TargetValue:           1,
+				BrowserVersion:        "latest",
+				PlatformName:          "linux",
+				SessionsPerNode:       1,
+				SessionBrowserVersion: "latest",
 			},
 		},
 		{
@@ -602,12 +784,14 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                "http://user:password@selenium-hub:4444/graphql",
-				BrowserName:        "MicrosoftEdge",
-				SessionBrowserName: "msedge",
-				TargetValue:        1,
-				BrowserVersion:     "latest",
-				PlatformName:       "linux",
+				URL:                   "http://user:password@selenium-hub:4444/graphql",
+				BrowserName:           "MicrosoftEdge",
+				SessionBrowserName:    "msedge",
+				TargetValue:           1,
+				BrowserVersion:        "latest",
+				PlatformName:          "linux",
+				SessionsPerNode:       1,
+				SessionBrowserVersion: "latest",
 			},
 		},
 		{
@@ -627,14 +811,16 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                "http://selenium-hub:4444/graphql",
-				BrowserName:        "MicrosoftEdge",
-				SessionBrowserName: "msedge",
-				TargetValue:        1,
-				BrowserVersion:     "latest",
-				PlatformName:       "linux",
-				Username:           "username",
-				Password:           "password",
+				URL:                   "http://selenium-hub:4444/graphql",
+				BrowserName:           "MicrosoftEdge",
+				SessionBrowserName:    "msedge",
+				TargetValue:           1,
+				BrowserVersion:        "latest",
+				PlatformName:          "linux",
+				Username:              "username",
+				Password:              "password",
+				SessionsPerNode:       1,
+				SessionBrowserVersion: "latest",
 			},
 		},
 		{
@@ -651,13 +837,15 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                "http://selenium-hub:4444/graphql",
-				BrowserName:        "chrome",
-				SessionBrowserName: "chrome",
-				TargetValue:        1,
-				BrowserVersion:     "91.0",
-				UnsafeSsl:          false,
-				PlatformName:       "linux",
+				URL:                   "http://selenium-hub:4444/graphql",
+				BrowserName:           "chrome",
+				SessionBrowserName:    "chrome",
+				TargetValue:           1,
+				BrowserVersion:        "91.0",
+				UnsafeSsl:             false,
+				PlatformName:          "linux",
+				SessionsPerNode:       1,
+				SessionBrowserVersion: "91.0",
 			},
 		},
 		{
@@ -675,14 +863,16 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                 "http://selenium-hub:4444/graphql",
-				BrowserName:         "chrome",
-				SessionBrowserName:  "chrome",
-				TargetValue:         1,
-				ActivationThreshold: 10,
-				BrowserVersion:      "91.0",
-				UnsafeSsl:           true,
-				PlatformName:        "linux",
+				URL:                   "http://selenium-hub:4444/graphql",
+				BrowserName:           "chrome",
+				SessionBrowserName:    "chrome",
+				TargetValue:           1,
+				ActivationThreshold:   10,
+				BrowserVersion:        "91.0",
+				UnsafeSsl:             true,
+				PlatformName:          "linux",
+				SessionsPerNode:       1,
+				SessionBrowserVersion: "91.0",
 			},
 		},
 		{
@@ -715,14 +905,16 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                 "http://selenium-hub:4444/graphql",
-				BrowserName:         "chrome",
-				SessionBrowserName:  "chrome",
-				TargetValue:         1,
-				ActivationThreshold: 10,
-				BrowserVersion:      "91.0",
-				UnsafeSsl:           true,
-				PlatformName:        "linux",
+				URL:                   "http://selenium-hub:4444/graphql",
+				BrowserName:           "chrome",
+				SessionBrowserName:    "chrome",
+				TargetValue:           1,
+				ActivationThreshold:   10,
+				BrowserVersion:        "91.0",
+				UnsafeSsl:             true,
+				PlatformName:          "linux",
+				SessionsPerNode:       1,
+				SessionBrowserVersion: "91.0",
 			},
 		},
 		{
@@ -741,14 +933,16 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                 "http://selenium-hub:4444/graphql",
-				BrowserName:         "chrome",
-				SessionBrowserName:  "chrome",
-				TargetValue:         1,
-				ActivationThreshold: 10,
-				BrowserVersion:      "91.0",
-				UnsafeSsl:           true,
-				PlatformName:        "Windows 11",
+				URL:                   "http://selenium-hub:4444/graphql",
+				BrowserName:           "chrome",
+				SessionBrowserName:    "chrome",
+				TargetValue:           1,
+				ActivationThreshold:   10,
+				BrowserVersion:        "91.0",
+				UnsafeSsl:             true,
+				PlatformName:          "Windows 11",
+				SessionsPerNode:       1,
+				SessionBrowserVersion: "91.0",
 			},
 		},
 	}
