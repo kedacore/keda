@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/robfig/cron/v3"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -121,7 +122,18 @@ func TestCronGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockCronScaler := cronScaler{"", meta, logr.Discard()}
+
+		parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+		startSchedule, _ := parser.Parse(meta.Start)
+		endSchedule, _ := parser.Parse(meta.End)
+
+		mockCronScaler := cronScaler{
+			metricType:    "",
+			metadata:      meta,
+			logger:        logr.Discard(),
+			startSchedule: startSchedule,
+			endSchedule:   endSchedule,
+		}
 
 		metricSpec := mockCronScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
