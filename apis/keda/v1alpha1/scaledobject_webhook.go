@@ -554,7 +554,7 @@ func isContainerResourceLimitSet(ctx context.Context, namespace string, triggerT
 }
 
 func getHpaName(so ScaledObject) string {
-	if so.Spec.Advanced == nil || so.Spec.Advanced.HorizontalPodAutoscalerConfig.Name == "" {
+	if so.Spec.Advanced == nil || so.Spec.Advanced.HorizontalPodAutoscalerConfig == nil || so.Spec.Advanced.HorizontalPodAutoscalerConfig.Name == "" {
 		return fmt.Sprintf("keda-hpa-%s", so.Name)
 	}
 
