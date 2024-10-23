@@ -29,13 +29,20 @@ type seleniumGridScaler struct {
 type seleniumGridScalerMetadata struct {
 	triggerIndex int
 
-	URL                 string `keda:"name=url,                      order=triggerMetadata;authParams"`
-	BrowserName         string `keda:"name=browserName,              order=triggerMetadata"`
-	SessionBrowserName  string `keda:"name=sessionBrowserName,       order=triggerMetadata, optional"`
-	ActivationThreshold int64  `keda:"name=activationThreshold,      order=triggerMetadata, optional"`
-	BrowserVersion      string `keda:"name=browserVersion,           order=triggerMetadata, optional, default=latest"`
-	UnsafeSsl           bool   `keda:"name=unsafeSsl,                order=triggerMetadata, optional, default=false"`
-	PlatformName        string `keda:"name=platformName,             order=triggerMetadata, optional, default=linux"`
+	URL                   string `keda:"name=url,                     order=triggerMetadata;authParams"`
+	BrowserName           string `keda:"name=browserName,             order=triggerMetadata"`
+	SessionBrowserName    string `keda:"name=sessionBrowserName,      order=triggerMetadata, optional"`
+	ActivationThreshold   int64  `keda:"name=activationThreshold,     order=triggerMetadata, optional"`
+	BrowserVersion        string `keda:"name=browserVersion,          order=triggerMetadata, optional, default=latest"`
+	UnsafeSsl             bool   `keda:"name=unsafeSsl,               order=triggerMetadata, optional, default=false"`
+	PlatformName          string `keda:"name=platformName,            order=triggerMetadata, optional, default=linux"`
+	SessionsPerNode       int64  `keda:"name=sessionsPerNode,         order=triggerMetadata, optional, default=1"`
+	SetSessionsFromHub    bool   `keda:"name=setSessionsFromHub,      order=triggerMetadata, optional, default=false"`
+	SessionBrowserVersion string `keda:"name=sessionBrowserVersion,   order=triggerMetadata, optional"`
+
+	// auth
+	Username string `keda:"name=username, order=authParams;resolvedEnv;triggerMetadata, optional"`
+	Password string `keda:"name=password, order=authParams;resolvedEnv;triggerMetadata, optional"`
 
 	TargetValue int64
 }
@@ -46,6 +53,7 @@ type seleniumResponse struct {
 
 type data struct {
 	Grid         grid         `json:"grid"`
+	NodesInfo    nodesInfo    `json:"nodesInfo"`
 	SessionsInfo sessionsInfo `json:"sessionsInfo"`
 }
 
@@ -69,6 +77,19 @@ type capability struct {
 	BrowserName    string `json:"browserName"`
 	BrowserVersion string `json:"browserVersion"`
 	PlatformName   string `json:"platformName"`
+}
+
+type nodesInfo struct {
+	Nodes []nodes `json:"nodes"`
+}
+
+type nodes struct {
+	Stereotypes string `json:"stereotypes"`
+}
+
+type stereotype struct {
+	Slots      int64      `json:"slots"`
+	Stereotype capability `json:"stereotype"`
 }
 
 const (
@@ -114,6 +135,9 @@ func parseSeleniumGridScalerMetadata(config *scalersconfig.ScalerConfig) (*selen
 	if meta.SessionBrowserName == "" {
 		meta.SessionBrowserName = meta.BrowserName
 	}
+	if meta.SessionBrowserVersion == "" {
+		meta.SessionBrowserVersion = meta.BrowserVersion
+	}
 	return meta, nil
 }
 
@@ -152,7 +176,7 @@ func (s *seleniumGridScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 
 func (s *seleniumGridScaler) getSessionsCount(ctx context.Context, logger logr.Logger) (int64, error) {
 	body, err := json.Marshal(map[string]string{
-		"query": "{ grid { maxSession, nodeCount }, sessionsInfo { sessionQueueRequests, sessions { id, capabilities, nodeId } } }",
+		"query": "{ grid { maxSession, nodeCount }, nodesInfo { nodes { stereotypes } }, sessionsInfo { sessionQueueRequests, sessions { id, capabilities, nodeId } } }",
 	})
 
 	if err != nil {
@@ -163,6 +187,9 @@ func (s *seleniumGridScaler) getSessionsCount(ctx context.Context, logger logr.L
 	if err != nil {
 		return -1, err
 	}
+
+	// Add HTTP Auth
+	req.SetBasicAuth(s.metadata.Username, s.metadata.Password)
 
 	res, err := s.httpClient.Do(req)
 	if err != nil {
@@ -179,19 +206,24 @@ func (s *seleniumGridScaler) getSessionsCount(ctx context.Context, logger logr.L
 	if err != nil {
 		return -1, err
 	}
-	v, err := getCountFromSeleniumResponse(b, s.metadata.BrowserName, s.metadata.BrowserVersion, s.metadata.SessionBrowserName, s.metadata.PlatformName, logger)
+	v, err := getCountFromSeleniumResponse(b, s.metadata.BrowserName, s.metadata.BrowserVersion, s.metadata.SessionBrowserName, s.metadata.PlatformName, s.metadata.SessionsPerNode, s.metadata.SetSessionsFromHub, s.metadata.SessionBrowserVersion, logger)
 	if err != nil {
 		return -1, err
 	}
 	return v, nil
 }
 
-func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string, platformName string, logger logr.Logger) (int64, error) {
+func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string, platformName string, sessionsPerNode int64, setSessionsFromHub bool, sessionBrowserVersion string, logger logr.Logger) (int64, error) {
 	var count int64
+	var slots int64
 	var seleniumResponse = seleniumResponse{}
 
 	if err := json.Unmarshal(b, &seleniumResponse); err != nil {
 		return 0, err
+	}
+
+	if setSessionsFromHub {
+		slots = getSlotsFromSeleniumResponse(seleniumResponse, browserName, browserVersion, platformName, logger)
 	}
 
 	var sessionQueueRequests = seleniumResponse.Data.SessionsInfo.SessionQueueRequests
@@ -217,7 +249,7 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 		if err := json.Unmarshal([]byte(session.Capabilities), &capability); err == nil {
 			var platformNameMatches = capability.PlatformName == "" || strings.EqualFold(capability.PlatformName, platformName)
 			if capability.BrowserName == sessionBrowserName {
-				if strings.HasPrefix(capability.BrowserVersion, browserVersion) && platformNameMatches {
+				if strings.HasPrefix(capability.BrowserVersion, sessionBrowserVersion) && platformNameMatches {
 					count++
 				} else if browserVersion == DefaultBrowserVersion && platformNameMatches {
 					count++
@@ -231,10 +263,44 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	var gridMaxSession = int64(seleniumResponse.Data.Grid.MaxSession)
 	var gridNodeCount = int64(seleniumResponse.Data.Grid.NodeCount)
 
-	if gridMaxSession > 0 && gridNodeCount > 0 {
+	if setSessionsFromHub {
+		if slots == 0 {
+			slots = sessionsPerNode
+		}
+		var floatCount = float64(count) / float64(slots)
+		count = int64(math.Ceil(floatCount))
+	} else if gridMaxSession > 0 && gridNodeCount > 0 {
 		// Get count, convert count to next highest int64
 		var floatCount = float64(count) / (float64(gridMaxSession) / float64(gridNodeCount))
 		count = int64(math.Ceil(floatCount))
 	}
+
 	return count, nil
+}
+
+func getSlotsFromSeleniumResponse(seleniumResponse seleniumResponse, browserName string, browserVersion string, platformName string, logger logr.Logger) int64 {
+	var slots int64
+
+	var nodes = seleniumResponse.Data.NodesInfo.Nodes
+slots:
+	for _, node := range nodes {
+		var stereotypes = []stereotype{}
+		if err := json.Unmarshal([]byte(node.Stereotypes), &stereotypes); err == nil {
+			for _, stereotype := range stereotypes {
+				if stereotype.Stereotype.BrowserName == browserName {
+					var platformNameMatches = stereotype.Stereotype.PlatformName == "" || strings.EqualFold(stereotype.Stereotype.PlatformName, platformName)
+					if strings.HasPrefix(stereotype.Stereotype.BrowserVersion, browserVersion) && platformNameMatches {
+						slots = stereotype.Slots
+						break slots
+					} else if len(strings.TrimSpace(stereotype.Stereotype.BrowserVersion)) == 0 && browserVersion == DefaultBrowserVersion && platformNameMatches {
+						slots = stereotype.Slots
+						break slots
+					}
+				}
+			}
+		} else {
+			logger.Error(err, fmt.Sprintf("Error when unmarshalling stereotypes: %s", err))
+		}
+	}
+	return slots
 }

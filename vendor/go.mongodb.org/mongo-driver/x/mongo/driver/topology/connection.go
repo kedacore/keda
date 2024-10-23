@@ -320,7 +320,7 @@ func transformNetworkError(ctx context.Context, originalError error, contextDead
 
 	// If there was an error and the context was cancelled, we assume it happened due to the cancellation.
 	if errors.Is(ctx.Err(), context.Canceled) {
-		return context.Canceled
+		return ctx.Err()
 	}
 
 	// If there was a timeout error and the context deadline was used, we convert the error into
@@ -329,7 +329,7 @@ func transformNetworkError(ctx context.Context, originalError error, contextDead
 		return originalError
 	}
 	if netErr, ok := originalError.(net.Error); ok && netErr.Timeout() {
-		return context.DeadlineExceeded
+		return fmt.Errorf("%w: %s", context.DeadlineExceeded, originalError.Error())
 	}
 
 	return originalError

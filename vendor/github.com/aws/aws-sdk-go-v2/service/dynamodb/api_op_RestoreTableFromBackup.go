@@ -13,14 +13,22 @@ import (
 )
 
 // Creates a new table from an existing backup. Any number of users can execute up
-// to 50 concurrent restores (any type of restore) in a given account. You can call
-// RestoreTableFromBackup at a maximum rate of 10 times per second. You must
-// manually set up the following on the restored table:
+// to 50 concurrent restores (any type of restore) in a given account.
+//
+// You can call RestoreTableFromBackup at a maximum rate of 10 times per second.
+//
+// You must manually set up the following on the restored table:
+//
 //   - Auto scaling policies
+//
 //   - IAM policies
+//
 //   - Amazon CloudWatch metrics and alarms
+//
 //   - Tags
+//
 //   - Stream settings
+//
 //   - Time to Live (TTL) settings
 func (c *Client) RestoreTableFromBackup(ctx context.Context, params *RestoreTableFromBackupInput, optFns ...func(*Options)) (*RestoreTableFromBackupOutput, error) {
 	if params == nil {
@@ -61,6 +69,11 @@ type RestoreTableFromBackupInput struct {
 	// should match existing secondary indexes. You can choose to exclude some or all
 	// of the indexes at the time of restore.
 	LocalSecondaryIndexOverride []types.LocalSecondaryIndex
+
+	// Sets the maximum number of read and write units for the specified on-demand
+	// table. If you use this parameter, you must specify MaxReadRequestUnits ,
+	// MaxWriteRequestUnits , or both.
+	OnDemandThroughputOverride *types.OnDemandThroughput
 
 	// Provisioned throughput settings for the restored table.
 	ProvisionedThroughputOverride *types.ProvisionedThroughput
@@ -138,6 +151,12 @@ func (c *Client) addOperationRestoreTableFromBackupMiddlewares(stack *middleware
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addOpRestoreTableFromBackupValidationMiddleware(stack); err != nil {

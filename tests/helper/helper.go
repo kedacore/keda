@@ -36,6 +36,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	"github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
@@ -306,18 +307,15 @@ func WaitForNamespaceDeletion(t *testing.T, nsName string) bool {
 	return false
 }
 
-func WaitForScaledJobCount(t *testing.T, kc *kubernetes.Clientset, scaledJobName, namespace string,
-	target, iterations, intervalSeconds int) bool {
+func WaitForScaledJobCount(t *testing.T, kc *kubernetes.Clientset, scaledJobName, namespace string, target, iterations, intervalSeconds int) bool {
 	return waitForJobCount(t, kc, fmt.Sprintf("scaledjob.keda.sh/name=%s", scaledJobName), namespace, target, iterations, intervalSeconds)
 }
 
-func WaitForJobCount(t *testing.T, kc *kubernetes.Clientset, namespace string,
-	target, iterations, intervalSeconds int) bool {
+func WaitForJobCount(t *testing.T, kc *kubernetes.Clientset, namespace string, target, iterations, intervalSeconds int) bool {
 	return waitForJobCount(t, kc, "", namespace, target, iterations, intervalSeconds)
 }
 
-func waitForJobCount(t *testing.T, kc *kubernetes.Clientset, selector, namespace string,
-	target, iterations, intervalSeconds int) bool {
+func waitForJobCount(t *testing.T, kc *kubernetes.Clientset, selector, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		jobList, _ := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{
 			LabelSelector: selector,
@@ -337,9 +335,8 @@ func waitForJobCount(t *testing.T, kc *kubernetes.Clientset, selector, namespace
 	return false
 }
 
-func WaitForJobCountUntilIteration(t *testing.T, kc *kubernetes.Clientset, namespace string,
-	target, iterations, intervalSeconds int) bool {
-	var isTargetAchieved = false
+func WaitForJobCountUntilIteration(t *testing.T, kc *kubernetes.Clientset, namespace string, target, iterations, intervalSeconds int) bool {
+	isTargetAchieved := false
 
 	for i := 0; i < iterations; i++ {
 		jobList, _ := kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{})
@@ -361,8 +358,7 @@ func WaitForJobCountUntilIteration(t *testing.T, kc *kubernetes.Clientset, names
 }
 
 // Waits until deployment count hits target or number of iterations are done.
-func WaitForPodCountInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string,
-	target, iterations, intervalSeconds int) bool {
+func WaitForPodCountInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		pods, _ := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
 
@@ -407,8 +403,7 @@ func WaitForAllPodRunningInNamespace(t *testing.T, kc *kubernetes.Clientset, nam
 
 // Waits until the Horizontal Pod Autoscaler for the scaledObject reports that it has metrics available
 // to calculate, or until the number of iterations are done, whichever happens first.
-func WaitForHPAMetricsToPopulate(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
-	iterations, intervalSeconds int) bool {
+func WaitForHPAMetricsToPopulate(t *testing.T, kc *kubernetes.Clientset, name, namespace string, iterations, intervalSeconds int) bool {
 	totalWaitDuration := time.Duration(iterations) * time.Duration(intervalSeconds) * time.Second
 	startedWaiting := time.Now()
 	for i := 0; i < iterations; i++ {
@@ -433,8 +428,7 @@ func WaitForHPAMetricsToPopulate(t *testing.T, kc *kubernetes.Clientset, name, n
 }
 
 // Waits until deployment ready replica count hits target or number of iterations are done.
-func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
-	target, iterations, intervalSeconds int) bool {
+func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		deployment, _ := kc.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		replicas := deployment.Status.ReadyReplicas
@@ -453,8 +447,7 @@ func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, 
 }
 
 // Waits until statefulset count hits target or number of iterations are done.
-func WaitForStatefulsetReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
-	target, iterations, intervalSeconds int) bool {
+func WaitForStatefulsetReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		statefulset, _ := kc.AppsV1().StatefulSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		replicas := statefulset.Status.ReadyReplicas
@@ -515,8 +508,7 @@ func AssertReplicaCountNotChangeDuringTimePeriod(t *testing.T, kc *kubernetes.Cl
 	}
 }
 
-func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace string,
-	iterations, intervalSeconds int) (*autoscalingv2.HorizontalPodAutoscaler, error) {
+func WaitForHpaCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace string, iterations, intervalSeconds int) (*autoscalingv2.HorizontalPodAutoscaler, error) {
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 	var err error
 	for i := 0; i < iterations; i++ {
@@ -744,15 +736,16 @@ func FindPodLogs(kc *kubernetes.Clientset, namespace, label string, includePrevi
 // Delete all pods in namespace by selector
 func DeletePodsInNamespaceBySelector(t *testing.T, kc *kubernetes.Clientset, selector, namespace string) {
 	t.Logf("killing all pods in %s namespace with selector %s", namespace, selector)
-	err := kc.CoreV1().Pods(namespace).DeleteCollection(context.Background(), metav1.DeleteOptions{}, metav1.ListOptions{
+	err := kc.CoreV1().Pods(namespace).DeleteCollection(context.Background(), metav1.DeleteOptions{
+		GracePeriodSeconds: ptr.To(int64(0)),
+	}, metav1.ListOptions{
 		LabelSelector: selector,
 	})
 	assert.NoErrorf(t, err, "cannot delete pods - %s", err)
 }
 
 // Wait for Pods identified by selector to complete termination
-func WaitForPodsTerminated(t *testing.T, kc *kubernetes.Clientset, selector, namespace string,
-	iterations, intervalSeconds int) bool {
+func WaitForPodsTerminated(t *testing.T, kc *kubernetes.Clientset, selector, namespace string, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
 		pods, err := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: selector})
 		if (err != nil && errors.IsNotFound(err)) || len(pods.Items) == 0 {

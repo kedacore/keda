@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -16,8 +15,9 @@ import (
 
 // Test host URLs for validation
 const (
-	testValidMQQueueURL   = "https://qmtest.qm2.eu-gb.mq.appdomain.cloud/ibmmq/rest/v2/admin/action/qmgr/QM1/mqsc"
-	testInvalidMQQueueURL = "testInvalidURL.com"
+	testValidMQQueueURL     = "https://qmtest.qm2.eu-gb.mq.appdomain.cloud/ibmmq/rest/v2/admin/action/qmgr/QM1/mqsc"
+	testInvalidMQQueueURL   = "testInvalidURL.com"
+	defaultTargetQueueDepth = 20
 )
 
 // Test data struct used for TestIBMMQParseMetadata
@@ -50,25 +50,29 @@ var testIBMMQMetadata = []parseIBMMQMetadataTestData{
 	// Nothing passed
 	{map[string]string{}, true, map[string]string{}},
 	// Properly formed metadata
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Invalid queueDepth using a string
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "AA"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "AA"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Invalid activationQueueDepth using a string
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "1", "activationQueueDepth": "AA"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "1", "activationQueueDepth": "AA"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// No host provided
-	{map[string]string{"queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
-	// Missing queueManager
-	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Missing queueName
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 	// Invalid URL
-	{map[string]string{"host": testInvalidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
-	// Properly formed authParams
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"host": testInvalidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	// Properly formed authParams Basic Auth
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	// Properly formed authParams Basic Auth and TLS
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, false, map[string]string{"username": "testUsername", "password": "Pass123", "ca": "cavalue", "cert": "certvalue", "key": "keyvalue"}},
+	// No key provided
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername", "password": "Pass123", "ca": "cavalue", "cert": "certvalue"}},
 	// No username provided
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"password": "Pass123"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"password": "Pass123"}},
 	// No password provided
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10"}, true, map[string]string{"username": "testUsername"}},
+	// Wrong input unsafeSsl
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue", "queueDepth": "10", "unsafeSsl": "random"}, true, map[string]string{"username": "testUsername", "password": "Pass123"}},
 }
 
 // Test MQ Connection metadata is parsed correctly
@@ -85,8 +89,8 @@ func TestIBMMQParseMetadata(t *testing.T) {
 			t.Error("Expected error but got success")
 			fmt.Println(testData)
 		}
-		if metadata != nil && metadata.password != "" && metadata.password != testData.authParams["password"] {
-			t.Error("Expected password from configuration but found something else: ", metadata.password)
+		if metadata != (ibmmqMetadata{}) && metadata.Password != "" && metadata.Password != testData.authParams["password"] {
+			t.Error("Expected password from configuration but found something else: ", metadata.Password)
 			fmt.Println(testData)
 		}
 	}
@@ -94,7 +98,7 @@ func TestIBMMQParseMetadata(t *testing.T) {
 
 // Test case for TestParseDefaultQueueDepth test
 var testDefaultQueueDepth = []parseIBMMQMetadataTestData{
-	{map[string]string{"host": testValidMQQueueURL, "queueManager": "testQueueManager", "queueName": "testQueue"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
+	{map[string]string{"host": testValidMQQueueURL, "queueName": "testQueue"}, false, map[string]string{"username": "testUsername", "password": "Pass123"}},
 }
 
 // Test that DefaultQueueDepth is set when queueDepth is not provided
@@ -106,8 +110,8 @@ func TestParseDefaultQueueDepth(t *testing.T) {
 			t.Error("Expected success but got error", err)
 		case testData.isError && err == nil:
 			t.Error("Expected error but got success")
-		case metadata.queueDepth != defaultTargetQueueDepth:
-			t.Error("Expected default queueDepth =", defaultTargetQueueDepth, "but got", metadata.queueDepth)
+		case metadata.QueueDepth != defaultTargetQueueDepth:
+			t.Error("Expected default queueDepth =", defaultTargetQueueDepth, "but got", metadata.QueueDepth)
 		}
 	}
 }
@@ -116,14 +120,12 @@ func TestParseDefaultQueueDepth(t *testing.T) {
 func TestIBMMQGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range IBMMQMetricIdentifiers {
 		metadata, err := parseIBMMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleIBMMQResolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex})
-		httpTimeout := 100 * time.Millisecond
 
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockIBMMQScaler := IBMMQScaler{
-			metadata:           metadata,
-			defaultHTTPTimeout: httpTimeout,
+		mockIBMMQScaler := ibmmqScaler{
+			metadata: metadata,
 		}
 		metricSpec := mockIBMMQScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
@@ -212,10 +214,11 @@ func TestIBMMQScalerGetQueueDepthViaHTTP(t *testing.T) {
 			}))
 			defer server.Close()
 
-			scaler := IBMMQScaler{
-				metadata: &IBMMQMetadata{
-					host: server.URL,
+			scaler := ibmmqScaler{
+				metadata: ibmmqMetadata{
+					Host: server.URL,
 				},
+				httpClient: server.Client(),
 			}
 
 			value, err := scaler.getQueueDepthViaHTTP(context.Background())

@@ -141,7 +141,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "azure-data-explorer":
 		return scalers.NewAzureDataExplorerScaler(config)
 	case "azure-eventhub":
-		return scalers.NewAzureEventHubScaler(ctx, config)
+		return scalers.NewAzureEventHubScaler(config)
 	case "azure-log-analytics":
 		return scalers.NewAzureLogAnalyticsScaler(config)
 	case "azure-monitor":
@@ -162,6 +162,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewCronScaler(config)
 	case "datadog":
 		return scalers.NewDatadogScaler(ctx, config)
+	case "dynatrace":
+		return scalers.NewDynatraceScaler(config)
 	case "elasticsearch":
 		return scalers.NewElasticsearchScaler(config)
 	case "etcd":
@@ -218,7 +220,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "openstack-swift":
 		return scalers.NewOpenstackSwiftScaler(config)
 	case "postgresql":
-		return scalers.NewPostgreSQLScaler(config)
+		return scalers.NewPostgreSQLScaler(ctx, config)
 	case "predictkube":
 		return scalers.NewPredictKubeScaler(ctx, config)
 	case "prometheus":
@@ -245,6 +247,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewSolaceScaler(config)
 	case "solr":
 		return scalers.NewSolrScaler(config)
+	case "splunk":
+		return scalers.NewSplunkScaler(config)
 	case "stan":
 		return scalers.NewStanScaler(config)
 	default:

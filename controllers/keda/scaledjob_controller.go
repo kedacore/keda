@@ -31,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,8 +38,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
+	"github.com/kedacore/keda/v2/pkg/common/message"
+	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scaling"
@@ -56,7 +58,7 @@ type ScaledJobReconciler struct {
 	client.Client
 	Scheme            *runtime.Scheme
 	GlobalHTTPTimeout time.Duration
-	Recorder          record.EventRecorder
+	EventEmitter      eventemitter.EventHandler
 
 	scaledJobGenerations *sync.Map
 	scaleHandler         scaling.ScaleHandler
@@ -133,7 +135,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if !scaledJob.Status.Conditions.AreInitialized() {
 		conditions := kedav1alpha1.GetInitializedConditions()
 		if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, conditions); err != nil {
-			r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobUpdateFailed, err.Error())
+			r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobUpdateFailed, err.Error())
 			return ctrl.Result{}, err
 		}
 	}
@@ -143,7 +145,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		errMsg := "ScaledJob.spec.jobTargetRef not found"
 		err := fmt.Errorf(errMsg)
 		reqLogger.Error(err, errMsg)
-		r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobCheckFailed, errMsg)
+		r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobCheckFailed, errMsg)
 		return ctrl.Result{}, err
 	}
 	conditions := scaledJob.Status.Conditions.DeepCopy()
@@ -152,18 +154,18 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		reqLogger.Error(err, msg)
 		conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledJobCheckFailed", msg)
 		conditions.SetActiveCondition(metav1.ConditionUnknown, "UnknownState", "ScaledJob check failed")
-		r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobCheckFailed, msg)
+		r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobCheckFailed, msg)
 	} else {
 		wasReady := conditions.GetReadyCondition()
 		if wasReady.IsFalse() || wasReady.IsUnknown() {
-			r.Recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.ScaledJobReady, "ScaledJob is ready for scaling")
+			r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectReadyType, eventreason.ScaledJobReady, message.ScaledJobReadyMsg)
 		}
 		reqLogger.V(1).Info(msg)
 		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledJobReady", msg)
 	}
 
 	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, &conditions); err != nil {
-		r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobUpdateFailed, err.Error())
+		r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobUpdateFailed, err.Error())
 		return ctrl.Result{}, err
 	}
 
@@ -279,22 +281,36 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 			return "Cannot get list of Jobs owned by this scaledJob", err
 		}
 
-		if len(jobs.Items) > 0 {
-			logger.Info("RolloutStrategy: immediate, Deleting jobs owned by the previous version of the scaledJob", "numJobsToDelete", len(jobs.Items))
+		jobIndexes := make([]int, 0, len(jobs.Items))
+		scaledJobGeneration := strconv.FormatInt(scaledJob.Generation, 10)
+		for i, job := range jobs.Items {
+			if jobGen, ok := job.Annotations["scaledjob.keda.sh/generation"]; !ok {
+				// delete Jobs that don't have the generation annotation
+				jobIndexes = append(jobIndexes, i)
+			} else if jobGen != scaledJobGeneration {
+				// delete Jobs that have a different generation annotation
+				jobIndexes = append(jobIndexes, i)
+			}
 		}
-		for _, job := range jobs.Items {
-			job := job
 
-			propagationPolicy := metav1.DeletePropagationBackground
-			if scaledJob.Spec.Rollout.PropagationPolicy == "foreground" {
-				propagationPolicy = metav1.DeletePropagationForeground
+		if len(jobIndexes) == 0 {
+			logger.Info("RolloutStrategy: immediate, No jobs owned by the previous version of the scaledJob")
+		} else {
+			logger.Info("RolloutStrategy: immediate, Deleting jobs owned by the previous version of the scaledJob", "numJobsToDelete", len(jobIndexes))
+			for _, index := range jobIndexes {
+				job := jobs.Items[index]
+
+				propagationPolicy := metav1.DeletePropagationBackground
+				if scaledJob.Spec.Rollout.PropagationPolicy == "foreground" {
+					propagationPolicy = metav1.DeletePropagationForeground
+				}
+				err = r.Client.Delete(ctx, &job, client.PropagationPolicy(propagationPolicy))
+				if err != nil {
+					return "Not able to delete job: " + job.Name, err
+				}
 			}
-			err = r.Client.Delete(ctx, &job, client.PropagationPolicy(propagationPolicy))
-			if err != nil {
-				return "Not able to delete job: " + job.Name, err
-			}
+			return fmt.Sprintf("RolloutStrategy: immediate, deleted jobs owned by the previous version of the scaleJob: %d jobs deleted", len(jobIndexes)), nil
 		}
-		return fmt.Sprintf("RolloutStrategy: immediate, deleted jobs owned by the previous version of the scaleJob: %d jobs deleted", len(jobs.Items)), nil
 	}
 	return fmt.Sprintf("RolloutStrategy: %s", scaledJob.Spec.RolloutStrategy), nil
 }
@@ -351,7 +367,7 @@ func (r *ScaledJobReconciler) updatePromMetrics(scaledJob *kedav1alpha1.ScaledJo
 	metricscollector.IncrementCRDTotal(metricscollector.ScaledJobResource, scaledJob.Namespace)
 	metricsData.namespace = scaledJob.Namespace
 
-	triggerTypes := make([]string, len(scaledJob.Spec.Triggers))
+	triggerTypes := make([]string, 0, len(scaledJob.Spec.Triggers))
 	for _, trigger := range scaledJob.Spec.Triggers {
 		metricscollector.IncrementTriggerTotal(trigger.Type)
 		triggerTypes = append(triggerTypes, trigger.Type)
