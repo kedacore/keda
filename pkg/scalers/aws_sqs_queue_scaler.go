@@ -243,12 +243,23 @@ func (s *awsSqsQueueScaler) getAwsSqsQueueLength(ctx context.Context) (int64, er
 		return -1, err
 	}
 
+	return s.processQueueLengthFromSqsQueueAttributesOutput(output)
+}
+
+func (s *awsSqsQueueScaler) processQueueLengthFromSqsQueueAttributesOutput(output *sqs.GetQueueAttributesOutput) (int64, error) {
 	var approximateNumberOfMessages int64
+
 	for _, awsSqsQueueMetric := range s.metadata.awsSqsQueueMetricNames {
-		metricValue, err := strconv.ParseInt(output.Attributes[string(awsSqsQueueMetric)], 10, 32)
+		metricValueString, exists := output.Attributes[string(awsSqsQueueMetric)]
+		if !exists {
+			return -1, fmt.Errorf("metric %s not found in SQS queue attributes", awsSqsQueueMetric)
+		}
+
+		metricValue, err := strconv.ParseInt(metricValueString, 10, 64)
 		if err != nil {
 			return -1, err
 		}
+
 		approximateNumberOfMessages += metricValue
 	}
 
