@@ -18,9 +18,12 @@ package scalers
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/assert"
+	v2 "k8s.io/api/autoscaling/v2"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -81,40 +84,94 @@ var azQueueMetricIdentifiers = []azQueueMetricIdentifier{
 }
 
 func TestAzQueueParseMetadata(t *testing.T) {
-	for _, testData := range testAzQueueMetadata {
-		_, podIdentity, err := parseAzureQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata,
-			ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams,
-			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity}},
-			logr.Discard())
-		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+	for i, testData := range testAzQueueMetadata {
+		testName := fmt.Sprintf("test case %d", i)
+		switch i {
+		case 0:
+			testName = "nothing passed"
+		case 1:
+			testName = "properly formed"
+		case 2:
+			testName = "empty queueName"
+		case 3:
+			testName = "improperly formed queueLength"
+		case 4:
+			testName = "improperly formed activationQueueLength"
+		case 5:
+			testName = "podIdentity azure-workload with account name"
+		case 6:
+			testName = "podIdentity azure-workload without account name"
+		case 7:
+			testName = "podIdentity azure-workload without queue name"
+		case 8:
+			testName = "podIdentity azure-workload with cloud"
+		case 9:
+			testName = "podIdentity azure-workload with invalid cloud"
+		case 10:
+			testName = "podIdentity azure-workload with private cloud and endpoint suffix"
+		case 11:
+			testName = "podIdentity azure-workload with private cloud and no endpoint suffix"
+		case 12:
+			testName = "podIdentity azure-workload with endpoint suffix and no cloud"
+		case 13:
+			testName = "connection from authParams"
 		}
-		if testData.isError && err == nil {
-			t.Errorf("Expected error but got success. testData: %v", testData)
-		}
-		if testData.podIdentity != "" && testData.podIdentity != podIdentity.Provider && err == nil {
-			t.Error("Expected success but got error: podIdentity value is not returned as expected")
-		}
+
+		t.Run(testName, func(t *testing.T) {
+			config := &scalersconfig.ScalerConfig{
+				TriggerMetadata: testData.metadata,
+				ResolvedEnv:     testData.resolvedEnv,
+				AuthParams:      testData.authParams,
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity},
+			}
+
+			_, podIdentity, err := parseAzureQueueMetadata(config)
+			if err != nil && !testData.isError {
+				t.Error("Expected success but got error", err)
+			}
+			if testData.isError && err == nil {
+				t.Errorf("Expected error but got success. testData: %v", testData)
+			}
+			if testData.podIdentity != "" && testData.podIdentity != podIdentity.Provider && err == nil {
+				t.Error("Expected success but got error: podIdentity value is not returned as expected")
+			}
+		})
 	}
 }
 
 func TestAzQueueGetMetricSpecForScaling(t *testing.T) {
-	for _, testData := range azQueueMetricIdentifiers {
-		meta, _, err := parseAzureQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata,
-			ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams,
-			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, TriggerIndex: testData.triggerIndex},
-			logr.Discard())
-		if err != nil {
-			t.Fatal("Could not parse metadata:", err)
-		}
-		mockAzQueueScaler := azureQueueScaler{
-			metadata: meta,
+	for i, testData := range azQueueMetricIdentifiers {
+		testName := fmt.Sprintf("test case %d", i)
+		switch i {
+		case 0:
+			testName = "properly formed queue metric"
+		case 1:
+			testName = "azure-workload queue metric"
 		}
 
-		metricSpec := mockAzQueueScaler.GetMetricSpecForScaling(context.Background())
-		metricName := metricSpec[0].External.Metric.Name
-		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName)
-		}
+		t.Run(testName, func(t *testing.T) {
+			config := &scalersconfig.ScalerConfig{
+				TriggerMetadata: testData.metadataTestData.metadata,
+				ResolvedEnv:     testData.metadataTestData.resolvedEnv,
+				AuthParams:      testData.metadataTestData.authParams,
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity},
+				TriggerIndex:    testData.triggerIndex,
+			}
+
+			meta, _, err := parseAzureQueueMetadata(config)
+			if err != nil {
+				t.Fatal("Could not parse metadata:", err)
+			}
+
+			mockAzQueueScaler := azureQueueScaler{
+				metadata:   meta,
+				logger:     logr.Discard(),
+				metricType: v2.AverageValueMetricType,
+			}
+
+			metricSpec := mockAzQueueScaler.GetMetricSpecForScaling(context.Background())
+			metricName := metricSpec[0].External.Metric.Name
+			assert.Equal(t, testData.name, metricName)
+		})
 	}
 }
