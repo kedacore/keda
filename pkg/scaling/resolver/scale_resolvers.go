@@ -653,7 +653,7 @@ func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, 
 		return ""
 	}
 	var err error
-	var expirySeconds *int64 = ptr.Int64(3600)
+	expirySeconds := ptr.Int64(3600)
 	if expiry != "" {
 		duration, err := time.ParseDuration(expiry)
 		if err != nil {
@@ -683,12 +683,14 @@ func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, 
 	// check if token is already referenced in the TriggerAuthentication annotation
 	if encodedToken != "" {
 		tokenValid := checkTokenValidity(ctx, logger, encodedToken, expirySeconds, acs)
-		if tokenValid == tokenStatusInvalid {
+		switch tokenValid {
+		case tokenStatusInvalid:
 			// token is invalid, or if more than 50% of the token's expiry has passed, create new token
 			return generateAndAnnotateNewToken(ctx, client, logger, serviceAccountName, namespace, expirySeconds, triggerAuth, acs)
-		} else if tokenValid == tokenStatusValid {
+		case tokenStatusValid:
 			return encodedToken
-		} else {
+		default:
+			// tokenStatusUnknown
 			return ""
 		}
 	} else {
