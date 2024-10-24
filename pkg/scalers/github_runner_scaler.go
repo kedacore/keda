@@ -43,6 +43,7 @@ type githubRunnerMetadata struct {
 	personalAccessToken       *string
 	repos                     []string
 	labels                    []string
+	noDefaultLabels           bool
 	targetWorkflowQueueLength int64
 	triggerIndex              int
 	applicationID             *int64
@@ -372,8 +373,8 @@ func getValueFromMetaOrEnv(key string, metadata map[string]string, env map[strin
 }
 
 // getInt64ValueFromMetaOrEnv returns the value of the given key from the metadata or the environment variables
-func getInt64ValueFromMetaOrEnv(key string, config *scalersconfig.ScalerConfig) (int64, error) {
-	sInt, err := getValueFromMetaOrEnv(key, config.TriggerMetadata, config.ResolvedEnv)
+func getInt64ValueFromMetaOrEnv(key string, metadata map[string]string, env map[string]string) (int64, error) {
+	sInt, err := getValueFromMetaOrEnv(key, metadata, env)
 	if err != nil {
 		return -1, fmt.Errorf("error parsing %s: %w", key, err)
 	}
@@ -383,6 +384,20 @@ func getInt64ValueFromMetaOrEnv(key string, config *scalersconfig.ScalerConfig) 
 		return -1, fmt.Errorf("error parsing %s: %w", key, err)
 	}
 	return goodInt, nil
+}
+
+// getInt64ValueFromMetaOrEnv returns the value of the given key from the metadata or the environment variables
+func getBoolValueFromMetaOrEnv(key string, metadata map[string]string, env map[string]string) (bool, error) {
+	sBool, err := getValueFromMetaOrEnv(key, metadata, env)
+	if err != nil {
+		return false, fmt.Errorf("error parsing %s: %w", key, err)
+	}
+
+	goodBool, err := strconv.ParseBool(sBool)
+	if err != nil {
+		return false, fmt.Errorf("error parsing %s: %w", key, err)
+	}
+	return goodBool, nil
 }
 
 func parseGitHubRunnerMetadata(config *scalersconfig.ScalerConfig) (*githubRunnerMetadata, error) {
@@ -401,7 +416,7 @@ func parseGitHubRunnerMetadata(config *scalersconfig.ScalerConfig) (*githubRunne
 		return nil, err
 	}
 
-	if val, err := getInt64ValueFromMetaOrEnv("targetWorkflowQueueLength", config); err == nil && val != -1 {
+	if val, err := getInt64ValueFromMetaOrEnv("targetWorkflowQueueLength", config.TriggerMetadata, config.ResolvedEnv); err == nil && val != -1 {
 		meta.targetWorkflowQueueLength = val
 	} else {
 		meta.targetWorkflowQueueLength = defaultTargetWorkflowQueueLength
@@ -409,6 +424,12 @@ func parseGitHubRunnerMetadata(config *scalersconfig.ScalerConfig) (*githubRunne
 
 	if val, err := getValueFromMetaOrEnv("labels", config.TriggerMetadata, config.ResolvedEnv); err == nil && val != "" {
 		meta.labels = strings.Split(val, ",")
+	}
+
+	if val, err := getBoolValueFromMetaOrEnv("noDefaultLabels", config.TriggerMetadata, config.ResolvedEnv); err == nil {
+		meta.noDefaultLabels = val
+	} else {
+		meta.noDefaultLabels = false
 	}
 
 	if val, err := getValueFromMetaOrEnv("repos", config.TriggerMetadata, config.ResolvedEnv); err == nil && val != "" {
@@ -448,12 +469,12 @@ func setupGitHubApp(config *scalersconfig.ScalerConfig) (*int64, *int64, *string
 	var instID *int64
 	var appKey *string
 
-	appIDVal, appIDErr := getInt64ValueFromMetaOrEnv("applicationID", config)
+	appIDVal, appIDErr := getInt64ValueFromMetaOrEnv("applicationID", config.TriggerMetadata, config.ResolvedEnv)
 	if appIDErr == nil && appIDVal != -1 {
 		appID = &appIDVal
 	}
 
-	instIDVal, instIDErr := getInt64ValueFromMetaOrEnv("installationID", config)
+	instIDVal, instIDErr := getInt64ValueFromMetaOrEnv("installationID", config.TriggerMetadata, config.ResolvedEnv)
 	if instIDErr == nil && instIDVal != -1 {
 		instID = &instIDVal
 	}
@@ -625,9 +646,13 @@ func contains(s []string, e string) bool {
 }
 
 // canRunnerMatchLabels check Agent Label array will match runner label array
-func canRunnerMatchLabels(jobLabels []string, runnerLabels []string) bool {
+func canRunnerMatchLabels(jobLabels []string, runnerLabels []string, noDefaultLabels bool) bool {
+	allLabels := runnerLabels
+	if !noDefaultLabels {
+		allLabels = append(allLabels, reservedLabels...)
+	}
 	for _, jobLabel := range jobLabels {
-		if !contains(runnerLabels, jobLabel) && !contains(reservedLabels, jobLabel) {
+		if !contains(allLabels, jobLabel) {
 			return false
 		}
 	}
@@ -665,7 +690,7 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 			return -1, err
 		}
 		for _, job := range jobs {
-			if (job.Status == "queued" || job.Status == "in_progress") && canRunnerMatchLabels(job.Labels, s.metadata.labels) {
+			if (job.Status == "queued" || job.Status == "in_progress") && canRunnerMatchLabels(job.Labels, s.metadata.labels, s.metadata.noDefaultLabels) {
 				queueCount++
 			}
 		}
