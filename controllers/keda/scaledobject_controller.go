@@ -628,7 +628,7 @@ func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatusOnDelete(ctx c
 }
 
 func (r *ScaledObjectReconciler) updateStatusWithTriggersAndAuthsNames(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
-	triggersNames, authsNames := kedav1alpha1.GetCombinedTriggersAndAuthenticationsNames(scaledObject.Spec.Triggers)
+	triggersNames, authsNames := kedav1alpha1.CombinedTriggersAndAuthenticationsNames(scaledObject.Spec.Triggers)
 	status := scaledObject.Status.DeepCopy()
 	status.TriggersNames = &triggersNames
 	status.AuthenticationsNames = &authsNames

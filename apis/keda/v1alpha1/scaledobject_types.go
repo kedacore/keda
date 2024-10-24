@@ -37,8 +37,8 @@ import (
 // +kubebuilder:printcolumn:name="Active",type="string",JSONPath=".status.conditions[?(@.type==\"Active\")].status"
 // +kubebuilder:printcolumn:name="Fallback",type="string",JSONPath=".status.conditions[?(@.type==\"Fallback\")].status"
 // +kubebuilder:printcolumn:name="Paused",type="string",JSONPath=".status.conditions[?(@.type==\"Paused\")].status"
-// +kubebuilder:printcolumn:name="TriggersNames",type="string",JSONPath=".status.triggersNames"
-// +kubebuilder:printcolumn:name="AuthenticationsNames",type="string",JSONPath=".status.authenticationsNames"
+// +kubebuilder:printcolumn:name="Triggers",type="string",JSONPath=".status.triggersNames"
+// +kubebuilder:printcolumn:name="Authentications",type="string",JSONPath=".status.authenticationsNames"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ScaledObject is a specification for a ScaledObject resource

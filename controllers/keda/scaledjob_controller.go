@@ -411,7 +411,7 @@ func (r *ScaledJobReconciler) updateTriggerAuthenticationStatusOnDelete(ctx cont
 }
 
 func (r *ScaledJobReconciler) updateStatusWithTriggersAndAuthsNames(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
-	triggersNames, authsNames := kedav1alpha1.GetCombinedTriggersAndAuthenticationsNames(scaledJob.Spec.Triggers)
+	triggersNames, authsNames := kedav1alpha1.CombinedTriggersAndAuthenticationsNames(scaledJob.Spec.Triggers)
 	status := scaledJob.Status.DeepCopy()
 	status.TriggersNames = &triggersNames
 	status.AuthenticationsNames = &authsNames

@@ -33,10 +33,10 @@ spec:
       name: Paused
       type: string
     - jsonPath: .status.triggersNames
-      name: TriggersNames
+      name: Triggers
       type: string
     - jsonPath: .status.authenticationsNames
-      name: AuthenticationsNames
+      name: Authentications
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
