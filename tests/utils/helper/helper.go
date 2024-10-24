@@ -51,8 +51,7 @@ image:
   repository: "otel/opentelemetry-collector-contrib"
 config:
   exporters:
-    logging:
-      loglevel: debug
+    debug: {}
     prometheus:
       endpoint: 0.0.0.0:8889
   receivers:
@@ -72,7 +71,7 @@ config:
         receivers:
           - otlp
         exporters:
-          - logging
+          - debug
           - prometheus
       logs: null
 `
