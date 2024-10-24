@@ -153,9 +153,8 @@ var _ = It("shouldn't validate the so creation when the replica counts are wrong
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	Eventually(func() error {
-		return k8sClient.Create(context.Background(), so)
-	}).Should(HaveOccurred())
+	err = k8sClient.Create(context.Background(), so)
+	Expect(err).To(HaveOccurred())
 })
 
 var _ = It("shouldn't validate the so creation when the fallback is wrong", func() {
@@ -171,9 +170,8 @@ var _ = It("shouldn't validate the so creation when the fallback is wrong", func
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	Eventually(func() error {
-		return k8sClient.Create(context.Background(), so)
-	}).Should(HaveOccurred())
+	err = k8sClient.Create(context.Background(), so)
+	Expect(err).To(HaveOccurred())
 })
 
 var _ = It("shouldn't validate the so creation When the fallback are configured and the scaler is either CPU or memory.", func() {
@@ -191,9 +189,8 @@ var _ = It("shouldn't validate the so creation When the fallback are configured 
 	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	Eventually(func() error {
-		return k8sClient.Create(context.Background(), so)
-	}).Should(HaveOccurred())
+	err = k8sClient.Create(context.Background(), so)
+	Expect(err).To(HaveOccurred())
 })
 
 var _ = It("shouldn't validate the so creation when there is another unmanaged hpa and so has transfer-hpa-ownership activated", func() {
