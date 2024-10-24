@@ -36,7 +36,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	corev1listers "k8s.io/client-go/listers/core/v1"
-
 	"knative.dev/pkg/apis/duck"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -650,7 +649,7 @@ func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, 
 		return ""
 	}
 	var err error
-	var expirySeconds *int64 = ptr.Int64(3600)
+	expirySeconds := ptr.Int64(3600)
 	if expiry != "" {
 		duration, err := time.ParseDuration(expiry)
 		if err != nil {
@@ -680,12 +679,14 @@ func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, 
 	// check if token is already referenced in the TriggerAuthentication annotation
 	if encodedToken != "" {
 		tokenValid := checkTokenValidity(ctx, logger, encodedToken, expirySeconds, acs)
-		if tokenValid == tokenStatusInvalid {
+		switch tokenValid {
+		case tokenStatusInvalid:
 			// token is invalid, or if more than 50% of the token's expiry has passed, create new token
 			return generateAndAnnotateNewToken(ctx, client, logger, serviceAccountName, namespace, expirySeconds, triggerAuth, acs)
-		} else if tokenValid == tokenStatusValid {
+		case tokenStatusValid:
 			return encodedToken
-		} else {
+		default:
+			// tokenStatusUnknown
 			return ""
 		}
 	} else {
