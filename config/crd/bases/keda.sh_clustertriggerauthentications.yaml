@@ -446,6 +446,26 @@ spec:
                     type: string
                   role:
                     type: string
+                  tokenSecret:
+                    properties:
+                      valueFrom:
+                        properties:
+                          secretKeyRef:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                              - key
+                              - name
+                            type: object
+                        required:
+                          - secretKeyRef
+                        type: object
+                    required:
+                      - valueFrom
+                    type: object
                   secrets:
                     items:
                       description: VaultSecret defines the mapping between the path
