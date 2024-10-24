@@ -20,6 +20,7 @@ import (
 )
 
 const (
+	defaultTargetQueueLength           = 5
 	targetQueueLengthDefault           = 5
 	activationTargetQueueLengthDefault = 0
 	defaultScaleOnInFlight             = true
