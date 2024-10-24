@@ -33,7 +33,7 @@ var phasesCountedAsTerminated = []corev1.PodPhase{
 
 type kubernetesWorkloadMetadata struct {
 	PodSelector     string  `keda:"name=podSelector,     order=triggerMetadata"`
-	Value           float64 `keda:"name=value,           order=triggerMetadata"`
+	Value           float64 `keda:"name=value,           order=triggerMetadata, default=0"`
 	ActivationValue float64 `keda:"name=activationValue, order=triggerMetadata, default=0"`
 
 	namespace      string
@@ -72,17 +72,13 @@ func NewKubernetesWorkloadScaler(kubeClient client.Client, config *scalersconfig
 
 func parseKubernetesWorkloadMetadata(config *scalersconfig.ScalerConfig) (kubernetesWorkloadMetadata, error) {
 	meta := kubernetesWorkloadMetadata{}
-	err := config.TypedConfig(&meta)
-	if err != nil {
-		return meta, fmt.Errorf("error parsing kubernetes workload metadata: %w", err)
-	}
-
 	meta.namespace = config.ScalableObjectNamespace
 	meta.triggerIndex = config.TriggerIndex
 	meta.asMetricSource = config.AsMetricSource
 
-	if meta.asMetricSource {
-		meta.Value = 0
+	err := config.TypedConfig(&meta)
+	if err != nil {
+		return meta, fmt.Errorf("error parsing kubernetes workload metadata: %w", err)
 	}
 
 	selector, err := labels.Parse(meta.PodSelector)
