@@ -83,8 +83,8 @@ func ValidateTriggers(triggers []ScaleTriggers) error {
 	return nil
 }
 
-// GetCombinedTriggersAndAuthenticationsNames returns a comma separated string of all trigger types and authentication names
-func GetCombinedTriggersAndAuthenticationsNames(triggers []ScaleTriggers) (string, string) {
+// CombinedTriggersAndAuthenticationsNames returns a comma separated string of all trigger types and authentication names
+func CombinedTriggersAndAuthenticationsNames(triggers []ScaleTriggers) (string, string) {
 	var triggersNames []string
 	var authNames []string
 	for _, trigger := range triggers {
