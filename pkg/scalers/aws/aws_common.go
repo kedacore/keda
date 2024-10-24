@@ -137,6 +137,6 @@ func GetAwsAuthorization(uniqueKey string, podIdentity kedav1alpha1.AuthPodIdent
 }
 
 // ClearAwsConfig wraps the removal of the config from the cache
-func ClearAwsConfig(awsAuthorization AuthorizationMetadata) {
-	awsSharedCredentialsCache.RemoveCachedEntry(awsAuthorization)
+func ClearAwsConfig(awsRegion string, awsAuthorization AuthorizationMetadata) {
+	awsSharedCredentialsCache.RemoveCachedEntry(awsRegion, awsAuthorization)
 }
