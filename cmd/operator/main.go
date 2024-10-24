@@ -47,6 +47,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/k8s"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	//+kubebuilder:scaffold:imports
@@ -217,8 +218,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, eventRecorder, secretInformer.Lister())
-	eventEmitter := eventemitter.NewEventEmitter(mgr.GetClient(), eventRecorder, k8sClusterName, secretInformer.Lister())
+	authClientSet := &authentication.AuthClientSet{
+		TokenReviewInterface: kubeClientset.AuthenticationV1().TokenReviews(),
+		CoreV1Interface:      kubeClientset.CoreV1(),
+		SecretLister:         secretInformer.Lister(),
+	}
+
+	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, eventRecorder, authClientSet)
+	eventEmitter := eventemitter.NewEventEmitter(mgr.GetClient(), eventRecorder, k8sClusterName, authClientSet)
 
 	if err = (&kedacontrollers.ScaledObjectReconciler{
 		Client:       mgr.GetClient(),
@@ -237,8 +244,7 @@ func main() {
 		Scheme:            mgr.GetScheme(),
 		GlobalHTTPTimeout: globalHTTPTimeout,
 		EventEmitter:      eventEmitter,
-		SecretsLister:     secretInformer.Lister(),
-		SecretsSynced:     secretInformer.Informer().HasSynced,
+		AuthClientSet:     authClientSet,
 	}).SetupWithManager(mgr, controller.Options{
 		MaxConcurrentReconciles: scaledJobMaxReconciles,
 	}); err != nil {
