@@ -18,53 +18,66 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-// cassandraScaler exposes a data pointer to CassandraMetadata and gocql.Session connection.
 type cassandraScaler struct {
 	metricType v2.MetricTargetType
-	metadata   *CassandraMetadata
+	metadata   cassandraMetadata
 	session    *gocql.Session
 	logger     logr.Logger
 }
 
-// CassandraMetadata defines metadata used by KEDA to query a Cassandra table.
-type CassandraMetadata struct {
-	username                   string
-	password                   string
-	enableTLS                  bool
-	cert                       string
-	key                        string
-	ca                         string
-	clusterIPAddress           string
-	port                       int
-	consistency                gocql.Consistency
-	protocolVersion            int
-	keyspace                   string
-	query                      string
-	targetQueryValue           int64
-	activationTargetQueryValue int64
-	triggerIndex               int
+type cassandraMetadata struct {
+	Username                   string `keda:"name=username,                   order=triggerMetadata"`
+	Password                   string `keda:"name=password,                   order=authParams"`
+	TLS                        string `keda:"name=tls,                        order=authParams, enum=enable;disable, default=disable, optional"`
+	Cert                       string `keda:"name=cert,                       order=authParams, optional"`
+	Key                        string `keda:"name=key,                        order=authParams, optional"`
+	CA                         string `keda:"name=ca,                         order=authParams, optional"`
+	ClusterIPAddress           string `keda:"name=clusterIPAddress,           order=triggerMetadata"`
+	Port                       int    `keda:"name=port,                       order=triggerMetadata, optional"`
+	Consistency                string `keda:"name=consistency,                order=triggerMetadata, default=one"`
+	ProtocolVersion            int    `keda:"name=protocolVersion,            order=triggerMetadata, default=4"`
+	Keyspace                   string `keda:"name=keyspace,                   order=triggerMetadata"`
+	Query                      string `keda:"name=query,                      order=triggerMetadata"`
+	TargetQueryValue           int64  `keda:"name=targetQueryValue,           order=triggerMetadata"`
+	ActivationTargetQueryValue int64  `keda:"name=activationTargetQueryValue, order=triggerMetadata, default=0"`
+	TriggerIndex               int
 }
 
 const (
-	tlsEnable  = "enable"
-	tlsDisable = "disable"
+	tlsEnable = "enable"
 )
 
-// NewCassandraScaler creates a new Cassandra scaler.
+func (m *cassandraMetadata) Validate() error {
+	// Handle port in ClusterIPAddress
+	splitVal := strings.Split(m.ClusterIPAddress, ":")
+	if len(splitVal) == 2 {
+		if port, err := strconv.Atoi(splitVal[1]); err == nil {
+			m.Port = port
+			return nil
+		}
+	}
+
+	if m.Port == 0 {
+		return fmt.Errorf("no port given")
+	}
+
+	m.ClusterIPAddress = net.JoinHostPort(m.ClusterIPAddress, fmt.Sprintf("%d", m.Port))
+	return nil
+}
+
+// NewCassandraScaler creates a new Cassandra scaler
 func NewCassandraScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
-	logger := InitializeLogger(config, "cassandra_scaler")
-
 	meta, err := parseCassandraMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing cassandra metadata: %w", err)
 	}
 
-	session, err := newCassandraSession(meta, logger)
+	session, err := newCassandraSession(meta, InitializeLogger(config, "cassandra_scaler"))
 	if err != nil {
 		return nil, fmt.Errorf("error establishing cassandra session: %w", err)
 	}
@@ -73,108 +86,32 @@ func NewCassandraScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		session:    session,
-		logger:     logger,
+		logger:     InitializeLogger(config, "cassandra_scaler"),
 	}, nil
 }
 
-// parseCassandraMetadata parses the metadata and returns a CassandraMetadata or an error if the ScalerConfig is invalid.
-func parseCassandraMetadata(config *scalersconfig.ScalerConfig) (*CassandraMetadata, error) {
-	meta := &CassandraMetadata{}
-	var err error
-
-	if val, ok := config.TriggerMetadata["query"]; ok {
-		meta.query = val
-	} else {
-		return nil, fmt.Errorf("no query given")
+func parseCassandraMetadata(config *scalersconfig.ScalerConfig) (cassandraMetadata, error) {
+	meta := cassandraMetadata{}
+	err := config.TypedConfig(&meta)
+	if err != nil {
+		return meta, fmt.Errorf("error parsing cassandra metadata: %w", err)
 	}
 
-	if val, ok := config.TriggerMetadata["targetQueryValue"]; ok {
-		targetQueryValue, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("targetQueryValue parsing error %w", err)
-		}
-		meta.targetQueryValue = targetQueryValue
-	} else {
-		if config.AsMetricSource {
-			meta.targetQueryValue = 0
-		} else {
-			return nil, fmt.Errorf("no targetQueryValue given")
-		}
+	if config.AsMetricSource {
+		meta.TargetQueryValue = 0
 	}
 
-	meta.activationTargetQueryValue = 0
-	if val, ok := config.TriggerMetadata["activationTargetQueryValue"]; ok {
-		activationTargetQueryValue, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("activationTargetQueryValue parsing error %w", err)
-		}
-		meta.activationTargetQueryValue = activationTargetQueryValue
-	}
-
-	if val, ok := config.TriggerMetadata["username"]; ok {
-		meta.username = val
-	} else {
-		return nil, fmt.Errorf("no username given")
-	}
-
-	if val, ok := config.TriggerMetadata["port"]; ok {
-		port, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("port parsing error %w", err)
-		}
-		meta.port = port
-	}
-
-	if val, ok := config.TriggerMetadata["clusterIPAddress"]; ok {
-		splitval := strings.Split(val, ":")
-		port := splitval[len(splitval)-1]
-
-		_, err := strconv.Atoi(port)
-		switch {
-		case err == nil:
-			meta.clusterIPAddress = val
-		case meta.port > 0:
-			meta.clusterIPAddress = net.JoinHostPort(val, fmt.Sprintf("%d", meta.port))
-		default:
-			return nil, fmt.Errorf("no port given")
-		}
-	} else {
-		return nil, fmt.Errorf("no cluster IP address given")
-	}
-
-	if val, ok := config.TriggerMetadata["protocolVersion"]; ok {
-		protocolVersion, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("protocolVersion parsing error %w", err)
-		}
-		meta.protocolVersion = protocolVersion
-	} else {
-		meta.protocolVersion = 4
-	}
-
-	if val, ok := config.TriggerMetadata["consistency"]; ok {
-		meta.consistency = gocql.ParseConsistency(val)
-	} else {
-		meta.consistency = gocql.One
-	}
-
-	if val, ok := config.TriggerMetadata["keyspace"]; ok {
-		meta.keyspace = val
-	} else {
-		return nil, fmt.Errorf("no keyspace given")
-	}
-	if val, ok := config.AuthParams["password"]; ok {
-		meta.password = val
-	} else {
-		return nil, fmt.Errorf("no password given")
-	}
-
-	if err = parseCassandraTLS(config, meta); err != nil {
+	err = meta.Validate()
+	if err != nil {
 		return meta, err
 	}
 
-	meta.triggerIndex = config.TriggerIndex
+	err = parseCassandraTLS(&meta)
+	if err != nil {
+		return meta, err
+	}
 
+	meta.TriggerIndex = config.TriggerIndex
 	return meta, nil
 }
 
@@ -182,8 +119,8 @@ func createTempFile(prefix string, content string) (string, error) {
 	tempCassandraDir := fmt.Sprintf("%s%c%s", os.TempDir(), os.PathSeparator, "cassandra")
 	err := os.MkdirAll(tempCassandraDir, 0700)
 	if err != nil {
-		return "", fmt.Errorf(`error creating temporary directory: %s.  Error: %w
-		Note, when running in a container a writable /tmp/cassandra emptyDir must be mounted.  Refer to documentation`, tempCassandraDir, err)
+		return "", fmt.Errorf(`error creating temporary directory: %s. Error: %w
+		Note, when running in a container a writable /tmp/cassandra emptyDir must be mounted. Refer to documentation`, tempCassandraDir, err)
 	}
 
 	f, err := os.CreateTemp(tempCassandraDir, prefix+"-*.pem")
@@ -200,72 +137,52 @@ func createTempFile(prefix string, content string) (string, error) {
 	return f.Name(), nil
 }
 
-func parseCassandraTLS(config *scalersconfig.ScalerConfig, meta *CassandraMetadata) error {
-	meta.enableTLS = false
-	if val, ok := config.AuthParams["tls"]; ok {
-		val = strings.TrimSpace(val)
-		if val == tlsEnable {
-			certGiven := config.AuthParams["cert"] != ""
-			keyGiven := config.AuthParams["key"] != ""
-			caCertGiven := config.AuthParams["ca"] != ""
-			if certGiven && !keyGiven {
-				return errors.New("no key given")
-			}
-			if keyGiven && !certGiven {
-				return errors.New("no cert given")
-			}
-			if !keyGiven && !certGiven {
-				return errors.New("no cert/key given")
-			}
+func parseCassandraTLS(meta *cassandraMetadata) error {
+	if meta.TLS == tlsEnable {
+		if meta.Cert == "" || meta.Key == "" {
+			return errors.New("both cert and key are required when TLS is enabled")
+		}
 
-			certFilePath, err := createTempFile("cert", config.AuthParams["cert"])
+		// Create temp files for certs
+		certFilePath, err := createTempFile("cert", meta.Cert)
+		if err != nil {
+			return fmt.Errorf("error creating cert file: %w", err)
+		}
+		meta.Cert = certFilePath
+
+		keyFilePath, err := createTempFile("key", meta.Key)
+		if err != nil {
+			return fmt.Errorf("error creating key file: %w", err)
+		}
+		meta.Key = keyFilePath
+
+		// If CA cert is given, make also file
+		if meta.CA != "" {
+			caCertFilePath, err := createTempFile("caCert", meta.CA)
 			if err != nil {
-				// handle error
-				return errors.New("Error creating cert file: " + err.Error())
+				return fmt.Errorf("error creating ca file: %w", err)
 			}
-
-			keyFilePath, err := createTempFile("key", config.AuthParams["key"])
-			if err != nil {
-				// handle error
-				return errors.New("Error creating key file: " + err.Error())
-			}
-
-			meta.cert = certFilePath
-			meta.key = keyFilePath
-			meta.ca = config.AuthParams["ca"]
-			if !caCertGiven {
-				meta.ca = ""
-			} else {
-				caCertFilePath, err := createTempFile("caCert", config.AuthParams["ca"])
-				meta.ca = caCertFilePath
-				if err != nil {
-					// handle error
-					return errors.New("Error creating ca file: " + err.Error())
-				}
-			}
-			meta.enableTLS = true
-		} else if val != tlsDisable {
-			return fmt.Errorf("err incorrect value for TLS given: %s", val)
+			meta.CA = caCertFilePath
 		}
 	}
 	return nil
 }
 
-// newCassandraSession returns a new Cassandra session for the provided CassandraMetadata.
-func newCassandraSession(meta *CassandraMetadata, logger logr.Logger) (*gocql.Session, error) {
-	cluster := gocql.NewCluster(meta.clusterIPAddress)
-	cluster.ProtoVersion = meta.protocolVersion
-	cluster.Consistency = meta.consistency
+// newCassandraSession returns a new Cassandra session for the provided CassandraMetadata
+func newCassandraSession(meta cassandraMetadata, logger logr.Logger) (*gocql.Session, error) {
+	cluster := gocql.NewCluster(meta.ClusterIPAddress)
+	cluster.ProtoVersion = meta.ProtocolVersion
+	cluster.Consistency = gocql.ParseConsistency(meta.Consistency)
 	cluster.Authenticator = gocql.PasswordAuthenticator{
-		Username: meta.username,
-		Password: meta.password,
+		Username: meta.Username,
+		Password: meta.Password,
 	}
 
-	if meta.enableTLS {
+	if meta.TLS == tlsEnable {
 		cluster.SslOpts = &gocql.SslOptions{
-			CertPath: meta.cert,
-			KeyPath:  meta.key,
-			CaPath:   meta.ca,
+			CertPath: meta.Cert,
+			KeyPath:  meta.Key,
+			CaPath:   meta.CA,
 		}
 	}
 
@@ -278,22 +195,19 @@ func newCassandraSession(meta *CassandraMetadata, logger logr.Logger) (*gocql.Se
 	return session, nil
 }
 
-// GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler.
+// GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *cassandraScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", s.metadata.keyspace))),
+			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("cassandra-%s", s.metadata.Keyspace))),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetQueryValue),
+		Target: GetMetricTarget(s.metricType, s.metadata.TargetQueryValue),
 	}
-	metricSpec := v2.MetricSpec{
-		External: externalMetric, Type: externalMetricType,
-	}
-
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetricsAndActivity returns a value for a supported metric or an error if there is a problem getting the metric.
+// GetMetricsAndActivity returns a value for a supported metric or an error if there is a problem getting the metric
 func (s *cassandraScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.GetQueryResult(ctx)
 	if err != nil {
@@ -301,38 +215,36 @@ func (s *cassandraScaler) GetMetricsAndActivity(ctx context.Context, metricName 
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(num))
-
-	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationTargetQueryValue, nil
+	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.ActivationTargetQueryValue, nil
 }
 
-// GetQueryResult returns the result of the scaler query.
+// GetQueryResult returns the result of the scaler query
 func (s *cassandraScaler) GetQueryResult(ctx context.Context) (int64, error) {
 	var value int64
-	if err := s.session.Query(s.metadata.query).WithContext(ctx).Scan(&value); err != nil {
+	if err := s.session.Query(s.metadata.Query).WithContext(ctx).Scan(&value); err != nil {
 		if err != gocql.ErrNotFound {
 			s.logger.Error(err, "query failed")
 			return 0, err
 		}
 	}
-
 	return value, nil
 }
 
-// Close closes the Cassandra session connection.
+// Close closes the Cassandra session connection
 func (s *cassandraScaler) Close(_ context.Context) error {
 	// clean up any temporary files
-	if strings.TrimSpace(s.metadata.cert) != "" {
-		if err := os.Remove(s.metadata.cert); err != nil {
+	if s.metadata.Cert != "" {
+		if err := os.Remove(s.metadata.Cert); err != nil {
 			return err
 		}
 	}
-	if strings.TrimSpace(s.metadata.key) != "" {
-		if err := os.Remove(s.metadata.key); err != nil {
+	if s.metadata.Key != "" {
+		if err := os.Remove(s.metadata.Key); err != nil {
 			return err
 		}
 	}
-	if strings.TrimSpace(s.metadata.ca) != "" {
-		if err := os.Remove(s.metadata.ca); err != nil {
+	if s.metadata.CA != "" {
+		if err := os.Remove(s.metadata.CA); err != nil {
 			return err
 		}
 	}
