@@ -8028,7 +8028,7 @@ spec:
             properties:
               Paused:
                 type: string
-              authenticationsNames:
+              authenticationsTypes:
                 type: string
               conditions:
                 description: Conditions an array representation to store multiple
@@ -8057,7 +8057,7 @@ spec:
               lastActiveTime:
                 format: date-time
                 type: string
-              triggersNames:
+              triggersTypes:
                 type: string
             type: object
         type: object

@@ -309,7 +309,7 @@ spec:
           status:
             description: ScaledObjectStatus is the status for a ScaledObject resource
             properties:
-              authenticationsNames:
+              authenticationsTypes:
                 type: string
               compositeScalerName:
                 type: string
@@ -389,7 +389,7 @@ spec:
                 type: object
               scaleTargetKind:
                 type: string
-              triggersNames:
+              triggersTypes:
                 type: string
             type: object
         required:

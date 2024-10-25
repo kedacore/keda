@@ -816,13 +816,13 @@ func (in *ScaledJobStatus) DeepCopyInto(out *ScaledJobStatus) {
 		*out = make(Conditions, len(*in))
 		copy(*out, *in)
 	}
-	if in.TriggersNames != nil {
-		in, out := &in.TriggersNames, &out.TriggersNames
+	if in.TriggersTypes != nil {
+		in, out := &in.TriggersTypes, &out.TriggersTypes
 		*out = new(string)
 		**out = **in
 	}
-	if in.AuthenticationsNames != nil {
-		in, out := &in.AuthenticationsNames, &out.AuthenticationsNames
+	if in.AuthenticationsTypes != nil {
+		in, out := &in.AuthenticationsTypes, &out.AuthenticationsTypes
 		*out = new(string)
 		**out = **in
 	}
@@ -1018,13 +1018,13 @@ func (in *ScaledObjectStatus) DeepCopyInto(out *ScaledObjectStatus) {
 		*out = new(int32)
 		**out = **in
 	}
-	if in.TriggersNames != nil {
-		in, out := &in.TriggersNames, &out.TriggersNames
+	if in.TriggersTypes != nil {
+		in, out := &in.TriggersTypes, &out.TriggersTypes
 		*out = new(string)
 		**out = **in
 	}
-	if in.AuthenticationsNames != nil {
-		in, out := &in.AuthenticationsNames, &out.AuthenticationsNames
+	if in.AuthenticationsTypes != nil {
+		in, out := &in.AuthenticationsTypes, &out.AuthenticationsTypes
 		*out = new(string)
 		**out = **in
 	}

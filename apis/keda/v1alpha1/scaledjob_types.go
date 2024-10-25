@@ -82,9 +82,9 @@ type ScaledJobStatus struct {
 	// +optional
 	Paused string `json:"Paused,omitempty"`
 	// +optional
-	TriggersNames *string `json:"triggersNames,omitempty"`
+	TriggersTypes *string `json:"triggersTypes,omitempty"`
 	// +optional
-	AuthenticationsNames *string `json:"authenticationsNames,omitempty"`
+	AuthenticationsTypes *string `json:"authenticationsTypes,omitempty"`
 }
 
 // ScaledJobList contains a list of ScaledJob

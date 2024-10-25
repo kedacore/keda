@@ -191,7 +191,7 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 		return "ScaledJob doesn't have correct triggers specification", err
 	}
 
-	err = r.updateStatusWithTriggersAndAuthsNames(ctx, logger, scaledJob)
+	err = r.updateStatusWithTriggersAndAuthsTypes(ctx, logger, scaledJob)
 	if err != nil {
 		return "Cannot update ScaledJob status with triggers'names and authentications'names", err
 	}
@@ -410,12 +410,13 @@ func (r *ScaledJobReconciler) updateTriggerAuthenticationStatusOnDelete(ctx cont
 	})
 }
 
-func (r *ScaledJobReconciler) updateStatusWithTriggersAndAuthsNames(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
-	triggersNames, authsNames := kedav1alpha1.CombinedTriggersAndAuthenticationsNames(scaledJob.Spec.Triggers)
+func (r *ScaledJobReconciler) updateStatusWithTriggersAndAuthsTypes(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
+	triggersTypes, authsTypes := kedav1alpha1.CombinedTriggersAndAuthenticationsTypes(scaledJob.Spec.Triggers)
 	status := scaledJob.Status.DeepCopy()
-	status.TriggersNames = &triggersNames
-	status.AuthenticationsNames = &authsNames
+	status.TriggersTypes = &triggersTypes
+	status.AuthenticationsTypes = &authsTypes
 
-	logger.Info("Updating ScaledJob status with triggers and authentications names", "triggersNames", triggersNames, "authenticationsNames", authsNames)
+	logger.V(1).Info("Updating ScaledJob status with triggers and authentications types", "triggersTypes", triggersTypes, "authenticationsTypes", authsTypes)
+
 	return kedastatus.UpdateScaledJobStatus(ctx, r.Client, logger, scaledJob, status)
 }

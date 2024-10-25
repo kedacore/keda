@@ -83,17 +83,17 @@ func ValidateTriggers(triggers []ScaleTriggers) error {
 	return nil
 }
 
-// CombinedTriggersAndAuthenticationsNames returns a comma separated string of all trigger types and authentication names
-func CombinedTriggersAndAuthenticationsNames(triggers []ScaleTriggers) (string, string) {
-	var triggersNames []string
-	var authNames []string
+// CombinedTriggersAndAuthenticationsTypes returns a comma separated string of all trigger types and authentication types
+func CombinedTriggersAndAuthenticationsTypes(triggers []ScaleTriggers) (string, string) {
+	var triggersTypes []string
+	var authTypes []string
 	for _, trigger := range triggers {
-		if !slices.Contains(triggersNames, trigger.Type) {
-			triggersNames = append(triggersNames, trigger.Type)
+		if !slices.Contains(triggersTypes, trigger.Type) {
+			triggersTypes = append(triggersTypes, trigger.Type)
 		}
-		if trigger.AuthenticationRef != nil && !slices.Contains(authNames, trigger.AuthenticationRef.Name) {
-			authNames = append(authNames, trigger.AuthenticationRef.Name)
+		if trigger.AuthenticationRef != nil && !slices.Contains(authTypes, trigger.AuthenticationRef.Name) {
+			authTypes = append(authTypes, trigger.AuthenticationRef.Name)
 		}
 	}
-	return strings.Join(triggersNames, ","), strings.Join(authNames, ",")
+	return strings.Join(triggersTypes, ","), strings.Join(authTypes, ",")
 }

@@ -178,9 +178,9 @@ type ScaledObjectStatus struct {
 	// +optional
 	HpaName string `json:"hpaName,omitempty"`
 	// +optional
-	TriggersNames *string `json:"triggersNames,omitempty"`
+	TriggersTypes *string `json:"triggersTypes,omitempty"`
 	// +optional
-	AuthenticationsNames *string `json:"authenticationsNames,omitempty"`
+	AuthenticationsTypes *string `json:"authenticationsTypes,omitempty"`
 }
 
 // +kubebuilder:object:root=true
