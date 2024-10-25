@@ -19,7 +19,7 @@ var (
 	deploymentName              = fmt.Sprintf("%s-deployment", testName)
 	metricsServerDeploymentName = fmt.Sprintf("%s-metrics-server", testName)
 	servciceName                = fmt.Sprintf("%s-service", testName)
-	triggerAuthType             = fmt.Sprintf("%s-ta", testName)
+	triggerAuthName             = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName            = fmt.Sprintf("%s-so", testName)
 	scaledJobName               = fmt.Sprintf("%s-sj", testName)
 	secretName                  = fmt.Sprintf("%s-secret", testName)
@@ -36,7 +36,7 @@ type templateData struct {
 	ServciceName                string
 	ScaledObjectName            string
 	ScaledJobName               string
-	TriggerAuthType             string
+	TriggerAuthName             string
 	SecretName                  string
 	MetricValue                 int
 	MinReplicaCount             string
@@ -244,11 +244,11 @@ func testTriggersAndAuthenticationsTypes(t *testing.T) {
 	otherparameter := `-o jsonpath="{.status.triggersTypes}"`
 	CheckKubectlGetResult(t, "ScaledObject", scaledObjectName, testNamespace, otherparameter, "metrics-api,corn")
 	otherparameter = `-o jsonpath="{.status.authenticationsTypes}"`
-	CheckKubectlGetResult(t, "ScaledObject", scaledObjectName, testNamespace, otherparameter, triggerAuthType)
+	CheckKubectlGetResult(t, "ScaledObject", scaledObjectName, testNamespace, otherparameter, triggerAuthName)
 	otherparameter = `-o jsonpath="{.status.triggersTypes}"`
 	CheckKubectlGetResult(t, "ScaledJob", scaledJobName, testNamespace, otherparameter, "metrics-api,corn")
 	otherparameter = `-o jsonpath="{.status.authenticationsTypes}"`
-	CheckKubectlGetResult(t, "ScaledJob", scaledJobName, testNamespace, otherparameter, triggerAuthType)
+	CheckKubectlGetResult(t, "ScaledJob", scaledJobName, testNamespace, otherparameter, triggerAuthName)
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -257,7 +257,7 @@ func getTemplateData() (templateData, []Template) {
 			DeploymentName:              deploymentName,
 			MetricsServerDeploymentName: metricsServerDeploymentName,
 			ServciceName:                servciceName,
-			TriggerAuthType:             triggerAuthType,
+			TriggerAuthName:             triggerAuthName,
 			ScaledObjectName:            scaledObjectName,
 			ScaledJobName:               scaledJobName,
 			SecretName:                  secretName,
