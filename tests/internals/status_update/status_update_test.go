@@ -19,7 +19,7 @@ var (
 	deploymentName              = fmt.Sprintf("%s-deployment", testName)
 	metricsServerDeploymentName = fmt.Sprintf("%s-metrics-server", testName)
 	servciceName                = fmt.Sprintf("%s-service", testName)
-	triggerAuthName             = fmt.Sprintf("%s-ta", testName)
+	triggerAuthType             = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName            = fmt.Sprintf("%s-so", testName)
 	scaledJobName               = fmt.Sprintf("%s-sj", testName)
 	secretName                  = fmt.Sprintf("%s-secret", testName)
@@ -36,7 +36,7 @@ type templateData struct {
 	ServciceName                string
 	ScaledObjectName            string
 	ScaledJobName               string
-	TriggerAuthName             string
+	TriggerAuthType             string
 	SecretName                  string
 	MetricValue                 int
 	MinReplicaCount             string
@@ -234,21 +234,21 @@ func TestScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// test
-	testTriggersAndAuthenticationsNames(t)
+	testTriggersAndAuthenticationsTypes(t)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
-func testTriggersAndAuthenticationsNames(t *testing.T) {
-	otherparameter := `-o jsonpath="{.status.triggersNames}"`
+func testTriggersAndAuthenticationsTypes(t *testing.T) {
+	otherparameter := `-o jsonpath="{.status.triggersTypes}"`
 	CheckKubectlGetResult(t, "ScaledObject", scaledObjectName, testNamespace, otherparameter, "metrics-api,corn")
-	otherparameter = `-o jsonpath="{.status.authenticationsNames}"`
-	CheckKubectlGetResult(t, "ScaledObject", scaledObjectName, testNamespace, otherparameter, triggerAuthName)
-	otherparameter = `-o jsonpath="{.status.triggersNames}"`
+	otherparameter = `-o jsonpath="{.status.authenticationsTypes}"`
+	CheckKubectlGetResult(t, "ScaledObject", scaledObjectName, testNamespace, otherparameter, triggerAuthType)
+	otherparameter = `-o jsonpath="{.status.triggersTypes}"`
 	CheckKubectlGetResult(t, "ScaledJob", scaledJobName, testNamespace, otherparameter, "metrics-api,corn")
-	otherparameter = `-o jsonpath="{.status.authenticationsNames}"`
-	CheckKubectlGetResult(t, "ScaledJob", scaledJobName, testNamespace, otherparameter, triggerAuthName)
+	otherparameter = `-o jsonpath="{.status.authenticationsTypes}"`
+	CheckKubectlGetResult(t, "ScaledJob", scaledJobName, testNamespace, otherparameter, triggerAuthType)
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -257,7 +257,7 @@ func getTemplateData() (templateData, []Template) {
 			DeploymentName:              deploymentName,
 			MetricsServerDeploymentName: metricsServerDeploymentName,
 			ServciceName:                servciceName,
-			TriggerAuthName:             triggerAuthName,
+			TriggerAuthType:             triggerAuthType,
 			ScaledObjectName:            scaledObjectName,
 			ScaledJobName:               scaledJobName,
 			SecretName:                  secretName,
