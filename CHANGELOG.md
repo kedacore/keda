@@ -73,7 +73,7 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **General**: Prevent multiple ScaledObjects managing one HPA ([#6130](https://github.com/kedacore/keda/issues/6130))
-- **General**: Show full triggers'names and authentications' names in status ([#6187](https://github.com/kedacore/keda/issues/6187))
+- **General**: Show full triggers'types and authentications'types in status ([#6187](https://github.com/kedacore/keda/issues/6187))
 - **AWS CloudWatch Scaler**: Add support for ignoreNullValues ([#5352](https://github.com/kedacore/keda/issues/5352))
 - **Elasticsearch Scaler**: Support Query at the Elasticsearch scaler ([#6216](https://github.com/kedacore/keda/issues/6216))
 - **Etcd Scaler**: Add username and password support for etcd ([#6199](https://github.com/kedacore/keda/pull/6199))
