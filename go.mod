@@ -70,7 +70,7 @@ require (
 	github.com/newrelic/newrelic-client-go v1.1.0
 	github.com/onsi/ginkgo/v2 v2.19.1
 	github.com/onsi/gomega v1.34.1
-	github.com/open-policy-agent/cert-controller v0.10.1
+	github.com/open-policy-agent/cert-controller v0.11.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.1
@@ -101,26 +101,23 @@ require (
 	google.golang.org/grpc v1.65.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1
 	google.golang.org/protobuf v1.34.2
-	k8s.io/api v0.30.0
+	k8s.io/api v0.30.3
 	k8s.io/apimachinery v0.31.0-beta.0
-	k8s.io/apiserver v0.30.0
-	k8s.io/client-go v0.30.0
-	k8s.io/code-generator v0.30.0
-	k8s.io/component-base v0.30.0
+	k8s.io/apiserver v0.30.3
+	k8s.io/client-go v0.30.3
+	k8s.io/code-generator v0.30.3
+	k8s.io/component-base v0.30.3
 	k8s.io/klog/v2 v2.120.1
-	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340
+	k8s.io/kube-openapi v0.0.0-20240430033511-f0e62f92d13f
 	k8s.io/metrics v0.29.4
-	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
+	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
 	knative.dev/pkg v0.0.0-20240805063731-c88d5dad9653
-	sigs.k8s.io/controller-runtime v0.17.5
+	sigs.k8s.io/controller-runtime v0.18.4
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20240804232438-89b5deec030c
 	sigs.k8s.io/controller-tools v0.15.0
 	sigs.k8s.io/custom-metrics-apiserver v1.29.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.4.3
 )
-
-// Remove this when they merge the PR and cut a release https://github.com/open-policy-agent/cert-controller/pull/202
-replace github.com/open-policy-agent/cert-controller => github.com/jorturfer/cert-controller v0.0.0-20240427003941-363ba56751d7
 
 replace (
 	// pin k8s.io to v0.29.7 & sigs.k8s.io/controller-runtime to v0.17.5
@@ -370,9 +367,9 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/apiextensions-apiserver v0.30.0 // indirect
+	k8s.io/apiextensions-apiserver v0.30.3 // indirect
 	k8s.io/gengo v0.0.0-20240129211411-f967bbeff4b4 // indirect
-	k8s.io/kms v0.30.0 // indirect
+	k8s.io/kms v0.30.3 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.29.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/kustomize/api v0.17.3 // indirect
