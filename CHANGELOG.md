@@ -72,6 +72,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
+- **Redis Scaler**: Provide support for scaling based on Redis Key-Values ([#5003](https://github.com/kedacore/keda/issues/5003))
 - **General**: Prevent multiple ScaledObjects managing one HPA ([#6130](https://github.com/kedacore/keda/issues/6130))
 - **AWS CloudWatch Scaler**: Add support for ignoreNullValues ([#5352](https://github.com/kedacore/keda/issues/5352))
 - **Elasticsearch Scaler**: Support Query at the Elasticsearch scaler ([#6216](https://github.com/kedacore/keda/issues/6216))

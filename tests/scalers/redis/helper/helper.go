@@ -65,6 +65,20 @@ spec:
     targetPort: 6379
   selector:
     app: {{.RedisName}}`
+
+	clientRedisTemplate = `apiVersion: v1
+kind: Pod
+metadata:
+  name: {{.RedisName}}
+  namespace: {{.Namespace}}
+spec:
+  containers:
+  - name: {{.RedisName}}
+    image: redis:7.0
+    command:
+      - sh
+      - -c
+      - "exec tail -f /dev/null"`
 )
 
 func InstallStandalone(t *testing.T, kc *kubernetes.Clientset, name, namespace, password string) {
@@ -125,5 +139,22 @@ func RemoveCluster(t *testing.T, name, namespace string) {
 		name,
 		namespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	helper.DeleteNamespace(t, namespace)
+}
+
+func InstallClient(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+	var data = templateData{
+		Namespace: namespace,
+		RedisName: name,
+	}
+	helper.KubectlApplyWithTemplate(t, data, "redisClientTemplate", clientRedisTemplate)
+}
+
+func RemoveClient(t *testing.T, name, namespace string) {
+	var data = templateData{
+		Namespace: namespace,
+		RedisName: name,
+	}
+	helper.KubectlApplyWithTemplate(t, data, "redisClientTemplate", clientRedisTemplate)
 	helper.DeleteNamespace(t, namespace)
 }

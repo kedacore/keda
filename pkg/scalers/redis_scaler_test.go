@@ -71,7 +71,16 @@ var testRedisMetadata = []parseRedisMetadataTestData{
 	// enableTLS is defined both in authParams and metadata
 	{map[string]string{"listName": "mylist", "listLength": "0", "enableTLS": "true"}, true, map[string]string{"address": "localhost:6379", "tls": "disable"}, true},
 	// host only is defined in the authParams
-	{map[string]string{"listName": "mylist", "listLength": "0"}, true, map[string]string{"host": "localhost"}, false}}
+	{map[string]string{"listName": "mylist", "listLength": "0"}, true, map[string]string{"host": "localhost"}, false},
+	// properly formed keyName
+	{map[string]string{"keyName": "mykey", "keyValue": "10", "addressFromEnv": "REDIS_HOST", "passwordFromEnv": "REDIS_PASSWORD"}, false, map[string]string{}, false},
+	// improperly formed keyValue
+	{map[string]string{"keyName": "mykey", "keyValue": "AA", "addressFromEnv": "REDIS_HOST", "passwordFromEnv": "REDIS_PASSWORD"}, true, map[string]string{}, false},
+	// improperly formed activationKeyValue
+	{map[string]string{"keyName": "mykey", "keyValue": "10", "activationKeyValue": "AA", "addressFromEnv": "REDIS_HOST", "passwordFromEnv": "REDIS_PASSWORD"}, true, map[string]string{}, false},
+	// both keyName and listName are set
+	{map[string]string{"listName": "mylist", "listLength": "10", "keyName": "mykey", "keyValue": "10", "addressFromEnv": "REDIS_HOST", "passwordFromEnv": "REDIS_PASSWORD"}, true, map[string]string{}, false},
+}
 
 var redisMetricIdentifiers = []redisMetricIdentifier{
 	{&testRedisMetadata[1], 0, "s0-redis-mylist"},
@@ -119,12 +128,13 @@ func TestRedisGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		closeFn := func() error { return nil }
-		lengthFn := func(context.Context) (int64, error) { return -1, nil }
+		valueFn := func(context.Context) (float64, error) { return -1, nil }
 		mockRedisScaler := redisScaler{
 			"",
 			meta,
 			closeFn,
-			lengthFn,
+			valueFn,
+			0,
 			logr.Discard(),
 		}
 
@@ -161,7 +171,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			wantErr:  ErrRedisUnequalHostsAndPorts,
 		},
 		{
-			name: "no list name",
+			name: "no list name and key name",
 			metadata: map[string]string{
 				"hosts":      "a, b, c",
 				"ports":      "1, 2, 3",
@@ -182,6 +192,30 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			wantErr:  ErrRedisParse,
 		},
 		{
+			name: "invalid key value",
+			metadata: map[string]string{
+				"hosts":    "a, b, c",
+				"ports":    "1, 2, 3",
+				"keyName":  "mykey",
+				"keyValue": "invalid",
+			},
+			wantMeta: nil,
+			wantErr:  ErrRedisParse,
+		},
+		{
+			name: "both key name and list name",
+			metadata: map[string]string{
+				"hosts":      "a, b, c",
+				"ports":      "1, 2, 3",
+				"keyName":    "mykey",
+				"keyValue":   "10",
+				"listName":   "mylist",
+				"listLength": "10",
+			},
+			wantMeta: nil,
+			wantErr:  ErrRedisParse,
+		},
+		{
 			name: "address is defined in auth params",
 			metadata: map[string]string{
 				"listName": "mylist",
@@ -192,6 +226,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{":7001", ":7002"},
 				},
@@ -210,6 +245,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{"a:1", "b:2", "c:3"},
 					Hosts:     []string{"a", "b", "c"},
@@ -231,6 +267,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{"a:1", "b:2", "c:3"},
 					Hosts:     []string{"a", "b", "c"},
@@ -252,6 +289,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{"a:1", "b:2", "c:3"},
 					Hosts:     []string{"a", "b", "c"},
@@ -274,6 +312,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{"a:1", "b:2", "c:3"},
 					Hosts:     []string{"a", "b", "c"},
@@ -296,6 +335,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{"a:1", "b:2", "c:3"},
 					Hosts:     []string{"a", "b", "c"},
@@ -318,6 +358,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{"a:1", "b:2", "c:3"},
 					Hosts:     []string{"a", "b", "c"},
@@ -339,6 +380,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{":7001", ":7002"},
 					EnableTLS: true,
@@ -360,6 +402,7 @@ func TestParseRedisClusterMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{":7001", ":7002"},
 					EnableTLS: true,
@@ -413,7 +456,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantErr:  ErrRedisUnequalHostsAndPorts,
 		},
 		{
-			name: "no list name",
+			name: "no key name and list name",
 			metadata: map[string]string{
 				"hosts":      "a, b, c",
 				"ports":      "1, 2, 3",
@@ -434,6 +477,30 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantErr:  ErrRedisParse,
 		},
 		{
+			name: "invalid key value",
+			metadata: map[string]string{
+				"hosts":    "a, b, c",
+				"ports":    "1, 2, 3",
+				"keyName":  "mykey",
+				"keyValue": "invalid",
+			},
+			wantMeta: nil,
+			wantErr:  ErrRedisParse,
+		},
+		{
+			name: "both key name and list name",
+			metadata: map[string]string{
+				"hosts":      "a, b, c",
+				"ports":      "1, 2, 3",
+				"keyName":    "mykey",
+				"keyValue":   "10",
+				"listName":   "mylist",
+				"listLength": "10",
+			},
+			wantMeta: nil,
+			wantErr:  ErrRedisParse,
+		},
+		{
 			name: "address is defined in auth params",
 			metadata: map[string]string{
 				"listName": "mylist",
@@ -444,6 +511,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{":7001", ":7002"},
 				},
@@ -462,6 +530,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{"a:1", "b:2", "c:3"},
 					Hosts:     []string{"a", "b", "c"},
@@ -482,6 +551,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{"a:1", "b:2", "c:3"},
 					Hosts:     []string{"a", "b", "c"},
@@ -503,6 +573,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{"a:1", "b:2", "c:3"},
 					Hosts:     []string{"a", "b", "c"},
@@ -524,6 +595,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{"a:1", "b:2", "c:3"},
 					Hosts:     []string{"a", "b", "c"},
@@ -546,6 +618,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{"a:1", "b:2", "c:3"},
 					Hosts:     []string{"a", "b", "c"},
@@ -568,6 +641,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{"a:1", "b:2", "c:3"},
 					Hosts:     []string{"a", "b", "c"},
@@ -590,6 +664,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{"a:1", "b:2", "c:3"},
 					Hosts:     []string{"a", "b", "c"},
@@ -612,6 +687,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses:        []string{"a:1", "b:2", "c:3"},
 					Hosts:            []string{"a", "b", "c"},
@@ -633,6 +709,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses:        []string{"a:1", "b:2", "c:3"},
 					Hosts:            []string{"a", "b", "c"},
@@ -655,6 +732,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses:        []string{"a:1", "b:2", "c:3"},
 					Hosts:            []string{"a", "b", "c"},
@@ -677,6 +755,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses:        []string{"a:1", "b:2", "c:3"},
 					Hosts:            []string{"a", "b", "c"},
@@ -699,6 +778,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses:        []string{"a:1", "b:2", "c:3"},
 					Hosts:            []string{"a", "b", "c"},
@@ -721,6 +801,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses:      []string{"a:1", "b:2", "c:3"},
 					Hosts:          []string{"a", "b", "c"},
@@ -742,6 +823,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses:      []string{"a:1", "b:2", "c:3"},
 					Hosts:          []string{"a", "b", "c"},
@@ -764,6 +846,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses:      []string{"a:1", "b:2", "c:3"},
 					Hosts:          []string{"a", "b", "c"},
@@ -785,6 +868,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{":7001", ":7002"},
 					EnableTLS: true,
@@ -806,6 +890,7 @@ func TestParseRedisSentinelMetadata(t *testing.T) {
 			wantMeta: &redisMetadata{
 				ListLength: 5,
 				ListName:   "mylist",
+				KeyValue:   5, // default value
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{":7001", ":7002"},
 					EnableTLS: true,
