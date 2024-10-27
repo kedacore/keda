@@ -72,7 +72,6 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- **Redis Scaler**: Provide support for scaling based on Redis Key-Values ([#5003](https://github.com/kedacore/keda/issues/5003))
 - **General**: Prevent multiple ScaledObjects managing one HPA ([#6130](https://github.com/kedacore/keda/issues/6130))
 - **AWS CloudWatch Scaler**: Add support for ignoreNullValues ([#5352](https://github.com/kedacore/keda/issues/5352))
 - **Elasticsearch Scaler**: Support Query at the Elasticsearch scaler ([#6216](https://github.com/kedacore/keda/issues/6216))
@@ -83,6 +82,7 @@ Here is an overview of all new **experimental** features:
 - **Kafka**: Allow disabling FAST negotation when using Kerberos ([#6188](https://github.com/kedacore/keda/issues/6188))
 - **Kafka**: Fix logic to scale to zero on invalid offset even with earliest offsetResetPolicy ([#5689](https://github.com/kedacore/keda/issues/5689))
 - **RabbitMQ Scaler**: Add connection name for AMQP ([#5958](https://github.com/kedacore/keda/issues/5958))
+- **Redis Scaler**: Provide support for scaling based on Redis Key-Values ([#5003](https://github.com/kedacore/keda/issues/5003))
 - **Selenium Scaler**: Add Support for Username and Password Authentication ([#6144](https://github.com/kedacore/keda/issues/6144))
 - **Selenium Scaler**: Introduce new parameters setSessionsFromHub, sessionsPerNode and sessionBrowserVersion. ([#6080](https://github.com/kedacore/keda/issues/6080))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))

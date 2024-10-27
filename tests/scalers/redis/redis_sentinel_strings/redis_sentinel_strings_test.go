@@ -145,26 +145,26 @@ func TestScaler(t *testing.T) {
 
 	// Create Redis Standalone
 	redis.InstallSentinel(t, kc, testName, redisNamespace, redisPassword)
-	redis.InstallClient(t, kc, clientName, redisNamespace)
+	redis.InstallClient(t, clientName, redisNamespace)
 	// wait until client is ready
 	time.Sleep(10 * time.Second)
 
 	// Create kubernetes resources for testing
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	testActivation(t, kc, data)
-	testScaleOut(t, kc, data)
+	testActivation(t, kc)
+	testScaleOut(t, kc)
 	testScaleIn(t, kc)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing activation ---")
 	setKeyValue(t, 4)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
 	setKeyValue(t, 10)
 

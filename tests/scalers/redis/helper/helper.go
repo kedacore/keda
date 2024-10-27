@@ -142,7 +142,7 @@ func RemoveCluster(t *testing.T, name, namespace string) {
 	helper.DeleteNamespace(t, namespace)
 }
 
-func InstallClient(t *testing.T, kc *kubernetes.Clientset, name, namespace string) {
+func InstallClient(t *testing.T, name, namespace string) {
 	var data = templateData{
 		Namespace: namespace,
 		RedisName: name,
