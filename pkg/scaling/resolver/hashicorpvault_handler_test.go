@@ -17,6 +17,7 @@ limitations under the License.
 package resolver
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -182,7 +183,7 @@ func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) 
 		},
 	}
 	vaultHandler := NewHashicorpVaultHandler(&vault)
-	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	err := vaultHandler.Initialize(context.TODO(), nil, logf.Log.WithName("test"), "", nil)
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
 	secrets := []kedav1alpha1.VaultSecret{{
@@ -322,7 +323,7 @@ func TestHashicorpVaultHandler_ResolveSecret(t *testing.T) {
 		},
 	}
 	vaultHandler := NewHashicorpVaultHandler(&vault)
-	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	err := vaultHandler.Initialize(context.TODO(), nil, logf.Log.WithName("test"), "", nil)
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
 
@@ -358,7 +359,7 @@ func TestHashicorpVaultHandler_ResolveSecret_UsingRootToken(t *testing.T) {
 		},
 	}
 	vaultHandler := NewHashicorpVaultHandler(&vault)
-	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	err := vaultHandler.Initialize(context.TODO(), nil, logf.Log.WithName("test"), "", nil)
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
 
@@ -395,7 +396,7 @@ func TestHashicorpVaultHandler_DefaultKubernetesVaultRole(t *testing.T) {
 	}
 
 	vaultHandler := NewHashicorpVaultHandler(&vault)
-	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	err := vaultHandler.Initialize(context.TODO(), nil, logf.Log.WithName("test"), "", nil)
 	defer vaultHandler.Stop()
 	assert.Errorf(t, err, "open %s : no such file or directory", defaultServiceAccountPath)
 	assert.Equal(t, vaultHandler.vault.Credential.ServiceAccount, defaultServiceAccountPath)
@@ -413,7 +414,7 @@ func TestHashicorpVaultHandler_ResolveSecrets_SameCertAndKey(t *testing.T) {
 		},
 	}
 	vaultHandler := NewHashicorpVaultHandler(&vault)
-	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	err := vaultHandler.Initialize(context.TODO(), nil, logf.Log.WithName("test"), "", nil)
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
 	secrets := []kedav1alpha1.VaultSecret{{
@@ -481,7 +482,7 @@ func TestHashicorpVaultHandler_fetchSecret(t *testing.T) {
 		},
 	}
 	vaultHandler := NewHashicorpVaultHandler(&vault)
-	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	err := vaultHandler.Initialize(context.TODO(), nil, logf.Log.WithName("test"), "", nil)
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
 
@@ -537,7 +538,7 @@ func TestHashicorpVaultHandler_Initialize(t *testing.T) {
 				Namespace: testData.namespace,
 			}
 			vaultHandler := NewHashicorpVaultHandler(&vault)
-			err := vaultHandler.Initialize(logf.Log.WithName("test"))
+			err := vaultHandler.Initialize(context.TODO(), nil, logf.Log.WithName("test"), "", nil)
 			defer vaultHandler.Stop()
 			assert.Nil(t, err)
 
@@ -616,7 +617,7 @@ func TestHashicorpVaultHandler_Token_VaultTokenAuth(t *testing.T) {
 			config := vaultapi.DefaultConfig()
 			client, err := vaultapi.NewClient(config)
 			assert.Nil(t, err)
-			token, err := vaultHandler.token(client)
+			token, err := vaultHandler.token(context.TODO(), nil, client, logf.Log.WithName("test"), "", nil)
 			if testData.isError {
 				assert.Equalf(t, vaultHandler.vault.Credential.ServiceAccount, testData.credential.ServiceAccount, "test %s: expected %s but found %s", testData.name, "random/path", vaultHandler.vault.Credential.ServiceAccount)
 				assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)

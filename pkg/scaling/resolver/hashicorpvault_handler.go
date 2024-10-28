@@ -17,6 +17,7 @@ limitations under the License.
 package resolver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +26,8 @@ import (
 
 	"github.com/go-logr/logr"
 	vaultapi "github.com/hashicorp/vault/api"
+	corev1listers "k8s.io/client-go/listers/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
@@ -44,32 +47,32 @@ func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault) *HashicorpVaultHan
 }
 
 // Initialize the Vault client
-func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
+func (vh *HashicorpVaultHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretLister corev1listers.SecretLister) error {
 	config := vaultapi.DefaultConfig()
-	client, err := vaultapi.NewClient(config)
+	vaultClient, err := vaultapi.NewClient(config)
 	if err != nil {
 		return err
 	}
 
-	err = client.SetAddress(vh.vault.Address)
+	err = vaultClient.SetAddress(vh.vault.Address)
 	if err != nil {
 		return err
 	}
 
 	if len(vh.vault.Namespace) > 0 {
-		client.SetNamespace(vh.vault.Namespace)
+		vaultClient.SetNamespace(vh.vault.Namespace)
 	}
 
-	token, err := vh.token(client)
+	token, err := vh.token(ctx, client, vaultClient, logger, triggerNamespace, secretLister)
 	if err != nil {
 		return err
 	}
 
 	if len(token) > 0 {
-		client.SetToken(token)
+		vaultClient.SetToken(token)
 	}
 
-	lookup, err := client.Auth().Token().LookupSelf()
+	lookup, err := vaultClient.Auth().Token().LookupSelf()
 	// If token is not valid so get out of here early
 	if err != nil {
 		return err
@@ -80,21 +83,25 @@ func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
 		go vh.renewToken(logger)
 	}
 
-	vh.client = client
+	vh.client = vaultClient
 
 	return nil
 }
 
 // token Extract a vault token from the Authentication method
-func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) {
+func (vh *HashicorpVaultHandler) token(ctx context.Context, client client.Client, vaultClient *vaultapi.Client, logger logr.Logger, triggerNamespace string, secretLister corev1listers.SecretLister) (string, error) {
 	var token string
 
 	switch vh.vault.Authentication {
 	case kedav1alpha1.VaultAuthenticationToken:
 		// Got token from VAULT_TOKEN env variable
 		switch {
-		case len(client.Token()) > 0:
+		case len(vaultClient.Token()) > 0:
 			break
+		case vh.vault.Credential.TokenSecret != nil:
+			tokenSecretName := vh.vault.Credential.TokenSecret.ValueFrom.SecretKeyRef.Name
+			tokenSecretKey := vh.vault.Credential.TokenSecret.ValueFrom.SecretKeyRef.Key
+			token = resolveAuthSecret(ctx, client, logger, tokenSecretName, triggerNamespace, tokenSecretKey, secretLister)
 		case len(vh.vault.Credential.Token) > 0:
 			token = vh.vault.Credential.Token
 		default:
@@ -127,7 +134,7 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 		}
 
 		data := map[string]interface{}{"jwt": string(jwt), "role": vh.vault.Role}
-		secret, err := client.Logical().Write(fmt.Sprintf("auth/%s/login", vh.vault.Mount), data)
+		secret, err := vaultClient.Logical().Write(fmt.Sprintf("auth/%s/login", vh.vault.Mount), data)
 		if err != nil {
 			return token, err
 		}
