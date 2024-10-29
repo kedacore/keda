@@ -21,7 +21,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "redis-cluster-keyvalue-test"
+	testName = "redis-cluster-strings-test"
 )
 
 var (
@@ -118,7 +118,7 @@ spec:
   minReplicaCount: {{.MinReplicaCount}}
   maxReplicaCount: {{.MaxReplicaCount}}
   triggers:
-  - type: redis
+  - type: redis-cluster
     metadata:
       addressesFromEnv: REDIS_ADDRESSES
       keyName: {{.RedisKey}}

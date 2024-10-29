@@ -21,7 +21,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "redis-standalone-keyvalue-test"
+	testName = "redis-standalone-strings-test"
 )
 
 var (

@@ -21,7 +21,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "redis-sentinel-keyvalue-test"
+	testName = "redis-sentinel-strings-test"
 )
 
 var (
@@ -121,7 +121,7 @@ spec:
   minReplicaCount: {{.MinReplicaCount}}
   maxReplicaCount: {{.MaxReplicaCount}}
   triggers:
-  - type: redis
+  - type: redis-sentinel
     metadata:
       addressesFromEnv: REDIS_ADDRESSES
       sentinelMaster: mymaster
@@ -209,3 +209,7 @@ func setKeyValue(t *testing.T, value int) {
 			redisPassword, redisHost, redisPassword, redisKey, value))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 }
+
+// kubectl exec -n redis-sentinel-strings-test-redis-ns redis-sentinel-strings-test-client -- '
+// redis-cli --pass admin -h redis-sentinel-strings-test-headless -p 26379 SENTINEL get-master-addr-by-name mymaster
+// | xargs -n 2 sh -c 'redis-cli --pass admin -h $0 -p $1 get redis-sentinel-strings-test-key'
