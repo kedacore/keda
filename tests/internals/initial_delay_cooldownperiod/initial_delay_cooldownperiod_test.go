@@ -78,13 +78,10 @@ spec:
         scaleDown:
           stabilizationWindowSeconds: 15
   triggers:
-  - type: cron
+  - type: kubernetes-workload
     metadata:
-      timezone: Etc/UTC
-      start: {{.StartMin}} * * * *
-      end: {{.EndMin}} * * * *
-      desiredReplicas: '0'
-`
+      podSelector: 'pod=no-matches'
+      value: '1'`
 )
 
 func TestScaler(t *testing.T) {

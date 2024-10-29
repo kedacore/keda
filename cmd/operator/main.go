@@ -236,7 +236,7 @@ func main() {
 		Client:            mgr.GetClient(),
 		Scheme:            mgr.GetScheme(),
 		GlobalHTTPTimeout: globalHTTPTimeout,
-		Recorder:          eventRecorder,
+		EventEmitter:      eventEmitter,
 		SecretsLister:     secretInformer.Lister(),
 		SecretsSynced:     secretInformer.Informer().HasSynced,
 	}).SetupWithManager(mgr, controller.Options{
@@ -246,15 +246,15 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&kedacontrollers.TriggerAuthenticationReconciler{
-		Client:        mgr.GetClient(),
-		EventRecorder: eventRecorder,
+		Client:       mgr.GetClient(),
+		EventHandler: eventEmitter,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "TriggerAuthentication")
 		os.Exit(1)
 	}
 	if err = (&kedacontrollers.ClusterTriggerAuthenticationReconciler{
-		Client:        mgr.GetClient(),
-		EventRecorder: eventRecorder,
+		Client:       mgr.GetClient(),
+		EventHandler: eventEmitter,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterTriggerAuthentication")
 		os.Exit(1)
@@ -264,6 +264,13 @@ func main() {
 		eventEmitter,
 	)).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CloudEventSource")
+		os.Exit(1)
+	}
+	if err = (eventingcontrollers.NewClusterCloudEventSourceReconciler(
+		mgr.GetClient(),
+		eventEmitter,
+	)).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ClusterCloudEventSource")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

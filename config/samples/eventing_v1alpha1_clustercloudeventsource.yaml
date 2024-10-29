@@ -1,0 +1,15 @@
+apiVersion: eventing.keda.sh/v1alpha1
+kind: ClusterCloudEventSource
+metadata:
+  labels:
+    app.kubernetes.io/name: clustercloudeventsource
+    app.kubernetes.io/instance: clustercloudeventsource-sample
+    app.kubernetes.io/part-of: keda
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: keda
+  name: clustercloudeventsource-sample
+spec:
+  clusterName: clustercluster-sample
+  destination:
+    http:
+      uri: http://foo.bar

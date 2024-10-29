@@ -234,6 +234,10 @@ func testActivation(t *testing.T, kc *k8s.Clientset, data nats.JetStreamDeployme
 
 func testScaleOut(t *testing.T, kc *k8s.Clientset, data nats.JetStreamDeploymentTemplateData) {
 	t.Log("--- testing scale out ---")
+	// We force the change of consumer leader to ensure that KEDA detects the change and
+	// handles it properly
+	KubectlApplyWithTemplate(t, data, "stepDownTemplate", nats.StepDownConsumer)
+
 	KubectlApplyWithTemplate(t, data, "publishJobTemplate", nats.PublishJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),

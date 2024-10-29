@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -69,6 +70,7 @@ type rabbitMQScaler struct {
 
 type rabbitMQMetadata struct {
 	queueName             string
+	connectionName        string        // name used for the AMQP connection
 	mode                  string        // QueueLength or MessageRate
 	value                 float64       // trigger value (queue length or publish/sec. rate)
 	activationValue       float64       // activation value
@@ -81,6 +83,9 @@ type rabbitMQMetadata struct {
 	operation             string        // specify the operation to apply in case of multiples queues
 	timeout               time.Duration // custom http timeout for a specific trigger
 	triggerIndex          int           // scaler index
+
+	username string
+	password string
 
 	// TLS
 	ca          string
@@ -148,12 +153,20 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	if meta.protocol == amqpProtocol {
 		// Override vhost if requested.
 		host := meta.host
-		if meta.vhostName != "" {
+		if meta.vhostName != "" || (meta.username != "" && meta.password != "") {
 			hostURI, err := amqp.ParseURI(host)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing rabbitmq connection string: %w", err)
 			}
-			hostURI.Vhost = meta.vhostName
+			if meta.vhostName != "" {
+				hostURI.Vhost = meta.vhostName
+			}
+
+			if meta.username != "" && meta.password != "" {
+				hostURI.Username = meta.username
+				hostURI.Password = meta.password
+			}
+
 			host = hostURI.String()
 		}
 
@@ -231,8 +244,32 @@ func resolveTLSAuthParams(config *scalersconfig.ScalerConfig, meta *rabbitMQMeta
 	return nil
 }
 
+func resolveAuth(config *scalersconfig.ScalerConfig, meta *rabbitMQMetadata) error {
+	usernameVal, err := getParameterFromConfigV2(config, "username", reflect.TypeOf(meta.username),
+		UseAuthentication(true), UseResolvedEnv(true), IsOptional(true))
+	if err != nil {
+		return err
+	}
+	meta.username = usernameVal.(string)
+
+	passwordVal, err := getParameterFromConfigV2(config, "password", reflect.TypeOf(meta.username),
+		UseAuthentication(true), UseResolvedEnv(true), IsOptional(true))
+	if err != nil {
+		return err
+	}
+	meta.password = passwordVal.(string)
+
+	if (meta.username != "" || meta.password != "") && (meta.username == "" || meta.password == "") {
+		return fmt.Errorf("username and password must be given together")
+	}
+
+	return nil
+}
+
 func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadata, error) {
-	meta := rabbitMQMetadata{}
+	meta := rabbitMQMetadata{
+		connectionName: connectionName(config),
+	}
 
 	// Resolve protocol type
 	if err := resolveProtocol(config, &meta); err != nil {
@@ -246,6 +283,11 @@ func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadat
 
 	// Resolve TLS authentication parameters
 	if err := resolveTLSAuthParams(config, &meta); err != nil {
+		return nil, err
+	}
+
+	// Resolve username and password
+	if err := resolveAuth(config, &meta); err != nil {
 		return nil, err
 	}
 
@@ -445,22 +487,25 @@ func parseTrigger(meta *rabbitMQMetadata, config *scalersconfig.ScalerConfig) (*
 }
 
 // getConnectionAndChannel returns an amqp connection. If enableTLS is true tls connection is made using
-//
-//	the given ceClient cert, ceClient key,and CA certificate. If clientKeyPassword is not empty the provided password will be used to
-//
+// the given ceClient cert, ceClient key,and CA certificate. If clientKeyPassword is not empty the provided password will be used to
 // decrypt the given key. If enableTLS is disabled then amqp connection will be created without tls.
 func getConnectionAndChannel(host string, meta *rabbitMQMetadata) (*amqp.Connection, *amqp.Channel, error) {
-	var conn *amqp.Connection
-	var err error
-	if meta.enableTLS {
-		tlsConfig, configErr := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, meta.unsafeSsl)
-		if configErr != nil {
-			return nil, nil, configErr
-		}
-		conn, err = amqp.DialTLS(host, tlsConfig)
-	} else {
-		conn, err = amqp.Dial(host)
+	amqpConfig := amqp.Config{
+		Properties: amqp.Table{
+			"connection_name": meta.connectionName,
+		},
 	}
+
+	if meta.enableTLS {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.cert, meta.key, meta.keyPassword, meta.ca, meta.unsafeSsl)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		amqpConfig.TLSClientConfig = tlsConfig
+	}
+
+	conn, err := amqp.DialConfig(host, amqpConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -590,6 +635,10 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP(ctx context.Context) (*queueInfo, e
 	vhost, subpaths := getVhostAndPathFromURL(parsedURL.Path, s.metadata.vhostName)
 	parsedURL.Path = subpaths
 
+	if s.metadata.username != "" && s.metadata.password != "" {
+		parsedURL.User = url.UserPassword(s.metadata.username, s.metadata.password)
+	}
+
 	var getQueueInfoManagementURI string
 	if s.metadata.useRegex {
 		getQueueInfoManagementURI = fmt.Sprintf("%s/api/queues%s?page=1&use_regex=true&pagination=false&name=%s&page_size=%d", parsedURL.String(), vhost, url.QueryEscape(s.metadata.queueName), s.metadata.pageSize)
@@ -714,4 +763,10 @@ func getMaximum(q []queueInfo) (int, int, float64) {
 func (s *rabbitMQScaler) anonymizeRabbitMQError(err error) error {
 	errorMessage := fmt.Sprintf("error inspecting rabbitMQ: %s", err)
 	return fmt.Errorf(rabbitMQAnonymizePattern.ReplaceAllString(errorMessage, "user:password@"))
+}
+
+// connectionName is used to provide a deterministic AMQP connection name when
+// connecting to RabbitMQ
+func connectionName(config *scalersconfig.ScalerConfig) string {
+	return fmt.Sprintf("keda-%s-%s", config.ScalableObjectNamespace, config.ScalableObjectName)
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -24,16 +23,24 @@ type solrScaler struct {
 }
 
 type solrMetadata struct {
-	host                       string
-	collection                 string
-	targetQueryValue           float64
-	activationTargetQueryValue float64
-	query                      string
-	triggerIndex               int
+	triggerIndex int
+
+	Host                       string  `keda:"name=host, order=triggerMetadata"`
+	Collection                 string  `keda:"name=collection, order=triggerMetadata"`
+	TargetQueryValue           float64 `keda:"name=targetQueryValue, order=triggerMetadata"`
+	ActivationTargetQueryValue float64 `keda:"name=activationTargetQueryValue, order=triggerMetadata, optional, default=0"`
+	Query                      string  `keda:"name=query, order=triggerMetadata, optional"`
 
 	// Authentication
-	username string
-	password string
+	Username string `keda:"name=username, order=authParams;triggerMetadata"`
+	Password string `keda:"name=password, order=authParams;triggerMetadata"`
+}
+
+func (s *solrMetadata) Validate() error {
+	if s.Query == "" {
+		s.Query = "*:*"
+	}
+	return nil
 }
 
 type solrResponse struct {
@@ -67,63 +74,17 @@ func NewSolrScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 // parseSolrMetadata parses the metadata and returns a solrMetadata or an error if the ScalerConfig is invalid.
 func parseSolrMetadata(config *scalersconfig.ScalerConfig) (*solrMetadata, error) {
-	meta := solrMetadata{}
-
-	if val, ok := config.TriggerMetadata["host"]; ok {
-		meta.host = val
-	} else {
-		return nil, fmt.Errorf("no host given")
-	}
-
-	if val, ok := config.TriggerMetadata["collection"]; ok {
-		meta.collection = val
-	} else {
-		return nil, fmt.Errorf("no collection given")
-	}
-
-	if val, ok := config.TriggerMetadata["query"]; ok {
-		meta.query = val
-	} else {
-		meta.query = "*:*"
-	}
-
-	if val, ok := config.TriggerMetadata["targetQueryValue"]; ok {
-		targetQueryValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("targetQueryValue parsing error %w", err)
-		}
-		meta.targetQueryValue = targetQueryValue
-	} else {
-		if config.AsMetricSource {
-			meta.targetQueryValue = 0
-		} else {
-			return nil, fmt.Errorf("no targetQueryValue given")
-		}
-	}
-
-	meta.activationTargetQueryValue = 0
-	if val, ok := config.TriggerMetadata["activationTargetQueryValue"]; ok {
-		activationTargetQueryValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("invalid activationTargetQueryValue - must be an integer")
-		}
-		meta.activationTargetQueryValue = activationTargetQueryValue
-	}
-	// Parse Authentication
-	if val, ok := config.AuthParams["username"]; ok {
-		meta.username = val
-	} else {
-		return nil, fmt.Errorf("no username given")
-	}
-
-	if val, ok := config.AuthParams["password"]; ok {
-		meta.password = val
-	} else {
-		return nil, fmt.Errorf("no password given")
-	}
-
+	meta := &solrMetadata{}
 	meta.triggerIndex = config.TriggerIndex
-	return &meta, nil
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing solr metadata: %w", err)
+	}
+
+	if !config.AsMetricSource && meta.TargetQueryValue == 0 {
+		return nil, fmt.Errorf("no targetQueryValue given")
+	}
+
+	return meta, nil
 }
 
 func (s *solrScaler) getItemCount(ctx context.Context) (float64, error) {
@@ -131,14 +92,14 @@ func (s *solrScaler) getItemCount(ctx context.Context) (float64, error) {
 	var itemCount float64
 
 	url := fmt.Sprintf("%s/solr/%s/select?q=%s&wt=json",
-		s.metadata.host, s.metadata.collection, s.metadata.query)
+		s.metadata.Host, s.metadata.Collection, s.metadata.Query)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return -1, err
 	}
 	// Add BasicAuth
-	req.SetBasicAuth(s.metadata.username, s.metadata.password)
+	req.SetBasicAuth(s.metadata.Username, s.metadata.Password)
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
@@ -165,7 +126,7 @@ func (s *solrScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString("solr")),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.targetQueryValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.TargetQueryValue),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -182,7 +143,7 @@ func (s *solrScaler) GetMetricsAndActivity(ctx context.Context, metricName strin
 
 	metric := GenerateMetricInMili(metricName, result)
 
-	return append([]external_metrics.ExternalMetricValue{}, metric), result > s.metadata.activationTargetQueryValue, nil
+	return append([]external_metrics.ExternalMetricValue{}, metric), result > s.metadata.ActivationTargetQueryValue, nil
 }
 
 // Close closes the http client connection.
