@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"io"
 	"net/http"
 	"net/url"
@@ -64,7 +66,7 @@ type rabbitMQScaler struct {
 	connection *amqp.Connection
 	channel    *amqp.Channel
 	httpClient *http.Client
-	azureOAuth *azure.ADWorkloadIdentityTokenProvider
+	azureOAuth *azidentity.WorkloadIdentityCredential
 	logger     logr.Logger
 }
 
@@ -567,15 +569,22 @@ func getJSON(ctx context.Context, s *rabbitMQScaler, url string) (queueInfo, err
 
 	if s.metadata.workloadIdentityResource != "" {
 		if s.azureOAuth == nil {
-			s.azureOAuth = azure.NewAzureADWorkloadIdentityTokenProvider(ctx, s.metadata.workloadIdentityClientID, s.metadata.workloadIdentityTenantID, s.metadata.workloadIdentityAuthorityHost, s.metadata.workloadIdentityResource)
+			s.azureOAuth, err = azure.NewADWorkloadIdentityCredential(s.metadata.workloadIdentityClientID, s.metadata.workloadIdentityTenantID)
 		}
-
-		err = s.azureOAuth.Refresh()
 		if err != nil {
 			return result, err
 		}
 
-		request.Header.Set("Authorization", "Bearer "+s.azureOAuth.OAuthToken())
+		token, err := s.azureOAuth.GetToken(ctx, policy.TokenRequestOptions{
+			Scopes: []string{
+				s.metadata.workloadIdentityResource,
+			},
+		})
+		if err != nil {
+			return result, err
+		}
+
+		request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	}
 
 	r, err := s.httpClient.Do(request)

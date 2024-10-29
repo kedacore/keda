@@ -42,3 +42,14 @@ func NewChainedCredential(logger logr.Logger, podIdentity v1alpha1.AuthPodIdenti
 	// Create the chained credential based on the previous 3
 	return azidentity.NewChainedTokenCredential(creds, nil)
 }
+
+func NewADWorkloadIdentityCredential(identityID, identityTenantID string) (*azidentity.WorkloadIdentityCredential, error) {
+	options := &azidentity.WorkloadIdentityCredentialOptions{}
+	if identityID != "" {
+		options.ClientID = identityID
+	}
+	if identityTenantID != "" {
+		options.TenantID = identityTenantID
+	}
+	return azidentity.NewWorkloadIdentityCredential(options)
+}
