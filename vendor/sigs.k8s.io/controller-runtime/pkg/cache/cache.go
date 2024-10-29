@@ -39,11 +39,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache/internal"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
-	logf "sigs.k8s.io/controller-runtime/pkg/internal/log"
 )
 
 var (
-	log               = logf.RuntimeLog.WithName("object-cache")
 	defaultSyncPeriod = 10 * time.Hour
 )
 
@@ -203,6 +201,9 @@ type Options struct {
 
 	// DefaultTransform will be used as transform for all object types
 	// unless there is already one set in ByObject or DefaultNamespaces.
+	//
+	// A typical usecase for this is to use TransformStripManagedFields
+	// to reduce the caches memory usage.
 	DefaultTransform toolscache.TransformFunc
 
 	// DefaultWatchErrorHandler will be used to the WatchErrorHandler which is called
@@ -222,7 +223,7 @@ type Options struct {
 	DefaultUnsafeDisableDeepCopy *bool
 
 	// ByObject restricts the cache's ListWatch to the desired fields per GVK at the specified object.
-	// object, this will fall through to Default* settings.
+	// If unset, this will fall through to the Default* settings.
 	ByObject map[client.Object]ByObject
 
 	// newInformer allows overriding of NewSharedIndexInformer for testing.
@@ -344,6 +345,20 @@ func New(cfg *rest.Config, opts Options) (Cache, error) {
 	}
 
 	return delegating, nil
+}
+
+// TransformStripManagedFields strips the managed fields of an object before it is committed to the cache.
+// If you are not explicitly accessing managedFields from your code, setting this as `DefaultTransform`
+// on the cache can lead to a significant reduction in memory usage.
+func TransformStripManagedFields() toolscache.TransformFunc {
+	return func(in any) (any, error) {
+		// Nilcheck managed fields to avoid hitting https://github.com/kubernetes/kubernetes/issues/124337
+		if obj, err := meta.Accessor(in); err == nil && obj.GetManagedFields() != nil {
+			obj.SetManagedFields(nil)
+		}
+
+		return in, nil
+	}
 }
 
 func optionDefaultsToConfig(opts *Options) Config {

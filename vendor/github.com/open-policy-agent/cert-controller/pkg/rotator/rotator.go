@@ -678,8 +678,8 @@ func ValidCert(caCert, cert, key []byte, dnsName string, keyUsages *[]x509.ExtKe
 	return true, nil
 }
 
-func reconcileSecretAndWebhookMapFunc(webhook WebhookInfo, r *ReconcileWH) func(ctx context.Context, object client.Object) []reconcile.Request {
-	return func(ctx context.Context, object client.Object) []reconcile.Request {
+func reconcileSecretAndWebhookMapFunc(webhook WebhookInfo, r *ReconcileWH) func(ctx context.Context, object *unstructured.Unstructured) []reconcile.Request {
+	return func(ctx context.Context, object *unstructured.Unstructured) []reconcile.Request {
 		whKey := types.NamespacedName{Name: webhook.Name}
 		if object.GetNamespace() != whKey.Namespace {
 			return nil
@@ -700,8 +700,7 @@ func addController(mgr manager.Manager, r *ReconcileWH) error {
 	}
 
 	err = c.Watch(
-		source.Kind(r.cache, &corev1.Secret{}),
-		&handler.EnqueueRequestForObject{},
+		source.Kind(r.cache, &corev1.Secret{}, &handler.TypedEnqueueRequestForObject[*corev1.Secret]{}),
 	)
 	if err != nil {
 		return fmt.Errorf("watching Secrets: %w", err)
@@ -711,9 +710,9 @@ func addController(mgr manager.Manager, r *ReconcileWH) error {
 		wh := &unstructured.Unstructured{}
 		wh.SetGroupVersionKind(webhook.gvk())
 		err = c.Watch(
-			source.Kind(r.cache, wh),
-			handler.EnqueueRequestsFromMapFunc(reconcileSecretAndWebhookMapFunc(webhook, r)),
+			source.Kind(r.cache, wh, handler.TypedEnqueueRequestsFromMapFunc(reconcileSecretAndWebhookMapFunc(webhook, r))),
 		)
+
 		if err != nil {
 			return fmt.Errorf("watching webhook %s: %w", webhook.Name, err)
 		}
