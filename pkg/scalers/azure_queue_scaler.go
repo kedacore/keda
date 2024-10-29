@@ -57,10 +57,6 @@ type azureQueueMetadata struct {
 	TriggerIndex          int
 }
 
-func (m *azureQueueMetadata) Validate() error {
-	return nil
-}
-
 func NewAzureQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
@@ -92,11 +88,6 @@ func parseAzureQueueMetadata(config *scalersconfig.ScalerConfig) (azureQueueMeta
 	err := config.TypedConfig(&meta)
 	if err != nil {
 		return meta, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure queue metadata: %w", err)
-	}
-
-	err = meta.Validate()
-	if err != nil {
-		return meta, kedav1alpha1.AuthPodIdentity{}, err
 	}
 
 	endpointSuffix, err := azure.ParseAzureStorageEndpointSuffix(config.TriggerMetadata, azure.QueueEndpoint)
