@@ -48,6 +48,10 @@ const (
 )
 
 func (m *cassandraMetadata) Validate() error {
+	if m.TLS == tlsEnable && (m.Cert == "" || m.Key == "") {
+		return errors.New("both cert and key are required when TLS is enabled")
+	}
+
 	// Handle port in ClusterIPAddress
 	splitVal := strings.Split(m.ClusterIPAddress, ":")
 	if len(splitVal) == 2 {
@@ -101,11 +105,6 @@ func parseCassandraMetadata(config *scalersconfig.ScalerConfig) (cassandraMetada
 		meta.TargetQueryValue = 0
 	}
 
-	err = meta.Validate()
-	if err != nil {
-		return meta, err
-	}
-
 	err = parseCassandraTLS(&meta)
 	if err != nil {
 		return meta, err
@@ -139,10 +138,6 @@ func createTempFile(prefix string, content string) (string, error) {
 
 func parseCassandraTLS(meta *cassandraMetadata) error {
 	if meta.TLS == tlsEnable {
-		if meta.Cert == "" || meta.Key == "" {
-			return errors.New("both cert and key are required when TLS is enabled")
-		}
-
 		// Create temp files for certs
 		certFilePath, err := createTempFile("cert", meta.Cert)
 		if err != nil {
