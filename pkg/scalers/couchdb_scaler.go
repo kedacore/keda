@@ -115,11 +115,6 @@ func parseCouchDBMetadata(config *scalersconfig.ScalerConfig) (couchDBMetadata, 
 		return meta, fmt.Errorf("error parsing couchdb metadata: %w", err)
 	}
 
-	err = meta.Validate()
-	if err != nil {
-		return meta, err
-	}
-
 	if meta.QueryValue == 0 && !config.AsMetricSource {
 		return meta, fmt.Errorf("no queryValue given")
 	}
