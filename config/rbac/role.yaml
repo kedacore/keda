@@ -52,6 +52,16 @@ rules:
   verbs:
   - get
 - apiGroups:
+  - '*'
+  resources:
+  - '*/scale'
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - admissionregistration.k8s.io
   resources:
   - validatingwebhookconfigurations
@@ -78,17 +88,6 @@ rules:
   - statefulsets
   verbs:
   - list
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - deployments/scale
-  - statefulsets/scale
-  verbs:
-  - get
-  - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - autoscaling
