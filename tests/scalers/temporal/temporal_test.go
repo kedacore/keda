@@ -152,7 +152,7 @@ spec:
         - "--dir-name=prepared"
         {{- if ne .BuildID "" }}
         - "--worker-build-id={{.BuildID}}"
-		{{- end}}
+	{{- end}}
 `
 
 	jobWorkFlowTemplate = `
