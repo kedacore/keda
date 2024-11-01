@@ -1,6 +1,10 @@
 //go:build e2e
 // +build e2e
 
+// Temporally moved to standalone e2e as I found that the DD Agent autogenerates DatadogMetric from other
+// unrelated HPAs. Until we get a response about how to disable this, the best solution is moving this test
+// to run standalone. We should move back it again once we solve this problem
+
 package datadog_dca_test
 
 import (
