@@ -16,8 +16,8 @@ to maintain full compatibility with the latest InfluxDB release
 
 ## Generate
 ### Generate types
-`oapi-codegen -generate types -o types.gen.go -package domain -templates .\templates oss.yml`
+`oapi-codegen -generate types -exclude-tags Checks -o types.gen.go -package domain -templates .\templates oss.yml`
 
 ### Generate client
-`oapi-codegen -generate client -o client.gen.go -package domain -templates .\templates oss.yml`
+`oapi-codegen -generate client -exclude-tags Checks -o client.gen.go -package domain -templates .\templates oss.yml`
 

@@ -60,7 +60,7 @@ require (
 	github.com/gophercloud/gophercloud v1.14.0
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.0.1
 	github.com/hashicorp/vault/api v1.14.0
-	github.com/influxdata/influxdb-client-go/v2 v2.13.0
+	github.com/influxdata/influxdb-client-go/v2 v2.14.0
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/jstemmer/go-junit-report/v2 v2.1.0

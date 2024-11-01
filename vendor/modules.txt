@@ -906,7 +906,7 @@ github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
-# github.com/influxdata/influxdb-client-go/v2 v2.13.0
+# github.com/influxdata/influxdb-client-go/v2 v2.14.0
 ## explicit; go 1.17
 github.com/influxdata/influxdb-client-go/v2
 github.com/influxdata/influxdb-client-go/v2/api
