@@ -265,21 +265,25 @@ func checkMessage(t *testing.T, count int, client *azservicebus.Client) {
 	if err != nil {
 		assert.NoErrorf(t, err, "cannot create receiver - %s", err)
 	}
-	defer receiver.Close(context.TODO())
+	defer receiver.Close(context.Background())
 
-	messages, err := receiver.ReceiveMessages(context.TODO(), count, nil)
-	assert.NoErrorf(t, err, "cannot receive messages - %s", err)
-	assert.NotEmpty(t, messages)
-
+	// We try to read the messages 3 times with a second of delay
+	tries := 3
 	found := false
-	for _, message := range messages {
-		event := messaging.CloudEvent{}
-		err = json.Unmarshal(message.Body, &event)
-		assert.NoErrorf(t, err, "cannot retrieve message - %s", err)
-		if expectedSubject == *event.Subject &&
-			expectedSource == event.Source &&
-			expectedType == event.Type {
-			found = true
+	for i := 0; i < tries && !found; i++ {
+		messages, err := receiver.ReceiveMessages(context.Background(), count, nil)
+		assert.NoErrorf(t, err, "cannot receive messages - %s", err)
+		assert.NotEmpty(t, messages)
+
+		for _, message := range messages {
+			event := messaging.CloudEvent{}
+			err = json.Unmarshal(message.Body, &event)
+			assert.NoErrorf(t, err, "cannot retrieve message - %s", err)
+			if expectedSubject == *event.Subject &&
+				expectedSource == event.Source &&
+				expectedType == event.Type {
+				found = true
+			}
 		}
 	}
 
