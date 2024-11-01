@@ -117,7 +117,7 @@ spec:
       endpoint: {{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233
       {{- if ne .BuildID "" }}
       buildId: {{.BuildID}}
-	  {{- end}}
+    {{- end}}
 `
 
 	deploymentTemplate = `
