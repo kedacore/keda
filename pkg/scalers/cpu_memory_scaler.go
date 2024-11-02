@@ -29,10 +29,6 @@ type cpuMemoryMetadata struct {
 	MetricType         v2.MetricTargetType
 }
 
-func (m *cpuMemoryMetadata) Validate() error {
-	return nil
-}
-
 // NewCPUMemoryScaler creates a new cpuMemoryScaler
 func NewCPUMemoryScaler(resourceName v1.ResourceName, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "cpu_memory_scaler")
@@ -40,13 +36,6 @@ func NewCPUMemoryScaler(resourceName v1.ResourceName, config *scalersconfig.Scal
 	meta, err := parseResourceMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing %s metadata: %w", resourceName, err)
-	}
-
-	if err := meta.Validate(); err != nil {
-		if meta.MetricType == "" {
-			return nil, fmt.Errorf("metricType is required")
-		}
-		return nil, fmt.Errorf("validation error: %w", err)
 	}
 
 	return &cpuMemoryScaler{

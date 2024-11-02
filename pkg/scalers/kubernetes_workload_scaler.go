@@ -87,10 +87,6 @@ func parseKubernetesWorkloadMetadata(config *scalersconfig.ScalerConfig) (kubern
 	}
 	meta.podSelector = selector
 
-	if err := meta.Validate(); err != nil {
-		return meta, err
-	}
-
 	return meta, nil
 }
 
