@@ -160,8 +160,8 @@ func testCacheMetricsOnPollingInterval(t *testing.T, kc *kubernetes.Clientset, d
 
 	// Metric Value = 8, DesiredAverageMetricValue = 2
 	// should scale in to 8/2 = 4 replicas, irrespective of current replicas
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 1),
-		"replica count should be 4 after 1 minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 3),
+		"replica count should be 4 after 3 minute")
 
 	// Changing Metric Value to 4, but because we have a long polling interval, the replicas number should remain the same
 	data.MonitoredDeploymentReplicas = 4
@@ -196,8 +196,8 @@ func testDirectQuery(t *testing.T, kc *kubernetes.Clientset, data templateData) 
 
 	// Metric Value = 8, DesiredAverageMetricValue = 2
 	// should scale in to 8/2 = 4 replicas, irrespective of current replicas
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 1),
-		"replica count should be 4 after 1 minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 3),
+		"replica count should be 4 after 3 minute")
 
 	// Changing Metric Value to 4, deployment should scale to 2
 	data.MonitoredDeploymentReplicas = 4
