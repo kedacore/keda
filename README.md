@@ -6,7 +6,8 @@
 <a href="https://bestpractices.coreinfrastructure.org/projects/3791"><img src="https://bestpractices.coreinfrastructure.org/projects/3791/badge"></a>
 <a href="https://artifacthub.io/packages/helm/kedacore/keda"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/kedacore"></a>
 <a href="https://app.fossa.com/projects/custom%2B162%2Fgithub.com%2Fkedacore%2Fkeda?ref=badge_shield" alt="FOSSA Status"><img src="https://app.fossa.com/api/projects/custom%2B162%2Fgithub.com%2Fkedacore%2Fkeda.svg?type=shield"/></a>
-<a href="https://twitter.com/kedaorg"><img src="https://img.shields.io/twitter/follow/kedaorg?style=social" alt="Twitter"></a></p>
+<a href="https://twitter.com/kedaorg"><img src="https://img.shields.io/twitter/follow/kedaorg?style=social" alt="Twitter"></a>
+<a href="https://gurubase.io/g/keda"><img src="https://img.shields.io/badge/Gurubase-Ask%20KEDA%20Guru-006BFF" alt="Gurubase"></a></p>
 
 KEDA allows for fine-grained autoscaling (including to/from zero) for event driven Kubernetes workloads. KEDA serves
 as a Kubernetes Metrics Server and allows users to define autoscaling rules using a dedicated Kubernetes custom
