@@ -1040,8 +1040,8 @@ github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkp
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/dysnix/predictkube-libs v0.0.4-0.20230109175007-5a82fccd31c7 h1:UwnI1LSssPFHWaBtTCV5gOgz0skHYG7DdbRH6BTTp5o=
 github.com/dysnix/predictkube-libs v0.0.4-0.20230109175007-5a82fccd31c7/go.mod h1:BQ41gAkQrowPCIk3e30mKovJQ8sXUESgiJ5IPW+19E8=
-github.com/dysnix/predictkube-proto v0.0.0-20241017230806-4c74c627f2bb h1:69roasoSJJ7XF/b9QuEBcIJoFWUd/ebbmXmOm0B2I0U=
-github.com/dysnix/predictkube-proto v0.0.0-20241017230806-4c74c627f2bb/go.mod h1:6N4mGkv2tQ0azyT15uwToUieGWsc3w3+Mg+llgUng14=
+github.com/dysnix/predictkube-proto v0.0.0-20241017224538-1b82f017b0b7 h1:GDA0Q4RSOd3V29VhJGE3wKPqnC2ZJha7JcR/qT3p7tk=
+github.com/dysnix/predictkube-proto v0.0.0-20241017224538-1b82f017b0b7/go.mod h1:6N4mGkv2tQ0azyT15uwToUieGWsc3w3+Mg+llgUng14=
 github.com/eapache/go-resiliency v1.7.0 h1:n3NRTnBn5N0Cbi/IeOHuQn9s2UwVUH7Ga0ZWcP+9JTA=
 github.com/eapache/go-resiliency v1.7.0/go.mod h1:5yPzW0MIvSe0JDsv0v+DvcjEv2FyD6iZYSs1ZI+iQho=
 github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 h1:Oy0F4ALJ04o5Qqpdz8XLIpNA3WM/iSIXqxtqo7UGVws=

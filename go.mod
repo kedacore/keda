@@ -44,7 +44,7 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.15.2
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/dysnix/predictkube-libs v0.0.4-0.20230109175007-5a82fccd31c7
-	github.com/dysnix/predictkube-proto v0.0.0-20241017230806-4c74c627f2bb
+	github.com/dysnix/predictkube-proto v0.0.0-20241017224538-1b82f017b0b7
 	github.com/elastic/go-elasticsearch/v7 v7.17.10
 	github.com/expr-lang/expr v1.16.9
 	github.com/go-kivik/couchdb/v3 v3.4.1

@@ -542,7 +542,7 @@ github.com/dysnix/predictkube-libs/external/grpc/server
 github.com/dysnix/predictkube-libs/external/grpc/zstd_compressor
 github.com/dysnix/predictkube-libs/external/http_transport
 github.com/dysnix/predictkube-libs/external/types_convertation
-# github.com/dysnix/predictkube-proto v0.0.0-20241017230806-4c74c627f2bb
+# github.com/dysnix/predictkube-proto v0.0.0-20241017224538-1b82f017b0b7
 ## explicit; go 1.22
 github.com/dysnix/predictkube-proto/external/proto/commonproto
 github.com/dysnix/predictkube-proto/external/proto/enums
