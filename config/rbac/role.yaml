@@ -9,6 +9,10 @@ rules:
   resources:
   - configmaps
   - configmaps/status
+  - external
+  - pods
+  - secrets
+  - services
   verbs:
   - get
   - list
@@ -23,24 +27,7 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - external
-  - pods
-  - secrets
-  - services
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - limitranges
-  verbs:
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - serviceaccounts
   verbs:
   - list
@@ -118,6 +105,7 @@ rules:
   resources:
   - cloudeventsources
   - cloudeventsources/status
+<<<<<<< HEAD
   verbs:
   - get
   - list
@@ -127,6 +115,8 @@ rules:
 - apiGroups:
   - eventing.keda.sh
   resources:
+=======
+>>>>>>> 215a6d877 (bump more deps)
   - clustercloudeventsources
   - clustercloudeventsources/status
   verbs:
@@ -140,6 +130,7 @@ rules:
   resources:
   - clustertriggerauthentications
   - clustertriggerauthentications/status
+<<<<<<< HEAD
   verbs:
   - get
   - list
@@ -173,6 +164,14 @@ rules:
 - apiGroups:
   - keda.sh
   resources:
+=======
+  - scaledjobs
+  - scaledjobs/finalizers
+  - scaledjobs/status
+  - scaledobjects
+  - scaledobjects/finalizers
+  - scaledobjects/status
+>>>>>>> 215a6d877 (bump more deps)
   - triggerauthentications
   - triggerauthentications/status
   verbs:

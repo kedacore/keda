@@ -1,8 +1,8 @@
 module github.com/kedacore/keda/v2
 
-go 1.22.1
+go 1.22.7
 
-toolchain go1.22.5
+toolchain go1.22.8
 
 require (
 	cloud.google.com/go/compute/metadata v0.5.0
@@ -116,7 +116,7 @@ require (
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20240804232438-89b5deec030c
 	sigs.k8s.io/controller-tools v0.16.5
 	sigs.k8s.io/custom-metrics-apiserver v1.29.0
-	sigs.k8s.io/kustomize/kustomize/v5 v5.4.3
+	sigs.k8s.io/kustomize/kustomize/v5 v5.5.0
 	github.com/beanstalkd/go-beanstalk v0.2.0
 )
 
@@ -355,7 +355,6 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.28.0
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
-	go.starlark.net v0.0.0-20231121155337-90ade8b19d09 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/automaxprocs v1.5.3
 	go.uber.org/multierr v1.11.0 // indirect
@@ -383,9 +382,9 @@ require (
 	k8s.io/kms v0.31.2 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.30.3 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
-	sigs.k8s.io/kustomize/api v0.17.3 // indirect
-	sigs.k8s.io/kustomize/cmd/config v0.14.2 // indirect
-	sigs.k8s.io/kustomize/kyaml v0.17.2 // indirect
+	sigs.k8s.io/kustomize/api v0.18.0 // indirect
+	sigs.k8s.io/kustomize/cmd/config v0.15.0 // indirect
+	sigs.k8s.io/kustomize/kyaml v0.18.1 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
