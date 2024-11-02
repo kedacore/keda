@@ -604,7 +604,7 @@ func getMaximum(q []queueInfo) (int, int, float64) {
 // Mask host for log purposes
 func (s *rabbitMQScaler) anonymizeRabbitMQError(err error) error {
 	errorMessage := fmt.Sprintf("error inspecting rabbitMQ: %s", err)
-	return fmt.Errorf(rabbitMQAnonymizePattern.ReplaceAllString(errorMessage, "user:password@"))
+	return fmt.Errorf("%s", rabbitMQAnonymizePattern.ReplaceAllString(errorMessage, "user:password@"))
 }
 
 // connectionName is used to provide a deterministic AMQP connection name when
