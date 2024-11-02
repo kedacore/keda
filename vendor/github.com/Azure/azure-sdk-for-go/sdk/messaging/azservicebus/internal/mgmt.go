@@ -421,7 +421,7 @@ func SettleOnMgmtLink(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName st
 // ScheduleMessages will send a batch of messages to a Queue, schedule them to be enqueued, and return the sequence numbers
 // that can be used to cancel each message.
 func ScheduleMessages(ctx context.Context, rpcLink amqpwrap.RPCLink, linkName string, enqueueTime time.Time, messages []*amqp.Message) ([]int64, error) {
-	if len(messages) <= 0 {
+	if len(messages) == 0 {
 		return nil, errors.New("expected one or more messages")
 	}
 

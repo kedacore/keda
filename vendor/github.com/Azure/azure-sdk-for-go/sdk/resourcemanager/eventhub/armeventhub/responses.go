@@ -8,6 +8,29 @@
 
 package armeventhub
 
+// ApplicationGroupClientCreateOrUpdateApplicationGroupResponse contains the response from method ApplicationGroupClient.CreateOrUpdateApplicationGroup.
+type ApplicationGroupClientCreateOrUpdateApplicationGroupResponse struct {
+	// The Application Group object
+	ApplicationGroup
+}
+
+// ApplicationGroupClientDeleteResponse contains the response from method ApplicationGroupClient.Delete.
+type ApplicationGroupClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// ApplicationGroupClientGetResponse contains the response from method ApplicationGroupClient.Get.
+type ApplicationGroupClientGetResponse struct {
+	// The Application Group object
+	ApplicationGroup
+}
+
+// ApplicationGroupClientListByNamespaceResponse contains the response from method ApplicationGroupClient.NewListByNamespacePager.
+type ApplicationGroupClientListByNamespaceResponse struct {
+	// The response from the List Application Groups operation.
+	ApplicationGroupListResult
+}
+
 // ClustersClientCreateOrUpdateResponse contains the response from method ClustersClient.BeginCreateOrUpdate.
 type ClustersClientCreateOrUpdateResponse struct {
 	// Single Event Hubs Cluster resource in List or Get operations.
@@ -297,6 +320,17 @@ type NamespacesClientRegenerateKeysResponse struct {
 type NamespacesClientUpdateResponse struct {
 	// Single Namespace item in List or Get Operation
 	EHNamespace
+}
+
+// NetworkSecurityPerimeterConfigurationClientListResponse contains the response from method NetworkSecurityPerimeterConfigurationClient.List.
+type NetworkSecurityPerimeterConfigurationClientListResponse struct {
+	// Result of the List NetworkSecurityPerimeterConfiguration operation.
+	NetworkSecurityPerimeterConfigurationList
+}
+
+// NetworkSecurityPerimeterConfigurationsClientCreateOrUpdateResponse contains the response from method NetworkSecurityPerimeterConfigurationsClient.BeginCreateOrUpdate.
+type NetworkSecurityPerimeterConfigurationsClientCreateOrUpdateResponse struct {
+	// placeholder for future response values
 }
 
 // OperationsClientListResponse contains the response from method OperationsClient.NewListPager.
