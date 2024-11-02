@@ -24,6 +24,63 @@ import (
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 )
 
+// AuthConfig holds the information necessary to perform an authentication attempt.
+// this was moved from the auth package to avoid a circular dependency. The auth package
+// reexports this under the old name to avoid breaking the public api.
+type AuthConfig struct {
+	Description   description.Server
+	Connection    Connection
+	ClusterClock  *session.ClusterClock
+	HandshakeInfo HandshakeInformation
+	ServerAPI     *ServerAPIOptions
+}
+
+// OIDCCallback is the type for both Human and Machine Callback flows. RefreshToken will always be
+// nil in the OIDCArgs for the Machine flow.
+type OIDCCallback func(context.Context, *OIDCArgs) (*OIDCCredential, error)
+
+// OIDCArgs contains the arguments for the OIDC callback.
+type OIDCArgs struct {
+	Version      int
+	IDPInfo      *IDPInfo
+	RefreshToken *string
+}
+
+// OIDCCredential contains the access token and refresh token.
+type OIDCCredential struct {
+	AccessToken  string
+	ExpiresAt    *time.Time
+	RefreshToken *string
+}
+
+// IDPInfo contains the information needed to perform OIDC authentication with an Identity Provider.
+type IDPInfo struct {
+	Issuer        string   `bson:"issuer"`
+	ClientID      string   `bson:"clientId"`
+	RequestScopes []string `bson:"requestScopes"`
+}
+
+// Authenticator handles authenticating a connection. The implementers of this interface
+// are all in the auth package. Most authentication mechanisms do not allow for Reauth,
+// but this is included in the interface so that whenever a new mechanism is added, it
+// must be explicitly considered.
+type Authenticator interface {
+	// Auth authenticates the connection.
+	Auth(context.Context, *AuthConfig) error
+	Reauth(context.Context, *AuthConfig) error
+}
+
+// Cred is a user's credential.
+type Cred struct {
+	Source              string
+	Username            string
+	Password            string
+	PasswordSet         bool
+	Props               map[string]string
+	OIDCMachineCallback OIDCCallback
+	OIDCHumanCallback   OIDCCallback
+}
+
 // Deployment is implemented by types that can select a server from a deployment.
 type Deployment interface {
 	SelectServer(context.Context, description.ServerSelector) (Server, error)
@@ -79,6 +136,8 @@ type Connection interface {
 	DriverConnectionID() uint64 // TODO(GODRIVER-2824): change type to int64.
 	Address() address.Address
 	Stale() bool
+	OIDCTokenGenID() uint64
+	SetOIDCTokenGenID(uint64)
 }
 
 // RTTMonitor represents a round-trip-time monitor.
