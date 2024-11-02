@@ -40,6 +40,7 @@ type templateData struct {
 	SecretName            string
 	ArtemisPasswordBase64 string
 	ArtemisUserBase64     string
+	MessageCount          int
 }
 
 const (
@@ -87,8 +88,8 @@ spec:
     spec:
       containers:
       - name: kedartemis-consumer
-        image: balchu/kedartemis-consumer
-        imagePullPolicy: Always
+        image: ghcr.io/kedacore/tests-artemis
+        args: ["consumer"]
         env:
           - name: ARTEMIS_PASSWORD
             valueFrom:
@@ -100,10 +101,12 @@ spec:
               secretKeyRef:
                 name: {{.SecretName}}
                 key: artemis-username
-          - name: ARTEMIS_HOST
+          - name: ARTEMIS_SERVER_HOST
             value: "artemis-activemq.{{.TestNamespace}}"
-          - name: ARTEMIS_PORT
+          - name: ARTEMIS_SERVER_PORT
             value: "61616"
+          - name: ARTEMIS_MESSAGE_SLEEP_MS
+            value: "70"
 `
 
 	artemisDeploymentTemplate = `apiVersion: apps/v1
@@ -260,7 +263,7 @@ spec:
       managementEndpoint: "artemis-activemq.{{.TestNamespace}}:8161"
       queueName: "test"
       queueLength: "50"
-      activationQueueLength: "1500"
+      activationQueueLength: "5"
       brokerName: "artemis-activemq"
       brokerAddress: "test"
     authenticationRef:
@@ -279,7 +282,8 @@ spec:
     spec:
       containers:
         - name: artemis-producer
-          image: balchu/artemis-producer:0.0.1
+          image: ghcr.io/kedacore/tests-artemis
+          args: ["producer"]
           env:
             - name: ARTEMIS_PASSWORD
               valueFrom:
@@ -295,6 +299,8 @@ spec:
               value: "artemis-activemq.{{.TestNamespace}}"
             - name: ARTEMIS_SERVER_PORT
               value: "61616"
+            - name: ARTEMIS_MESSAGE_COUNT
+              value: "{{.MessageCount}}"
       restartPolicy: Never
   backoffLimit: 4
 `
@@ -321,6 +327,7 @@ func TestArtemisScaler(t *testing.T) {
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
+	data.MessageCount = 1
 	KubectlReplaceWithTemplate(t, data, "triggerJobTemplate", producerJob)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
@@ -328,6 +335,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
+	data.MessageCount = 1000
 	KubectlReplaceWithTemplate(t, data, "triggerJobTemplate", producerJob)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
@@ -349,6 +357,7 @@ func getTemplateData() (templateData, []Template) {
 			SecretName:            secretName,
 			ArtemisPasswordBase64: base64.StdEncoding.EncodeToString([]byte(artemisPassword)),
 			ArtemisUserBase64:     base64.StdEncoding.EncodeToString([]byte(artemisUser)),
+			MessageCount:          0,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
