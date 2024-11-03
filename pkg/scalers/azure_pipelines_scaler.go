@@ -412,6 +412,16 @@ func getAzurePipelineRequest(ctx context.Context, logger logr.Logger, urlString 
 		return []byte{}, fmt.Errorf("the Azure DevOps REST API returned error. urlString: %s status: %d response: %s", urlString, r.StatusCode, string(b))
 	}
 
+	// Log when API Rate Limits are reached
+	rateLimitRemaining := r.Header[http.CanonicalHeaderKey("X-RateLimit-Remaining")]
+	if rateLimitRemaining != nil {
+		logger.V(1).Info(fmt.Sprintf("Warning: ADO TSTUs Left %s. When reaching zero requests are delayed, lower the polling interval. See https://learn.microsoft.com/en-us/azure/devops/integrate/concepts/rate-limits?view=azure-devops", rateLimitRemaining))
+	}
+	rateLimitDelay := r.Header[http.CanonicalHeaderKey("X-RateLimit-Delay")]
+	if rateLimitDelay != nil {
+		logger.V(1).Info(fmt.Sprintf("Warning: Request to ADO API is delayed by %s seconds. Sending additional requests will increase delay until results are being blocked entirely", rateLimitDelay))
+	}
+
 	return b, nil
 }
 
