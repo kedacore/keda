@@ -9,6 +9,6 @@ jobs:
     concurrency: arm-smoke-tests
     uses: kedacore/keda/.github/workflows/template-smoke-tests.yml@main
     with:
-      runs-on: oracle-aarch64-4cpu-16gb
+      runs-on: ARM64
       kubernetesVersion: v1.30
       kindImage: kindest/node:v1.30.0@sha256:047357ac0cfea04663786a612ba1eaba9702bef25227a794b52890dd8bcd692e

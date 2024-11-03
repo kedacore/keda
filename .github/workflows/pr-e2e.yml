@@ -8,8 +8,9 @@ env:
 
 jobs:
   triage:
-    runs-on: equinix-2cpu-8gb
+    runs-on: ubuntu-latest
     name: Comment evaluate
+    container: ghcr.io/kedacore/keda-tools:1.22.5
     outputs:
       run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
       pr_num: ${{ steps.parser.outputs.pr_num }}
@@ -66,7 +67,7 @@ jobs:
 
   build-test-images:
     needs: triage
-    runs-on: equinix-4cpu-16gb
+    runs-on: ubuntu-latest
     name: Build images
     container: ghcr.io/kedacore/keda-tools:1.22.5
     if: needs.triage.outputs.run-e2e == 'true'
@@ -146,7 +147,7 @@ jobs:
 
   run-test:
     needs: [triage, build-test-images]
-    runs-on: equinix-keda-runner
+    runs-on: e2e
     name: Execute e2e tests
     container: ghcr.io/kedacore/keda-tools:1.22.5
     if: needs.triage.outputs.run-e2e == 'true'
@@ -180,7 +181,7 @@ jobs:
       - name: Scale cluster
         run: make scale-node-pool
         env:
-          NODE_POOL_SIZE: 2
+          NODE_POOL_SIZE: 3
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
 
       - name: Run end to end tests
