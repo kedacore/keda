@@ -50,8 +50,8 @@ import (
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
-// +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/finalizers;scaledjobs/status,verbs="*"
-// +kubebuilder:rbac:groups=batch,resources=jobs,verbs="*"
+// +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/finalizers;scaledjobs/status,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;update;patch;create;delete
 
 // ScaledJobReconciler reconciles a ScaledJob object
 type ScaledJobReconciler struct {

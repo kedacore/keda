@@ -253,6 +253,7 @@ func DeleteNamespace(t *testing.T, nsName string) {
 		err = nil
 	}
 	assert.NoErrorf(t, err, "cannot delete kubernetes namespace - %s", err)
+	DeletePodsInNamespace(t, nsName)
 }
 
 func WaitForJobSuccess(t *testing.T, kc *kubernetes.Clientset, jobName, namespace string, iterations, interval int) bool {
@@ -741,6 +742,17 @@ func DeletePodsInNamespaceBySelector(t *testing.T, kc *kubernetes.Clientset, sel
 	}, metav1.ListOptions{
 		LabelSelector: selector,
 	})
+	assert.NoErrorf(t, err, "cannot delete pods - %s", err)
+}
+
+// Delete all pods in namespace
+func DeletePodsInNamespace(t *testing.T, namespace string) {
+	err := GetKubernetesClient(t).CoreV1().Pods(namespace).DeleteCollection(context.Background(), metav1.DeleteOptions{
+		GracePeriodSeconds: ptr.To(int64(0)),
+	}, metav1.ListOptions{})
+	if errors.IsNotFound(err) {
+		err = nil
+	}
 	assert.NoErrorf(t, err, "cannot delete pods - %s", err)
 }
 
