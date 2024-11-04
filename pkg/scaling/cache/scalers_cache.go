@@ -89,10 +89,10 @@ func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
 
 // Close closes all scalers in the cache
 func (c *ScalersCache) Close(ctx context.Context) {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
+	c.mutex.Lock()
 	scalers := c.Scalers
 	c.Scalers = nil
+	c.mutex.Unlock()
 	for _, s := range scalers {
 		err := s.Scaler.Close(ctx)
 		if err != nil {
