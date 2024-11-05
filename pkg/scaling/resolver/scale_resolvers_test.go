@@ -23,16 +23,19 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"go.uber.org/mock/gomock"
+	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	authenticationv1client "k8s.io/client-go/kubernetes/typed/authentication/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	mock_v1 "github.com/kedacore/keda/v2/pkg/mock/mock_secretlister"
+	mock_serviceaccounts "github.com/kedacore/keda/v2/pkg/mock/mock_serviceaccounts"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 )
 
@@ -46,6 +49,9 @@ var (
 	cmName                    = "supercm"
 	cmKey                     = "mycmkey"
 	cmData                    = "cmDataHere"
+	bsatSAName                = "bsatServiceAccount"
+	bsatExpiry                = "10m"
+	bsatData                  = "k8s-bsat-token"
 	trueValue                 = true
 	falseValue                = false
 	envKey                    = "test-env-key"
@@ -450,6 +456,38 @@ func TestResolveAuthRef(t *testing.T) {
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
+			name: "triggerauth exists bound service account token",
+			existing: []runtime.Object{
+				&kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						PodIdentity: &kedav1alpha1.AuthPodIdentity{
+							Provider: kedav1alpha1.PodIdentityProviderNone,
+						},
+						BoundServiceAccountToken: []kedav1alpha1.BoundServiceAccountToken{
+							{
+								Parameter:          "token",
+								ServiceAccountName: bsatSAName,
+								Expiry:             bsatExpiry,
+							},
+						},
+					},
+				},
+				&corev1.ServiceAccount{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      bsatSAName,
+					},
+				},
+			},
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
+			expected:            map[string]string{"token": bsatData},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		},
+		{
 			name: "clustertriggerauth exists, podidentity nil",
 			existing: []runtime.Object{
 				&kedav1alpha1.ClusterTriggerAuthentication{
@@ -610,7 +648,18 @@ func TestResolveAuthRef(t *testing.T) {
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderGCP},
 		},
 	}
+	ctrl := gomock.NewController(t)
 	var secretsLister corev1listers.SecretLister
+	var tokenReviewInterface authenticationv1client.TokenReviewInterface
+	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
+	mockServiceAccountInterface := mockCoreV1Interface.GetServiceAccountInterface()
+	tokenRequest := &authv1.TokenRequest{
+		Status: authv1.TokenRequestStatus{
+			Token: bsatData,
+		},
+	}
+	mockServiceAccountInterface.EXPECT().CreateToken(gomock.Any(), gomock.Eq(bsatSAName), gomock.Any(), gomock.Any()).Return(tokenRequest, nil)
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -624,8 +673,8 @@ func TestResolveAuthRef(t *testing.T) {
 				namespace,
 				&authentication.AuthClientSet{
 					SecretLister:         secretsLister,
-					CoreV1Interface:      nil,
-					TokenReviewInterface: nil,
+					CoreV1Interface:      mockCoreV1Interface,
+					TokenReviewInterface: tokenReviewInterface,
 				},
 			)
 
