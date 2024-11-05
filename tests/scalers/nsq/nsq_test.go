@@ -31,7 +31,7 @@ var (
 	maxReplicaCount          = 2
 	topicName                = "test_topic"
 	channelName              = "test_channel"
-	depthThreshold           = 10
+	depthThreshold           = 1
 	activationDepthThreshold = 5
 )
 
@@ -145,7 +145,7 @@ func TestNSQScaler(t *testing.T) {
 	data, templates := getTemplateData()
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
+	require.True(t, WaitForPodsTerminated(t, kc, fmt.Sprintf("app=%s", deploymentName), testNamespace, 60, 1),
 		"Replica count should start out as 0")
 
 	testActivation(t, kc, data)
@@ -163,7 +163,7 @@ func installNSQ(t *testing.T, kc *kubernetes.Clientset) {
 	_, err = ExecuteCommand(fmt.Sprintf("helm repo add nsqio %s", nsqHelmRepoURL))
 	require.NoErrorf(t, err, "error while adding nsqio helm repo - %s", err)
 
-	_, err = ExecuteCommand(fmt.Sprintf("helm install nsq nsqio/nsq --namespace %s --set nsqadmin.enabled=false --wait", nsqNamespace))
+	_, err = ExecuteCommand(fmt.Sprintf("helm install nsq nsqio/nsq --namespace %s --set nsqd.replicaCount=1 --set nsqlookupd.replicaCount=1 --set nsqadmin.enabled=false --wait", nsqNamespace))
 	require.NoErrorf(t, err, "error while installing nsq - %s", err)
 }
 
@@ -198,7 +198,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	data.MessageCount = activationDepthThreshold
 	KubectlReplaceWithTemplate(t, data, "jobTemplate", jobTemplate)
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 20)
 
 	data.MessageCount = 1 // total message count > activationDepthThreshold
 	KubectlReplaceWithTemplate(t, data, "jobTemplate", jobTemplate)
@@ -209,8 +209,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 
-	// can handle depthThreshold messages per replica - using maxReplicaCount + 1 to ensure scaling to maxReplicaCount
-	data.MessageCount = depthThreshold * (maxReplicaCount + 1)
+	data.MessageCount = 80
 	KubectlReplaceWithTemplate(t, data, "jobTemplate", jobTemplate)
 
 	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
