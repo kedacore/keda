@@ -50,8 +50,8 @@ import (
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
-// +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/finalizers;scaledjobs/status,verbs="*"
-// +kubebuilder:rbac:groups=batch,resources=jobs,verbs="*"
+// +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/finalizers;scaledjobs/status,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;update;patch;create;delete
 
 // ScaledJobReconciler reconciles a ScaledJob object
 type ScaledJobReconciler struct {
@@ -189,6 +189,11 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 	err = kedav1alpha1.ValidateTriggers(scaledJob.Spec.Triggers)
 	if err != nil {
 		return "ScaledJob doesn't have correct triggers specification", err
+	}
+
+	err = r.updateStatusWithTriggersAndAuthsTypes(ctx, logger, scaledJob)
+	if err != nil {
+		return "Cannot update ScaledJob status with triggers'names and authentications'names", err
 	}
 
 	// nosemgrep: trailofbits.go.invalid-usage-of-modified-variable.invalid-usage-of-modified-variable
@@ -403,4 +408,15 @@ func (r *ScaledJobReconciler) updateTriggerAuthenticationStatusOnDelete(ctx cont
 		triggerAuthenticationStatus.ScaledJobNamesStr = kedacontrollerutil.RemoveFromString(triggerAuthenticationStatus.ScaledJobNamesStr, scaledJob.GetName(), ",")
 		return triggerAuthenticationStatus
 	})
+}
+
+func (r *ScaledJobReconciler) updateStatusWithTriggersAndAuthsTypes(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
+	triggersTypes, authsTypes := kedav1alpha1.CombinedTriggersAndAuthenticationsTypes(scaledJob.Spec.Triggers)
+	status := scaledJob.Status.DeepCopy()
+	status.TriggersTypes = &triggersTypes
+	status.AuthenticationsTypes = &authsTypes
+
+	logger.V(1).Info("Updating ScaledJob status with triggers and authentications types", "triggersTypes", triggersTypes, "authenticationsTypes", authsTypes)
+
+	return kedastatus.UpdateScaledJobStatus(ctx, r.Client, logger, scaledJob, status)
 }

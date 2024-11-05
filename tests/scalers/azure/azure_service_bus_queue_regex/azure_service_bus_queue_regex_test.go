@@ -202,8 +202,8 @@ func testScale(t *testing.T, kc *kubernetes.Clientset, client *azservicebus.Clie
 	// check different aggregation operations
 	data.Operation = "max"
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 1),
-		"replica count should be 4 after 1 minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 3),
+		"replica count should be 4 after 3 minute")
 
 	data.Operation = "avg"
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)

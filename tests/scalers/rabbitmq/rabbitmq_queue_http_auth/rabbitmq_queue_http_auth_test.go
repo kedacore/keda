@@ -20,7 +20,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "rmq-queue-http-test"
+	testName = "rmq-queue-http-test-auth"
 )
 
 var (

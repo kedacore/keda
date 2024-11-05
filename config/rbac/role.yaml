@@ -18,7 +18,8 @@ rules:
   resources:
   - events
   verbs:
-  - '*'
+  - create
+  - patch
 - apiGroups:
   - ""
   resources:
@@ -93,34 +94,58 @@ rules:
   resources:
   - horizontalpodautoscalers
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - batch
   resources:
   - jobs
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - eventing.keda.sh
   resources:
   - cloudeventsources
   - cloudeventsources/status
   verbs:
-  - '*'
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - eventing.keda.sh
   resources:
   - clustercloudeventsources
   - clustercloudeventsources/status
   verbs:
-  - '*'
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - keda.sh
   resources:
   - clustertriggerauthentications
   - clustertriggerauthentications/status
   verbs:
-  - '*'
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - keda.sh
   resources:
@@ -128,7 +153,11 @@ rules:
   - scaledjobs/finalizers
   - scaledjobs/status
   verbs:
-  - '*'
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - keda.sh
   resources:
@@ -136,14 +165,22 @@ rules:
   - scaledobjects/finalizers
   - scaledobjects/status
   verbs:
-  - '*'
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - keda.sh
   resources:
   - triggerauthentications
   - triggerauthentications/status
   verbs:
-  - '*'
+  - get
+  - list
+  - patch
+  - update
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -168,4 +205,10 @@ rules:
   resources:
   - leases
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

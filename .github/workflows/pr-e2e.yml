@@ -136,7 +136,7 @@ jobs:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
           # Password or personal access token used to log in to a Docker registry. If not set then no login will occur
-          password: ${{ secrets.GHCR_AUTH_PAT }}
+          password: ${{ secrets.GH_AUTOMATION_PAT }}
           # Server address of Docker registry. If not set then will default to Docker Hub
           registry: ghcr.io
 
@@ -181,7 +181,7 @@ jobs:
       - name: Scale cluster
         run: make scale-node-pool
         env:
-          NODE_POOL_SIZE: 2
+          NODE_POOL_SIZE: 3
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
 
       - name: Run end to end tests
