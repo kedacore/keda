@@ -200,7 +200,7 @@ func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	KubectlReplaceWithTemplate(t, data, "jobTemplate", jobTemplate)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 20)
 
-	data.MessageCount = 1 // total message count > activationDepthThreshold
+	data.MessageCount = 1
 	KubectlReplaceWithTemplate(t, data, "jobTemplate", jobTemplate)
 	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
 		"replica count should reach 1 in under 1 minute")
