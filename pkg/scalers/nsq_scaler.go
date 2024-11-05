@@ -23,6 +23,7 @@ type nsqScaler struct {
 	metricType v2.MetricTargetType
 	metadata   nsqMetadata
 	httpClient *http.Client
+	scheme     string
 	logger     logr.Logger
 }
 
@@ -32,6 +33,8 @@ type nsqMetadata struct {
 	Channel                  string   `keda:"name=channel,                  order=triggerMetadata;resolvedEnv"`
 	DepthThreshold           int64    `keda:"name=depthThreshold,           order=triggerMetadata;resolvedEnv, default=10"`
 	ActivationDepthThreshold int64    `keda:"name=activationDepthThreshold, order=triggerMetadata;resolvedEnv, default=0"`
+	UseHTTPS                 bool     `keda:"name=useHttps,                 order=triggerMetadata;resolvedEnv, default=false"`
+	UnsafeSSL                bool     `keda:"name=unsafeSsl,                order=triggerMetadata;resolvedEnv, default=false"`
 
 	triggerIndex int
 }
@@ -53,10 +56,16 @@ func NewNSQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing NSQ metadata: %w", err)
 	}
 
+	scheme := "http"
+	if nsqMetadata.UseHTTPS {
+		scheme = "https"
+	}
+
 	return &nsqScaler{
 		metricType: metricType,
 		metadata:   nsqMetadata,
-		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, true),
+		httpClient: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, nsqMetadata.UnsafeSSL),
+		scheme:     scheme,
 		logger:     logger,
 	}, nil
 }
@@ -86,8 +95,8 @@ func parseNSQMetadata(config *scalersconfig.ScalerConfig) (nsqMetadata, error) {
 	return meta, nil
 }
 
-func (s nsqScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	depth, err := s.getTopicChannelDepth()
+func (s nsqScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	depth, err := s.getTopicChannelDepth(ctx)
 
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, err
@@ -100,8 +109,8 @@ func (s nsqScaler) GetMetricsAndActivity(_ context.Context, metricName string) (
 	return []external_metrics.ExternalMetricValue{metric}, depth > s.metadata.ActivationDepthThreshold, nil
 }
 
-func (s nsqScaler) getTopicChannelDepth() (int64, error) {
-	nsqdHosts, err := s.getTopicProducers(s.metadata.Topic)
+func (s nsqScaler) getTopicChannelDepth(ctx context.Context) (int64, error) {
+	nsqdHosts, err := s.getTopicProducers(ctx, s.metadata.Topic)
 	if err != nil {
 		return -1, fmt.Errorf("error getting nsqd hosts: %w", err)
 	}
@@ -111,7 +120,7 @@ func (s nsqScaler) getTopicChannelDepth() (int64, error) {
 		return 0, nil
 	}
 
-	depth, err := s.aggregateDepth(nsqdHosts, s.metadata.Topic, s.metadata.Channel)
+	depth, err := s.aggregateDepth(ctx, nsqdHosts, s.metadata.Topic, s.metadata.Channel)
 	if err != nil {
 		return -1, fmt.Errorf("error getting topic/channel depth: %w", err)
 	}
@@ -152,7 +161,7 @@ type lookupResult struct {
 	err            error
 }
 
-func (s *nsqScaler) getTopicProducers(topic string) ([]string, error) {
+func (s *nsqScaler) getTopicProducers(ctx context.Context, topic string) ([]string, error) {
 	var wg sync.WaitGroup
 	resultCh := make(chan lookupResult, len(s.metadata.NSQLookupdHTTPAddresses))
 
@@ -160,7 +169,7 @@ func (s *nsqScaler) getTopicProducers(topic string) ([]string, error) {
 		wg.Add(1)
 		go func(host string, topic string) {
 			defer wg.Done()
-			resp, err := s.getLookup(host, topic)
+			resp, err := s.getLookup(ctx, host, topic)
 			resultCh <- lookupResult{host, resp, err}
 		}(host, topic)
 	}
@@ -193,8 +202,13 @@ func (s *nsqScaler) getTopicProducers(topic string) ([]string, error) {
 	return nsqdHosts, nil
 }
 
-func (s *nsqScaler) getLookup(host string, topic string) (*lookupResponse, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/%s", host, "lookup"), nil)
+func (s *nsqScaler) getLookup(ctx context.Context, host string, topic string) (*lookupResponse, error) {
+	lookupURL := url.URL{
+		Scheme: s.scheme,
+		Host:   host,
+		Path:   "lookup",
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", lookupURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +263,7 @@ type statsResult struct {
 	err           error
 }
 
-func (s *nsqScaler) aggregateDepth(nsqdHosts []string, topic string, channel string) (int64, error) {
+func (s *nsqScaler) aggregateDepth(ctx context.Context, nsqdHosts []string, topic string, channel string) (int64, error) {
 	wg := sync.WaitGroup{}
 	resultCh := make(chan statsResult, len(nsqdHosts))
 
@@ -257,7 +271,7 @@ func (s *nsqScaler) aggregateDepth(nsqdHosts []string, topic string, channel str
 		wg.Add(1)
 		go func(host string, topic string) {
 			defer wg.Done()
-			resp, err := s.getStats(host, topic)
+			resp, err := s.getStats(ctx, host, topic)
 			resultCh <- statsResult{host, resp, err}
 		}(host, topic)
 	}
@@ -309,8 +323,13 @@ func (s *nsqScaler) aggregateDepth(nsqdHosts []string, topic string, channel str
 	return depth, nil
 }
 
-func (s *nsqScaler) getStats(host string, topic string) (*statsResponse, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/%s", host, "stats"), nil)
+func (s *nsqScaler) getStats(ctx context.Context, host string, topic string) (*statsResponse, error) {
+	statsURL := url.URL{
+		Scheme: s.scheme,
+		Host:   host,
+		Path:   "stats",
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", statsURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}

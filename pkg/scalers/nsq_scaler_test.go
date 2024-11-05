@@ -25,6 +25,8 @@ type nsqMetadataTestData struct {
 	channel                    string
 	depthThreshold             int64
 	activationDepthThreshold   int64
+	useHTTPS                   bool
+	unsafeSsl                  bool
 	isError                    bool
 	description                string
 }
@@ -60,13 +62,15 @@ var parseNSQMetadataTestDataset = []nsqMetadataTestData{
 		description:                "Success, multiple nsqlookupd addresses",
 	},
 	{
-		metadata:                   map[string]string{"nsqLookupdHTTPAddresses": "nsqlookupd-0:4161", "topic": "topic", "channel": "channel", "depthThreshold": "100", "activationDepthThreshold": "1"},
+		metadata:                   map[string]string{"nsqLookupdHTTPAddresses": "nsqlookupd-0:4161", "topic": "topic", "channel": "channel", "depthThreshold": "100", "activationDepthThreshold": "1", "useHttps": "true", "unsafeSsl": "true"},
 		numNSQLookupdHTTPAddresses: 1,
 		nsqLookupdHTTPAddresses:    []string{"nsqlookupd-0:4161"},
 		topic:                      "topic",
 		channel:                    "channel",
 		depthThreshold:             100,
 		activationDepthThreshold:   1,
+		useHTTPS:                   true,
+		unsafeSsl:                  true,
 		isError:                    false,
 		description:                "Success - setting optional fields",
 	},
@@ -123,6 +127,8 @@ func TestNSQParseMetadata(t *testing.T) {
 		assert.Equal(t, testData.channel, meta.Channel, testData.description)
 		assert.Equal(t, testData.depthThreshold, meta.DepthThreshold, testData.description)
 		assert.Equal(t, testData.activationDepthThreshold, meta.ActivationDepthThreshold, testData.description)
+		assert.Equal(t, testData.useHTTPS, meta.UseHTTPS, testData.description)
+		assert.Equal(t, testData.unsafeSsl, meta.UnsafeSSL, testData.description)
 	}
 }
 
@@ -187,7 +193,7 @@ func TestNSQGetMetricsAndActivity(t *testing.T) {
 		meta, err := parseNSQMetadata(&config)
 		assert.Nil(t, err)
 
-		s := nsqScaler{v2.AverageValueMetricType, meta, http.DefaultClient, logr.Discard()}
+		s := nsqScaler{v2.AverageValueMetricType, meta, http.DefaultClient, "http", logr.Discard()}
 
 		metricName := "s0-nsq-topic-channel"
 		metrics, activity, err := s.GetMetricsAndActivity(context.Background(), metricName)
@@ -218,7 +224,7 @@ func TestNSQGetMetricSpecForScaling(t *testing.T) {
 		}
 
 		metricType := v2.MetricTargetType(testData.metricType)
-		mockNSQScaler := nsqScaler{metricType, meta, nil, logr.Discard()}
+		mockNSQScaler := nsqScaler{metricType, meta, nil, "http", logr.Discard()}
 
 		metricSpec := mockNSQScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
@@ -321,9 +327,9 @@ func TestNSQGetTopicChannelDepth(t *testing.T) {
 
 		nsqLookupdHosts := []string{net.JoinHostPort(parsedNSQLookupdURL.Hostname(), parsedNSQLookupdURL.Port())}
 
-		s := nsqScaler{httpClient: http.DefaultClient, metadata: nsqMetadata{NSQLookupdHTTPAddresses: nsqLookupdHosts, Topic: "topic", Channel: "channel"}}
+		s := nsqScaler{httpClient: http.DefaultClient, scheme: "http", metadata: nsqMetadata{NSQLookupdHTTPAddresses: nsqLookupdHosts, Topic: "topic", Channel: "channel"}}
 
-		depth, err := s.getTopicChannelDepth()
+		depth, err := s.getTopicChannelDepth(context.Background())
 
 		if err != nil && (tc.lookupError || tc.statsError) {
 			continue
@@ -405,9 +411,9 @@ func TestNSQGetTopicProducers(t *testing.T) {
 			nsqLookupdHosts = append(nsqLookupdHosts, nsqLookupdHost)
 		}
 
-		s := nsqScaler{httpClient: http.DefaultClient, metadata: nsqMetadata{NSQLookupdHTTPAddresses: nsqLookupdHosts}}
+		s := nsqScaler{httpClient: http.DefaultClient, scheme: "http", metadata: nsqMetadata{NSQLookupdHTTPAddresses: nsqLookupdHosts}}
 
-		nsqdHosts, err := s.getTopicProducers("topic")
+		nsqdHosts, err := s.getTopicProducers(context.Background(), "topic")
 
 		if err != nil && tc.isError {
 			continue
@@ -457,7 +463,7 @@ func TestNSQGetLookup(t *testing.T) {
 		},
 	}
 
-	s := nsqScaler{httpClient: http.DefaultClient}
+	s := nsqScaler{httpClient: http.DefaultClient, scheme: "http"}
 	for _, tc := range testCases {
 		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(tc.serverStatus)
@@ -471,7 +477,7 @@ func TestNSQGetLookup(t *testing.T) {
 
 		host := net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
 
-		resp, err := s.getLookup(host, "topic")
+		resp, err := s.getLookup(context.Background(), host, "topic")
 
 		if err != nil && tc.isError {
 			continue
@@ -569,7 +575,7 @@ func TestNSQAggregateDepth(t *testing.T) {
 		},
 	}
 
-	s := nsqScaler{httpClient: http.DefaultClient}
+	s := nsqScaler{httpClient: http.DefaultClient, scheme: "http"}
 	for _, tc := range testCases {
 		callCount := atomic.NewInt32(-1)
 		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -589,7 +595,7 @@ func TestNSQAggregateDepth(t *testing.T) {
 			nsqdHosts = append(nsqdHosts, nsqdHost)
 		}
 
-		depth, err := s.aggregateDepth(nsqdHosts, "topic", "channel")
+		depth, err := s.aggregateDepth(context.Background(), nsqdHosts, "topic", "channel")
 
 		if err != nil && tc.isError {
 			continue
@@ -633,7 +639,7 @@ func TestNSQGetStats(t *testing.T) {
 		},
 	}
 
-	s := nsqScaler{httpClient: http.DefaultClient}
+	s := nsqScaler{httpClient: http.DefaultClient, scheme: "http"}
 	for _, tc := range testCases {
 		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(tc.serverStatus)
@@ -646,7 +652,7 @@ func TestNSQGetStats(t *testing.T) {
 		assert.Nil(t, err)
 
 		host := net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
-		resp, err := s.getStats(host, "topic")
+		resp, err := s.getStats(context.Background(), host, "topic")
 
 		if err != nil && tc.isError {
 			continue

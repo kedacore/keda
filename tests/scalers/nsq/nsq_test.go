@@ -29,10 +29,10 @@ var (
 	nsqHelmRepoURL           = "https://nsqio.github.io/helm-chart"
 	minReplicaCount          = 0
 	maxReplicaCount          = 2
-	depthThreshold           = 10
-	activationDepthThreshold = 5
 	topicName                = "test_topic"
 	channelName              = "test_channel"
+	depthThreshold           = 10
+	activationDepthThreshold = 5
 )
 
 const (
@@ -123,10 +123,10 @@ type templateData struct {
 	JobName                  string
 	MinReplicaCount          int
 	MaxReplicaCount          int
-	DepthThreshold           int
-	ActivationDepthThreshold int
 	TopicName                string
 	ChannelName              string
+	DepthThreshold           int
+	ActivationDepthThreshold int
 	MessageCount             int
 }
 
@@ -183,10 +183,10 @@ func getTemplateData() (templateData, []Template) {
 			ScaledObjectName:         scaledObjectName,
 			MinReplicaCount:          minReplicaCount,
 			MaxReplicaCount:          maxReplicaCount,
-			DepthThreshold:           depthThreshold,
-			ActivationDepthThreshold: activationDepthThreshold,
 			TopicName:                topicName,
 			ChannelName:              channelName,
+			DepthThreshold:           depthThreshold,
+			ActivationDepthThreshold: activationDepthThreshold,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
