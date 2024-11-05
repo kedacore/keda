@@ -524,6 +524,9 @@ github.com/denisenkom/go-mssqldb/internal/cp
 github.com/denisenkom/go-mssqldb/internal/decimal
 github.com/denisenkom/go-mssqldb/internal/querytext
 github.com/denisenkom/go-mssqldb/msdsn
+# github.com/dennwc/varint v1.0.0
+## explicit; go 1.12
+github.com/dennwc/varint
 # github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f
 ## explicit
 github.com/dgryski/go-rendezvous
@@ -614,6 +617,10 @@ github.com/go-jose/go-jose/v4
 github.com/go-jose/go-jose/v4/cipher
 github.com/go-jose/go-jose/v4/json
 github.com/go-jose/go-jose/v4/jwt
+# github.com/go-kit/log v0.2.1
+## explicit; go 1.17
+github.com/go-kit/log
+github.com/go-kit/log/level
 # github.com/go-kivik/couchdb/v3 v3.4.1
 ## explicit; go 1.13
 github.com/go-kivik/couchdb/v3
@@ -623,6 +630,9 @@ github.com/go-kivik/couchdb/v3/chttp
 github.com/go-kivik/kivik/v3
 github.com/go-kivik/kivik/v3/driver
 github.com/go-kivik/kivik/v3/internal/registry
+# github.com/go-logfmt/logfmt v0.6.0
+## explicit; go 1.17
+github.com/go-logfmt/logfmt
 # github.com/go-logr/logr v1.4.2
 ## explicit; go 1.18
 github.com/go-logr/logr
@@ -688,6 +698,7 @@ github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/protoc-gen-gogo/descriptor
 github.com/gogo/protobuf/sortkeys
+github.com/gogo/protobuf/types
 # github.com/golang-jwt/jwt v3.2.2+incompatible
 ## explicit
 github.com/golang-jwt/jwt
@@ -827,6 +838,10 @@ github.com/gophercloud/gophercloud/pagination
 # github.com/gorilla/websocket v1.5.1
 ## explicit; go 1.20
 github.com/gorilla/websocket
+# github.com/grafana/regexp v0.0.0-20221122212121-6b5c0a4cb7fd
+## explicit; go 1.17
+github.com/grafana/regexp
+github.com/grafana/regexp/syntax
 # github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 ## explicit; go 1.14
 github.com/grpc-ecosystem/go-grpc-middleware
@@ -1225,6 +1240,25 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
+# github.com/prometheus/prometheus v0.49.0
+## explicit; go 1.20
+github.com/prometheus/prometheus/model/exemplar
+github.com/prometheus/prometheus/model/histogram
+github.com/prometheus/prometheus/model/labels
+github.com/prometheus/prometheus/model/metadata
+github.com/prometheus/prometheus/model/textparse
+github.com/prometheus/prometheus/model/timestamp
+github.com/prometheus/prometheus/model/value
+github.com/prometheus/prometheus/prompb/io/prometheus/client
+github.com/prometheus/prometheus/promql/parser
+github.com/prometheus/prometheus/promql/parser/posrange
+github.com/prometheus/prometheus/storage
+github.com/prometheus/prometheus/tsdb/chunkenc
+github.com/prometheus/prometheus/tsdb/chunks
+github.com/prometheus/prometheus/tsdb/errors
+github.com/prometheus/prometheus/tsdb/fileutil
+github.com/prometheus/prometheus/util/annotations
+github.com/prometheus/prometheus/util/strutil
 # github.com/rabbitmq/amqp091-go v1.10.0
 ## explicit; go 1.20
 github.com/rabbitmq/amqp091-go

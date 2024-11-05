@@ -26,14 +26,14 @@ jobs:
       - name: Scale cluster
         run: make scale-node-pool
         env:
-          NODE_POOL_SIZE: 2
+          NODE_POOL_SIZE: 3
 
       - name: Run end to end tests
         env:
           AWS_RUN_IDENTITY_TESTS: true
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           GCP_RUN_IDENTITY_TESTS: true
-          ENABLE_OPENTELEMETRY : true
+          ENABLE_OPENTELEMETRY: true
         run: make e2e-test
 
       - name: Delete all e2e related namespaces
@@ -47,7 +47,7 @@ jobs:
           NODE_POOL_SIZE: 1
 
       - name: Upload test logs
-        uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4
         if: ${{ always() }}
         with:
           name: e2e-test-logs

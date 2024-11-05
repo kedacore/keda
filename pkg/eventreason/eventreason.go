@@ -77,6 +77,9 @@ const (
 	// TriggerAuthenticationFailed is for event when a TriggerAuthentication occurs error
 	TriggerAuthenticationFailed = "TriggerAuthenticationFailed"
 
+	// TriggerAuthenticationUpdated is for event when a TriggerAuthentication is updated
+	TriggerAuthenticationUpdated = "ClusterTriggerAuthenticationUpdated"
+
 	// ClusterTriggerAuthenticationDeleted is for event when a ClusterTriggerAuthentication is deleted
 	ClusterTriggerAuthenticationDeleted = "ClusterTriggerAuthenticationDeleted"
 
@@ -85,4 +88,7 @@ const (
 
 	// ClusterTriggerAuthenticationFailed is for event when a ClusterTriggerAuthentication occurs error
 	ClusterTriggerAuthenticationFailed = "ClusterTriggerAuthenticationFailed"
+
+	// ClusterTriggerAuthenticationUpdated is for event when a ClusterTriggerAuthentication is updated
+	ClusterTriggerAuthenticationUpdated = "ClusterTriggerAuthenticationUpdated"
 )

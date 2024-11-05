@@ -42,6 +42,7 @@ var (
 	clusterName             = "test-cluster"
 	expectedSubject         = fmt.Sprintf("/%s/%s/scaledobject/%s", clusterName, namespace, scaledObjectName)
 	expectedSource          = fmt.Sprintf("/%s/keda/keda", clusterName)
+	expectedType            = "keda.scaledobject.ready.v1"
 	monitoredDeploymentName = "monitored-deployment"
 	sutDeploymentName       = "sut-deployment"
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
@@ -264,19 +265,27 @@ func checkMessage(t *testing.T, count int, client *azservicebus.Client) {
 	if err != nil {
 		assert.NoErrorf(t, err, "cannot create receiver - %s", err)
 	}
-	defer receiver.Close(context.TODO())
+	defer receiver.Close(context.Background())
 
-	messages, err := receiver.ReceiveMessages(context.TODO(), count, nil)
-	assert.NoErrorf(t, err, "cannot receive messages - %s", err)
-	assert.NotEmpty(t, messages)
+	// We try to read the messages 3 times with a second of delay
+	tries := 3
+	found := false
+	for i := 0; i < tries && !found; i++ {
+		messages, err := receiver.ReceiveMessages(context.Background(), count, nil)
+		assert.NoErrorf(t, err, "cannot receive messages - %s", err)
+		assert.NotEmpty(t, messages)
 
-	var message = string(messages[0].Body)
+		for _, message := range messages {
+			event := messaging.CloudEvent{}
+			err = json.Unmarshal(message.Body, &event)
+			assert.NoErrorf(t, err, "cannot retrieve message - %s", err)
+			if expectedSubject == *event.Subject &&
+				expectedSource == event.Source &&
+				expectedType == event.Type {
+				found = true
+			}
+		}
+	}
 
-	event := messaging.CloudEvent{}
-	err = json.Unmarshal([]byte(message), &event)
-	assert.NoErrorf(t, err, "cannot retrieve message - %s", err)
-
-	assert.Equal(t, expectedSubject, *event.Subject)
-	assert.Equal(t, expectedSource, event.Source)
-	assert.Equal(t, "keda.scaledobject.ready.v1", event.Type)
+	assert.True(t, found)
 }

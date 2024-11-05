@@ -166,6 +166,47 @@ spec:
         - secretRef:
             name: {{.SecretName}}
 `
+
+	RMQTargetDeploymentWithAuthEnvTemplate = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.SecretName}}
+  namespace: {{.TestNamespace}}
+data:
+  RabbitApiHost: {{.Base64Connection}}
+  RabbitUsername: {{.Base64Username}}
+  RabbitPassword: {{.Base64Password}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.DeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: {{.DeploymentName}}
+  template:
+    metadata:
+      labels:
+        app: {{.DeploymentName}}
+    spec:
+      containers:
+      - name: rabbitmq-consumer
+        image: ghcr.io/kedacore/tests-rabbitmq
+        imagePullPolicy: Always
+        command:
+          - receive
+        args:
+          - '{{.Connection}}'
+        envFrom:
+        - secretRef:
+            name: {{.SecretName}}
+`
 )
 
 const RabbitServerName string = "rabbitmq"

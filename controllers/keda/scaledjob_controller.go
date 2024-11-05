@@ -50,8 +50,8 @@ import (
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
-// +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/finalizers;scaledjobs/status,verbs="*"
-// +kubebuilder:rbac:groups=batch,resources=jobs,verbs="*"
+// +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/finalizers;scaledjobs/status,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;update;patch;create;delete
 
 // ScaledJobReconciler reconciles a ScaledJob object
 type ScaledJobReconciler struct {
@@ -367,7 +367,7 @@ func (r *ScaledJobReconciler) updatePromMetrics(scaledJob *kedav1alpha1.ScaledJo
 	metricscollector.IncrementCRDTotal(metricscollector.ScaledJobResource, scaledJob.Namespace)
 	metricsData.namespace = scaledJob.Namespace
 
-	triggerTypes := make([]string, len(scaledJob.Spec.Triggers))
+	triggerTypes := make([]string, 0, len(scaledJob.Spec.Triggers))
 	for _, trigger := range scaledJob.Spec.Triggers {
 		metricscollector.IncrementTriggerTotal(trigger.Type)
 		triggerTypes = append(triggerTypes, trigger.Type)

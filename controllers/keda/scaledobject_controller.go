@@ -54,16 +54,16 @@ import (
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
-// +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects;scaledobjects/finalizers;scaledobjects/status,verbs="*"
-// +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs="*"
+// +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects;scaledobjects/finalizers;scaledobjects/status,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs=get;list;watch;update;patch;create;delete
 // +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=events,verbs="*"
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 // +kubebuilder:rbac:groups="",resources=pods;services;services;secrets;external,verbs=get;list;watch
 // +kubebuilder:rbac:groups="*",resources="*/scale",verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups="",resources="serviceaccounts",verbs=list;watch
 // +kubebuilder:rbac:groups="*",resources="*",verbs=get
 // +kubebuilder:rbac:groups="apps",resources=deployments;statefulsets,verbs=list;watch
-// +kubebuilder:rbac:groups="coordination.k8s.io",namespace=keda,resources=leases,verbs="*"
+// +kubebuilder:rbac:groups="coordination.k8s.io",namespace=keda,resources=leases,verbs=get;list;watch;update;patch;create;delete
 // +kubebuilder:rbac:groups="",resources="limitranges",verbs=list;watch
 
 // ScaledObjectReconciler reconciles a ScaledObject object
@@ -582,7 +582,7 @@ func (r *ScaledObjectReconciler) updatePromMetrics(scaledObject *kedav1alpha1.Sc
 	metricscollector.IncrementCRDTotal(metricscollector.ScaledObjectResource, scaledObject.Namespace)
 	metricsData.namespace = scaledObject.Namespace
 
-	triggerTypes := make([]string, len(scaledObject.Spec.Triggers))
+	triggerTypes := make([]string, 0, len(scaledObject.Spec.Triggers))
 	for _, trigger := range scaledObject.Spec.Triggers {
 		metricscollector.IncrementTriggerTotal(trigger.Type)
 		triggerTypes = append(triggerTypes, trigger.Type)
