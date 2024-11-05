@@ -282,6 +282,11 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		return "ScaledObject doesn't have correct triggers specification", err
 	}
 
+	err = r.updateStatusWithTriggersAndAuthsTypes(ctx, logger, scaledObject)
+	if err != nil {
+		return "Cannot update ScaledObject status with triggers'types and authentications'types", err
+	}
+
 	// Create a new HPA or update existing one according to ScaledObject
 	newHPACreated, err := r.ensureHPAForScaledObjectExists(ctx, logger, scaledObject, &gvkr)
 	if err != nil {
@@ -620,4 +625,15 @@ func (r *ScaledObjectReconciler) updateTriggerAuthenticationStatusOnDelete(ctx c
 			triggerAuthenticationStatus.ScaledObjectNamesStr = kedacontrollerutil.RemoveFromString(triggerAuthenticationStatus.ScaledObjectNamesStr, scaledObject.GetName(), ",")
 			return triggerAuthenticationStatus
 		})
+}
+
+func (r *ScaledObjectReconciler) updateStatusWithTriggersAndAuthsTypes(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) error {
+	triggersTypes, authsTypes := kedav1alpha1.CombinedTriggersAndAuthenticationsTypes(scaledObject.Spec.Triggers)
+	status := scaledObject.Status.DeepCopy()
+	status.TriggersTypes = &triggersTypes
+	status.AuthenticationsTypes = &authsTypes
+
+	logger.V(1).Info("Updating ScaledObject status with triggers and authentications types", "triggersTypes", triggersTypes, "authenticationsTypes", authsTypes)
+
+	return kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
 }
