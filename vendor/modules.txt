@@ -1190,7 +1190,7 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/open-policy-agent/cert-controller v0.11.0 => github.com/jorturfer/cert-controller v0.0.0-20241102131600-8e1663d9e512
+# github.com/open-policy-agent/cert-controller v0.12.0
 ## explicit; go 1.22.0
 github.com/open-policy-agent/cert-controller/pkg/rotator
 # github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
@@ -2964,7 +2964,6 @@ sigs.k8s.io/structured-merge-diff/v4/value
 sigs.k8s.io/yaml
 sigs.k8s.io/yaml/goyaml.v2
 sigs.k8s.io/yaml/goyaml.v3
-# github.com/open-policy-agent/cert-controller => github.com/jorturfer/cert-controller v0.0.0-20241102131600-8e1663d9e512
 # sigs.k8s.io/custom-metrics-apiserver => github.com/JorTurFer/custom-metrics-apiserver v1.23.1-0.20241102132920-a05aaf6ae739
 # github.com/google/cel-go => github.com/google/cel-go v0.20.1
 # github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.19.1

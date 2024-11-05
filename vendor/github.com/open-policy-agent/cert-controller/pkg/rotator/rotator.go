@@ -259,7 +259,7 @@ type CertRotator struct {
 	// testNoBackgroundRotation doesn't actually start the rotator in the background.
 	// This should only be used for testing.
 	testNoBackgroundRotation bool
-	// controllerName allows settign the controller name to register it multiple times
+	// controllerName allows setting the controller name to register it multiple times
 	// fixing the new k8s check that produces 'controller with name cert-rotator already exists'
 	// This should only be used for testing.
 	controllerName string

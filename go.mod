@@ -68,7 +68,7 @@ require (
 	github.com/newrelic/newrelic-client-go v1.1.0
 	github.com/onsi/ginkgo/v2 v2.21.0
 	github.com/onsi/gomega v1.35.1
-	github.com/open-policy-agent/cert-controller v0.11.0
+	github.com/open-policy-agent/cert-controller v0.12.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.20.5
@@ -117,9 +117,6 @@ require (
 	sigs.k8s.io/kustomize/kustomize/v5 v5.5.0
 	github.com/beanstalkd/go-beanstalk v0.2.0
 )
-
-// Remove this when they merge the PR and cut a release https://github.com/open-policy-agent/cert-controller/pull/281
-replace github.com/open-policy-agent/cert-controller => github.com/jorturfer/cert-controller v0.0.0-20241102131600-8e1663d9e512
 
 // Remove this when they merge the PR and cut a release https://github.com/kubernetes-sigs/custom-metrics-apiserver/pull/185
 replace sigs.k8s.io/custom-metrics-apiserver => github.com/JorTurFer/custom-metrics-apiserver v1.23.1-0.20241102132920-a05aaf6ae739
