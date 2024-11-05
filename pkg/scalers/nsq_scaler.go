@@ -66,14 +66,6 @@ func (m nsqMetadata) Validate() error {
 		return fmt.Errorf("no nsqLookupdHTTPAddresses given")
 	}
 
-	if m.Topic == "" {
-		return fmt.Errorf("no topic given")
-	}
-
-	if m.Channel == "" {
-		return fmt.Errorf("no channel given")
-	}
-
 	if m.DepthThreshold <= 0 {
 		return fmt.Errorf("depthThreshold must be a positive integer")
 	}
@@ -101,7 +93,7 @@ func (s nsqScaler) GetMetricsAndActivity(_ context.Context, metricName string) (
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
-	s.logger.Info("GetMetricsAndActivity", "metricName", metricName, "depth", depth)
+	s.logger.V(1).Info("GetMetricsAndActivity", "metricName", metricName, "depth", depth)
 
 	metric := GenerateMetricInMili(metricName, float64(depth))
 
@@ -115,7 +107,7 @@ func (s nsqScaler) getTopicChannelDepth() (int64, error) {
 	}
 
 	if len(nsqdHosts) == 0 {
-		s.logger.Info("no nsqd hosts found for topic", "topic", s.metadata.Topic)
+		s.logger.V(1).Info("no nsqd hosts found for topic", "topic", s.metadata.Topic)
 		return 0, nil
 	}
 
@@ -287,7 +279,7 @@ func (s *nsqScaler) aggregateDepth(nsqdHosts []string, topic string, channel str
 
 			if len(t.Channels) == 0 {
 				// topic exists with no channels, but there are messages in the topic -> we should still scale to bootstrap
-				s.logger.Info("no channels exist for topic", "topic", topic, "channel", channel, "host", result.host)
+				s.logger.V(1).Info("no channels exist for topic", "topic", topic, "channel", channel, "host", result.host)
 				depth += t.Depth
 				continue
 			}
@@ -301,14 +293,14 @@ func (s *nsqScaler) aggregateDepth(nsqdHosts []string, topic string, channel str
 				if ch.Paused {
 					// if it's paused on a single nsqd host, it's depth should not go into the aggregate
 					// meaning if paused on all nsqd hosts => depth == 0
-					s.logger.Info("channel is paused", "topic", topic, "channel", channel, "host", result.host)
+					s.logger.V(1).Info("channel is paused", "topic", topic, "channel", channel, "host", result.host)
 					continue
 				}
 				depth += ch.Depth
 			}
 			if !channelExists {
 				// topic exists with channels, but not the one in question - fallback to topic depth
-				s.logger.Info("channel does not exist for topic", "topic", topic, "channel", channel, "host", result.host)
+				s.logger.V(1).Info("channel does not exist for topic", "topic", topic, "channel", channel, "host", result.host)
 				depth += t.Depth
 			}
 		}

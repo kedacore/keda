@@ -21,16 +21,18 @@ const (
 )
 
 var (
-	testNamespace    = fmt.Sprintf("%s-ns", testName)
-	deploymentName   = fmt.Sprintf("%s-consumer-deployment", testName)
-	jobName          = fmt.Sprintf("%s-producer-job", testName)
-	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	nsqNamespace     = "nsq"
-	nsqHelmRepoURL   = "https://nsqio.github.io/helm-chart"
-	minReplicas      = 1
-	maxReplicas      = 10
-	topicName        = "test_topic"
-	channelName      = "test_channel"
+	testNamespace            = fmt.Sprintf("%s-ns", testName)
+	deploymentName           = fmt.Sprintf("%s-consumer-deployment", testName)
+	jobName                  = fmt.Sprintf("%s-producer-job", testName)
+	scaledObjectName         = fmt.Sprintf("%s-so", testName)
+	nsqNamespace             = "nsq"
+	nsqHelmRepoURL           = "https://nsqio.github.io/helm-chart"
+	minReplicaCount          = 0
+	maxReplicaCount          = 2
+	depthThreshold           = 10
+	activationDepthThreshold = 5
+	topicName                = "test_topic"
+	channelName              = "test_channel"
 )
 
 const (
@@ -58,6 +60,7 @@ spec:
         - "--mode=consumer"
         - "--topic={{.TopicName}}"
         - "--channel={{.ChannelName}}"
+        - "--sleep-duration=1s"
         - "--nsqlookupd-http-address=nsq-nsqlookupd.{{.NSQNamespace}}.svc.cluster.local:4161"
         imagePullPolicy: Always
 `
@@ -73,9 +76,8 @@ metadata:
 spec:
   pollingInterval: 5
   cooldownPeriod: 10
-  idleReplicaCount: 0
-  maxReplicaCount: {{.MaxReplicas}}
-  minReplicaCount: {{.MinReplicas}}
+  maxReplicaCount: {{.MaxReplicaCount}}
+  minReplicaCount: {{.MinReplicaCount}}
   scaleTargetRef:
     apiVersion: "apps/v1"
     kind: "Deployment"
@@ -87,8 +89,8 @@ spec:
       nsqLookupdHTTPAddresses: "nsq-nsqlookupd.{{.NSQNamespace}}.svc.cluster.local:4161"
       topic: "{{.TopicName}}"
       channel: "{{.ChannelName}}"
-      depthThreshold: "10"
-      activationDepthThreshold: "5"
+      depthThreshold: "{{.DepthThreshold}}"
+      activationDepthThreshold: "{{.ActivationDepthThreshold}}"
 `
 
 	jobTemplate = `
@@ -114,16 +116,18 @@ spec:
 )
 
 type templateData struct {
-	TestNamespace    string
-	NSQNamespace     string
-	DeploymentName   string
-	ScaledObjectName string
-	JobName          string
-	MinReplicas      int
-	MaxReplicas      int
-	TopicName        string
-	ChannelName      string
-	MessageCount     int
+	TestNamespace            string
+	NSQNamespace             string
+	DeploymentName           string
+	ScaledObjectName         string
+	JobName                  string
+	MinReplicaCount          int
+	MaxReplicaCount          int
+	DepthThreshold           int
+	ActivationDepthThreshold int
+	TopicName                string
+	ChannelName              string
+	MessageCount             int
 }
 
 func TestNSQScaler(t *testing.T) {
@@ -172,15 +176,17 @@ func uninstallNSQ(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:    testNamespace,
-			NSQNamespace:     nsqNamespace,
-			DeploymentName:   deploymentName,
-			JobName:          jobName,
-			ScaledObjectName: scaledObjectName,
-			MinReplicas:      minReplicas,
-			MaxReplicas:      maxReplicas,
-			TopicName:        topicName,
-			ChannelName:      channelName,
+			TestNamespace:            testNamespace,
+			NSQNamespace:             nsqNamespace,
+			DeploymentName:           deploymentName,
+			JobName:                  jobName,
+			ScaledObjectName:         scaledObjectName,
+			MinReplicaCount:          minReplicaCount,
+			MaxReplicaCount:          maxReplicaCount,
+			DepthThreshold:           depthThreshold,
+			ActivationDepthThreshold: activationDepthThreshold,
+			TopicName:                topicName,
+			ChannelName:              channelName,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
@@ -190,20 +196,25 @@ func getTemplateData() (templateData, []Template) {
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
 
-	data.MessageCount = 5
+	data.MessageCount = activationDepthThreshold
 	KubectlReplaceWithTemplate(t, data, "jobTemplate", jobTemplate)
-
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
+
+	data.MessageCount = 1 // total message count > activationDepthThreshold
+	KubectlReplaceWithTemplate(t, data, "jobTemplate", jobTemplate)
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
+		"replica count should reach 1 in under 1 minute")
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
 
-	data.MessageCount = 1 // 5 already published + 1 > activationDepthThreshold
+	// can handle depthThreshold messages per replica - using maxReplicaCount + 1 to ensure scaling to maxReplicaCount
+	data.MessageCount = depthThreshold * (maxReplicaCount + 1)
 	KubectlReplaceWithTemplate(t, data, "jobTemplate", jobTemplate)
 
-	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
-		"replica count should be 1 after 1 minute")
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
+		"replica count should reach 2 in under 1 minute")
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
