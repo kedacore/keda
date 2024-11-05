@@ -222,6 +222,34 @@ func TestAzurePipelinesMatchedAgent(t *testing.T) {
 	}
 }
 
+func TestAzurePipelinesDelayed(t *testing.T) {
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// nosemgrep: no-direct-write-to-responsewriter
+		w.Header().Add("X-RateLimit-Limit", "0")
+		// nosemgrep: no-direct-write-to-responsewriter
+		w.Header().Add("X-RateLimit-Delay", "42")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(buildLoadJSON())
+	}))
+
+	meta := getMatchedAgentMetaData(apiStub.URL)
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queueLen < 1 {
+		t.Fail()
+	}
+}
+
 func getDemandJobMetaData(url string) *azurePipelinesMetadata {
 	meta := getMatchedAgentMetaData(url)
 	meta.parent = ""

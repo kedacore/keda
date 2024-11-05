@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	testName = "scaled-object-validation-test"
+	testName = "scaled-job-validation-test"
 )
 
 var (
