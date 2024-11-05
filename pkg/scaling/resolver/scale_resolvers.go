@@ -618,7 +618,7 @@ func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, 
 		return ""
 	}
 	var err error
-	expirySeconds := ptr.Int64(3600)
+	expirySeconds := ptr.Int64(3600) // default expiry is 1 hour
 	if expiry != "" {
 		duration, err := time.ParseDuration(expiry)
 		if err != nil {
@@ -655,7 +655,7 @@ func generateToken(ctx context.Context, serviceAccountName, namespace string, ex
 		log.Error(err, "error trying to create token for service account", "ServiceAccount.Name", serviceAccountName)
 		return ""
 	}
-	log.Info("Service account token created successfully", "ServiceAccount.Name", serviceAccountName, "Token", token.Status.Token)
+	log.Info("Service account token created successfully", "ServiceAccount.Name", serviceAccountName)
 	return token.Status.Token
 }
 
