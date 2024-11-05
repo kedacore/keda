@@ -488,6 +488,38 @@ func TestResolveAuthRef(t *testing.T) {
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
+			name: "triggerauth exists bound service account token, but expiry invalid",
+			existing: []runtime.Object{
+				&kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						PodIdentity: &kedav1alpha1.AuthPodIdentity{
+							Provider: kedav1alpha1.PodIdentityProviderNone,
+						},
+						BoundServiceAccountToken: []kedav1alpha1.BoundServiceAccountToken{
+							{
+								Parameter:          "token",
+								ServiceAccountName: bsatSAName,
+								Expiry:             "10g",
+							},
+						},
+					},
+				},
+				&corev1.ServiceAccount{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      bsatSAName,
+					},
+				},
+			},
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
+			expected:            map[string]string{"token": ""},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		},
+		{
 			name: "clustertriggerauth exists, podidentity nil",
 			existing: []runtime.Object{
 				&kedav1alpha1.ClusterTriggerAuthentication{
@@ -647,6 +679,68 @@ func TestResolveAuthRef(t *testing.T) {
 			expected:            map[string]string{},
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderGCP},
 		},
+		{
+			name: "clustertriggerauth exists bound service account token",
+			existing: []runtime.Object{
+				&kedav1alpha1.ClusterTriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						PodIdentity: &kedav1alpha1.AuthPodIdentity{
+							Provider: kedav1alpha1.PodIdentityProviderNone,
+						},
+						BoundServiceAccountToken: []kedav1alpha1.BoundServiceAccountToken{
+							{
+								Parameter:          "token",
+								ServiceAccountName: bsatSAName,
+								Expiry:             bsatExpiry,
+							},
+						},
+					},
+				},
+				&corev1.ServiceAccount{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: clusterNamespace,
+						Name:      bsatSAName,
+					},
+				},
+			},
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
+			expected:            map[string]string{"token": bsatData},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		},
+		{
+			name: "clustertriggerauth exists bound service account token but service account in the wrong namespace",
+			existing: []runtime.Object{
+				&kedav1alpha1.ClusterTriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: triggerAuthenticationName,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						PodIdentity: &kedav1alpha1.AuthPodIdentity{
+							Provider: kedav1alpha1.PodIdentityProviderNone,
+						},
+						BoundServiceAccountToken: []kedav1alpha1.BoundServiceAccountToken{
+							{
+								Parameter:          "token",
+								ServiceAccountName: bsatSAName,
+								Expiry:             bsatExpiry,
+							},
+						},
+					},
+				},
+				&corev1.ServiceAccount{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      bsatSAName,
+					},
+				},
+			},
+			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
+			expected:            map[string]string{"token": ""},
+			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+		},
 	}
 	ctrl := gomock.NewController(t)
 	var secretsLister corev1listers.SecretLister
@@ -658,7 +752,7 @@ func TestResolveAuthRef(t *testing.T) {
 			Token: bsatData,
 		},
 	}
-	mockServiceAccountInterface.EXPECT().CreateToken(gomock.Any(), gomock.Eq(bsatSAName), gomock.Any(), gomock.Any()).Return(tokenRequest, nil)
+	mockServiceAccountInterface.EXPECT().CreateToken(gomock.Any(), gomock.Eq(bsatSAName), gomock.Any(), gomock.Any()).Return(tokenRequest, nil).AnyTimes()
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
