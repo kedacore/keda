@@ -81,7 +81,7 @@ metadata:
   labels:
     app: {{.DeploymentName}}
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: {{.DeploymentName}}
@@ -397,7 +397,7 @@ func testElasticsearchScaler(t *testing.T, kc *kubernetes.Clientset) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 
 	t.Log("--- testing scale out ---")
-	addElements(t, 5)
+	addElements(t, 10)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)

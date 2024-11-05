@@ -25,18 +25,6 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-const (
-	promServerAddress       = "serverAddress"
-	promQuery               = "query"
-	promQueryParameters     = "queryParameters"
-	promThreshold           = "threshold"
-	promActivationThreshold = "activationThreshold"
-	promNamespace           = "namespace"
-	promCustomHeaders       = "customHeaders"
-	ignoreNullValues        = "ignoreNullValues"
-	unsafeSsl               = "unsafeSsl"
-)
-
 type prometheusScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *prometheusMetadata

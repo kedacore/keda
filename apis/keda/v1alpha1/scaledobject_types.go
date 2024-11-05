@@ -33,12 +33,12 @@ import (
 // +kubebuilder:printcolumn:name="ScaleTargetName",type="string",JSONPath=".spec.scaleTargetRef.name"
 // +kubebuilder:printcolumn:name="Min",type="integer",JSONPath=".spec.minReplicaCount"
 // +kubebuilder:printcolumn:name="Max",type="integer",JSONPath=".spec.maxReplicaCount"
-// +kubebuilder:printcolumn:name="Triggers",type="string",JSONPath=".spec.triggers[*].type"
-// +kubebuilder:printcolumn:name="Authentication",type="string",JSONPath=".spec.triggers[*].authenticationRef.name"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status"
 // +kubebuilder:printcolumn:name="Active",type="string",JSONPath=".status.conditions[?(@.type==\"Active\")].status"
 // +kubebuilder:printcolumn:name="Fallback",type="string",JSONPath=".status.conditions[?(@.type==\"Fallback\")].status"
 // +kubebuilder:printcolumn:name="Paused",type="string",JSONPath=".status.conditions[?(@.type==\"Paused\")].status"
+// +kubebuilder:printcolumn:name="Triggers",type="string",JSONPath=".status.triggersTypes"
+// +kubebuilder:printcolumn:name="Authentications",type="string",JSONPath=".status.authenticationsTypes"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ScaledObject is a specification for a ScaledObject resource
@@ -177,6 +177,10 @@ type ScaledObjectStatus struct {
 	PausedReplicaCount *int32 `json:"pausedReplicaCount,omitempty"`
 	// +optional
 	HpaName string `json:"hpaName,omitempty"`
+	// +optional
+	TriggersTypes *string `json:"triggersTypes,omitempty"`
+	// +optional
+	AuthenticationsTypes *string `json:"authenticationsTypes,omitempty"`
 }
 
 // +kubebuilder:object:root=true
