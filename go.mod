@@ -113,13 +113,10 @@ require (
 	sigs.k8s.io/controller-runtime v0.19.1
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20240804232438-89b5deec030c
 	sigs.k8s.io/controller-tools v0.16.5
-	sigs.k8s.io/custom-metrics-apiserver v1.29.0
+	sigs.k8s.io/custom-metrics-apiserver v1.30.1-0.20241105195130-84dc8cfe2555
 	sigs.k8s.io/kustomize/kustomize/v5 v5.5.0
 	github.com/beanstalkd/go-beanstalk v0.2.0
 )
-
-// Remove this when they merge the PR and cut a release https://github.com/kubernetes-sigs/custom-metrics-apiserver/pull/185
-replace sigs.k8s.io/custom-metrics-apiserver => github.com/JorTurFer/custom-metrics-apiserver v1.23.1-0.20241102132920-a05aaf6ae739
 
 replace (
 	// pin k8s.io to v0.31.2 & sigs.k8s.io/controller-runtime to v0.19.1

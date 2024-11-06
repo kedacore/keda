@@ -2815,7 +2815,7 @@ sigs.k8s.io/controller-tools/pkg/schemapatcher
 sigs.k8s.io/controller-tools/pkg/schemapatcher/internal/yaml
 sigs.k8s.io/controller-tools/pkg/version
 sigs.k8s.io/controller-tools/pkg/webhook
-# sigs.k8s.io/custom-metrics-apiserver v1.29.0 => github.com/JorTurFer/custom-metrics-apiserver v1.23.1-0.20241102132920-a05aaf6ae739
+# sigs.k8s.io/custom-metrics-apiserver v1.30.1-0.20241105195130-84dc8cfe2555
 ## explicit; go 1.22.1
 sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver
 sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/endpoints/handlers
@@ -2964,7 +2964,6 @@ sigs.k8s.io/structured-merge-diff/v4/value
 sigs.k8s.io/yaml
 sigs.k8s.io/yaml/goyaml.v2
 sigs.k8s.io/yaml/goyaml.v3
-# sigs.k8s.io/custom-metrics-apiserver => github.com/JorTurFer/custom-metrics-apiserver v1.23.1-0.20241102132920-a05aaf6ae739
 # github.com/google/cel-go => github.com/google/cel-go v0.20.1
 # github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.19.1
 # github.com/prometheus/client_model => github.com/prometheus/client_model v0.6.1
