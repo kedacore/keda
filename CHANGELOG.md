@@ -59,6 +59,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Add the generateEmbeddedObjectMeta flag to generate meta properties of JobTargetRef in ScaledJob ([#5908](https://github.com/kedacore/keda/issues/5908))
 - **General**: Cache miss fallback in validating webhook for ScaledObjects with direct kubernetes client ([#5973](https://github.com/kedacore/keda/issues/5973))
+- **General**: Introduce new Beanstalkd scaler ([#5901](https://github.com/kedacore/keda/issues/5901))
 - **General**: Replace wildcards in RBAC objects with explicit resources and verbs ([#6129](https://github.com/kedacore/keda/pull/6129))
 - **Azure Pipelines Scalar**: Print warning to log when Azure DevOps API Rate Limits are (nearly) reached ([#6284](https://github.com/kedacore/keda/issues/6284))
 - **CloudEventSource**: Introduce ClusterCloudEventSource ([#3533](https://github.com/kedacore/keda/issues/3533))
@@ -76,12 +77,15 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **General**: Prevent multiple ScaledObjects managing one HPA ([#6130](https://github.com/kedacore/keda/issues/6130))
+- **General**: Show full triggers'types and authentications'types in status ([#6187](https://github.com/kedacore/keda/issues/6187))
 - **AWS CloudWatch Scaler**: Add support for ignoreNullValues ([#5352](https://github.com/kedacore/keda/issues/5352))
 - **Elasticsearch Scaler**: Support Query at the Elasticsearch scaler ([#6216](https://github.com/kedacore/keda/issues/6216))
 - **Etcd Scaler**: Add username and password support for etcd ([#6199](https://github.com/kedacore/keda/pull/6199))
 - **GCP Scalers**: Added custom time horizon in GCP scalers ([#5778](https://github.com/kedacore/keda/issues/5778))
+- **GitHub Scaler**: Add support to not scale on default runner labels ([#6127](https://github.com/kedacore/keda/issues/6127))
 - **GitHub Scaler**: Fixed pagination, fetching repository list ([#5738](https://github.com/kedacore/keda/issues/5738))
 - **Grafana dashboard**: Fix dashboard to handle wildcard scaledObject variables ([#6214](https://github.com/kedacore/keda/issues/6214))
+- **IBMMQ Scaler**: Support multiple queues at the IBMMQ scaler ([#6181](https://github.com/kedacore/keda/issues/6181))
 - **Kafka**: Allow disabling FAST negotation when using Kerberos ([#6188](https://github.com/kedacore/keda/issues/6188))
 - **Kafka**: Fix logic to scale to zero on invalid offset even with earliest offsetResetPolicy ([#5689](https://github.com/kedacore/keda/issues/5689))
 - **RabbitMQ Scaler**: Add connection name for AMQP ([#5958](https://github.com/kedacore/keda/issues/5958))

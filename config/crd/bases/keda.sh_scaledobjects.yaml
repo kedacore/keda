@@ -29,12 +29,6 @@ spec:
     - jsonPath: .spec.maxReplicaCount
       name: Max
       type: integer
-    - jsonPath: .spec.triggers[*].type
-      name: Triggers
-      type: string
-    - jsonPath: .spec.triggers[*].authenticationRef.name
-      name: Authentication
-      type: string
     - jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
       type: string
@@ -46,6 +40,12 @@ spec:
       type: string
     - jsonPath: .status.conditions[?(@.type=="Paused")].status
       name: Paused
+      type: string
+    - jsonPath: .status.triggersTypes
+      name: Triggers
+      type: string
+    - jsonPath: .status.authenticationsTypes
+      name: Authentications
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
@@ -309,6 +309,8 @@ spec:
           status:
             description: ScaledObjectStatus is the status for a ScaledObject resource
             properties:
+              authenticationsTypes:
+                type: string
               compositeScalerName:
                 type: string
               conditions:
@@ -386,6 +388,8 @@ spec:
                 - version
                 type: object
               scaleTargetKind:
+                type: string
+              triggersTypes:
                 type: string
             type: object
         required:
