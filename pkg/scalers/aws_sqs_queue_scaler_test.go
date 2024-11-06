@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 
@@ -442,5 +443,93 @@ func TestAWSSQSScalerGetMetrics(t *testing.T) {
 			}
 			assert.EqualValues(t, int64(expectedMessages), value[0].Value.Value())
 		}
+	}
+}
+
+func TestProcessQueueLengthFromSqsQueueAttributesOutput(t *testing.T) {
+	scalerCreationFunc := func() *awsSqsQueueScaler {
+		return &awsSqsQueueScaler{
+			metadata: &awsSqsQueueMetadata{
+				awsSqsQueueMetricNames: []types.QueueAttributeName{types.QueueAttributeNameApproximateNumberOfMessages, types.QueueAttributeNameApproximateNumberOfMessagesNotVisible, types.QueueAttributeNameApproximateNumberOfMessagesDelayed},
+			},
+		}
+	}
+
+	tests := map[string]struct {
+		s           *awsSqsQueueScaler
+		attributes  *sqs.GetQueueAttributesOutput
+		expected    int64
+		errExpected bool
+	}{
+		"properly formed queue attributes": {
+			s: scalerCreationFunc(),
+			attributes: &sqs.GetQueueAttributesOutput{
+				Attributes: map[string]string{
+					"ApproximateNumberOfMessages":           "1",
+					"ApproximateNumberOfMessagesNotVisible": "0",
+					"ApproximateNumberOfMessagesDelayed":    "0",
+				},
+			},
+			expected:    1,
+			errExpected: false,
+		},
+		"missing ApproximateNumberOfMessages": {
+			s: scalerCreationFunc(),
+			attributes: &sqs.GetQueueAttributesOutput{
+				Attributes: map[string]string{},
+			},
+			expected:    -1,
+			errExpected: true,
+		},
+		"invalid ApproximateNumberOfMessages": {
+			s: scalerCreationFunc(),
+			attributes: &sqs.GetQueueAttributesOutput{
+				Attributes: map[string]string{
+					"ApproximateNumberOfMessages":           "NotInt",
+					"ApproximateNumberOfMessagesNotVisible": "0",
+					"ApproximateNumberOfMessagesDelayed":    "0",
+				},
+			},
+			expected:    -1,
+			errExpected: true,
+		},
+		"32 bit int upper bound": {
+			s: scalerCreationFunc(),
+			attributes: &sqs.GetQueueAttributesOutput{
+				Attributes: map[string]string{
+					"ApproximateNumberOfMessages":           "2147483647",
+					"ApproximateNumberOfMessagesNotVisible": "0",
+					"ApproximateNumberOfMessagesDelayed":    "0",
+				},
+			},
+			expected:    2147483647,
+			errExpected: false,
+		},
+		"32 bit int upper bound + 1": {
+			s: scalerCreationFunc(),
+			attributes: &sqs.GetQueueAttributesOutput{
+				Attributes: map[string]string{
+					"ApproximateNumberOfMessages":           "2147483648",
+					"ApproximateNumberOfMessagesNotVisible": "0",
+					"ApproximateNumberOfMessagesDelayed":    "0",
+				},
+			},
+			expected:    2147483648,
+			errExpected: false,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			result, err := test.s.processQueueLengthFromSqsQueueAttributesOutput(test.attributes)
+
+			if test.errExpected {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.Equal(t, test.expected, result)
+		})
 	}
 }

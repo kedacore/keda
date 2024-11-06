@@ -23,12 +23,6 @@ spec:
     - jsonPath: .spec.maxReplicaCount
       name: Max
       type: integer
-    - jsonPath: .spec.triggers[*].type
-      name: Triggers
-      type: string
-    - jsonPath: .spec.triggers[*].authenticationRef.name
-      name: Authentication
-      type: string
     - jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
       type: string
@@ -37,6 +31,12 @@ spec:
       type: string
     - jsonPath: .status.conditions[?(@.type=="Paused")].status
       name: Paused
+      type: string
+    - jsonPath: .status.triggersTypes
+      name: Triggers
+      type: string
+    - jsonPath: .status.authenticationsTypes
+      name: Authentications
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
@@ -380,6 +380,23 @@ spec:
                         description: |-
                           Standard object's metadata.
                           More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+                        properties:
+                          annotations:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          finalizers:
+                            items:
+                              type: string
+                            type: array
+                          labels:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          name:
+                            type: string
+                          namespace:
+                            type: string
                         type: object
                       spec:
                         description: |-
@@ -6684,6 +6701,23 @@ spec:
                                             May contain labels and annotations that will be copied into the PVC
                                             when creating it. No other fields are allowed and will be rejected during
                                             validation.
+                                          properties:
+                                            annotations:
+                                              additionalProperties:
+                                                type: string
+                                              type: object
+                                            finalizers:
+                                              items:
+                                                type: string
+                                              type: array
+                                            labels:
+                                              additionalProperties:
+                                                type: string
+                                              type: object
+                                            name:
+                                              type: string
+                                            namespace:
+                                              type: string
                                           type: object
                                         spec:
                                           description: |-
@@ -8028,6 +8062,8 @@ spec:
             properties:
               Paused:
                 type: string
+              authenticationsTypes:
+                type: string
               conditions:
                 description: Conditions an array representation to store multiple
                   Conditions
@@ -8054,6 +8090,8 @@ spec:
                 type: array
               lastActiveTime:
                 format: date-time
+                type: string
+              triggersTypes:
                 type: string
             type: object
         type: object
