@@ -40,6 +40,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.32.4
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.34.3
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.3
+	github.com/beanstalkd/go-beanstalk v0.2.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.11.0
 	github.com/cloudevents/sdk-go/v2 v2.15.2
 	github.com/denisenkom/go-mssqldb v0.12.3
@@ -117,7 +118,6 @@ require (
 	sigs.k8s.io/controller-tools v0.15.0
 	sigs.k8s.io/custom-metrics-apiserver v1.29.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.4.3
-	github.com/beanstalkd/go-beanstalk v0.2.0
 )
 
 // Remove this when they merge the PR and cut a release https://github.com/open-policy-agent/cert-controller/pull/202
@@ -142,10 +142,6 @@ replace (
 replace (
 	// we need a version with a proper license
 	github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
-
-	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2020-26160
-	github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt/v4 v4.4.0
-	github.com/golang-jwt/jwt/v4 => github.com/golang-jwt/jwt/v4 v4.5.0
 
 	// opentelemetry cannot update to 1.25.0 according to the dependencies of google.golang.org/grpc
 	//go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc => go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.24.0
@@ -298,7 +294,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/moby/spdystream v0.2.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
