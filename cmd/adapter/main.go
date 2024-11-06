@@ -191,6 +191,7 @@ func RunMetricsServer(ctx context.Context) {
 	}()
 
 	go func() {
+		<-ctx.Done()
 		if err := server.Shutdown(ctx); err != nil {
 			logger.Error(err, "http server shutdown error")
 		}
