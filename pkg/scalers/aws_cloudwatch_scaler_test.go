@@ -478,6 +478,22 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		testAWSAuthentication, true,
 		"unsupported value for ignoreNullValues",
 	},
+	// test case for multiple dimensions with valid separator
+	{
+		map[string]string{
+			"namespace":         "AWS/SQS",
+			"dimensionName":     "QueueName;Region",
+			"dimensionValue":    "queue1;us-west-2",
+			"metricName":        "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue": "5",
+			"minMetricValue":    "1",
+			"metricStat":        "Average",
+			"awsRegion":         "us-west-2",
+		},
+		testAWSAuthentication,
+		false,
+		"Multiple dimensions with valid separator",
+	},
 }
 
 var awsCloudwatchMetricIdentifiers = []awsCloudwatchMetricIdentifier{
@@ -626,6 +642,38 @@ func TestCloudwatchParseMetadata(t *testing.T) {
 		if testData.isError && err == nil {
 			t.Errorf("%s: Expected error but got success", testData.comment)
 		}
+	}
+}
+
+func TestAWSCloudwatchScalerMultipleDimensions(t *testing.T) {
+	meta := map[string]string{
+		"namespace":         "AWS/SQS",
+		"dimensionName":     "QueueName;Region",
+		"dimensionValue":    "queue1;us-west-2",
+		"metricName":        "ApproximateNumberOfMessagesVisible",
+		"targetMetricValue": "5",
+		"minMetricValue":    "1",
+		"metricStat":        "Average",
+		"awsRegion":         "us-west-2",
+	}
+
+	config := &scalersconfig.ScalerConfig{
+		TriggerMetadata: meta,
+		ResolvedEnv:     testAWSCloudwatchResolvedEnv,
+		AuthParams:      testAWSAuthentication,
+	}
+
+	awsMeta, err := parseAwsCloudwatchMetadata(config)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if assert.Equal(t, 2, len(awsMeta.DimensionName), "Expected two dimension names") &&
+		assert.Equal(t, 2, len(awsMeta.DimensionValue), "Expected two dimension values") {
+		assert.Equal(t, "QueueName", awsMeta.DimensionName[0], "First dimension name should be QueueName")
+		assert.Equal(t, "Region", awsMeta.DimensionName[1], "Second dimension name should be Region")
+		assert.Equal(t, "queue1", awsMeta.DimensionValue[0], "First dimension value should be queue1")
+		assert.Equal(t, "us-west-2", awsMeta.DimensionValue[1], "Second dimension value should be us-west-2")
 	}
 }
 
