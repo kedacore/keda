@@ -143,16 +143,16 @@ replace (
 	github.com/golang-jwt/jwt/v4 => github.com/golang-jwt/jwt/v4 v4.5.0
 
 	// https://avd.aquasec.com/nvd/2022/cve-2022-27191/
-	golang.org/x/crypto => golang.org/x/crypto v0.25.0
+	golang.org/x/crypto => golang.org/x/crypto v0.28.0
 
 	// Needed for CVE-2023-39325 https://nvd.nist.gov/vuln/detail/CVE-2023-39325
-	golang.org/x/net => golang.org/x/net v0.27.0
+	golang.org/x/net => golang.org/x/net v0.30.0
 
 	// https://nvd.nist.gov/vuln/detail/CVE-2022-32149
-	golang.org/x/text => golang.org/x/text v0.16.0
+	golang.org/x/text => golang.org/x/text v0.19.0
 
 	// https://github.com/kedacore/keda/issues/5124
-	google.golang.org/grpc => google.golang.org/grpc v1.65.0
+	google.golang.org/grpc => google.golang.org/grpc v1.67.1
 
 	// Needed for CVE-2022-28948 https://www.cve.org/CVERecord?id=CVE-2022-28948
 	gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1

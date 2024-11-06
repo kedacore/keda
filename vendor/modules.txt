@@ -1630,7 +1630,7 @@ go.uber.org/zap/internal/pool
 go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
-# golang.org/x/crypto v0.28.0 => golang.org/x/crypto v0.25.0
+# golang.org/x/crypto v0.28.0 => golang.org/x/crypto v0.28.0
 ## explicit; go 1.20
 golang.org/x/crypto/argon2
 golang.org/x/crypto/blake2b
@@ -1662,7 +1662,7 @@ golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.30.0 => golang.org/x/net v0.27.0
+# golang.org/x/net v0.30.0 => golang.org/x/net v0.30.0
 ## explicit; go 1.18
 golang.org/x/net/context
 golang.org/x/net/html
@@ -1707,7 +1707,7 @@ golang.org/x/sys/windows/registry
 # golang.org/x/term v0.25.0
 ## explicit; go 1.18
 golang.org/x/term
-# golang.org/x/text v0.19.0 => golang.org/x/text v0.16.0
+# golang.org/x/text v0.19.0 => golang.org/x/text v0.19.0
 ## explicit; go 1.18
 golang.org/x/text/cases
 golang.org/x/text/encoding
@@ -1814,7 +1814,7 @@ google.golang.org/genproto/googleapis/api/monitoredres
 google.golang.org/genproto/googleapis/rpc/code
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.67.1 => google.golang.org/grpc v1.65.0
+# google.golang.org/grpc v1.67.1 => google.golang.org/grpc v1.67.1
 ## explicit; go 1.21
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -1844,7 +1844,9 @@ google.golang.org/grpc/credentials/oauth
 google.golang.org/grpc/encoding
 google.golang.org/grpc/encoding/gzip
 google.golang.org/grpc/encoding/proto
+google.golang.org/grpc/experimental/stats
 google.golang.org/grpc/grpclog
+google.golang.org/grpc/grpclog/internal
 google.golang.org/grpc/health/grpc_health_v1
 google.golang.org/grpc/internal
 google.golang.org/grpc/internal/backoff
@@ -1868,12 +1870,14 @@ google.golang.org/grpc/internal/resolver/dns/internal
 google.golang.org/grpc/internal/resolver/passthrough
 google.golang.org/grpc/internal/resolver/unix
 google.golang.org/grpc/internal/serviceconfig
+google.golang.org/grpc/internal/stats
 google.golang.org/grpc/internal/status
 google.golang.org/grpc/internal/syscall
 google.golang.org/grpc/internal/transport
 google.golang.org/grpc/internal/transport/networktype
 google.golang.org/grpc/internal/xds
 google.golang.org/grpc/keepalive
+google.golang.org/grpc/mem
 google.golang.org/grpc/metadata
 google.golang.org/grpc/peer
 google.golang.org/grpc/reflection
@@ -2979,8 +2983,8 @@ sigs.k8s.io/yaml/goyaml.v3
 # github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
 # github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt/v4 v4.4.0
 # github.com/golang-jwt/jwt/v4 => github.com/golang-jwt/jwt/v4 v4.5.0
-# golang.org/x/crypto => golang.org/x/crypto v0.25.0
-# golang.org/x/net => golang.org/x/net v0.27.0
-# golang.org/x/text => golang.org/x/text v0.16.0
-# google.golang.org/grpc => google.golang.org/grpc v1.65.0
+# golang.org/x/crypto => golang.org/x/crypto v0.28.0
+# golang.org/x/net => golang.org/x/net v0.30.0
+# golang.org/x/text => golang.org/x/text v0.19.0
+# google.golang.org/grpc => google.golang.org/grpc v1.67.1
 # gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
