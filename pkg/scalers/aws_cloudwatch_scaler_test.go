@@ -478,6 +478,22 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		testAWSAuthentication, true,
 		"unsupported value for ignoreNullValues",
 	},
+	// test case for multiple dimensions with valid separator
+	{
+		map[string]string{
+			"namespace":         "AWS/SQS",
+			"dimensionName":     "QueueName;Region",
+			"dimensionValue":    "queue1;us-west-2",
+			"metricName":        "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue": "5",
+			"minMetricValue":    "1",
+			"metricStat":        "Average",
+			"awsRegion":         "us-west-2",
+		},
+		testAWSAuthentication,
+		false,
+		"Multiple dimensions with valid separator",
+	},
 }
 
 var awsCloudwatchMetricIdentifiers = []awsCloudwatchMetricIdentifier{

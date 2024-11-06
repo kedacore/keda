@@ -30,8 +30,8 @@ type awsCloudwatchMetadata struct {
 	triggerIndex   int
 	Namespace      string   `keda:"name=namespace, order=triggerMetadata, optional"`
 	MetricsName    string   `keda:"name=metricName, order=triggerMetadata, optional"`
-	DimensionName  []string `keda:"name=dimensionName, order=triggerMetadata, optional"`
-	DimensionValue []string `keda:"name=dimensionValue, order=triggerMetadata, optional"`
+	DimensionName  []string `keda:"name=dimensionName, order=triggerMetadata, optional, separator=;"`
+	DimensionValue []string `keda:"name=dimensionValue, order=triggerMetadata, optional, separator=;"`
 	Expression     string   `keda:"name=expression, order=triggerMetadata, optional"`
 
 	TargetMetricValue           float64 `keda:"name=targetMetricValue, order=triggerMetadata"`
