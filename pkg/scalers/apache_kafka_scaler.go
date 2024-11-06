@@ -220,7 +220,7 @@ func getApacheKafkaClient(ctx context.Context, metadata apacheKafkaMetadata, log
 	case KafkaSASLTypeOAuthbearer:
 		return nil, errors.New("SASL/OAUTHBEARER is not implemented yet")
 	case KafkaSASLTypeMskIam:
-		cfg, err := awsutils.GetAwsConfig(ctx, metadata.AWSRegion, metadata.AWSAuthorization)
+		cfg, err := awsutils.GetAwsConfig(ctx, metadata.AWSAuthorization)
 		if err != nil {
 			return nil, err
 		}

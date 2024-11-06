@@ -131,7 +131,7 @@ func parseAwsKinesisStreamMetadata(config *scalersconfig.ScalerConfig, logger lo
 }
 
 func createKinesisClient(ctx context.Context, metadata *awsKinesisStreamMetadata) (*kinesis.Client, error) {
-	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func createKinesisClient(ctx context.Context, metadata *awsKinesisStreamMetadata
 }
 
 func (s *awsKinesisStreamScaler) Close(context.Context) error {
-	awsutils.ClearAwsConfig(s.metadata.awsRegion, s.metadata.awsAuthorization)
+	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
 	return nil
 }
 

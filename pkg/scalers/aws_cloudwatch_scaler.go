@@ -115,7 +115,7 @@ func NewAwsCloudwatchScaler(ctx context.Context, config *scalersconfig.ScalerCon
 }
 
 func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata) (*cloudwatch.Client, error) {
-	cfg, err := awsutils.GetAwsConfig(ctx, metadata.AwsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 
 	if err != nil {
 		return nil, err
@@ -214,7 +214,7 @@ func (s *awsCloudwatchScaler) GetMetricSpecForScaling(context.Context) []v2.Metr
 }
 
 func (s *awsCloudwatchScaler) Close(context.Context) error {
-	awsutils.ClearAwsConfig(s.metadata.AwsRegion, s.metadata.awsAuthorization)
+	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
 	return nil
 }
 

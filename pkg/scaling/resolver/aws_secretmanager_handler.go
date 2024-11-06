@@ -73,6 +73,7 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 	if ash.secretManager.Region != "" {
 		awsRegion = ash.secretManager.Region
 	}
+	ash.awsMetadata.AwsRegion = awsRegion
 	podIdentity := ash.secretManager.PodIdentity
 	if podIdentity == nil {
 		podIdentity = &kedav1alpha1.AuthPodIdentity{}
@@ -100,7 +101,7 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 		return fmt.Errorf("pod identity provider %s not supported", podIdentity.Provider)
 	}
 
-	config, err := awsutils.GetAwsConfig(ctx, awsRegion, ash.awsMetadata)
+	config, err := awsutils.GetAwsConfig(ctx, ash.awsMetadata)
 	if err != nil {
 		logger.Error(err, "Error getting credentials")
 		return err
@@ -110,5 +111,5 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 }
 
 func (ash *AwsSecretManagerHandler) Stop() {
-	awsutils.ClearAwsConfig(ash.secretManager.Region, ash.awsMetadata)
+	awsutils.ClearAwsConfig(ash.awsMetadata)
 }

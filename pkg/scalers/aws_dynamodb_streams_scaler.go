@@ -125,7 +125,7 @@ func parseAwsDynamoDBStreamsMetadata(config *scalersconfig.ScalerConfig, logger 
 }
 
 func createClientsForDynamoDBStreamsScaler(ctx context.Context, metadata *awsDynamoDBStreamsMetadata) (*dynamodb.Client, *dynamodbstreams.Client, error) {
-	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -169,7 +169,7 @@ func getDynamoDBStreamsArn(ctx context.Context, db dynamodb.DescribeTableAPIClie
 }
 
 func (s *awsDynamoDBStreamsScaler) Close(_ context.Context) error {
-	awsutils.ClearAwsConfig(s.metadata.awsRegion, s.metadata.awsAuthorization)
+	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
 	return nil
 }
 

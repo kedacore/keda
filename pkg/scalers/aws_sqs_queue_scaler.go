@@ -191,7 +191,7 @@ func parseAwsSqsQueueMetadata(config *scalersconfig.ScalerConfig, logger logr.Lo
 }
 
 func createSqsClient(ctx context.Context, metadata *awsSqsQueueMetadata) (*sqs.Client, error) {
-	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func createSqsClient(ctx context.Context, metadata *awsSqsQueueMetadata) (*sqs.C
 }
 
 func (s *awsSqsQueueScaler) Close(context.Context) error {
-	awsutils.ClearAwsConfig(s.metadata.awsRegion, s.metadata.awsAuthorization)
+	awsutils.ClearAwsConfig(s.metadata.awsAuthorization)
 	return nil
 }
 
