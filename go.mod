@@ -138,9 +138,11 @@ replace (
 	// we need a version with a proper license
 	github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
 
-	// https://www.whitesourcesoftware.com/vulnerability-database/CVE-2020-26160
-	github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt/v4 v4.4.0
-	github.com/golang-jwt/jwt/v4 => github.com/golang-jwt/jwt/v4 v4.5.0
+	// https://github.com/advisories/GHSA-29wx-vh33-7x7r
+	github.com/golang-jwt/jwt/v4 => github.com/golang-jwt/jwt/v4 v4.5.1
+
+	// we use an updated package to avoid other vulnerabilities on its deps (like github.com/dgrijalva/jwt-go)
+	github.com/spf13/viper => github.com/spf13/viper v1.19.0
 
 	// https://avd.aquasec.com/nvd/2022/cve-2022-27191/
 	golang.org/x/crypto => golang.org/x/crypto v0.28.0
