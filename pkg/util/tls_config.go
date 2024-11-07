@@ -21,10 +21,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"os"
 
 	"github.com/youmark/pkcs8"
 	ctrl "sigs.k8s.io/controller-runtime"
+
+	kedatls "github.com/kedacore/keda/v2/pkg/common/tls"
 )
 
 var minTLSVersion uint16
@@ -89,24 +90,7 @@ func GetMinTLSVersion() uint16 {
 }
 
 func initMinTLSVersion() (uint16, error) {
-	version, _ := os.LookupEnv("KEDA_HTTP_MIN_TLS_VERSION")
-
-	switch version {
-	case "":
-		minTLSVersion = tls.VersionTLS12
-	case "TLS10":
-		minTLSVersion = tls.VersionTLS10
-	case "TLS11":
-		minTLSVersion = tls.VersionTLS11
-	case "TLS12":
-		minTLSVersion = tls.VersionTLS12
-	case "TLS13":
-		minTLSVersion = tls.VersionTLS13
-	default:
-		return tls.VersionTLS12, fmt.Errorf("%s is not a valid value, using `TLS12`. Allowed values are: `TLS13`,`TLS12`,`TLS11`,`TLS10`", version)
-	}
-
-	return minTLSVersion, nil
+	return kedatls.GetMinHTTPTLSVersion()
 }
 
 func decryptClientKey(clientKey, clientKeyPassword string) ([]byte, error) {
