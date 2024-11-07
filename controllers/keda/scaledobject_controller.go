@@ -209,6 +209,8 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		conditions.SetFallbackCondition(metav1.ConditionFalse, "NoFallbackFound", "No fallbacks are active on this scaled object")
 	}
 
+	metricscollector.RecordScaledObjectPaused(scaledObject.Namespace, scaledObject.Name, conditions.GetPausedCondition().Status == metav1.ConditionTrue)
+
 	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, &conditions); err != nil {
 		r.EventEmitter.Emit(scaledObject, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectUpdateFailed, err.Error())
 		return ctrl.Result{}, err
@@ -246,12 +248,10 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 				return msg, err
 			}
 			conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, msg)
-			metricscollector.RecordScaledObjectPaused(scaledObject.Namespace, scaledObject.Name, true)
 			return msg, nil
 		}
 	} else if conditions.GetPausedCondition().Status == metav1.ConditionTrue {
 		conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectUnpaused", "pause annotation removed for ScaledObject")
-		metricscollector.RecordScaledObjectPaused(scaledObject.Namespace, scaledObject.Name, false)
 	}
 
 	// Check scale target Name is specified
@@ -280,11 +280,6 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 	err = kedav1alpha1.ValidateTriggers(scaledObject.Spec.Triggers)
 	if err != nil {
 		return "ScaledObject doesn't have correct triggers specification", err
-	}
-
-	err = r.updateStatusWithTriggersAndAuthsTypes(ctx, logger, scaledObject)
-	if err != nil {
-		return "Cannot update ScaledObject status with triggers'types and authentications'types", err
 	}
 
 	// Create a new HPA or update existing one according to ScaledObject
