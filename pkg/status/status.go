@@ -55,19 +55,35 @@ func SetStatusConditions(ctx context.Context, client runtimeclient.StatusClient,
 
 // UpdateScaledObjectStatus patches the given ScaledObject with the updated status passed to it or returns an error.
 func UpdateScaledObjectStatus(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus) error {
+	return updateObjectStatus(ctx, client, logger, scaledObject, status)
+}
+
+// UpdateScaledJobStatus patches the given ScaledObject with the updated status passed to it or returns an error.
+func UpdateScaledJobStatus(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, status *kedav1alpha1.ScaledJobStatus) error {
+	return updateObjectStatus(ctx, client, logger, scaledJob, status)
+}
+
+// updateObjectStatus patches the given ScaledObject with the updated status passed to it or returns an error.
+func updateObjectStatus(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object interface{}, status interface{}) error {
 	transform := func(runtimeObj runtimeclient.Object, target interface{}) error {
-		status, ok := target.(*kedav1alpha1.ScaledObjectStatus)
-		if !ok {
-			return fmt.Errorf("transform target is not kedav1alpha1.ScaledObjectStatus type %v", target)
-		}
 		switch obj := runtimeObj.(type) {
 		case *kedav1alpha1.ScaledObject:
+			status, ok := target.(*kedav1alpha1.ScaledObjectStatus)
+			if !ok {
+				return fmt.Errorf("transform target is not kedav1alpha1.ScaledObjectStatus type %v", target)
+			}
+			obj.Status = *status
+		case *kedav1alpha1.ScaledJob:
+			status, ok := target.(*kedav1alpha1.ScaledJobStatus)
+			if !ok {
+				return fmt.Errorf("transform target is not kedav1alpha1.ScaledJobStatus type %v", target)
+			}
 			obj.Status = *status
 		default:
 		}
 		return nil
 	}
-	return TransformObject(ctx, client, logger, scaledObject, status, transform)
+	return TransformObject(ctx, client, logger, object, status, transform)
 }
 
 // getTriggerAuth returns TriggerAuthentication/ClusterTriggerAuthentication object and its status from AuthenticationRef or returns an error.

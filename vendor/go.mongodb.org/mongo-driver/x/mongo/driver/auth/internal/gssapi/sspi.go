@@ -12,6 +12,7 @@ package gssapi
 // #include "sspi_wrapper.h"
 import "C"
 import (
+	"context"
 	"fmt"
 	"net"
 	"strconv"
@@ -115,12 +116,12 @@ func (sc *SaslClient) Start() (string, []byte, error) {
 		return mechName, nil, sc.getError("unable to initialize client")
 	}
 
-	payload, err := sc.Next(nil)
+	payload, err := sc.Next(nil, nil)
 
 	return mechName, payload, err
 }
 
-func (sc *SaslClient) Next(challenge []byte) ([]byte, error) {
+func (sc *SaslClient) Next(_ context.Context, challenge []byte) ([]byte, error) {
 
 	var outBuf C.PVOID
 	var outBufLen C.ULONG

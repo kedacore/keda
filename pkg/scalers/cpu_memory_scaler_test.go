@@ -18,7 +18,6 @@ type parseCPUMemoryMetadataTestData struct {
 	isError    bool
 }
 
-// A complete valid metadata example for reference
 var validCPUMemoryMetadata = map[string]string{
 	"type":  "Utilization",
 	"value": "50",
@@ -44,17 +43,18 @@ var testCPUMemoryMetadata = []parseCPUMemoryMetadataTestData{
 }
 
 func TestCPUMemoryParseMetadata(t *testing.T) {
-	for _, testData := range testCPUMemoryMetadata {
+	logger := logr.Discard()
+	for i, testData := range testCPUMemoryMetadata {
 		config := &scalersconfig.ScalerConfig{
 			TriggerMetadata: testData.metadata,
 			MetricType:      testData.metricType,
 		}
-		_, err := parseResourceMetadata(config, logr.Discard())
+		_, err := parseResourceMetadata(config, logger)
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+			t.Errorf("Test case %d: Expected success but got error: %v", i, err)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Errorf("Test case %d: Expected error but got success", i)
 		}
 	}
 }
