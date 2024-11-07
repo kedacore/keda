@@ -666,7 +666,7 @@ func (s *Server) update() {
 			s.monitorOnce.Do(s.rttMonitor.connect)
 		}
 
-		if isStreamable(s) || connectionIsStreaming || transitionedFromNetworkError {
+		if isStreamingEnabled(s) && (isStreamable(s) || connectionIsStreaming) || transitionedFromNetworkError {
 			continue
 		}
 
@@ -730,7 +730,7 @@ func (s *Server) createConnection() *connection {
 		WithWriteTimeout(func(time.Duration) time.Duration { return s.cfg.heartbeatTimeout }),
 		// We override whatever handshaker is currently attached to the options with a basic
 		// one because need to make sure we don't do auth.
-		WithHandshaker(func(h Handshaker) Handshaker {
+		WithHandshaker(func(Handshaker) Handshaker {
 			return operation.NewHello().AppName(s.cfg.appname).Compressors(s.cfg.compressionOpts).
 				ServerAPI(s.cfg.serverAPI)
 		}),

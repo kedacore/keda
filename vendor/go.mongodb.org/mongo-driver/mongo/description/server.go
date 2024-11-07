@@ -316,21 +316,23 @@ func NewServer(addr address.Address, response bson.Raw) Server {
 
 	desc.Kind = Standalone
 
-	if isReplicaSet {
+	switch {
+	case isReplicaSet:
 		desc.Kind = RSGhost
-	} else if desc.SetName != "" {
-		if isWritablePrimary {
+	case desc.SetName != "":
+		switch {
+		case isWritablePrimary:
 			desc.Kind = RSPrimary
-		} else if hidden {
+		case hidden:
 			desc.Kind = RSMember
-		} else if secondary {
+		case secondary:
 			desc.Kind = RSSecondary
-		} else if arbiterOnly {
+		case arbiterOnly:
 			desc.Kind = RSArbiter
-		} else {
+		default:
 			desc.Kind = RSMember
 		}
-	} else if msg == "isdbgrid" {
+	case msg == "isdbgrid":
 		desc.Kind = Mongos
 	}
 
