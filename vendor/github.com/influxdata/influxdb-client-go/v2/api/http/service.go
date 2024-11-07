@@ -151,6 +151,7 @@ func (s *service) parseHTTPError(r *http.Response) *Error {
 
 	perror := NewError(nil)
 	perror.StatusCode = r.StatusCode
+	perror.Header = r.Header
 
 	if v := r.Header.Get("Retry-After"); v != "" {
 		r, err := strconv.ParseUint(v, 10, 32)

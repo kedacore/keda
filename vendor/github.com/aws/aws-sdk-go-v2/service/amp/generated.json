@@ -34,6 +34,7 @@
         "api_op_TagResource.go",
         "api_op_UntagResource.go",
         "api_op_UpdateLoggingConfiguration.go",
+        "api_op_UpdateScraper.go",
         "api_op_UpdateWorkspaceAlias.go",
         "auth.go",
         "deserializers.go",

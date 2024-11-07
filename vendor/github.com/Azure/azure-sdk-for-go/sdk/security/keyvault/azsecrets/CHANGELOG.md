@@ -1,5 +1,12 @@
 # Release History
 
+## 1.2.0 (2024-10-21)
+
+### Features Added
+* Added CAE support
+* Client requests tokens from the Vault's tenant, overriding any credential default
+  (thanks @francescomari)
+
 ## 1.1.0 (2024-02-13)
 
 ### Other Changes

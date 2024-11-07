@@ -8,12 +8,30 @@ package auth
 
 import (
 	"context"
+	"net/http"
+
+	"go.mongodb.org/mongo-driver/x/mongo/driver"
 )
 
 // PLAIN is the mechanism name for PLAIN.
 const PLAIN = "PLAIN"
 
-func newPlainAuthenticator(cred *Cred) (Authenticator, error) {
+func newPlainAuthenticator(cred *Cred, _ *http.Client) (Authenticator, error) {
+	// TODO(GODRIVER-3317): The PLAIN specification says about auth source:
+	//
+	// "MUST be specified. Defaults to the database name if supplied on the
+	// connection string or $external."
+	//
+	// We should actually pass through the auth source, not always pass
+	// $external. If it's empty, we should default to $external.
+	//
+	// For example:
+	//
+	//  source := cred.Source
+	//  if source == "" {
+	//      source = "$external"
+	//  }
+	//
 	return &PlainAuthenticator{
 		Username: cred.Username,
 		Password: cred.Password,
@@ -28,10 +46,15 @@ type PlainAuthenticator struct {
 
 // Auth authenticates the connection.
 func (a *PlainAuthenticator) Auth(ctx context.Context, cfg *Config) error {
-	return ConductSaslConversation(ctx, cfg, "$external", &plainSaslClient{
+	return ConductSaslConversation(ctx, cfg, sourceExternal, &plainSaslClient{
 		username: a.Username,
 		password: a.Password,
 	})
+}
+
+// Reauth reauthenticates the connection.
+func (a *PlainAuthenticator) Reauth(_ context.Context, _ *driver.AuthConfig) error {
+	return newAuthError("Plain authentication does not support reauthentication", nil)
 }
 
 type plainSaslClient struct {
@@ -46,7 +69,7 @@ func (c *plainSaslClient) Start() (string, []byte, error) {
 	return PLAIN, b, nil
 }
 
-func (c *plainSaslClient) Next([]byte) ([]byte, error) {
+func (c *plainSaslClient) Next(context.Context, []byte) ([]byte, error) {
 	return nil, newAuthError("unexpected server challenge", nil)
 }
 

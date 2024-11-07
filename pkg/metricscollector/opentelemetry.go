@@ -79,7 +79,7 @@ func NewOtelMetrics(options ...metric.Option) *OtelMetrics {
 		}
 
 		if err != nil {
-			fmt.Printf("Error:" + err.Error())
+			fmt.Printf("Error: %s", err.Error())
 			return nil
 		}
 		options = []metric.Option{metric.WithReader(metric.NewPeriodicReader(exporter))}

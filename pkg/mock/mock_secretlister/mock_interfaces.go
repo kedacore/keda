@@ -22,6 +22,7 @@ import (
 type MockSecretLister struct {
 	ctrl     *gomock.Controller
 	recorder *MockSecretListerMockRecorder
+	isgomock struct{}
 }
 
 // MockSecretListerMockRecorder is the mock recorder for MockSecretLister.
@@ -42,38 +43,39 @@ func (m *MockSecretLister) EXPECT() *MockSecretListerMockRecorder {
 }
 
 // List mocks base method.
-func (m *MockSecretLister) List(arg0 labels.Selector) ([]*v1.Secret, error) {
+func (m *MockSecretLister) List(selector labels.Selector) ([]*v1.Secret, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", arg0)
+	ret := m.ctrl.Call(m, "List", selector)
 	ret0, _ := ret[0].([]*v1.Secret)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // List indicates an expected call of List.
-func (mr *MockSecretListerMockRecorder) List(arg0 any) *gomock.Call {
+func (mr *MockSecretListerMockRecorder) List(selector any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockSecretLister)(nil).List), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockSecretLister)(nil).List), selector)
 }
 
 // Secrets mocks base method.
-func (m *MockSecretLister) Secrets(arg0 string) v10.SecretNamespaceLister {
+func (m *MockSecretLister) Secrets(namespace string) v10.SecretNamespaceLister {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Secrets", arg0)
+	ret := m.ctrl.Call(m, "Secrets", namespace)
 	ret0, _ := ret[0].(v10.SecretNamespaceLister)
 	return ret0
 }
 
 // Secrets indicates an expected call of Secrets.
-func (mr *MockSecretListerMockRecorder) Secrets(arg0 any) *gomock.Call {
+func (mr *MockSecretListerMockRecorder) Secrets(namespace any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Secrets", reflect.TypeOf((*MockSecretLister)(nil).Secrets), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Secrets", reflect.TypeOf((*MockSecretLister)(nil).Secrets), namespace)
 }
 
 // MockSecretNamespaceLister is a mock of SecretNamespaceLister interface.
 type MockSecretNamespaceLister struct {
 	ctrl     *gomock.Controller
 	recorder *MockSecretNamespaceListerMockRecorder
+	isgomock struct{}
 }
 
 // MockSecretNamespaceListerMockRecorder is the mock recorder for MockSecretNamespaceLister.
@@ -94,31 +96,31 @@ func (m *MockSecretNamespaceLister) EXPECT() *MockSecretNamespaceListerMockRecor
 }
 
 // Get mocks base method.
-func (m *MockSecretNamespaceLister) Get(arg0 string) (*v1.Secret, error) {
+func (m *MockSecretNamespaceLister) Get(name string) (*v1.Secret, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0)
+	ret := m.ctrl.Call(m, "Get", name)
 	ret0, _ := ret[0].(*v1.Secret)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockSecretNamespaceListerMockRecorder) Get(arg0 any) *gomock.Call {
+func (mr *MockSecretNamespaceListerMockRecorder) Get(name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockSecretNamespaceLister)(nil).Get), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockSecretNamespaceLister)(nil).Get), name)
 }
 
 // List mocks base method.
-func (m *MockSecretNamespaceLister) List(arg0 labels.Selector) ([]*v1.Secret, error) {
+func (m *MockSecretNamespaceLister) List(selector labels.Selector) ([]*v1.Secret, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", arg0)
+	ret := m.ctrl.Call(m, "List", selector)
 	ret0, _ := ret[0].([]*v1.Secret)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // List indicates an expected call of List.
-func (mr *MockSecretNamespaceListerMockRecorder) List(arg0 any) *gomock.Call {
+func (mr *MockSecretNamespaceListerMockRecorder) List(selector any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockSecretNamespaceLister)(nil).List), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockSecretNamespaceLister)(nil).List), selector)
 }

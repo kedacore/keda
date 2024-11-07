@@ -429,13 +429,13 @@ func TestKafkaAuthParamsInTriggerAuthentication(t *testing.T) {
 			if testData.authParams["keytab"] != "" {
 				err := testFileContents(testData, meta, "keytab")
 				if err != nil {
-					t.Errorf(err.Error())
+					t.Error(err.Error())
 				}
 			}
 			if !testData.isError {
 				err := testFileContents(testData, meta, "kerberosConfig")
 				if err != nil {
-					t.Errorf(err.Error())
+					t.Error(err.Error())
 				}
 			}
 			if meta.kerberosServiceName != testData.authParams["kerberosServiceName"] {
