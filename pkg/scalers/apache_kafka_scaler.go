@@ -402,7 +402,7 @@ func (s *apacheKafkaScaler) Close(context.Context) error {
 
 func (s *apacheKafkaScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	var metricName string
-	if s.metadata.Topic != nil && len(s.metadata.Topic) > 0 {
+	if len(s.metadata.Topic) > 0 {
 		metricName = fmt.Sprintf("kafka-%s", strings.Join(s.metadata.Topic, ","))
 	} else {
 		metricName = fmt.Sprintf("kafka-%s-topics", s.metadata.Group)

@@ -1,3 +1,3 @@
 package types
 
-const VERSION = "2.19.1"
+const VERSION = "2.21.0"

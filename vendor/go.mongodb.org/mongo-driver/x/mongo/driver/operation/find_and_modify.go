@@ -25,6 +25,7 @@ import (
 
 // FindAndModify performs a findAndModify operation.
 type FindAndModify struct {
+	authenticator            driver.Authenticator
 	arrayFilters             bsoncore.Array
 	bypassDocumentValidation *bool
 	collation                bsoncore.Document
@@ -145,6 +146,7 @@ func (fam *FindAndModify) Execute(ctx context.Context) error {
 		ServerAPI:      fam.serverAPI,
 		Timeout:        fam.timeout,
 		Name:           driverutil.FindAndModifyOp,
+		Authenticator:  fam.authenticator,
 	}.Execute(ctx)
 
 }
@@ -475,5 +477,15 @@ func (fam *FindAndModify) Timeout(timeout *time.Duration) *FindAndModify {
 	}
 
 	fam.timeout = timeout
+	return fam
+}
+
+// Authenticator sets the authenticator to use for this operation.
+func (fam *FindAndModify) Authenticator(authenticator driver.Authenticator) *FindAndModify {
+	if fam == nil {
+		fam = new(FindAndModify)
+	}
+
+	fam.authenticator = authenticator
 	return fam
 }

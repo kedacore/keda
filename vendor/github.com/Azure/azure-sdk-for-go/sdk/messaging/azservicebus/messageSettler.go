@@ -31,7 +31,7 @@ func newMessageSettler(links internal.AMQPLinks, retryOptions RetryOptions) *mes
 	}
 }
 
-func (s *messageSettler) settleWithRetries(ctx context.Context, message *ReceivedMessage, settleFn func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error) error {
+func (s *messageSettler) settleWithRetries(ctx context.Context, settleFn func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error) error {
 	if s == nil {
 		return internal.NewErrNonRetriable("messages that are received in `ReceiveModeReceiveAndDelete` mode are not settleable")
 	}
@@ -54,7 +54,7 @@ type CompleteMessageOptions struct {
 
 // CompleteMessage completes a message, deleting it from the queue or subscription.
 func (ms *messageSettler) CompleteMessage(ctx context.Context, message *ReceivedMessage, options *CompleteMessageOptions) error {
-	return ms.settleWithRetries(ctx, message, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
+	return ms.settleWithRetries(ctx, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
 		var err error
 
 		if shouldSettleOnReceiver(message) {
@@ -85,7 +85,7 @@ type AbandonMessageOptions struct {
 // This will increment its delivery count, and potentially cause it to be dead lettered
 // depending on your queue or subscription's configuration.
 func (ms *messageSettler) AbandonMessage(ctx context.Context, message *ReceivedMessage, options *AbandonMessageOptions) error {
-	return ms.settleWithRetries(ctx, message, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
+	return ms.settleWithRetries(ctx, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
 		var err error
 
 		if shouldSettleOnReceiver(message) {
@@ -136,7 +136,7 @@ type DeferMessageOptions struct {
 // DeferMessage will cause a message to be deferred. Deferred messages
 // can be received using `Receiver.ReceiveDeferredMessages`.
 func (ms *messageSettler) DeferMessage(ctx context.Context, message *ReceivedMessage, options *DeferMessageOptions) error {
-	return ms.settleWithRetries(ctx, message, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
+	return ms.settleWithRetries(ctx, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
 		var err error
 
 		if shouldSettleOnReceiver(message) {
@@ -196,7 +196,7 @@ type DeadLetterOptions struct {
 // queue or subscription. To receive these messages create a receiver with `Client.NewReceiver()`
 // using the `SubQueue` option.
 func (ms *messageSettler) DeadLetterMessage(ctx context.Context, message *ReceivedMessage, options *DeadLetterOptions) error {
-	return ms.settleWithRetries(ctx, message, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
+	return ms.settleWithRetries(ctx, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
 		reason := ""
 		description := ""
 

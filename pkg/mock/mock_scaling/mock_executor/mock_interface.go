@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/scaling/executor"
+	executor "github.com/kedacore/keda/v2/pkg/scaling/executor"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -22,6 +22,7 @@ import (
 type MockScaleExecutor struct {
 	ctrl     *gomock.Controller
 	recorder *MockScaleExecutorMockRecorder
+	isgomock struct{}
 }
 
 // MockScaleExecutorMockRecorder is the mock recorder for MockScaleExecutor.
