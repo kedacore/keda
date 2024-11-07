@@ -72,7 +72,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **AWS Scalers**: Add AWS region to the AWS Config Cache key ([#6128](https://github.com/kedacore/keda/issues/6128))
 
 ### Deprecations
 
@@ -126,7 +126,6 @@ New deprecation(s):
 
 ### Fixes
 
-- **General**: Add AWS region to the AWS Config Cache key ([#6128](https://github.com/kedacore/keda/issues/6128))
 - **General**: Scalers cache uses a mutex to prevent concurrent actions ([#6273](https://github.com/kedacore/keda/issues/6273))
 - **AWS CloudWatch Scaler**: Properly parse multiple values of `dimensionName` & `dimensionValue` lists ([#6236](https://github.com/kedacore/keda/issues/6236))
 - **AWS Secret Manager**: Pod identity overrides are honored ([#6195](https://github.com/kedacore/keda/issues/6195))
