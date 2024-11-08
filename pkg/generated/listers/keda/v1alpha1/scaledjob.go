@@ -20,8 +20,8 @@ package v1alpha1
 
 import (
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -38,25 +38,17 @@ type ScaledJobLister interface {
 
 // scaledJobLister implements the ScaledJobLister interface.
 type scaledJobLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1alpha1.ScaledJob]
 }
 
 // NewScaledJobLister returns a new ScaledJobLister.
 func NewScaledJobLister(indexer cache.Indexer) ScaledJobLister {
-	return &scaledJobLister{indexer: indexer}
-}
-
-// List lists all ScaledJobs in the indexer.
-func (s *scaledJobLister) List(selector labels.Selector) (ret []*v1alpha1.ScaledJob, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.ScaledJob))
-	})
-	return ret, err
+	return &scaledJobLister{listers.New[*v1alpha1.ScaledJob](indexer, v1alpha1.Resource("scaledjob"))}
 }
 
 // ScaledJobs returns an object that can list and get ScaledJobs.
 func (s *scaledJobLister) ScaledJobs(namespace string) ScaledJobNamespaceLister {
-	return scaledJobNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return scaledJobNamespaceLister{listers.NewNamespaced[*v1alpha1.ScaledJob](s.ResourceIndexer, namespace)}
 }
 
 // ScaledJobNamespaceLister helps list and get ScaledJobs.
@@ -74,26 +66,5 @@ type ScaledJobNamespaceLister interface {
 // scaledJobNamespaceLister implements the ScaledJobNamespaceLister
 // interface.
 type scaledJobNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all ScaledJobs in the indexer for a given namespace.
-func (s scaledJobNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.ScaledJob, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.ScaledJob))
-	})
-	return ret, err
-}
-
-// Get retrieves the ScaledJob from the indexer for a given namespace and name.
-func (s scaledJobNamespaceLister) Get(name string) (*v1alpha1.ScaledJob, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("scaledjob"), name)
-	}
-	return obj.(*v1alpha1.ScaledJob), nil
+	listers.ResourceIndexer[*v1alpha1.ScaledJob]
 }

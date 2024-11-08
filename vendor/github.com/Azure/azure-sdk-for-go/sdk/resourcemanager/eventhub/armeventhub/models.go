@@ -34,6 +34,61 @@ type AccessKeys struct {
 	SecondaryKey *string
 }
 
+// ApplicationGroup - The Application Group object
+type ApplicationGroup struct {
+	Properties *ApplicationGroupProperties
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The geo-location where the resource lives
+	Location *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; The system meta data relating to this resource.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.EventHub/Namespaces" or "Microsoft.EventHub/Namespaces/EventHubs"
+	Type *string
+}
+
+// ApplicationGroupListResult - The response from the List Application Groups operation.
+type ApplicationGroupListResult struct {
+	// Result of the List Application Groups operation.
+	Value []*ApplicationGroup
+
+	// READ-ONLY; Link to the next set of results. Not empty if Value contains an incomplete list of Authorization Rules
+	NextLink *string
+}
+
+// ApplicationGroupPolicy - Properties of the Application Group policy
+type ApplicationGroupPolicy struct {
+	// REQUIRED; The Name of this policy
+	Name *string
+
+	// REQUIRED; Application Group Policy types
+	Type *ApplicationGroupPolicyType
+}
+
+// GetApplicationGroupPolicy implements the ApplicationGroupPolicyClassification interface for type ApplicationGroupPolicy.
+func (a *ApplicationGroupPolicy) GetApplicationGroupPolicy() *ApplicationGroupPolicy { return a }
+
+type ApplicationGroupProperties struct {
+	// REQUIRED; The Unique identifier for application group.Supports SAS(SASKeyName=KeyName) or AAD(AADAppID=Guid)
+	ClientAppGroupIdentifier *string
+
+	// Determines if Application Group is allowed to create connection with namespace or not. Once the isEnabled is set to false,
+	// all the existing connections of application group gets dropped and no new
+	// connections will be allowed
+	IsEnabled *bool
+
+	// List of group policies that define the behavior of application group. The policies can support resource governance scenarios
+	// such as limiting ingress or egress traffic.
+	Policies []ApplicationGroupPolicyClassification
+}
+
 // ArmDisasterRecovery - Single item in List or Get Alias(Disaster Recovery configuration) operation
 type ArmDisasterRecovery struct {
 	// Properties required to the Create Or Update Alias(Disaster Recovery configurations)
@@ -155,6 +210,16 @@ type CaptureDescription struct {
 	SkipEmptyArchives *bool
 }
 
+// CaptureIdentity - A value that indicates whether capture description is enabled.
+type CaptureIdentity struct {
+	// Type of Azure Active Directory Managed Identity.
+	Type *CaptureIdentityType
+
+	// ARM ID of Managed User Identity. This property is required is the type is UserAssignedIdentity. If type is SystemAssigned,
+	// then the System Assigned Identity Associated with the namespace will be used.
+	UserAssignedIdentity *string
+}
+
 // CheckNameAvailabilityParameter - Parameter supplied to check Namespace name availability operation
 type CheckNameAvailabilityParameter struct {
 	// REQUIRED; Name to check the namespace name availability
@@ -211,11 +276,17 @@ type ClusterListResult struct {
 
 // ClusterProperties - Event Hubs Cluster properties supplied in responses in List or Get operations.
 type ClusterProperties struct {
+	// A value that indicates whether Scaling is Supported.
+	SupportsScaling *bool
+
 	// READ-ONLY; The UTC time when the Event Hubs Cluster was created.
 	CreatedAt *string
 
 	// READ-ONLY; The metric ID of the cluster resource. Provided by the service and not modifiable by the user.
 	MetricID *string
+
+	// READ-ONLY; Provisioning state of the Cluster.
+	ProvisioningState *ProvisioningState
 
 	// READ-ONLY; Status of the Cluster resource
 	Status *string
@@ -295,6 +366,9 @@ type ConsumerGroupProperties struct {
 
 // Destination - Capture storage details for capture description
 type Destination struct {
+	// A value that indicates whether capture description is enabled.
+	Identity *CaptureIdentity
+
 	// Name for capture destination
 	Name *string
 
@@ -400,8 +474,14 @@ type EHNamespaceProperties struct {
 	// AutoInflateEnabled = true)
 	MaximumThroughputUnits *int32
 
+	// The minimum TLS version for the cluster to support, e.g. '1.2'
+	MinimumTLSVersion *TLSVersion
+
 	// List of private endpoint connections.
 	PrivateEndpointConnections []*PrivateEndpointConnection
+
+	// This determines if traffic is allowed over public network. By default it is enabled.
+	PublicNetworkAccess *PublicNetworkAccess
 
 	// Enabling this property creates a Standard Event Hubs Namespace in regions supported availability zones.
 	ZoneRedundant *bool
@@ -586,7 +666,9 @@ type NetworkRuleSetProperties struct {
 	// List of IpRules
 	IPRules []*NWRuleSetIPRules
 
-	// This determines if traffic is allowed over public network. By default it is enabled.
+	// This determines if traffic is allowed over public network. By default it is enabled. If value is SecuredByPerimeter then
+	// Inbound and Outbound communication is controlled by the network security
+	// perimeter and profile's access rules.
 	PublicNetworkAccess *PublicNetworkAccessFlag
 
 	// Value that indicates whether Trusted Service Access is Enabled or not.
@@ -594,6 +676,133 @@ type NetworkRuleSetProperties struct {
 
 	// List VirtualNetwork Rules
 	VirtualNetworkRules []*NWRuleSetVirtualNetworkRules
+}
+
+// NetworkSecurityPerimeter related information
+type NetworkSecurityPerimeter struct {
+	// Fully qualified identifier of the resource
+	ID *string
+
+	// Location of the resource
+	Location *string
+
+	// Guid of the resource
+	PerimeterGUID *string
+}
+
+// NetworkSecurityPerimeterConfiguration - Network Security Perimeter related configurations of a given namespace
+type NetworkSecurityPerimeterConfiguration struct {
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The geo-location where the resource lives
+	Location *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Properties of the Network Security Perimeter Configuration
+	Properties *NetworkSecurityPerimeterConfigurationProperties
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.EventHub/Namespaces" or "Microsoft.EventHub/Namespaces/EventHubs"
+	Type *string
+}
+
+// NetworkSecurityPerimeterConfigurationList - Result of the List NetworkSecurityPerimeterConfiguration operation.
+type NetworkSecurityPerimeterConfigurationList struct {
+	// READ-ONLY; A collection of NetworkSecurityPerimeterConfigurations
+	Value []*NetworkSecurityPerimeterConfiguration
+}
+
+// NetworkSecurityPerimeterConfigurationProperties - Properties of NetworkSecurityPerimeterConfiguration
+type NetworkSecurityPerimeterConfigurationProperties struct {
+	// List of Provisioning Issues if any
+	ProvisioningIssues []*ProvisioningIssue
+
+	// Provisioning state of NetworkSecurityPerimeter configuration propagation
+	ProvisioningState *NetworkSecurityPerimeterConfigurationProvisioningState
+
+	// READ-ONLY; Indicates that the NSP controls related to backing association are only applicable to a specific feature in
+	// backing resource's data plane.
+	ApplicableFeatures []*string
+
+	// READ-ONLY; True if the EventHub namespace is backed by another Azure resource and not visible to end users.
+	IsBackingResource *bool
+
+	// READ-ONLY; NetworkSecurityPerimeter related information
+	NetworkSecurityPerimeter *NetworkSecurityPerimeter
+
+	// READ-ONLY; Source Resource Association name
+	ParentAssociationName *string
+
+	// READ-ONLY; Information about current network profile
+	Profile *NetworkSecurityPerimeterConfigurationPropertiesProfile
+
+	// READ-ONLY; Information about resource association
+	ResourceAssociation *NetworkSecurityPerimeterConfigurationPropertiesResourceAssociation
+
+	// READ-ONLY; ARM Id of source resource
+	SourceResourceID *string
+}
+
+// NetworkSecurityPerimeterConfigurationPropertiesProfile - Information about current network profile
+type NetworkSecurityPerimeterConfigurationPropertiesProfile struct {
+	// List of Access Rules
+	AccessRules []*NspAccessRule
+
+	// Current access rules version
+	AccessRulesVersion *string
+
+	// Name of the resource
+	Name *string
+}
+
+// NetworkSecurityPerimeterConfigurationPropertiesResourceAssociation - Information about resource association
+type NetworkSecurityPerimeterConfigurationPropertiesResourceAssociation struct {
+	// Access Mode of the resource association
+	AccessMode *ResourceAssociationAccessMode
+
+	// Name of the resource association
+	Name *string
+}
+
+// NspAccessRule - Information of Access Rule in Network Profile
+type NspAccessRule struct {
+	// Fully qualified identifier of the resource
+	ID *string
+
+	// Name of the resource
+	Name *string
+
+	// Type of the resource
+	Type *string
+
+	// READ-ONLY; Properties of Access Rule
+	Properties *NspAccessRuleProperties
+}
+
+// NspAccessRuleProperties - Properties of Access Rule
+type NspAccessRuleProperties struct {
+	// Address prefixes in the CIDR format for inbound rules
+	AddressPrefixes []*string
+
+	// Direction of Access Rule
+	Direction *NspAccessRuleDirection
+
+	// Subscriptions for inbound rules
+	Subscriptions []*NspAccessRulePropertiesSubscriptionsItem
+
+	// READ-ONLY; FQDN for outbound rules
+	FullyQualifiedDomainNames []*string
+
+	// READ-ONLY; NetworkSecurityPerimeters for inbound rules
+	NetworkSecurityPerimeters []*NetworkSecurityPerimeter
+}
+
+// NspAccessRulePropertiesSubscriptionsItem - Subscription for inbound rule
+type NspAccessRulePropertiesSubscriptionsItem struct {
+	// Fully qualified identifier of subscription
+	ID *string
 }
 
 // Operation - A Event Hub REST API operation
@@ -734,8 +943,14 @@ type Properties struct {
 	// Number of partitions created for the Event Hub, allowed values are from 1 to 32 partitions.
 	PartitionCount *int64
 
+	// Event Hub retention settings
+	RetentionDescription *RetentionDescription
+
 	// Enumerates the possible values for the status of the Event Hub.
 	Status *EntityStatus
+
+	// Gets and Sets Metadata of User.
+	UserMetadata *string
 
 	// READ-ONLY; Exact time the Event Hub was created.
 	CreatedAt *time.Time
@@ -745,6 +960,24 @@ type Properties struct {
 
 	// READ-ONLY; The exact time the message was updated.
 	UpdatedAt *time.Time
+}
+
+// ProvisioningIssue - Describes Provisioning issue for given NetworkSecurityPerimeterConfiguration
+type ProvisioningIssue struct {
+	// Name of the issue
+	Name *string
+
+	// READ-ONLY; Properties of Provisioning Issue
+	Properties *ProvisioningIssueProperties
+}
+
+// ProvisioningIssueProperties - Properties of Provisioning Issue
+type ProvisioningIssueProperties struct {
+	// Description of the issue
+	Description *string
+
+	// Type of Issue
+	IssueType *string
 }
 
 // ProxyResource - Common fields that are returned in the response for all Azure Resource Manager resources
@@ -782,6 +1015,22 @@ type Resource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
+}
+
+// RetentionDescription - Properties to configure retention settings for the eventhub
+type RetentionDescription struct {
+	// Enumerates the possible values for cleanup policy
+	CleanupPolicy *CleanupPolicyRetentionDescription
+
+	// Number of hours to retain the events for this Event Hub. This value is only used when cleanupPolicy is Delete. If cleanupPolicy
+	// is Compact the returned value of this property is Long.MaxValue
+	RetentionTimeInHours *int64
+
+	// Number of hours to retain the tombstone markers of a compacted Event Hub. This value is only used when cleanupPolicy is
+	// Compact. Consumer must complete reading the tombstone marker within this
+	// specified amount of time if consumer begins from starting offset to ensure they get a valid snapshot for the specific key
+	// described by the tombstone marker within the compacted Event Hub
+	TombstoneRetentionTimeInHours *int32
 }
 
 // SKU parameters supplied to the create namespace operation
@@ -867,6 +1116,30 @@ type SystemData struct {
 
 	// The type of identity that last modified the resource.
 	LastModifiedByType *CreatedByType
+}
+
+// ThrottlingPolicy - Properties of the throttling policy
+type ThrottlingPolicy struct {
+	// REQUIRED; Metric Id on which the throttle limit should be set, MetricId can be discovered by hovering over Metric in the
+	// Metrics section of Event Hub Namespace inside Azure Portal
+	MetricID *MetricID
+
+	// REQUIRED; The Name of this policy
+	Name *string
+
+	// REQUIRED; The Threshold limit above which the application group will be throttled.Rate limit is always per second.
+	RateLimitThreshold *int64
+
+	// REQUIRED; Application Group Policy types
+	Type *ApplicationGroupPolicyType
+}
+
+// GetApplicationGroupPolicy implements the ApplicationGroupPolicyClassification interface for type ThrottlingPolicy.
+func (t *ThrottlingPolicy) GetApplicationGroupPolicy() *ApplicationGroupPolicy {
+	return &ApplicationGroupPolicy{
+		Name: t.Name,
+		Type: t.Type,
+	}
 }
 
 // TrackedResource - Definition of resource.

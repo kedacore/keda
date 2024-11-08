@@ -61,10 +61,11 @@ type ExplicitEncryptionOptions struct {
 
 // ExplicitRangeOptions specifies options for the range index.
 type ExplicitRangeOptions struct {
-	Min       *bsoncore.Value
-	Max       *bsoncore.Value
-	Sparsity  int64
-	Precision *int32
+	Min        *bsoncore.Value
+	Max        *bsoncore.Value
+	Sparsity   *int64
+	TrimFactor *int32
+	Precision  *int32
 }
 
 // ExplicitEncryption creates a new ExplicitEncryptionOptions instance.
