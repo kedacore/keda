@@ -82,6 +82,13 @@ func NexusTags(service, operation, taskQueueName string) map[string]string {
 	}
 }
 
+// NexusTaskFailureTags returns a set of tags for Nexus Operation failures.
+func NexusTaskFailureTags(reason string) map[string]string {
+	return map[string]string{
+		FailureReasonTagName: reason,
+	}
+}
+
 // TaskQueueTags returns a set of tags for a task queue.
 func TaskQueueTags(taskQueue string) map[string]string {
 	return map[string]string{
@@ -106,7 +113,7 @@ func PollerTags(pollerType string) map[string]string {
 // WorkflowTaskFailedTags returns a set of tags for a workflow task failure.
 func WorkflowTaskFailedTags(reason string) map[string]string {
 	return map[string]string{
-		WorkflowTaskFailureReason: reason,
+		FailureReasonTagName: reason,
 	}
 }
 

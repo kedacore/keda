@@ -24,6 +24,8 @@
 package identity
 
 import (
+	"fmt"
+
 	"google.golang.org/protobuf/proto"
 )
 
@@ -506,4 +508,23 @@ func (this *ApiKeySpec) Equal(that interface{}) bool {
 	}
 
 	return proto.Equal(this, that1)
+}
+
+var (
+	OwnerType_shorthandValue = map[string]int32{
+		"Unspecified":    0,
+		"User":           1,
+		"ServiceAccount": 2,
+	}
+)
+
+// OwnerTypeFromString parses a OwnerType value from  either the protojson
+// canonical SCREAMING_CASE enum or the traditional temporal PascalCase enum to OwnerType
+func OwnerTypeFromString(s string) (OwnerType, error) {
+	if v, ok := OwnerType_value[s]; ok {
+		return OwnerType(v), nil
+	} else if v, ok := OwnerType_shorthandValue[s]; ok {
+		return OwnerType(v), nil
+	}
+	return OwnerType(0), fmt.Errorf("%s is not a valid OwnerType", s)
 }

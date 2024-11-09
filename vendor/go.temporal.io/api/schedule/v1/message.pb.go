@@ -101,11 +101,9 @@ type CalendarSpec struct {
 
 func (x *CalendarSpec) Reset() {
 	*x = CalendarSpec{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[0]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *CalendarSpec) String() string {
@@ -116,7 +114,7 @@ func (*CalendarSpec) ProtoMessage() {}
 
 func (x *CalendarSpec) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[0]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -206,11 +204,9 @@ type Range struct {
 
 func (x *Range) Reset() {
 	*x = Range{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[1]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *Range) String() string {
@@ -221,7 +217,7 @@ func (*Range) ProtoMessage() {}
 
 func (x *Range) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[1]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -294,11 +290,9 @@ type StructuredCalendarSpec struct {
 
 func (x *StructuredCalendarSpec) Reset() {
 	*x = StructuredCalendarSpec{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[2]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *StructuredCalendarSpec) String() string {
@@ -309,7 +303,7 @@ func (*StructuredCalendarSpec) ProtoMessage() {}
 
 func (x *StructuredCalendarSpec) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[2]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -402,11 +396,9 @@ type IntervalSpec struct {
 
 func (x *IntervalSpec) Reset() {
 	*x = IntervalSpec{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[3]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *IntervalSpec) String() string {
@@ -417,7 +409,7 @@ func (*IntervalSpec) ProtoMessage() {}
 
 func (x *IntervalSpec) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[3]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -537,11 +529,9 @@ type ScheduleSpec struct {
 
 func (x *ScheduleSpec) Reset() {
 	*x = ScheduleSpec{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[4]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *ScheduleSpec) String() string {
@@ -552,7 +542,7 @@ func (*ScheduleSpec) ProtoMessage() {}
 
 func (x *ScheduleSpec) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[4]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -672,11 +662,9 @@ type SchedulePolicies struct {
 
 func (x *SchedulePolicies) Reset() {
 	*x = SchedulePolicies{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[5]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *SchedulePolicies) String() string {
@@ -687,7 +675,7 @@ func (*SchedulePolicies) ProtoMessage() {}
 
 func (x *SchedulePolicies) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[5]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -743,11 +731,9 @@ type ScheduleAction struct {
 
 func (x *ScheduleAction) Reset() {
 	*x = ScheduleAction{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[6]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *ScheduleAction) String() string {
@@ -758,7 +744,7 @@ func (*ScheduleAction) ProtoMessage() {}
 
 func (x *ScheduleAction) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[6]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -817,11 +803,9 @@ type ScheduleActionResult struct {
 
 func (x *ScheduleActionResult) Reset() {
 	*x = ScheduleActionResult{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[7]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *ScheduleActionResult) String() string {
@@ -832,7 +816,7 @@ func (*ScheduleActionResult) ProtoMessage() {}
 
 func (x *ScheduleActionResult) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[7]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -892,11 +876,9 @@ type ScheduleState struct {
 
 func (x *ScheduleState) Reset() {
 	*x = ScheduleState{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[8]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *ScheduleState) String() string {
@@ -907,7 +889,7 @@ func (*ScheduleState) ProtoMessage() {}
 
 func (x *ScheduleState) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[8]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -961,11 +943,9 @@ type TriggerImmediatelyRequest struct {
 
 func (x *TriggerImmediatelyRequest) Reset() {
 	*x = TriggerImmediatelyRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[9]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *TriggerImmediatelyRequest) String() string {
@@ -976,7 +956,7 @@ func (*TriggerImmediatelyRequest) ProtoMessage() {}
 
 func (x *TriggerImmediatelyRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[9]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -1017,11 +997,9 @@ type BackfillRequest struct {
 
 func (x *BackfillRequest) Reset() {
 	*x = BackfillRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[10]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *BackfillRequest) String() string {
@@ -1032,7 +1010,7 @@ func (*BackfillRequest) ProtoMessage() {}
 
 func (x *BackfillRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[10]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -1087,11 +1065,9 @@ type SchedulePatch struct {
 
 func (x *SchedulePatch) Reset() {
 	*x = SchedulePatch{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[11]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *SchedulePatch) String() string {
@@ -1102,7 +1078,7 @@ func (*SchedulePatch) ProtoMessage() {}
 
 func (x *SchedulePatch) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[11]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -1181,11 +1157,9 @@ type ScheduleInfo struct {
 
 func (x *ScheduleInfo) Reset() {
 	*x = ScheduleInfo{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[12]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *ScheduleInfo) String() string {
@@ -1196,7 +1170,7 @@ func (*ScheduleInfo) ProtoMessage() {}
 
 func (x *ScheduleInfo) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[12]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -1302,11 +1276,9 @@ type Schedule struct {
 
 func (x *Schedule) Reset() {
 	*x = Schedule{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[13]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *Schedule) String() string {
@@ -1317,7 +1289,7 @@ func (*Schedule) ProtoMessage() {}
 
 func (x *Schedule) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[13]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -1384,11 +1356,9 @@ type ScheduleListInfo struct {
 
 func (x *ScheduleListInfo) Reset() {
 	*x = ScheduleListInfo{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[14]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *ScheduleListInfo) String() string {
@@ -1399,7 +1369,7 @@ func (*ScheduleListInfo) ProtoMessage() {}
 
 func (x *ScheduleListInfo) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[14]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -1470,11 +1440,9 @@ type ScheduleListEntry struct {
 
 func (x *ScheduleListEntry) Reset() {
 	*x = ScheduleListEntry{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[15]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *ScheduleListEntry) String() string {
@@ -1485,7 +1453,7 @@ func (*ScheduleListEntry) ProtoMessage() {}
 
 func (x *ScheduleListEntry) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_schedule_v1_message_proto_msgTypes[15]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -1937,200 +1905,6 @@ func init() { file_temporal_api_schedule_v1_message_proto_init() }
 func file_temporal_api_schedule_v1_message_proto_init() {
 	if File_temporal_api_schedule_v1_message_proto != nil {
 		return
-	}
-	if !protoimpl.UnsafeEnabled {
-		file_temporal_api_schedule_v1_message_proto_msgTypes[0].Exporter = func(v any, i int) any {
-			switch v := v.(*CalendarSpec); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[1].Exporter = func(v any, i int) any {
-			switch v := v.(*Range); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[2].Exporter = func(v any, i int) any {
-			switch v := v.(*StructuredCalendarSpec); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[3].Exporter = func(v any, i int) any {
-			switch v := v.(*IntervalSpec); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[4].Exporter = func(v any, i int) any {
-			switch v := v.(*ScheduleSpec); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[5].Exporter = func(v any, i int) any {
-			switch v := v.(*SchedulePolicies); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[6].Exporter = func(v any, i int) any {
-			switch v := v.(*ScheduleAction); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[7].Exporter = func(v any, i int) any {
-			switch v := v.(*ScheduleActionResult); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[8].Exporter = func(v any, i int) any {
-			switch v := v.(*ScheduleState); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[9].Exporter = func(v any, i int) any {
-			switch v := v.(*TriggerImmediatelyRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[10].Exporter = func(v any, i int) any {
-			switch v := v.(*BackfillRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[11].Exporter = func(v any, i int) any {
-			switch v := v.(*SchedulePatch); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[12].Exporter = func(v any, i int) any {
-			switch v := v.(*ScheduleInfo); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[13].Exporter = func(v any, i int) any {
-			switch v := v.(*Schedule); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[14].Exporter = func(v any, i int) any {
-			switch v := v.(*ScheduleListInfo); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_schedule_v1_message_proto_msgTypes[15].Exporter = func(v any, i int) any {
-			switch v := v.(*ScheduleListEntry); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
 	}
 	file_temporal_api_schedule_v1_message_proto_msgTypes[6].OneofWrappers = []any{
 		(*ScheduleAction_StartWorkflow)(nil),

@@ -26,6 +26,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/auth"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt"
 	mcopts "go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt/options"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/operation"
@@ -79,6 +80,7 @@ type Client struct {
 	metadataClientFLE  *Client
 	internalClientFLE  *Client
 	encryptedFieldsMap map[string]interface{}
+	authenticator      driver.Authenticator
 }
 
 // Connect creates a new Client and then initializes it using the Connect method. This is equivalent to calling
@@ -209,10 +211,22 @@ func NewClient(opts ...*options.ClientOptions) (*Client, error) {
 		clientOpt.SetMaxPoolSize(defaultMaxPoolSize)
 	}
 
-	cfg, err := topology.NewConfig(clientOpt, client.clock)
+	if clientOpt.Auth != nil {
+		client.authenticator, err = auth.CreateAuthenticator(
+			clientOpt.Auth.AuthMechanism,
+			topology.ConvertCreds(clientOpt.Auth),
+			clientOpt.HTTPClient,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error creating authenticator: %w", err)
+		}
+	}
+
+	cfg, err := topology.NewConfigWithAuthenticator(clientOpt, client.clock, client.authenticator)
 	if err != nil {
 		return nil, err
 	}
+
 	client.serverAPI = topology.ServerAPIFromServerOptions(cfg.ServerOpts)
 
 	if client.deployment == nil {
@@ -690,7 +704,7 @@ func (c *Client) ListDatabases(ctx context.Context, filter interface{}, opts ...
 	op := operation.NewListDatabases(filterDoc).
 		Session(sess).ReadPreference(c.readPreference).CommandMonitor(c.monitor).
 		ServerSelector(selector).ClusterClock(c.clock).Database("admin").Deployment(c.deployment).Crypt(c.cryptFLE).
-		ServerAPI(c.serverAPI).Timeout(c.timeout)
+		ServerAPI(c.serverAPI).Timeout(c.timeout).Authenticator(c.authenticator)
 
 	if ldo.NameOnly != nil {
 		op = op.NameOnly(*ldo.NameOnly)

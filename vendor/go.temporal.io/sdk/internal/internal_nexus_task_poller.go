@@ -109,6 +109,10 @@ func (ntp *nexusTaskPoller) poll(ctx context.Context) (taskForWorker, error) {
 	return &nexusTask{task: response}, nil
 }
 
+func (ntp *nexusTaskPoller) Cleanup() error {
+	return nil
+}
+
 // PollTask polls a new task
 func (ntp *nexusTaskPoller) PollTask() (taskForWorker, error) {
 	return ntp.doPoll(ntp.poll)
@@ -148,8 +152,32 @@ func (ntp *nexusTaskPoller) ProcessTask(task interface{}) error {
 
 	// Execution latency (in-SDK processing time).
 	metricsHandler.Timer(metrics.NexusTaskExecutionLatency).Record(time.Since(executionStartTime))
-	if err != nil || failure != nil {
-		metricsHandler.Counter(metrics.NexusTaskExecutionFailedCounter).Inc(1)
+
+	// Increment failure in all forms of errors:
+	// Internal error processing the task.
+	// Failure from user handler.
+	// Special case for the start response with operation error.
+	if err != nil {
+		var failureTag string
+		if err == errNexusTaskTimeout {
+			failureTag = "timeout"
+		} else {
+			failureTag = "internal_sdk_error"
+		}
+		metricsHandler.
+			WithTags(metrics.NexusTaskFailureTags(failureTag)).
+			Counter(metrics.NexusTaskExecutionFailedCounter).
+			Inc(1)
+	} else if failure != nil {
+		metricsHandler.
+			WithTags(metrics.NexusTaskFailureTags("handler_error_" + failure.GetError().GetErrorType())).
+			Counter(metrics.NexusTaskExecutionFailedCounter).
+			Inc(1)
+	} else if e := res.Response.GetStartOperation().GetOperationError(); e != nil {
+		metricsHandler.
+			WithTags(metrics.NexusTaskFailureTags("operation_" + e.GetOperationState())).
+			Counter(metrics.NexusTaskExecutionFailedCounter).
+			Inc(1)
 	}
 
 	// Let the poller machinery drop the task, nothing to report back.

@@ -20,6 +20,10 @@ type NoValue *struct{}
 // available.
 type OperationReference[I, O any] interface {
 	Name() string
+	// InputType the generic input type I for this operation.
+	InputType() reflect.Type
+	// OutputType the generic out type O for this operation.
+	OutputType() reflect.Type
 	// A type inference helper for implementations of this interface.
 	inferType(I, O)
 }
@@ -34,6 +38,16 @@ func NewOperationReference[I, O any](name string) OperationReference[I, O] {
 
 func (r operationReference[I, O]) Name() string {
 	return string(r)
+}
+
+func (operationReference[I, O]) InputType() reflect.Type {
+	var zero [0]I
+	return reflect.TypeOf(zero).Elem()
+}
+
+func (operationReference[I, O]) OutputType() reflect.Type {
+	var zero [0]O
+	return reflect.TypeOf(zero).Elem()
 }
 
 func (operationReference[I, O]) inferType(I, O) {} //nolint:unused
@@ -150,6 +164,11 @@ func (s *Service) Register(operations ...RegisterableOperation) error {
 		return fmt.Errorf("duplicate operations: %s", strings.Join(dups, ", "))
 	}
 	return nil
+}
+
+// Operation returns an operation by name or nil if not found.
+func (s *Service) Operation(name string) RegisterableOperation {
+	return s.operations[name]
 }
 
 // A ServiceRegistry registers services and constructs a [Handler] that dispatches operations requests to those services.

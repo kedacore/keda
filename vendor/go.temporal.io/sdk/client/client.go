@@ -247,6 +247,9 @@ type (
 	// ScheduleWorkflowExecution contains details on a workflows execution stared by a schedule.
 	ScheduleWorkflowExecution = internal.ScheduleWorkflowExecution
 
+	// ScheduleInfo describes other information about a schedule.
+	ScheduleInfo = internal.ScheduleInfo
+
 	// ScheduleDescription describes the current Schedule details from ScheduleHandle.Describe.
 	ScheduleDescription = internal.ScheduleDescription
 

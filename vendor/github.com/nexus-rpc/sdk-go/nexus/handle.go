@@ -3,7 +3,6 @@ package nexus
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -43,7 +42,7 @@ func (h *OperationHandle[T]) GetInfo(ctx context.Context, options GetOperationIn
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return nil, newUnexpectedResponseError(fmt.Sprintf("unexpected response status: %q", response.Status), response, body)
+		return nil, bestEffortHandlerErrorFromResponse(response, body)
 	}
 
 	return operationInfoFromResponse(response, body)
@@ -87,7 +86,7 @@ func (h *OperationHandle[T]) GetResult(ctx context.Context, options GetOperation
 			}
 
 			q := request.URL.Query()
-			q.Set(queryWait, fmt.Sprintf("%dms", wait.Milliseconds()))
+			q.Set(queryWait, formatDuration(wait))
 			request.URL.RawQuery = q.Encode()
 		} else {
 			// We may reuse the request object multiple times and will need to reset the query when wait becomes 0 or
@@ -155,7 +154,7 @@ func (h *OperationHandle[T]) sendGetOperationRequest(ctx context.Context, reques
 			Failure: failure,
 		}
 	default:
-		return nil, newUnexpectedResponseError(fmt.Sprintf("unexpected response status: %q", response.Status), response, body)
+		return nil, bestEffortHandlerErrorFromResponse(response, body)
 	}
 }
 
@@ -183,7 +182,7 @@ func (h *OperationHandle[T]) Cancel(ctx context.Context, options CancelOperation
 	}
 
 	if response.StatusCode != http.StatusAccepted {
-		return newUnexpectedResponseError(fmt.Sprintf("unexpected response status: %q", response.Status), response, body)
+		return bestEffortHandlerErrorFromResponse(response, body)
 	}
 	return nil
 }

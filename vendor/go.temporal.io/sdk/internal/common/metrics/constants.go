@@ -92,19 +92,19 @@ const (
 
 // Metric tag keys
 const (
-	NamespaceTagName          = "namespace"
-	ClientTagName             = "client_name"
-	PollerTypeTagName         = "poller_type"
-	WorkerTypeTagName         = "worker_type"
-	WorkflowTypeNameTagName   = "workflow_type"
-	ActivityTypeNameTagName   = "activity_type"
-	NexusServiceTagName       = "nexus_service"
-	NexusOperationTagName     = "nexus_operation"
-	TaskQueueTagName          = "task_queue"
-	OperationTagName          = "operation"
-	CauseTagName              = "cause"
-	WorkflowTaskFailureReason = "failure_reason"
-	RequestFailureCode        = "status_code"
+	NamespaceTagName        = "namespace"
+	ClientTagName           = "client_name"
+	PollerTypeTagName       = "poller_type"
+	WorkerTypeTagName       = "worker_type"
+	WorkflowTypeNameTagName = "workflow_type"
+	ActivityTypeNameTagName = "activity_type"
+	NexusServiceTagName     = "nexus_service"
+	NexusOperationTagName   = "nexus_operation"
+	FailureReasonTagName    = "failure_reason"
+	TaskQueueTagName        = "task_queue"
+	OperationTagName        = "operation"
+	CauseTagName            = "cause"
+	RequestFailureCode      = "status_code"
 )
 
 // Metric tag values

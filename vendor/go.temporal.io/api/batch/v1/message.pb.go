@@ -63,11 +63,9 @@ type BatchOperationInfo struct {
 
 func (x *BatchOperationInfo) Reset() {
 	*x = BatchOperationInfo{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_batch_v1_message_proto_msgTypes[0]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_batch_v1_message_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *BatchOperationInfo) String() string {
@@ -78,7 +76,7 @@ func (*BatchOperationInfo) ProtoMessage() {}
 
 func (x *BatchOperationInfo) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_batch_v1_message_proto_msgTypes[0]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -137,11 +135,9 @@ type BatchOperationTermination struct {
 
 func (x *BatchOperationTermination) Reset() {
 	*x = BatchOperationTermination{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_batch_v1_message_proto_msgTypes[1]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_batch_v1_message_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *BatchOperationTermination) String() string {
@@ -152,7 +148,7 @@ func (*BatchOperationTermination) ProtoMessage() {}
 
 func (x *BatchOperationTermination) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_batch_v1_message_proto_msgTypes[1]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -201,11 +197,9 @@ type BatchOperationSignal struct {
 
 func (x *BatchOperationSignal) Reset() {
 	*x = BatchOperationSignal{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_batch_v1_message_proto_msgTypes[2]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_batch_v1_message_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *BatchOperationSignal) String() string {
@@ -216,7 +210,7 @@ func (*BatchOperationSignal) ProtoMessage() {}
 
 func (x *BatchOperationSignal) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_batch_v1_message_proto_msgTypes[2]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -273,11 +267,9 @@ type BatchOperationCancellation struct {
 
 func (x *BatchOperationCancellation) Reset() {
 	*x = BatchOperationCancellation{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_batch_v1_message_proto_msgTypes[3]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_batch_v1_message_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *BatchOperationCancellation) String() string {
@@ -288,7 +280,7 @@ func (*BatchOperationCancellation) ProtoMessage() {}
 
 func (x *BatchOperationCancellation) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_batch_v1_message_proto_msgTypes[3]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -323,11 +315,9 @@ type BatchOperationDeletion struct {
 
 func (x *BatchOperationDeletion) Reset() {
 	*x = BatchOperationDeletion{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_batch_v1_message_proto_msgTypes[4]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_batch_v1_message_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *BatchOperationDeletion) String() string {
@@ -338,7 +328,7 @@ func (*BatchOperationDeletion) ProtoMessage() {}
 
 func (x *BatchOperationDeletion) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_batch_v1_message_proto_msgTypes[4]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -379,11 +369,9 @@ type BatchOperationReset struct {
 
 func (x *BatchOperationReset) Reset() {
 	*x = BatchOperationReset{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_batch_v1_message_proto_msgTypes[5]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_batch_v1_message_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *BatchOperationReset) String() string {
@@ -394,7 +382,7 @@ func (*BatchOperationReset) ProtoMessage() {}
 
 func (x *BatchOperationReset) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_batch_v1_message_proto_msgTypes[5]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -571,80 +559,6 @@ func init() { file_temporal_api_batch_v1_message_proto_init() }
 func file_temporal_api_batch_v1_message_proto_init() {
 	if File_temporal_api_batch_v1_message_proto != nil {
 		return
-	}
-	if !protoimpl.UnsafeEnabled {
-		file_temporal_api_batch_v1_message_proto_msgTypes[0].Exporter = func(v any, i int) any {
-			switch v := v.(*BatchOperationInfo); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_batch_v1_message_proto_msgTypes[1].Exporter = func(v any, i int) any {
-			switch v := v.(*BatchOperationTermination); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_batch_v1_message_proto_msgTypes[2].Exporter = func(v any, i int) any {
-			switch v := v.(*BatchOperationSignal); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_batch_v1_message_proto_msgTypes[3].Exporter = func(v any, i int) any {
-			switch v := v.(*BatchOperationCancellation); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_batch_v1_message_proto_msgTypes[4].Exporter = func(v any, i int) any {
-			switch v := v.(*BatchOperationDeletion); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_batch_v1_message_proto_msgTypes[5].Exporter = func(v any, i int) any {
-			switch v := v.(*BatchOperationReset); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

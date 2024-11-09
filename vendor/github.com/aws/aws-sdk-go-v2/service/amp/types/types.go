@@ -7,7 +7,8 @@ import (
 	"time"
 )
 
-// The details of an alert manager definition.
+// The details of an alert manager definition. It is the configuration for the
+// alert manager, including information about receivers for routing alerts.
 type AlertManagerDefinitionDescription struct {
 
 	// The date and time that the alert manager definition was created.
@@ -72,7 +73,7 @@ type Destination interface {
 	isDestination()
 }
 
-// The Amazon Managed Service for Prometheusworkspace to send metrics to.
+// The Amazon Managed Service for Prometheus workspace to send metrics to.
 type DestinationMemberAmpConfiguration struct {
 	Value AmpConfiguration
 
@@ -101,7 +102,7 @@ type EksConfiguration struct {
 	noSmithyDocumentSerde
 }
 
-// Contains information about the logging configuration.
+// Contains information about the logging configuration for the workspace.
 type LoggingConfigurationMetadata struct {
 
 	// The date and time that the logging configuration was created.
@@ -150,7 +151,9 @@ type LoggingConfigurationStatus struct {
 // The details about one rule groups namespace.
 type RuleGroupsNamespaceDescription struct {
 
-	// The ARN of the rule groups namespace.
+	// The ARN of the rule groups namespace. For example,
+	// arn:aws:aps:<region>:123456789012:rulegroupsnamespace/ws-example1-1234-abcd-5678-ef90abcd1234/rulesfile1
+	// .
 	//
 	// This member is required.
 	Arn *string
@@ -242,11 +245,13 @@ type RuleGroupsNamespaceSummary struct {
 }
 
 // A scrape configuration for a scraper, base 64 encoded. For more information,
-// see Scraper configurationin the Amazon Managed Service for Prometheus User Guide.
+// see [Scraper configuration]in the Amazon Managed Service for Prometheus User Guide.
 //
 // The following types satisfy this interface:
 //
 //	ScrapeConfigurationMemberConfigurationBlob
+//
+// [Scraper configuration]: https://docs.aws.amazon.com/prometheus/latest/userguide/AMP-collector-how-to.html#AMP-collector-configuration
 type ScrapeConfiguration interface {
 	isScrapeConfiguration()
 }
@@ -264,7 +269,9 @@ func (*ScrapeConfigurationMemberConfigurationBlob) isScrapeConfiguration() {}
 // your account.
 type ScraperDescription struct {
 
-	// The Amazon Resource Name (ARN) of the scraper.
+	// The Amazon Resource Name (ARN) of the scraper. For example,
+	// arn:aws:aps:<region>:123456798012:scraper/s-example1-1234-abcd-5678-ef9012abcd34
+	// .
 	//
 	// This member is required.
 	Arn *string
@@ -288,15 +295,18 @@ type ScraperDescription struct {
 	// The Amazon Resource Name (ARN) of the IAM role that provides permissions for
 	// the scraper to discover and collect metrics on your behalf.
 	//
+	// For example,
+	// arn:aws:iam::123456789012:role/service-role/AmazonGrafanaServiceRole-12example .
+	//
 	// This member is required.
 	RoleArn *string
 
-	// The configuration file in use by the scraper.
+	// The configuration in use by the scraper.
 	//
 	// This member is required.
 	ScrapeConfiguration ScrapeConfiguration
 
-	// The ID of the scraper.
+	// The ID of the scraper. For example, s-example1-1234-abcd-5678-ef9012abcd34 .
 	//
 	// This member is required.
 	ScraperId *string
@@ -430,7 +440,9 @@ type ValidationExceptionField struct {
 // your account.
 type WorkspaceDescription struct {
 
-	// The ARN of the workspace.
+	// The ARN of the workspace. For example,
+	// arn:aws:aps:<region>:123456789012:workspace/ws-example1-1234-abcd-5678-ef90abcd1234
+	// .
 	//
 	// This member is required.
 	Arn *string
@@ -445,20 +457,23 @@ type WorkspaceDescription struct {
 	// This member is required.
 	Status *WorkspaceStatus
 
-	// The unique ID for the workspace.
+	// The unique ID for the workspace. For example,
+	// ws-example1-1234-abcd-5678-ef90abcd1234 .
 	//
 	// This member is required.
 	WorkspaceId *string
 
-	// The alias that is assigned to this workspace to help identify it. It may not be
-	// unique.
+	// The alias that is assigned to this workspace to help identify it. It does not
+	// need to be unique.
 	Alias *string
 
 	// (optional) If the workspace was created with a customer managed KMS key, the
 	// ARN for the key used.
 	KmsKeyArn *string
 
-	// The Prometheus endpoint available for this workspace.
+	// The Prometheus endpoint available for this workspace. For example,
+	// https://aps-workspaces.<region>.amazonaws.com/workspaces/ws-example1-1234-abcd-5678-ef90abcd1234/api/v1/
+	// .
 	PrometheusEndpoint *string
 
 	// The list of tag keys and values that are associated with the workspace.
@@ -502,8 +517,8 @@ type WorkspaceSummary struct {
 	// This member is required.
 	WorkspaceId *string
 
-	// The alias that is assigned to this workspace to help identify it. It may not be
-	// unique.
+	// The alias that is assigned to this workspace to help identify it. It does not
+	// need to be unique.
 	Alias *string
 
 	// (optional) If the workspace was created with a customer managed KMS key, the

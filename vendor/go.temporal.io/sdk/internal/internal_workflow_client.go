@@ -794,7 +794,7 @@ type UpdateWorkflowOptions struct {
 	Args []interface{}
 
 	// WaitForStage is a required field which specifies which stage to wait until returning.
-	// See https://docs.temporal.io/workflows#update for more details.
+	// See https://docs.temporal.io/develop/go/message-passing#send-update-from-client for more details.
 	// NOTE: Specifying WorkflowUpdateStageAdmitted is not supported.
 	WaitForStage WorkflowUpdateStage
 
@@ -1715,75 +1715,99 @@ func (w *workflowClientInterceptor) executeWorkflowWithOperation(
 			withStartOp,
 		},
 	}
-	multiResp, err := w.client.workflowService.ExecuteMultiOperation(ctx, &multiRequest)
 
-	var multiErr *serviceerror.MultiOperationExecution
-	if errors.As(err, &multiErr) {
-		if len(multiErr.OperationErrors()) != len(multiRequest.Operations) {
-			return nil, fmt.Errorf("%w: %v instead of %v operation errors",
-				errInvalidServerResponse, len(multiErr.OperationErrors()), len(multiRequest.Operations))
+	var startResp *workflowservice.StartWorkflowExecutionResponse
+	var updateResp *workflowservice.UpdateWorkflowExecutionResponse
+	for {
+		multiResp, err := func() (*workflowservice.ExecuteMultiOperationResponse, error) {
+			grpcCtx, cancel := newGRPCContext(ctx, grpcTimeout(pollUpdateTimeout), grpcLongPoll(true), defaultGrpcRetryParameters(ctx))
+			defer cancel()
+
+			multiResp, err := w.client.workflowService.ExecuteMultiOperation(grpcCtx, &multiRequest)
+			if err != nil {
+				if ctx.Err() != nil {
+					return nil, NewWorkflowUpdateServiceTimeoutOrCanceledError(err)
+				}
+				if status := serviceerror.ToStatus(err); status.Code() == codes.Canceled || status.Code() == codes.DeadlineExceeded {
+					return nil, NewWorkflowUpdateServiceTimeoutOrCanceledError(err)
+				}
+				return nil, err
+			}
+
+			return multiResp, err
+		}()
+
+		var multiErr *serviceerror.MultiOperationExecution
+		if errors.As(err, &multiErr) {
+			if len(multiErr.OperationErrors()) != len(multiRequest.Operations) {
+				return nil, fmt.Errorf("%w: %v instead of %v operation errors",
+					errInvalidServerResponse, len(multiErr.OperationErrors()), len(multiRequest.Operations))
+			}
+
+			var abortedErr *serviceerror.MultiOperationAborted
+			startErr := errors.New("failed to start workflow")
+			for i, opReq := range multiRequest.Operations {
+				// if an operation error is of type MultiOperationAborted, it means it was only aborted because
+				// of another operation's error and is therefore not interesting or helpful
+				opErr := multiErr.OperationErrors()[i]
+
+				switch t := opReq.Operation.(type) {
+				case *workflowservice.ExecuteMultiOperationRequest_Operation_StartWorkflow:
+					if !errors.As(opErr, &abortedErr) {
+						startErr = opErr
+					}
+				case *workflowservice.ExecuteMultiOperationRequest_Operation_UpdateWorkflow:
+					if !errors.As(opErr, &abortedErr) {
+						startErr = fmt.Errorf("%w: %w", errInvalidWorkflowOperation, opErr)
+					}
+				default:
+					// this would only happen if a case statement for a newly added operation is missing above
+					return nil, fmt.Errorf("%w: %T", errUnsupportedOperation, t)
+				}
+			}
+			return nil, startErr
+		} else if err != nil {
+			return nil, err
 		}
 
-		var startErr error
-		var abortedErr *serviceerror.MultiOperationAborted
+		if len(multiResp.Responses) != len(multiRequest.Operations) {
+			return nil, fmt.Errorf("%w: %v instead of %v operation results",
+				errInvalidServerResponse, len(multiResp.Responses), len(multiRequest.Operations))
+		}
+
 		for i, opReq := range multiRequest.Operations {
-			// if an operation error is of type MultiOperationAborted, it means it was only aborted because
-			// of another operation's error and is therefore not interesting or helpful
-			opErr := multiErr.OperationErrors()[i]
+			resp := multiResp.Responses[i].Response
 
 			switch t := opReq.Operation.(type) {
 			case *workflowservice.ExecuteMultiOperationRequest_Operation_StartWorkflow:
-				if !errors.As(opErr, &abortedErr) {
-					startErr = opErr
+				if opResp, ok := resp.(*workflowservice.ExecuteMultiOperationResponse_Response_StartWorkflow); ok {
+					startResp = opResp.StartWorkflow
+				} else {
+					return nil, fmt.Errorf("%w: StartWorkflow response has the wrong type %T", errInvalidServerResponse, resp)
 				}
 			case *workflowservice.ExecuteMultiOperationRequest_Operation_UpdateWorkflow:
-				if !errors.As(opErr, &abortedErr) {
-					startErr = fmt.Errorf("%w: %w", errInvalidWorkflowOperation, opErr)
+				if opResp, ok := resp.(*workflowservice.ExecuteMultiOperationResponse_Response_UpdateWorkflow); ok {
+					updateResp = opResp.UpdateWorkflow
+				} else {
+					return nil, fmt.Errorf("%w: UpdateWorkflow response has the wrong type %T", errInvalidServerResponse, resp)
 				}
 			default:
 				// this would only happen if a case statement for a newly added operation is missing above
 				return nil, fmt.Errorf("%w: %T", errUnsupportedOperation, t)
 			}
 		}
-		return nil, startErr
-	} else if err != nil {
-		return nil, err
-	}
 
-	if len(multiResp.Responses) != len(multiRequest.Operations) {
-		return nil, fmt.Errorf("%w: %v instead of %v operation results",
-			errInvalidServerResponse, len(multiResp.Responses), len(multiRequest.Operations))
-	}
-
-	var startResp *workflowservice.StartWorkflowExecutionResponse
-	for i, opReq := range multiRequest.Operations {
-		resp := multiResp.Responses[i].Response
-
-		switch t := opReq.Operation.(type) {
-		case *workflowservice.ExecuteMultiOperationRequest_Operation_StartWorkflow:
-			if opResp, ok := resp.(*workflowservice.ExecuteMultiOperationResponse_Response_StartWorkflow); ok {
-				startResp = opResp.StartWorkflow
-			} else {
-				return nil, fmt.Errorf("%w: StartWorkflow response has the wrong type %T", errInvalidServerResponse, resp)
-			}
-		case *workflowservice.ExecuteMultiOperationRequest_Operation_UpdateWorkflow:
-			if opResp, ok := resp.(*workflowservice.ExecuteMultiOperationResponse_Response_UpdateWorkflow); ok {
-				handle, err := w.updateHandleFromResponse(
-					ctx,
-					enumspb.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_UNSPECIFIED,
-					opResp.UpdateWorkflow)
-				operation.(*UpdateWithStartWorkflowOperation).set(handle, err)
-				if err != nil {
-					return nil, fmt.Errorf("%w: %w", errInvalidWorkflowOperation, err)
-				}
-			} else {
-				return nil, fmt.Errorf("%w: UpdateWorkflow response has the wrong type %T", errInvalidServerResponse, resp)
-			}
-		default:
-			// this would only happen if a case statement for a newly added operation is missing above
-			return nil, fmt.Errorf("%w: %T", errUnsupportedOperation, t)
+		if w.updateIsDurable(updateResp) {
+			break
 		}
 	}
+
+	handle, err := w.updateHandleFromResponse(ctx, enumspb.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_UNSPECIFIED, updateResp)
+	operation.(*UpdateWithStartWorkflowOperation).set(handle, err)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", errInvalidWorkflowOperation, err)
+	}
+
 	return startResp, nil
 }
 
@@ -2028,11 +2052,7 @@ func (w *workflowClientInterceptor) UpdateWorkflow(
 			}
 			return nil, err
 		}
-		// Once the update is past admitted we know it is durable
-		// Note: old server version may return UNSPECIFIED if the update request
-		// did not reach the desired lifecycle stage.
-		if resp.GetStage() != enumspb.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ADMITTED &&
-			resp.GetStage() != enumspb.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_UNSPECIFIED {
+		if w.updateIsDurable(resp) {
 			break
 		}
 	}
@@ -2040,6 +2060,14 @@ func (w *workflowClientInterceptor) UpdateWorkflow(
 	// Here we know the update is at least accepted
 	desiredLifecycleStage := updateLifeCycleStageToProto(in.WaitForStage)
 	return w.updateHandleFromResponse(ctx, desiredLifecycleStage, resp)
+}
+
+func (w *workflowClientInterceptor) updateIsDurable(resp *workflowservice.UpdateWorkflowExecutionResponse) bool {
+	// Once the update is past admitted we know it is durable
+	// Note: old server version may return UNSPECIFIED if the update request
+	// did not reach the desired lifecycle stage.
+	return resp.GetStage() != enumspb.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ADMITTED &&
+		resp.GetStage() != enumspb.UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_UNSPECIFIED
 }
 
 func createUpdateWorkflowInput(

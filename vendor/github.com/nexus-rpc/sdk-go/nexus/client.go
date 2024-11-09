@@ -275,7 +275,7 @@ func (c *Client) StartOperation(
 			Failure: failure,
 		}
 	default:
-		return nil, newUnexpectedResponseError(fmt.Sprintf("unexpected response status: %q", response.Status), response, body)
+		return nil, bestEffortHandlerErrorFromResponse(response, body)
 	}
 }
 
@@ -398,6 +398,48 @@ func failureFromResponse(response *http.Response, body []byte) (Failure, error) 
 	var failure Failure
 	err := json.Unmarshal(body, &failure)
 	return failure, err
+}
+
+func failureFromResponseOrDefault(response *http.Response, body []byte, defaultMessage string) Failure {
+	failure, err := failureFromResponse(response, body)
+	if err != nil {
+		failure.Message = defaultMessage
+	}
+	return failure
+}
+
+func bestEffortHandlerErrorFromResponse(response *http.Response, body []byte) error {
+	switch response.StatusCode {
+	case http.StatusBadRequest:
+		failure := failureFromResponseOrDefault(response, body, "bad request")
+		return &HandlerError{Type: HandlerErrorTypeBadRequest, Failure: &failure}
+	case http.StatusUnauthorized:
+		failure := failureFromResponseOrDefault(response, body, "unauthenticated")
+		return &HandlerError{Type: HandlerErrorTypeUnauthenticated, Failure: &failure}
+	case http.StatusForbidden:
+		failure := failureFromResponseOrDefault(response, body, "unauthorized")
+		return &HandlerError{Type: HandlerErrorTypeUnauthorized, Failure: &failure}
+	case http.StatusNotFound:
+		failure := failureFromResponseOrDefault(response, body, "not found")
+		return &HandlerError{Type: HandlerErrorTypeNotFound, Failure: &failure}
+	case http.StatusTooManyRequests:
+		failure := failureFromResponseOrDefault(response, body, "resource exhausted")
+		return &HandlerError{Type: HandlerErrorTypeResourceExhausted, Failure: &failure}
+	case http.StatusInternalServerError:
+		failure := failureFromResponseOrDefault(response, body, "internal error")
+		return &HandlerError{Type: HandlerErrorTypeInternal, Failure: &failure}
+	case http.StatusNotImplemented:
+		failure := failureFromResponseOrDefault(response, body, "not implemented")
+		return &HandlerError{Type: HandlerErrorTypeNotImplemented, Failure: &failure}
+	case http.StatusServiceUnavailable:
+		failure := failureFromResponseOrDefault(response, body, "unavailable")
+		return &HandlerError{Type: HandlerErrorTypeUnavailable, Failure: &failure}
+	case StatusUpstreamTimeout:
+		failure := failureFromResponseOrDefault(response, body, "upstream timeout")
+		return &HandlerError{Type: HandlerErrorTypeUpstreamTimeout, Failure: &failure}
+	default:
+		return newUnexpectedResponseError(fmt.Sprintf("unexpected response status: %q", response.Status), response, body)
+	}
 }
 
 func getUnsuccessfulStateFromHeader(response *http.Response, body []byte) (OperationState, error) {

@@ -580,6 +580,11 @@ func (bw *baseWorker) Stop() {
 	close(bw.stopCh)
 	bw.limiterContextCancel()
 
+	err := bw.options.taskWorker.Cleanup()
+	if err != nil {
+		bw.logger.Error("Couldn't cleanup task worker", tagError, err)
+	}
+
 	if success := awaitWaitGroup(&bw.stopWG, bw.options.stopTimeout); !success {
 		traceLog(func() {
 			bw.logger.Info("Worker graceful stop timed out.", "Stop timeout", bw.options.stopTimeout)

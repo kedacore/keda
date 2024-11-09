@@ -67,11 +67,9 @@ type NamespaceInfo struct {
 
 func (x *NamespaceInfo) Reset() {
 	*x = NamespaceInfo{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[0]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *NamespaceInfo) String() string {
@@ -82,7 +80,7 @@ func (*NamespaceInfo) ProtoMessage() {}
 
 func (x *NamespaceInfo) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[0]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -172,11 +170,9 @@ type NamespaceConfig struct {
 
 func (x *NamespaceConfig) Reset() {
 	*x = NamespaceConfig{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[1]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *NamespaceConfig) String() string {
@@ -187,7 +183,7 @@ func (*NamespaceConfig) ProtoMessage() {}
 
 func (x *NamespaceConfig) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[1]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -261,11 +257,9 @@ type BadBinaries struct {
 
 func (x *BadBinaries) Reset() {
 	*x = BadBinaries{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[2]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *BadBinaries) String() string {
@@ -276,7 +270,7 @@ func (*BadBinaries) ProtoMessage() {}
 
 func (x *BadBinaries) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[2]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -310,11 +304,9 @@ type BadBinaryInfo struct {
 
 func (x *BadBinaryInfo) Reset() {
 	*x = BadBinaryInfo{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[3]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *BadBinaryInfo) String() string {
@@ -325,7 +317,7 @@ func (*BadBinaryInfo) ProtoMessage() {}
 
 func (x *BadBinaryInfo) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[3]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -384,11 +376,9 @@ type UpdateNamespaceInfo struct {
 
 func (x *UpdateNamespaceInfo) Reset() {
 	*x = UpdateNamespaceInfo{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[4]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *UpdateNamespaceInfo) String() string {
@@ -399,7 +389,7 @@ func (*UpdateNamespaceInfo) ProtoMessage() {}
 
 func (x *UpdateNamespaceInfo) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[4]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -455,11 +445,9 @@ type NamespaceFilter struct {
 
 func (x *NamespaceFilter) Reset() {
 	*x = NamespaceFilter{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[5]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *NamespaceFilter) String() string {
@@ -470,7 +458,7 @@ func (*NamespaceFilter) ProtoMessage() {}
 
 func (x *NamespaceFilter) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[5]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -508,11 +496,9 @@ type NamespaceInfo_Capabilities struct {
 
 func (x *NamespaceInfo_Capabilities) Reset() {
 	*x = NamespaceInfo_Capabilities{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[7]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *NamespaceInfo_Capabilities) String() string {
@@ -523,7 +509,7 @@ func (*NamespaceInfo_Capabilities) ProtoMessage() {}
 
 func (x *NamespaceInfo_Capabilities) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[7]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -764,92 +750,6 @@ func init() { file_temporal_api_namespace_v1_message_proto_init() }
 func file_temporal_api_namespace_v1_message_proto_init() {
 	if File_temporal_api_namespace_v1_message_proto != nil {
 		return
-	}
-	if !protoimpl.UnsafeEnabled {
-		file_temporal_api_namespace_v1_message_proto_msgTypes[0].Exporter = func(v any, i int) any {
-			switch v := v.(*NamespaceInfo); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_namespace_v1_message_proto_msgTypes[1].Exporter = func(v any, i int) any {
-			switch v := v.(*NamespaceConfig); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_namespace_v1_message_proto_msgTypes[2].Exporter = func(v any, i int) any {
-			switch v := v.(*BadBinaries); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_namespace_v1_message_proto_msgTypes[3].Exporter = func(v any, i int) any {
-			switch v := v.(*BadBinaryInfo); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_namespace_v1_message_proto_msgTypes[4].Exporter = func(v any, i int) any {
-			switch v := v.(*UpdateNamespaceInfo); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_namespace_v1_message_proto_msgTypes[5].Exporter = func(v any, i int) any {
-			switch v := v.(*NamespaceFilter); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_namespace_v1_message_proto_msgTypes[7].Exporter = func(v any, i int) any {
-			switch v := v.(*NamespaceInfo_Capabilities); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

@@ -11,12 +11,14 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
 
 // Package version.
-const version = "v0.0.9"
+const version = "v0.0.11"
 
 const (
 	// Nexus specific headers.
@@ -27,6 +29,9 @@ const (
 
 	// HeaderRequestTimeout is the total time to complete a Nexus HTTP request.
 	HeaderRequestTimeout = "Request-Timeout"
+	// HeaderOperationTimeout is the total time to complete a Nexus operation.
+	// Unlike HeaderRequestTimeout, this applies to the whole operation, not just a single HTTP request.
+	HeaderOperationTimeout = "Operation-Timeout"
 )
 
 const contentTypeJSON = "application/json"
@@ -41,8 +46,8 @@ const (
 const (
 	statusOperationRunning = http.StatusPreconditionFailed
 	// HTTP status code for failed operation responses.
-	statusOperationFailed   = http.StatusFailedDependency
-	StatusDownstreamTimeout = 520
+	statusOperationFailed = http.StatusFailedDependency
+	StatusUpstreamTimeout = 520
 )
 
 // A Failure represents failed handler invocations as well as `failed` or `canceled` operation results.
@@ -202,7 +207,7 @@ func addContextTimeoutToHTTPHeader(ctx context.Context, httpHeader http.Header) 
 	if !ok {
 		return httpHeader
 	}
-	httpHeader.Set(HeaderRequestTimeout, time.Until(deadline).String())
+	httpHeader.Set(HeaderRequestTimeout, formatDuration(time.Until(deadline)))
 	return httpHeader
 }
 
@@ -332,4 +337,32 @@ func validateLinkType(value string) error {
 		}
 	}
 	return nil
+}
+
+var durationRegexp = regexp.MustCompile(`^(\d+(?:\.\d+)?)(ms|s|m)$`)
+
+func parseDuration(value string) (time.Duration, error) {
+	m := durationRegexp.FindStringSubmatch(value)
+	if len(m) == 0 {
+		return 0, fmt.Errorf("invalid duration: %q", value)
+	}
+	v, err := strconv.ParseFloat(m[1], 64)
+	if err != nil {
+		return 0, err
+	}
+
+	switch m[2] {
+	case "ms":
+		return time.Millisecond * time.Duration(v), nil
+	case "s":
+		return time.Millisecond * time.Duration(v*1e3), nil
+	case "m":
+		return time.Millisecond * time.Duration(v*1e3*60), nil
+	}
+	panic("unreachable")
+}
+
+// formatDuration converts a duration into a string representation in millisecond resolution.
+func formatDuration(d time.Duration) string {
+	return strconv.FormatInt(d.Milliseconds(), 10) + "ms"
 }

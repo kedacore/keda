@@ -78,6 +78,7 @@ const (
 	WorkflowService_GetSearchAttributes_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/GetSearchAttributes"
 	WorkflowService_RespondQueryTaskCompleted_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/RespondQueryTaskCompleted"
 	WorkflowService_ResetStickyTaskQueue_FullMethodName               = "/temporal.api.workflowservice.v1.WorkflowService/ResetStickyTaskQueue"
+	WorkflowService_ShutdownWorker_FullMethodName                     = "/temporal.api.workflowservice.v1.WorkflowService/ShutdownWorker"
 	WorkflowService_QueryWorkflow_FullMethodName                      = "/temporal.api.workflowservice.v1.WorkflowService/QueryWorkflow"
 	WorkflowService_DescribeWorkflowExecution_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/DescribeWorkflowExecution"
 	WorkflowService_DescribeTaskQueue_FullMethodName                  = "/temporal.api.workflowservice.v1.WorkflowService/DescribeTaskQueue"
@@ -105,6 +106,7 @@ const (
 	WorkflowService_PollNexusTaskQueue_FullMethodName                 = "/temporal.api.workflowservice.v1.WorkflowService/PollNexusTaskQueue"
 	WorkflowService_RespondNexusTaskCompleted_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/RespondNexusTaskCompleted"
 	WorkflowService_RespondNexusTaskFailed_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/RespondNexusTaskFailed"
+	WorkflowService_UpdateActivityOptionsById_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/UpdateActivityOptionsById"
 )
 
 // WorkflowServiceClient is the client API for WorkflowService service.
@@ -369,10 +371,29 @@ type WorkflowServiceClient interface {
 	// 1. StickyTaskQueue
 	// 2. StickyScheduleToStartTimeout
 	//
+	// When possible, ShutdownWorker should be preferred over
+	// ResetStickyTaskQueue (particularly when a worker is shutting down or
+	// cycling).
+	//
 	// (-- api-linter: core::0127::http-annotation=disabled
 	//
 	//	aip.dev/not-precedent: We do not expose worker API to HTTP. --)
 	ResetStickyTaskQueue(ctx context.Context, in *ResetStickyTaskQueueRequest, opts ...grpc.CallOption) (*ResetStickyTaskQueueResponse, error)
+	// ShutdownWorker is used to indicate that the given sticky task
+	// queue is no longer being polled by its worker. Following the completion of
+	// ShutdownWorker, newly-added workflow tasks will instead be placed
+	// in the normal task queue, eligible for any worker to pick up.
+	//
+	// ShutdownWorker should be called by workers while shutting down,
+	// after they've shut down their pollers. If another sticky poll
+	// request is issued, the sticky task queue will be revived.
+	//
+	// As of Temporal Server v1.25.0, ShutdownWorker hasn't yet been implemented.
+	//
+	// (-- api-linter: core::0127::http-annotation=disabled
+	//
+	//	aip.dev/not-precedent: We do not expose worker API to HTTP. --)
+	ShutdownWorker(ctx context.Context, in *ShutdownWorkerRequest, opts ...grpc.CallOption) (*ShutdownWorkerResponse, error)
 	// QueryWorkflow requests a query be executed for a specified workflow execution.
 	QueryWorkflow(ctx context.Context, in *QueryWorkflowRequest, opts ...grpc.CallOption) (*QueryWorkflowResponse, error)
 	// DescribeWorkflowExecution returns information about the specified workflow execution.
@@ -470,9 +491,9 @@ type WorkflowServiceClient interface {
 	// Open source users can adjust this limit by setting the server's dynamic config value for
 	// `limit.reachabilityTaskQueueScan` with the caveat that this call can strain the visibility store.
 	GetWorkerTaskReachability(ctx context.Context, in *GetWorkerTaskReachabilityRequest, opts ...grpc.CallOption) (*GetWorkerTaskReachabilityResponse, error)
-	// Invokes the specified update function on user workflow code.
+	// Invokes the specified Update function on user Workflow code.
 	UpdateWorkflowExecution(ctx context.Context, in *UpdateWorkflowExecutionRequest, opts ...grpc.CallOption) (*UpdateWorkflowExecutionResponse, error)
-	// Polls a workflow execution for the outcome of a workflow execution update
+	// Polls a Workflow Execution for the outcome of a Workflow Update
 	// previously issued through the UpdateWorkflowExecution RPC. The effective
 	// timeout on this call will be shorter of the the caller-supplied gRPC
 	// timeout and the server's configured long-poll timeout.
@@ -504,6 +525,11 @@ type WorkflowServiceClient interface {
 	//
 	//	aip.dev/not-precedent: We do not expose worker API to HTTP. --)
 	RespondNexusTaskFailed(ctx context.Context, in *RespondNexusTaskFailedRequest, opts ...grpc.CallOption) (*RespondNexusTaskFailedResponse, error)
+	// UpdateActivityOptionsById is called by the client to update the options of an activity
+	// (-- api-linter: core::0136::prepositions=disabled
+	//
+	//	aip.dev/not-precedent: "By" is used to indicate request type. --)
+	UpdateActivityOptionsById(ctx context.Context, in *UpdateActivityOptionsByIdRequest, opts ...grpc.CallOption) (*UpdateActivityOptionsByIdResponse, error)
 }
 
 type workflowServiceClient struct {
@@ -874,6 +900,16 @@ func (c *workflowServiceClient) ResetStickyTaskQueue(ctx context.Context, in *Re
 	return out, nil
 }
 
+func (c *workflowServiceClient) ShutdownWorker(ctx context.Context, in *ShutdownWorkerRequest, opts ...grpc.CallOption) (*ShutdownWorkerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ShutdownWorkerResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_ShutdownWorker_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *workflowServiceClient) QueryWorkflow(ctx context.Context, in *QueryWorkflowRequest, opts ...grpc.CallOption) (*QueryWorkflowResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(QueryWorkflowResponse)
@@ -1144,6 +1180,16 @@ func (c *workflowServiceClient) RespondNexusTaskFailed(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *workflowServiceClient) UpdateActivityOptionsById(ctx context.Context, in *UpdateActivityOptionsByIdRequest, opts ...grpc.CallOption) (*UpdateActivityOptionsByIdResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateActivityOptionsByIdResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_UpdateActivityOptionsById_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkflowServiceServer is the server API for WorkflowService service.
 // All implementations must embed UnimplementedWorkflowServiceServer
 // for forward compatibility.
@@ -1406,10 +1452,29 @@ type WorkflowServiceServer interface {
 	// 1. StickyTaskQueue
 	// 2. StickyScheduleToStartTimeout
 	//
+	// When possible, ShutdownWorker should be preferred over
+	// ResetStickyTaskQueue (particularly when a worker is shutting down or
+	// cycling).
+	//
 	// (-- api-linter: core::0127::http-annotation=disabled
 	//
 	//	aip.dev/not-precedent: We do not expose worker API to HTTP. --)
 	ResetStickyTaskQueue(context.Context, *ResetStickyTaskQueueRequest) (*ResetStickyTaskQueueResponse, error)
+	// ShutdownWorker is used to indicate that the given sticky task
+	// queue is no longer being polled by its worker. Following the completion of
+	// ShutdownWorker, newly-added workflow tasks will instead be placed
+	// in the normal task queue, eligible for any worker to pick up.
+	//
+	// ShutdownWorker should be called by workers while shutting down,
+	// after they've shut down their pollers. If another sticky poll
+	// request is issued, the sticky task queue will be revived.
+	//
+	// As of Temporal Server v1.25.0, ShutdownWorker hasn't yet been implemented.
+	//
+	// (-- api-linter: core::0127::http-annotation=disabled
+	//
+	//	aip.dev/not-precedent: We do not expose worker API to HTTP. --)
+	ShutdownWorker(context.Context, *ShutdownWorkerRequest) (*ShutdownWorkerResponse, error)
 	// QueryWorkflow requests a query be executed for a specified workflow execution.
 	QueryWorkflow(context.Context, *QueryWorkflowRequest) (*QueryWorkflowResponse, error)
 	// DescribeWorkflowExecution returns information about the specified workflow execution.
@@ -1507,9 +1572,9 @@ type WorkflowServiceServer interface {
 	// Open source users can adjust this limit by setting the server's dynamic config value for
 	// `limit.reachabilityTaskQueueScan` with the caveat that this call can strain the visibility store.
 	GetWorkerTaskReachability(context.Context, *GetWorkerTaskReachabilityRequest) (*GetWorkerTaskReachabilityResponse, error)
-	// Invokes the specified update function on user workflow code.
+	// Invokes the specified Update function on user Workflow code.
 	UpdateWorkflowExecution(context.Context, *UpdateWorkflowExecutionRequest) (*UpdateWorkflowExecutionResponse, error)
-	// Polls a workflow execution for the outcome of a workflow execution update
+	// Polls a Workflow Execution for the outcome of a Workflow Update
 	// previously issued through the UpdateWorkflowExecution RPC. The effective
 	// timeout on this call will be shorter of the the caller-supplied gRPC
 	// timeout and the server's configured long-poll timeout.
@@ -1541,6 +1606,11 @@ type WorkflowServiceServer interface {
 	//
 	//	aip.dev/not-precedent: We do not expose worker API to HTTP. --)
 	RespondNexusTaskFailed(context.Context, *RespondNexusTaskFailedRequest) (*RespondNexusTaskFailedResponse, error)
+	// UpdateActivityOptionsById is called by the client to update the options of an activity
+	// (-- api-linter: core::0136::prepositions=disabled
+	//
+	//	aip.dev/not-precedent: "By" is used to indicate request type. --)
+	UpdateActivityOptionsById(context.Context, *UpdateActivityOptionsByIdRequest) (*UpdateActivityOptionsByIdResponse, error)
 	mustEmbedUnimplementedWorkflowServiceServer()
 }
 
@@ -1659,6 +1729,9 @@ func (UnimplementedWorkflowServiceServer) RespondQueryTaskCompleted(context.Cont
 func (UnimplementedWorkflowServiceServer) ResetStickyTaskQueue(context.Context, *ResetStickyTaskQueueRequest) (*ResetStickyTaskQueueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ResetStickyTaskQueue not implemented")
 }
+func (UnimplementedWorkflowServiceServer) ShutdownWorker(context.Context, *ShutdownWorkerRequest) (*ShutdownWorkerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShutdownWorker not implemented")
+}
 func (UnimplementedWorkflowServiceServer) QueryWorkflow(context.Context, *QueryWorkflowRequest) (*QueryWorkflowResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryWorkflow not implemented")
 }
@@ -1739,6 +1812,9 @@ func (UnimplementedWorkflowServiceServer) RespondNexusTaskCompleted(context.Cont
 }
 func (UnimplementedWorkflowServiceServer) RespondNexusTaskFailed(context.Context, *RespondNexusTaskFailedRequest) (*RespondNexusTaskFailedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RespondNexusTaskFailed not implemented")
+}
+func (UnimplementedWorkflowServiceServer) UpdateActivityOptionsById(context.Context, *UpdateActivityOptionsByIdRequest) (*UpdateActivityOptionsByIdResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateActivityOptionsById not implemented")
 }
 func (UnimplementedWorkflowServiceServer) mustEmbedUnimplementedWorkflowServiceServer() {}
 func (UnimplementedWorkflowServiceServer) testEmbeddedByValue()                         {}
@@ -2409,6 +2485,24 @@ func _WorkflowService_ResetStickyTaskQueue_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkflowService_ShutdownWorker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShutdownWorkerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).ShutdownWorker(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_ShutdownWorker_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).ShutdownWorker(ctx, req.(*ShutdownWorkerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WorkflowService_QueryWorkflow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryWorkflowRequest)
 	if err := dec(in); err != nil {
@@ -2895,6 +2989,24 @@ func _WorkflowService_RespondNexusTaskFailed_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkflowService_UpdateActivityOptionsById_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateActivityOptionsByIdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).UpdateActivityOptionsById(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_UpdateActivityOptionsById_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).UpdateActivityOptionsById(ctx, req.(*UpdateActivityOptionsByIdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkflowService_ServiceDesc is the grpc.ServiceDesc for WorkflowService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -3047,6 +3159,10 @@ var WorkflowService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WorkflowService_ResetStickyTaskQueue_Handler,
 		},
 		{
+			MethodName: "ShutdownWorker",
+			Handler:    _WorkflowService_ShutdownWorker_Handler,
+		},
+		{
 			MethodName: "QueryWorkflow",
 			Handler:    _WorkflowService_QueryWorkflow_Handler,
 		},
@@ -3153,6 +3269,10 @@ var WorkflowService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RespondNexusTaskFailed",
 			Handler:    _WorkflowService_RespondNexusTaskFailed_Handler,
+		},
+		{
+			MethodName: "UpdateActivityOptionsById",
+			Handler:    _WorkflowService_UpdateActivityOptionsById_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

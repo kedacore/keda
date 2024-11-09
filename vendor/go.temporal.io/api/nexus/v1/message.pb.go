@@ -57,11 +57,9 @@ type Failure struct {
 
 func (x *Failure) Reset() {
 	*x = Failure{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[0]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *Failure) String() string {
@@ -72,7 +70,7 @@ func (*Failure) ProtoMessage() {}
 
 func (x *Failure) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[0]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -120,11 +118,9 @@ type HandlerError struct {
 
 func (x *HandlerError) Reset() {
 	*x = HandlerError{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[1]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *HandlerError) String() string {
@@ -135,7 +131,7 @@ func (*HandlerError) ProtoMessage() {}
 
 func (x *HandlerError) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[1]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -176,11 +172,9 @@ type UnsuccessfulOperationError struct {
 
 func (x *UnsuccessfulOperationError) Reset() {
 	*x = UnsuccessfulOperationError{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[2]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *UnsuccessfulOperationError) String() string {
@@ -191,7 +185,7 @@ func (*UnsuccessfulOperationError) ProtoMessage() {}
 
 func (x *UnsuccessfulOperationError) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[2]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -232,11 +226,9 @@ type Link struct {
 
 func (x *Link) Reset() {
 	*x = Link{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[3]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *Link) String() string {
@@ -247,7 +239,7 @@ func (*Link) ProtoMessage() {}
 
 func (x *Link) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[3]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -300,11 +292,9 @@ type StartOperationRequest struct {
 
 func (x *StartOperationRequest) Reset() {
 	*x = StartOperationRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[4]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *StartOperationRequest) String() string {
@@ -315,7 +305,7 @@ func (*StartOperationRequest) ProtoMessage() {}
 
 func (x *StartOperationRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[4]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -395,11 +385,9 @@ type CancelOperationRequest struct {
 
 func (x *CancelOperationRequest) Reset() {
 	*x = CancelOperationRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[5]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *CancelOperationRequest) String() string {
@@ -410,7 +398,7 @@ func (*CancelOperationRequest) ProtoMessage() {}
 
 func (x *CancelOperationRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[5]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -469,11 +457,9 @@ type Request struct {
 
 func (x *Request) Reset() {
 	*x = Request{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[6]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *Request) String() string {
@@ -484,7 +470,7 @@ func (*Request) ProtoMessage() {}
 
 func (x *Request) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[6]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -566,11 +552,9 @@ type StartOperationResponse struct {
 
 func (x *StartOperationResponse) Reset() {
 	*x = StartOperationResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[7]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *StartOperationResponse) String() string {
@@ -581,7 +565,7 @@ func (*StartOperationResponse) ProtoMessage() {}
 
 func (x *StartOperationResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[7]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -656,11 +640,9 @@ type CancelOperationResponse struct {
 
 func (x *CancelOperationResponse) Reset() {
 	*x = CancelOperationResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[8]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *CancelOperationResponse) String() string {
@@ -671,7 +653,7 @@ func (*CancelOperationResponse) ProtoMessage() {}
 
 func (x *CancelOperationResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[8]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -703,11 +685,9 @@ type Response struct {
 
 func (x *Response) Reset() {
 	*x = Response{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[9]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *Response) String() string {
@@ -718,7 +698,7 @@ func (*Response) ProtoMessage() {}
 
 func (x *Response) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[9]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -801,11 +781,9 @@ type Endpoint struct {
 
 func (x *Endpoint) Reset() {
 	*x = Endpoint{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[10]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *Endpoint) String() string {
@@ -816,7 +794,7 @@ func (*Endpoint) ProtoMessage() {}
 
 func (x *Endpoint) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[10]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -892,11 +870,9 @@ type EndpointSpec struct {
 
 func (x *EndpointSpec) Reset() {
 	*x = EndpointSpec{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[11]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *EndpointSpec) String() string {
@@ -907,7 +883,7 @@ func (*EndpointSpec) ProtoMessage() {}
 
 func (x *EndpointSpec) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[11]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -958,11 +934,9 @@ type EndpointTarget struct {
 
 func (x *EndpointTarget) Reset() {
 	*x = EndpointTarget{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[12]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *EndpointTarget) String() string {
@@ -973,7 +947,7 @@ func (*EndpointTarget) ProtoMessage() {}
 
 func (x *EndpointTarget) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[12]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -1036,11 +1010,9 @@ type StartOperationResponse_Sync struct {
 
 func (x *StartOperationResponse_Sync) Reset() {
 	*x = StartOperationResponse_Sync{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[16]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *StartOperationResponse_Sync) String() string {
@@ -1051,7 +1023,7 @@ func (*StartOperationResponse_Sync) ProtoMessage() {}
 
 func (x *StartOperationResponse_Sync) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[16]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -1086,11 +1058,9 @@ type StartOperationResponse_Async struct {
 
 func (x *StartOperationResponse_Async) Reset() {
 	*x = StartOperationResponse_Async{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[17]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *StartOperationResponse_Async) String() string {
@@ -1101,7 +1071,7 @@ func (*StartOperationResponse_Async) ProtoMessage() {}
 
 func (x *StartOperationResponse_Async) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[17]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -1144,11 +1114,9 @@ type EndpointTarget_Worker struct {
 
 func (x *EndpointTarget_Worker) Reset() {
 	*x = EndpointTarget_Worker{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[18]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *EndpointTarget_Worker) String() string {
@@ -1159,7 +1127,7 @@ func (*EndpointTarget_Worker) ProtoMessage() {}
 
 func (x *EndpointTarget_Worker) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[18]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -1202,11 +1170,9 @@ type EndpointTarget_External struct {
 
 func (x *EndpointTarget_External) Reset() {
 	*x = EndpointTarget_External{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[19]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
+	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *EndpointTarget_External) String() string {
@@ -1217,7 +1183,7 @@ func (*EndpointTarget_External) ProtoMessage() {}
 
 func (x *EndpointTarget_External) ProtoReflect() protoreflect.Message {
 	mi := &file_temporal_api_nexus_v1_message_proto_msgTypes[19]
-	if protoimpl.UnsafeEnabled && x != nil {
+	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
 			ms.StoreMessageInfo(mi)
@@ -1513,212 +1479,6 @@ func init() { file_temporal_api_nexus_v1_message_proto_init() }
 func file_temporal_api_nexus_v1_message_proto_init() {
 	if File_temporal_api_nexus_v1_message_proto != nil {
 		return
-	}
-	if !protoimpl.UnsafeEnabled {
-		file_temporal_api_nexus_v1_message_proto_msgTypes[0].Exporter = func(v any, i int) any {
-			switch v := v.(*Failure); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[1].Exporter = func(v any, i int) any {
-			switch v := v.(*HandlerError); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[2].Exporter = func(v any, i int) any {
-			switch v := v.(*UnsuccessfulOperationError); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[3].Exporter = func(v any, i int) any {
-			switch v := v.(*Link); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[4].Exporter = func(v any, i int) any {
-			switch v := v.(*StartOperationRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[5].Exporter = func(v any, i int) any {
-			switch v := v.(*CancelOperationRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[6].Exporter = func(v any, i int) any {
-			switch v := v.(*Request); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[7].Exporter = func(v any, i int) any {
-			switch v := v.(*StartOperationResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[8].Exporter = func(v any, i int) any {
-			switch v := v.(*CancelOperationResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[9].Exporter = func(v any, i int) any {
-			switch v := v.(*Response); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[10].Exporter = func(v any, i int) any {
-			switch v := v.(*Endpoint); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[11].Exporter = func(v any, i int) any {
-			switch v := v.(*EndpointSpec); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[12].Exporter = func(v any, i int) any {
-			switch v := v.(*EndpointTarget); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[16].Exporter = func(v any, i int) any {
-			switch v := v.(*StartOperationResponse_Sync); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[17].Exporter = func(v any, i int) any {
-			switch v := v.(*StartOperationResponse_Async); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[18].Exporter = func(v any, i int) any {
-			switch v := v.(*EndpointTarget_Worker); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_temporal_api_nexus_v1_message_proto_msgTypes[19].Exporter = func(v any, i int) any {
-			switch v := v.(*EndpointTarget_External); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
 	}
 	file_temporal_api_nexus_v1_message_proto_msgTypes[6].OneofWrappers = []any{
 		(*Request_StartOperation)(nil),

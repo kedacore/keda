@@ -55,4 +55,6 @@ const (
 	tagNexusService                 = "NexusService"
 	tagPanicError                   = "PanicError"
 	tagPanicStack                   = "PanicStack"
+	tagUpdateID                     = "UpdateID"
+	tagUpdateName                   = "UpdateName"
 )

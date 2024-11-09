@@ -687,6 +687,7 @@ type (
 		// │ │ │ │ │
 		// │ │ │ │ │
 		// * * * * *
+		// Cannot be set the same time as a StartDelay or WithStartOperation.
 		CronSchedule string
 
 		// Memo - Optional non-indexed info that will be shown in list workflow.
@@ -712,6 +713,7 @@ type (
 		TypedSearchAttributes SearchAttributes
 
 		// EnableEagerStart - request eager execution for this workflow, if a local worker is available.
+		// Cannot be set the same time as a WithStartOperation.
 		//
 		// WARNING: Eager start does not respect worker versioning. An eagerly started workflow may run on
 		// any available local worker even if that worker is not in the default build ID set.
@@ -721,7 +723,7 @@ type (
 
 		// StartDelay - Time to wait before dispatching the first workflow task.
 		// A signal from signal with start will not trigger a workflow task.
-		// Cannot be set the same time as a CronSchedule.
+		// Cannot be set the same time as a CronSchedule or WithStartOperation.
 		StartDelay time.Duration
 
 		// StaticSummary - Single-line fixed summary for this workflow execution that will appear in UI/CLI. This can be
@@ -746,7 +748,7 @@ type (
 		// workflow completion callback. Only settable by the SDK - e.g. [temporalnexus.workflowRunOperation].
 		callbacks []*commonpb.Callback
 		// links. Only settable by the SDK - e.g. [temporalnexus.workflowRunOperation].
-		links     []*commonpb.Link
+		links []*commonpb.Link
 	}
 
 	// WithStartWorkflowOperation is a type of operation that can be executed as part of a workflow start.
@@ -1082,6 +1084,9 @@ func (op *UpdateWithStartWorkflowOperation) Get(ctx context.Context) (WorkflowUp
 	case <-op.doneCh:
 		return op.handle, op.err
 	case <-ctx.Done():
+		if !op.executed.Load() {
+			return nil, fmt.Errorf("%w: %w", ctx.Err(), fmt.Errorf("operation was not executed"))
+		}
 		return nil, ctx.Err()
 	}
 }

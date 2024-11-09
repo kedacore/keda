@@ -32,6 +32,7 @@ var (
 		"Unspecified": 0,
 		"Signal":      1,
 		"Update":      2,
+		"Nexus":       3,
 	}
 )
 

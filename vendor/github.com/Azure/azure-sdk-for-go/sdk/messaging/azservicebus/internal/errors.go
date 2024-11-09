@@ -53,9 +53,7 @@ func TransformError(err error) error {
 		return nil
 	}
 
-	_, ok := err.(*exported.Error)
-
-	if ok {
+	if ourErr := (*exported.Error)(nil); errors.As(err, &ourErr) {
 		// it's already been wrapped.
 		return err
 	}
@@ -222,8 +220,19 @@ func GetRecoveryKind(err error) RecoveryKind {
 		return RecoveryKindFatal
 	}
 
-	// check the "special" AMQP errors that aren't condition-based.
-	if IsLinkError(err) {
+	// check the AMQP condition first since it's usually more specific than just knowing it came
+	// from a link, or a connection.
+	if amqpError := (*amqp.Error)(nil); errors.As(err, &amqpError) {
+		recoveryKind, ok := amqpConditionsToRecoveryKind[amqpError.Condition]
+
+		if ok {
+			return recoveryKind
+		}
+	}
+
+	// fall back to just checking where the error was delivered (ie, LinkError, ConnError, SessionError) - in most cases that should give
+	// us an idea of how localized the failure was.
+	if linkErr := (*amqp.LinkError)(nil); errors.As(err, &linkErr) {
 		return RecoveryKindLink
 	}
 
@@ -240,18 +249,6 @@ func GetRecoveryKind(err error) RecoveryKind {
 		// temporary, operation should just be retryable since drain will
 		// eventually complete.
 		return RecoveryKindNone
-	}
-
-	// then it's _probably_ an actual *amqp.Error, in which case we bucket it by
-	// the 'condition'.
-	var amqpError *amqp.Error
-
-	if errors.As(err, &amqpError) {
-		recoveryKind, ok := amqpConditionsToRecoveryKind[amqpError.Condition]
-
-		if ok {
-			return recoveryKind
-		}
 	}
 
 	var rpcErr RPCError
@@ -308,14 +305,6 @@ type (
 	// ErrNoMessages is returned when an operation returned no messages. It is not indicative that there will not be
 	// more messages in the future.
 	ErrNoMessages struct{}
-
-	// ErrNotFound is returned when an entity is not found (404)
-	ErrNotFound struct {
-		EntityPath string
-	}
-
-	// ErrConnectionClosed indicates that the connection has been closed.
-	ErrConnectionClosed string
 )
 
 func (e ErrMissingField) Error() string {
@@ -350,20 +339,6 @@ func (e ErrAMQP) Error() string {
 
 func (e ErrNoMessages) Error() string {
 	return "no messages available"
-}
-
-func (e ErrNotFound) Error() string {
-	return fmt.Sprintf("entity at %s not found", e.EntityPath)
-}
-
-// IsErrNotFound returns true if the error argument is an ErrNotFound type
-func IsErrNotFound(err error) bool {
-	_, ok := err.(ErrNotFound)
-	return ok
-}
-
-func (e ErrConnectionClosed) Error() string {
-	return fmt.Sprintf("the connection has been closed: %s", string(e))
 }
 
 func isLockLostError(err error) bool {

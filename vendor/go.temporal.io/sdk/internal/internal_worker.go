@@ -768,6 +768,22 @@ func (r *registry) getWorkflowDefinition(wt WorkflowType) (WorkflowDefinition, e
 	return newSyncWorkflowDefinition(executor), nil
 }
 
+func (r *registry) getNexusService(service string) *nexus.Service {
+	r.Lock()
+	defer r.Unlock()
+	return r.nexusServices[service]
+}
+
+func (r *registry) getRegisteredNexusServices() []*nexus.Service {
+	r.Lock()
+	defer r.Unlock()
+	result := make([]*nexus.Service, 0, len(r.nexusServices))
+	for _, s := range r.nexusServices {
+		result = append(result, s)
+	}
+	return result
+}
+
 // Validate function parameters.
 func validateFnFormat(fnType reflect.Type, isWorkflow bool) error {
 	if fnType.Kind() != reflect.Func {
@@ -1058,7 +1074,7 @@ func (aw *AggregatedWorker) start() error {
 			return err
 		}
 	}
-	nexusServices := aw.registry.nexusServices
+	nexusServices := aw.registry.getRegisteredNexusServices()
 	if len(nexusServices) > 0 {
 		reg := nexus.NewServiceRegistry()
 		for _, service := range nexusServices {
@@ -1447,7 +1463,6 @@ func (aw *WorkflowReplayer) replayWorkflowHistory(logger log.Logger, service wor
 		execution:     task.WorkflowExecution,
 		namespace:     ReplayNamespace,
 		service:       service,
-		maxEventID:    task.GetStartedEventId(),
 		taskQueue:     taskQueue,
 	}
 	cache := NewWorkerCache()

@@ -430,6 +430,26 @@ func (m *validateOpUpdateLoggingConfiguration) HandleInitialize(ctx context.Cont
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpUpdateScraper struct {
+}
+
+func (*validateOpUpdateScraper) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpUpdateScraper) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*UpdateScraperInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpUpdateScraperInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpUpdateWorkspaceAlias struct {
 }
 
@@ -532,6 +552,10 @@ func addOpUntagResourceValidationMiddleware(stack *middleware.Stack) error {
 
 func addOpUpdateLoggingConfigurationValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpUpdateLoggingConfiguration{}, middleware.After)
+}
+
+func addOpUpdateScraperValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpUpdateScraper{}, middleware.After)
 }
 
 func addOpUpdateWorkspaceAliasValidationMiddleware(stack *middleware.Stack) error {
@@ -966,6 +990,26 @@ func validateOpUpdateLoggingConfigurationInput(v *UpdateLoggingConfigurationInpu
 	}
 	if v.LogGroupArn == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("LogGroupArn"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpUpdateScraperInput(v *UpdateScraperInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "UpdateScraperInput"}
+	if v.ScraperId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("ScraperId"))
+	}
+	if v.Destination != nil {
+		if err := validateDestination(v.Destination); err != nil {
+			invalidParams.AddNested("Destination", err.(smithy.InvalidParamsError))
+		}
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams

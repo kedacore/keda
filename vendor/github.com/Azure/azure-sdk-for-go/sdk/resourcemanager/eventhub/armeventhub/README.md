@@ -57,7 +57,7 @@ clientFactory, err := armeventhub.NewClientFactory(<subscription ID>, cred, &opt
 A client groups a set of related APIs, providing access to its functionality.  Create one or more clients to access the APIs you require using client factory.
 
 ```go
-client := clientFactory.NewNamespacesClient()
+client := clientFactory.NewApplicationGroupClient()
 ```
 
 ## Fakes

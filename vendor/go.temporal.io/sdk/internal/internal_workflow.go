@@ -1960,3 +1960,7 @@ func (s *semaphoreImpl) Release(n int64) {
 		panic("Semaphore.Release() released more than held")
 	}
 }
+
+func incrementWorkflowTaskFailureCounter(metricsHandler metrics.Handler, failureReason string) {
+	metricsHandler.WithTags(metrics.WorkflowTaskFailedTags(failureReason)).Counter(metrics.WorkflowTaskExecutionFailureCounter).Inc(1)
+}

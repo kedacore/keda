@@ -1262,7 +1262,14 @@ func GetLogger(ctx Context) log.Logger {
 }
 
 func (wc *workflowEnvironmentInterceptor) GetLogger(ctx Context) log.Logger {
-	return wc.env.GetLogger()
+	logger := wc.env.GetLogger()
+	// Add update info to the logger if available
+	uc := ctx.Value(updateInfoContextKey)
+	if uc == nil {
+		return logger
+	}
+	updateInfo := uc.(*UpdateInfo)
+	return log.With(logger, tagUpdateID, updateInfo.ID, tagUpdateName, updateInfo.Name)
 }
 
 // GetMetricsHandler returns a metrics handler to be used in workflow's context
@@ -2401,6 +2408,12 @@ type nexusClient struct {
 //
 // NOTE: Experimental
 func NewNexusClient(endpoint, service string) NexusClient {
+	if endpoint == "" {
+		panic("endpoint must not be empty")
+	}
+	if service == "" {
+		panic("service must not be empty")
+	}
 	return nexusClient{endpoint, service}
 }
 

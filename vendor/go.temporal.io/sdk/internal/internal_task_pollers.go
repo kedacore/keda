@@ -41,6 +41,7 @@ import (
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 	historypb "go.temporal.io/api/history/v1"
+	"go.temporal.io/api/serviceerror"
 	taskqueuepb "go.temporal.io/api/taskqueue/v1"
 	"go.temporal.io/api/workflowservice/v1"
 
@@ -68,6 +69,9 @@ type (
 		PollTask() (taskForWorker, error)
 		// ProcessTask processes a task
 		ProcessTask(interface{}) error
+		// Called when the poller will no longer be polled. Presently only useful for
+		// workflow workers.
+		Cleanup() error
 	}
 
 	taskForWorker interface {
@@ -134,11 +138,13 @@ type (
 	}
 
 	historyIteratorImpl struct {
-		iteratorFunc   func(nextPageToken []byte) (*historypb.History, []byte, error)
-		execution      *commonpb.WorkflowExecution
-		nextPageToken  []byte
-		namespace      string
-		service        workflowservice.WorkflowServiceClient
+		iteratorFunc  func(nextPageToken []byte) (*historypb.History, []byte, error)
+		execution     *commonpb.WorkflowExecution
+		nextPageToken []byte
+		namespace     string
+		service       workflowservice.WorkflowServiceClient
+		// maxEventID is the maximum eventID that the history iterator is expected to return.
+		// 0 means that the iterator will return all history events.
 		maxEventID     int64
 		metricsHandler metrics.Handler
 		taskQueue      string
@@ -303,6 +309,36 @@ func newWorkflowTaskPoller(
 	}
 }
 
+// Best-effort attempt to indicate to Matching service that this workflow task
+// poller's sticky queue will no longer be polled. Should be called when the
+// poller is stopping. Failure to call ShutdownWorker is logged, but otherwise
+// ignored.
+func (wtp *workflowTaskPoller) Cleanup() error {
+	ctx := context.Background()
+	grpcCtx, cancel := newGRPCContext(ctx, grpcMetricsHandler(wtp.metricsHandler))
+	defer cancel()
+
+	_, err := wtp.service.ShutdownWorker(grpcCtx, &workflowservice.ShutdownWorkerRequest{
+		Namespace:       wtp.namespace,
+		StickyTaskQueue: getWorkerTaskQueue(wtp.stickyUUID),
+		Identity:        wtp.identity,
+		Reason:          "graceful shutdown",
+	})
+
+	// we ignore unimplemented
+	if _, isUnimplemented := err.(*serviceerror.Unimplemented); isUnimplemented {
+		return nil
+	}
+
+	if err != nil {
+		traceLog(func() {
+			wtp.logger.Debug("ShutdownWorker failed.", tagError, err)
+		})
+	}
+
+	return err
+}
+
 // PollTask polls a new task
 func (wtp *workflowTaskPoller) PollTask() (taskForWorker, error) {
 	// Get the task.
@@ -330,7 +366,7 @@ func (wtp *workflowTaskPoller) ProcessTask(task interface{}) error {
 	}
 }
 
-func (wtp *workflowTaskPoller) processWorkflowTask(task *workflowTask) error {
+func (wtp *workflowTaskPoller) processWorkflowTask(task *workflowTask) (retErr error) {
 	if task.task == nil {
 		// We didn't have task, poll might have timeout.
 		traceLog(func() {
@@ -351,6 +387,20 @@ func (wtp *workflowTaskPoller) processWorkflowTask(task *workflowTask) error {
 	}
 	var taskErr error
 	defer func() {
+		// If we panic during processing the workflow task, we need to unlock the workflow context with an error to discard it.
+		if p := recover(); p != nil {
+			topLine := fmt.Sprintf("workflow task for %s [panic]:", wtp.taskQueueName)
+			st := getStackTraceRaw(topLine, 7, 0)
+			wtp.logger.Error("Workflow task processing panic.",
+				tagWorkflowID, task.task.WorkflowExecution.GetWorkflowId(),
+				tagRunID, task.task.WorkflowExecution.GetRunId(),
+				tagWorkerType, task.task.GetWorkflowType().Name,
+				tagAttempt, task.task.Attempt,
+				tagPanicError, fmt.Sprintf("%v", p),
+				tagPanicStack, st)
+			taskErr = newPanicError(p, st)
+			retErr = taskErr
+		}
 		wfctx.Unlock(taskErr)
 	}()
 
@@ -424,7 +474,7 @@ func (wtp *workflowTaskPoller) RespondTaskCompletedWithMetrics(
 		if failWorkflowTask.Cause == enumspb.WORKFLOW_TASK_FAILED_CAUSE_NON_DETERMINISTIC_ERROR {
 			failureReason = "NonDeterminismError"
 		}
-		metricsHandler.WithTags(metrics.WorkflowTaskFailedTags(failureReason)).Counter(metrics.WorkflowTaskExecutionFailureCounter).Inc(1)
+		incrementWorkflowTaskFailureCounter(metricsHandler, failureReason)
 		completedRequest = failWorkflowTask
 	}
 
@@ -543,6 +593,10 @@ func newLocalActivityPoller(
 		logger:     params.Logger,
 		laTunnel:   laTunnel,
 	}
+}
+
+func (latp *localActivityTaskPoller) Cleanup() error {
+	return nil
 }
 
 func (latp *localActivityTaskPoller) PollTask() (taskForWorker, error) {
@@ -863,7 +917,7 @@ func newGetHistoryPageFunc(
 	service workflowservice.WorkflowServiceClient,
 	namespace string,
 	execution *commonpb.WorkflowExecution,
-	atWorkflowTaskCompletedEventID int64,
+	lastEventID int64,
 	metricsHandler metrics.Handler,
 	taskQueue string,
 ) func(nextPageToken []byte) (*historypb.History, []byte, error) {
@@ -895,16 +949,17 @@ func newGetHistoryPageFunc(
 		}
 
 		size := len(h.Events)
-		if size > 0 && atWorkflowTaskCompletedEventID > 0 &&
-			h.Events[size-1].GetEventId() > atWorkflowTaskCompletedEventID {
-			first := h.Events[0].GetEventId() // eventIds start from 1
-			h.Events = h.Events[:atWorkflowTaskCompletedEventID-first+1]
-			if h.Events[len(h.Events)-1].GetEventType() != enumspb.EVENT_TYPE_WORKFLOW_TASK_COMPLETED {
-				return nil, nil, fmt.Errorf("newGetHistoryPageFunc: atWorkflowTaskCompletedEventID(%v) "+
-					"points to event that is not WorkflowTaskCompleted", atWorkflowTaskCompletedEventID)
-			}
-			return h, nil, nil
+		// While the SDK is processing a workflow task, the workflow task could timeout and server would start
+		// a new workflow task or the server looses the workflow task if it is a speculative workflow task. In either
+		// case, the new workflow task could have events that are beyond the last event ID that the SDK expects to process.
+		// In such cases, the SDK should return error indicating that the workflow task is stale since the result will not be used.
+		if size > 0 && lastEventID > 0 && 
+			h.Events[size-1].GetEventId() > lastEventID {
+			return nil, nil, fmt.Errorf("history contains events past expected last event ID (%v) "+
+				"likely this means the current workflow task is no longer valid", lastEventID)
+
 		}
+
 		return h, resp.NextPageToken, nil
 	}
 }
@@ -971,6 +1026,10 @@ func (atp *activityTaskPoller) poll(ctx context.Context) (taskForWorker, error) 
 	metricsHandler.Timer(metrics.ActivityScheduleToStartLatency).Record(scheduleToStartLatency)
 
 	return &activityTask{task: response}, nil
+}
+
+func (atp *activityTaskPoller) Cleanup() error {
+	return nil
 }
 
 // PollTask polls a new task

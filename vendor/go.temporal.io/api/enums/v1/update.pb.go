@@ -45,27 +45,28 @@ const (
 )
 
 // UpdateWorkflowExecutionLifecycleStage is specified by clients invoking
-// workflow execution updates and used to indicate to the server how long the
-// client wishes to wait for a return value from the RPC. If any value other
+// Workflow Updates and used to indicate to the server how long the
+// client wishes to wait for a return value from the API. If any value other
 // than UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED is sent by the
-// client then the RPC will complete before the update is finished and will
-// return a handle to the running update so that it can later be polled for
+// client then the API will complete before the Update is finished and will
+// return a handle to the running Update so that it can later be polled for
 // completion.
+// If specified stage wasn't reached before server timeout, server returns
+// actual stage reached.
 type UpdateWorkflowExecutionLifecycleStage int32
 
 const (
-	// An unspecified vale for this enum.
+	// An unspecified value for this enum.
 	UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_UNSPECIFIED UpdateWorkflowExecutionLifecycleStage = 0
-	// The gRPC call will not return until the update request has been admitted
+	// The API call will not return until the Update request has been admitted
 	// by the server - it may be the case that due to a considerations like load
-	// or resource limits that an update is made to wait before the server will
+	// or resource limits that an Update is made to wait before the server will
 	// indicate that it has been received and will be processed. This value
 	// does not wait for any sort of acknowledgement from a worker.
 	UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ADMITTED UpdateWorkflowExecutionLifecycleStage = 1
-	// The gRPC call will not return until the update has passed validation on
-	// a worker.
+	// The API call will not return until the Update has passed validation on a worker.
 	UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_ACCEPTED UpdateWorkflowExecutionLifecycleStage = 2
-	// The gRPC call will not return until the update has executed to completion
+	// The API call will not return until the Update has executed to completion
 	// on a worker and has either been rejected or returned a value or an error.
 	UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED UpdateWorkflowExecutionLifecycleStage = 3
 )
@@ -126,14 +127,14 @@ func (UpdateWorkflowExecutionLifecycleStage) EnumDescriptor() ([]byte, []int) {
 }
 
 // Records why a WorkflowExecutionUpdateAdmittedEvent was written to history.
-// Note that not all admitted updates result in this event.
+// Note that not all admitted Updates result in this event.
 type UpdateAdmittedEventOrigin int32
 
 const (
 	UPDATE_ADMITTED_EVENT_ORIGIN_UNSPECIFIED UpdateAdmittedEventOrigin = 0
 	// The UpdateAdmitted event was created when reapplying events during reset
-	// or replication. I.e. an accepted update on one branch of workflow history
-	// was converted into an admitted update on a different branch.
+	// or replication. I.e. an accepted Update on one branch of Workflow history
+	// was converted into an admitted Update on a different branch.
 	UPDATE_ADMITTED_EVENT_ORIGIN_REAPPLY UpdateAdmittedEventOrigin = 1
 )
 

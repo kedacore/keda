@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.6.0 (2024-07-24)
+
+- Add RoundQuotaFunc option that allows configuration of rounding
+  behavior for floating point CPU quota.
+
 ## v1.5.3 (2023-07-19)
 
 - Fix mountinfo parsing when super options have fields with spaces.

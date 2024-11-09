@@ -39,15 +39,15 @@ type OperationCompletionSuccessful struct {
 	Body io.Reader
 }
 
-// OperationCompletionSuccesfulOptions are options for [NewOperationCompletionSuccessful].
-type OperationCompletionSuccesfulOptions struct {
+// OperationCompletionSuccessfulOptions are options for [NewOperationCompletionSuccessful].
+type OperationCompletionSuccessfulOptions struct {
 	// Optional serializer for the result. Defaults to the SDK's default Serializer, which handles JSONables, byte
 	// slices and nils.
 	Serializer Serializer
 }
 
 // NewOperationCompletionSuccessful constructs an [OperationCompletionSuccessful] from a given result.
-func NewOperationCompletionSuccessful(result any, options OperationCompletionSuccesfulOptions) (*OperationCompletionSuccessful, error) {
+func NewOperationCompletionSuccessful(result any, options OperationCompletionSuccessfulOptions) (*OperationCompletionSuccessful, error) {
 	if reader, ok := result.(*Reader); ok {
 		return &OperationCompletionSuccessful{
 			Header: addContentHeaderToHTTPHeader(reader.Header, make(http.Header)),
