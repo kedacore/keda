@@ -281,11 +281,7 @@ func testWorkerVersioning(t *testing.T, kc *kubernetes.Clientset, data templateD
 	t.Log("--- testing worker versioning ---")
 
 	data.BuildID = "1.1.1"
-	KubectlApplyWithTemplate(t, data, "jobUpdateBuildID", jobUpdateBuildIDTemplate)
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, 1, 60, 3), "job update-build-id count in namespace should be 1")
-	assert.True(t, WaitForJobSuccess(t, kc, "update-worker-version", testNamespace, 3, 30), "job update-build-id should be successful")
-	KubectlDeleteWithTemplate(t, data, "jobUpdateBuildID", jobUpdateBuildIDTemplate)
-
+	updateWorkerVersion(t, kc, data, 1)
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 
 	data.WorkFlowIterations = 0
@@ -296,9 +292,7 @@ func testWorkerVersioning(t *testing.T, kc *kubernetes.Clientset, data templateD
 		"replica count for build id %s should be %d after 3 minutes", data.BuildID, 1)
 
 	data.BuildID = "1.1.2"
-	KubectlApplyWithTemplate(t, data, "jobUpdateBuildID", jobUpdateBuildIDTemplate)
-	assert.True(t, WaitForJobCount(t, kc, testNamespace, 2, 60, 3), "job update-build-id count in namespace should be 2")
-	assert.True(t, WaitForJobSuccess(t, kc, "update-worker-version", testNamespace, 3, 30), "job update-build-id should be successful")
+	updateWorkerVersion(t, kc, data, 2)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 5),
 		"replica count for build id %s should be %d after 5 minutes", data.BuildID, 0)
@@ -308,4 +302,13 @@ func testWorkerVersioning(t *testing.T, kc *kubernetes.Clientset, data templateD
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "temporal-worker-latest", testNamespace, 1, 60, 3),
 		"replica count for build id %s should be %d after 3 minutes", data.BuildID, 1)
+}
+
+func updateWorkerVersion(t *testing.T, kc *kubernetes.Clientset, data templateData, numJobs int) {
+	t.Log("--- updating worker version ---")
+
+	KubectlApplyWithTemplate(t, data, "jobUpdateBuildID", jobUpdateBuildIDTemplate)
+	assert.True(t, WaitForJobCount(t, kc, testNamespace, numJobs, 60, 3), "job update-build-id count in namespace should be 1")
+	assert.True(t, WaitForJobSuccess(t, kc, "update-worker-version", testNamespace, 3, 30), "job update-build-id should be successful")
+	KubectlDeleteWithTemplate(t, data, "jobUpdateBuildID", jobUpdateBuildIDTemplate)
 }
