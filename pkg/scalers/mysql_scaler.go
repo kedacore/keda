@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/go-sql-driver/mysql"
@@ -15,6 +16,16 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
+
+var (
+	// A map that holds MySQL connection pools, keyed by connection string
+	connectionPools *kedautil.RefMap[string, *sql.DB]
+)
+
+func init() {
+	// Initialize the global connectionPools map
+	connectionPools = kedautil.NewRefMap[string, *sql.DB]()
+}
 
 type mySQLScaler struct {
 	metricType v2.MetricTargetType
@@ -34,6 +45,12 @@ type mySQLMetadata struct {
 	QueryValue           float64 `keda:"name=queryValue,                 order=triggerMetadata"`
 	ActivationQueryValue float64 `keda:"name=activationQueryValue,       order=triggerMetadata, default=0"`
 	MetricName           string  `keda:"name=metricName,                 order=triggerMetadata, optional"`
+
+	// Connection pool settings
+	UseGlobalConnPools bool `keda:"name=useGlobalConnPools, order=triggerMetadata, optional"`
+	MaxOpenConns       int  `keda:"name=maxOpenConns,       order=triggerMetadata, optional"`
+	MaxIdleConns       int  `keda:"name=maxIdleConns,       order=triggerMetadata, optional"`
+	ConnMaxIdleTime    int  `keda:"name=connMaxIdleTime,    order=triggerMetadata, optional"` // seconds
 }
 
 // NewMySQLScaler creates a new MySQL scaler
@@ -50,10 +67,19 @@ func NewMySQLScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing MySQL metadata: %w", err)
 	}
 
-	conn, err := newMySQLConnection(meta, logger)
-	if err != nil {
-		return nil, fmt.Errorf("error establishing MySQL connection: %w", err)
+	// Create MySQL connection, if useGlobalConnPools is set to true, it will use
+	// the global connection pool for the given connection string, otherwise it
+	// will create a new local connection pool for the given connection string
+	var conn *sql.DB
+	if meta.UseGlobalConnPools {
+		conn, err = getConnectionPool(meta, logger)
+	} else {
+		conn, err = newMySQLConnection(meta, logger)
 	}
+	if err != nil {
+		return nil, fmt.Errorf("error creating MySQL connection: %w", err)
+	}
+
 	return &mySQLScaler{
 		metricType: metricType,
 		metadata:   meta,
@@ -96,6 +122,40 @@ func metadataToConnectionStr(meta *mySQLMetadata) string {
 	return connStr
 }
 
+// getConnectionPool will check if the connection pool has already been
+// created for the given connection string and return it. If it has not
+// been created, it will create a new connection pool and store it in the
+// connectionPools map.
+func getConnectionPool(meta *mySQLMetadata, logger logr.Logger) (*sql.DB, error) {
+	connStr := metadataToConnectionStr(meta)
+	// Try to load an existing pool and increment its reference count if found
+	if pool, ok := connectionPools.Load(connStr); ok {
+		err := connectionPools.AddRef(connStr)
+		if err != nil {
+			logger.Error(err, "Error increasing connection pool reference count")
+			return nil, err
+		}
+
+		return pool, nil
+	}
+
+	// If pool does not exist, create a new one and store it in RefMap
+	newPool, err := newMySQLConnection(meta, logger)
+	if err != nil {
+		return nil, err
+	}
+	err = connectionPools.Store(connStr, newPool, func(db *sql.DB) error {
+		logger.Info("Closing MySQL connection pool", "connectionString", connStr)
+		return db.Close()
+	})
+	if err != nil {
+		logger.Error(err, "Error storing connection pool in RefMap")
+		return nil, err
+	}
+
+	return newPool, nil
+}
+
 // newMySQLConnection creates MySQL db connection
 func newMySQLConnection(meta *mySQLMetadata, logger logr.Logger) (*sql.DB, error) {
 	connStr := metadataToConnectionStr(meta)
@@ -104,12 +164,33 @@ func newMySQLConnection(meta *mySQLMetadata, logger logr.Logger) (*sql.DB, error
 		logger.Error(err, fmt.Sprintf("Found error when opening connection: %s", err))
 		return nil, err
 	}
+
 	err = db.Ping()
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Found error when pinging database: %s", err))
 		return nil, err
 	}
+
+	setConnectionPoolConfiguration(meta, db)
+
 	return db, nil
+}
+
+// setConnectionPoolConfiguration configures the MySQL connection pool settings
+// based on the parameters provided in mySQLMetadata. If a setting is zero, it
+// is left at its default value.
+func setConnectionPoolConfiguration(meta *mySQLMetadata, db *sql.DB) {
+	if meta.MaxOpenConns > 0 {
+		db.SetMaxOpenConns(meta.MaxOpenConns)
+	}
+
+	if meta.MaxIdleConns > 0 {
+		db.SetMaxIdleConns(meta.MaxIdleConns)
+	}
+
+	if meta.ConnMaxIdleTime > 0 {
+		db.SetConnMaxIdleTime(time.Duration(meta.ConnMaxIdleTime) * time.Second)
+	}
 }
 
 // parseMySQLDbNameFromConnectionStr returns dbname from connection string
@@ -123,13 +204,30 @@ func parseMySQLDbNameFromConnectionStr(connectionString string) string {
 	return "dbname"
 }
 
-// Close disposes of MySQL connections
-func (s *mySQLScaler) Close(context.Context) error {
-	err := s.connection.Close()
-	if err != nil {
-		s.logger.Error(err, "Error closing MySQL connection")
+// Close disposes of MySQL connections, closing either the global pool if used
+// or the local connection pool
+func (s *mySQLScaler) Close(ctx context.Context) error {
+	if s.metadata.UseGlobalConnPools {
+		if err := s.closeGlobalPool(ctx); err != nil {
+			return fmt.Errorf("error closing MySQL connection: %w", err)
+		}
+	} else {
+		if err := s.connection.Close(); err != nil {
+			return fmt.Errorf("error closing MySQL connection: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// closeGlobalPool closes all MySQL connections in the global pool
+func (s *mySQLScaler) closeGlobalPool(_ context.Context) error {
+	connStr := metadataToConnectionStr(s.metadata)
+	if err := connectionPools.RemoveRef(connStr); err != nil {
+		s.logger.Error(err, "Error decreasing connection pool reference count")
 		return err
 	}
+
 	return nil
 }
 

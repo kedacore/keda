@@ -75,6 +75,27 @@ var testMySQLMetadata = []parseMySQLMetadataTestData{
 		resolvedEnv: map[string]string{},
 		raisesError: true,
 	},
+	// use global pool
+	{
+		metadata:    map[string]string{"query": "query", "queryValue": "12", "useGlobalConnPools": "true"},
+		authParams:  map[string]string{"host": "test_host", "port": "test_port", "username": "test_username", "password": "MYSQL_PASSWORD", "dbName": "test_dbname"},
+		resolvedEnv: testMySQLResolvedEnv,
+		raisesError: false,
+	},
+	// use connection pool settings
+	{
+		metadata:    map[string]string{"query": "query", "queryValue": "12", "maxOpenConns": "10", "maxIdleConns": "5", "connMaxIdleTime": "10"},
+		authParams:  map[string]string{"host": "test_host", "port": "test_port", "username": "test_username", "password": "MYSQL_PASSWORD", "dbName": "test_dbname"},
+		resolvedEnv: testMySQLResolvedEnv,
+		raisesError: false,
+	},
+	// use connection pool settings and global pool
+	{
+		metadata:    map[string]string{"query": "query", "queryValue": "12", "maxOpenConns": "10", "maxIdleConns": "5", "connMaxIdleTime": "10", "useGlobalConnPools": "true"},
+		authParams:  map[string]string{"host": "test_host", "port": "test_port", "username": "test_username", "password": "MYSQL_PASSWORD", "dbName": "test_dbname"},
+		resolvedEnv: testMySQLResolvedEnv,
+		raisesError: false,
+	},
 }
 
 var mySQLMetricIdentifiers = []mySQLMetricIdentifier{
