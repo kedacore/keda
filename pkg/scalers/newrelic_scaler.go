@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	"github.com/newrelic/newrelic-client-go/newrelic"
-	"github.com/newrelic/newrelic-client-go/pkg/nrdb"
+	"github.com/newrelic/newrelic-client-go/v2/newrelic"
+	"github.com/newrelic/newrelic-client-go/v2/pkg/nrdb"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
