@@ -1110,45 +1110,56 @@ github.com/mwitkow/go-conntrack
 # github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f
 ## explicit
 github.com/mxk/go-flowrate/flowrate
-# github.com/newrelic/newrelic-client-go v1.1.0
-## explicit; go 1.18
-github.com/newrelic/newrelic-client-go/internal/http
-github.com/newrelic/newrelic-client-go/internal/serialization
-github.com/newrelic/newrelic-client-go/internal/version
-github.com/newrelic/newrelic-client-go/newrelic
-github.com/newrelic/newrelic-client-go/pkg/accounts
-github.com/newrelic/newrelic-client-go/pkg/ai
-github.com/newrelic/newrelic-client-go/pkg/alerts
-github.com/newrelic/newrelic-client-go/pkg/apiaccess
-github.com/newrelic/newrelic-client-go/pkg/apm
-github.com/newrelic/newrelic-client-go/pkg/cloud
-github.com/newrelic/newrelic-client-go/pkg/common
-github.com/newrelic/newrelic-client-go/pkg/config
-github.com/newrelic/newrelic-client-go/pkg/contextkeys
-github.com/newrelic/newrelic-client-go/pkg/dashboards
-github.com/newrelic/newrelic-client-go/pkg/edge
-github.com/newrelic/newrelic-client-go/pkg/entities
-github.com/newrelic/newrelic-client-go/pkg/errors
-github.com/newrelic/newrelic-client-go/pkg/events
-github.com/newrelic/newrelic-client-go/pkg/eventstometrics
-github.com/newrelic/newrelic-client-go/pkg/infrastructure
-github.com/newrelic/newrelic-client-go/pkg/installevents
-github.com/newrelic/newrelic-client-go/pkg/logging
-github.com/newrelic/newrelic-client-go/pkg/logs
-github.com/newrelic/newrelic-client-go/pkg/nerdgraph
-github.com/newrelic/newrelic-client-go/pkg/nerdstorage
-github.com/newrelic/newrelic-client-go/pkg/notifications
-github.com/newrelic/newrelic-client-go/pkg/nrdb
-github.com/newrelic/newrelic-client-go/pkg/nrqldroprules
-github.com/newrelic/newrelic-client-go/pkg/nrtime
-github.com/newrelic/newrelic-client-go/pkg/plugins
-github.com/newrelic/newrelic-client-go/pkg/region
-github.com/newrelic/newrelic-client-go/pkg/servicelevel
-github.com/newrelic/newrelic-client-go/pkg/synthetics
-github.com/newrelic/newrelic-client-go/pkg/testhelpers
-github.com/newrelic/newrelic-client-go/pkg/users
-github.com/newrelic/newrelic-client-go/pkg/workflows
-github.com/newrelic/newrelic-client-go/pkg/workloads
+# github.com/newrelic/newrelic-client-go/v2 v2.51.2
+## explicit; go 1.22
+github.com/newrelic/newrelic-client-go/v2/internal/http
+github.com/newrelic/newrelic-client-go/v2/internal/serialization
+github.com/newrelic/newrelic-client-go/v2/internal/utils
+github.com/newrelic/newrelic-client-go/v2/internal/version
+github.com/newrelic/newrelic-client-go/v2/newrelic
+github.com/newrelic/newrelic-client-go/v2/pkg/accountmanagement
+github.com/newrelic/newrelic-client-go/v2/pkg/accounts
+github.com/newrelic/newrelic-client-go/v2/pkg/agent
+github.com/newrelic/newrelic-client-go/v2/pkg/agentapplications
+github.com/newrelic/newrelic-client-go/v2/pkg/ai
+github.com/newrelic/newrelic-client-go/v2/pkg/alerts
+github.com/newrelic/newrelic-client-go/v2/pkg/apiaccess
+github.com/newrelic/newrelic-client-go/v2/pkg/apm
+github.com/newrelic/newrelic-client-go/v2/pkg/authorizationmanagement
+github.com/newrelic/newrelic-client-go/v2/pkg/changetracking
+github.com/newrelic/newrelic-client-go/v2/pkg/cloud
+github.com/newrelic/newrelic-client-go/v2/pkg/common
+github.com/newrelic/newrelic-client-go/v2/pkg/config
+github.com/newrelic/newrelic-client-go/v2/pkg/contextkeys
+github.com/newrelic/newrelic-client-go/v2/pkg/customeradministration
+github.com/newrelic/newrelic-client-go/v2/pkg/dashboards
+github.com/newrelic/newrelic-client-go/v2/pkg/edge
+github.com/newrelic/newrelic-client-go/v2/pkg/entities
+github.com/newrelic/newrelic-client-go/v2/pkg/errors
+github.com/newrelic/newrelic-client-go/v2/pkg/events
+github.com/newrelic/newrelic-client-go/v2/pkg/eventstometrics
+github.com/newrelic/newrelic-client-go/v2/pkg/infrastructure
+github.com/newrelic/newrelic-client-go/v2/pkg/installevents
+github.com/newrelic/newrelic-client-go/v2/pkg/keytransaction
+github.com/newrelic/newrelic-client-go/v2/pkg/logconfigurations
+github.com/newrelic/newrelic-client-go/v2/pkg/logging
+github.com/newrelic/newrelic-client-go/v2/pkg/logs
+github.com/newrelic/newrelic-client-go/v2/pkg/nerdgraph
+github.com/newrelic/newrelic-client-go/v2/pkg/nerdstorage
+github.com/newrelic/newrelic-client-go/v2/pkg/notifications
+github.com/newrelic/newrelic-client-go/v2/pkg/nrdb
+github.com/newrelic/newrelic-client-go/v2/pkg/nrqldroprules
+github.com/newrelic/newrelic-client-go/v2/pkg/nrtime
+github.com/newrelic/newrelic-client-go/v2/pkg/organization
+github.com/newrelic/newrelic-client-go/v2/pkg/plugins
+github.com/newrelic/newrelic-client-go/v2/pkg/region
+github.com/newrelic/newrelic-client-go/v2/pkg/servicelevel
+github.com/newrelic/newrelic-client-go/v2/pkg/synthetics
+github.com/newrelic/newrelic-client-go/v2/pkg/testhelpers
+github.com/newrelic/newrelic-client-go/v2/pkg/usermanagement
+github.com/newrelic/newrelic-client-go/v2/pkg/users
+github.com/newrelic/newrelic-client-go/v2/pkg/workflows
+github.com/newrelic/newrelic-client-go/v2/pkg/workloads
 # github.com/oapi-codegen/runtime v1.1.1
 ## explicit; go 1.20
 github.com/oapi-codegen/runtime

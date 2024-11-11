@@ -66,7 +66,7 @@ require (
 	github.com/microsoft/ApplicationInsights-Go v0.4.4
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
 	github.com/mitchellh/hashstructure v1.1.0
-	github.com/newrelic/newrelic-client-go v1.1.0
+	github.com/newrelic/newrelic-client-go/v2 v2.51.2
 	github.com/onsi/ginkgo/v2 v2.21.0
 	github.com/onsi/gomega v1.35.1
 	github.com/open-policy-agent/cert-controller v0.12.0
