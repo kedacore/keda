@@ -25,7 +25,7 @@ var (
 	temporalDeploymentName = fmt.Sprintf("temporal-%s", testName)
 
 	scaledObjectName = fmt.Sprintf("%s-so", testName)
-	deploymentName   = fmt.Sprintf("%s", testName)
+	deploymentName   = testName
 )
 
 type templateData struct {
