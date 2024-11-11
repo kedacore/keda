@@ -28,6 +28,9 @@ import (
 
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
+	corev1 "k8s.io/api/core/v1"
+
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
 
 // CustomValidator is an interface that can be implemented to validate the configuration of the typed config
@@ -67,15 +70,16 @@ const (
 
 // field tag parameters
 const (
-	optionalTag     = "optional"
-	deprecatedTag   = "deprecated"
-	defaultTag      = "default"
-	orderTag        = "order"
-	nameTag         = "name"
-	enumTag         = "enum"
-	exclusiveSetTag = "exclusiveSet"
-	rangeTag        = "range"
-	separatorTag    = "separator"
+	optionalTag           = "optional"
+	deprecatedTag         = "deprecated"
+	deprecatedAnnounceTag = "deprecatedAnnounce"
+	defaultTag            = "default"
+	orderTag              = "order"
+	nameTag               = "name"
+	enumTag               = "enum"
+	exclusiveSetTag       = "exclusiveSet"
+	rangeTag              = "range"
+	separatorTag          = "separator"
 )
 
 // Params is a struct that represents the parameter list that can be used in the keda tag
@@ -100,6 +104,10 @@ type Params struct {
 	// Deprecated is the 'deprecated' tag parameter, if the map contain this parameter, it is considered
 	// as an error and the DeprecatedMessage should be returned to the user
 	Deprecated string
+
+	// DeprecatedAnnounce is the 'deprecatedAnnounce' tag parameter, if set this will trigger
+	// an info event with the deprecation message
+	DeprecatedAnnounce string
 
 	// Enum is the 'enum' tag parameter defining the list of possible values for the parameter
 	Enum []string
@@ -194,6 +202,13 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 	valFromConfig, exists := sc.configParamValue(params)
 	if exists && params.IsDeprecated() {
 		return fmt.Errorf("parameter %q is deprecated%v", params.Name(), params.DeprecatedMessage())
+	}
+	if exists && params.DeprecatedAnnounce != "" {
+		if sc.Recorder != nil {
+			message := fmt.Sprintf("Scaler %s info: %s", sc.TriggerType, params.DeprecatedAnnounce)
+			fmt.Print(message)
+			sc.Recorder.Event(sc.ScaledObject, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, message)
+		}
 	}
 	if !exists && params.Default != "" {
 		exists = true
@@ -479,6 +494,12 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 				params.Deprecated = deprecatedTag
 			} else {
 				params.Deprecated = strings.TrimSpace(tsplit[1])
+			}
+		case deprecatedAnnounceTag:
+			if len(tsplit) == 1 {
+				params.DeprecatedAnnounce = deprecatedAnnounceTag
+			} else {
+				params.DeprecatedAnnounce = strings.TrimSpace(tsplit[1])
 			}
 		case defaultTag:
 			if len(tsplit) > 1 {

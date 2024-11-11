@@ -59,6 +59,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				ScalableObjectType:      withTriggers.Kind,
 				TriggerName:             trigger.Name,
 				TriggerMetadata:         trigger.Metadata,
+				TriggerType:             trigger.Type,
 				TriggerUseCachedMetrics: trigger.UseCachedMetrics,
 				ResolvedEnv:             resolvedEnv,
 				AuthParams:              make(map[string]string),
@@ -66,6 +67,8 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				TriggerIndex:            triggerIndex,
 				MetricType:              trigger.MetricType,
 				AsMetricSource:          asMetricSource,
+				ScaledObject:            withTriggers,
+				Recorder:                h.recorder,
 				TriggerUniqueKey:        fmt.Sprintf("%s-%s-%s-%d", withTriggers.Kind, withTriggers.Namespace, withTriggers.Name, triggerIndex),
 			}
 

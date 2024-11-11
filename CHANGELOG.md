@@ -89,7 +89,7 @@ New deprecation(s):
 ### Other
 
 - **General**: Bump newrelic-client-go deps to 2.51.2 (latest) ([#6325](https://github.com/kedacore/keda/pull/6325))
-
+- **General**: New eventreason KEDAScalersInfo to display important information ([#6328](https://github.com/kedacore/keda/issues/6328))
 
 ## v2.16.0
 
