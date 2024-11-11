@@ -439,6 +439,26 @@ spec:
                         type: string
                       token:
                         type: string
+                      tokenSecret:
+                        properties:
+                          valueFrom:
+                            properties:
+                              secretKeyRef:
+                                properties:
+                                  key:
+                                    type: string
+                                  name:
+                                    type: string
+                                required:
+                                - key
+                                - name
+                                type: object
+                            required:
+                            - secretKeyRef
+                            type: object
+                        required:
+                        - valueFrom
+                        type: object
                     type: object
                   mount:
                     type: string
