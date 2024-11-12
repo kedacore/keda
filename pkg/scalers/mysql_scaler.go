@@ -18,13 +18,14 @@ import (
 )
 
 var (
-	// A map that holds MySQL connection pools, keyed by connection string
-	connectionPools *kedautil.RefMap[string, *sql.DB]
+	// A map that holds MySQL connection pools, keyed by connection string,
+	// max open connections, max idle connections, and max idle time
+	connectionPools *kedautil.RefMap[mySQLConnectionPoolKey, *sql.DB]
 )
 
 func init() {
 	// Initialize the global connectionPools map
-	connectionPools = kedautil.NewRefMap[string, *sql.DB]()
+	connectionPools = kedautil.NewRefMap[mySQLConnectionPoolKey, *sql.DB]()
 }
 
 type mySQLScaler struct {
@@ -51,6 +52,25 @@ type mySQLMetadata struct {
 	MaxOpenConns       int  `keda:"name=maxOpenConns,       order=triggerMetadata, optional"`
 	MaxIdleConns       int  `keda:"name=maxIdleConns,       order=triggerMetadata, optional"`
 	ConnMaxIdleTime    int  `keda:"name=connMaxIdleTime,    order=triggerMetadata, optional"` // seconds
+}
+
+// mySQLConnectionPoolKey is used as a key to store MySQL connection pools in
+// the global map
+type mySQLConnectionPoolKey struct {
+	connectionString string
+	maxOpenConns     int
+	maxIdleConns     int
+	connMaxIdleTime  int
+}
+
+// newMySQLConnectionPoolKey creates a new mySQLConnectionPoolKey
+func newMySQLConnectionPoolKey(meta *mySQLMetadata) mySQLConnectionPoolKey {
+	return mySQLConnectionPoolKey{
+		connectionString: metadataToConnectionStr(meta),
+		maxOpenConns:     meta.MaxOpenConns,
+		maxIdleConns:     meta.MaxIdleConns,
+		connMaxIdleTime:  meta.ConnMaxIdleTime,
+	}
 }
 
 // NewMySQLScaler creates a new MySQL scaler
@@ -127,10 +147,11 @@ func metadataToConnectionStr(meta *mySQLMetadata) string {
 // been created, it will create a new connection pool and store it in the
 // connectionPools map.
 func getConnectionPool(meta *mySQLMetadata, logger logr.Logger) (*sql.DB, error) {
-	connStr := metadataToConnectionStr(meta)
+	key := newMySQLConnectionPoolKey(meta)
+
 	// Try to load an existing pool and increment its reference count if found
-	if pool, ok := connectionPools.Load(connStr); ok {
-		err := connectionPools.AddRef(connStr)
+	if pool, ok := connectionPools.Load(key); ok {
+		err := connectionPools.AddRef(key)
 		if err != nil {
 			logger.Error(err, "Error increasing connection pool reference count")
 			return nil, err
@@ -144,8 +165,8 @@ func getConnectionPool(meta *mySQLMetadata, logger logr.Logger) (*sql.DB, error)
 	if err != nil {
 		return nil, err
 	}
-	err = connectionPools.Store(connStr, newPool, func(db *sql.DB) error {
-		logger.Info("Closing MySQL connection pool", "connectionString", connStr)
+	err = connectionPools.Store(key, newPool, func(db *sql.DB) error {
+		logger.Info("Closing MySQL connection pool", "connectionString", key.connectionString)
 		return db.Close()
 	})
 	if err != nil {
@@ -222,8 +243,9 @@ func (s *mySQLScaler) Close(ctx context.Context) error {
 
 // closeGlobalPool closes all MySQL connections in the global pool
 func (s *mySQLScaler) closeGlobalPool(_ context.Context) error {
-	connStr := metadataToConnectionStr(s.metadata)
-	if err := connectionPools.RemoveRef(connStr); err != nil {
+	key := newMySQLConnectionPoolKey(s.metadata)
+
+	if err := connectionPools.RemoveRef(key); err != nil {
 		s.logger.Error(err, "Error decreasing connection pool reference count")
 		return err
 	}
