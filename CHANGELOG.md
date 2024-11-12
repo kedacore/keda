@@ -73,6 +73,7 @@ Here is an overview of all new **experimental** features:
 ### Fixes
 
 - **General**: Paused ScaledObject count is reported correctly after operator restart ([#6321](https://github.com/kedacore/keda/issues/6321))
+- **General**: ScaledJobs ready status set to true when recoverred problem ([#6329](https://github.com/kedacore/keda/pull/6329))
 
 ### Deprecations
 
