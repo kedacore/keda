@@ -22,6 +22,7 @@ import (
 type MockScaler struct {
 	ctrl     *gomock.Controller
 	recorder *MockScalerMockRecorder
+	isgomock struct{}
 }
 
 // MockScalerMockRecorder is the mock recorder for MockScaler.
@@ -89,6 +90,7 @@ func (mr *MockScalerMockRecorder) GetMetricsAndActivity(ctx, metricName any) *go
 type MockPushScaler struct {
 	ctrl     *gomock.Controller
 	recorder *MockPushScalerMockRecorder
+	isgomock struct{}
 }
 
 // MockPushScalerMockRecorder is the mock recorder for MockPushScaler.

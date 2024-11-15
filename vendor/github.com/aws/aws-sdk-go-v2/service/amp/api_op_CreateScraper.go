@@ -13,26 +13,25 @@ import (
 
 // The CreateScraper operation creates a scraper to collect metrics. A scraper
 // pulls metrics from Prometheus-compatible sources within an Amazon EKS cluster,
-// and sends them to your Amazon Managed Service for Prometheus workspace. You can
-// configure the scraper to control what metrics are collected, and what
-// transformations are applied prior to sending them to your workspace.
+// and sends them to your Amazon Managed Service for Prometheus workspace. Scrapers
+// are flexible, and can be configured to control what metrics are collected, the
+// frequency of collection, what transformations are applied to the metrics, and
+// more.
 //
-// If needed, an IAM role will be created for you that gives Amazon Managed
-// Service for Prometheus access to the metrics in your cluster. For more
-// information, see [Using roles for scraping metrics from EKS]in the Amazon Managed Service for Prometheus User Guide.
+// An IAM role will be created for you that Amazon Managed Service for Prometheus
+// uses to access the metrics in your cluster. You must configure this role with a
+// policy that allows it to scrape metrics from your cluster. For more information,
+// see [Configuring your Amazon EKS cluster]in the Amazon Managed Service for Prometheus User Guide.
 //
-// You cannot update a scraper. If you want to change the configuration of the
-// scraper, create a new scraper and delete the old one.
-//
-// The scrapeConfiguration parameter contains the base64-encoded version of the
-// YAML configuration file.
+// The scrapeConfiguration parameter contains the base-64 encoded YAML
+// configuration for the scraper.
 //
 // For more information about collectors, including what metrics are collected,
-// and how to configure the scraper, see [Amazon Web Services managed collectors]in the Amazon Managed Service for
+// and how to configure the scraper, see [Using an Amazon Web Services managed collector]in the Amazon Managed Service for
 // Prometheus User Guide.
 //
-// [Amazon Web Services managed collectors]: https://docs.aws.amazon.com/prometheus/latest/userguide/AMP-collector.html
-// [Using roles for scraping metrics from EKS]: https://docs.aws.amazon.com/prometheus/latest/userguide/using-service-linked-roles.html#using-service-linked-roles-prom-scraper
+// [Using an Amazon Web Services managed collector]: https://docs.aws.amazon.com/prometheus/latest/userguide/AMP-collector-how-to.html
+// [Configuring your Amazon EKS cluster]: https://docs.aws.amazon.com/prometheus/latest/userguide/AMP-collector-how-to.html#AMP-collector-eks-setup
 func (c *Client) CreateScraper(ctx context.Context, params *CreateScraperInput, optFns ...func(*Options)) (*CreateScraperOutput, error) {
 	if params == nil {
 		params = &CreateScraperInput{}
@@ -56,8 +55,10 @@ type CreateScraperInput struct {
 	// This member is required.
 	Destination types.Destination
 
-	// The configuration file to use in the new scraper. For more information, see Scraper configuration in
+	// The configuration file to use in the new scraper. For more information, see [Scraper configuration] in
 	// the Amazon Managed Service for Prometheus User Guide.
+	//
+	// [Scraper configuration]: https://docs.aws.amazon.com/prometheus/latest/userguide/AMP-collector-how-to.html#AMP-collector-configuration
 	//
 	// This member is required.
 	ScrapeConfiguration types.ScrapeConfiguration
@@ -67,8 +68,8 @@ type CreateScraperInput struct {
 	// This member is required.
 	Source types.Source
 
-	// (optional) a name to associate with the scraper. This is for your use, and does
-	// not need to be unique.
+	// (optional) An alias to associate with the scraper. This is for your use, and
+	// does not need to be unique.
 	Alias *string
 
 	// (Optional) A unique, case-sensitive identifier that you can provide to ensure
@@ -151,6 +152,9 @@ func (c *Client) addOperationCreateScraperMiddlewares(stack *middleware.Stack, o
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -191,6 +195,18 @@ func (c *Client) addOperationCreateScraperMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

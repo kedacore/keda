@@ -98,15 +98,19 @@ func (anyMatcher) String() string {
 	return "is anything"
 }
 
-type condMatcher struct {
-	fn func(x any) bool
+type condMatcher[T any] struct {
+	fn func(x T) bool
 }
 
-func (c condMatcher) Matches(x any) bool {
-	return c.fn(x)
+func (c condMatcher[T]) Matches(x any) bool {
+	typed, ok := x.(T)
+	if !ok {
+		return false
+	}
+	return c.fn(typed)
 }
 
-func (condMatcher) String() string {
+func (c condMatcher[T]) String() string {
 	return "adheres to a custom condition"
 }
 
@@ -133,7 +137,7 @@ func (e eqMatcher) Matches(x any) bool {
 }
 
 func (e eqMatcher) String() string {
-	return fmt.Sprintf("is equal to %v (%T)", e.x, e.x)
+	return fmt.Sprintf("is equal to %s (%T)", getString(e.x), e.x)
 }
 
 type nilMatcher struct{}
@@ -339,9 +343,9 @@ func Any() Matcher { return anyMatcher{} }
 //
 // Example usage:
 //
-//	Cond(func(x any){return x.(int) == 1}).Matches(1) // returns true
-//	Cond(func(x any){return x.(int) == 2}).Matches(1) // returns false
-func Cond(fn func(x any) bool) Matcher { return condMatcher{fn} }
+//	Cond(func(x int){return x == 1}).Matches(1) // returns true
+//	Cond(func(x int){return x == 2}).Matches(1) // returns false
+func Cond[T any](fn func(x T) bool) Matcher { return condMatcher[T]{fn} }
 
 // AnyOf returns a composite Matcher that returns true if at least one of the
 // matchers returns true.

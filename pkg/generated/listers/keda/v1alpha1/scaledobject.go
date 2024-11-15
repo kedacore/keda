@@ -20,8 +20,8 @@ package v1alpha1
 
 import (
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -38,25 +38,17 @@ type ScaledObjectLister interface {
 
 // scaledObjectLister implements the ScaledObjectLister interface.
 type scaledObjectLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1alpha1.ScaledObject]
 }
 
 // NewScaledObjectLister returns a new ScaledObjectLister.
 func NewScaledObjectLister(indexer cache.Indexer) ScaledObjectLister {
-	return &scaledObjectLister{indexer: indexer}
-}
-
-// List lists all ScaledObjects in the indexer.
-func (s *scaledObjectLister) List(selector labels.Selector) (ret []*v1alpha1.ScaledObject, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.ScaledObject))
-	})
-	return ret, err
+	return &scaledObjectLister{listers.New[*v1alpha1.ScaledObject](indexer, v1alpha1.Resource("scaledobject"))}
 }
 
 // ScaledObjects returns an object that can list and get ScaledObjects.
 func (s *scaledObjectLister) ScaledObjects(namespace string) ScaledObjectNamespaceLister {
-	return scaledObjectNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return scaledObjectNamespaceLister{listers.NewNamespaced[*v1alpha1.ScaledObject](s.ResourceIndexer, namespace)}
 }
 
 // ScaledObjectNamespaceLister helps list and get ScaledObjects.
@@ -74,26 +66,5 @@ type ScaledObjectNamespaceLister interface {
 // scaledObjectNamespaceLister implements the ScaledObjectNamespaceLister
 // interface.
 type scaledObjectNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all ScaledObjects in the indexer for a given namespace.
-func (s scaledObjectNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.ScaledObject, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.ScaledObject))
-	})
-	return ret, err
-}
-
-// Get retrieves the ScaledObject from the indexer for a given namespace and name.
-func (s scaledObjectNamespaceLister) Get(name string) (*v1alpha1.ScaledObject, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("scaledobject"), name)
-	}
-	return obj.(*v1alpha1.ScaledObject), nil
+	listers.ResourceIndexer[*v1alpha1.ScaledObject]
 }
