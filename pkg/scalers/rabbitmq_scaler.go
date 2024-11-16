@@ -72,42 +72,42 @@ type rabbitMQMetadata struct {
 	connectionName string // name used for the AMQP connection
 	triggerIndex   int    // scaler index
 
-	QueueName string `keda:"name=queueName, order=triggerMetadata"`
+	QueueName string `keda:"name=queueName,                       order=triggerMetadata"`
 	// QueueLength or MessageRate
-	Mode string `keda:"name=mode, order=triggerMetadata, optional, default=Unknown"`
+	Mode string `keda:"name=mode,                                 order=triggerMetadata, optional, default=Unknown"`
 	//
-	QueueLength float64 `keda:"name=queueLength, order=triggerMetadata, optional"`
+	QueueLength float64 `keda:"name=queueLength,                  order=triggerMetadata, optional"`
 	// trigger value (queue length or publish/sec. rate)
-	Value float64 `keda:"name=value, order=triggerMetadata, optional"`
+	Value float64 `keda:"name=value,                              order=triggerMetadata, optional"`
 	// activation value
-	ActivationValue float64 `keda:"name=activationValue, order=triggerMetadata, optional"`
+	ActivationValue float64 `keda:"name=activationValue,          order=triggerMetadata, optional"`
 	// connection string for either HTTP or AMQP protocol
-	Host string `keda:"name=host, order=triggerMetadata;authParams;resolvedEnv"`
+	Host string `keda:"name=host,                                 order=triggerMetadata;authParams;resolvedEnv"`
 	// either http or amqp protocol
-	Protocol string `keda:"name=protocol, order=triggerMetadata;authParams, optional, default=auto"`
+	Protocol              string  `keda:"name=protocol,           order=triggerMetadata;authParams, default=auto"`
 	// override the vhost from the connection info
-	VhostName string `keda:"name=vhostName, order=triggerMetadata, optional"`
+	VhostName string `keda:"name=vhostName,                       order=triggerMetadata, optional"`
 	// specify if the queueName contains a rexeg
-	UseRegex bool `keda:"name=useRegex, order=triggerMetadata, optional"`
+	UseRegex bool `keda:"name=useRegex,                           order=triggerMetadata, optional"`
 	// specify if the QueueLength value should exclude Unacknowledged messages (Ready messages only)
 	ExcludeUnacknowledged bool `keda:"name=excludeUnacknowledged, order=triggerMetadata, optional"`
 	// specify the page size if useRegex is enabled
-	PageSize int64 `keda:"name=pageSize, order=triggerMetadata, optional, default=100"`
+	PageSize              int64   `keda:"name=pageSize,           order=triggerMetadata, default=100"`
 	// specify the operation to apply in case of multiples queues
-	Operation string `keda:"name=operation, order=triggerMetadata, optional, default=sum"`
+	Operation             string  `keda:"name=operation,          order=triggerMetadata, default=sum"`
 	// custom http timeout for a specific trigger
-	TimeoutMs int `keda:"name=timeout, order=triggerMetadata, optional"`
+	TimeoutMs int `keda:"name=timeout,                            order=triggerMetadata, optional"`
 
 	Username string `keda:"name=username, order=authParams;resolvedEnv, optional"`
 	Password string `keda:"name=password, order=authParams;resolvedEnv, optional"`
 
 	// TLS
-	Ca          string `keda:"name=ca, order=authParams, optional"`
-	Cert        string `keda:"name=cert, order=authParams, optional"`
-	Key         string `keda:"name=key, order=authParams, optional"`
+	Ca          string `keda:"name=ca,          order=authParams, optional"`
+	Cert        string `keda:"name=cert,        order=authParams, optional"`
+	Key         string `keda:"name=key,         order=authParams, optional"`
 	KeyPassword string `keda:"name=keyPassword, order=authParams, optional"`
-	EnableTLS   string `keda:"name=tls, order=authParams, optional, default=disable"`
-	UnsafeSsl   bool   `keda:"name=unsafeSsl, order=triggerMetadata, optional"`
+	EnableTLS   string `keda:"name=tls,         order=authParams, default=disable"`
+	UnsafeSsl   bool   `keda:"name=unsafeSsl,   order=triggerMetadata, optional"`
 
 	// token provider for azure AD
 	WorkloadIdentityResource      string `keda:"name=workloadIdentityResource, order=authParams, optional"`
