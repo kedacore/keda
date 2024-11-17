@@ -84,7 +84,7 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+*General**: Remove Prometheus metric deprecations ([#5687](https://github.com/kedacore/keda/issues/5687))
 
 ### Other
 
