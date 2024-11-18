@@ -191,7 +191,7 @@ func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) 
 		Path:      "kv_v2/data/keda",
 		Key:       "test",
 	}}
-	assert.Equalf(t, kedav1alpha1.VaultSecretTypeGeneric, secrets[0].Type, "Expected secret to not have a vlue")
+	assert.Equalf(t, kedav1alpha1.VaultSecretTypeGeneric, secrets[0].Type, "Expected secret to not have a value")
 	secrets, _ = vaultHandler.ResolveSecrets(secrets)
 	assert.Len(t, secrets, 1, "Supposed to get back one secret")
 	secret := secrets[0]
@@ -202,7 +202,7 @@ func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) 
 		Path:      "kv/keda",
 		Key:       "test",
 	}}
-	assert.Equalf(t, kedav1alpha1.VaultSecretTypeGeneric, secrets[0].Type, "Expected secret to not have a vlue")
+	assert.Equalf(t, kedav1alpha1.VaultSecretTypeGeneric, secrets[0].Type, "Expected secret to not have a value")
 	secrets, _ = vaultHandler.ResolveSecrets(secrets)
 	assert.Len(t, secrets, 1, "Supposed to get back one secret")
 	secret = secrets[0]
@@ -627,4 +627,28 @@ func TestHashicorpVaultHandler_Token_VaultTokenAuth(t *testing.T) {
 			}
 		}()
 	}
+}
+
+func TestHashicorpVaultHandler_Initialize_with_SecretRef(t *testing.T) {
+	server := mockVault(t, false)
+	defer server.Close()
+
+	vault := kedav1alpha1.HashiCorpVault{
+		Address:        server.URL,
+		Authentication: kedav1alpha1.VaultAuthenticationToken,
+		Credential: &kedav1alpha1.Credential{
+			TokenSecret: &kedav1alpha1.HashicorpVaultTokenSecret{
+				ValueFrom: kedav1alpha1.ValueFromSecret{
+					SecretKeyRef: kedav1alpha1.SecretKeyRef{
+						Name: "my-secret",
+						Key:  "my-key",
+					},
+				},
+			},
+		},
+	}
+	vaultHandler := NewHashicorpVaultHandler(&vault)
+	err := vaultHandler.Initialize(context.TODO(), nil, logf.Log.WithName("test"), "", nil)
+	defer vaultHandler.Stop()
+	assert.Nil(t, err)
 }
