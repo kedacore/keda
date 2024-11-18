@@ -977,8 +977,14 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 	s.logger.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics based on totalLag %v, topicPartitions %v, threshold %v", totalLag, len(topicPartitions), s.metadata.lagThreshold))
 
 	if !s.metadata.allowIdleConsumers || s.metadata.limitToPartitionsWithLag {
-		// don't scale out beyond the number of topicPartitions or partitionsWithLag depending on settings
 		upperBound := totalTopicPartitions
+		// Ensure that the number of partitions is evenly distributed across the number of consumers
+		if s.metadata.ensureEvenDistributionOfPartitions {
+			// How do we find the current number of consumers?
+			nextFactor := GetNextFactor(1, totalTopicPartitions)
+			totalLag = nextFactor * s.metadata.lagThreshold
+		}
+		// don't scale out beyond the number of topicPartitions or partitionsWithLag depending on settings
 		if s.metadata.limitToPartitionsWithLag {
 			upperBound = partitionsWithLag
 		}
