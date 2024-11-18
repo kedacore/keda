@@ -676,7 +676,7 @@ github.com/gogo/protobuf/sortkeys
 # github.com/golang-jwt/jwt v3.2.2+incompatible
 ## explicit
 github.com/golang-jwt/jwt
-# github.com/golang-jwt/jwt/v4 v4.5.0 => github.com/golang-jwt/jwt/v4 v4.5.0
+# github.com/golang-jwt/jwt/v4 v4.5.0 => github.com/golang-jwt/jwt/v4 v4.5.1
 ## explicit; go 1.16
 github.com/golang-jwt/jwt/v4
 # github.com/golang-jwt/jwt/v5 v5.2.1
@@ -2840,11 +2840,10 @@ sigs.k8s.io/yaml/goyaml.v3
 # k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9
 # k8s.io/metrics => k8s.io/metrics v0.28.9
 # github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
-# github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt/v4 v4.4.0
-# github.com/golang-jwt/jwt/v4 => github.com/golang-jwt/jwt/v4 v4.5.0
 # go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc => go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.24.0
 # golang.org/x/crypto => golang.org/x/crypto v0.22.0
 # golang.org/x/net => golang.org/x/net v0.24.0
 # golang.org/x/text => golang.org/x/text v0.14.0
 # google.golang.org/grpc => google.golang.org/grpc v1.63.2
 # gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
+# github.com/golang-jwt/jwt/v4 => github.com/golang-jwt/jwt/v4 v4.5.1
