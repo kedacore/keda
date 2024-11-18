@@ -70,8 +70,9 @@ type kafkaMetadata struct {
 
 	// If an invalid offset is found, whether to scale to 1 (false - the default) so consumption can
 	// occur or scale to 0 (true). See discussion in https://github.com/kedacore/keda/issues/2612
-	scaleToZeroOnInvalidOffset bool
-	limitToPartitionsWithLag   bool
+	scaleToZeroOnInvalidOffset         bool
+	limitToPartitionsWithLag           bool
+	ensureEvenDistributionOfPartitions bool
 
 	// SASL
 	saslType kafkaSaslType
