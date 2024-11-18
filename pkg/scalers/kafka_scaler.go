@@ -990,6 +990,16 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 	return totalLag, totalLagWithPersistent, nil
 }
 
+func GetNextFactor(current int64, totalTopicPartitions int64) int64 {
+	factors := FindFactors(totalTopicPartitions)
+	for _, factor := range factors {
+		if factor > current {
+			return factor
+		}
+	}
+	return totalTopicPartitions
+}
+
 type brokerOffsetResult struct {
 	offsetResp *sarama.OffsetResponse
 	err        error

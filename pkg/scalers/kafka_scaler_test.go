@@ -682,6 +682,33 @@ func TestFindFactors(t *testing.T) {
 	}
 }
 
+func TestGetNextFactor(t *testing.T) {
+	factor := GetNextFactor(1, 100)
+	if factor != 2 {
+		t.Errorf("Expected factor to be %v but got %v", 2, factor)
+	}
+
+	factor = GetNextFactor(2, 100)
+	if factor != 4 {
+		t.Errorf("Expected factor to be %v but got %v", 4, factor)
+	}
+
+	factor = GetNextFactor(4, 100)
+	if factor != 5 {
+		t.Errorf("Expected factor to be %v but got %v", 5, factor)
+	}
+
+	factor = GetNextFactor(5, 100)
+	if factor != 10 {
+		t.Errorf("Expected factor to be %v but got %v", 10, factor)
+	}
+
+	factor = GetNextFactor(100, 100)
+	if factor != 100 {
+		t.Errorf("Expected factor to be %v but got %v", 10, factor)
+	}
+}
+
 type MockClusterAdmin struct {
 	partitionIds []int32
 }
