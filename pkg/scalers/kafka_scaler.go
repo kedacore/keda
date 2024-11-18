@@ -23,7 +23,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -1051,4 +1053,28 @@ func (s *kafkaScaler) getProducerOffsets(topicPartitions map[string][]int32) (ma
 	}
 
 	return topicPartitionsOffsets, nil
+}
+
+func FindFactors(n int64) []int64 {
+	if n < 1 {
+		return nil
+	}
+
+	var factors []int64
+	sqrtN := int64(math.Sqrt(float64(n)))
+
+	for i := int64(1); i <= sqrtN; i++ {
+		if n%i == 0 {
+			factors = append(factors, i)
+			if i != n/i {
+				factors = append(factors, n/i)
+			}
+		}
+	}
+
+	sort.Slice(factors, func(i, j int) bool {
+		return factors[i] < factors[j]
+	})
+
+	return factors
 }
