@@ -314,7 +314,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error 
 
 		if soGvkr.GVKString() == incomingSoGvkr.GVKString() &&
 			so.Spec.ScaleTargetRef.Name == incomingSo.Spec.ScaleTargetRef.Name {
-			err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the ScaledObject '%s'", so.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), so.Name)
+			err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the ScaledObject '%s'", so.Spec.ScaleTargetRef.Name, incomingSoGvkr.GVKString(), so.Name)
 			scaledobjectlog.Error(err, "validation error")
 			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object")
 			return err
