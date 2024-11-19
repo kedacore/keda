@@ -288,8 +288,11 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error 
 	if err != nil {
 		return err
 	}
+	if err := incomingSo.CheckScaleTargetRefIfExist(); err != nil {
+		return err
+	}
 
-	incomingSoGckr, err := ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
+	incomingSoGvkr, err := ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
 	if err != nil {
 		scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from incoming ScaledObject", "apiVersion", incomingSo.Spec.ScaleTargetRef.APIVersion, "kind", incomingSo.Spec.ScaleTargetRef.Kind)
 		return err
@@ -303,13 +306,13 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error 
 		val, _ := json.MarshalIndent(so, "", "  ")
 		scaledobjectlog.V(1).Info(fmt.Sprintf("checking scaledobject %s: %v", so.Name, string(val)))
 
-		soGckr, err := ParseGVKR(restMapper, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind)
+		soGvkr, err := ParseGVKR(restMapper, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind)
 		if err != nil {
 			scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from ScaledObject", "soName", so.Name, "apiVersion", so.Spec.ScaleTargetRef.APIVersion, "kind", so.Spec.ScaleTargetRef.Kind)
 			return err
 		}
 
-		if soGckr.GVKString() == incomingSoGckr.GVKString() &&
+		if soGvkr.GVKString() == incomingSoGvkr.GVKString() &&
 			so.Spec.ScaleTargetRef.Name == incomingSo.Spec.ScaleTargetRef.Name {
 			err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the ScaledObject '%s'", so.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), so.Name)
 			scaledobjectlog.Error(err, "validation error")

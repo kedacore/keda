@@ -17,8 +17,12 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"fmt"
+	"github.com/kedacore/keda/v2/pkg/common/message"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -252,6 +256,25 @@ func (so *ScaledObject) GetHPAMaxReplicas() int32 {
 		return *so.Spec.MaxReplicaCount
 	}
 	return defaultHPAMaxReplicas
+}
+
+// CheckScaleTargetRefIfExist checks if scaleTargetRef of ScaledObject exists
+func (so *ScaledObject) CheckScaleTargetRefIfExist() error {
+	soGvkr, err := ParseGVKR(restMapper, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind)
+	if err != nil {
+		msg := "Failed to parse Group, Version, Kind, Resource"
+		scaledobjectlog.Error(err, msg, "apiVersion", so.Spec.ScaleTargetRef.APIVersion, "kind", so.Spec.ScaleTargetRef.Kind)
+		return err
+	}
+	gvkString := soGvkr.GVKString()
+	unstruct := &unstructured.Unstructured{}
+	unstruct.SetGroupVersionKind(soGvkr.GroupVersionKind())
+	if err := kc.Get(context.Background(), client.ObjectKey{Namespace: so.Namespace, Name: so.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
+		// resource doesn't exist
+		scaledobjectlog.Error(err, message.ScaleTargetNotFoundMsg, "resource", gvkString, "name", so.Spec.ScaleTargetRef.Name)
+		return err
+	}
+	return nil
 }
 
 // checkReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified
