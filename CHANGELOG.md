@@ -58,7 +58,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Fix and optimize all webhook checkReplicas code ([#6344](https://github.com/kedacore/keda/pull/6344))
 
 #### Experimental
 
