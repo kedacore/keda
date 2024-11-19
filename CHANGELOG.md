@@ -58,7 +58,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General**: Revise some annotations above function and fix fallback check bug ([#6346](https://github.com/kedacore/keda/pull/6346))
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 #### Experimental
 
@@ -73,6 +73,7 @@ Here is an overview of all new **experimental** features:
 ### Fixes
 
 - **General**: Paused ScaledObject count is reported correctly after operator restart ([#6321](https://github.com/kedacore/keda/issues/6321))
+- **General**: Revise some annotations above function and fix fallback check bug ([#6346](https://github.com/kedacore/keda/pull/6346))
 
 ### Deprecations
 
