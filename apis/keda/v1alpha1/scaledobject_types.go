@@ -277,20 +277,17 @@ func (so *ScaledObject) CheckReplicasNotNegative(replicas ...int32) bool {
 
 // GetIdleReplicasIfDefined returns bool based on whether idleRelicas is defined
 func (so *ScaledObject) GetIdleReplicasIfDefined() bool {
-	if so.Spec.IdleReplicaCount == nil {
-		return false
-	} else {
-		return true
-	}
+	return so.Spec.IdleReplicaCount != nil
 }
 
 // checkReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified
 // i.e. that Min is not greater than Max or Idle greater or equal to Min
 func CheckReplicaCountBoundsAreValid(scaledObject *ScaledObject) error {
+	var idleReplicas *int32
 	minReplicas := *scaledObject.GetHPAMinReplicas()
 	maxReplicas := scaledObject.GetHPAMaxReplicas()
 	idleReplicasDefined := scaledObject.GetIdleReplicasIfDefined()
-	var idleReplicas *int32 = scaledObject.Spec.IdleReplicaCount
+	idleReplicas = scaledObject.Spec.IdleReplicaCount
 
 	if !scaledObject.CheckReplicasNotNegative(minReplicas, maxReplicas) {
 		return fmt.Errorf("MinReplicaCount=%d, MaxReplicaCount=%d must not be negative", minReplicas, maxReplicas)
