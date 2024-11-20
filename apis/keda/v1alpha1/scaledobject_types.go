@@ -19,11 +19,12 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strconv"
+
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
 
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
