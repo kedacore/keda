@@ -3,3 +3,8 @@ resources:
 
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+commonLabels:
+  azure.workload.identity/use: "true"
+commonAnnotations:
+  azure.workload.identity/client-id: ""
+  azure.workload.identity/tenant-id: ""

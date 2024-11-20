@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -59,18 +58,18 @@ func toISO8601(time string) (string, error) {
 	return fmt.Sprintf("PT%02dH%02dM", hours, minutes), nil
 }
 
-func getAuthConfig(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) auth.AuthorizerConfig {
-	switch podIdentity.Provider {
-	case "", kedav1alpha1.PodIdentityProviderNone:
-		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
-		config.Resource = info.AppInsightsResourceURL
-		config.AADEndpoint = info.ActiveDirectoryEndpoint
-		return config
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		return NewAzureADWorkloadIdentityConfig(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), info.AppInsightsResourceURL)
-	}
-	return nil
-}
+//func getAuthConfig(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) auth.AuthorizerConfig {
+//	switch podIdentity.Provider {
+//	case "", kedav1alpha1.PodIdentityProviderNone:
+//		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
+//		config.Resource = info.AppInsightsResourceURL
+//		config.AADEndpoint = info.ActiveDirectoryEndpoint
+//		return config
+//	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+//		return NewAzureADWorkloadIdentityConfig(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), info.AppInsightsResourceURL)
+//	}
+//	return nil
+//}
 
 func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetric) (float64, error) {
 	if _, ok := metric.Value[info.MetricID]; !ok {
@@ -111,8 +110,11 @@ func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interfac
 
 // GetAzureAppInsightsMetricValue returns the value of an Azure App Insights metric, rounded to the nearest int
 func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity, ignoreNullValues bool) (float64, error) {
-	config := getAuthConfig(ctx, info, podIdentity)
-	authorizer, err := config.Authorizer()
+
+	//config := getAuthConfig(ctx, info, podIdentity)
+
+	token, err := GetAzureADWorkloadIdentityToken(ctx, info.ClientID, info.TenantID, "", info.AppInsightsResourceURL)
+	//MSAL get Token here instead of the config
 	if err != nil {
 		return -1, err
 	}
@@ -129,7 +131,8 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, p
 		autorest.WithPath("metrics"),
 		autorest.WithPath(info.MetricID),
 		autorest.WithQueryParameters(queryParams),
-		authorizer.WithAuthorization())
+		// MSAL here, use the autorest.WithBearerAuthorization(token)
+		autorest.WithBearerAuthorization(token.AccessToken))
 	if err != nil {
 		return -1, err
 	}

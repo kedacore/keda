@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/azure/auth"
-
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
@@ -88,23 +86,17 @@ var testAppInsightsAuthConfigData = []testAppInsightsAuthConfigTestData{
 	{"azure workload identity", workloadIdentityConfig, AppInsightsInfo{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
 }
 
-func TestAzAppInfoGetAuthConfig(t *testing.T) {
+func TestAzAppInfoGetToken(t *testing.T) {
 	for _, testData := range testAppInsightsAuthConfigData {
-		authConfig := getAuthConfig(context.TODO(), testData.info, kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity})
-		switch testData.config {
-		case msiConfig:
-			if _, ok := authConfig.(auth.MSIConfig); !ok {
-				t.Errorf("Test %v; incorrect auth config. expected MSI config", testData.testName)
-			}
-		case clientCredentialsConfig:
-			if _, ok := authConfig.(auth.ClientCredentialsConfig); !ok {
-				t.Errorf("Test: %v; incorrect auth config. expected client credentials config", testData.testName)
-			}
-		case workloadIdentityConfig:
-			if _, ok := authConfig.(ADWorkloadIdentityConfig); !ok {
-				t.Errorf("Test: %v; incorrect auth config. expected ad workload identity config", testData.testName)
-			}
+		authToken, err := GetAzureADWorkloadIdentityToken(context.TODO(), testData.info.ClientID, testData.info.TenantID, "", testData.info.AppInsightsResourceURL)
+
+		if err != nil {
+			t.Errorf("Test %v; Expected success but got error: %v", testData.testName, err)
 		}
+		if authToken.AccessToken == "" {
+			t.Errorf("Test %v; Expected token but got empty token: %v", testData.testName, authToken)
+		}
+		t.Logf("Test %v; data: %v, token: %v", testData.testName, testData.info, authToken)
 	}
 }
 

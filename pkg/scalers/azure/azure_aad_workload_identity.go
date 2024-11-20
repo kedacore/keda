@@ -19,16 +19,11 @@ package azure
 import (
 	"context"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 	"os"
 	"strconv"
 	"strings"
-	"time"
-
-	amqpAuth "github.com/Azure/azure-amqp-common-go/v4/auth"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 )
 
 // Azure AD Workload Identity Webhook will inject the following environment variables.
@@ -128,24 +123,6 @@ func getScopedResource(resource string) string {
 	return resource
 }
 
-type ADWorkloadIdentityConfig struct {
-	ctx                   context.Context
-	IdentityID            string
-	IdentityTenantID      string
-	IdentityAuthorityHost string
-	Resource              string
-}
-
-func NewAzureADWorkloadIdentityConfig(ctx context.Context, identityID, identityTenantID, identityAuthorityHost, resource string) auth.AuthorizerConfig {
-	return ADWorkloadIdentityConfig{ctx: ctx, IdentityID: identityID, IdentityTenantID: identityTenantID, IdentityAuthorityHost: identityAuthorityHost, Resource: resource}
-}
-
-// Authorizer implements the auth.AuthorizerConfig interface
-func (aadWiConfig ADWorkloadIdentityConfig) Authorizer() (autorest.Authorizer, error) {
-	return autorest.NewBearerAuthorizer(NewAzureADWorkloadIdentityTokenProvider(
-		aadWiConfig.ctx, aadWiConfig.IdentityID, aadWiConfig.IdentityTenantID, aadWiConfig.IdentityAuthorityHost, aadWiConfig.Resource)), nil
-}
-
 func NewADWorkloadIdentityCredential(identityID, identityTenantID string) (*azidentity.WorkloadIdentityCredential, error) {
 	options := &azidentity.WorkloadIdentityCredentialOptions{}
 	if identityID != "" {
@@ -155,62 +132,4 @@ func NewADWorkloadIdentityCredential(identityID, identityTenantID string) (*azid
 		options.TenantID = identityTenantID
 	}
 	return azidentity.NewWorkloadIdentityCredential(options)
-}
-
-// ADWorkloadIdentityTokenProvider is a type that implements the adal.OAuthTokenProvider and adal.Refresher interfaces.
-// The OAuthTokenProvider interface is used by the BearerAuthorizer to get the token when preparing the HTTP Header.
-// The Refresher interface is used by the BearerAuthorizer to refresh the token.
-type ADWorkloadIdentityTokenProvider struct {
-	ctx                   context.Context
-	IdentityID            string
-	IdentityTenantID      string
-	IdentityAuthorityHost string
-	Resource              string
-	aadToken              AADToken
-}
-
-func NewAzureADWorkloadIdentityTokenProvider(ctx context.Context, identityID, identityTenantID, identityAuthorityHost, resource string) *ADWorkloadIdentityTokenProvider {
-	return &ADWorkloadIdentityTokenProvider{ctx: ctx, IdentityID: identityID, IdentityTenantID: identityTenantID, IdentityAuthorityHost: identityAuthorityHost, Resource: resource}
-}
-
-// OAuthToken is for implementing the adal.OAuthTokenProvider interface. It returns the current access token.
-func (wiTokenProvider *ADWorkloadIdentityTokenProvider) OAuthToken() string {
-	return wiTokenProvider.aadToken.AccessToken
-}
-
-// Refresh is for implementing the adal.Refresher interface
-func (wiTokenProvider *ADWorkloadIdentityTokenProvider) Refresh() error {
-	if time.Now().Before(wiTokenProvider.aadToken.ExpiresOnTimeObject) {
-		return nil
-	}
-
-	aadToken, err := GetAzureADWorkloadIdentityToken(wiTokenProvider.ctx, wiTokenProvider.IdentityID, wiTokenProvider.IdentityTenantID, wiTokenProvider.IdentityAuthorityHost, wiTokenProvider.Resource)
-	if err != nil {
-		return err
-	}
-
-	wiTokenProvider.aadToken = aadToken
-	return nil
-}
-
-// RefreshExchange is for implementing the adal.Refresher interface
-func (wiTokenProvider *ADWorkloadIdentityTokenProvider) RefreshExchange(resource string) error {
-	wiTokenProvider.Resource = resource
-	return wiTokenProvider.Refresh()
-}
-
-// EnsureFresh is for implementing the adal.Refresher interface
-func (wiTokenProvider *ADWorkloadIdentityTokenProvider) EnsureFresh() error {
-	return wiTokenProvider.Refresh()
-}
-
-// GetToken is for implementing the auth.TokenProvider interface
-func (wiTokenProvider *ADWorkloadIdentityTokenProvider) GetToken(_ string) (*amqpAuth.Token, error) {
-	err := wiTokenProvider.Refresh()
-	if err != nil {
-		return nil, err
-	}
-
-	return amqpAuth.NewToken(amqpAuth.CBSTokenTypeJWT, wiTokenProvider.aadToken.AccessToken,
-		wiTokenProvider.aadToken.ExpiresOn), nil
 }
