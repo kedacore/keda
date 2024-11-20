@@ -557,7 +557,7 @@ var _ = It("shouldn't validate the so creation with cpu and memory when stateful
 	}).Should(HaveOccurred())
 })
 
-var _ = It("shouldn't validate the so creation without cpu and memory when custom resources without real StatefulSet", func() {
+var _ = It("shouldn't validate the so creation without cpu and memory when custom resources and real StatefulSet not found", func() {
 
 	namespaceName := "crd-not-resources"
 	namespace := createNamespace(namespaceName)

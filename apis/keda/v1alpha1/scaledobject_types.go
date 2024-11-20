@@ -270,7 +270,7 @@ func (so *ScaledObject) CheckScaleTargetRefIfExist(ctx context.Context) error {
 	gvkString := soGvkr.GVKString()
 	unstruct := &unstructured.Unstructured{}
 	unstruct.SetGroupVersionKind(soGvkr.GroupVersionKind())
-	if err := kc.Get(ctx, client.ObjectKey{Namespace: so.Namespace, Name: so.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
+	if err := getFromCacheOrDirect(ctx, client.ObjectKey{Namespace: so.Namespace, Name: so.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
 		// resource doesn't exist
 		scaledobjectlog.Error(err, message.ScaleTargetNotFoundMsg, "resource", gvkString, "name", so.Spec.ScaleTargetRef.Name)
 		return err
