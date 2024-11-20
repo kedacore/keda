@@ -22,12 +22,12 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/kedacore/keda/v2/pkg/common/message"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	autoscalingv2 "k8s.io/api/autoscaling/v2"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/kedacore/keda/v2/pkg/common/message"
 )
 
 // +genclient
