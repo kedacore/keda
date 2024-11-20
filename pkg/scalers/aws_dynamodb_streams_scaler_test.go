@@ -225,19 +225,9 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			"shardCount": "a",
 			"awsRegion":  testAWSDynamoDBStreamsRegion},
 		authParams: testAWSKinesisAuthentication,
-		expected: &awsDynamoDBStreamsMetadata{
-			TargetShardCount: defaultTargetDBStreamsShardCount,
-			TableName:        testAWSDynamoDBSmallTable,
-			AwsRegion:        testAWSDynamoDBStreamsRegion,
-			awsAuthorization: awsutils.AuthorizationMetadata{
-				AwsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
-				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
-				PodIdentityOwner:   true,
-			},
-			triggerIndex: 4,
-		},
-		isError:      false,
-		comment:      "properly formed table name and region, wrong shard count",
+		expected: &awsDynamoDBStreamsMetadata{},
+		isError:      true,
+		comment:      "invalid value - should cause error",
 		triggerIndex: 4,
 	},
 	{
