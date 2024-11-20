@@ -288,9 +288,9 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error 
 	if err != nil {
 		return err
 	}
-	if err := incomingSo.CheckScaleTargetRefIfExist(); err != nil {
+	if err := incomingSo.CheckScaleTargetRefIfExist(context.Background()); err != nil {
 		return err
-	}
+	}git
 
 	incomingSoGvkr, err := ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
 	if err != nil {

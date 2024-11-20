@@ -398,7 +398,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 		scale, errScale = (r.ScaleClient).Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 		if errScale != nil {
 			// not able to get /scale subresource -> let's check if the resource even exist in the cluster
-			if err := scaledObject.CheckScaleTargetRefIfExist(); err != nil {
+			if err := scaledObject.CheckScaleTargetRefIfExist(ctx); err != nil {
 				r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNotFoundMsg)
 				return gvkr, err
 			}

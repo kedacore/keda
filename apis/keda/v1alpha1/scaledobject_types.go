@@ -259,7 +259,7 @@ func (so *ScaledObject) GetHPAMaxReplicas() int32 {
 }
 
 // CheckScaleTargetRefIfExist checks if scaleTargetRef of ScaledObject exists
-func (so *ScaledObject) CheckScaleTargetRefIfExist() error {
+func (so *ScaledObject) CheckScaleTargetRefIfExist(ctx context.Context) error {
 	soGvkr, err := ParseGVKR(restMapper, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind)
 	if err != nil {
 		msg := "Failed to parse Group, Version, Kind, Resource"
@@ -269,7 +269,7 @@ func (so *ScaledObject) CheckScaleTargetRefIfExist() error {
 	gvkString := soGvkr.GVKString()
 	unstruct := &unstructured.Unstructured{}
 	unstruct.SetGroupVersionKind(soGvkr.GroupVersionKind())
-	if err := kc.Get(context.Background(), client.ObjectKey{Namespace: so.Namespace, Name: so.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
+	if err := kc.Get(ctx, client.ObjectKey{Namespace: so.Namespace, Name: so.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
 		// resource doesn't exist
 		scaledobjectlog.Error(err, message.ScaleTargetNotFoundMsg, "resource", gvkString, "name", so.Spec.ScaleTargetRef.Name)
 		return err
