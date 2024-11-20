@@ -48,7 +48,7 @@ func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *scalersconfig.Scal
 
 	logger := InitializeLogger(config, "aws_dynamodb_streams_scaler")
 
-	meta, err := parseAwsDynamoDBStreamsMetadata(config, logger)
+	meta, err := parseAwsDynamoDBStreamsMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dynamodb stream metadata: %w", err)
 	}
@@ -73,7 +73,7 @@ func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *scalersconfig.Scal
 	}, nil
 }
 
-func parseAwsDynamoDBStreamsMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*awsDynamoDBStreamsMetadata, error) {
+func parseAwsDynamoDBStreamsMetadata(config *scalersconfig.ScalerConfig) (*awsDynamoDBStreamsMetadata, error) {
 	meta := awsDynamoDBStreamsMetadata{}
 
 	if err := config.TypedConfig(&meta); err != nil {
