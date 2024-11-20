@@ -59,6 +59,7 @@ var _ = It("should validate the so creation when there are other SO for other wo
 
 	workload := createDeployment(namespaceName, false, false)
 	otherWorkload := createDeployment(namespaceName, false, false)
+	otherWorkload.Name = "other-workload"
 	otherWorkload.Spec.Template.Name = "other-workload"
 
 	so1 := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
@@ -556,22 +557,18 @@ var _ = It("shouldn't validate the so creation with cpu and memory when stateful
 	}).Should(HaveOccurred())
 })
 
-var _ = It("should validate the so creation without cpu and memory when custom resources", func() {
+var _ = It("shouldn't validate the so creation without cpu and memory when custom resources without real StatefulSet", func() {
 
 	namespaceName := "crd-not-resources"
 	namespace := createNamespace(namespaceName)
-	workload := createStatefulSet(namespaceName, false, true)
 	so := createScaledObject(soName, namespaceName, workloadName, "custom-api", "StatefulSet", true, map[string]string{}, "")
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), workload)
-	Expect(err).ToNot(HaveOccurred())
-
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), so)
-	}).ShouldNot(HaveOccurred())
+	}).Should(HaveOccurred())
 })
 
 var _ = It("should validate so creation when all requirements are met for scaling to zero with cpu scaler", func() {
