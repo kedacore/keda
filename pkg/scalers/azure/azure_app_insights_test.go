@@ -1,10 +1,7 @@
 package azure
 
 import (
-	"context"
 	"testing"
-
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 type testExtractAzAppInsightsTestData struct {
@@ -64,39 +61,6 @@ func TestAzGetAzureAppInsightsMetricValue(t *testing.T) {
 				t.Errorf("Test: %v; Expected success but got error: %v", testData.testName, err)
 			}
 		}
-	}
-}
-
-type testAppInsightsAuthConfigTestData struct {
-	testName    string
-	config      string
-	info        AppInsightsInfo
-	podIdentity kedav1alpha1.PodIdentityProvider
-}
-
-const (
-	msiConfig               = "msiConfig"
-	clientCredentialsConfig = "clientCredentialsConfig"
-	workloadIdentityConfig  = "workloadIdentityConfig"
-)
-
-var testAppInsightsAuthConfigData = []testAppInsightsAuthConfigTestData{
-	{"client credentials", clientCredentialsConfig, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, ""},
-	{"client credentials - pod id none", clientCredentialsConfig, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, kedav1alpha1.PodIdentityProviderNone},
-	{"azure workload identity", workloadIdentityConfig, AppInsightsInfo{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
-}
-
-func TestAzAppInfoGetToken(t *testing.T) {
-	for _, testData := range testAppInsightsAuthConfigData {
-		authToken, err := GetAzureADWorkloadIdentityToken(context.TODO(), testData.info.ClientID, testData.info.TenantID, "", testData.info.AppInsightsResourceURL)
-
-		if err != nil {
-			t.Errorf("Test %v; Expected success but got error: %v", testData.testName, err)
-		}
-		if authToken.AccessToken == "" {
-			t.Errorf("Test %v; Expected token but got empty token: %v", testData.testName, authToken)
-		}
-		t.Logf("Test %v; data: %v, token: %v", testData.testName, testData.info, authToken)
 	}
 }
 

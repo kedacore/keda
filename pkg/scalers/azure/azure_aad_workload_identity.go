@@ -19,11 +19,12 @@ package azure
 import (
 	"context"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 )
 
 // Azure AD Workload Identity Webhook will inject the following environment variables.

@@ -58,19 +58,6 @@ func toISO8601(time string) (string, error) {
 	return fmt.Sprintf("PT%02dH%02dM", hours, minutes), nil
 }
 
-//func getAuthConfig(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) auth.AuthorizerConfig {
-//	switch podIdentity.Provider {
-//	case "", kedav1alpha1.PodIdentityProviderNone:
-//		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
-//		config.Resource = info.AppInsightsResourceURL
-//		config.AADEndpoint = info.ActiveDirectoryEndpoint
-//		return config
-//	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-//		return NewAzureADWorkloadIdentityConfig(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), info.AppInsightsResourceURL)
-//	}
-//	return nil
-//}
-
 func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetric) (float64, error) {
 	if _, ok := metric.Value[info.MetricID]; !ok {
 		return -1, fmt.Errorf("metric named %s not found in app insights response", info.MetricID)
@@ -108,13 +95,23 @@ func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interfac
 	return queryParams, nil
 }
 
+func getAuthConfig(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) (AADToken, error) {
+	token := AADToken{}
+	var err error
+
+	switch podIdentity.Provider {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		token, err = GetAzureADWorkloadIdentityToken(ctx, info.ClientID, info.TenantID, info.ActiveDirectoryEndpoint, info.AppInsightsResourceURL)
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		token, err = GetAzureADWorkloadIdentityToken(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), info.AppInsightsResourceURL)
+	}
+
+	return token, err
+}
+
 // GetAzureAppInsightsMetricValue returns the value of an Azure App Insights metric, rounded to the nearest int
 func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity, ignoreNullValues bool) (float64, error) {
-
-	//config := getAuthConfig(ctx, info, podIdentity)
-
-	token, err := GetAzureADWorkloadIdentityToken(ctx, info.ClientID, info.TenantID, "", info.AppInsightsResourceURL)
-	//MSAL get Token here instead of the config
+	token, err := getAuthConfig(ctx, info, podIdentity)
 	if err != nil {
 		return -1, err
 	}

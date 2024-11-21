@@ -8,7 +8,6 @@ require (
 	cloud.google.com/go/secretmanager v1.14.2
 	cloud.google.com/go/storage v1.43.0
 	dario.cat/mergo v1.0.1
-	github.com/Azure/azure-amqp-common-go/v4 v4.2.0
 	github.com/Azure/azure-kusto-go v0.16.1
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.16.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.0
@@ -20,7 +19,6 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.4.1
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue v1.0.0
 	github.com/Azure/go-autorest/autorest v0.11.29
-	github.com/Azure/go-autorest/autorest/azure/auth v0.5.13
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.2.3
 	github.com/DataDog/datadog-api-client-go v1.16.0
 	github.com/Huawei/gophercloud v1.0.21
@@ -118,6 +116,8 @@ require (
 	sigs.k8s.io/kustomize/kustomize/v5 v5.5.0
 )
 
+require github.com/Azure/go-autorest/autorest/adal v0.9.23 // indirect
+
 replace (
 	// pin k8s.io to v0.31.2 & sigs.k8s.io/controller-runtime to v0.19.1
 	github.com/google/cel-go => github.com/google/cel-go v0.20.1
@@ -204,7 +204,6 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
