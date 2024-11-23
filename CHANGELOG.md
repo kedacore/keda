@@ -58,7 +58,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Introduce new NSQ scaler ([#3281](https://github.com/kedacore/keda/issues/3281))
 
 #### Experimental
 
