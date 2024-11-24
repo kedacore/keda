@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"strings"
-	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/go-sql-driver/mysql"
@@ -17,6 +16,11 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
+// mySQLConnectionPoolKey is a custom type that serves as the key for storing
+// and retrieving MySQL connection pools from the global connection pool map
+// It uniquely identifies a MySQL connection pool based on the connection string
+type mySQLConnectionPoolKey string
+
 var (
 	// A map that holds MySQL connection pools, keyed by connection string,
 	// max open connections, max idle connections, and max idle time
@@ -24,7 +28,6 @@ var (
 )
 
 func init() {
-	// Initialize the global connectionPools map
 	connectionPools = kedautil.NewRefMap[mySQLConnectionPoolKey, *sql.DB]()
 }
 
@@ -46,31 +49,12 @@ type mySQLMetadata struct {
 	QueryValue           float64 `keda:"name=queryValue,                 order=triggerMetadata"`
 	ActivationQueryValue float64 `keda:"name=activationQueryValue,       order=triggerMetadata, default=0"`
 	MetricName           string  `keda:"name=metricName,                 order=triggerMetadata, optional"`
-
-	// Connection pool settings
-	UseGlobalConnPools bool `keda:"name=useGlobalConnPools, order=triggerMetadata, optional"`
-	MaxOpenConns       int  `keda:"name=maxOpenConns,       order=triggerMetadata, optional"`
-	MaxIdleConns       int  `keda:"name=maxIdleConns,       order=triggerMetadata, optional"`
-	ConnMaxIdleTime    int  `keda:"name=connMaxIdleTime,    order=triggerMetadata, optional"` // seconds
 }
 
-// mySQLConnectionPoolKey is used as a key to store MySQL connection pools in
-// the global map
-type mySQLConnectionPoolKey struct {
-	connectionString string
-	maxOpenConns     int
-	maxIdleConns     int
-	connMaxIdleTime  int
-}
-
-// newMySQLConnectionPoolKey creates a new mySQLConnectionPoolKey
+// newMySQLConnectionPoolKey creates a new mySQLConnectionPoolKey, which is the
+// connection string for the MySQL database
 func newMySQLConnectionPoolKey(meta *mySQLMetadata) mySQLConnectionPoolKey {
-	return mySQLConnectionPoolKey{
-		connectionString: metadataToConnectionStr(meta),
-		maxOpenConns:     meta.MaxOpenConns,
-		maxIdleConns:     meta.MaxIdleConns,
-		connMaxIdleTime:  meta.ConnMaxIdleTime,
-	}
+	return mySQLConnectionPoolKey(metadataToConnectionStr(meta))
 }
 
 // NewMySQLScaler creates a new MySQL scaler
@@ -87,15 +71,7 @@ func NewMySQLScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing MySQL metadata: %w", err)
 	}
 
-	// Create MySQL connection, if useGlobalConnPools is set to true, it will use
-	// the global connection pool for the given connection string, otherwise it
-	// will create a new local connection pool for the given connection string
-	var conn *sql.DB
-	if meta.UseGlobalConnPools {
-		conn, err = getConnectionPool(meta, logger)
-	} else {
-		conn, err = newMySQLConnection(meta, logger)
-	}
+	conn, err := getConnectionPool(meta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error creating MySQL connection: %w", err)
 	}
@@ -165,8 +141,9 @@ func getConnectionPool(meta *mySQLMetadata, logger logr.Logger) (*sql.DB, error)
 	if err != nil {
 		return nil, err
 	}
+
 	err = connectionPools.Store(key, newPool, func(db *sql.DB) error {
-		logger.Info("Closing MySQL connection pool", "connectionString", key.connectionString)
+		logger.Info("Closing MySQL connection pool", "connectionString", metadataToConnectionStr(meta))
 		return db.Close()
 	})
 	if err != nil {
@@ -192,26 +169,7 @@ func newMySQLConnection(meta *mySQLMetadata, logger logr.Logger) (*sql.DB, error
 		return nil, err
 	}
 
-	setConnectionPoolConfiguration(meta, db)
-
 	return db, nil
-}
-
-// setConnectionPoolConfiguration configures the MySQL connection pool settings
-// based on the parameters provided in mySQLMetadata. If a setting is zero, it
-// is left at its default value.
-func setConnectionPoolConfiguration(meta *mySQLMetadata, db *sql.DB) {
-	if meta.MaxOpenConns > 0 {
-		db.SetMaxOpenConns(meta.MaxOpenConns)
-	}
-
-	if meta.MaxIdleConns > 0 {
-		db.SetMaxIdleConns(meta.MaxIdleConns)
-	}
-
-	if meta.ConnMaxIdleTime > 0 {
-		db.SetConnMaxIdleTime(time.Duration(meta.ConnMaxIdleTime) * time.Second)
-	}
 }
 
 // parseMySQLDbNameFromConnectionStr returns dbname from connection string
@@ -227,22 +185,7 @@ func parseMySQLDbNameFromConnectionStr(connectionString string) string {
 
 // Close disposes of MySQL connections, closing either the global pool if used
 // or the local connection pool
-func (s *mySQLScaler) Close(ctx context.Context) error {
-	if s.metadata.UseGlobalConnPools {
-		if err := s.closeGlobalPool(ctx); err != nil {
-			return fmt.Errorf("error closing MySQL connection: %w", err)
-		}
-	} else {
-		if err := s.connection.Close(); err != nil {
-			return fmt.Errorf("error closing MySQL connection: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// closeGlobalPool closes all MySQL connections in the global pool
-func (s *mySQLScaler) closeGlobalPool(_ context.Context) error {
+func (s *mySQLScaler) Close(_ context.Context) error {
 	key := newMySQLConnectionPoolKey(s.metadata)
 
 	if err := connectionPools.RemoveRef(key); err != nil {
