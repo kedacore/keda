@@ -58,7 +58,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General**: Fix and optimize all webhook checkReplicas code ([#6344](https://github.com/kedacore/keda/pull/6344))
+- **General**: Optimize all webhook checkReplicas code ([#6344](https://github.com/kedacore/keda/pull/6344))
+-**General**: Introduce new NSQ scaler ([#3281](https://github.com/kedacore/keda/issues/3281))
 
 #### Experimental
 
