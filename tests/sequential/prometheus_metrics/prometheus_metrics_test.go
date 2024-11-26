@@ -608,28 +608,20 @@ func testScalerErrors(t *testing.T, data templateData) {
 	KubectlApplyWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-	val, ok := family["keda_scaler_errors_total"]
-	assert.True(t, ok, "keda_scaler_errors_total not available")
 	valDetail, okDetail := family["keda_scaler_detail_errors_total"]
 	assert.True(t, okDetail, "keda_scaler_detail_errors_total not available")
-	if ok && okDetail {
-		errCounterVal1 := getErrorMetricsValue(val)
+	if okDetail {
 		errCounterValDetail1 := getErrorMetricsValue(valDetail)
 
 		// wait for 20 seconds to correctly fetch metrics.
 		time.Sleep(20 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-		val, ok := family["keda_scaler_errors_total"]
-		assert.True(t, ok, "keda_scaler_errors_total not available")
 		valDetail, okDetail := family["keda_scaler_detail_errors_total"]
 		assert.True(t, okDetail, "keda_scaler_detail_errors_total not available")
-		if ok && okDetail {
-			errCounterVal2 := getErrorMetricsValue(val)
+		if okDetail {
 			errCounterValDetail2 := getErrorMetricsValue(valDetail)
-			assert.NotEqual(t, errCounterVal2, float64(0))
 			assert.NotEqual(t, errCounterValDetail2, float64(0))
-			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
 			assert.GreaterOrEqual(t, errCounterValDetail2, errCounterValDetail1)
 		}
 	}
@@ -716,25 +708,7 @@ func testScalerMetricLatency(t *testing.T) {
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
 
-	val, ok := family["keda_scaler_metrics_latency"]
-	assert.True(t, ok, "keda_scaler_metrics_latency not available")
-	if ok {
-		var found bool
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
-			labels := metric.GetLabel()
-			for _, label := range labels {
-				if (*label.Name == labelScaledObject && *label.Value == scaledObjectName) ||
-					(*label.Name == labelScaledJob && *label.Value == scaledJobName) {
-					assert.Equal(t, float64(0), *metric.Gauge.Value)
-					found = true
-				}
-			}
-		}
-		assert.Equal(t, true, found)
-	}
-
-	val, ok = family["keda_scaler_metrics_latency_seconds"]
+	val, ok := family["keda_scaler_metrics_latency_seconds"]
 	assert.True(t, ok, "keda_scaler_metrics_latency_seconds not available")
 	if ok {
 		var found bool
