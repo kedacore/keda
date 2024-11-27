@@ -144,8 +144,8 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
-		false,
-		"properly formed queue, invalid queueLength"},
+		true,
+		"invalid integer value for queueLength"},
 	{map[string]string{
 		"queueURL":              testAWSSQSProperQueueURL,
 		"queueLength":           "1",
@@ -162,8 +162,8 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsRegion":             "eu-west-1"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
-		false,
-		"properly formed queue, invalid activationQueueLength"},
+		true,
+		"invalid integer value for activationQueueLength"},
 	{map[string]string{
 		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
@@ -304,7 +304,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		map[string]string{
 			"QUEUE_URL": "",
 		},
-		true,
+		false,
 		"empty QUEUE_URL env value"},
 }
 
@@ -392,7 +392,7 @@ var awsSQSGetMetricTestData = []*parseAWSSQSMetadataTestData{
 
 func TestSQSParseMetadata(t *testing.T) {
 	for _, testData := range testAWSSQSMetadata {
-		_, err := parseAwsSqsQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams}, logr.Discard())
+		_, err := parseAwsSqsQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
 		}
@@ -405,7 +405,7 @@ func TestSQSParseMetadata(t *testing.T) {
 func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsSQSMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseAwsSqsQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
+		meta, err := parseAwsSqsQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -421,24 +421,24 @@ func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 
 func TestAWSSQSScalerGetMetrics(t *testing.T) {
 	for index, testData := range awsSQSGetMetricTestData {
-		meta, err := parseAwsSqsQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams, TriggerIndex: index}, logr.Discard())
+		meta, err := parseAwsSqsQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams, TriggerIndex: index})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		scaler := awsSqsQueueScaler{"", meta, &mockSqs{}, logr.Discard()}
 
 		value, _, err := scaler.GetMetricsAndActivity(context.Background(), "MetricName")
-		switch meta.queueURL {
+		switch meta.QueueURL {
 		case testAWSSQSErrorQueueURL:
 			assert.Error(t, err, "expect error because of sqs api error")
 		case testAWSSQSBadDataQueueURL:
 			assert.Error(t, err, "expect error because of bad data return from sqs")
 		default:
 			expectedMessages := testAWSSQSApproximateNumberOfMessagesVisible
-			if meta.scaleOnInFlight {
+			if meta.ScaleOnInFlight {
 				expectedMessages += testAWSSQSApproximateNumberOfMessagesNotVisible
 			}
-			if meta.scaleOnDelayed {
+			if meta.ScaleOnDelayed {
 				expectedMessages += testAWSSQSApproximateNumberOfMessagesDelayed
 			}
 			assert.EqualValues(t, int64(expectedMessages), value[0].Value.Value())
