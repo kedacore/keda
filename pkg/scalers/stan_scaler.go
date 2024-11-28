@@ -278,6 +278,7 @@ func (s *stanScaler) GetMetricsAndActivity(ctx context.Context, metricName strin
 	}
 	totalLag := s.getMaxMsgLag()
 	s.logger.V(1).Info("Stan scaler: Providing metrics based on totalLag, threshold", "totalLag", totalLag, "lagThreshold", s.metadata.lagThreshold)
+	s.logger.Info("The Stan scaler (NATS Streaming) is DEPRECATED and will be removed in v2.19 - Use scaler 'nats-jetstream' instead")
 
 	metric := GenerateMetricInMili(metricName, float64(totalLag))
 
