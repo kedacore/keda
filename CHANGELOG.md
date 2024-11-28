@@ -68,7 +68,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+-  **RabbitMQ Scaler**: Support use of the ‘vhostName’ parameter in the ‘TriggerAuthentication’ resource ([#6369](https://github.com/kedacore/keda/issues/6369))
 
 ### Fixes
 
