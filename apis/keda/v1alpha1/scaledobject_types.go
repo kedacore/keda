@@ -21,9 +21,20 @@ import (
 	"reflect"
 	"strconv"
 
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/common/message"
+	"github.com/kedacore/keda/v2/pkg/eventemitter"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
+
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var scaledobjecttypeslog = logf.Log.WithName("scaledobject-types")
+
+var EventEmitter eventemitter.EventHandler
 
 // +genclient
 // +kubebuilder:object:root=true
@@ -288,7 +299,8 @@ func CheckFallbackValid(scaledObject *ScaledObject) error {
 
 	for _, trigger := range scaledObject.Spec.Triggers {
 		if trigger.Type == cpuString || trigger.Type == memoryString {
-			return fmt.Errorf("type is %s , but fallback it is not supported by the CPU & memory scalers", trigger.Type)
+			scaledobjecttypeslog.Error(nil, fmt.Sprintf("type is %s , but fallback it is not supported by the CPU & memory scalers", trigger.Type))
+			EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, message.ScaledObjectMayNotBehaveAsExpectationMsg)
 		}
 		if trigger.MetricType != autoscalingv2.AverageValueMetricType {
 			return fmt.Errorf("MetricType=%s, but fallback can only be enabled for triggers with metric of type AverageValue", trigger.MetricType)

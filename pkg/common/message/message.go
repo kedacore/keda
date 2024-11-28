@@ -42,4 +42,6 @@ const (
 	ClusterTriggerAuthenticationCreatedMsg = "New ClusterTriggerAuthentication configured"
 
 	ClusterTriggerAuthenticationUpdatedMsg = "ClusterTriggerAuthentication %s is updated"
+
+	ScaledObjectMayNotBehaveAsExpectationMsg = "ScaledObject may not behave as expectation"
 )

@@ -176,7 +176,7 @@ var _ = It("shouldn't validate the so creation when the fallback is wrong", func
 	}).Should(HaveOccurred())
 })
 
-var _ = It("shouldn't validate the so creation When the fallback are configured and the scaler is either CPU or memory.", func() {
+var _ = It("should validate the so creation When the fallback are configured and the scaler is either CPU or memory.", func() {
 	namespaceName := "wrong-fallback-cpu-memory"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
@@ -193,7 +193,7 @@ var _ = It("shouldn't validate the so creation When the fallback are configured 
 
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), so)
-	}).Should(HaveOccurred())
+	}).ShouldNot(HaveOccurred())
 })
 
 var _ = It("shouldn't validate the so creation when there is another unmanaged hpa and so has transfer-hpa-ownership activated", func() {
