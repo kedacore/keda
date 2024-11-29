@@ -4,6 +4,7 @@
 package aws_secretmanager_pod_identity_test
 
 import (
+	// Standard imports
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"testing"
 
+	// Third-party imports
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -20,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
+	// Local imports
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
@@ -164,7 +167,7 @@ spec:
     secrets:
     - parameter: connection
       name: {{.SecretManagerSecretName}}
-	  secretKey: connectionString
+      secretKey: connectionString
 `
 
 	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
