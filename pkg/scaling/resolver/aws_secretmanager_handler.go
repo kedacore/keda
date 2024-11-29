@@ -108,6 +108,7 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 			return fmt.Errorf("AccessKeyID and AccessSecretKey are expected when not using a pod identity provider")
 		}
 	case kedav1alpha1.PodIdentityProviderAws:
+		ash.awsMetadata.UsingPodIdentity = true
 		if ash.secretManager.PodIdentity.IsWorkloadIdentityOwner() {
 			awsRoleArn, err := resolveServiceAccountAnnotation(ctx, client, podSpec.ServiceAccountName, triggerNamespace, kedav1alpha1.PodIdentityAnnotationEKS, true)
 			if err != nil {

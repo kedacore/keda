@@ -152,6 +152,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewAzureQueueScaler(config)
 	case "azure-servicebus":
 		return scalers.NewAzureServiceBusScaler(ctx, config)
+	case "beanstalkd":
+		return scalers.NewBeanstalkdScaler(config)
 	case "cassandra":
 		return scalers.NewCassandraScaler(config)
 	case "couchdb":
@@ -215,6 +217,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewNATSJetStreamScaler(config)
 	case "new-relic":
 		return scalers.NewNewRelicScaler(config)
+	case "nsq":
+		return scalers.NewNSQScaler(config)
 	case "openstack-metric":
 		return scalers.NewOpenstackMetricScaler(ctx, config)
 	case "openstack-swift":

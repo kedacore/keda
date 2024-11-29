@@ -29,6 +29,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -44,14 +45,31 @@ import (
 var scaledobjectlog = logf.Log.WithName("scaledobject-validation-webhook")
 
 var kc client.Client
+var cacheMissToDirectClient bool
+var directClient client.Client
 var restMapper meta.RESTMapper
 
 var memoryString = "memory"
 var cpuString = "cpu"
 
-func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager, cacheMissFallback bool) error {
 	kc = mgr.GetClient()
 	restMapper = mgr.GetRESTMapper()
+	cacheMissToDirectClient = cacheMissFallback
+	if cacheMissToDirectClient {
+		cfg := mgr.GetConfig()
+		opts := client.Options{
+			HTTPClient: mgr.GetHTTPClient(),
+			Scheme:     mgr.GetScheme(),
+			Mapper:     restMapper,
+			Cache:      nil, // this disables the cache and explicitly uses the direct client
+		}
+		var err error
+		directClient, err = client.New(cfg, opts)
+		if err != nil {
+			return fmt.Errorf("failed to initialize direct client: %w", err)
+		}
+	}
 	return ctrl.NewWebhookManagedBy(mgr).
 		WithValidator(&ScaledObjectCustomValidator{}).
 		For(so).
@@ -277,6 +295,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error 
 		return err
 	}
 
+	incomingSoHpaName := getHpaName(*incomingSo)
 	for _, so := range soList.Items {
 		if so.Name == incomingSo.Name {
 			continue
@@ -297,6 +316,13 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error 
 			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object")
 			return err
 		}
+
+		if getHpaName(so) == incomingSoHpaName {
+			err = fmt.Errorf("the HPA '%s' is already managed by the ScaledObject '%s'", so.Spec.Advanced.HorizontalPodAutoscalerConfig.Name, so.Name)
+			scaledobjectlog.Error(err, "validation error")
+			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-scaled-object-hpa")
+			return err
+		}
 	}
 
 	// verify ScalingModifiers structure if defined in ScaledObject
@@ -310,6 +336,18 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error 
 		}
 	}
 	return nil
+}
+
+// getFromCacheOrDirect is a helper function that tries to get an object from the cache
+// if it fails, it tries to get it from the direct client
+func getFromCacheOrDirect(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+	err := kc.Get(ctx, key, obj, &client.GetOptions{})
+	if cacheMissToDirectClient {
+		if kerrors.IsNotFound(err) {
+			return directClient.Get(ctx, key, obj, &client.GetOptions{})
+		}
+	}
+	return err
 }
 
 func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool) error {
@@ -334,15 +372,13 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool
 				switch incomingSoGckr.GVKString() {
 				case "apps/v1.Deployment":
 					deployment := &appsv1.Deployment{}
-					err := kc.Get(context.Background(), key, deployment, &client.GetOptions{})
-					if err != nil {
+					if err := getFromCacheOrDirect(context.Background(), key, deployment); err != nil {
 						return err
 					}
 					podSpec = &deployment.Spec.Template.Spec
 				case "apps/v1.StatefulSet":
 					statefulset := &appsv1.StatefulSet{}
-					err := kc.Get(context.Background(), key, statefulset, &client.GetOptions{})
-					if err != nil {
+					if err := getFromCacheOrDirect(context.Background(), key, statefulset); err != nil {
 						return err
 					}
 					podSpec = &statefulset.Spec.Template.Spec
@@ -543,4 +579,12 @@ func isContainerResourceLimitSet(ctx context.Context, namespace string, triggerT
 		Error(nil, "no container limit range found in namespace")
 
 	return false
+}
+
+func getHpaName(so ScaledObject) string {
+	if so.Spec.Advanced == nil || so.Spec.Advanced.HorizontalPodAutoscalerConfig == nil || so.Spec.Advanced.HorizontalPodAutoscalerConfig.Name == "" {
+		return fmt.Sprintf("keda-hpa-%s", so.Name)
+	}
+
+	return so.Spec.Advanced.HorizontalPodAutoscalerConfig.Name
 }

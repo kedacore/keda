@@ -31,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,8 +38,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
+	"github.com/kedacore/keda/v2/pkg/common/message"
+	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scaling"
@@ -48,15 +50,15 @@ import (
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
-// +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/finalizers;scaledjobs/status,verbs="*"
-// +kubebuilder:rbac:groups=batch,resources=jobs,verbs="*"
+// +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/finalizers;scaledjobs/status,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;update;patch;create;delete
 
 // ScaledJobReconciler reconciles a ScaledJob object
 type ScaledJobReconciler struct {
 	client.Client
 	Scheme            *runtime.Scheme
 	GlobalHTTPTimeout time.Duration
-	Recorder          record.EventRecorder
+	EventEmitter      eventemitter.EventHandler
 
 	scaledJobGenerations *sync.Map
 	scaleHandler         scaling.ScaleHandler
@@ -133,7 +135,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if !scaledJob.Status.Conditions.AreInitialized() {
 		conditions := kedav1alpha1.GetInitializedConditions()
 		if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, conditions); err != nil {
-			r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobUpdateFailed, err.Error())
+			r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobUpdateFailed, err.Error())
 			return ctrl.Result{}, err
 		}
 	}
@@ -141,9 +143,9 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// Check jobTargetRef is specified
 	if scaledJob.Spec.JobTargetRef == nil {
 		errMsg := "ScaledJob.spec.jobTargetRef not found"
-		err := fmt.Errorf(errMsg)
+		err := fmt.Errorf("%s", errMsg)
 		reqLogger.Error(err, errMsg)
-		r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobCheckFailed, errMsg)
+		r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobCheckFailed, errMsg)
 		return ctrl.Result{}, err
 	}
 	conditions := scaledJob.Status.Conditions.DeepCopy()
@@ -152,18 +154,18 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		reqLogger.Error(err, msg)
 		conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledJobCheckFailed", msg)
 		conditions.SetActiveCondition(metav1.ConditionUnknown, "UnknownState", "ScaledJob check failed")
-		r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobCheckFailed, msg)
+		r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobCheckFailed, msg)
 	} else {
 		wasReady := conditions.GetReadyCondition()
 		if wasReady.IsFalse() || wasReady.IsUnknown() {
-			r.Recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.ScaledJobReady, "ScaledJob is ready for scaling")
+			r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectReadyType, eventreason.ScaledJobReady, message.ScaledJobReadyMsg)
 		}
 		reqLogger.V(1).Info(msg)
 		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledJobReady", msg)
 	}
 
 	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, &conditions); err != nil {
-		r.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.ScaledJobUpdateFailed, err.Error())
+		r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobUpdateFailed, err.Error())
 		return ctrl.Result{}, err
 	}
 
@@ -187,6 +189,11 @@ func (r *ScaledJobReconciler) reconcileScaledJob(ctx context.Context, logger log
 	err = kedav1alpha1.ValidateTriggers(scaledJob.Spec.Triggers)
 	if err != nil {
 		return "ScaledJob doesn't have correct triggers specification", err
+	}
+
+	err = r.updateStatusWithTriggersAndAuthsTypes(ctx, logger, scaledJob)
+	if err != nil {
+		return "Cannot update ScaledJob status with triggers'names and authentications'names", err
 	}
 
 	// nosemgrep: trailofbits.go.invalid-usage-of-modified-variable.invalid-usage-of-modified-variable
@@ -365,7 +372,7 @@ func (r *ScaledJobReconciler) updatePromMetrics(scaledJob *kedav1alpha1.ScaledJo
 	metricscollector.IncrementCRDTotal(metricscollector.ScaledJobResource, scaledJob.Namespace)
 	metricsData.namespace = scaledJob.Namespace
 
-	triggerTypes := make([]string, len(scaledJob.Spec.Triggers))
+	triggerTypes := make([]string, 0, len(scaledJob.Spec.Triggers))
 	for _, trigger := range scaledJob.Spec.Triggers {
 		metricscollector.IncrementTriggerTotal(trigger.Type)
 		triggerTypes = append(triggerTypes, trigger.Type)
@@ -401,4 +408,15 @@ func (r *ScaledJobReconciler) updateTriggerAuthenticationStatusOnDelete(ctx cont
 		triggerAuthenticationStatus.ScaledJobNamesStr = kedacontrollerutil.RemoveFromString(triggerAuthenticationStatus.ScaledJobNamesStr, scaledJob.GetName(), ",")
 		return triggerAuthenticationStatus
 	})
+}
+
+func (r *ScaledJobReconciler) updateStatusWithTriggersAndAuthsTypes(ctx context.Context, logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob) error {
+	triggersTypes, authsTypes := kedav1alpha1.CombinedTriggersAndAuthenticationsTypes(scaledJob.Spec.Triggers)
+	status := scaledJob.Status.DeepCopy()
+	status.TriggersTypes = &triggersTypes
+	status.AuthenticationsTypes = &authsTypes
+
+	logger.V(1).Info("Updating ScaledJob status with triggers and authentications types", "triggersTypes", triggersTypes, "authenticationsTypes", authsTypes)
+
+	return kedastatus.UpdateScaledJobStatus(ctx, r.Client, logger, scaledJob, status)
 }

@@ -1,8 +1,6 @@
 package scalers
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/xml"
 	"errors"
@@ -14,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/tidwall/gjson"
 	"gopkg.in/yaml.v3"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -264,24 +264,66 @@ func GetValueFromResponse(body []byte, valueLocation string, format APIFormat) (
 
 // getValueFromPrometheusResponse uses provided valueLocation to access the numeric value in provided body
 func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64, error) {
-	scanner := bufio.NewScanner(bytes.NewReader(body))
-	for scanner.Scan() {
-		line := scanner.Text()
-		fields := strings.Fields(line)
-		if len(fields) == 0 || strings.HasPrefix(fields[0], "#") {
-			continue
-		}
-		if len(fields) == 2 && strings.HasPrefix(fields[0], valueLocation) {
-			value, err := strconv.ParseFloat(fields[1], 64)
-			if err != nil {
-				return 0, err
-			}
-			return value, nil
+	matchers, err := parser.ParseMetricSelector(valueLocation)
+	if err != nil {
+		return 0, err
+	}
+	metricName := ""
+	for _, v := range matchers {
+		if v.Name == "__name__" {
+			metricName = v.Value
 		}
 	}
-
-	if err := scanner.Err(); err != nil {
+	// Ensure EOL
+	reader := strings.NewReader(strings.ReplaceAll(string(body), "\r\n", "\n"))
+	familiesParser := expfmt.TextParser{}
+	families, err := familiesParser.TextToMetricFamilies(reader)
+	if err != nil {
 		return 0, err
+	}
+	family, ok := families[metricName]
+	if !ok {
+		return 0, fmt.Errorf("metric '%s' not found", metricName)
+	}
+
+	metrics := family.GetMetric()
+	for _, metric := range metrics {
+		labels := metric.GetLabel()
+		match := true
+		for _, matcher := range matchers {
+			matcherFound := false
+			if matcher == nil {
+				continue
+			}
+			// The name has been already validated,
+			// so we can skip it and check the other labels
+			if matcher.Name == "__name__" {
+				continue
+			}
+			for _, label := range labels {
+				if *label.Name == matcher.Name &&
+					*label.Value == matcher.Value {
+					matcherFound = true
+				}
+			}
+			if !matcherFound {
+				match = false
+			}
+		}
+		if match {
+			untyped := metric.GetUntyped()
+			if untyped != nil && untyped.Value != nil {
+				return *untyped.Value, nil
+			}
+			counter := metric.GetCounter()
+			if counter != nil && counter.Value != nil {
+				return *counter.Value, nil
+			}
+			gauge := metric.GetGauge()
+			if gauge != nil && gauge.Value != nil {
+				return *gauge.Value, nil
+			}
+		}
 	}
 
 	return 0, fmt.Errorf("value %s not found", valueLocation)
