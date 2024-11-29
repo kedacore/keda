@@ -625,7 +625,6 @@ func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, 
 			logger.Error(err, "error trying to parse expiry duration", "expiry", expiry)
 			return ""
 		}
-		// convert duration to seconds
 		expirySeconds = ptr.Int64(int64(duration.Seconds()))
 	}
 
@@ -640,7 +639,6 @@ func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, 
 }
 
 func generateToken(ctx context.Context, serviceAccountName, namespace string, expiry *int64, acs *authentication.AuthClientSet) string {
-	// create new token and embed it in the secret
 	token, err := acs.CoreV1Interface.ServiceAccounts(namespace).CreateToken(
 		ctx,
 		serviceAccountName,
