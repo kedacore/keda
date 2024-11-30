@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
-	"unicode"
 
 	"github.com/go-logr/logr"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -82,21 +80,16 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 	}
 
 	// label can have max 63 chars
-	labelName := getHPAName(scaledObject)
-	if len(labelName) > 63 {
-		labelName = labelName[:63]
-		labelName = strings.TrimRightFunc(labelName, func(r rune) bool {
-			return !unicode.IsLetter(r) && !unicode.IsNumber(r)
-		})
-	}
+	labelName := kedacontrollerutil.Truncate(getHPAName(scaledObject), 63)
+	scaleObjectName := kedacontrollerutil.Truncate(scaledObject.Name, 63)
 	labels := map[string]string{
 		"app.kubernetes.io/name":       labelName,
 		"app.kubernetes.io/version":    version.Version,
-		"app.kubernetes.io/part-of":    scaledObject.Name,
+		"app.kubernetes.io/part-of":    scaleObjectName,
 		"app.kubernetes.io/managed-by": "keda-operator",
 	}
 	for key, value := range scaledObject.ObjectMeta.Labels {
-		labels[key] = value
+		labels[key] = kedacontrollerutil.Truncate(value, 63)
 	}
 
 	minReplicas := scaledObject.GetHPAMinReplicas()
@@ -221,6 +214,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 	}
 
 	metricSpecs := cache.GetMetricSpecForScaling(ctx)
+	scaledObjectName := kedacontrollerutil.Truncate(scaledObject.Name, 63)
 
 	for _, metricSpec := range metricSpecs {
 		if metricSpec.Resource != nil {
@@ -230,12 +224,12 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 		if metricSpec.External != nil {
 			externalMetricName := metricSpec.External.Metric.Name
 			if kedacontrollerutil.Contains(externalMetricNames, externalMetricName) {
-				return nil, fmt.Errorf("metricName %s defined multiple times in ScaledObject %s", externalMetricName, scaledObject.Name)
+				return nil, fmt.Errorf("metricName %s defined multiple times in ScaledObject %s", externalMetricName, scaledObjectName)
 			}
 
 			// add the scaledobject.keda.sh/name label. This is how the MetricsAdapter will know which scaledobject a metric is for when the HPA queries it.
 			metricSpec.External.Metric.Selector = &metav1.LabelSelector{MatchLabels: make(map[string]string)}
-			metricSpec.External.Metric.Selector.MatchLabels[kedav1alpha1.ScaledObjectOwnerAnnotation] = scaledObject.Name
+			metricSpec.External.Metric.Selector.MatchLabels[kedav1alpha1.ScaledObjectOwnerAnnotation] = scaledObjectName
 			externalMetricNames = append(externalMetricNames, externalMetricName)
 		}
 	}
@@ -293,7 +287,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 					Metric: autoscalingv2.MetricIdentifier{
 						Name: compMetricName,
 						Selector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{kedav1alpha1.ScaledObjectOwnerAnnotation: scaledObject.Name},
+							MatchLabels: map[string]string{kedav1alpha1.ScaledObjectOwnerAnnotation: scaledObjectName},
 						},
 					},
 					Target: correctHpaTarget,
