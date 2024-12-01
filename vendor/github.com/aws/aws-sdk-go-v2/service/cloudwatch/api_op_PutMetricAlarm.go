@@ -389,6 +389,10 @@ type PutMetricAlarmInput struct {
 	// specify in this parameter are ignored. To change the tags of an existing alarm,
 	// use [TagResource]or [UntagResource].
 	//
+	// To use this field to set tags for an alarm when you create it, you must be
+	// signed on with both the cloudwatch:PutMetricAlarm and cloudwatch:TagResource
+	// permissions.
+	//
 	// [TagResource]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_TagResource.html
 	// [UntagResource]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_UntagResource.html
 	Tags []types.Tag
