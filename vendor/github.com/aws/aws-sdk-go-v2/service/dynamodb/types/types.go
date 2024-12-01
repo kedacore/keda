@@ -968,6 +968,10 @@ type CreateGlobalSecondaryIndexAction struct {
 	// [Service, Account, and Table Quotas]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html
 	ProvisionedThroughput *ProvisionedThroughput
 
+	// Represents the warm throughput value (in read units per second and write units
+	// per second) when creating a secondary index.
+	WarmThroughput *WarmThroughput
+
 	noSmithyDocumentSerde
 }
 
@@ -1528,6 +1532,11 @@ type GlobalSecondaryIndex struct {
 	// [Service, Account, and Table Quotas]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html
 	ProvisionedThroughput *ProvisionedThroughput
 
+	// Represents the warm throughput value (in read units per second and write units
+	// per second) for the specified secondary index. If you use this parameter, you
+	// must specify ReadUnitsPerSecond , WriteUnitsPerSecond , or both.
+	WarmThroughput *WarmThroughput
+
 	noSmithyDocumentSerde
 }
 
@@ -1627,6 +1636,10 @@ type GlobalSecondaryIndexDescription struct {
 	// [Service, Account, and Table Quotas]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html
 	ProvisionedThroughput *ProvisionedThroughputDescription
 
+	// Represents the warm throughput value (in read units per second and write units
+	// per second) for the specified secondary index.
+	WarmThroughput *GlobalSecondaryIndexWarmThroughputDescription
+
 	noSmithyDocumentSerde
 }
 
@@ -1701,6 +1714,24 @@ type GlobalSecondaryIndexUpdate struct {
 	// The name of an existing global secondary index, along with new provisioned
 	// throughput settings to be applied to that index.
 	Update *UpdateGlobalSecondaryIndexAction
+
+	noSmithyDocumentSerde
+}
+
+// The description of the warm throughput value on a global secondary index.
+type GlobalSecondaryIndexWarmThroughputDescription struct {
+
+	// Represents warm throughput read units per second value for a global secondary
+	// index.
+	ReadUnitsPerSecond *int64
+
+	// Represents the warm throughput status being created or updated on a global
+	// secondary index. The status can only be UPDATING or ACTIVE .
+	Status IndexStatus
+
+	// Represents warm throughput write units per second value for a global secondary
+	// index.
+	WriteUnitsPerSecond *int64
 
 	noSmithyDocumentSerde
 }
@@ -2550,6 +2581,9 @@ type ReplicaDescription struct {
 	// Contains details of the table class.
 	ReplicaTableClassSummary *TableClassSummary
 
+	// Represents the warm throughput value for this replica.
+	WarmThroughput *TableWarmThroughputDescription
+
 	noSmithyDocumentSerde
 }
 
@@ -2627,6 +2661,9 @@ type ReplicaGlobalSecondaryIndexDescription struct {
 
 	// If not described, uses the source table GSI's read capacity settings.
 	ProvisionedThroughputOverride *ProvisionedThroughputOverride
+
+	// Represents the warm throughput of the global secondary index for this replica.
+	WarmThroughput *GlobalSecondaryIndexWarmThroughputDescription
 
 	noSmithyDocumentSerde
 }
@@ -3360,6 +3397,25 @@ type TableDescription struct {
 	//   information.
 	TableStatus TableStatus
 
+	// Describes the warm throughput value of the base table.
+	WarmThroughput *TableWarmThroughputDescription
+
+	noSmithyDocumentSerde
+}
+
+// Represents the warm throughput value (in read units per second and write units
+// per second) of the base table.
+type TableWarmThroughputDescription struct {
+
+	// Represents the base table's warm throughput value in read units per second.
+	ReadUnitsPerSecond *int64
+
+	// Represents warm throughput value of the base table..
+	Status TableStatus
+
+	// Represents the base table's warm throughput value in write units per second.
+	WriteUnitsPerSecond *int64
+
 	noSmithyDocumentSerde
 }
 
@@ -3516,6 +3572,10 @@ type UpdateGlobalSecondaryIndexAction struct {
 	// [Service, Account, and Table Quotas]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html
 	ProvisionedThroughput *ProvisionedThroughput
 
+	// Represents the warm throughput value of the new provisioned throughput settings
+	// to be applied to a global secondary index.
+	WarmThroughput *WarmThroughput
+
 	noSmithyDocumentSerde
 }
 
@@ -3555,6 +3615,23 @@ type UpdateReplicationGroupMemberAction struct {
 	// Replica-specific table class. If not specified, uses the source table's table
 	// class.
 	TableClassOverride TableClass
+
+	noSmithyDocumentSerde
+}
+
+// Provides visibility into the number of read and write operations your table or
+// secondary index can instantaneously support. The settings can be modified using
+// the UpdateTable operation to meet the throughput requirements of an upcoming
+// peak event.
+type WarmThroughput struct {
+
+	// Represents the number of read operations your base table can instantaneously
+	// support.
+	ReadUnitsPerSecond *int64
+
+	// Represents the number of write operations your base table can instantaneously
+	// support.
+	WriteUnitsPerSecond *int64
 
 	noSmithyDocumentSerde
 }

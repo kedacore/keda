@@ -3911,6 +3911,13 @@ func awsAwsjson10_serializeDocumentCreateGlobalSecondaryIndexAction(v *types.Cre
 		}
 	}
 
+	if v.WarmThroughput != nil {
+		ok := object.Key("WarmThroughput")
+		if err := awsAwsjson10_serializeDocumentWarmThroughput(v.WarmThroughput, ok); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -4254,6 +4261,13 @@ func awsAwsjson10_serializeDocumentGlobalSecondaryIndex(v *types.GlobalSecondary
 	if v.ProvisionedThroughput != nil {
 		ok := object.Key("ProvisionedThroughput")
 		if err := awsAwsjson10_serializeDocumentProvisionedThroughput(v.ProvisionedThroughput, ok); err != nil {
+			return err
+		}
+	}
+
+	if v.WarmThroughput != nil {
+		ok := object.Key("WarmThroughput")
+		if err := awsAwsjson10_serializeDocumentWarmThroughput(v.WarmThroughput, ok); err != nil {
 			return err
 		}
 	}
@@ -5486,6 +5500,13 @@ func awsAwsjson10_serializeDocumentUpdateGlobalSecondaryIndexAction(v *types.Upd
 		}
 	}
 
+	if v.WarmThroughput != nil {
+		ok := object.Key("WarmThroughput")
+		if err := awsAwsjson10_serializeDocumentWarmThroughput(v.WarmThroughput, ok); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -5539,6 +5560,23 @@ func awsAwsjson10_serializeDocumentUpdateReplicationGroupMemberAction(v *types.U
 	if len(v.TableClassOverride) > 0 {
 		ok := object.Key("TableClassOverride")
 		ok.String(string(v.TableClassOverride))
+	}
+
+	return nil
+}
+
+func awsAwsjson10_serializeDocumentWarmThroughput(v *types.WarmThroughput, value smithyjson.Value) error {
+	object := value.Object()
+	defer object.Close()
+
+	if v.ReadUnitsPerSecond != nil {
+		ok := object.Key("ReadUnitsPerSecond")
+		ok.Long(*v.ReadUnitsPerSecond)
+	}
+
+	if v.WriteUnitsPerSecond != nil {
+		ok := object.Key("WriteUnitsPerSecond")
+		ok.Long(*v.WriteUnitsPerSecond)
 	}
 
 	return nil
@@ -5764,6 +5802,13 @@ func awsAwsjson10_serializeOpDocumentCreateTableInput(v *CreateTableInput, value
 	if v.Tags != nil {
 		ok := object.Key("Tags")
 		if err := awsAwsjson10_serializeDocumentTagList(v.Tags, ok); err != nil {
+			return err
+		}
+	}
+
+	if v.WarmThroughput != nil {
+		ok := object.Key("WarmThroughput")
+		if err := awsAwsjson10_serializeDocumentWarmThroughput(v.WarmThroughput, ok); err != nil {
 			return err
 		}
 	}
@@ -7268,6 +7313,13 @@ func awsAwsjson10_serializeOpDocumentUpdateTableInput(v *UpdateTableInput, value
 	if v.TableName != nil {
 		ok := object.Key("TableName")
 		ok.String(*v.TableName)
+	}
+
+	if v.WarmThroughput != nil {
+		ok := object.Key("WarmThroughput")
+		if err := awsAwsjson10_serializeDocumentWarmThroughput(v.WarmThroughput, ok); err != nil {
+			return err
+		}
 	}
 
 	return nil

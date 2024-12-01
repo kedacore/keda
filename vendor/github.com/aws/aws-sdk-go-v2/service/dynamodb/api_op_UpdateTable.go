@@ -126,6 +126,10 @@ type UpdateTableInput struct {
 	// STANDARD_INFREQUENT_ACCESS .
 	TableClass types.TableClass
 
+	// Represents the warm throughput (in read units per second and write units per
+	// second) for updating a table.
+	WarmThroughput *types.WarmThroughput
+
 	noSmithyDocumentSerde
 }
 
