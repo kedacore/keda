@@ -287,9 +287,7 @@ func WithEndpointURL(v string) GenericOption {
 
 		cfg.Metrics.Endpoint = u.Host
 		cfg.Metrics.URLPath = u.Path
-		if u.Scheme != "https" {
-			cfg.Metrics.Insecure = true
-		}
+		cfg.Metrics.Insecure = u.Scheme != "https"
 
 		return cfg
 	})
