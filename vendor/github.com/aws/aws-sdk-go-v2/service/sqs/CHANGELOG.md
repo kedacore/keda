@@ -1,3 +1,17 @@
+# v1.37.1 (2024-11-18)
+
+* **Dependency Update**: Update to smithy-go v1.22.1.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.37.0 (2024-11-07)
+
+* **Feature**: Send opt-in query-compatible header for applicable services.
+* **Bug Fix**: Adds case-insensitive handling of error message fields in service responses
+
+# v1.36.4 (2024-11-06)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.36.3 (2024-10-28)
 
 * **Dependency Update**: Updated to the latest SDK module versions
