@@ -1204,7 +1204,6 @@ github.com/onsi/gomega/types
 # github.com/open-policy-agent/cert-controller v0.12.0
 ## explicit; go 1.22.0
 github.com/open-policy-agent/cert-controller/pkg/rotator
-# github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 ## explicit
 github.com/phayes/freeport
 # github.com/pierrec/lz4/v4 v4.1.21
