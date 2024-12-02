@@ -55,19 +55,20 @@ type CertManager struct {
 
 // AddCertificateRotation registers all needed services to generate the certificates and patches needed resources with the caBundle
 func (cm CertManager) AddCertificateRotation(ctx context.Context, mgr manager.Manager) error {
-	var rotatorHooks []rotator.WebhookInfo
+	rotatorHooks := []rotator.WebhookInfo{
+		{
+			Name: cm.APIServiceName,
+			Type: rotator.APIService,
+		},
+	}
 
 	if cm.EnableWebhookPatching {
-		rotatorHooks = []rotator.WebhookInfo{
-			{
+		rotatorHooks = append(rotatorHooks,
+			rotator.WebhookInfo{
 				Name: cm.ValidatingWebhookName,
 				Type: rotator.Validating,
 			},
-			{
-				Name: cm.APIServiceName,
-				Type: rotator.APIService,
-			},
-		}
+		)
 	} else {
 		cm.Logger.V(1).Info("Webhook patching is disabled, skipping webhook certificates")
 	}
