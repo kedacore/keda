@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
@@ -41,11 +40,11 @@ func (w kinesisWrapperClient) DescribeStreamSummary(ctx context.Context, params 
 }
 
 type awsKinesisStreamMetadata struct {
-	targetShardCount           int64
-	activationTargetShardCount int64
-	streamName                 string
-	awsRegion                  string
-	awsEndpoint                string
+	TargetShardCount           int64  `keda:"name=shardCount, order=triggerMetadata, default=2"`
+	ActivationTargetShardCount int64  `keda:"name=activationShardCount, order=triggerMetadata, default=0"`
+	StreamName                 string `keda:"name=streamName, order=triggerMetadata"`
+	AwsRegion                  string `keda:"name=awsRegion, order=triggerMetadata"`
+	AwsEndpoint                string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
 	awsAuthorization           awsutils.AuthorizationMetadata
 	triggerIndex               int
 }
@@ -59,7 +58,7 @@ func NewAwsKinesisStreamScaler(ctx context.Context, config *scalersconfig.Scaler
 
 	logger := InitializeLogger(config, "aws_kinesis_stream_scaler")
 
-	meta, err := parseAwsKinesisStreamMetadata(config, logger)
+	meta, err := parseAwsKinesisStreamMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Kinesis stream metadata: %w", err)
 	}
@@ -78,44 +77,11 @@ func NewAwsKinesisStreamScaler(ctx context.Context, config *scalersconfig.Scaler
 	}, nil
 }
 
-func parseAwsKinesisStreamMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*awsKinesisStreamMetadata, error) {
-	meta := awsKinesisStreamMetadata{}
-	meta.targetShardCount = targetShardCountDefault
+func parseAwsKinesisStreamMetadata(config *scalersconfig.ScalerConfig) (*awsKinesisStreamMetadata, error) {
+	meta := &awsKinesisStreamMetadata{}
 
-	if val, ok := config.TriggerMetadata["shardCount"]; ok && val != "" {
-		shardCount, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			meta.targetShardCount = targetShardCountDefault
-			logger.Error(err, "Error parsing Kinesis stream metadata shardCount, using default %n", targetShardCountDefault)
-		} else {
-			meta.targetShardCount = shardCount
-		}
-	}
-
-	if val, ok := config.TriggerMetadata["activationShardCount"]; ok && val != "" {
-		activationShardCount, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			meta.activationTargetShardCount = activationTargetShardCountDefault
-			logger.Error(err, "Error parsing Kinesis stream metadata activationShardCount, using default %n", activationTargetShardCountDefault)
-		} else {
-			meta.activationTargetShardCount = activationShardCount
-		}
-	}
-
-	if val, ok := config.TriggerMetadata["streamName"]; ok && val != "" {
-		meta.streamName = val
-	} else {
-		return nil, fmt.Errorf("no streamName given")
-	}
-
-	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
-		meta.awsRegion = val
-	} else {
-		return nil, fmt.Errorf("no awsRegion given")
-	}
-
-	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
-		meta.awsEndpoint = val
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing Kinesis stream metadata: %w", err)
 	}
 
 	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
@@ -124,20 +90,19 @@ func parseAwsKinesisStreamMetadata(config *scalersconfig.ScalerConfig, logger lo
 	}
 
 	meta.awsAuthorization = auth
-
 	meta.triggerIndex = config.TriggerIndex
 
-	return &meta, nil
+	return meta, nil
 }
 
 func createKinesisClient(ctx context.Context, metadata *awsKinesisStreamMetadata) (*kinesis.Client, error) {
-	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.AwsRegion, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
 	}
 	return kinesis.NewFromConfig(*cfg, func(options *kinesis.Options) {
-		if metadata.awsEndpoint != "" {
-			options.BaseEndpoint = aws.String(metadata.awsEndpoint)
+		if metadata.AwsEndpoint != "" {
+			options.BaseEndpoint = aws.String(metadata.AwsEndpoint)
 		}
 	}), nil
 }
@@ -150,9 +115,9 @@ func (s *awsKinesisStreamScaler) Close(context.Context) error {
 func (s *awsKinesisStreamScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-kinesis-%s", s.metadata.streamName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-kinesis-%s", s.metadata.StreamName))),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetShardCount),
+		Target: GetMetricTarget(s.metricType, s.metadata.TargetShardCount),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
@@ -169,13 +134,13 @@ func (s *awsKinesisStreamScaler) GetMetricsAndActivity(ctx context.Context, metr
 
 	metric := GenerateMetricInMili(metricName, float64(shardCount))
 
-	return []external_metrics.ExternalMetricValue{metric}, shardCount > s.metadata.activationTargetShardCount, nil
+	return []external_metrics.ExternalMetricValue{metric}, shardCount > s.metadata.ActivationTargetShardCount, nil
 }
 
 // GetAwsKinesisOpenShardCount Get Kinesis open shard count
 func (s *awsKinesisStreamScaler) GetAwsKinesisOpenShardCount(ctx context.Context) (int64, error) {
 	input := &kinesis.DescribeStreamSummaryInput{
-		StreamName: &s.metadata.streamName,
+		StreamName: &s.metadata.StreamName,
 	}
 
 	output, err := s.kinesisWrapperClient.DescribeStreamSummary(ctx, input)
