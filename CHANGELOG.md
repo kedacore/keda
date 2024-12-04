@@ -76,6 +76,8 @@ Here is an overview of all new **experimental** features:
 - **General**: Centralize and improve automaxprocs configuration with proper structured logging ([#5970](https://github.com/kedacore/keda/issues/5970))
 - **General**: Paused ScaledObject count is reported correctly after operator restart ([#6321](https://github.com/kedacore/keda/issues/6321))
 - **General**: ScaledJobs ready status set to true when recoverred problem ([#6329](https://github.com/kedacore/keda/pull/6329))
+- **AWS Scalers**: Add AWS region to the AWS Config Cache key ([#6128](https://github.com/kedacore/keda/issues/6128))
+- **Selenium Grid Scaler**: Exposes sum of pending and ongoing sessions to KDEA ([#6368](https://github.com/kedacore/keda/pull/6368))
 
 ### Deprecations
 
@@ -92,7 +94,8 @@ New deprecation(s):
 ### Other
 
 - **General**: Bump newrelic-client-go deps to 2.51.2 (latest) ([#6325](https://github.com/kedacore/keda/pull/6325))
-
+- **General**: New eventreason KEDAScalersInfo to display important information ([#6328](https://github.com/kedacore/keda/issues/6328))
+- **General**: refactor: replace experimental `maps` and `slices` with stdlib ([#6372](https://github.com/kedacore/keda/pull/6372))
 
 ## v2.16.0
 

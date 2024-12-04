@@ -19,8 +19,8 @@ package v1alpha1
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 
-	"golang.org/x/exp/slices"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
