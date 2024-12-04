@@ -6,6 +6,7 @@ package http
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 )
 
@@ -16,6 +17,7 @@ type Error struct {
 	Message    string
 	Err        error
 	RetryAfter uint
+	Header     http.Header
 }
 
 // Error fulfils error interface
@@ -37,6 +39,25 @@ func (e *Error) Unwrap() error {
 	return nil
 }
 
+// HeaderToString generates a string value from the Header property.  Useful in logging.
+func (e *Error) HeaderToString(selected []string) string {
+	headerString := ""
+	if len(selected) == 0 {
+		for key := range e.Header {
+			k := http.CanonicalHeaderKey(key)
+			headerString += fmt.Sprintf("%s: %s\r\n", k, e.Header.Get(k))
+		}
+	} else {
+		for _, candidate := range selected {
+			c := http.CanonicalHeaderKey(candidate)
+			if e.Header.Get(c) != "" {
+				headerString += fmt.Sprintf("%s: %s\n", c, e.Header.Get(c))
+			}
+		}
+	}
+	return headerString
+}
+
 // NewError returns newly created Error initialised with nested error and default values
 func NewError(err error) *Error {
 	return &Error{
@@ -45,5 +66,6 @@ func NewError(err error) *Error {
 		Message:    "",
 		Err:        err,
 		RetryAfter: 0,
+		Header:     http.Header{},
 	}
 }

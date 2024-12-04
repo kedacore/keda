@@ -286,8 +286,9 @@ func (c *Cursor) Close(ctx context.Context) error {
 }
 
 // All iterates the cursor and decodes each document into results. The results parameter must be a pointer to a slice.
-// The slice pointed to by results will be completely overwritten. This method will close the cursor after retrieving
-// all documents. If the cursor has been iterated, any previously iterated documents will not be included in results.
+// The slice pointed to by results will be completely overwritten. A nil slice pointer will not be modified if the cursor
+// has been closed, exhausted, or is empty. This method will close the cursor after retrieving all documents. If the
+// cursor has been iterated, any previously iterated documents will not be included in results.
 //
 // This method requires driver version >= 1.1.0.
 func (c *Cursor) All(ctx context.Context, results interface{}) error {

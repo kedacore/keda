@@ -41,22 +41,24 @@ var scaledjobsKind = v1alpha1.SchemeGroupVersion.WithKind("ScaledJob")
 
 // Get takes name of the scaledJob, and returns the corresponding scaledJob object, and an error if there is any.
 func (c *FakeScaledJobs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ScaledJob, err error) {
+	emptyResult := &v1alpha1.ScaledJob{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(scaledjobsResource, c.ns, name), &v1alpha1.ScaledJob{})
+		Invokes(testing.NewGetActionWithOptions(scaledjobsResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScaledJob), err
 }
 
 // List takes label and field selectors, and returns the list of ScaledJobs that match those selectors.
 func (c *FakeScaledJobs) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ScaledJobList, err error) {
+	emptyResult := &v1alpha1.ScaledJobList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(scaledjobsResource, scaledjobsKind, c.ns, opts), &v1alpha1.ScaledJobList{})
+		Invokes(testing.NewListActionWithOptions(scaledjobsResource, scaledjobsKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -75,40 +77,43 @@ func (c *FakeScaledJobs) List(ctx context.Context, opts v1.ListOptions) (result 
 // Watch returns a watch.Interface that watches the requested scaledJobs.
 func (c *FakeScaledJobs) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(scaledjobsResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(scaledjobsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a scaledJob and creates it.  Returns the server's representation of the scaledJob, and an error, if there is any.
 func (c *FakeScaledJobs) Create(ctx context.Context, scaledJob *v1alpha1.ScaledJob, opts v1.CreateOptions) (result *v1alpha1.ScaledJob, err error) {
+	emptyResult := &v1alpha1.ScaledJob{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(scaledjobsResource, c.ns, scaledJob), &v1alpha1.ScaledJob{})
+		Invokes(testing.NewCreateActionWithOptions(scaledjobsResource, c.ns, scaledJob, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScaledJob), err
 }
 
 // Update takes the representation of a scaledJob and updates it. Returns the server's representation of the scaledJob, and an error, if there is any.
 func (c *FakeScaledJobs) Update(ctx context.Context, scaledJob *v1alpha1.ScaledJob, opts v1.UpdateOptions) (result *v1alpha1.ScaledJob, err error) {
+	emptyResult := &v1alpha1.ScaledJob{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(scaledjobsResource, c.ns, scaledJob), &v1alpha1.ScaledJob{})
+		Invokes(testing.NewUpdateActionWithOptions(scaledjobsResource, c.ns, scaledJob, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScaledJob), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeScaledJobs) UpdateStatus(ctx context.Context, scaledJob *v1alpha1.ScaledJob, opts v1.UpdateOptions) (*v1alpha1.ScaledJob, error) {
+func (c *FakeScaledJobs) UpdateStatus(ctx context.Context, scaledJob *v1alpha1.ScaledJob, opts v1.UpdateOptions) (result *v1alpha1.ScaledJob, err error) {
+	emptyResult := &v1alpha1.ScaledJob{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(scaledjobsResource, "status", c.ns, scaledJob), &v1alpha1.ScaledJob{})
+		Invokes(testing.NewUpdateSubresourceActionWithOptions(scaledjobsResource, "status", c.ns, scaledJob, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScaledJob), err
 }
@@ -123,7 +128,7 @@ func (c *FakeScaledJobs) Delete(ctx context.Context, name string, opts v1.Delete
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeScaledJobs) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(scaledjobsResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(scaledjobsResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.ScaledJobList{})
 	return err
@@ -131,11 +136,12 @@ func (c *FakeScaledJobs) DeleteCollection(ctx context.Context, opts v1.DeleteOpt
 
 // Patch applies the patch and returns the patched scaledJob.
 func (c *FakeScaledJobs) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScaledJob, err error) {
+	emptyResult := &v1alpha1.ScaledJob{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(scaledjobsResource, c.ns, name, pt, data, subresources...), &v1alpha1.ScaledJob{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(scaledjobsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScaledJob), err
 }

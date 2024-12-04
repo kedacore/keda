@@ -17,6 +17,7 @@ limitations under the License.
 package markers
 
 import (
+	"fmt"
 	"reflect"
 
 	"sigs.k8s.io/controller-tools/pkg/markers"
@@ -53,6 +54,19 @@ func (d *definitionWithHelp) clone() *definitionWithHelp {
 func must(def *markers.Definition, err error) *definitionWithHelp {
 	return &definitionWithHelp{
 		Definition: markers.Must(def, err),
+	}
+}
+
+func mustOptional(def *markers.Definition, err error) *definitionWithHelp {
+	def = markers.Must(def, err)
+	if !def.AnonymousField() {
+		def = markers.Must(def, fmt.Errorf("not an anonymous field: %v", def))
+	}
+	field := def.Fields[""]
+	field.Optional = true
+	def.Fields[""] = field
+	return &definitionWithHelp{
+		Definition: def,
 	}
 }
 

@@ -220,7 +220,7 @@ func getApacheKafkaClient(ctx context.Context, metadata apacheKafkaMetadata, log
 	case KafkaSASLTypeOAuthbearer:
 		return nil, errors.New("SASL/OAUTHBEARER is not implemented yet")
 	case KafkaSASLTypeMskIam:
-		cfg, err := awsutils.GetAwsConfig(ctx, metadata.AWSRegion, metadata.AWSAuthorization)
+		cfg, err := awsutils.GetAwsConfig(ctx, metadata.AWSAuthorization)
 		if err != nil {
 			return nil, err
 		}
@@ -402,7 +402,7 @@ func (s *apacheKafkaScaler) Close(context.Context) error {
 
 func (s *apacheKafkaScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	var metricName string
-	if s.metadata.Topic != nil && len(s.metadata.Topic) > 0 {
+	if len(s.metadata.Topic) > 0 {
 		metricName = fmt.Sprintf("kafka-%s", strings.Join(s.metadata.Topic, ","))
 	} else {
 		metricName = fmt.Sprintf("kafka-%s-topics", s.metadata.Group)

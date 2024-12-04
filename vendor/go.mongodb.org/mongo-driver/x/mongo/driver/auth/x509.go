@@ -8,6 +8,7 @@ package auth
 
 import (
 	"context"
+	"net/http"
 
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
@@ -17,7 +18,10 @@ import (
 // MongoDBX509 is the mechanism name for MongoDBX509.
 const MongoDBX509 = "MONGODB-X509"
 
-func newMongoDBX509Authenticator(cred *Cred) (Authenticator, error) {
+func newMongoDBX509Authenticator(cred *Cred, _ *http.Client) (Authenticator, error) {
+	// TODO(GODRIVER-3309): Validate that cred.Source is either empty or
+	// "$external" to make validation uniform with other auth mechanisms that
+	// require Source to be "$external" (e.g. MONGODB-AWS, MONGODB-OIDC, etc).
 	return &MongoDBX509Authenticator{User: cred.Username}, nil
 }
 
@@ -65,7 +69,7 @@ func (a *MongoDBX509Authenticator) Auth(ctx context.Context, cfg *Config) error 
 	requestDoc := createFirstX509Message()
 	authCmd := operation.
 		NewCommand(requestDoc).
-		Database("$external").
+		Database(sourceExternal).
 		Deployment(driver.SingleConnectionDeployment{cfg.Connection}).
 		ClusterClock(cfg.ClusterClock).
 		ServerAPI(cfg.ServerAPI)
@@ -75,4 +79,9 @@ func (a *MongoDBX509Authenticator) Auth(ctx context.Context, cfg *Config) error 
 	}
 
 	return nil
+}
+
+// Reauth reauthenticates the connection.
+func (a *MongoDBX509Authenticator) Reauth(_ context.Context, _ *driver.AuthConfig) error {
+	return newAuthError("X509 does not support reauthentication", nil)
 }

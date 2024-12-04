@@ -72,35 +72,6 @@ const (
 	BuilderAggregateFunctionTypeGroup BuilderAggregateFunctionType = "group"
 )
 
-// Defines values for CheckBaseLastRunStatus.
-const (
-	CheckBaseLastRunStatusCanceled CheckBaseLastRunStatus = "canceled"
-
-	CheckBaseLastRunStatusFailed CheckBaseLastRunStatus = "failed"
-
-	CheckBaseLastRunStatusSuccess CheckBaseLastRunStatus = "success"
-)
-
-// Defines values for CheckPatchStatus.
-const (
-	CheckPatchStatusActive CheckPatchStatus = "active"
-
-	CheckPatchStatusInactive CheckPatchStatus = "inactive"
-)
-
-// Defines values for CheckStatusLevel.
-const (
-	CheckStatusLevelCRIT CheckStatusLevel = "CRIT"
-
-	CheckStatusLevelINFO CheckStatusLevel = "INFO"
-
-	CheckStatusLevelOK CheckStatusLevel = "OK"
-
-	CheckStatusLevelUNKNOWN CheckStatusLevel = "UNKNOWN"
-
-	CheckStatusLevelWARN CheckStatusLevel = "WARN"
-)
-
 // Defines values for CheckViewPropertiesShape.
 const (
 	CheckViewPropertiesShapeChronografV2 CheckViewPropertiesShape = "chronograf-v2"
@@ -116,11 +87,6 @@ const (
 	ConstantVariablePropertiesTypeConstant ConstantVariablePropertiesType = "constant"
 )
 
-// Defines values for CustomCheckType.
-const (
-	CustomCheckTypeCustom CustomCheckType = "custom"
-)
-
 // Defines values for DashboardColorType.
 const (
 	DashboardColorTypeBackground DashboardColorType = "background"
@@ -134,11 +100,6 @@ const (
 	DashboardColorTypeText DashboardColorType = "text"
 
 	DashboardColorTypeThreshold DashboardColorType = "threshold"
-)
-
-// Defines values for DeadmanCheckType.
-const (
-	DeadmanCheckTypeDeadman DeadmanCheckType = "deadman"
 )
 
 // Defines values for DialectAnnotations.
@@ -726,11 +687,6 @@ const (
 	TemplateKindVariable TemplateKind = "Variable"
 )
 
-// Defines values for ThresholdCheckType.
-const (
-	ThresholdCheckTypeThreshold ThresholdCheckType = "threshold"
-)
-
 // Defines values for UserStatus.
 const (
 	UserStatusActive UserStatus = "active"
@@ -1194,76 +1150,8 @@ type Cells []Cell
 // CellsWithViewProperties defines model for CellsWithViewProperties.
 type CellsWithViewProperties []CellWithViewProperties
 
-// Check defines model for Check.
-type Check struct {
-	// Embedded struct due to allOf(#/components/schemas/CheckDiscriminator)
-	CheckDiscriminator `yaml:",inline"`
-}
-
-// CheckBase defines model for CheckBase.
-type CheckBase struct {
-	CreatedAt *time.Time `json:"createdAt,omitempty"`
-
-	// An optional description of the check.
-	Description   *string                 `json:"description,omitempty"`
-	Id            *string                 `json:"id,omitempty"`
-	Labels        *Labels                 `json:"labels,omitempty"`
-	LastRunError  *string                 `json:"lastRunError,omitempty"`
-	LastRunStatus *CheckBaseLastRunStatus `json:"lastRunStatus,omitempty"`
-
-	// A timestamp ([RFC3339 date/time format](https://docs.influxdata.com/influxdb/v2.3/reference/glossary/#rfc3339-timestamp)) of the latest scheduled and completed run.
-	LatestCompleted *time.Time `json:"latestCompleted,omitempty"`
-	Links           *struct {
-		// URI of resource.
-		Labels *Link `json:"labels,omitempty"`
-
-		// URI of resource.
-		Members *Link `json:"members,omitempty"`
-
-		// URI of resource.
-		Owners *Link `json:"owners,omitempty"`
-
-		// URI of resource.
-		Query *Link `json:"query,omitempty"`
-
-		// URI of resource.
-		Self *Link `json:"self,omitempty"`
-	} `json:"links,omitempty"`
-	Name string `json:"name"`
-
-	// The ID of the organization that owns this check.
-	OrgID string `json:"orgID"`
-
-	// The ID of creator used to create this check.
-	OwnerID *string        `json:"ownerID,omitempty"`
-	Query   DashboardQuery `json:"query"`
-
-	// `inactive` cancels scheduled runs and prevents manual runs of the task.
-	Status *TaskStatusType `json:"status,omitempty"`
-
-	// The ID of the task associated with this check.
-	TaskID    *string    `json:"taskID,omitempty"`
-	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
-}
-
 // CheckBaseLastRunStatus defines model for CheckBase.LastRunStatus.
 type CheckBaseLastRunStatus string
-
-// CheckDiscriminator defines model for CheckDiscriminator.
-type CheckDiscriminator interface{}
-
-// CheckPatch defines model for CheckPatch.
-type CheckPatch struct {
-	Description *string           `json:"description,omitempty"`
-	Name        *string           `json:"name,omitempty"`
-	Status      *CheckPatchStatus `json:"status,omitempty"`
-}
-
-// CheckPatchStatus defines model for CheckPatch.Status.
-type CheckPatchStatus string
-
-// The state to record if check matches a criteria.
-type CheckStatusLevel string
 
 // CheckViewProperties defines model for CheckViewProperties.
 type CheckViewProperties struct {
@@ -1287,14 +1175,6 @@ type CheckViewPropertiesShape string
 
 // CheckViewPropertiesType defines model for CheckViewProperties.Type.
 type CheckViewPropertiesType string
-
-// Checks defines model for Checks.
-type Checks struct {
-	Checks *[]Check `json:"checks,omitempty"`
-
-	// URI pointers for additional paged results.
-	Links *Links `json:"links,omitempty"`
-}
 
 // A color mapping is an object that maps time series data to a UI color scheme to allow the UI to render graphs consistent colors across reloads.
 type ColorMapping struct {
@@ -1348,17 +1228,6 @@ type CreateDashboardRequest struct {
 	// The ID of the organization that owns the dashboard.
 	OrgID string `json:"orgID"`
 }
-
-// CustomCheck defines model for CustomCheck.
-type CustomCheck struct {
-	// Embedded struct due to allOf(#/components/schemas/CheckBase)
-	CheckBase `yaml:",inline"`
-	// Embedded fields due to inline allOf schema
-	Type CustomCheckType `json:"type"`
-}
-
-// CustomCheckType defines model for CustomCheck.Type.
-type CustomCheckType string
 
 // DBRP defines model for DBRP.
 type DBRP struct {
@@ -1537,43 +1406,6 @@ type DateTimeLiteral struct {
 	Type  *NodeType  `json:"type,omitempty"`
 	Value *time.Time `json:"value,omitempty"`
 }
-
-// DeadmanCheck defines model for DeadmanCheck.
-type DeadmanCheck struct {
-	// Embedded struct due to allOf(#/components/schemas/CheckBase)
-	CheckBase `yaml:",inline"`
-	// Embedded fields due to inline allOf schema
-	// Check repetition interval.
-	Every *string `json:"every,omitempty"`
-
-	// The state to record if check matches a criteria.
-	Level *CheckStatusLevel `json:"level,omitempty"`
-
-	// Duration to delay after the schedule, before executing check.
-	Offset *string `json:"offset,omitempty"`
-
-	// If only zero values reported since time, trigger an alert
-	ReportZero *bool `json:"reportZero,omitempty"`
-
-	// String duration for time that a series is considered stale and should not trigger deadman.
-	StaleTime *string `json:"staleTime,omitempty"`
-
-	// The template used to generate and write a status message.
-	StatusMessageTemplate *string `json:"statusMessageTemplate,omitempty"`
-
-	// List of tags to write to each status.
-	Tags *[]struct {
-		Key   *string `json:"key,omitempty"`
-		Value *string `json:"value,omitempty"`
-	} `json:"tags,omitempty"`
-
-	// String duration before deadman triggers.
-	TimeSince *string          `json:"timeSince,omitempty"`
-	Type      DeadmanCheckType `json:"type"`
-}
-
-// DeadmanCheckType defines model for DeadmanCheck.Type.
-type DeadmanCheckType string
 
 // Indicates whether decimal places should be enforced, and how many digits it should show.
 type DecimalPlaces struct {
@@ -1962,15 +1794,6 @@ type GeoViewPropertiesShape string
 // GeoViewPropertiesType defines model for GeoViewProperties.Type.
 type GeoViewPropertiesType string
 
-// GreaterThreshold defines model for GreaterThreshold.
-type GreaterThreshold struct {
-	// Embedded struct due to allOf(#/components/schemas/ThresholdBase)
-	ThresholdBase `yaml:",inline"`
-	// Embedded fields due to inline allOf schema
-	Type  GreaterThresholdType `json:"type"`
-	Value float32              `json:"value"`
-}
-
 // GreaterThresholdType defines model for GreaterThreshold.Type.
 type GreaterThresholdType string
 
@@ -2247,15 +2070,6 @@ type LatLonColumns struct {
 
 	// Object type for key and column definitions
 	Lon LatLonColumn `json:"lon"`
-}
-
-// LesserThreshold defines model for LesserThreshold.
-type LesserThreshold struct {
-	// Embedded struct due to allOf(#/components/schemas/ThresholdBase)
-	ThresholdBase `yaml:",inline"`
-	// Embedded fields due to inline allOf schema
-	Type  LesserThresholdType `json:"type"`
-	Value float32             `json:"value"`
 }
 
 // LesserThresholdType defines model for LesserThreshold.Type.
@@ -2916,12 +2730,6 @@ type PostBucketRequest struct {
 	SchemaType *SchemaType `json:"schemaType,omitempty"`
 }
 
-// PostCheck defines model for PostCheck.
-type PostCheck struct {
-	// Embedded struct due to allOf(#/components/schemas/CheckDiscriminator)
-	CheckDiscriminator `yaml:",inline"`
-}
-
 // PostNotificationEndpoint defines model for PostNotificationEndpoint.
 type PostNotificationEndpoint struct {
 	// Embedded struct due to allOf(#/components/schemas/NotificationEndpointDiscriminator)
@@ -3007,16 +2815,20 @@ type QueryType string
 // To use parameters in your query, pass a _`query`_ with `params` references (in dot notation)--for example:
 //
 // ```json
-//   query: "from(bucket: params.mybucket) |> range(start: params.rangeStart) |> limit(n:1)"
+//
+//	query: "from(bucket: params.mybucket) |> range(start: params.rangeStart) |> limit(n:1)"
+//
 // ```
 //
 // and pass _`params`_ with the key-value pairs--for example:
 //
 // ```json
-//   params: {
-//     "mybucket": "environment",
-//     "rangeStart": "-30d"
-//   }
+//
+//	params: {
+//	  "mybucket": "environment",
+//	  "rangeStart": "-30d"
+//	}
+//
 // ```
 //
 // During query execution, InfluxDB passes _`params`_ to your script and substitutes the values.
@@ -3042,17 +2854,6 @@ type QueryVariableProperties struct {
 
 // QueryVariablePropertiesType defines model for QueryVariableProperties.Type.
 type QueryVariablePropertiesType string
-
-// RangeThreshold defines model for RangeThreshold.
-type RangeThreshold struct {
-	// Embedded struct due to allOf(#/components/schemas/ThresholdBase)
-	ThresholdBase `yaml:",inline"`
-	// Embedded fields due to inline allOf schema
-	Max    float32            `json:"max"`
-	Min    float32            `json:"min"`
-	Type   RangeThresholdType `json:"type"`
-	Within bool               `json:"within"`
-}
 
 // RangeThresholdType defines model for RangeThreshold.Type.
 type RangeThresholdType string
@@ -4242,33 +4043,33 @@ type TemplateApply_EnvRefs struct {
 // the following Flux script retrieves `POSTGRES_USERNAME` and `POSTGRES_PASSWORD`
 // secrets and then uses them to connect to a PostgreSQL database:
 //
-//   ```js
-//   import "sql"
-//   import "influxdata/influxdb/secrets"
+//	```js
+//	import "sql"
+//	import "influxdata/influxdb/secrets"
 //
-//   username = secrets.get(key: "POSTGRES_USERNAME")
-//   password = secrets.get(key: "POSTGRES_PASSWORD")
+//	username = secrets.get(key: "POSTGRES_USERNAME")
+//	password = secrets.get(key: "POSTGRES_PASSWORD")
 //
-//   sql.from(
-//     driverName: "postgres",
-//     dataSourceName: "postgresql://${username}:${password}@localhost:5432",
-//     query: "SELECT * FROM example_table",
-//   )
-//   ```
+//	sql.from(
+//	  driverName: "postgres",
+//	  dataSourceName: "postgresql://${username}:${password}@localhost:5432",
+//	  query: "SELECT * FROM example_table",
+//	)
+//	```
 //
 // To define secret values in your `/api/v2/templates/apply` request,
 // pass the `secrets` parameter with key-value pairs--for example:
 //
-//   ```json
-//   {
-//     ...
-//     "secrets": {
-//       "POSTGRES_USERNAME": "pguser",
-//       "POSTGRES_PASSWORD": "foo"
-//     }
-//     ...
-//   }
-//   ```
+//	```json
+//	{
+//	  ...
+//	  "secrets": {
+//	    "POSTGRES_USERNAME": "pguser",
+//	    "POSTGRES_PASSWORD": "foo"
+//	  }
+//	  ...
+//	}
+//	```
 //
 // InfluxDB stores the key-value pairs as secrets that you can access with `secrets.get()`.
 // Once stored, you can't view secret values in InfluxDB.
@@ -4380,12 +4181,12 @@ type TemplateSummary struct {
 			TemplateMetaName *string `json:"templateMetaName,omitempty"`
 		} `json:"buckets,omitempty"`
 		Checks *[]struct {
-			Id               *string             `json:"id,omitempty"`
-			Kind             *TemplateKind       `json:"kind,omitempty"`
-			New              *CheckDiscriminator `json:"new,omitempty"`
-			Old              *CheckDiscriminator `json:"old,omitempty"`
-			StateStatus      *string             `json:"stateStatus,omitempty"`
-			TemplateMetaName *string             `json:"templateMetaName,omitempty"`
+			Id               *string       `json:"id,omitempty"`
+			Kind             *TemplateKind `json:"kind,omitempty"`
+			New              *Check        `json:"new,omitempty"`
+			Old              *Check        `json:"old,omitempty"`
+			StateStatus      *string       `json:"stateStatus,omitempty"`
+			TemplateMetaName *string       `json:"templateMetaName,omitempty"`
 		} `json:"checks,omitempty"`
 		Dashboards *[]struct {
 			Id   *string       `json:"id,omitempty"`
@@ -4554,7 +4355,7 @@ type TemplateSummary struct {
 		} `json:"buckets,omitempty"`
 		Checks *[]struct {
 			// Embedded struct due to allOf(#/components/schemas/CheckDiscriminator)
-			CheckDiscriminator `yaml:",inline"`
+			Check
 			// Embedded fields due to inline allOf schema
 			EnvReferences     *TemplateEnvReferences  `json:"envReferences,omitempty"`
 			Kind              *TemplateKind           `json:"kind,omitempty"`
@@ -4676,44 +4477,6 @@ type TestStatement struct {
 	// Type of AST node
 	Type *NodeType `json:"type,omitempty"`
 }
-
-// Threshold defines model for Threshold.
-type Threshold interface{}
-
-// ThresholdBase defines model for ThresholdBase.
-type ThresholdBase struct {
-	// If true, only alert if all values meet threshold.
-	AllValues *bool `json:"allValues,omitempty"`
-
-	// The state to record if check matches a criteria.
-	Level *CheckStatusLevel `json:"level,omitempty"`
-}
-
-// ThresholdCheck defines model for ThresholdCheck.
-type ThresholdCheck struct {
-	// Embedded struct due to allOf(#/components/schemas/CheckBase)
-	CheckBase `yaml:",inline"`
-	// Embedded fields due to inline allOf schema
-	// Check repetition interval.
-	Every *string `json:"every,omitempty"`
-
-	// Duration to delay after the schedule, before executing check.
-	Offset *string `json:"offset,omitempty"`
-
-	// The template used to generate and write a status message.
-	StatusMessageTemplate *string `json:"statusMessageTemplate,omitempty"`
-
-	// List of tags to write to each status.
-	Tags *[]struct {
-		Key   *string `json:"key,omitempty"`
-		Value *string `json:"value,omitempty"`
-	} `json:"tags,omitempty"`
-	Thresholds *[]Threshold       `json:"thresholds,omitempty"`
-	Type       ThresholdCheckType `json:"type"`
-}
-
-// ThresholdCheckType defines model for ThresholdCheck.Type.
-type ThresholdCheckType string
 
 // Uses operators to act on a single operand in an expression
 type UnaryExpression struct {
@@ -5248,151 +5011,6 @@ type DeleteBucketsIDOwnersIDAllParams struct {
 	BucketID string
 
 	UserID string
-}
-
-// GetChecksParams defines parameters for GetChecks.
-type GetChecksParams struct {
-	// The offset for pagination.
-	// The number of records to skip.
-	Offset *Offset `json:"offset,omitempty"`
-
-	// Limits the number of records returned. Default is `20`.
-	Limit *Limit `json:"limit,omitempty"`
-
-	// Only show checks that belong to a specific organization ID.
-	OrgID string `json:"orgID"`
-
-	// OpenTracing span context
-	ZapTraceSpan *TraceSpan `json:"Zap-Trace-Span,omitempty"`
-}
-
-// CreateCheckJSONBody defines parameters for CreateCheck.
-type CreateCheckJSONBody PostCheck
-
-// CreateCheckAllParams defines type for all parameters for CreateCheck.
-type CreateCheckAllParams struct {
-	Body CreateCheckJSONRequestBody
-}
-
-// DeleteChecksIDParams defines parameters for DeleteChecksID.
-type DeleteChecksIDParams struct {
-	// OpenTracing span context
-	ZapTraceSpan *TraceSpan `json:"Zap-Trace-Span,omitempty"`
-}
-
-// DeleteChecksIDAllParams defines type for all parameters for DeleteChecksID.
-type DeleteChecksIDAllParams struct {
-	DeleteChecksIDParams
-
-	CheckID string
-}
-
-// GetChecksIDParams defines parameters for GetChecksID.
-type GetChecksIDParams struct {
-	// OpenTracing span context
-	ZapTraceSpan *TraceSpan `json:"Zap-Trace-Span,omitempty"`
-}
-
-// GetChecksIDAllParams defines type for all parameters for GetChecksID.
-type GetChecksIDAllParams struct {
-	GetChecksIDParams
-
-	CheckID string
-}
-
-// PatchChecksIDJSONBody defines parameters for PatchChecksID.
-type PatchChecksIDJSONBody CheckPatch
-
-// PatchChecksIDParams defines parameters for PatchChecksID.
-type PatchChecksIDParams struct {
-	// OpenTracing span context
-	ZapTraceSpan *TraceSpan `json:"Zap-Trace-Span,omitempty"`
-}
-
-// PatchChecksIDAllParams defines type for all parameters for PatchChecksID.
-type PatchChecksIDAllParams struct {
-	PatchChecksIDParams
-
-	CheckID string
-
-	Body PatchChecksIDJSONRequestBody
-}
-
-// PutChecksIDJSONBody defines parameters for PutChecksID.
-type PutChecksIDJSONBody Check
-
-// PutChecksIDParams defines parameters for PutChecksID.
-type PutChecksIDParams struct {
-	// OpenTracing span context
-	ZapTraceSpan *TraceSpan `json:"Zap-Trace-Span,omitempty"`
-}
-
-// PutChecksIDAllParams defines type for all parameters for PutChecksID.
-type PutChecksIDAllParams struct {
-	PutChecksIDParams
-
-	CheckID string
-
-	Body PutChecksIDJSONRequestBody
-}
-
-// GetChecksIDLabelsParams defines parameters for GetChecksIDLabels.
-type GetChecksIDLabelsParams struct {
-	// OpenTracing span context
-	ZapTraceSpan *TraceSpan `json:"Zap-Trace-Span,omitempty"`
-}
-
-// GetChecksIDLabelsAllParams defines type for all parameters for GetChecksIDLabels.
-type GetChecksIDLabelsAllParams struct {
-	GetChecksIDLabelsParams
-
-	CheckID string
-}
-
-// PostChecksIDLabelsJSONBody defines parameters for PostChecksIDLabels.
-type PostChecksIDLabelsJSONBody LabelMapping
-
-// PostChecksIDLabelsParams defines parameters for PostChecksIDLabels.
-type PostChecksIDLabelsParams struct {
-	// OpenTracing span context
-	ZapTraceSpan *TraceSpan `json:"Zap-Trace-Span,omitempty"`
-}
-
-// PostChecksIDLabelsAllParams defines type for all parameters for PostChecksIDLabels.
-type PostChecksIDLabelsAllParams struct {
-	PostChecksIDLabelsParams
-
-	CheckID string
-
-	Body PostChecksIDLabelsJSONRequestBody
-}
-
-// DeleteChecksIDLabelsIDParams defines parameters for DeleteChecksIDLabelsID.
-type DeleteChecksIDLabelsIDParams struct {
-	// OpenTracing span context
-	ZapTraceSpan *TraceSpan `json:"Zap-Trace-Span,omitempty"`
-}
-
-// DeleteChecksIDLabelsIDAllParams defines type for all parameters for DeleteChecksIDLabelsID.
-type DeleteChecksIDLabelsIDAllParams struct {
-	DeleteChecksIDLabelsIDParams
-
-	CheckID string
-
-	LabelID string
-}
-
-// GetChecksIDQueryParams defines parameters for GetChecksIDQuery.
-type GetChecksIDQueryParams struct {
-	// OpenTracing span context
-	ZapTraceSpan *TraceSpan `json:"Zap-Trace-Span,omitempty"`
-}
-
-// GetChecksIDQueryAllParams defines type for all parameters for GetChecksIDQuery.
-type GetChecksIDQueryAllParams struct {
-	GetChecksIDQueryParams
-
-	CheckID string
 }
 
 // GetConfigParams defines parameters for GetConfig.
@@ -8015,18 +7633,6 @@ type PostBucketsIDMembersJSONRequestBody PostBucketsIDMembersJSONBody
 
 // PostBucketsIDOwnersJSONRequestBody defines body for PostBucketsIDOwners for application/json ContentType.
 type PostBucketsIDOwnersJSONRequestBody PostBucketsIDOwnersJSONBody
-
-// CreateCheckJSONRequestBody defines body for CreateCheck for application/json ContentType.
-type CreateCheckJSONRequestBody CreateCheckJSONBody
-
-// PatchChecksIDJSONRequestBody defines body for PatchChecksID for application/json ContentType.
-type PatchChecksIDJSONRequestBody PatchChecksIDJSONBody
-
-// PutChecksIDJSONRequestBody defines body for PutChecksID for application/json ContentType.
-type PutChecksIDJSONRequestBody PutChecksIDJSONBody
-
-// PostChecksIDLabelsJSONRequestBody defines body for PostChecksIDLabels for application/json ContentType.
-type PostChecksIDLabelsJSONRequestBody PostChecksIDLabelsJSONBody
 
 // PatchDashboardsIDJSONRequestBody defines body for PatchDashboardsID for application/json ContentType.
 type PatchDashboardsIDJSONRequestBody PatchDashboardsIDJSONBody

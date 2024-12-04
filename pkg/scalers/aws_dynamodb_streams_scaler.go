@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -31,11 +30,11 @@ type awsDynamoDBStreamsScaler struct {
 }
 
 type awsDynamoDBStreamsMetadata struct {
-	targetShardCount           int64
-	activationTargetShardCount int64
-	tableName                  string
-	awsRegion                  string
-	awsEndpoint                string
+	TargetShardCount           int64  `keda:"name=shardCount, order=triggerMetadata, default=2"`
+	ActivationTargetShardCount int64  `keda:"name=activationShardCount, order=triggerMetadata, default=0"`
+	TableName                  string `keda:"name=tableName, order=triggerMetadata"`
+	AwsRegion                  string `keda:"name=awsRegion, order=triggerMetadata"`
+	AwsEndpoint                string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
 	awsAuthorization           awsutils.AuthorizationMetadata
 	triggerIndex               int
 }
@@ -49,7 +48,7 @@ func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *scalersconfig.Scal
 
 	logger := InitializeLogger(config, "aws_dynamodb_streams_scaler")
 
-	meta, err := parseAwsDynamoDBStreamsMetadata(config, logger)
+	meta, err := parseAwsDynamoDBStreamsMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dynamodb stream metadata: %w", err)
 	}
@@ -58,7 +57,7 @@ func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *scalersconfig.Scal
 	if err != nil {
 		return nil, fmt.Errorf("error when creating dynamodbstream client: %w", err)
 	}
-	streamArn, err := getDynamoDBStreamsArn(ctx, dbClient, &meta.tableName)
+	streamArn, err := getDynamoDBStreamsArn(ctx, dbClient, &meta.TableName)
 	if err != nil {
 		return nil, fmt.Errorf("error dynamodb stream arn: %w", err)
 	}
@@ -74,43 +73,11 @@ func NewAwsDynamoDBStreamsScaler(ctx context.Context, config *scalersconfig.Scal
 	}, nil
 }
 
-func parseAwsDynamoDBStreamsMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*awsDynamoDBStreamsMetadata, error) {
+func parseAwsDynamoDBStreamsMetadata(config *scalersconfig.ScalerConfig) (*awsDynamoDBStreamsMetadata, error) {
 	meta := awsDynamoDBStreamsMetadata{}
-	meta.targetShardCount = defaultTargetDBStreamsShardCount
 
-	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
-		meta.awsRegion = val
-	} else {
-		return nil, fmt.Errorf("no awsRegion given")
-	}
-
-	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
-		meta.awsEndpoint = val
-	}
-
-	if val, ok := config.TriggerMetadata["tableName"]; ok && val != "" {
-		meta.tableName = val
-	} else {
-		return nil, fmt.Errorf("no tableName given")
-	}
-
-	if val, ok := config.TriggerMetadata["shardCount"]; ok && val != "" {
-		shardCount, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			meta.targetShardCount = defaultTargetDBStreamsShardCount
-			logger.Error(err, "error parsing dyanmodb stream metadata shardCount, using default %n", defaultTargetDBStreamsShardCount)
-		} else {
-			meta.targetShardCount = shardCount
-		}
-	}
-	if val, ok := config.TriggerMetadata["activationShardCount"]; ok && val != "" {
-		shardCount, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			meta.activationTargetShardCount = defaultActivationTargetDBStreamsShardCount
-			logger.Error(err, "error parsing dyanmodb stream metadata activationTargetShardCount, using default %n", defaultActivationTargetDBStreamsShardCount)
-		} else {
-			meta.activationTargetShardCount = shardCount
-		}
+	if err := config.TypedConfig(&meta); err != nil {
+		return nil, fmt.Errorf("error parsing dynamodb stream metadata: %w", err)
 	}
 
 	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
@@ -125,18 +92,18 @@ func parseAwsDynamoDBStreamsMetadata(config *scalersconfig.ScalerConfig, logger 
 }
 
 func createClientsForDynamoDBStreamsScaler(ctx context.Context, metadata *awsDynamoDBStreamsMetadata) (*dynamodb.Client, *dynamodbstreams.Client, error) {
-	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 	if err != nil {
 		return nil, nil, err
 	}
 	dbClient := dynamodb.NewFromConfig(*cfg, func(options *dynamodb.Options) {
-		if metadata.awsEndpoint != "" {
-			options.BaseEndpoint = aws.String(metadata.awsEndpoint)
+		if metadata.AwsEndpoint != "" {
+			options.BaseEndpoint = aws.String(metadata.AwsEndpoint)
 		}
 	})
 	dbStreamClient := dynamodbstreams.NewFromConfig(*cfg, func(options *dynamodbstreams.Options) {
-		if metadata.awsEndpoint != "" {
-			options.BaseEndpoint = aws.String(metadata.awsEndpoint)
+		if metadata.AwsEndpoint != "" {
+			options.BaseEndpoint = aws.String(metadata.AwsEndpoint)
 		}
 	})
 
@@ -176,9 +143,9 @@ func (s *awsDynamoDBStreamsScaler) Close(_ context.Context) error {
 func (s *awsDynamoDBStreamsScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-dynamodb-streams-%s", s.metadata.tableName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-dynamodb-streams-%s", s.metadata.TableName))),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetShardCount),
+		Target: GetMetricTarget(s.metricType, s.metadata.TargetShardCount),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
@@ -195,7 +162,7 @@ func (s *awsDynamoDBStreamsScaler) GetMetricsAndActivity(ctx context.Context, me
 
 	metric := GenerateMetricInMili(metricName, float64(shardCount))
 
-	return []external_metrics.ExternalMetricValue{metric}, shardCount > s.metadata.activationTargetShardCount, nil
+	return []external_metrics.ExternalMetricValue{metric}, shardCount > s.metadata.ActivationTargetShardCount, nil
 }
 
 // GetDynamoDBStreamShardCount Get DynamoDB Stream Shard Count

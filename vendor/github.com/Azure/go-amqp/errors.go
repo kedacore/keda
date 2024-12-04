@@ -65,6 +65,15 @@ func (e *LinkError) Error() string {
 	return e.inner.Error()
 }
 
+// Unwrap returns the RemoteErr, if any.
+func (e *LinkError) Unwrap() error {
+	if e.RemoteErr == nil {
+		return nil
+	}
+
+	return e.RemoteErr
+}
+
 // ConnError is returned by methods on Conn and propagated to Session and Senders/Receivers
 // when the connection has been closed.
 type ConnError struct {
@@ -84,6 +93,15 @@ func (e *ConnError) Error() string {
 	return e.inner.Error()
 }
 
+// Unwrap returns the RemoteErr, if any.
+func (e *ConnError) Unwrap() error {
+	if e.RemoteErr == nil {
+		return nil
+	}
+
+	return e.RemoteErr
+}
+
 // SessionError is returned by methods on Session and propagated to Senders/Receivers
 // when the session has been closed.
 type SessionError struct {
@@ -101,4 +119,13 @@ func (e *SessionError) Error() string {
 		return e.RemoteErr.Error()
 	}
 	return e.inner.Error()
+}
+
+// Unwrap returns the RemoteErr, if any.
+func (e *SessionError) Unwrap() error {
+	if e.RemoteErr == nil {
+		return nil
+	}
+
+	return e.RemoteErr
 }

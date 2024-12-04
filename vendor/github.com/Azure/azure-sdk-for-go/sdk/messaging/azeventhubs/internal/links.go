@@ -21,7 +21,10 @@ type AMQPLink interface {
 // LinksForPartitionClient are the functions that the PartitionClient uses within Links[T]
 // (for unit testing only)
 type LinksForPartitionClient[LinkT AMQPLink] interface {
+	// Retry is [Links.Retry]
 	Retry(ctx context.Context, eventName azlog.Event, operation string, partitionID string, retryOptions exported.RetryOptions, fn func(ctx context.Context, lwid LinkWithID[LinkT]) error) error
+
+	// Close is [Links.Close]
 	Close(ctx context.Context) error
 }
 

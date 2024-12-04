@@ -75,8 +75,10 @@ func newCall(t TestHelper, receiver any, method string, methodType reflect.Type,
 		}
 		return rets
 	}}
-	return &Call{t: t, receiver: receiver, method: method, methodType: methodType,
-		args: mArgs, origin: origin, minCalls: 1, maxCalls: 1, actions: actions}
+	return &Call{
+		t: t, receiver: receiver, method: method, methodType: methodType,
+		args: mArgs, origin: origin, minCalls: 1, maxCalls: 1, actions: actions,
+	}
 }
 
 // AnyTimes allows the expectation to be called 0 or more times
@@ -251,11 +253,7 @@ func (c *Call) SetArg(n int, value any) *Call {
 			c.t.Fatalf("SetArg(%d, ...) argument is a %v, not assignable to %v [%s]",
 				n, vt, dt, c.origin)
 		}
-	case reflect.Interface:
-		// nothing to do
-	case reflect.Slice:
-		// nothing to do
-	case reflect.Map:
+	case reflect.Interface, reflect.Slice, reflect.Map:
 		// nothing to do
 	default:
 		c.t.Fatalf("SetArg(%d, ...) referring to argument of non-pointer non-interface non-slice non-map type %v [%s]",

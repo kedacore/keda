@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [1.7.0] - 2024-09-23
+
+This release is the first after the donation of gocql to the Apache Software Foundation (ASF)
+
+### Changed
+- Update DRIVER_NAME parameter in STARTUP messages to a different value intended to clearly identify this
+  driver as an ASF driver.  This should clearly distinguish this release (and future gocql-cassandra-driver
+  releases) from prior versions. (#1824)
+- Supported Go versions updated to 1.23 and 1.22 to conform to gocql's sunset model. (#1825)
+
 ## [1.6.0] - 2023-08-28
 
 ### Added

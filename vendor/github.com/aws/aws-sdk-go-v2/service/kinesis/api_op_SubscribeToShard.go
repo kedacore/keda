@@ -37,7 +37,9 @@ import (
 // call takes over the subscription and the previous connection expires or fails
 // with a ResourceInUseException .
 //
-// For an example of how to use this operations, see Enhanced Fan-Out Using the Kinesis Data Streams API.
+// For an example of how to use this operation, see [Enhanced Fan-Out Using the Kinesis Data Streams API].
+//
+// [Enhanced Fan-Out Using the Kinesis Data Streams API]: https://docs.aws.amazon.com/streams/latest/dev/building-enhanced-consumers-api.html
 func (c *Client) SubscribeToShard(ctx context.Context, params *SubscribeToShardInput, optFns ...func(*Options)) (*SubscribeToShardOutput, error) {
 	if params == nil {
 		params = &SubscribeToShardInput{}
@@ -140,6 +142,9 @@ func (c *Client) addOperationSubscribeToShardMiddlewares(stack *middleware.Stack
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -171,6 +176,18 @@ func (c *Client) addOperationSubscribeToShardMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

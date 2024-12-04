@@ -1,5 +1,18 @@
 # Release History
 
+## 1.2.3 (2024-10-14)
+
+### Bugs Fixed
+
+- Fixed bug where cancelling management link calls, such GetEventHubProperties() or GetPartitionProperties, could result in blocked calls. (PR#23400)
+- Apply fix from @bcho for overflows with retries. (PR#23562)
+
+## 1.2.2 (2024-08-15)
+
+### Bugs Fixed
+
+- Fixed a bug that where a short context deadline could prevent recovery from ever happening. The end result would be a broken PartitionClient/ConsumerClient that would never recover from the underlying failure. (PR#23337)
+
 ## 1.2.1 (2024-05-20)
 
 ### Bugs Fixed
@@ -11,9 +24,10 @@
 ### Bugs Fixed
 
 Processor.Run had unclear behavior for some cases:
-- Run() now returns an explicit error when called more than once on a single 
+
+- Run() now returns an explicit error when called more than once on a single
   Processor instance or if multiple Run calls are made concurrently. (PR#22833)
-- NextProcessorClient now properly terminates (and returns nil) if called on a 
+- NextProcessorClient now properly terminates (and returns nil) if called on a
   stopped Processor. (PR#22833)
 
 ## 1.1.0 (2024-04-02)

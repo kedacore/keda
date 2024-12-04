@@ -35,6 +35,7 @@ import (
 )
 
 const (
+	defaultControllerName             = "cert-rotator"
 	defaultCertName                   = "tls.crt"
 	defaultKeyName                    = "tls.key"
 	caCertName                        = "ca.crt"
@@ -133,7 +134,9 @@ func AddRotator(mgr manager.Manager, cr *CertRotator) error {
 			return err
 		}
 	}
-
+	if cr.controllerName == "" {
+		cr.controllerName = defaultControllerName
+	}
 	if cr.CertName == "" {
 		cr.CertName = defaultCertName
 	}
@@ -174,7 +177,7 @@ func AddRotator(mgr manager.Manager, cr *CertRotator) error {
 		refreshCertIfNeededDelegate: cr.refreshCertIfNeeded,
 		fieldOwner:                  cr.FieldOwner,
 	}
-	if err := addController(mgr, reconciler); err != nil {
+	if err := addController(mgr, reconciler, cr.controllerName); err != nil {
 		return err
 	}
 	return nil
@@ -256,6 +259,10 @@ type CertRotator struct {
 	// testNoBackgroundRotation doesn't actually start the rotator in the background.
 	// This should only be used for testing.
 	testNoBackgroundRotation bool
+	// controllerName allows setting the controller name to register it multiple times
+	// fixing the new k8s check that produces 'controller with name cert-rotator already exists'
+	// This should only be used for testing.
+	controllerName string
 }
 
 func (cr *CertRotator) NeedLeaderElection() bool {
@@ -678,8 +685,8 @@ func ValidCert(caCert, cert, key []byte, dnsName string, keyUsages *[]x509.ExtKe
 	return true, nil
 }
 
-func reconcileSecretAndWebhookMapFunc(webhook WebhookInfo, r *ReconcileWH) func(ctx context.Context, object client.Object) []reconcile.Request {
-	return func(ctx context.Context, object client.Object) []reconcile.Request {
+func reconcileSecretAndWebhookMapFunc(webhook WebhookInfo, r *ReconcileWH) func(ctx context.Context, object *unstructured.Unstructured) []reconcile.Request {
+	return func(ctx context.Context, object *unstructured.Unstructured) []reconcile.Request {
 		whKey := types.NamespacedName{Name: webhook.Name}
 		if object.GetNamespace() != whKey.Namespace {
 			return nil
@@ -692,16 +699,15 @@ func reconcileSecretAndWebhookMapFunc(webhook WebhookInfo, r *ReconcileWH) func(
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler.
-func addController(mgr manager.Manager, r *ReconcileWH) error {
+func addController(mgr manager.Manager, r *ReconcileWH, controllerName string) error {
 	// Create a new controller
-	c, err := controller.NewUnmanaged("cert-rotator", mgr, controller.Options{Reconciler: r})
+	c, err := controller.NewUnmanaged(controllerName, mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
 	err = c.Watch(
-		source.Kind(r.cache, &corev1.Secret{}),
-		&handler.EnqueueRequestForObject{},
+		source.Kind(r.cache, &corev1.Secret{}, &handler.TypedEnqueueRequestForObject[*corev1.Secret]{}),
 	)
 	if err != nil {
 		return fmt.Errorf("watching Secrets: %w", err)
@@ -711,9 +717,9 @@ func addController(mgr manager.Manager, r *ReconcileWH) error {
 		wh := &unstructured.Unstructured{}
 		wh.SetGroupVersionKind(webhook.gvk())
 		err = c.Watch(
-			source.Kind(r.cache, wh),
-			handler.EnqueueRequestsFromMapFunc(reconcileSecretAndWebhookMapFunc(webhook, r)),
+			source.Kind(r.cache, wh, handler.TypedEnqueueRequestsFromMapFunc(reconcileSecretAndWebhookMapFunc(webhook, r))),
 		)
+
 		if err != nil {
 			return fmt.Errorf("watching webhook %s: %w", webhook.Name, err)
 		}

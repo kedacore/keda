@@ -21,19 +21,20 @@ import (
 
 // ListIndexes performs a listIndexes operation.
 type ListIndexes struct {
-	batchSize  *int32
-	maxTime    *time.Duration
-	session    *session.Client
-	clock      *session.ClusterClock
-	collection string
-	monitor    *event.CommandMonitor
-	database   string
-	deployment driver.Deployment
-	selector   description.ServerSelector
-	retry      *driver.RetryMode
-	crypt      driver.Crypt
-	serverAPI  *driver.ServerAPIOptions
-	timeout    *time.Duration
+	authenticator driver.Authenticator
+	batchSize     *int32
+	maxTime       *time.Duration
+	session       *session.Client
+	clock         *session.ClusterClock
+	collection    string
+	monitor       *event.CommandMonitor
+	database      string
+	deployment    driver.Deployment
+	selector      description.ServerSelector
+	retry         *driver.RetryMode
+	crypt         driver.Crypt
+	serverAPI     *driver.ServerAPIOptions
+	timeout       *time.Duration
 
 	result driver.CursorResponse
 }
@@ -85,6 +86,7 @@ func (li *ListIndexes) Execute(ctx context.Context) error {
 		ServerAPI:      li.serverAPI,
 		Timeout:        li.timeout,
 		Name:           driverutil.ListIndexesOp,
+		Authenticator:  li.authenticator,
 	}.Execute(ctx)
 
 }
@@ -231,5 +233,15 @@ func (li *ListIndexes) Timeout(timeout *time.Duration) *ListIndexes {
 	}
 
 	li.timeout = timeout
+	return li
+}
+
+// Authenticator sets the authenticator to use for this operation.
+func (li *ListIndexes) Authenticator(authenticator driver.Authenticator) *ListIndexes {
+	if li == nil {
+		li = new(ListIndexes)
+	}
+
+	li.authenticator = authenticator
 	return li
 }

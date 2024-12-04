@@ -71,20 +71,12 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 // parseAwsAMPMetadata parses the data to get the AWS sepcific auth info and metadata
-func parseAwsAMPMetadata(config *scalersconfig.ScalerConfig) (*awsConfigMetadata, error) {
-	meta := awsConfigMetadata{}
-
-	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
-		meta.awsRegion = val
-	}
-
+func parseAwsAMPMetadata(config *scalersconfig.ScalerConfig) (*AuthorizationMetadata, error) {
 	auth, err := GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
-
-	meta.awsAuthorization = auth
-	return &meta, nil
+	return &auth, nil
 }
 
 // NewSigV4RoundTripper returns a new http.RoundTripper that will sign requests
@@ -100,11 +92,11 @@ func NewSigV4RoundTripper(config *scalersconfig.ScalerConfig) (http.RoundTripper
 	// which is probably the reason to create a SigV4RoundTripper.
 	// To prevent failures we check if the metadata is nil
 	// (missing AWS info) and we hide the error
-	metadata, _ := parseAwsAMPMetadata(config)
-	if metadata == nil {
+	awsAuthorization, _ := parseAwsAMPMetadata(config)
+	if awsAuthorization == nil {
 		return nil, nil
 	}
-	awsCfg, err := GetAwsConfig(context.Background(), metadata.awsRegion, metadata.awsAuthorization)
+	awsCfg, err := GetAwsConfig(context.Background(), *awsAuthorization)
 	if err != nil {
 		return nil, err
 	}

@@ -93,6 +93,7 @@ var _ = strings.Replace
 var _ = context.Canceled
 var _ = internaloption.WithDefaultEndpoint
 var _ = internal.Version
+var _ = gax.Version
 
 const apiId = "storage:v1"
 const apiName = "storage"
@@ -133,6 +134,7 @@ func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, err
 	opts = append(opts, internaloption.WithDefaultEndpoint(basePath))
 	opts = append(opts, internaloption.WithDefaultEndpointTemplate(basePathTemplate))
 	opts = append(opts, internaloption.WithDefaultMTLSEndpoint(mtlsBasePath))
+	opts = append(opts, internaloption.EnableNewAuthLibrary())
 	client, endpoint, err := htransport.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -341,6 +343,34 @@ type ProjectsServiceAccountService struct {
 	s *Service
 }
 
+// AdvanceRelocateBucketOperationRequest: An AdvanceRelocateBucketOperation
+// request.
+type AdvanceRelocateBucketOperationRequest struct {
+	// ExpireTime: Specifies the time when the relocation will revert to the sync
+	// stage if the relocation hasn't succeeded.
+	ExpireTime string `json:"expireTime,omitempty"`
+	// Ttl: Specifies the duration after which the relocation will revert to the
+	// sync stage if the relocation hasn't succeeded. Optional, if not supplied, a
+	// default value of 12h will be used.
+	Ttl string `json:"ttl,omitempty"`
+	// ForceSendFields is a list of field names (e.g. "ExpireTime") to
+	// unconditionally include in API requests. By default, fields with empty or
+	// default values are omitted from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-ForceSendFields for more
+	// details.
+	ForceSendFields []string `json:"-"`
+	// NullFields is a list of field names (e.g. "ExpireTime") to include in API
+	// requests with the JSON null value. By default, fields with empty values are
+	// omitted from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-NullFields for more details.
+	NullFields []string `json:"-"`
+}
+
+func (s AdvanceRelocateBucketOperationRequest) MarshalJSON() ([]byte, error) {
+	type NoMethod AdvanceRelocateBucketOperationRequest
+	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
+}
+
 // AnywhereCache: An Anywhere Cache instance.
 type AnywhereCache struct {
 	// AdmissionPolicy: The cache-level entry admission policy.
@@ -459,6 +489,10 @@ type Bucket struct {
 	Encryption *BucketEncryption `json:"encryption,omitempty"`
 	// Etag: HTTP 1.1 Entity tag for the bucket.
 	Etag string `json:"etag,omitempty"`
+	// Generation: The generation of this bucket.
+	Generation int64 `json:"generation,omitempty,string"`
+	// HardDeleteTime: The hard delete time of the bucket in RFC 3339 format.
+	HardDeleteTime string `json:"hardDeleteTime,omitempty"`
 	// HierarchicalNamespace: The bucket's hierarchical namespace configuration.
 	HierarchicalNamespace *BucketHierarchicalNamespace `json:"hierarchicalNamespace,omitempty"`
 	// IamConfiguration: The bucket's IAM configuration.
@@ -474,12 +508,13 @@ type Bucket struct {
 	Kind string `json:"kind,omitempty"`
 	// Labels: User-provided labels, in key/value pairs.
 	Labels map[string]string `json:"labels,omitempty"`
-	// Lifecycle: The bucket's lifecycle configuration. See lifecycle management
-	// for more information.
+	// Lifecycle: The bucket's lifecycle configuration. See Lifecycle Management
+	// (https://cloud.google.com/storage/docs/lifecycle) for more information.
 	Lifecycle *BucketLifecycle `json:"lifecycle,omitempty"`
 	// Location: The location of the bucket. Object data for objects in the bucket
 	// resides in physical storage within this region. Defaults to US. See the
-	// developer's guide for the authoritative list.
+	// Developer's Guide (https://cloud.google.com/storage/docs/locations) for the
+	// authoritative list.
 	Location string `json:"location,omitempty"`
 	// LocationType: The type of the bucket location.
 	LocationType string `json:"locationType,omitempty"`
@@ -510,6 +545,8 @@ type Bucket struct {
 	// Rpo: The Recovery Point Objective (RPO) of this bucket. Set to ASYNC_TURBO
 	// to turn on Turbo Replication on a bucket.
 	Rpo string `json:"rpo,omitempty"`
+	// SatisfiesPZI: Reserved for future use.
+	SatisfiesPZI bool `json:"satisfiesPZI,omitempty"`
 	// SatisfiesPZS: Reserved for future use.
 	SatisfiesPZS bool `json:"satisfiesPZS,omitempty"`
 	// SelfLink: The URI of this bucket.
@@ -518,13 +555,16 @@ type Bucket struct {
 	// of time that soft-deleted objects will be retained, and cannot be
 	// permanently deleted.
 	SoftDeletePolicy *BucketSoftDeletePolicy `json:"softDeletePolicy,omitempty"`
+	// SoftDeleteTime: The soft delete time of the bucket in RFC 3339 format.
+	SoftDeleteTime string `json:"softDeleteTime,omitempty"`
 	// StorageClass: The bucket's default storage class, used whenever no
 	// storageClass is specified for a newly-created object. This defines how
 	// objects in the bucket are stored and determines the SLA and the cost of
 	// storage. Values include MULTI_REGIONAL, REGIONAL, STANDARD, NEARLINE,
 	// COLDLINE, ARCHIVE, and DURABLE_REDUCED_AVAILABILITY. If this value is not
 	// specified when the bucket is created, it will default to STANDARD. For more
-	// information, see storage classes.
+	// information, see Storage Classes
+	// (https://cloud.google.com/storage/docs/storage-classes).
 	StorageClass string `json:"storageClass,omitempty"`
 	// TimeCreated: The creation time of the bucket in RFC 3339 format.
 	TimeCreated string `json:"timeCreated,omitempty"`
@@ -534,7 +574,8 @@ type Bucket struct {
 	Versioning *BucketVersioning `json:"versioning,omitempty"`
 	// Website: The bucket's website configuration, controlling how the service
 	// behaves when accessing bucket contents as a web site. See the Static Website
-	// Examples for more information.
+	// Examples (https://cloud.google.com/storage/docs/static-website) for more
+	// information.
 	Website *BucketWebsite `json:"website,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the server.
@@ -885,8 +926,9 @@ func (s BucketIpFilterVpcNetworkSources) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
 }
 
-// BucketLifecycle: The bucket's lifecycle configuration. See lifecycle
-// management for more information.
+// BucketLifecycle: The bucket's lifecycle configuration. See Lifecycle
+// Management (https://cloud.google.com/storage/docs/lifecycle) for more
+// information.
 type BucketLifecycle struct {
 	// Rule: A lifecycle management rule, which is made of an action to take and
 	// the condition(s) under which the action will be taken.
@@ -1198,7 +1240,8 @@ func (s BucketVersioning) MarshalJSON() ([]byte, error) {
 
 // BucketWebsite: The bucket's website configuration, controlling how the
 // service behaves when accessing bucket contents as a web site. See the Static
-// Website Examples for more information.
+// Website Examples (https://cloud.google.com/storage/docs/static-website) for
+// more information.
 type BucketWebsite struct {
 	// MainPageSuffix: If the requested object path is missing, the service will
 	// ensure the path has a trailing '/', append this suffix, and attempt to
@@ -2165,7 +2208,8 @@ type Object struct {
 	ContentType string `json:"contentType,omitempty"`
 	// Crc32c: CRC32c checksum, as described in RFC 4960, Appendix B; encoded using
 	// base64 in big-endian byte order. For more information about using the CRC32c
-	// checksum, see Hashes and ETags: Best Practices.
+	// checksum, see Data Validation and Change Detection
+	// (https://cloud.google.com/storage/docs/data-validation).
 	Crc32c string `json:"crc32c,omitempty"`
 	// CustomTime: A timestamp in RFC 3339 format specified by the user for an
 	// object.
@@ -2203,7 +2247,8 @@ type Object struct {
 	// request to fail with status code 400 - Bad Request.
 	KmsKeyName string `json:"kmsKeyName,omitempty"`
 	// Md5Hash: MD5 hash of the data; encoded using base64. For more information
-	// about using the MD5 hash, see Hashes and ETags: Best Practices.
+	// about using the MD5 hash, see Data Validation and Change Detection
+	// (https://cloud.google.com/storage/docs/data-validation).
 	Md5Hash string `json:"md5Hash,omitempty"`
 	// MediaLink: Media download link.
 	MediaLink string `json:"mediaLink,omitempty"`
@@ -2219,6 +2264,10 @@ type Object struct {
 	// Owner: The owner of the object. This will always be the uploader of the
 	// object.
 	Owner *ObjectOwner `json:"owner,omitempty"`
+	// RestoreToken: Restore token used to differentiate deleted objects with the
+	// same name and generation. This field is only returned for deleted objects in
+	// hierarchical namespace buckets.
+	RestoreToken string `json:"restoreToken,omitempty"`
 	// Retention: A collection of object level retention parameters.
 	Retention *ObjectRetention `json:"retention,omitempty"`
 	// RetentionExpirationTime: A server-determined value that specifies the
@@ -2619,6 +2668,59 @@ type PolicyBindings struct {
 
 func (s PolicyBindings) MarshalJSON() ([]byte, error) {
 	type NoMethod PolicyBindings
+	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
+}
+
+// RelocateBucketRequest: A Relocate Bucket request.
+type RelocateBucketRequest struct {
+	// DestinationCustomPlacementConfig: The bucket's new custom placement
+	// configuration if relocating to a Custom Dual Region.
+	DestinationCustomPlacementConfig *RelocateBucketRequestDestinationCustomPlacementConfig `json:"destinationCustomPlacementConfig,omitempty"`
+	// DestinationLocation: The new location the bucket will be relocated to.
+	DestinationLocation string `json:"destinationLocation,omitempty"`
+	// ValidateOnly: If true, validate the operation, but do not actually relocate
+	// the bucket.
+	ValidateOnly bool `json:"validateOnly,omitempty"`
+	// ForceSendFields is a list of field names (e.g.
+	// "DestinationCustomPlacementConfig") to unconditionally include in API
+	// requests. By default, fields with empty or default values are omitted from
+	// API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-ForceSendFields for more
+	// details.
+	ForceSendFields []string `json:"-"`
+	// NullFields is a list of field names (e.g.
+	// "DestinationCustomPlacementConfig") to include in API requests with the JSON
+	// null value. By default, fields with empty values are omitted from API
+	// requests. See https://pkg.go.dev/google.golang.org/api#hdr-NullFields for
+	// more details.
+	NullFields []string `json:"-"`
+}
+
+func (s RelocateBucketRequest) MarshalJSON() ([]byte, error) {
+	type NoMethod RelocateBucketRequest
+	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
+}
+
+// RelocateBucketRequestDestinationCustomPlacementConfig: The bucket's new
+// custom placement configuration if relocating to a Custom Dual Region.
+type RelocateBucketRequestDestinationCustomPlacementConfig struct {
+	// DataLocations: The list of regional locations in which data is placed.
+	DataLocations []string `json:"dataLocations,omitempty"`
+	// ForceSendFields is a list of field names (e.g. "DataLocations") to
+	// unconditionally include in API requests. By default, fields with empty or
+	// default values are omitted from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-ForceSendFields for more
+	// details.
+	ForceSendFields []string `json:"-"`
+	// NullFields is a list of field names (e.g. "DataLocations") to include in API
+	// requests with the JSON null value. By default, fields with empty values are
+	// omitted from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-NullFields for more details.
+	NullFields []string `json:"-"`
+}
+
+func (s RelocateBucketRequestDestinationCustomPlacementConfig) MarshalJSON() ([]byte, error) {
+	type NoMethod RelocateBucketRequestDestinationCustomPlacementConfig
 	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
 }
 
@@ -4172,7 +4274,8 @@ type BucketsDeleteCall struct {
 	header_    http.Header
 }
 
-// Delete: Permanently deletes an empty bucket.
+// Delete: Deletes an empty bucket. Deletions are permanent unless soft delete
+// is enabled on the bucket.
 //
 // - bucket: Name of a bucket.
 func (r *BucketsService) Delete(bucket string) *BucketsDeleteCall {
@@ -4276,6 +4379,13 @@ func (r *BucketsService) Get(bucket string) *BucketsGetCall {
 	return c
 }
 
+// Generation sets the optional parameter "generation": If present, specifies
+// the generation of the bucket. This is required if softDeleted is true.
+func (c *BucketsGetCall) Generation(generation int64) *BucketsGetCall {
+	c.urlParams_.Set("generation", fmt.Sprint(generation))
+	return c
+}
+
 // IfMetagenerationMatch sets the optional parameter "ifMetagenerationMatch":
 // Makes the return of the bucket metadata conditional on whether the bucket's
 // current metageneration matches the given value.
@@ -4302,6 +4412,15 @@ func (c *BucketsGetCall) IfMetagenerationNotMatch(ifMetagenerationNotMatch int64
 //	"noAcl" - Omit owner, acl and defaultObjectAcl properties.
 func (c *BucketsGetCall) Projection(projection string) *BucketsGetCall {
 	c.urlParams_.Set("projection", projection)
+	return c
+}
+
+// SoftDeleted sets the optional parameter "softDeleted": If true, return the
+// soft-deleted version of this bucket. The default is false. For more
+// information, see Soft Delete
+// (https://cloud.google.com/storage/docs/soft-delete).
+func (c *BucketsGetCall) SoftDeleted(softDeleted bool) *BucketsGetCall {
+	c.urlParams_.Set("softDeleted", fmt.Sprint(softDeleted))
 	return c
 }
 
@@ -4873,6 +4992,15 @@ func (c *BucketsListCall) Projection(projection string) *BucketsListCall {
 	return c
 }
 
+// SoftDeleted sets the optional parameter "softDeleted": If true, only
+// soft-deleted bucket versions will be returned. The default is false. For
+// more information, see Soft Delete
+// (https://cloud.google.com/storage/docs/soft-delete).
+func (c *BucketsListCall) SoftDeleted(softDeleted bool) *BucketsListCall {
+	c.urlParams_.Set("softDeleted", fmt.Sprint(softDeleted))
+	return c
+}
+
 // UserProject sets the optional parameter "userProject": The project to be
 // billed for this request.
 func (c *BucketsListCall) UserProject(userProject string) *BucketsListCall {
@@ -5285,6 +5413,190 @@ func (c *BucketsPatchCall) Do(opts ...googleapi.CallOption) (*Bucket, error) {
 		return nil, err
 	}
 	return ret, nil
+}
+
+type BucketsRelocateCall struct {
+	s                     *Service
+	bucket                string
+	relocatebucketrequest *RelocateBucketRequest
+	urlParams_            gensupport.URLParams
+	ctx_                  context.Context
+	header_               http.Header
+}
+
+// Relocate: Initiates a long-running Relocate Bucket operation on the
+// specified bucket.
+//
+// - bucket: Name of the bucket to be moved.
+func (r *BucketsService) Relocate(bucket string, relocatebucketrequest *RelocateBucketRequest) *BucketsRelocateCall {
+	c := &BucketsRelocateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.bucket = bucket
+	c.relocatebucketrequest = relocatebucketrequest
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse for more
+// details.
+func (c *BucketsRelocateCall) Fields(s ...googleapi.Field) *BucketsRelocateCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method.
+func (c *BucketsRelocateCall) Context(ctx context.Context) *BucketsRelocateCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns a http.Header that can be modified by the caller to add
+// headers to the request.
+func (c *BucketsRelocateCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *BucketsRelocateCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.relocatebucketrequest)
+	if err != nil {
+		return nil, err
+	}
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "b/{bucket}/relocate")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"bucket": c.bucket,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "storage.buckets.relocate" call.
+// Any non-2xx status code is an error. Response headers are in either
+// *GoogleLongrunningOperation.ServerResponse.Header or (if a response was
+// returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *BucketsRelocateCall) Do(opts ...googleapi.CallOption) (*GoogleLongrunningOperation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &GoogleLongrunningOperation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+type BucketsRestoreCall struct {
+	s          *Service
+	bucket     string
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// Restore: Restores a soft-deleted bucket.
+//
+// - bucket: Name of a bucket.
+// - generation: Generation of a bucket.
+func (r *BucketsService) Restore(bucket string, generation int64) *BucketsRestoreCall {
+	c := &BucketsRestoreCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.bucket = bucket
+	c.urlParams_.Set("generation", fmt.Sprint(generation))
+	return c
+}
+
+// UserProject sets the optional parameter "userProject": The project to be
+// billed for this request. Required for Requester Pays buckets.
+func (c *BucketsRestoreCall) UserProject(userProject string) *BucketsRestoreCall {
+	c.urlParams_.Set("userProject", userProject)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse for more
+// details.
+func (c *BucketsRestoreCall) Fields(s ...googleapi.Field) *BucketsRestoreCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method.
+func (c *BucketsRestoreCall) Context(ctx context.Context) *BucketsRestoreCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns a http.Header that can be modified by the caller to add
+// headers to the request.
+func (c *BucketsRestoreCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *BucketsRestoreCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "", c.header_)
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "b/{bucket}/restore")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"bucket": c.bucket,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "storage.buckets.restore" call.
+func (c *BucketsRestoreCall) Do(opts ...googleapi.CallOption) error {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if err != nil {
+		return err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return gensupport.WrapError(err)
+	}
+	return nil
 }
 
 type BucketsSetIamPolicyCall struct {
@@ -9837,9 +10149,21 @@ func (c *ObjectsGetCall) Projection(projection string) *ObjectsGetCall {
 	return c
 }
 
+// RestoreToken sets the optional parameter "restoreToken": Restore token used
+// to differentiate soft-deleted objects with the same name and generation.
+// Only applicable for hierarchical namespace buckets and if softDeleted is set
+// to true. This parameter is optional, and is only required in the rare case
+// when there are multiple soft-deleted objects with the same name and
+// generation.
+func (c *ObjectsGetCall) RestoreToken(restoreToken string) *ObjectsGetCall {
+	c.urlParams_.Set("restoreToken", restoreToken)
+	return c
+}
+
 // SoftDeleted sets the optional parameter "softDeleted": If true, only
 // soft-deleted object versions will be listed. The default is false. For more
-// information, see Soft Delete.
+// information, see Soft Delete
+// (https://cloud.google.com/storage/docs/soft-delete).
 func (c *ObjectsGetCall) SoftDeleted(softDeleted bool) *ObjectsGetCall {
 	c.urlParams_.Set("softDeleted", fmt.Sprint(softDeleted))
 	return c
@@ -10502,7 +10826,8 @@ func (c *ObjectsListCall) Projection(projection string) *ObjectsListCall {
 
 // SoftDeleted sets the optional parameter "softDeleted": If true, only
 // soft-deleted object versions will be listed. The default is false. For more
-// information, see Soft Delete.
+// information, see Soft Delete
+// (https://cloud.google.com/storage/docs/soft-delete).
 func (c *ObjectsListCall) SoftDeleted(softDeleted bool) *ObjectsListCall {
 	c.urlParams_.Set("softDeleted", fmt.Sprint(softDeleted))
 	return c
@@ -10526,7 +10851,8 @@ func (c *ObjectsListCall) UserProject(userProject string) *ObjectsListCall {
 
 // Versions sets the optional parameter "versions": If true, lists all versions
 // of an object as distinct results. The default is false. For more
-// information, see Object Versioning.
+// information, see Object Versioning
+// (https://cloud.google.com/storage/docs/object-versioning).
 func (c *ObjectsListCall) Versions(versions bool) *ObjectsListCall {
 	c.urlParams_.Set("versions", fmt.Sprint(versions))
 	return c
@@ -10864,7 +11190,8 @@ type ObjectsRestoreCall struct {
 //   - bucket: Name of the bucket in which the object resides.
 //   - generation: Selects a specific revision of this object.
 //   - object: Name of the object. For information about how to URL encode object
-//     names to be path safe, see Encoding URI Path Parts.
+//     names to be path safe, see Encoding URI Path Parts
+//     (https://cloud.google.com/storage/docs/request-endpoints#encoding).
 func (r *ObjectsService) Restore(bucket string, object string, generation int64) *ObjectsRestoreCall {
 	c := &ObjectsRestoreCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.bucket = bucket
@@ -10925,6 +11252,16 @@ func (c *ObjectsRestoreCall) IfMetagenerationNotMatch(ifMetagenerationNotMatch i
 //	"noAcl" - Omit the owner, acl property.
 func (c *ObjectsRestoreCall) Projection(projection string) *ObjectsRestoreCall {
 	c.urlParams_.Set("projection", projection)
+	return c
+}
+
+// RestoreToken sets the optional parameter "restoreToken": Restore token used
+// to differentiate sof-deleted objects with the same name and generation. Only
+// applicable for hierarchical namespace buckets. This parameter is optional,
+// and is only required in the rare case when there are multiple soft-deleted
+// objects with the same name and generation.
+func (c *ObjectsRestoreCall) RestoreToken(restoreToken string) *ObjectsRestoreCall {
+	c.urlParams_.Set("restoreToken", restoreToken)
 	return c
 }
 
@@ -11857,7 +12194,8 @@ func (c *ObjectsWatchAllCall) UserProject(userProject string) *ObjectsWatchAllCa
 
 // Versions sets the optional parameter "versions": If true, lists all versions
 // of an object as distinct results. The default is false. For more
-// information, see Object Versioning.
+// information, see Object Versioning
+// (https://cloud.google.com/storage/docs/object-versioning).
 func (c *ObjectsWatchAllCall) Versions(versions bool) *ObjectsWatchAllCall {
 	c.urlParams_.Set("versions", fmt.Sprint(versions))
 	return c
@@ -11943,6 +12281,92 @@ func (c *ObjectsWatchAllCall) Do(opts ...googleapi.CallOption) (*Channel, error)
 		return nil, err
 	}
 	return ret, nil
+}
+
+type OperationsAdvanceRelocateBucketCall struct {
+	s                                     *Service
+	bucket                                string
+	operationId                           string
+	advancerelocatebucketoperationrequest *AdvanceRelocateBucketOperationRequest
+	urlParams_                            gensupport.URLParams
+	ctx_                                  context.Context
+	header_                               http.Header
+}
+
+// AdvanceRelocateBucket: Starts asynchronous advancement of the relocate
+// bucket operation in the case of required write downtime, to allow it to lock
+// the bucket at the source location, and proceed with the bucket location
+// swap. The server makes a best effort to advance the relocate bucket
+// operation, but success is not guaranteed.
+//
+// - bucket: Name of the bucket to advance the relocate for.
+// - operationId: ID of the operation resource.
+func (r *OperationsService) AdvanceRelocateBucket(bucket string, operationId string, advancerelocatebucketoperationrequest *AdvanceRelocateBucketOperationRequest) *OperationsAdvanceRelocateBucketCall {
+	c := &OperationsAdvanceRelocateBucketCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.bucket = bucket
+	c.operationId = operationId
+	c.advancerelocatebucketoperationrequest = advancerelocatebucketoperationrequest
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse for more
+// details.
+func (c *OperationsAdvanceRelocateBucketCall) Fields(s ...googleapi.Field) *OperationsAdvanceRelocateBucketCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method.
+func (c *OperationsAdvanceRelocateBucketCall) Context(ctx context.Context) *OperationsAdvanceRelocateBucketCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns a http.Header that can be modified by the caller to add
+// headers to the request.
+func (c *OperationsAdvanceRelocateBucketCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *OperationsAdvanceRelocateBucketCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.advancerelocatebucketoperationrequest)
+	if err != nil {
+		return nil, err
+	}
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "b/{bucket}/operations/{operationId}/advanceRelocateBucket")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"bucket":      c.bucket,
+		"operationId": c.operationId,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "storage.buckets.operations.advanceRelocateBucket" call.
+func (c *OperationsAdvanceRelocateBucketCall) Do(opts ...googleapi.CallOption) error {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if err != nil {
+		return err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return gensupport.WrapError(err)
+	}
+	return nil
 }
 
 type OperationsCancelCall struct {
@@ -12773,7 +13197,9 @@ type ProjectsHmacKeysUpdateCall struct {
 }
 
 // Update: Updates the state of an HMAC key. See the HMAC Key resource
-// descriptor for valid states.
+// descriptor
+// (https://cloud.google.com/storage/docs/json_api/v1/projects/hmacKeys/update#request-body)
+// for valid states.
 //
 // - accessId: Name of the HMAC key being updated.
 // - projectId: Project ID owning the service account of the updated key.

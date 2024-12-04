@@ -669,7 +669,7 @@ func getKafkaClientConfig(ctx context.Context, metadata kafkaMetadata) (*sarama.
 		case KafkaSASLOAuthTokenProviderBearer:
 			config.Net.SASL.TokenProvider = kafka.OAuthBearerTokenProvider(metadata.username, metadata.password, metadata.oauthTokenEndpointURI, metadata.scopes, metadata.oauthExtensions)
 		case KafkaSASLOAuthTokenProviderAWSMSKIAM:
-			awsAuth, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+			awsAuth, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 			if err != nil {
 				return nil, fmt.Errorf("error getting AWS config: %w", err)
 			}

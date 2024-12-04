@@ -115,7 +115,7 @@ func NewAwsCloudwatchScaler(ctx context.Context, config *scalersconfig.ScalerCon
 }
 
 func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata) (*cloudwatch.Client, error) {
-	cfg, err := awsutils.GetAwsConfig(ctx, metadata.AwsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 
 	if err != nil {
 		return nil, err
@@ -286,7 +286,7 @@ func (s *awsCloudwatchScaler) GetCloudwatchMetrics(ctx context.Context) (float64
 	if len(output.MetricDataResults) > 0 && len(output.MetricDataResults[0].Values) == 0 && !s.metadata.IgnoreNullValues {
 		emptyMetricsErrMsg := "empty metric data received, ignoreNullValues is false, returning error"
 		s.logger.Error(nil, emptyMetricsErrMsg)
-		return -1, fmt.Errorf(emptyMetricsErrMsg)
+		return -1, fmt.Errorf("%s", emptyMetricsErrMsg)
 	}
 
 	var metricValue float64

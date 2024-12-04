@@ -396,6 +396,14 @@ func setConfigValueHelper(params Params, valFromConfig string, field reflect.Val
 	if field.Kind() == reflect.Slice {
 		return setConfigValueSlice(params, valFromConfig, field)
 	}
+	if field.Kind() == reflect.Bool {
+		boolVal, err := strconv.ParseBool(valFromConfig)
+		if err != nil {
+			return fmt.Errorf("unable to parse boolean value %q: %w", valFromConfig, err)
+		}
+		field.SetBool(boolVal)
+		return nil
+	}
 	if field.CanInterface() {
 		ifc := reflect.New(field.Type()).Interface()
 		if err := json.Unmarshal([]byte(valFromConfig), &ifc); err != nil {

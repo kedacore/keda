@@ -20,8 +20,8 @@ package v1alpha1
 
 import (
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -39,30 +39,10 @@ type ClusterTriggerAuthenticationLister interface {
 
 // clusterTriggerAuthenticationLister implements the ClusterTriggerAuthenticationLister interface.
 type clusterTriggerAuthenticationLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1alpha1.ClusterTriggerAuthentication]
 }
 
 // NewClusterTriggerAuthenticationLister returns a new ClusterTriggerAuthenticationLister.
 func NewClusterTriggerAuthenticationLister(indexer cache.Indexer) ClusterTriggerAuthenticationLister {
-	return &clusterTriggerAuthenticationLister{indexer: indexer}
-}
-
-// List lists all ClusterTriggerAuthentications in the indexer.
-func (s *clusterTriggerAuthenticationLister) List(selector labels.Selector) (ret []*v1alpha1.ClusterTriggerAuthentication, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.ClusterTriggerAuthentication))
-	})
-	return ret, err
-}
-
-// Get retrieves the ClusterTriggerAuthentication from the index for a given name.
-func (s *clusterTriggerAuthenticationLister) Get(name string) (*v1alpha1.ClusterTriggerAuthentication, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("clustertriggerauthentication"), name)
-	}
-	return obj.(*v1alpha1.ClusterTriggerAuthentication), nil
+	return &clusterTriggerAuthenticationLister{listers.New[*v1alpha1.ClusterTriggerAuthentication](indexer, v1alpha1.Resource("clustertriggerauthentication"))}
 }

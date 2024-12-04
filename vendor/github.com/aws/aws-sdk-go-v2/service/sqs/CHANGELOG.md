@@ -1,3 +1,66 @@
+# v1.36.3 (2024-10-28)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.36.2 (2024-10-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.36.1 (2024-10-07)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.36.0 (2024-10-04)
+
+* **Feature**: Add support for HTTP client metrics.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.35.4 (2024-10-03)
+
+* No change notes available for this release.
+
+# v1.35.3 (2024-09-27)
+
+* No change notes available for this release.
+
+# v1.35.2 (2024-09-25)
+
+* No change notes available for this release.
+
+# v1.35.1 (2024-09-23)
+
+* No change notes available for this release.
+
+# v1.35.0 (2024-09-20)
+
+* **Feature**: Add tracing and metrics support to service clients.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.34.9 (2024-09-17)
+
+* **Bug Fix**: **BREAKFIX**: Only generate AccountIDEndpointMode config for services that use it. This is a compiler break, but removes no actual functionality, as no services currently use the account ID in endpoint resolution.
+
+# v1.34.8 (2024-09-04)
+
+* No change notes available for this release.
+
+# v1.34.7 (2024-09-03)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.34.6 (2024-08-30)
+
+* **Bug Fix**: Fix issue where SDK could not send a VisibilityTimeout of 0 in a ChangeMessageVisibilityBatchRequestEntry.
+
+# v1.34.5 (2024-08-22)
+
+* No change notes available for this release.
+
+# v1.34.4 (2024-08-15)
+
+* **Dependency Update**: Bump minimum Go version to 1.21.
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.34.3 (2024-07-10.2)
 
 * **Dependency Update**: Updated to the latest SDK module versions

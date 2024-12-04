@@ -11,7 +11,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/atom"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/auth"
 )
 
 // TopicProperties represents the static properties of the topic.
@@ -340,7 +339,7 @@ func (ac *Client) createOrUpdateTopicImpl(ctx context.Context, topicName string,
 		props = &TopicProperties{}
 	}
 
-	env := newTopicEnvelope(props, ac.em.TokenProvider())
+	env := newTopicEnvelope(props)
 
 	if !creating {
 		ctx = runtime.WithHTTPHeader(ctx, http.Header{
@@ -364,7 +363,7 @@ func (ac *Client) createOrUpdateTopicImpl(ctx context.Context, topicName string,
 	return &topicItem.TopicProperties, resp, nil
 }
 
-func newTopicEnvelope(props *TopicProperties, tokenProvider auth.TokenProvider) *atom.TopicEnvelope {
+func newTopicEnvelope(props *TopicProperties) *atom.TopicEnvelope {
 	desc := &atom.TopicDescription{
 		DefaultMessageTimeToLive:            props.DefaultMessageTimeToLive,
 		MaxSizeInMegabytes:                  props.MaxSizeInMegabytes,

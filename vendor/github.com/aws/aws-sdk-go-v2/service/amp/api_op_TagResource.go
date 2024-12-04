@@ -11,13 +11,13 @@ import (
 )
 
 // The TagResource operation associates tags with an Amazon Managed Service for
-// Prometheus resource. The only resources that can be tagged are workspaces and
-// rule groups namespaces.
+// Prometheus resource. The only resources that can be tagged are rule groups
+// namespaces, scrapers, and workspaces.
 //
 // If you specify a new tag key for the resource, this tag is appended to the list
 // of tags associated with the resource. If you specify a tag key that is already
 // associated with the resource, the new tag value that you specify replaces the
-// previous value for that tag.
+// previous value for that tag. To remove a tag, use UntagResource .
 func (c *Client) TagResource(ctx context.Context, params *TagResourceInput, optFns ...func(*Options)) (*TagResourceOutput, error) {
 	if params == nil {
 		params = &TagResourceInput{}
@@ -35,14 +35,14 @@ func (c *Client) TagResource(ctx context.Context, params *TagResourceInput, optF
 
 type TagResourceInput struct {
 
-	// The ARN of the workspace or rule groups namespace to apply tags to.
+	// The ARN of the resource to apply tags to.
 	//
 	// This member is required.
 	ResourceArn *string
 
 	// The list of tag keys and values to associate with the resource.
 	//
-	// Keys may not begin with aws: .
+	// Keys must not begin with aws: .
 	//
 	// This member is required.
 	Tags map[string]string
@@ -100,6 +100,9 @@ func (c *Client) addOperationTagResourceMiddlewares(stack *middleware.Stack, opt
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -137,6 +140,18 @@ func (c *Client) addOperationTagResourceMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil
