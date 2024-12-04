@@ -41,6 +41,9 @@ const (
 	// ScaledJobDeleted is for event when ScaledJob is deleted
 	ScaledJobDeleted = "ScaledJobDeleted"
 
+	// KEDAScalersInfo is for event when Scaler has additional info
+	KEDAScalersInfo = "KEDAScalerInfo"
+
 	// KEDAScalersStarted is for event when scalers watch started for ScaledObject or ScaledJob
 	KEDAScalersStarted = "KEDAScalersStarted"
 
