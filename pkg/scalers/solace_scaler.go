@@ -97,7 +97,7 @@ type SolaceMetadata struct {
 
 	// Target Message Count
 	MsgCountTarget      int64 `keda:"name=messageCountTarget,       order=triggerMetadata, optional"`
-	MsgSpoolUsageTarget int64 `keda:"name=messageSpoolUsageTarget,  order=triggerMetadata, optional"`      // Spool Use Target in Megabytes
+	MsgSpoolUsageTarget int64 `keda:"name=messageSpoolUsageTarget,  order=triggerMetadata, optional"` // Spool Use Target in Megabytes
 	MsgRxRateTarget     int64 `keda:"name=messageReceiveRateTarget, order=triggerMetadata, optional"` // Ingress Rate Target per consumer in msgs/second
 
 	// Activation Target Message Count
