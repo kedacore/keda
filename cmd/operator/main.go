@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
-	_ "go.uber.org/automaxprocs"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeinformers "k8s.io/client-go/informers"
@@ -115,6 +114,13 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	ctx := ctrl.SetupSignalHandler()
+
+	err := kedautil.ConfigureMaxProcs(setupLog)
+	if err != nil {
+		setupLog.Error(err, "failed to set max procs")
+		os.Exit(1)
+	}
+
 	namespaces, err := kedautil.GetWatchNamespaces()
 	if err != nil {
 		setupLog.Error(err, "failed to get watch namespace")

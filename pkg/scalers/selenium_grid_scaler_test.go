@@ -16,13 +16,14 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 		sessionBrowserName string
 		browserVersion     string
 		platformName       string
-		nodeMaxSessions    int
+		nodeMaxSessions    int64
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    int64
-		wantErr bool
+		name                string
+		args                args
+		wantNewRequestNodes int64
+		wantOnGoingSessions int64
+		wantErr             bool
 	}{
 		{
 			name: "nil response body should throw error",
@@ -61,8 +62,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				`),
 				browserName: "",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantErr:             false,
 		},
 		{
 			name: "12 sessionQueueRequests with 4 requests matching browserName chrome should return count as 4",
@@ -101,8 +102,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    4,
-			wantErr: false,
+			wantNewRequestNodes: 4,
+			wantErr:             false,
 		},
 		{
 			name: "2 sessionQueueRequests and 1 available nodeStereotypes with matching browserName firefox should return count as 1",
@@ -276,8 +277,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 4,
+			wantErr:             false,
 		},
 		{
 			name: "1 sessionQueueRequests and 1 available nodeStereotypes with matching browserName chrome should return count as 0",
@@ -325,8 +327,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantErr:             false,
 		},
 		{
 			name: "1 sessionQueueRequests Linux and 1 available nodeStereotypes Windows with matching browserName chrome should return count as 1",
@@ -374,8 +376,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantErr:             false,
 		},
 		{
 			name: "scaler browserVersion is latest, 2 sessionQueueRequests wihtout browserVersion, 2 available nodeStereotypes with different versions and platforms, should return count as 1",
@@ -422,8 +424,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantErr:             false,
 		},
 		{
 			name: "scaler browserVersion is latest, 5 sessionQueueRequests wihtout browserVersion also 1 different platformName, 1 available nodeStereotypes with 3 slots Linux and 1 node Windows, should return count as 1",
@@ -473,8 +475,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantErr:             false,
 		},
 		{
 			name: "queue request with browserName browserVersion and browserVersion but no available nodes should return count as 1",
@@ -516,8 +518,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantErr:             false,
 		},
 		{
 			name: "1 queue request with browserName browserVersion and browserVersion but 2 nodes without available slots should return count as 1",
@@ -573,8 +575,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 		{
 			name: "2 session queue with matching browsername and browserversion of 2 available slots should return count as 0",
@@ -621,8 +624,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantErr:             false,
 		},
 		{
 			name: "2 queue requests with browserName browserVersion and platformName matching 2 available slots on 2 different nodes should return count as 0",
@@ -679,8 +682,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 		{
 			name: "1 queue request with browserName browserVersion and platformName matching 1 available slot on node has 3 max sessions should return count as 0",
@@ -726,8 +730,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 		{
 			name: "3 queue requests with browserName browserVersion and platformName but 2 running nodes are busy should return count as 3",
@@ -785,8 +790,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    3,
-			wantErr: false,
+			wantNewRequestNodes: 3,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 		{
 			name: "3 queue requests with browserName browserVersion and platformName but 2 running nodes are busy with different versions should return count as 3",
@@ -844,8 +850,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    3,
-			wantErr: false,
+			wantNewRequestNodes: 3,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 		{
 			name: "3 queue requests with browserName and platformName but 2 running nodes are busy with different versions should return count as 3",
@@ -903,8 +910,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    3,
-			wantErr: false,
+			wantNewRequestNodes: 3,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 		{
 			name: "1 active session with matching browsername and version should return count as 2",
@@ -947,8 +955,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 2,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
 		},
 		{
 			name: "1 request without browserName and browserVersion stable can be match any available node should return count as 0",
@@ -985,8 +994,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantErr:             false,
 		},
 		{
 			name: "1 request without browserName and browserVersion stable should return count as 1",
@@ -1028,8 +1037,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
 		},
 		{
 			name: "2 queue requests with browserName in string match node stereotype and scaler metadata browserVersion should return count as 1",
@@ -1072,8 +1082,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "dev",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
 		},
 		{
 			name: "2 queue requests with matching browsername/sessionBrowserName but 1 node is busy should return count as 2",
@@ -1116,8 +1127,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 2,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
 		},
 		{
 			name: "2 queue requests with matching browsername/sessionBrowserName and 1 node is is available should return count as 1",
@@ -1155,8 +1167,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantErr:             false,
 		}, {
 			name: "2 queue requests with platformName and without platformName and node with 1 slot available should return count as 1",
 			args: args{
@@ -1198,8 +1210,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "Windows 11",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
 		},
 		{
 			name: "1 active msedge session while asking for 2 chrome sessions should return a count of 2",
@@ -1242,8 +1255,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 2,
+			wantErr:             false,
 		},
 		{
 			name: "3 queue requests browserName chrome platformName linux but 1 node has maxSessions=3 with browserName msedge should return a count of 3",
@@ -1287,8 +1300,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    3,
-			wantErr: false,
+			wantNewRequestNodes: 3,
+			wantErr:             false,
 		},
 		{
 			name: "session request with matching browsername and no specific platformName should return count as 2",
@@ -1316,8 +1329,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "",
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 2,
+			wantErr:             false,
 		},
 		{
 			name: "2 queue requests with 1 matching browsername and platformName and 1 existing slot is available should return count as 0",
@@ -1355,8 +1368,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "Windows 11",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantErr:             false,
 		},
 		{
 			name: "2 queue requests with 1 request matching browserName and platformName but 1 existing node is busy should return count as 1",
@@ -1403,8 +1416,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "Windows 11",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
 		},
 		{
 			name: "5 queue requests with scaler parameter nodeMaxSessions is 2 should return count as 3",
@@ -1437,8 +1451,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				platformName:       "linux",
 				nodeMaxSessions:    2,
 			},
-			want:    3,
-			wantErr: false,
+			wantNewRequestNodes: 3,
+			wantErr:             false,
 		},
 		{
 			name: "5 queue requests with scaler parameter nodeMaxSessions is 3 should return count as 2",
@@ -1471,8 +1485,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				platformName:       "linux",
 				nodeMaxSessions:    3,
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 2,
+			wantErr:             false,
 		},
 		{
 			name: "5 queue requests with request matching browserName and platformName and scaler param nodeMaxSessions is 3 and existing node with 1 available slot should return count as 2",
@@ -1523,8 +1537,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				platformName:       "linux",
 				nodeMaxSessions:    3,
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 2,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 		// Tests from PR: https://github.com/kedacore/keda/pull/6055
 		{
@@ -1563,8 +1578,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantErr:             false,
 		},
 		{
 			name: "4 sessions requests with matching browsername and platformName when setSessionsFromHub turned on and node with 2 slots matches should return count as 2",
@@ -1605,8 +1620,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "latest",
 				platformName:       "linux",
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 2,
+			wantErr:             false,
 		},
 		{
 			name: "4 sessions requests with matching browsername and platformName when setSessionsFromHub turned on, no nodes and sessionsPerNode=2 matches should return count as 2",
@@ -1637,8 +1652,8 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				platformName:       "linux",
 				nodeMaxSessions:    2,
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 2,
+			wantErr:             false,
 		},
 		{
 			name: "sessions requests and active sessions with 1 matching browsername, platformName and sessionBrowserVersion should return count as 1",
@@ -1687,19 +1702,20 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0.4472.114",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion, tt.args.sessionBrowserName, tt.args.platformName, tt.args.nodeMaxSessions, logr.Discard())
+			newRequestNodes, onGoingSessions, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion, tt.args.sessionBrowserName, tt.args.platformName, tt.args.nodeMaxSessions, logr.Discard())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCountFromSeleniumResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getCountFromSeleniumResponse() = %v, want %v", got, tt.want)
+			if !reflect.DeepEqual(newRequestNodes, tt.wantNewRequestNodes) || !reflect.DeepEqual(onGoingSessions, tt.wantOnGoingSessions) {
+				t.Errorf("getCountFromSeleniumResponse() = [%v, %v], want [%v, %v]", newRequestNodes, onGoingSessions, tt.wantNewRequestNodes, tt.wantOnGoingSessions)
 			}
 		})
 	}

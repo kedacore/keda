@@ -15,6 +15,7 @@ We have a few preventive measures in place to detect security vulnerabilities:
   - All pull requests (PRs) are using CodeQL to scan our source code for vulnerabilities
   - Dependabot will automatically identify vulnerabilities based on GitHub Advisory Database and open PRs with patches
   - Automated [secret scanning](https://docs.github.com/en/enterprise-cloud@latest/code-security/secret-scanning/about-secret-scanning#about-secret-scanning-for-partner-patterns) & alerts
+- The [Scorecard GitHub Action](https://github.com/ossf/scorecard-action) automates the process by running security checks on the GitHub repository. By integrating this Action into the repository's workflow, we can continuously monitor the project’s security posture. The Scorecard checks cover various security best practices and provide scores for multiple categories. Some checks include Code Reviews, Branch Protection, Signed Releases, etc.
 
 KEDA maintainers are working to improve our prevention by adding additional measures:
 

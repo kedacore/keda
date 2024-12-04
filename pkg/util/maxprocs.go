@@ -14,24 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package aws
+package util
 
-type AuthorizationMetadata struct {
-	AwsRoleArn string
+import (
+	"fmt"
 
-	AwsAccessKeyID     string
-	AwsSecretAccessKey string
-	AwsSessionToken    string
+	"go.uber.org/automaxprocs/maxprocs"
+	"k8s.io/klog/v2"
+)
 
-	AwsRegion string
-
-	// Deprecated
-	PodIdentityOwner bool
-	// Pod identity owner is confusing and it'll be removed when we get
-	// rid of the old aws podIdentities (aws-eks and aws-kiam) as UsingPodIdentity
-	// replaces it. For more context:
-	// https://github.com/kedacore/keda/pull/5061/#discussion_r1441016441
-	UsingPodIdentity bool
-
-	TriggerUniqueKey string
+// ConfigureMaxProcs sets up automaxprocs with proper logging configuration.
+// It wraps the automaxprocs logger to handle structured logging with string keys
+// to prevent panics when automaxprocs tries to pass numeric keys.
+func ConfigureMaxProcs(logger klog.Logger) error {
+	_, err := maxprocs.Set(maxprocs.Logger(func(format string, args ...interface{}) {
+		logger.Info(fmt.Sprintf(format, args...))
+	}))
+	return err
 }

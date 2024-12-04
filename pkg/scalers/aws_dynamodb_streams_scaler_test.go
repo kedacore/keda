@@ -135,10 +135,10 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			"awsRegion":            testAWSDynamoDBStreamsRegion},
 		authParams: testAWSKinesisAuthentication,
 		expected: &awsDynamoDBStreamsMetadata{
-			targetShardCount:           2,
-			activationTargetShardCount: 1,
-			tableName:                  testAWSDynamoDBSmallTable,
-			awsRegion:                  testAWSDynamoDBStreamsRegion,
+			TargetShardCount:           2,
+			ActivationTargetShardCount: 1,
+			TableName:                  testAWSDynamoDBSmallTable,
+			AwsRegion:                  testAWSDynamoDBStreamsRegion,
 			awsAuthorization: awsutils.AuthorizationMetadata{
 				AwsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
 				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
@@ -159,11 +159,11 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			"awsEndpoint":          testAWSDynamoDBStreamsEndpoint},
 		authParams: testAWSKinesisAuthentication,
 		expected: &awsDynamoDBStreamsMetadata{
-			targetShardCount:           2,
-			activationTargetShardCount: 1,
-			tableName:                  testAWSDynamoDBSmallTable,
-			awsRegion:                  testAWSDynamoDBStreamsRegion,
-			awsEndpoint:                testAWSDynamoDBStreamsEndpoint,
+			TargetShardCount:           2,
+			ActivationTargetShardCount: 1,
+			TableName:                  testAWSDynamoDBSmallTable,
+			AwsRegion:                  testAWSDynamoDBStreamsRegion,
+			AwsEndpoint:                testAWSDynamoDBStreamsEndpoint,
 			awsAuthorization: awsutils.AuthorizationMetadata{
 				AwsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
 				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
@@ -204,10 +204,10 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			"awsRegion":  testAWSDynamoDBStreamsRegion},
 		authParams: testAWSKinesisAuthentication,
 		expected: &awsDynamoDBStreamsMetadata{
-			targetShardCount:           defaultTargetDBStreamsShardCount,
-			activationTargetShardCount: defaultActivationTargetDBStreamsShardCount,
-			tableName:                  testAWSDynamoDBSmallTable,
-			awsRegion:                  testAWSDynamoDBStreamsRegion,
+			TargetShardCount:           defaultTargetDBStreamsShardCount,
+			ActivationTargetShardCount: defaultActivationTargetDBStreamsShardCount,
+			TableName:                  testAWSDynamoDBSmallTable,
+			AwsRegion:                  testAWSDynamoDBStreamsRegion,
 			awsAuthorization: awsutils.AuthorizationMetadata{
 				AwsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
 				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
@@ -224,20 +224,10 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			"tableName":  testAWSDynamoDBSmallTable,
 			"shardCount": "a",
 			"awsRegion":  testAWSDynamoDBStreamsRegion},
-		authParams: testAWSKinesisAuthentication,
-		expected: &awsDynamoDBStreamsMetadata{
-			targetShardCount: defaultTargetDBStreamsShardCount,
-			tableName:        testAWSDynamoDBSmallTable,
-			awsRegion:        testAWSDynamoDBStreamsRegion,
-			awsAuthorization: awsutils.AuthorizationMetadata{
-				AwsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
-				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
-				PodIdentityOwner:   true,
-			},
-			triggerIndex: 4,
-		},
-		isError:      false,
-		comment:      "properly formed table name and region, wrong shard count",
+		authParams:   testAWSKinesisAuthentication,
+		expected:     &awsDynamoDBStreamsMetadata{},
+		isError:      true,
+		comment:      "invalid value - should cause error",
 		triggerIndex: 4,
 	},
 	{
@@ -278,9 +268,9 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			"awsSessionToken":    testAWSDynamoDBStreamsSessionToken,
 		},
 		expected: &awsDynamoDBStreamsMetadata{
-			targetShardCount: 2,
-			tableName:        testAWSDynamoDBSmallTable,
-			awsRegion:        testAWSDynamoDBStreamsRegion,
+			TargetShardCount: 2,
+			TableName:        testAWSDynamoDBSmallTable,
+			AwsRegion:        testAWSDynamoDBStreamsRegion,
 			awsAuthorization: awsutils.AuthorizationMetadata{
 				AwsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
 				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
@@ -330,9 +320,9 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			"awsRoleArn": testAWSDynamoDBStreamsRoleArn,
 		},
 		expected: &awsDynamoDBStreamsMetadata{
-			targetShardCount: 2,
-			tableName:        testAWSDynamoDBSmallTable,
-			awsRegion:        testAWSDynamoDBStreamsRegion,
+			TargetShardCount: 2,
+			TableName:        testAWSDynamoDBSmallTable,
+			AwsRegion:        testAWSDynamoDBStreamsRegion,
 			awsAuthorization: awsutils.AuthorizationMetadata{
 				AwsRoleArn:       testAWSDynamoDBStreamsRoleArn,
 				PodIdentityOwner: true,
@@ -350,9 +340,9 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 		"identityOwner": "operator"},
 		authParams: map[string]string{},
 		expected: &awsDynamoDBStreamsMetadata{
-			targetShardCount: 2,
-			tableName:        testAWSDynamoDBSmallTable,
-			awsRegion:        testAWSDynamoDBStreamsRegion,
+			TargetShardCount: 2,
+			TableName:        testAWSDynamoDBSmallTable,
+			AwsRegion:        testAWSDynamoDBStreamsRegion,
 			awsAuthorization: awsutils.AuthorizationMetadata{
 				PodIdentityOwner: false,
 			},
@@ -370,15 +360,15 @@ var awsDynamoDBStreamMetricIdentifiers = []awsDynamoDBStreamsMetricIdentifier{
 }
 
 var awsDynamoDBStreamsGetMetricTestData = []*awsDynamoDBStreamsMetadata{
-	{tableName: testAWSDynamoDBBigTable},
-	{tableName: testAWSDynamoDBSmallTable},
-	{tableName: testAWSDynamoDBErrorTable},
-	{tableName: testAWSDynamoDBInvalidTable},
+	{TableName: testAWSDynamoDBBigTable},
+	{TableName: testAWSDynamoDBSmallTable},
+	{TableName: testAWSDynamoDBErrorTable},
+	{TableName: testAWSDynamoDBInvalidTable},
 }
 
 func TestParseAwsDynamoDBStreamsMetadata(t *testing.T) {
 	for _, testData := range testAwsDynamoDBStreamMetadata {
-		result, err := parseAwsDynamoDBStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAwsDynamoDBStreamAuthentication, AuthParams: testData.authParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
+		result, err := parseAwsDynamoDBStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAwsDynamoDBStreamAuthentication, AuthParams: testData.authParams, TriggerIndex: testData.triggerIndex})
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
 		}
@@ -395,11 +385,11 @@ func TestParseAwsDynamoDBStreamsMetadata(t *testing.T) {
 func TestAwsDynamoDBStreamsGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsDynamoDBStreamMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseAwsDynamoDBStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAwsDynamoDBStreamAuthentication, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
+		meta, err := parseAwsDynamoDBStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testAwsDynamoDBStreamAuthentication, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		streamArn, err := getDynamoDBStreamsArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
+		streamArn, err := getDynamoDBStreamsArn(ctx, &mockAwsDynamoDB{}, &meta.TableName)
 		if err != nil {
 			t.Fatal("Could not get dynamodb stream arn:", err)
 		}
@@ -418,12 +408,12 @@ func TestAwsDynamoDBStreamsScalerGetMetrics(t *testing.T) {
 		var err error
 		var streamArn *string
 		ctx := context.Background()
-		streamArn, err = getDynamoDBStreamsArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
+		streamArn, err = getDynamoDBStreamsArn(ctx, &mockAwsDynamoDB{}, &meta.TableName)
 		if err == nil {
 			scaler := awsDynamoDBStreamsScaler{"", meta, streamArn, &mockAwsDynamoDBStreams{}, logr.Discard()}
 			value, _, err = scaler.GetMetricsAndActivity(context.Background(), "MetricName")
 		}
-		switch meta.tableName {
+		switch meta.TableName {
 		case testAWSDynamoDBErrorTable:
 			assert.Error(t, err, "expect error because of dynamodb stream api error")
 		case testAWSDynamoDBInvalidTable:
@@ -442,12 +432,12 @@ func TestAwsDynamoDBStreamsScalerIsActive(t *testing.T) {
 		var err error
 		var streamArn *string
 		ctx := context.Background()
-		streamArn, err = getDynamoDBStreamsArn(ctx, &mockAwsDynamoDB{}, &meta.tableName)
+		streamArn, err = getDynamoDBStreamsArn(ctx, &mockAwsDynamoDB{}, &meta.TableName)
 		if err == nil {
 			scaler := awsDynamoDBStreamsScaler{"", meta, streamArn, &mockAwsDynamoDBStreams{}, logr.Discard()}
 			_, value, err = scaler.GetMetricsAndActivity(context.Background(), "MetricName")
 		}
-		switch meta.tableName {
+		switch meta.TableName {
 		case testAWSDynamoDBErrorTable:
 			assert.Error(t, err, "expect error because of dynamodb stream api error")
 		case testAWSDynamoDBInvalidTable:

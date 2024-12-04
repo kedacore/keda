@@ -26,7 +26,6 @@ import (
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
-	_ "go.uber.org/automaxprocs"
 	appsv1 "k8s.io/api/apps/v1"
 	apimetrics "k8s.io/apiserver/pkg/endpoints/metrics"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -254,6 +253,12 @@ func main() {
 
 	err = printWelcomeMsg(cmd)
 	if err != nil {
+		return
+	}
+
+	err = kedautil.ConfigureMaxProcs(logger)
+	if err != nil {
+		logger.Error(err, "failed to set max procs")
 		return
 	}
 
