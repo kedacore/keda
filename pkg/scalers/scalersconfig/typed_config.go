@@ -20,14 +20,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"reflect"
 	"runtime/debug"
+	"slices"
 	"strconv"
 	"strings"
 
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/kedacore/keda/v2/pkg/eventreason"
@@ -219,8 +219,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 	}
 	if !exists && !(params.Optional || params.IsDeprecated()) {
 		if len(params.Order) == 0 {
-			apo := maps.Keys(allowedParsingOrderMap)
-			slices.Sort(apo)
+			apo := slices.Sorted(maps.Keys(allowedParsingOrderMap))
 			return fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name(), apo)
 		}
 		return fmt.Errorf("missing required parameter %q in %v", params.Name(), params.Order)
@@ -478,8 +477,7 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 				for _, po := range order {
 					poTyped := ParsingOrder(strings.TrimSpace(po))
 					if !allowedParsingOrderMap[poTyped] {
-						apo := maps.Keys(allowedParsingOrderMap)
-						slices.Sort(apo)
+						apo := slices.Sorted(maps.Keys(allowedParsingOrderMap))
 						return params, fmt.Errorf("unknown parsing order value %s, has to be one of %s", po, apo)
 					}
 					params.Order = append(params.Order, poTyped)
