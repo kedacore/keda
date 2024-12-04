@@ -84,7 +84,7 @@ type rabbitMQMetadata struct {
 	// connection string for either HTTP or AMQP protocol
 	Host string `keda:"name=host,                                 order=triggerMetadata;authParams;resolvedEnv"`
 	// either http or amqp protocol
-	Protocol              string  `keda:"name=protocol,           order=triggerMetadata;authParams, default=auto"`
+	Protocol string `keda:"name=protocol,                         order=triggerMetadata;authParams, default=auto"`
 	// override the vhost from the connection info
 	VhostName string `keda:"name=vhostName,                       order=triggerMetadata, optional"`
 	// specify if the queueName contains a rexeg
@@ -92,9 +92,9 @@ type rabbitMQMetadata struct {
 	// specify if the QueueLength value should exclude Unacknowledged messages (Ready messages only)
 	ExcludeUnacknowledged bool `keda:"name=excludeUnacknowledged, order=triggerMetadata, optional"`
 	// specify the page size if useRegex is enabled
-	PageSize              int64   `keda:"name=pageSize,           order=triggerMetadata, default=100"`
+	PageSize int64 `keda:"name=pageSize,                          order=triggerMetadata, default=100"`
 	// specify the operation to apply in case of multiples queues
-	Operation             string  `keda:"name=operation,          order=triggerMetadata, default=sum"`
+	Operation string `keda:"name=operation,                       order=triggerMetadata, default=sum"`
 	// custom http timeout for a specific trigger
 	TimeoutMs int `keda:"name=timeout,                            order=triggerMetadata, optional"`
 
