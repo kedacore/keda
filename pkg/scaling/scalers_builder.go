@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	metricsv1beta1 "k8s.io/metrics/pkg/client/clientset/versioned/typed/metrics/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -82,7 +83,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			}
 			config.AuthParams = authParams
 			config.PodIdentity = podIdentity
-			scaler, err := buildScaler(ctx, h.client, trigger.Type, config)
+			scaler, err := buildScaler(ctx, h.client, h.podMetricsClient, trigger.Type, config)
 			return scaler, config, err
 		}
 
@@ -113,7 +114,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 }
 
 // buildScaler builds a scaler form input config and trigger type
-func buildScaler(ctx context.Context, client client.Client, triggerType string, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+func buildScaler(ctx context.Context, client client.Client, metricsClient metricsv1beta1.PodMetricsesGetter, triggerType string, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 	// TRIGGERS-START
 	switch triggerType {
 	case "activemq":
@@ -159,7 +160,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "couchdb":
 		return scalers.NewCouchDBScaler(ctx, config)
 	case "cpu":
-		return scalers.NewCPUMemoryScaler(corev1.ResourceCPU, config)
+		return scalers.NewCPUMemoryScaler(corev1.ResourceCPU, config, client, metricsClient)
 	case "cron":
 		return scalers.NewCronScaler(config)
 	case "datadog":
@@ -204,7 +205,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "loki":
 		return scalers.NewLokiScaler(config)
 	case "memory":
-		return scalers.NewCPUMemoryScaler(corev1.ResourceMemory, config)
+		return scalers.NewCPUMemoryScaler(corev1.ResourceMemory, config, client, metricsClient)
 	case "metrics-api":
 		return scalers.NewMetricsAPIScaler(config)
 	case "mongodb":
