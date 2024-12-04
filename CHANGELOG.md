@@ -90,6 +90,7 @@ New deprecation(s):
 ### Other
 
 - **General**: Bump newrelic-client-go deps to 2.51.2 (latest) ([#6325](https://github.com/kedacore/keda/pull/6325))
+- **General**: refactor: replace experimental `maps` and `slices` with stdlib ([#6372](https://github.com/kedacore/keda/pull/6372))
 
 
 ## v2.16.0
