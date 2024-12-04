@@ -1,8 +1,6 @@
 module github.com/kedacore/keda/v2
 
-go 1.22.1
-
-toolchain go1.23.3
+go 1.23.3
 
 require (
 	cloud.google.com/go/compute/metadata v0.5.2
