@@ -50,7 +50,6 @@ var (
 	cmKey                     = "mycmkey"
 	cmData                    = "cmDataHere"
 	bsatSAName                = "bsatServiceAccount"
-	bsatExpiry                = "10m"
 	bsatData                  = "k8s-bsat-token"
 	trueValue                 = true
 	falseValue                = false
@@ -471,7 +470,6 @@ func TestResolveAuthRef(t *testing.T) {
 							{
 								Parameter:          "token",
 								ServiceAccountName: bsatSAName,
-								Expiry:             bsatExpiry,
 							},
 						},
 					},
@@ -485,38 +483,6 @@ func TestResolveAuthRef(t *testing.T) {
 			},
 			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
 			expected:            map[string]string{"token": bsatData},
-			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
-		},
-		{
-			name: "triggerauth exists bound service account token, but expiry invalid",
-			existing: []runtime.Object{
-				&kedav1alpha1.TriggerAuthentication{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespace,
-						Name:      triggerAuthenticationName,
-					},
-					Spec: kedav1alpha1.TriggerAuthenticationSpec{
-						PodIdentity: &kedav1alpha1.AuthPodIdentity{
-							Provider: kedav1alpha1.PodIdentityProviderNone,
-						},
-						BoundServiceAccountToken: []kedav1alpha1.BoundServiceAccountToken{
-							{
-								Parameter:          "token",
-								ServiceAccountName: bsatSAName,
-								Expiry:             "10g",
-							},
-						},
-					},
-				},
-				&corev1.ServiceAccount{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespace,
-						Name:      bsatSAName,
-					},
-				},
-			},
-			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
-			expected:            map[string]string{"token": ""},
 			expectedPodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		},
 		{
@@ -694,7 +660,6 @@ func TestResolveAuthRef(t *testing.T) {
 							{
 								Parameter:          "token",
 								ServiceAccountName: bsatSAName,
-								Expiry:             bsatExpiry,
 							},
 						},
 					},
@@ -725,7 +690,6 @@ func TestResolveAuthRef(t *testing.T) {
 							{
 								Parameter:          "token",
 								ServiceAccountName: bsatSAName,
-								Expiry:             bsatExpiry,
 							},
 						},
 					},

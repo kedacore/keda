@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/aws/smithy-go/ptr"
 	"github.com/go-logr/logr"
@@ -612,39 +611,30 @@ func resolveAuthSecret(ctx context.Context, client client.Client, logger logr.Lo
 }
 
 func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, logger logr.Logger, namespace string, bsat *kedav1alpha1.BoundServiceAccountToken, acs *authentication.AuthClientSet) string {
-	serviceAccountName, expiry := bsat.ServiceAccountName, bsat.Expiry
+	serviceAccountName := bsat.ServiceAccountName
 	if serviceAccountName == "" {
 		logger.Error(fmt.Errorf("error trying to get token"), "serviceAccountName is required")
 		return ""
 	}
 	var err error
-	expirySeconds := ptr.Int64(3600) // default expiry is 1 hour
-	if expiry != "" {
-		duration, err := time.ParseDuration(expiry)
-		if err != nil {
-			logger.Error(err, "error trying to parse expiry duration", "expiry", expiry)
-			return ""
-		}
-		expirySeconds = ptr.Int64(int64(duration.Seconds()))
-	}
 
-	// check if service account exists in the namespace
 	serviceAccount := &corev1.ServiceAccount{}
 	err = client.Get(ctx, types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, serviceAccount)
 	if err != nil {
 		logger.Error(err, "error trying to get service account from namespace", "ServiceAccount.Namespace", namespace, "ServiceAccount.Name", serviceAccountName)
 		return ""
 	}
-	return generateToken(ctx, serviceAccountName, namespace, expirySeconds, acs)
+	return generateToken(ctx, serviceAccountName, namespace, acs)
 }
 
-func generateToken(ctx context.Context, serviceAccountName, namespace string, expiry *int64, acs *authentication.AuthClientSet) string {
+func generateToken(ctx context.Context, serviceAccountName, namespace string, acs *authentication.AuthClientSet) string {
+	expirationSeconds := ptr.Int64(3600) // We default the token expiry to 1 hour
 	token, err := acs.CoreV1Interface.ServiceAccounts(namespace).CreateToken(
 		ctx,
 		serviceAccountName,
 		&authenticationv1.TokenRequest{
 			Spec: authenticationv1.TokenRequestSpec{
-				ExpirationSeconds: expiry, // kubernetes prevents token expiry to be less than 10 minutes
+				ExpirationSeconds: expirationSeconds,
 			},
 		},
 		metav1.CreateOptions{},
