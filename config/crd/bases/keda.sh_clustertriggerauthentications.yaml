@@ -305,14 +305,11 @@ spec:
               boundServiceAccountToken:
                 items:
                   properties:
-                    expiry:
-                      type: string
                     parameter:
                       type: string
                     serviceAccountName:
                       type: string
                   required:
-                  - expiry
                   - parameter
                   - serviceAccountName
                   type: object
