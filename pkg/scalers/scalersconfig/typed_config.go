@@ -20,14 +20,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"reflect"
 	"runtime/debug"
+	"slices"
 	"strconv"
 	"strings"
 
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
+	corev1 "k8s.io/api/core/v1"
+
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
 
 // CustomValidator is an interface that can be implemented to validate the configuration of the typed config
@@ -67,15 +70,16 @@ const (
 
 // field tag parameters
 const (
-	optionalTag     = "optional"
-	deprecatedTag   = "deprecated"
-	defaultTag      = "default"
-	orderTag        = "order"
-	nameTag         = "name"
-	enumTag         = "enum"
-	exclusiveSetTag = "exclusiveSet"
-	rangeTag        = "range"
-	separatorTag    = "separator"
+	optionalTag           = "optional"
+	deprecatedTag         = "deprecated"
+	deprecatedAnnounceTag = "deprecatedAnnounce"
+	defaultTag            = "default"
+	orderTag              = "order"
+	nameTag               = "name"
+	enumTag               = "enum"
+	exclusiveSetTag       = "exclusiveSet"
+	rangeTag              = "range"
+	separatorTag          = "separator"
 )
 
 // Params is a struct that represents the parameter list that can be used in the keda tag
@@ -100,6 +104,10 @@ type Params struct {
 	// Deprecated is the 'deprecated' tag parameter, if the map contain this parameter, it is considered
 	// as an error and the DeprecatedMessage should be returned to the user
 	Deprecated string
+
+	// DeprecatedAnnounce is the 'deprecatedAnnounce' tag parameter, if set this will trigger
+	// an info event with the deprecation message
+	DeprecatedAnnounce string
 
 	// Enum is the 'enum' tag parameter defining the list of possible values for the parameter
 	Enum []string
@@ -195,6 +203,13 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 	if exists && params.IsDeprecated() {
 		return fmt.Errorf("parameter %q is deprecated%v", params.Name(), params.DeprecatedMessage())
 	}
+	if exists && params.DeprecatedAnnounce != "" {
+		if sc.Recorder != nil {
+			message := fmt.Sprintf("Scaler %s info: %s", sc.TriggerType, params.DeprecatedAnnounce)
+			fmt.Print(message)
+			sc.Recorder.Event(sc.ScaledObject, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, message)
+		}
+	}
 	if !exists && params.Default != "" {
 		exists = true
 		valFromConfig = params.Default
@@ -204,8 +219,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 	}
 	if !exists && !(params.Optional || params.IsDeprecated()) {
 		if len(params.Order) == 0 {
-			apo := maps.Keys(allowedParsingOrderMap)
-			slices.Sort(apo)
+			apo := slices.Sorted(maps.Keys(allowedParsingOrderMap))
 			return fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name(), apo)
 		}
 		return fmt.Errorf("missing required parameter %q in %v", params.Name(), params.Order)
@@ -396,6 +410,14 @@ func setConfigValueHelper(params Params, valFromConfig string, field reflect.Val
 	if field.Kind() == reflect.Slice {
 		return setConfigValueSlice(params, valFromConfig, field)
 	}
+	if field.Kind() == reflect.Bool {
+		boolVal, err := strconv.ParseBool(valFromConfig)
+		if err != nil {
+			return fmt.Errorf("unable to parse boolean value %q: %w", valFromConfig, err)
+		}
+		field.SetBool(boolVal)
+		return nil
+	}
 	if field.CanInterface() {
 		ifc := reflect.New(field.Type()).Interface()
 		if err := json.Unmarshal([]byte(valFromConfig), &ifc); err != nil {
@@ -455,8 +477,7 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 				for _, po := range order {
 					poTyped := ParsingOrder(strings.TrimSpace(po))
 					if !allowedParsingOrderMap[poTyped] {
-						apo := maps.Keys(allowedParsingOrderMap)
-						slices.Sort(apo)
+						apo := slices.Sorted(maps.Keys(allowedParsingOrderMap))
 						return params, fmt.Errorf("unknown parsing order value %s, has to be one of %s", po, apo)
 					}
 					params.Order = append(params.Order, poTyped)
@@ -471,6 +492,12 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 				params.Deprecated = deprecatedTag
 			} else {
 				params.Deprecated = strings.TrimSpace(tsplit[1])
+			}
+		case deprecatedAnnounceTag:
+			if len(tsplit) == 1 {
+				params.DeprecatedAnnounce = deprecatedAnnounceTag
+			} else {
+				params.DeprecatedAnnounce = strings.TrimSpace(tsplit[1])
 			}
 		case defaultTag:
 			if len(tsplit) > 1 {

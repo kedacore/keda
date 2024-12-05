@@ -20,6 +20,8 @@ import (
 	"time"
 
 	v2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
@@ -40,6 +42,9 @@ type ScalerConfig struct {
 
 	// Name of the trigger
 	TriggerName string
+
+	// Trigger type (name of the trigger, also the scaler name)
+	TriggerType string
 
 	// Marks whether we should query metrics only during the polling interval
 	// Any requests for metrics in between are read from the cache
@@ -68,4 +73,10 @@ type ScalerConfig struct {
 
 	// When we use the scaler for composite scaler, we shouldn't require the value because it'll be ignored
 	AsMetricSource bool
+
+	// For events
+	Recorder record.EventRecorder
+
+	// ScaledObjct
+	ScaledObject runtime.Object
 }

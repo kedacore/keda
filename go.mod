@@ -66,7 +66,7 @@ require (
 	github.com/microsoft/ApplicationInsights-Go v0.4.4
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
 	github.com/mitchellh/hashstructure v1.1.0
-	github.com/newrelic/newrelic-client-go v1.1.0
+	github.com/newrelic/newrelic-client-go/v2 v2.51.2
 	github.com/onsi/ginkgo/v2 v2.21.0
 	github.com/onsi/gomega v1.35.1
 	github.com/open-policy-agent/cert-controller v0.12.0
@@ -117,15 +117,6 @@ require (
 	sigs.k8s.io/controller-tools v0.16.5
 	sigs.k8s.io/custom-metrics-apiserver v1.30.1-0.20241105195130-84dc8cfe2555
 	sigs.k8s.io/kustomize/kustomize/v5 v5.5.0
-)
-
-require (
-	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
-	github.com/golang/mock v1.6.0 // indirect
-	github.com/nexus-rpc/sdk-go v0.0.11 // indirect
-	github.com/pborman/uuid v1.2.1 // indirect
-	github.com/robfig/cron v1.2.0 // indirect
-	go.temporal.io/api v1.40.0 // indirect
 )
 
 replace (
@@ -222,6 +213,7 @@ require (
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.12.1 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
+	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
@@ -248,6 +240,7 @@ require (
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/cel-go v0.20.1 // indirect
@@ -309,14 +302,17 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
+	github.com/nexus-rpc/sdk-go v0.0.11 // indirect
 	github.com/oapi-codegen/runtime v1.1.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
+	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/prometheus/prometheus v0.49.0
 	github.com/rivo/uniseg v0.4.4 // indirect
+	github.com/robfig/cron v1.2.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/samber/lo v1.39.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
@@ -350,12 +346,13 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.31.0
 	go.opentelemetry.io/otel/trace v1.31.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
+	go.temporal.io/api v1.40.0 // indirect
+	go.uber.org/atomic v1.11.0
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.28.0
-	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa
+	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa // indirect
 	golang.org/x/mod v0.21.0 // indirect
 	golang.org/x/net v0.30.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
