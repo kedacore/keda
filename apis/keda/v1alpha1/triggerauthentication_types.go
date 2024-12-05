@@ -384,7 +384,6 @@ type AwsSecretManagerSecret struct {
 type BoundServiceAccountToken struct {
 	Parameter          string `json:"parameter"`
 	ServiceAccountName string `json:"serviceAccountName"`
-	Expiry             string `json:"expiry"`
 }
 
 func init() {
