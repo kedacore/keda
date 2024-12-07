@@ -34,7 +34,7 @@ type ibmmqMetadata struct {
 	Username             string   `keda:"name=username,             order=authParams;resolvedEnv;triggerMetadata"`
 	Password             string   `keda:"name=password,             order=authParams;resolvedEnv;triggerMetadata"`
 	UnsafeSsl            bool     `keda:"name=unsafeSsl,            order=triggerMetadata, default=false"`
-	TLS                  bool     `keda:"name=tls,                  order=triggerMetadata, default=false"` // , deprecated=use unsafeSsl instead
+	TLS                  bool     `keda:"name=tls,                  order=triggerMetadata, default=false, deprecatedAnnounce=The 'tls' setting is DEPRECATED and will be removed in v2.18 - Use 'unsafeSsl' instead"`
 	CA                   string   `keda:"name=ca,                   order=authParams, optional"`
 	Cert                 string   `keda:"name=cert,                 order=authParams, optional"`
 	Key                  string   `keda:"name=key,                  order=authParams, optional"`
@@ -92,7 +92,6 @@ func NewIBMMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	// TODO: DEPRECATED to be removed in v2.18
 	if meta.TLS {
-		logger.Info("The 'tls' setting is DEPRECATED and will be removed in v2.18 - Use 'unsafeSsl' instead")
 		meta.UnsafeSsl = meta.TLS
 	}
 
@@ -106,12 +105,14 @@ func NewIBMMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
 	}
 
-	return &ibmmqScaler{
+	scaler := &ibmmqScaler{
 		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
 		logger:     logger,
-	}, nil
+	}
+
+	return scaler, nil
 }
 
 func (s *ibmmqScaler) Close(context.Context) error {

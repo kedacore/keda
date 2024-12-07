@@ -96,7 +96,7 @@ func parseAwsKinesisStreamMetadata(config *scalersconfig.ScalerConfig) (*awsKine
 }
 
 func createKinesisClient(ctx context.Context, metadata *awsKinesisStreamMetadata) (*kinesis.Client, error) {
-	cfg, err := awsutils.GetAwsConfig(ctx, metadata.AwsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
 	}
