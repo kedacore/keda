@@ -177,13 +177,16 @@ var _ = It("shouldn't validate the so creation when the fallback is wrong", func
 })
 
 var _ = It("should validate the so creation When the fallback are configured and the scaler is either CPU or memory.", func() {
-	namespaceName := "wrong-fallback-cpu-memory"
+	namespaceName := "right-fallback-cpu-memory"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
 	so.Spec.Fallback = &Fallback{
 		FailureThreshold: 3,
 		Replicas:         6,
+	}
+	for _, trigger := range so.Spec.Triggers {
+		trigger.MetricType = "AverageValue"
 	}
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
