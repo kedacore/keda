@@ -23,7 +23,10 @@ import (
 
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var scaledobjecttypeslog = logf.Log.WithName("scaledobject-types")
 
 // +genclient
 // +kubebuilder:object:root=true
@@ -288,7 +291,7 @@ func CheckFallbackValid(scaledObject *ScaledObject) error {
 
 	for _, trigger := range scaledObject.Spec.Triggers {
 		if trigger.Type == cpuString || trigger.Type == memoryString {
-			return fmt.Errorf("type is %s , but fallback it is not supported by the CPU & memory scalers", trigger.Type)
+			scaledobjecttypeslog.Error(nil, fmt.Sprintf("type is %s , but fallback it is not supported by the CPU & memory scalers", trigger.Type))
 		}
 		if trigger.MetricType != autoscalingv2.AverageValueMetricType {
 			return fmt.Errorf("MetricType=%s, but fallback can only be enabled for triggers with metric of type AverageValue", trigger.MetricType)
