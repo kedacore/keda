@@ -12,13 +12,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 	"github.com/go-logr/logr"
 	amqp "github.com/rabbitmq/amqp091-go"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -64,7 +64,7 @@ type rabbitMQScaler struct {
 	connection *amqp.Connection
 	channel    *amqp.Channel
 	httpClient *http.Client
-	azureOAuth *azure.ADWorkloadIdentityTokenProvider
+	azureOAuth *confidential.Client
 	logger     logr.Logger
 }
 
@@ -409,15 +409,32 @@ func getJSON(ctx context.Context, s *rabbitMQScaler, url string) (queueInfo, err
 
 	if s.metadata.WorkloadIdentityResource != "" {
 		if s.azureOAuth == nil {
-			s.azureOAuth = azure.NewAzureADWorkloadIdentityTokenProvider(ctx, s.metadata.workloadIdentityClientID, s.metadata.workloadIdentityTenantID, s.metadata.workloadIdentityAuthorityHost, s.metadata.WorkloadIdentityResource)
+			cred, err := confidential.NewCredFromSecret(s.metadata.workloadIdentityClientID)
+			if err != nil {
+				return result, err
+			}
+
+			client, err := confidential.New(
+				fmt.Sprintf("%s%s/oauth2/token", s.metadata.workloadIdentityAuthorityHost, s.metadata.workloadIdentityTenantID),
+				s.metadata.workloadIdentityClientID,
+				cred,
+			)
+			if err != nil {
+				return result, err
+			}
+
+			s.azureOAuth = &client
 		}
 
-		err = s.azureOAuth.Refresh()
+		token, err := s.azureOAuth.AcquireTokenSilent(ctx, []string{s.metadata.WorkloadIdentityResource})
 		if err != nil {
-			return result, err
+			token, err = s.azureOAuth.AcquireTokenByCredential(ctx, []string{s.metadata.WorkloadIdentityResource})
+			if err != nil {
+				return result, err
+			}
 		}
 
-		request.Header.Set("Authorization", "Bearer "+s.azureOAuth.OAuthToken())
+		request.Header.Set("Authorization", "Bearer "+token.AccessToken)
 	}
 
 	r, err := s.httpClient.Do(request)

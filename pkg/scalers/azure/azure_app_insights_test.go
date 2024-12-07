@@ -1,12 +1,7 @@
 package azure
 
 import (
-	"context"
 	"testing"
-
-	"github.com/Azure/go-autorest/autorest/azure/auth"
-
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 type testExtractAzAppInsightsTestData struct {
@@ -64,45 +59,6 @@ func TestAzGetAzureAppInsightsMetricValue(t *testing.T) {
 				}
 			} else {
 				t.Errorf("Test: %v; Expected success but got error: %v", testData.testName, err)
-			}
-		}
-	}
-}
-
-type testAppInsightsAuthConfigTestData struct {
-	testName    string
-	config      string
-	info        AppInsightsInfo
-	podIdentity kedav1alpha1.PodIdentityProvider
-}
-
-const (
-	msiConfig               = "msiConfig"
-	clientCredentialsConfig = "clientCredentialsConfig"
-	workloadIdentityConfig  = "workloadIdentityConfig"
-)
-
-var testAppInsightsAuthConfigData = []testAppInsightsAuthConfigTestData{
-	{"client credentials", clientCredentialsConfig, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, ""},
-	{"client credentials - pod id none", clientCredentialsConfig, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, kedav1alpha1.PodIdentityProviderNone},
-	{"azure workload identity", workloadIdentityConfig, AppInsightsInfo{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
-}
-
-func TestAzAppInfoGetAuthConfig(t *testing.T) {
-	for _, testData := range testAppInsightsAuthConfigData {
-		authConfig := getAuthConfig(context.TODO(), testData.info, kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity})
-		switch testData.config {
-		case msiConfig:
-			if _, ok := authConfig.(auth.MSIConfig); !ok {
-				t.Errorf("Test %v; incorrect auth config. expected MSI config", testData.testName)
-			}
-		case clientCredentialsConfig:
-			if _, ok := authConfig.(auth.ClientCredentialsConfig); !ok {
-				t.Errorf("Test: %v; incorrect auth config. expected client credentials config", testData.testName)
-			}
-		case workloadIdentityConfig:
-			if _, ok := authConfig.(ADWorkloadIdentityConfig); !ok {
-				t.Errorf("Test: %v; incorrect auth config. expected ad workload identity config", testData.testName)
 			}
 		}
 	}

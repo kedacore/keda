@@ -8,3 +8,5 @@ images:
 - name: ghcr.io/kedacore/keda
   newName: ghcr.io/kedacore/keda
   newTag: main
+commonLabels:
+  azure.workload.identity/use: "true"
