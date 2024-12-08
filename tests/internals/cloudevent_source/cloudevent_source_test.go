@@ -13,8 +13,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
-
-	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
@@ -116,7 +114,7 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   scaleTargetRef:
-    name: test
+    name: {{.DeploymentName}}
   triggers:
     - type: kubernetes-workload
       metadata:
@@ -379,6 +377,7 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 
 	t.Log("--- test emitting eventsource about scaledobject err---")
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", ceTemplate)
+	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
 	// wait 15 seconds to ensure event propagation
@@ -430,8 +429,8 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 
 func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- test emitting eventsource about scaledobject removed---")
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	// wait 15 seconds to ensure event propagation
 	time.Sleep(5 * time.Second)
@@ -483,6 +482,7 @@ func testErrEventSourceExcludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", ceTemplate)
+	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
 	// wait 15 seconds to ensure event propagation
@@ -524,6 +524,7 @@ func testErrEventSourceIncludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", ceTemplate)
+	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
 	// wait 15 seconds to ensure event propagation
