@@ -69,7 +69,7 @@ jobs:
         run: make test
 
       - name: Create test Summary
-        uses: test-summary/action@v2
+        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86 # v2.4
         with:
           paths: "report.xml"
         if: always()
@@ -146,7 +146,7 @@ jobs:
           go-version: "1.23"
       - name: Get golangci
         run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.61.0
-      - uses: pre-commit/action@v3.0.0
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
 
   trivy-scan:
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
