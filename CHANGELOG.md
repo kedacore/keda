@@ -89,7 +89,7 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+**External Scaler**: Remove deprecated tlsCertFile from External scaler ([#4549](https://github.com/kedacore/keda/issues/4549))
 
 ### Other
 
