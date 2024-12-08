@@ -17,7 +17,6 @@ limitations under the License.
 package metricscollector
 
 import (
-	"fmt"
 	"runtime"
 	"strconv"
 	"time"
@@ -29,10 +28,6 @@ import (
 
 	"github.com/kedacore/keda/v2/version"
 )
-
-// bestPracticeDeprecatedMsg is a constant string that is used to indicate that a metric is deprecated as
-// part of best practice refactoring - https://github.com/kedacore/keda/pull/5174
-const bestPracticeDeprecatedMsg = "DEPRECATED - will be removed in 2.16:"
 
 var log = logf.Log.WithName("prometheus_server")
 
@@ -52,15 +47,6 @@ var (
 			Subsystem: "scaler",
 			Name:      "metrics_value",
 			Help:      "The current value for each scaler's metric that would be used by the HPA in computing the target average.",
-		},
-		metricLabels,
-	)
-	scalerMetricsLatencyDeprecated = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "scaler",
-			Name:      "metrics_latency",
-			Help:      fmt.Sprintf("%v use 'keda_scaler_metrics_latency_seconds' instead.", bestPracticeDeprecatedMsg),
 		},
 		metricLabels,
 	)
@@ -91,24 +77,6 @@ var (
 		},
 		[]string{"namespace", "scaledObject"},
 	)
-	scalerErrorsDeprecated = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "scaler",
-			Name:      "errors",
-			Help:      fmt.Sprintf("%v use 'keda_scaler_detail_errors_total' instead.", bestPracticeDeprecatedMsg),
-		},
-		metricLabels,
-	)
-	scalerErrorsTotalDeprecated = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "scaler",
-			Name:      "errors_total",
-			Help:      fmt.Sprintf("%v use use a `sum(keda_scaler_detail_errors_total{scaler!=\"\"})` over all scalers", bestPracticeDeprecatedMsg),
-		},
-		[]string{},
-	)
 	scalerErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -117,15 +85,6 @@ var (
 			Help:      "The total number of errors encountered for each scaler.",
 		},
 		metricLabels,
-	)
-	scaledObjectErrorsDeprecated = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "scaled_object",
-			Name:      "errors",
-			Help:      fmt.Sprintf("%v use 'keda_scaled_object_errors_total' instead.", bestPracticeDeprecatedMsg),
-		},
-		[]string{"namespace", "scaledObject"},
 	)
 	scaledObjectErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -136,15 +95,6 @@ var (
 		},
 		[]string{"namespace", "scaledObject"},
 	)
-	scaledJobErrorsDeprecated = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "scaled_job",
-			Name:      "errors",
-			Help:      fmt.Sprintf("%v use 'keda_scaled_job_errors_total' instead.", bestPracticeDeprecatedMsg),
-		},
-		[]string{"namespace", "scaledJob"},
-	)
 	scaledJobErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -153,16 +103,6 @@ var (
 			Help:      "Number of scaled job errors",
 		},
 		[]string{"namespace", "scaledJob"},
-	)
-
-	triggerTotalsGaugeVecDeprecated = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "trigger",
-			Name:      "totals",
-			Help:      fmt.Sprintf("%v use 'keda_trigger_registered_total' instead.", bestPracticeDeprecatedMsg),
-		},
-		[]string{"type"},
 	)
 	triggerRegistered = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -173,15 +113,6 @@ var (
 		},
 		[]string{"type"},
 	)
-	crdTotalsGaugeVecDeprecated = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "resource",
-			Name:      "totals",
-			Help:      fmt.Sprintf("%v use 'keda_resource_registered_total' instead.", bestPracticeDeprecatedMsg),
-		},
-		[]string{"type", "namespace"},
-	)
 	crdRegistered = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -190,15 +121,6 @@ var (
 			Help:      "Total number of KEDA custom resources per namespace for each custom resource type (CRD) registered.",
 		},
 		[]string{"type", "namespace"},
-	)
-	internalLoopLatencyDeprecated = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "internal_scale_loop",
-			Name:      "latency",
-			Help:      fmt.Sprintf("%v use 'keda_internal_scale_loop_latency_seconds' instead.", bestPracticeDeprecatedMsg),
-		},
-		[]string{"namespace", "type", "resource"},
 	)
 	internalLoopLatency = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -236,25 +158,17 @@ type PromMetrics struct {
 }
 
 func NewPromMetrics() *PromMetrics {
-	metrics.Registry.MustRegister(scalerErrorsTotalDeprecated)
 	metrics.Registry.MustRegister(scalerMetricsValue)
-	metrics.Registry.MustRegister(scalerMetricsLatencyDeprecated)
 	metrics.Registry.MustRegister(scalerMetricsLatency)
-	metrics.Registry.MustRegister(internalLoopLatencyDeprecated)
 	metrics.Registry.MustRegister(internalLoopLatency)
 	metrics.Registry.MustRegister(scalerActive)
-	metrics.Registry.MustRegister(scalerErrorsDeprecated)
 	metrics.Registry.MustRegister(scalerErrors)
-	metrics.Registry.MustRegister(scaledObjectErrorsDeprecated)
 	metrics.Registry.MustRegister(scaledObjectErrors)
 	metrics.Registry.MustRegister(scaledObjectPaused)
 	metrics.Registry.MustRegister(triggerRegistered)
 	metrics.Registry.MustRegister(crdRegistered)
-	metrics.Registry.MustRegister(scaledJobErrorsDeprecated)
 	metrics.Registry.MustRegister(scaledJobErrors)
 
-	metrics.Registry.MustRegister(triggerTotalsGaugeVecDeprecated)
-	metrics.Registry.MustRegister(crdTotalsGaugeVecDeprecated)
 	metrics.Registry.MustRegister(buildInfo)
 
 	metrics.Registry.MustRegister(cloudeventEmitted)
@@ -277,13 +191,11 @@ func (p *PromMetrics) RecordScalerMetric(namespace string, scaledResource string
 // RecordScalerLatency create a measurement of the latency to external metric
 func (p *PromMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
 	scalerMetricsLatency.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(value.Seconds())
-	scalerMetricsLatencyDeprecated.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(float64(value.Milliseconds()))
 }
 
 // RecordScalableObjectLatency create a measurement of the latency executing scalable object loop
 func (p *PromMetrics) RecordScalableObjectLatency(namespace string, name string, isScaledObject bool, value time.Duration) {
 	internalLoopLatency.WithLabelValues(namespace, getResourceType(isScaledObject), name).Set(value.Seconds())
-	internalLoopLatencyDeprecated.WithLabelValues(namespace, getResourceType(isScaledObject), name).Set(float64(value.Milliseconds()))
 }
 
 // RecordScalerActive create a measurement of the activity of the scaler
@@ -312,19 +224,13 @@ func (p *PromMetrics) RecordScaledObjectPaused(namespace string, scaledObject st
 func (p *PromMetrics) RecordScalerError(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, err error) {
 	if err != nil {
 		scalerErrors.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Inc()
-		scalerErrorsDeprecated.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Inc()
 		p.RecordScaledObjectError(namespace, scaledResource, err)
-		scalerErrorsTotalDeprecated.With(prometheus.Labels{}).Inc()
 		return
 	}
 	// initialize metric with 0 if not already set
 	_, errscaler := scalerErrors.GetMetricWith(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject))
 	if errscaler != nil {
 		log.Error(errscaler, "Unable to record metrics: %v")
-	}
-	_, errscalerdep := scalerErrorsDeprecated.GetMetricWith(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject))
-	if errscalerdep != nil {
-		log.Error(errscaler, "Unable to record (deprecated) metrics: %v")
 	}
 }
 
@@ -333,17 +239,11 @@ func (p *PromMetrics) RecordScaledObjectError(namespace string, scaledObject str
 	labels := prometheus.Labels{"namespace": namespace, "scaledObject": scaledObject}
 	if err != nil {
 		scaledObjectErrors.With(labels).Inc()
-		scaledObjectErrorsDeprecated.With(labels).Inc()
 		return
 	}
 	// initialize metric with 0 if not already set
 	_, errscaledobject := scaledObjectErrors.GetMetricWith(labels)
 	if errscaledobject != nil {
-		log.Error(errscaledobject, "Unable to record metrics: %v")
-		return
-	}
-	_, errscaledobjectdep := scaledObjectErrorsDeprecated.GetMetricWith(labels)
-	if errscaledobjectdep != nil {
 		log.Error(errscaledobject, "Unable to record metrics: %v")
 		return
 	}
@@ -353,7 +253,6 @@ func (p *PromMetrics) RecordScaledObjectError(namespace string, scaledObject str
 func (p *PromMetrics) RecordScaledJobError(namespace string, scaledJob string, err error) {
 	labels := prometheus.Labels{"namespace": namespace, "scaledJob": scaledJob}
 	if err != nil {
-		scaledJobErrorsDeprecated.With(labels).Inc()
 		scaledJobErrors.With(labels).Inc()
 		return
 	}
@@ -379,14 +278,12 @@ func getResourceType(isScaledObject bool) string {
 func (p *PromMetrics) IncrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
 		triggerRegistered.WithLabelValues(triggerType).Inc()
-		triggerTotalsGaugeVecDeprecated.WithLabelValues(triggerType).Inc()
 	}
 }
 
 func (p *PromMetrics) DecrementTriggerTotal(triggerType string) {
 	if triggerType != "" {
 		triggerRegistered.WithLabelValues(triggerType).Dec()
-		triggerTotalsGaugeVecDeprecated.WithLabelValues(triggerType).Dec()
 	}
 }
 
@@ -396,7 +293,6 @@ func (p *PromMetrics) IncrementCRDTotal(crdType, namespace string) {
 	}
 
 	crdRegistered.WithLabelValues(crdType, namespace).Inc()
-	crdTotalsGaugeVecDeprecated.WithLabelValues(crdType, namespace).Inc()
 }
 
 func (p *PromMetrics) DecrementCRDTotal(crdType, namespace string) {
@@ -405,7 +301,6 @@ func (p *PromMetrics) DecrementCRDTotal(crdType, namespace string) {
 	}
 
 	crdRegistered.WithLabelValues(crdType, namespace).Dec()
-	crdTotalsGaugeVecDeprecated.WithLabelValues(crdType, namespace).Dec()
 }
 
 // RecordCloudEventEmitted counts the number of cloudevent that emitted to user's sink
