@@ -34,12 +34,12 @@ type BeanstalkdScaler struct {
 }
 
 type BeanstalkdMetadata struct {
-	Server          string  `keda:"name=server, order=triggerMetadata"`
-	Tube            string  `keda:"name=tube, order=triggerMetadata"`
-	Value           float64 `keda:"name=value, order=triggerMetadata"`
+	Server          string  `keda:"name=server,          order=triggerMetadata"`
+	Tube            string  `keda:"name=tube,            order=triggerMetadata"`
+	Value           float64 `keda:"name=value,           order=triggerMetadata"`
 	ActivationValue float64 `keda:"name=activationValue, order=triggerMetadata, optional"`
-	IncludeDelayed  bool    `keda:"name=includeDelayed, order=triggerMetadata, optional"`
-	Timeout         uint    `keda:"name=timeout, order=triggerMetadata, optional, default=30"`
+	IncludeDelayed  bool    `keda:"name=includeDelayed,  order=triggerMetadata, optional"`
+	Timeout         uint    `keda:"name=timeout,         order=triggerMetadata, default=30"`
 	TriggerIndex    int
 }
 

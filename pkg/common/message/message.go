@@ -17,7 +17,7 @@ limitations under the License.
 package message
 
 const (
-	ScalerIsBuiltMsg = "Scaler %s is built."
+	ScalerIsBuiltMsg = "Scaler %s is built"
 
 	ScalerStartMsg = "Started scalers watch"
 
@@ -27,7 +27,7 @@ const (
 
 	ScaleTargetNotFoundMsg = "Target resource doesn't exist"
 
-	ScaleTargetNoSubresourceMsg = "Target resource doesn't expose /scale subresource"
+	ScaleTargetNoSubresourceMsg = "Target resource doesn't expose / scale subresource"
 
 	ScaledObjectRemoved = "ScaledObject was deleted"
 
