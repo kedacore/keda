@@ -185,8 +185,8 @@ var _ = It("should validate the so creation When the fallback are configured and
 		FailureThreshold: 3,
 		Replicas:         6,
 	}
-	for _, trigger := range so.Spec.Triggers {
-		trigger.MetricType = "AverageValue"
+	for index, _ := range so.Spec.Triggers {
+		so.Spec.Triggers[index].MetricType = "AverageValue"
 	}
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
