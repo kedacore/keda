@@ -65,16 +65,25 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 		logger.V(1).Info("No change in activity")
 	}
 
+	readyCondition := scaledJob.Status.Conditions.GetReadyCondition()
 	if isError {
 		// some triggers responded with error
 		// Set ScaledJob.Status.ReadyCondition to Unknown
-		readyCondition := scaledJob.Status.Conditions.GetReadyCondition()
 		msg := "Some triggers defined in ScaledJob are not working correctly"
 		logger.V(1).Info(msg)
 		if !readyCondition.IsUnknown() {
 			if err := e.setReadyCondition(ctx, logger, scaledJob, metav1.ConditionUnknown, "PartialTriggerError", msg); err != nil {
 				logger.Error(err, "error setting ready condition")
 			}
+		}
+	} else if !readyCondition.IsTrue() {
+		// if the ScaledObject's triggers aren't in the error state,
+		// but ScaledJob.Status.ReadyCondition is set not set to 'true' -> set it back to 'true'
+		msg := "ScaledJob is defined correctly and is ready for scaling"
+		logger.V(1).Info(msg)
+		if err := e.setReadyCondition(ctx, logger, scaledJob, metav1.ConditionTrue,
+			"ScaledJobReady", msg); err != nil {
+			logger.Error(err, "error setting ready condition")
 		}
 	}
 
