@@ -86,7 +86,7 @@ type rabbitMQMetadata struct {
 	// either http or amqp protocol
 	Protocol string `keda:"name=protocol, order=triggerMetadata;authParams, optional, default=auto"`
 	// override the vhost from the connection info
-	VhostName string `keda:"name=vhostName, order=triggerMetadata, optional"`
+	VhostName string `keda:"name=vhostName, order=triggerMetadata;authParams, optional"`
 	// specify if the queueName contains a rexeg
 	UseRegex bool `keda:"name=useRegex, order=triggerMetadata, optional"`
 	// specify if the QueueLength value should exclude Unacknowledged messages (Ready messages only)
