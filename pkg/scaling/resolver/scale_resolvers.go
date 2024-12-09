@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aws/smithy-go/ptr"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
@@ -33,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/scale"
+	"k8s.io/utils/ptr"
 	"knative.dev/pkg/apis/duck"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -56,9 +56,10 @@ const (
 )
 
 var (
-	kedaNamespace, _     = util.GetClusterObjectNamespace()
-	restrictSecretAccess = util.GetRestrictSecretAccess()
-	log                  = logf.Log.WithName("scale_resolvers")
+	kedaNamespace, _                  = util.GetClusterObjectNamespace()
+	restrictSecretAccess              = util.GetRestrictSecretAccess()
+	boundServiceAccountTokenExpiry, _ = util.GetBoundServiceAccountTokenExpiry()
+	log                               = logf.Log.WithName("scale_resolvers")
 )
 
 // isSecretAccessRestricted returns whether secret access need to be restricted in KEDA namespace
@@ -624,11 +625,12 @@ func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, 
 		logger.Error(err, "error trying to get service account from namespace", "ServiceAccount.Namespace", namespace, "ServiceAccount.Name", serviceAccountName)
 		return ""
 	}
-	return generateToken(ctx, serviceAccountName, namespace, acs)
+	return generateBoundServiceAccountToken(ctx, serviceAccountName, namespace, acs)
 }
 
-func generateToken(ctx context.Context, serviceAccountName, namespace string, acs *authentication.AuthClientSet) string {
-	expirationSeconds := ptr.Int64(3600) // We default the token expiry to 1 hour
+// generateBoundServiceAccountToken creates a Kubernetes token for a namespaced service account with a runtime-configurable expiration time and returns the token string.
+func generateBoundServiceAccountToken(ctx context.Context, serviceAccountName, namespace string, acs *authentication.AuthClientSet) string {
+	expirationSeconds := ptr.To[int64](int64(boundServiceAccountTokenExpiry.Seconds()))
 	token, err := acs.CoreV1Interface.ServiceAccounts(namespace).CreateToken(
 		ctx,
 		serviceAccountName,
@@ -640,10 +642,10 @@ func generateToken(ctx context.Context, serviceAccountName, namespace string, ac
 		metav1.CreateOptions{},
 	)
 	if err != nil {
-		log.Error(err, "error trying to create token for service account", "ServiceAccount.Name", serviceAccountName)
+		log.V(1).Error(err, "error trying to create bound service account token for service account", "ServiceAccount.Name", serviceAccountName)
 		return ""
 	}
-	log.Info("Service account token created successfully", "ServiceAccount.Name", serviceAccountName)
+	log.V(1).Info("Bound service account token created successfully", "ServiceAccount.Name", serviceAccountName)
 	return token.Status.Token
 }
 

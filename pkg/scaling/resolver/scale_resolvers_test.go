@@ -28,7 +28,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	authenticationv1client "k8s.io/client-go/kubernetes/typed/authentication/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -708,7 +707,6 @@ func TestResolveAuthRef(t *testing.T) {
 	}
 	ctrl := gomock.NewController(t)
 	var secretsLister corev1listers.SecretLister
-	var tokenReviewInterface authenticationv1client.TokenReviewInterface
 	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
 	mockServiceAccountInterface := mockCoreV1Interface.GetServiceAccountInterface()
 	tokenRequest := &authv1.TokenRequest{
@@ -730,9 +728,8 @@ func TestResolveAuthRef(t *testing.T) {
 				test.podSpec,
 				namespace,
 				&authentication.AuthClientSet{
-					SecretLister:         secretsLister,
-					CoreV1Interface:      mockCoreV1Interface,
-					TokenReviewInterface: tokenReviewInterface,
+					SecretLister:    secretsLister,
+					CoreV1Interface: mockCoreV1Interface,
 				},
 			)
 

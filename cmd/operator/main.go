@@ -202,6 +202,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	_, err = kedautil.GetBoundServiceAccountTokenExpiry()
+	if err != nil {
+		setupLog.Error(err, "invalid "+kedautil.BoundServiceAccountTokenExpiryEnvVar)
+		os.Exit(1)
+	}
+
 	globalHTTPTimeout := time.Duration(globalHTTPTimeoutMS) * time.Millisecond
 	eventRecorder := mgr.GetEventRecorderFor("keda-operator")
 
@@ -227,9 +233,8 @@ func main() {
 	}
 
 	authClientSet := &authentication.AuthClientSet{
-		TokenReviewInterface: kubeClientset.AuthenticationV1().TokenReviews(),
-		CoreV1Interface:      kubeClientset.CoreV1(),
-		SecretLister:         secretInformer.Lister(),
+		CoreV1Interface: kubeClientset.CoreV1(),
+		SecretLister:    secretInformer.Lister(),
 	}
 
 	scaledHandler := scaling.NewScaleHandler(mgr.GetClient(), scaleClient, mgr.GetScheme(), globalHTTPTimeout, eventRecorder, authClientSet)
