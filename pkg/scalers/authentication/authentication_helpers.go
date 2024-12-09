@@ -13,7 +13,6 @@ import (
 	libs "github.com/dysnix/predictkube-libs/external/configs"
 	"github.com/dysnix/predictkube-libs/external/http_transport"
 	pConfig "github.com/prometheus/common/config"
-	authenticationv1client "k8s.io/client-go/kubernetes/typed/authentication/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 
@@ -21,7 +20,6 @@ import (
 )
 
 type AuthClientSet struct {
-	authenticationv1client.TokenReviewInterface
 	corev1client.CoreV1Interface
 	corev1listers.SecretLister
 }
