@@ -246,12 +246,6 @@ func (so *ScaledObject) GetHPAMinReplicas() *int32 {
 	return &tmp
 }
 
-// GetDefaultHPAMinReplicas returns defaultHPAMinReplicas
-func (so *ScaledObject) GetDefaultHPAMinReplicas() *int32 {
-	tmp := defaultHPAMinReplicas
-	return &tmp
-}
-
 // getHPAMaxReplicas returns MaxReplicas based on definition in ScaledObject or default value if not defined
 func (so *ScaledObject) GetHPAMaxReplicas() int32 {
 	if so.Spec.MaxReplicaCount != nil {
@@ -260,24 +254,15 @@ func (so *ScaledObject) GetHPAMaxReplicas() int32 {
 	return defaultHPAMaxReplicas
 }
 
+// GetDefaultHPAMinReplicas returns defaultHPAMinReplicas
+func GetDefaultHPAMinReplicas() *int32 {
+	tmp := defaultHPAMinReplicas
+	return &tmp
+}
+
 // GetDefaultHPAMaxReplicas returns defaultHPAMaxReplicas
-func (so *ScaledObject) GetDefaultHPAMaxReplicas() int32 {
+func GetDefaultHPAMaxReplicas() int32 {
 	return defaultHPAMaxReplicas
-}
-
-// CheckReplicasNotNegative checks that Min/Max ReplicaCount defined in ScaledObject are not negative
-func (so *ScaledObject) CheckReplicasNotNegative(replicas ...int32) bool {
-	for _, replica := range replicas {
-		if replica < 0 {
-			return false
-		}
-	}
-	return true
-}
-
-// GetIdleReplicasIfDefined returns bool based on whether idleRelicas is defined
-func (so *ScaledObject) GetIdleReplicasIfDefined() bool {
-	return so.Spec.IdleReplicaCount != nil
 }
 
 // checkReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified
@@ -286,22 +271,21 @@ func CheckReplicaCountBoundsAreValid(scaledObject *ScaledObject) error {
 	var idleReplicas *int32
 	minReplicas := *scaledObject.GetHPAMinReplicas()
 	maxReplicas := scaledObject.GetHPAMaxReplicas()
-	idleReplicasDefined := scaledObject.GetIdleReplicasIfDefined()
 	idleReplicas = scaledObject.Spec.IdleReplicaCount
 
-	if !scaledObject.CheckReplicasNotNegative(minReplicas, maxReplicas) {
-		return fmt.Errorf("MinReplicaCount=%d, MaxReplicaCount=%d must not be negative", minReplicas, maxReplicas)
+	if scaledObject.Spec.IdleReplicaCount != nil && *idleReplicas < 0 {
+		return fmt.Errorf("IdleReplicaCount=%d must not be negative", *idleReplicas)
 	}
 
-	if idleReplicasDefined && *idleReplicas < 0 {
-		return fmt.Errorf("IdleReplicaCount=%d must not be negative", *idleReplicas)
+	if minReplicas < 0 {
+		return fmt.Errorf("MinReplicaCount=%d must not be negative", minReplicas)
 	}
 
 	if minReplicas > maxReplicas {
 		return fmt.Errorf("MinReplicaCount=%d must not be greater than MaxReplicaCount=%d", minReplicas, maxReplicas)
 	}
 
-	if idleReplicasDefined && *idleReplicas >= minReplicas {
+	if scaledObject.Spec.IdleReplicaCount != nil && *idleReplicas >= minReplicas {
 		return fmt.Errorf("IdleReplicaCount=%d must be less than MinReplicaCount=%d", *scaledObject.Spec.IdleReplicaCount, minReplicas)
 	}
 
