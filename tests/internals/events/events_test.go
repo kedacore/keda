@@ -13,6 +13,7 @@ import (
 
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
