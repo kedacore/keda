@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
