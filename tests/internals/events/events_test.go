@@ -115,22 +115,6 @@ spec:
           image: nginxinc/nginx-unprivileged:alpine-slim
 `
 
-	scaledObjectTargetErrTemplate = `
-apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
-metadata:
-  name: {{.ScaledObjectTargetNotFoundName}}
-  namespace: {{.TestNamespace}}
-spec:
-  scaleTargetRef:
-    name: no-exist
-  triggers:
-    - type: kubernetes-workload
-      metadata:
-        podSelector: 'app={{.DeploymentName}}'
-        value: '1'
-`
-
 	daemonSetTemplate = `
 apiVersion: apps/v1
 kind: DaemonSet
