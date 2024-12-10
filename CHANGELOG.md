@@ -60,6 +60,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Enable OpenSSF Scorecard to enhance security practices across the project ([#5913](https://github.com/kedacore/keda/issues/5913))
 - **General**: Introduce new NSQ scaler ([#3281](https://github.com/kedacore/keda/issues/3281))
+- **General**: Optimize all webhook checkReplicas code ([#6344](https://github.com/kedacore/keda/pull/6344))
 
 #### Experimental
 
