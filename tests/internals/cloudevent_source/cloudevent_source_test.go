@@ -42,6 +42,7 @@ var (
 	expectedSubject                 = fmt.Sprintf("/%s/%s/scaledobject/%s", clusterName, namespace, scaledObjectName)
 	expectedSource                  = fmt.Sprintf("/%s/keda/keda", clusterName)
 	lastCloudEventTime              = time.Now()
+	test                            = "test"
 )
 
 type templateData struct {
@@ -379,6 +380,8 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 
 	t.Log("--- test emitting eventsource about scaledobject err---")
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", ceTemplate)
+	data.DeploymentName = test
+	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
 	// wait 15 seconds to ensure event propagation
@@ -425,13 +428,14 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 	}
 	assert.NotEmpty(t, foundEvents)
 	KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", ceTemplate)
+	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	t.Log("--- testErrEventSourceEmitValuetestErrEventSourceEmitValuer---", "cloud event time", lastCloudEventTime)
 }
 
 func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- test emitting eventsource about scaledobject removed---")
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	// wait 15 seconds to ensure event propagation
 	time.Sleep(5 * time.Second)
@@ -469,6 +473,7 @@ func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templa
 		}
 	}
 	assert.NotEmpty(t, foundEvents)
+	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 }
 
 // tests error events not emitted by
@@ -483,6 +488,8 @@ func testErrEventSourceExcludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", ceTemplate)
+	data.DeploymentName = test
+	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
 	// wait 15 seconds to ensure event propagation
@@ -510,6 +517,7 @@ func testErrEventSourceExcludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 
 	KubectlDeleteWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", ceTemplate)
+	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 }
 
 // tests error events in include filter
@@ -524,6 +532,8 @@ func testErrEventSourceIncludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", ceTemplate)
+	data.DeploymentName = test
+	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
 	// wait 15 seconds to ensure event propagation
@@ -549,6 +559,7 @@ func testErrEventSourceIncludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 	assert.NotEmpty(t, foundEvents)
 	KubectlDeleteWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", ceTemplate)
+	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 }
 
 // tests error event type when creation

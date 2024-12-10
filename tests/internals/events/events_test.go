@@ -115,22 +115,6 @@ spec:
           image: nginxinc/nginx-unprivileged:alpine-slim
 `
 
-	scaledObjectTargetErrTemplate = `
-apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
-metadata:
-  name: {{.ScaledObjectTargetNotFoundName}}
-  namespace: {{.TestNamespace}}
-spec:
-  scaleTargetRef:
-    name: no-exist
-  triggers:
-    - type: kubernetes-workload
-      metadata:
-        podSelector: 'app={{.DeploymentName}}'
-        value: '1'
-`
-
 	daemonSetTemplate = `
 apiVersion: apps/v1
 kind: DaemonSet
@@ -294,7 +278,6 @@ func TestEvents(t *testing.T) {
 
 	// test scaling
 	testNormalEvent(t, kc, data)
-	testTargetNotFoundErr(t, kc, data)
 	testTargetNotSupportEventErr(t, kc, data)
 
 	testScaledJobNormalEvent(t, kc, data)
@@ -350,14 +333,6 @@ func testNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) 
 	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	KubectlDeleteWithTemplate(t, data, "monitoredDeploymentName", monitoredDeploymentTemplate)
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-}
-
-func testTargetNotFoundErr(t *testing.T, _ *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing target not found error event ---")
-
-	KubectlApplyWithTemplate(t, data, "scaledObjectTargetErrTemplate", scaledObjectTargetErrTemplate)
-	checkingEvent(t, testNamespace, scaledObjectTargetNotFoundName, -2, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNotFoundMsg)
-	checkingEvent(t, testNamespace, scaledObjectTargetNotFoundName, -1, eventreason.ScaledObjectCheckFailed, message.ScaleTargetErrMsg)
 }
 
 func testTargetNotSupportEventErr(t *testing.T, _ *kubernetes.Clientset, data templateData) {
