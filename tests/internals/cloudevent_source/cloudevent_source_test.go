@@ -13,8 +13,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
-
-	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
@@ -426,6 +424,7 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 	}
 	assert.NotEmpty(t, foundEvents)
 	KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", ceTemplate)
+	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	t.Log("--- testErrEventSourceEmitValuetestErrEventSourceEmitValuer---", "cloud event time", lastCloudEventTime)
 }
 
@@ -470,6 +469,7 @@ func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templa
 		}
 	}
 	assert.NotEmpty(t, foundEvents)
+	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 }
 
 // tests error events not emitted by
@@ -512,6 +512,7 @@ func testErrEventSourceExcludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 
 	KubectlDeleteWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", ceTemplate)
+	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 }
 
 // tests error events in include filter
@@ -552,6 +553,7 @@ func testErrEventSourceIncludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 	assert.NotEmpty(t, foundEvents)
 	KubectlDeleteWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", ceTemplate)
+	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 }
 
 // tests error event type when creation

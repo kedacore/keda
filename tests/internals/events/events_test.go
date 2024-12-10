@@ -13,7 +13,6 @@ import (
 
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
-	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
@@ -350,14 +349,6 @@ func testNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) 
 	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	KubectlDeleteWithTemplate(t, data, "monitoredDeploymentName", monitoredDeploymentTemplate)
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-}
-
-func testTargetNotFoundErr(t *testing.T, _ *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing target not found error event ---")
-
-	KubectlApplyWithTemplate(t, data, "scaledObjectTargetErrTemplate", scaledObjectTargetErrTemplate)
-	checkingEvent(t, testNamespace, scaledObjectTargetNotFoundName, -2, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNotFoundMsg)
-	checkingEvent(t, testNamespace, scaledObjectTargetNotFoundName, -1, eventreason.ScaledObjectCheckFailed, message.ScaleTargetErrMsg)
 }
 
 func testTargetNotSupportEventErr(t *testing.T, _ *kubernetes.Clientset, data templateData) {
