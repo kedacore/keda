@@ -1050,7 +1050,7 @@ var _ = It("should validate the so creation with ScalingModifiers.Formula - doub
 
 var _ = It("shouldn't validate negative minreplicacount", func() {
 
-	namespaceName := "minreplicas-invalid"
+	namespaceName := "negative-minreplicas"
 	namespace := createNamespace(namespaceName)
 
 	err := k8sClient.Create(context.Background(), namespace)
@@ -1071,7 +1071,7 @@ var _ = It("shouldn't validate negative minreplicacount", func() {
 
 var _ = It("shouldn't validate minreplicacount greater than maxreplicacount", func() {
 
-	namespaceName := "empty-triggers-set"
+	namespaceName := "minreplicas-greater-than-maxreplicas"
 	namespace := createNamespace(namespaceName)
 
 	err := k8sClient.Create(context.Background(), namespace)
@@ -1092,7 +1092,7 @@ var _ = It("shouldn't validate minreplicacount greater than maxreplicacount", fu
 
 var _ = It("should validate minreplicacount and maxreplicacount are all equal to zero", func() {
 
-	namespaceName := "empty-triggers-set"
+	namespaceName := "minreplicas-maxreplicas-zero"
 	namespace := createNamespace(namespaceName)
 
 	err := k8sClient.Create(context.Background(), namespace)
@@ -1114,7 +1114,7 @@ var _ = It("should validate minreplicacount and maxreplicacount are all equal to
 
 var _ = It("shouldn't validate negative idlereplicacount", func() {
 
-	namespaceName := "empty-triggers-set"
+	namespaceName := "negative-idlereplicas"
 	namespace := createNamespace(namespaceName)
 
 	err := k8sClient.Create(context.Background(), namespace)
