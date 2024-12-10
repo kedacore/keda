@@ -1106,6 +1106,7 @@ var _ = It("should validate minreplicacount and maxreplicacount are all equal to
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
 	so.Spec.MinReplicaCount = ptr.To[int32](0)
 	so.Spec.MaxReplicaCount = ptr.To[int32](0)
+	so.Spec.IdleReplicaCount = nil
 
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), so)
