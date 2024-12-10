@@ -40,6 +40,7 @@ var (
 	expectedSubject                 = fmt.Sprintf("/%s/%s/scaledobject/%s", clusterName, namespace, scaledObjectName)
 	expectedSource                  = fmt.Sprintf("/%s/keda/keda", clusterName)
 	lastCloudEventTime              = time.Now()
+	test                            = "test"
 )
 
 type templateData struct {
@@ -114,7 +115,7 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   scaleTargetRef:
-    name: {{.DeploymentName}}
+    name: test
   triggers:
     - type: kubernetes-workload
       metadata:
@@ -377,6 +378,7 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 
 	t.Log("--- test emitting eventsource about scaledobject err---")
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", ceTemplate)
+	data.DeploymentName = test
 	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
@@ -484,6 +486,7 @@ func testErrEventSourceExcludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", ceTemplate)
+	data.DeploymentName = test
 	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
@@ -527,6 +530,7 @@ func testErrEventSourceIncludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", ceTemplate)
+	data.DeploymentName = test
 	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 

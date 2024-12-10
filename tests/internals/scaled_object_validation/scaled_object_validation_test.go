@@ -16,7 +16,7 @@ const (
 
 var (
 	testNamespace                     = fmt.Sprintf("%s-ns", testName)
-	deployment1Name                   = fmt.Sprintf("%s-deployment", testName)
+	deployment1Name                   = fmt.Sprintf("%s-deployment1", testName)
 	deployment2Name                   = fmt.Sprintf("%s-deployment2", testName)
 	scaledObject1Name                 = fmt.Sprintf("%s-so1", testName)
 	scaledObject2Name                 = fmt.Sprintf("%s-so2", testName)
@@ -219,10 +219,10 @@ func TestScaledObjectValidations(t *testing.T) {
 func testWithNotScaledWorkload(t *testing.T, data templateData) {
 	t.Log("--- scaled workload ---")
 	err := KubectlApplyWithErrors(t, data, "deploymentTemplate", deploymentTemplate)
-	assert.Errorf(t, err, "cannot deploy the deployment - %s", err)
+	assert.NoErrorf(t, err, "cannot deploy the deployment - %s", err)
 
 	data.ScaledObjectName = scaledObject1Name
-	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.NoErrorf(t, err, "cannot deploy the scaledObject - %s", err)
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
@@ -233,10 +233,10 @@ func testScaledWorkloadByOtherScaledObject(t *testing.T, data templateData) {
 	t.Log("--- already scaled workload by other scaledobject---")
 
 	err := KubectlApplyWithErrors(t, data, "deploymentTemplate", deploymentTemplate)
-	assert.Errorf(t, err, "cannot deploy the deployment - %s", err)
+	assert.NoErrorf(t, err, "cannot deploy the deployment - %s", err)
 
 	data.ScaledObjectName = scaledObject1Name
-	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.NoErrorf(t, err, "cannot deploy the scaledObject - %s", err)
 
 	data.ScaledObjectName = scaledObject2Name
@@ -255,17 +255,17 @@ func testManagedHpaByOtherScaledObject(t *testing.T, data templateData) {
 	data.HpaName = hpaName
 
 	err := KubectlApplyWithErrors(t, data, "deploymentTemplate", deploymentTemplate)
-	assert.Errorf(t, err, "cannot deploy the deployment - %s", err)
+	assert.NoErrorf(t, err, "cannot deploy the deployment - %s", err)
 
 	data.ScaledObjectName = scaledObject1Name
-	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", customHpaScaledObjectTemplate)
+	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", customHpaScaledObjectTemplate)
 	assert.NoErrorf(t, err, "cannot deploy the scaledObject - %s", err)
 
 	data.ScaledObjectName = scaledObject2Name
 	data.DeploymentName = deployment2Name
 
-	err := KubectlApplyWithErrors(t, data, "deploymentTemplate", deploymentTemplate)
-	assert.Errorf(t, err, "cannot deploy the deployment - %s", err)
+	err = KubectlApplyWithErrors(t, data, "deploymentTemplate", deploymentTemplate)
+	assert.NoErrorf(t, err, "cannot deploy the deployment - %s", err)
 
 	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", customHpaScaledObjectTemplate)
 	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
@@ -282,10 +282,10 @@ func testScaledWorkloadByOtherHpa(t *testing.T, data templateData) {
 	t.Log("--- already scaled workload by other hpa---")
 
 	err := KubectlApplyWithErrors(t, data, "deploymentTemplate", deploymentTemplate)
-	assert.Errorf(t, err, "cannot deploy the deployment - %s", err)
+	assert.NoErrorf(t, err, "cannot deploy the deployment - %s", err)
 
 	data.HpaName = hpaName
-	err := KubectlApplyWithErrors(t, data, "hpaTemplate", hpaTemplate)
+	err = KubectlApplyWithErrors(t, data, "hpaTemplate", hpaTemplate)
 	assert.NoErrorf(t, err, "cannot deploy the hpa - %s", err)
 
 	data.ScaledObjectName = scaledObject1Name
@@ -301,10 +301,10 @@ func testScaledWorkloadByOtherHpaWithOwnershipTransfer(t *testing.T, data templa
 	t.Log("--- already scaled workload by other hpa ownership transfer ---")
 
 	err := KubectlApplyWithErrors(t, data, "deploymentTemplate", deploymentTemplate)
-	assert.Errorf(t, err, "cannot deploy the deployment - %s", err)
+	assert.NoErrorf(t, err, "cannot deploy the deployment - %s", err)
 
 	data.HpaName = ownershipTransferHpaName
-	err := KubectlApplyWithErrors(t, data, "hpaTemplate", hpaTemplate)
+	err = KubectlApplyWithErrors(t, data, "hpaTemplate", hpaTemplate)
 	assert.NoErrorf(t, err, "cannot deploy the hpa - %s", err)
 
 	data.ScaledObjectName = ownershipTransferScaledObjectName
@@ -320,10 +320,10 @@ func testMissingCPU(t *testing.T, data templateData) {
 	t.Log("--- missing cpu resource ---")
 
 	err := KubectlApplyWithErrors(t, data, "deploymentTemplate", deploymentTemplate)
-	assert.Errorf(t, err, "cannot deploy the deployment - %s", err)
+	assert.NoErrorf(t, err, "cannot deploy the deployment - %s", err)
 
 	data.ScaledObjectName = scaledObject1Name
-	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", cpuScaledObjectTemplate)
+	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", cpuScaledObjectTemplate)
 	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
 	assert.Contains(t, err.Error(), fmt.Sprintf("the scaledobject has a cpu trigger but the container %s doesn't have the cpu request defined", deployment1Name))
 
@@ -334,10 +334,10 @@ func testMissingMemory(t *testing.T, data templateData) {
 	t.Log("--- missing memory resource ---")
 
 	err := KubectlApplyWithErrors(t, data, "deploymentTemplate", deploymentTemplate)
-	assert.Errorf(t, err, "cannot deploy the deployment - %s", err)
+	assert.NoErrorf(t, err, "cannot deploy the deployment - %s", err)
 
 	data.ScaledObjectName = scaledObject1Name
-	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplate", memoryScaledObjectTemplate)
+	err = KubectlApplyWithErrors(t, data, "scaledObjectTemplate", memoryScaledObjectTemplate)
 	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
 	assert.Contains(t, err.Error(), fmt.Sprintf("the scaledobject has a memory trigger but the container %s doesn't have the memory request defined", deployment1Name))
 
@@ -408,13 +408,11 @@ func testTriggersWithEmptyArray(t *testing.T, data templateData) {
 	t.Log("--- triggers with empty array ---")
 
 	err := KubectlApplyWithErrors(t, data, "deploymentTemplate", deploymentTemplate)
-	assert.Errorf(t, err, "cannot deploy the deployment - %s", err)
+	assert.NoErrorf(t, err, "cannot deploy the deployment - %s", err)
 
-	err := KubectlApplyWithErrors(t, data, "emptyTriggersTemplate", emptyTriggersTemplate)
+	err = KubectlApplyWithErrors(t, data, "emptyTriggersTemplate", emptyTriggersTemplate)
 	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
 	assert.Contains(t, err.Error(), "no triggers defined in the ScaledObject/ScaledJob")
-
-	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 }
 
 func getTemplateData() (templateData, []Template) {

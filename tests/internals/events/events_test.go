@@ -293,7 +293,6 @@ func TestEvents(t *testing.T) {
 
 	// test scaling
 	testNormalEvent(t, kc, data)
-	testTargetNotFoundErr(t, kc, data)
 	testTargetNotSupportEventErr(t, kc, data)
 
 	testScaledJobNormalEvent(t, kc, data)

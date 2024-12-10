@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"reflect"
 	"strconv"
 
@@ -260,7 +261,7 @@ func (so *ScaledObject) GetHPAMaxReplicas() int32 {
 }
 
 // CheckScaleTargetRefIfExist checks if scaleTargetRef of ScaledObject exists
-func (so *ScaledObject) CheckScaleTargetRefIfExist(ctx context.Context) error {
+func (so *ScaledObject) CheckScaleTargetRefIfExist(ctx context.Context, restMapper meta.RESTMapper, getFromCacheOrDirect func(ctx context.Context, key client.ObjectKey, obj client.Object) error) error {
 	soGvkr, err := ParseGVKR(restMapper, so.Spec.ScaleTargetRef.APIVersion, so.Spec.ScaleTargetRef.Kind)
 	if err != nil {
 		msg := "Failed to parse Group, Version, Kind, Resource"

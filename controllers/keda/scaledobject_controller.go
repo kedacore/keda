@@ -398,7 +398,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 		scale, errScale = (r.ScaleClient).Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 		if errScale != nil {
 			// not able to get /scale subresource -> let's check if the resource even exist in the cluster
-			if err := scaledObject.CheckScaleTargetRefIfExist(ctx); err != nil {
+			if err := scaledObject.CheckScaleTargetRefIfExist(ctx, r.restMapper, r.getFromCacheOrDirect); err != nil {
 				r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNotFoundMsg)
 				return gvkr, err
 			}
@@ -631,4 +631,10 @@ func (r *ScaledObjectReconciler) updateStatusWithTriggersAndAuthsTypes(ctx conte
 	logger.V(1).Info("Updating ScaledObject status with triggers and authentications types", "triggersTypes", triggersTypes, "authenticationsTypes", authsTypes)
 
 	return kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
+}
+
+func (r *ScaledObjectReconciler) getFromCacheOrDirect(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+	// r.Client from controller-runtime here had implemented the logic to choose to perform a cache or live lookup.
+	err := r.Client.Get(ctx, key, obj, &client.GetOptions{})
+	return err
 }

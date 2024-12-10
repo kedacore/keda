@@ -288,7 +288,7 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error 
 	if err != nil {
 		return err
 	}
-	if err := incomingSo.CheckScaleTargetRefIfExist(context.Background()); err != nil {
+	if err := incomingSo.CheckScaleTargetRefIfExist(context.Background(), restMapper, getFromCacheOrDirect); err != nil {
 		return err
 	}
 
