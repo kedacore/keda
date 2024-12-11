@@ -131,7 +131,7 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 			0, "s0-nats-jetstream-mystream",
 		},
 		&jetStreamEndpointResponse{
-			Accounts: []accountDetail{{Name: "$G",
+			Accounts: []accountDetail{{Name: "$G", Id: "$G", 
 				Streams: []*streamDetail{{Name: "mystream",
 					Consumers: []consumerDetail{{Name: "pull_consumer"}},
 				}},
@@ -145,7 +145,7 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 			0, "s0-nats-jetstream-mystream",
 		},
 		&jetStreamEndpointResponse{
-			Accounts: []accountDetail{{Name: "$G",
+			Accounts: []accountDetail{{Name: "$G", Id: "$G", 
 				Streams: []*streamDetail{{Name: "mystream",
 					Consumers: []consumerDetail{{Name: "pull_consumer", NumPending: 100}},
 				}},
@@ -159,7 +159,7 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 			0, "s0-nats-jetstream-mystream",
 		},
 		&jetStreamEndpointResponse{
-			Accounts: []accountDetail{{Name: "$G",
+			Accounts: []accountDetail{{Name: "$G", Id: "$G", 
 				Streams: []*streamDetail{{Name: "mystream", State: streamState{LastSequence: 1},
 					Consumers: []consumerDetail{{Name: "pull_consumer_bad", NumPending: 100}},
 				}},
@@ -173,7 +173,7 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 			0, "s0-nats-jetstream-mystream",
 		},
 		&jetStreamEndpointResponse{
-			Accounts: []accountDetail{{Name: "$G",
+			Accounts: []accountDetail{{Name: "$G", Id: "$G", 
 				Streams: []*streamDetail{{Name: "mystreamBad", State: streamState{LastSequence: 1},
 					Consumers: []consumerDetail{{Name: "pull_consumer", NumPending: 100}},
 				}},
@@ -187,7 +187,7 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 			0, "s0-nats-jetstream-mystream",
 		},
 		&jetStreamEndpointResponse{
-			Accounts: []accountDetail{{Name: "$G",
+			Accounts: []accountDetail{{Name: "$G", Id: "$G", 
 				Streams: []*streamDetail{{Name: "mystream",
 					Consumers: []consumerDetail{{Name: "pull_consumer", NumPending: 100}},
 				}},
@@ -202,7 +202,7 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 		},
 		&jetStreamEndpointResponse{
 			MetaCluster: metaCluster{ClusterSize: 3},
-			Accounts: []accountDetail{{Name: "$G",
+			Accounts: []accountDetail{{Name: "$G", Id: "$G", 
 				Streams: []*streamDetail{{Name: "mystream",
 					Consumers: []consumerDetail{{Name: "pull_consumer", NumPending: 100, Cluster: consumerCluster{Leader: "leader"}}},
 				}},
@@ -217,7 +217,7 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 		},
 		&jetStreamEndpointResponse{
 			MetaCluster: metaCluster{ClusterSize: 3},
-			Accounts: []accountDetail{{Name: "$G",
+			Accounts: []accountDetail{{Name: "$G", Id: "$G", 
 				Streams: []*streamDetail{{Name: "mystream"}},
 			}},
 		}, false, true},
