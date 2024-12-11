@@ -64,7 +64,7 @@ type jetStreamCluster struct {
 }
 
 type accountDetail struct {
-	Id      string          `json:"id"`
+	ID      string          `json:"id"`
 	Name    string          `json:"name"`
 	Streams []*streamDetail `json:"stream_detail"`
 }
@@ -279,7 +279,7 @@ func (s *natsJetStreamScaler) getNATSJetstreamMonitoringData(ctx context.Context
 			}
 
 			for _, jetStreamAccount := range jetStreamAccountResp.Accounts {
-				if jetStreamAccount.Id == s.metadata.account {
+				if jetStreamAccount.ID == s.metadata.account {
 					for _, stream := range jetStreamAccount.Streams {
 						if stream.Name == s.metadata.stream {
 							for _, consumer := range stream.Consumers {
@@ -306,7 +306,7 @@ func (s *natsJetStreamScaler) setNATSJetStreamMonitoringData(jetStreamAccountRes
 
 	// find and assign the stream that we are looking for.
 	for _, jsAccount := range jetStreamAccountResp.Accounts {
-		if jsAccount.Id == s.metadata.account {
+		if jsAccount.ID == s.metadata.account {
 			for _, stream := range jsAccount.Streams {
 				if stream.Name == s.metadata.stream {
 					s.stream = stream
