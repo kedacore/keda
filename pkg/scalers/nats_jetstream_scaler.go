@@ -64,7 +64,7 @@ type jetStreamCluster struct {
 }
 
 type accountDetail struct {
-	Id      string          `json:id`
+	Id      string          `json:"id"`
 	Name    string          `json:"name"`
 	Streams []*streamDetail `json:"stream_detail"`
 }
