@@ -103,11 +103,9 @@ func GetBoundServiceAccountTokenExpiry() (*time.Duration, error) {
 	}
 	if expiry == nil {
 		return ptr.To[time.Duration](time.Hour), nil // if blank, default to 1 hour
-
 	}
 	if *expiry < time.Hour || *expiry > 6*time.Hour {
 		return nil, fmt.Errorf("invalid value for %s: %s, must be between 1h and 6h", BoundServiceAccountTokenExpiryEnvVar, expiry.String()) // Must be between 1 hour and 6 hours
-
 	}
 	return expiry, nil
 }
