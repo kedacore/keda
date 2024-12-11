@@ -138,7 +138,7 @@ New deprecation(s):
 - **AWS Secret Manager**: Pod identity overrides are honored ([#6195](https://github.com/kedacore/keda/issues/6195))
 - **AWS SQS Scaler**: Improve error handling for SQS queue metrics ([#6178](https://github.com/kedacore/keda/issues/6178))
 - **Azure Event Hub Scaler**: Checkpointer errors are correctly handled ([#6084](https://github.com/kedacore/keda/issues/6084))
-- **JetStream**: NATS API uses account ID and not account name to filter by account ([#6415] (https://github.com/kedacore/keda/pull/6415))
+- **JetStream**: NATS API uses account ID and not account name to filter by account ([#6415](https://github.com/kedacore/keda/pull/6415))
 - **Metrics API Scaler**: Prometheus metrics can have multiple labels ([#6077](https://github.com/kedacore/keda/issues/6077))
 
 ### Deprecations
