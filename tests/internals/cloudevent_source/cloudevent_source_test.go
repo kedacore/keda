@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
 
-	. "github.com/kedacore/keda/v2/tests/helper"
+        . "github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
@@ -28,6 +28,7 @@ var (
 	namespace                       = fmt.Sprintf("%s-ns", testName)
 	scaledObjectName                = fmt.Sprintf("%s-so", testName)
 	deploymentName                  = fmt.Sprintf("%s-d", testName)
+	daemonsetName                   = fmt.Sprintf("%s-daemonset", testName)
 	clientName                      = fmt.Sprintf("%s-client", testName)
 	cloudeventSourceName            = fmt.Sprintf("%s-ce", testName)
 	cloudeventSourceErrName         = fmt.Sprintf("%s-ce-err", testName)
@@ -49,6 +50,7 @@ type templateData struct {
 	TestNamespace                   string
 	ScaledObject                    string
 	DeploymentName                  string
+	DaemonsetName                   string
 	ClientName                      string
 	CloudEventSourceName            string
 	CloudeventSourceErrName         string
@@ -109,7 +111,7 @@ const (
               cpu: "500m"
   `
 
-	scaledObjectErrTemplate = `
+	scaledObjectTargetNotSupportTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -117,13 +119,35 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   scaleTargetRef:
-    name: test
+    name: {{.DaemonsetName}}
+    kind: DaemonSet
   triggers:
     - type: kubernetes-workload
       metadata:
         podSelector: 'pod=testWorkloadDeploymentName'
         value: '1'
-        activationValue: '3'
+`
+
+	daemonSetTemplate = `
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{.DaemonsetName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DaemonsetName}}
+spec:
+  selector:
+    matchLabels:
+      app: {{.DaemonsetName}}
+  template:
+    metadata:
+      labels:
+        app: {{.DaemonsetName}}
+    spec:
+      containers:
+        - name: {{.DaemonsetName}}
+          image: nginxinc/nginx-unprivileged:alpine-slim
 `
 
 	clientTemplate = `
@@ -381,12 +405,12 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 	t.Log("--- test emitting eventsource about scaledobject err---")
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", ceTemplate)
 	data.DeploymentName = test
-	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
-	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
+	KubectlApplyWithTemplate(t, data, "daemonSetTemplate", daemonSetTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTargetNotSupportTemplate", scaledObjectTargetNotSupportTemplate)
 
 	// wait 15 seconds to ensure event propagation
 	time.Sleep(5 * time.Second)
-	KubectlDeleteWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTargetNotSupportTemplate", scaledObjectTargetNotSupportTemplate)
 	time.Sleep(10 * time.Second)
 
 	out, outErr, err := ExecCommandOnSpecificPod(t, clientName, namespace, fmt.Sprintf("curl -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectCheckFailed"))
@@ -411,7 +435,7 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 
 			assert.NoError(t, err)
 			assert.Condition(t, func() bool {
-				if data["message"] == "ScaledObject doesn't have correct scaleTargetRef specification" || data["message"] == "Target resource doesn't exist" {
+				if data["message"] == "ScaledObject doesn't have correct scaleTargetRef specification" || data["message"] == "Target resource doesn't expose /scale subresource" {
 					return true
 				}
 				return false
@@ -428,7 +452,6 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 	}
 	assert.NotEmpty(t, foundEvents)
 	KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", ceTemplate)
-	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 	t.Log("--- testErrEventSourceEmitValuetestErrEventSourceEmitValuer---", "cloud event time", lastCloudEventTime)
 }
 
@@ -489,8 +512,8 @@ func testErrEventSourceExcludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", ceTemplate)
 	data.DeploymentName = test
-	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
-	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
+	KubectlApplyWithTemplate(t, data, "daemonSetTemplate", daemonSetTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTargetNotSupportTemplate", scaledObjectTargetNotSupportTemplate)
 
 	// wait 15 seconds to ensure event propagation
 	time.Sleep(15 * time.Second)
@@ -517,7 +540,6 @@ func testErrEventSourceExcludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 
 	KubectlDeleteWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", ceTemplate)
-	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 }
 
 // tests error events in include filter
@@ -533,8 +555,8 @@ func testErrEventSourceIncludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", ceTemplate)
 	data.DeploymentName = test
-	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
-	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
+	KubectlApplyWithTemplate(t, data, "daemonSetTemplate", daemonSetTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTargetNotSupportTemplate", scaledObjectTargetNotSupportTemplate)
 
 	// wait 15 seconds to ensure event propagation
 	time.Sleep(15 * time.Second)
@@ -559,7 +581,6 @@ func testErrEventSourceIncludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 	assert.NotEmpty(t, foundEvents)
 	KubectlDeleteWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", ceTemplate)
-	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 }
 
 // tests error event type when creation
@@ -594,6 +615,7 @@ func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:                   namespace,
 			ScaledObject:                    scaledObjectName,
+			DaemonsetName:                   daemonsetName,
 			DeploymentName:                  deploymentName,
 			ClientName:                      clientName,
 			CloudEventSourceName:            cloudeventSourceName,

@@ -13,7 +13,7 @@ import (
 
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
-	. "github.com/kedacore/keda/v2/tests/helper"
+        . "github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
@@ -324,7 +324,7 @@ func testNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) 
 
 	// time.Sleep(2 * time.Second)
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 2, testNamespace)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, monitoredDeploymentName, testNamespace, 2, 60, 1),
 		"replica count should be 2 after 1 minute")
 	checkingEvent(t, testNamespace, scaledObjectName, 0, eventreason.KEDAScalersStarted, fmt.Sprintf(message.ScalerIsBuiltMsg, "kubernetes-workload"))
 	checkingEvent(t, testNamespace, scaledObjectName, 1, eventreason.KEDAScalersStarted, message.ScalerStartMsg)
