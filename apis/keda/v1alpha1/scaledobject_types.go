@@ -237,7 +237,7 @@ func (so *ScaledObject) IsUsingModifiers() bool {
 	return so.Spec.Advanced != nil && !reflect.DeepEqual(so.Spec.Advanced.ScalingModifiers, ScalingModifiers{})
 }
 
-// GetHPAMinReplicas returns MinReplicas based on definition in ScaledObject or default value if not defined
+// getHPAMinReplicas returns MinReplicas based on definition in ScaledObject or default value if not defined
 func (so *ScaledObject) GetHPAMinReplicas() *int32 {
 	if so.Spec.MinReplicaCount != nil && *so.Spec.MinReplicaCount > 0 {
 		return so.Spec.MinReplicaCount
@@ -246,7 +246,7 @@ func (so *ScaledObject) GetHPAMinReplicas() *int32 {
 	return &tmp
 }
 
-// GetHPAMaxReplicas returns MaxReplicas based on definition in ScaledObject or default value if not defined
+// getHPAMaxReplicas returns MaxReplicas based on definition in ScaledObject or default value if not defined
 func (so *ScaledObject) GetHPAMaxReplicas() int32 {
 	if so.Spec.MaxReplicaCount != nil {
 		return *so.Spec.MaxReplicaCount
@@ -254,7 +254,7 @@ func (so *ScaledObject) GetHPAMaxReplicas() int32 {
 	return defaultHPAMaxReplicas
 }
 
-// CheckReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified
+// checkReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified
 // i.e. that Min is not greater than Max or Idle greater or equal to Min
 func CheckReplicaCountBoundsAreValid(scaledObject *ScaledObject) error {
 	min := int32(0)
