@@ -75,6 +75,9 @@ jobs:
         if: always()
 
   validate-dockerfiles:
+    permissions:
+      contents: read  # for dorny/paths-filter to fetch a list of changed files
+      pull-requests: read  # for dorny/paths-filter to read pull requests
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     container: ghcr.io/kedacore/keda-tools:1.23.3
@@ -106,6 +109,9 @@ jobs:
         run: make docker-build
 
   validate-dev-container:
+    permissions:
+      contents: read  # for dorny/paths-filter to fetch a list of changed files
+      pull-requests: read  # for dorny/paths-filter to read pull requests
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     container: ghcr.io/kedacore/keda-tools:1.23.3

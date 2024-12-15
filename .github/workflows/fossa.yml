@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 env:
   fossa-key: 9e722f2c8904586d61f97f0bf05a99e4 # This is a public key only for pushing, it's safe here
 
