@@ -12,6 +12,10 @@ on:
       kindImage:
         required: true
         type: string
+
+permissions:
+  contents: read
+
 jobs:
   smoke-tests:
     name: Validate k8s-${{ inputs.kubernetesVersion }}
@@ -35,7 +39,7 @@ jobs:
           fetch-depth: 1
 
       - name: Create k8s ${{ inputs.kubernetesVersion }} Kind Cluster
-        uses: helm/kind-action@v1.10.0
+        uses: helm/kind-action@0025e74a8c7512023d06dc019c617aa3cf561fde # v1.10.0
         with:
           node_image: ${{ inputs.kindImage }}
           cluster_name: smoke-tests-cluster-${{ inputs.kubernetesVersion }}
