@@ -90,7 +90,7 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- Change `InitialCooldownPeriod` from `int32` to `*int32` ([#6423](https://github.com/kedacore/keda/issues/6423))
 
 ### Other
 
