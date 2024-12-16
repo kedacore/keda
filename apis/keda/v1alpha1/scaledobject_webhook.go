@@ -231,8 +231,8 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 		return err
 	}
 
-	var incomingSvGvkr GroupVersionKindResource
-	incomingSvGvkr, err = ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
+	var incomingSoGvkr GroupVersionKindResource
+	incomingSoGvkr, err = ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
 	if err != nil {
 		scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from incoming ScaledObject", "apiVersion", incomingSo.Spec.ScaleTargetRef.APIVersion, "kind", incomingSo.Spec.ScaleTargetRef.Kind)
 		return err
@@ -251,7 +251,7 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 			return err
 		}
 
-		if hpaGvkr.GVKString() == incomingSvGvkr.GVKString() &&
+		if hpaGvkr.GVKString() == incomingSoGvkr.GVKString() &&
 			hpa.Spec.ScaleTargetRef.Name == incomingSo.Spec.ScaleTargetRef.Name {
 			owned := false
 			for _, owner := range hpa.OwnerReferences {
@@ -268,7 +268,7 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 					incomingSo.Spec.Advanced.HorizontalPodAutoscalerConfig.Name == hpa.Name {
 					scaledobjectlog.Info(fmt.Sprintf("%s hpa ownership being transferred to %s", hpa.Name, incomingSo.Name))
 				} else {
-					err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSvGvkr.GVKString(), hpa.Name)
+					err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSoGvkr.GVKString(), hpa.Name)
 					scaledobjectlog.Error(err, "validation error")
 					metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-hpa")
 					return err
