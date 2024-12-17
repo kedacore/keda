@@ -33,6 +33,7 @@ on:
 
 permissions:
   contents: read
+  security-events: write
 
 jobs:
   trivy-scan:
