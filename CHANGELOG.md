@@ -60,8 +60,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Enable OpenSSF Scorecard to enhance security practices across the project ([#5913](https://github.com/kedacore/keda/issues/5913))
 - **General**: Introduce new NSQ scaler ([#3281](https://github.com/kedacore/keda/issues/3281))
-- **General**: Optimize all webhook checkReplicas code ([#6344](https://github.com/kedacore/keda/pull/6344))
 - **General**: Operator flag to control patching of webhook resources certificates ([#6184](https://github.com/kedacore/keda/issues/6184))
+- **General**: Optimize all webhook checkReplicas code ([#6344](https://github.com/kedacore/keda/pull/6344))
 
 #### Experimental
 
@@ -585,7 +585,7 @@ New deprecation(s):
 - **General**: Drop a transitive dependency on bou.ke/monkey ([#4364](https://github.com/kedacore/keda/issues/4364))
 - **General**: Fix odd number of arguments passed as key-value pairs for logging ([#4368](https://github.com/kedacore/keda/issues/4368))
 - **General**: Refactor several functions for Status & Conditions handling into pkg util functions ([#2906](https://github.com/kedacore/keda/pull/2906))
-- **General**: Stop logging errors for paused ScaledObject (with `autoscaling.keda.sh/paused-replicas` annotation) by skipping reconciliation loop for the object (stop the scale loop and delete the HPA) ([#4253](https://github.com/kedacore/keda/pull/4253))
+- **General**: Stop logging errors for paused ScaledObject (with `autoscaling.keda.sh/paused-` annotation) by skipping reconciliation loop for the object (stop the scale loop and delete the HPA) ([#4253](https://github.com/kedacore/keda/pull/4253))
 - **General**: Trying to prevent operator crash when accessing `ScaledObject.Status.ScaleTargetGVKR` ([#4389](https://github.com/kedacore/keda/issues/4389))
 - **General**: Use default metrics provider from `sigs.k8s.io/custom-metrics-apiserver` ([#4473](https://github.com/kedacore/keda/pull/4473))
 
@@ -906,7 +906,7 @@ None.
 
 ### New
 
-- **General**: Introduce annotation `"autoscaling.keda.sh/paused-replicas"` for ScaledObjects to pause scaling at a fixed replica count. ([#944](https://github.com/kedacore/keda/issues/944))
+- **General**: Introduce annotation `"autoscaling.keda.sh/paused-"` for ScaledObjects to pause scaling at a fixed replica count. ([#944](https://github.com/kedacore/keda/issues/944))
 - **General**: Introduce ARM-based container image for KEDA ([#2263](https://github.com/kedacore/keda/issues/2263)|[#2262](https://github.com/kedacore/keda/issues/2262))
 - **General**: Introduce new AWS DynamoDB Scaler ([#2482](https://github.com/kedacore/keda/issues/2482))
 - **General**: Introduce new Azure Data Explorer Scaler ([#1488](https://github.com/kedacore/keda/issues/1488)|[#2734](https://github.com/kedacore/keda/issues/2734))
