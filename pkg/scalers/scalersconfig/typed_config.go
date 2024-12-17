@@ -20,14 +20,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"reflect"
 	"runtime/debug"
+	"slices"
 	"strconv"
 	"strings"
 
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
+	corev1 "k8s.io/api/core/v1"
+
+	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
 
 // CustomValidator is an interface that can be implemented to validate the configuration of the typed config
@@ -62,20 +65,21 @@ const (
 
 // separators for map and slice elements
 const (
-	elemSeparator       = ","
 	elemKeyValSeparator = "="
 )
 
 // field tag parameters
 const (
-	optionalTag     = "optional"
-	deprecatedTag   = "deprecated"
-	defaultTag      = "default"
-	orderTag        = "order"
-	nameTag         = "name"
-	enumTag         = "enum"
-	exclusiveSetTag = "exclusiveSet"
-	rangeTag        = "range"
+	optionalTag           = "optional"
+	deprecatedTag         = "deprecated"
+	deprecatedAnnounceTag = "deprecatedAnnounce"
+	defaultTag            = "default"
+	orderTag              = "order"
+	nameTag               = "name"
+	enumTag               = "enum"
+	exclusiveSetTag       = "exclusiveSet"
+	rangeTag              = "range"
+	separatorTag          = "separator"
 )
 
 // Params is a struct that represents the parameter list that can be used in the keda tag
@@ -83,8 +87,8 @@ type Params struct {
 	// FieldName is the name of the field in the struct
 	FieldName string
 
-	// Name is the 'name' tag parameter defining the key in triggerMetadata, resolvedEnv or authParams
-	Name string
+	// Names is the 'name' tag parameter defining the key in triggerMetadata, resolvedEnv or authParams
+	Names []string
 
 	// Optional is the 'optional' tag parameter defining if the parameter is optional
 	Optional bool
@@ -101,6 +105,10 @@ type Params struct {
 	// as an error and the DeprecatedMessage should be returned to the user
 	Deprecated string
 
+	// DeprecatedAnnounce is the 'deprecatedAnnounce' tag parameter, if set this will trigger
+	// an info event with the deprecation message
+	DeprecatedAnnounce string
+
 	// Enum is the 'enum' tag parameter defining the list of possible values for the parameter
 	Enum []string
 
@@ -109,11 +117,19 @@ type Params struct {
 
 	// RangeSeparator is the 'range' tag parameter defining the separator for range values
 	RangeSeparator string
+
+	// Separator is the tag parameter to define which separator will be used
+	Separator string
+}
+
+// Name returns the name of the parameter (or comma separated list of names if it has multiple)
+func (p Params) Name() string {
+	return strings.Join(p.Names, ",")
 }
 
 // IsNested is a function that returns true if the parameter is nested
 func (p Params) IsNested() bool {
-	return p.Name == ""
+	return len(p.Names) == 0
 }
 
 // IsDeprecated is a function that returns true if the parameter is deprecated
@@ -185,7 +201,14 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) e
 func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 	valFromConfig, exists := sc.configParamValue(params)
 	if exists && params.IsDeprecated() {
-		return fmt.Errorf("parameter %q is deprecated%v", params.Name, params.DeprecatedMessage())
+		return fmt.Errorf("parameter %q is deprecated%v", params.Name(), params.DeprecatedMessage())
+	}
+	if exists && params.DeprecatedAnnounce != "" {
+		if sc.Recorder != nil {
+			message := fmt.Sprintf("Scaler %s info: %s", sc.TriggerType, params.DeprecatedAnnounce)
+			fmt.Print(message)
+			sc.Recorder.Event(sc.ScaledObject, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, message)
+		}
 	}
 	if !exists && params.Default != "" {
 		exists = true
@@ -196,11 +219,10 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 	}
 	if !exists && !(params.Optional || params.IsDeprecated()) {
 		if len(params.Order) == 0 {
-			apo := maps.Keys(allowedParsingOrderMap)
-			slices.Sort(apo)
-			return fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name, apo)
+			apo := slices.Sorted(maps.Keys(allowedParsingOrderMap))
+			return fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name(), apo)
 		}
-		return fmt.Errorf("missing required parameter %q in %v", params.Name, params.Order)
+		return fmt.Errorf("missing required parameter %q in %v", params.Name(), params.Order)
 	}
 	if params.Enum != nil {
 		enumMap := make(map[string]bool)
@@ -208,7 +230,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 			enumMap[e] = true
 		}
 		missingMap := make(map[string]bool)
-		split := strings.Split(valFromConfig, elemSeparator)
+		split := splitWithSeparator(valFromConfig, params.Separator)
 		for _, s := range split {
 			s := strings.TrimSpace(s)
 			if !enumMap[s] {
@@ -216,7 +238,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 			}
 		}
 		if len(missingMap) > 0 {
-			return fmt.Errorf("parameter %q value %q must be one of %v", params.Name, valFromConfig, params.Enum)
+			return fmt.Errorf("parameter %q value %q must be one of %v", params.Name(), valFromConfig, params.Enum)
 		}
 	}
 	if params.ExclusiveSet != nil {
@@ -224,7 +246,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 		for _, e := range params.ExclusiveSet {
 			exclusiveMap[e] = true
 		}
-		split := strings.Split(valFromConfig, elemSeparator)
+		split := splitWithSeparator(valFromConfig, params.Separator)
 		exclusiveCount := 0
 		for _, s := range split {
 			s := strings.TrimSpace(s)
@@ -233,7 +255,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 			}
 		}
 		if exclusiveCount > 1 {
-			return fmt.Errorf("parameter %q value %q must contain only one of %v", params.Name, valFromConfig, params.ExclusiveSet)
+			return fmt.Errorf("parameter %q value %q must contain only one of %v", params.Name(), valFromConfig, params.ExclusiveSet)
 		}
 	}
 	if params.IsNested() {
@@ -247,7 +269,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 		return sc.parseTypedConfig(field.Addr().Interface(), params.Optional)
 	}
 	if err := setConfigValueHelper(params, valFromConfig, field); err != nil {
-		return fmt.Errorf("unable to set param %q value %q: %w", params.Name, valFromConfig, err)
+		return fmt.Errorf("unable to set param %q value %q: %w", params.Name(), valFromConfig, err)
 	}
 	return nil
 }
@@ -276,7 +298,7 @@ func setConfigValueURLParams(params Params, valFromConfig string, field reflect.
 // setConfigValueMap is a function that sets the value of the map field
 func setConfigValueMap(params Params, valFromConfig string, field reflect.Value) error {
 	field.Set(reflect.MakeMap(reflect.MapOf(field.Type().Key(), field.Type().Elem())))
-	split := strings.Split(valFromConfig, elemSeparator)
+	split := splitWithSeparator(valFromConfig, params.Separator)
 	for _, s := range split {
 		s := strings.TrimSpace(s)
 		kv := strings.Split(s, elemKeyValSeparator)
@@ -314,6 +336,15 @@ func canRange(valFromConfig, elemRangeSeparator string, field reflect.Value) boo
 	return strings.Contains(valFromConfig, elemRangeSeparator)
 }
 
+// splitWithSeparator is a function that splits on default or custom separator
+func splitWithSeparator(valFromConfig, customSeparator string) []string {
+	separator := ","
+	if customSeparator != "" {
+		separator = customSeparator
+	}
+	return strings.Split(valFromConfig, separator)
+}
+
 // setConfigValueRange is a function that sets the value of the range field
 func setConfigValueRange(params Params, valFromConfig string, field reflect.Value) error {
 	rangeSplit := strings.Split(valFromConfig, params.RangeSeparator)
@@ -342,7 +373,7 @@ func setConfigValueRange(params Params, valFromConfig string, field reflect.Valu
 // setConfigValueSlice is a function that sets the value of the slice field
 func setConfigValueSlice(params Params, valFromConfig string, field reflect.Value) error {
 	elemIfc := reflect.New(field.Type().Elem()).Interface()
-	split := strings.Split(valFromConfig, elemSeparator)
+	split := splitWithSeparator(valFromConfig, params.Separator)
 	for i, s := range split {
 		s := strings.TrimSpace(s)
 		if canRange(s, params.RangeSeparator, field) {
@@ -379,6 +410,14 @@ func setConfigValueHelper(params Params, valFromConfig string, field reflect.Val
 	if field.Kind() == reflect.Slice {
 		return setConfigValueSlice(params, valFromConfig, field)
 	}
+	if field.Kind() == reflect.Bool {
+		boolVal, err := strconv.ParseBool(valFromConfig)
+		if err != nil {
+			return fmt.Errorf("unable to parse boolean value %q: %w", valFromConfig, err)
+		}
+		field.SetBool(boolVal)
+		return nil
+	}
 	if field.CanInterface() {
 		ifc := reflect.New(field.Type()).Interface()
 		if err := json.Unmarshal([]byte(valFromConfig), &ifc); err != nil {
@@ -394,23 +433,24 @@ func setConfigValueHelper(params Params, valFromConfig string, field reflect.Val
 func (sc *ScalerConfig) configParamValue(params Params) (string, bool) {
 	for _, po := range params.Order {
 		var m map[string]string
-		key := params.Name
-		switch po {
-		case TriggerMetadata:
-			m = sc.TriggerMetadata
-		case AuthParams:
-			m = sc.AuthParams
-		case ResolvedEnv:
-			m = sc.ResolvedEnv
-			key = sc.TriggerMetadata[fmt.Sprintf("%sFromEnv", params.Name)]
-		default:
-			// this is checked when parsing the tags but adding as default case to avoid any potential future problems
-			return "", false
-		}
-		param, ok := m[key]
-		param = strings.TrimSpace(param)
-		if ok && param != "" {
-			return param, true
+		for _, key := range params.Names {
+			switch po {
+			case TriggerMetadata:
+				m = sc.TriggerMetadata
+			case AuthParams:
+				m = sc.AuthParams
+			case ResolvedEnv:
+				m = sc.ResolvedEnv
+				key = sc.TriggerMetadata[fmt.Sprintf("%sFromEnv", key)]
+			default:
+				// this is checked when parsing the tags but adding as default case to avoid any potential future problems
+				return "", false
+			}
+			param, ok := m[key]
+			param = strings.TrimSpace(param)
+			if ok && param != "" {
+				return param, true
+			}
 		}
 	}
 	return "", params.IsNested()
@@ -437,8 +477,7 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 				for _, po := range order {
 					poTyped := ParsingOrder(strings.TrimSpace(po))
 					if !allowedParsingOrderMap[poTyped] {
-						apo := maps.Keys(allowedParsingOrderMap)
-						slices.Sort(apo)
+						apo := slices.Sorted(maps.Keys(allowedParsingOrderMap))
 						return params, fmt.Errorf("unknown parsing order value %s, has to be one of %s", po, apo)
 					}
 					params.Order = append(params.Order, poTyped)
@@ -446,13 +485,19 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 			}
 		case nameTag:
 			if len(tsplit) > 1 {
-				params.Name = strings.TrimSpace(tsplit[1])
+				params.Names = strings.Split(strings.TrimSpace(tsplit[1]), tagValueSeparator)
 			}
 		case deprecatedTag:
 			if len(tsplit) == 1 {
 				params.Deprecated = deprecatedTag
 			} else {
 				params.Deprecated = strings.TrimSpace(tsplit[1])
+			}
+		case deprecatedAnnounceTag:
+			if len(tsplit) == 1 {
+				params.DeprecatedAnnounce = deprecatedAnnounceTag
+			} else {
+				params.DeprecatedAnnounce = strings.TrimSpace(tsplit[1])
 			}
 		case defaultTag:
 			if len(tsplit) > 1 {
@@ -472,6 +517,10 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 			}
 			if len(tsplit) == 2 {
 				params.RangeSeparator = strings.TrimSpace(tsplit[1])
+			}
+		case separatorTag:
+			if len(tsplit) > 1 {
+				params.Separator = strings.TrimSpace(tsplit[1])
 			}
 		case "":
 			continue

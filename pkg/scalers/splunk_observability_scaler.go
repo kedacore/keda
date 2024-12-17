@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"regexp"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -91,23 +90,23 @@ func (s *splunkObservabilityScaler) getQueryResult() (float64, error) {
 		return -1, fmt.Errorf("could not execute signalflow query: %w", err)
 	}
 
-	s.logger.Info("Started MTS stream.")
+	s.logger.V(1).Info("Started MTS stream.")
 
 	time.Sleep(time.Duration(s.metadata.Duration * int(time.Second)))
 	if err := comp.Stop(context.Background()); err != nil {
 		return -1, fmt.Errorf("error creating SignalFlow client: %w", err)
 	}
 
-	s.logger.Info("Closed MTS stream.")
+	s.logger.V(1).Info("Closed MTS stream.")
 
 	max := math.Inf(-1)
 	min := math.Inf(1)
 	valueSum := 0.0
 	valueCount := 0
-	s.logger.Info("Now iterating over results.")
+	s.logger.V(1).Info("Now iterating over results.")
 	for msg := range comp.Data() {
 		if len(msg.Payloads) == 0 {
-			s.logger.Info("No data retrieved.")
+			s.logger.V(1).Info("No data retrieved.")
 			continue
 		}
 		for _, pl := range msg.Payloads {
@@ -115,7 +114,7 @@ func (s *splunkObservabilityScaler) getQueryResult() (float64, error) {
 			if !ok {
 				return -1, fmt.Errorf("could not convert Splunk Observability metric value to float64")
 			}
-			s.logger.Info(fmt.Sprintf("Encountering value %.4f\n", value))
+			s.logger.V(1).Info(fmt.Sprintf("Encountering value %.4f\n", value))
 			max = math.Max(max, value)
 			min = math.Min(min, value)
 			valueSum += value
@@ -129,14 +128,14 @@ func (s *splunkObservabilityScaler) getQueryResult() (float64, error) {
 
 	switch s.metadata.QueryAggregator {
 	case "max":
-		s.logger.Info(fmt.Sprintf("Returning max value: %.4f\n", max))
+		s.logger.V(1).Info(fmt.Sprintf("Returning max value: %.4f\n", max))
 		return max, nil
 	case "min":
-		s.logger.Info(fmt.Sprintf("Returning min value: %.4f\n", min))
+		s.logger.V(1).Info(fmt.Sprintf("Returning min value: %.4f\n", min))
 		return min, nil
 	case "avg":
 		avg := valueSum / float64(valueCount)
-		s.logger.Info(fmt.Sprintf("Returning avg value: %.4f\n", avg))
+		s.logger.V(1).Info(fmt.Sprintf("Returning avg value: %.4f\n", avg))
 		return avg, nil
 	default:
 		return max, nil
@@ -157,15 +156,9 @@ func (s *splunkObservabilityScaler) GetMetricsAndActivity(_ context.Context, met
 
 func (s *splunkObservabilityScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := kedautil.NormalizeString("signalfx")
-	re := regexp.MustCompile(`data\('([^']*)'`)
-	match := re.FindStringSubmatch(s.metadata.Query)
-	if len(match) > 1 {
-		metricName = kedautil.NormalizeString(match[1])
-	}
-
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: metricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, metricName),
 		},
 		Target: GetMetricTargetMili(v2.ValueMetricType, s.metadata.TargetValue),
 	}

@@ -196,9 +196,24 @@ func (w *Service) HandleWrite(ctx context.Context, batch *Batch) error {
 						w.retryAttempts++
 						log.Debugf("Write proc: next wait for write is %dms\n", w.retryDelay)
 					} else {
-						log.Errorf("Write error: %s\n", perror.Error())
+						logMessage := fmt.Sprintf("Write error: %s", perror.Error())
+						logHeaders := perror.HeaderToString([]string{
+							"date",
+							"trace-id",
+							"trace-sampled",
+							"X-Influxdb-Build",
+							"X-Influxdb-Request-ID",
+							"X-Influxdb-Version",
+						})
+						if len(logHeaders) > 0 {
+							logMessage += fmt.Sprintf("\nSelected Response Headers:\n%s", logHeaders)
+						}
+						log.Error(logMessage)
 					}
-					return fmt.Errorf("write failed (attempts %d): %w", batchToWrite.RetryAttempts, perror)
+					log.Errorf("Write failed (retry attempts %d): Status Code %d",
+						batchToWrite.RetryAttempts,
+						perror.StatusCode)
+					return perror
 				}
 			}
 

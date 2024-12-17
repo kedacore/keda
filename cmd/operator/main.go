@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
-	_ "go.uber.org/automaxprocs"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeinformers "k8s.io/client-go/informers"
@@ -115,6 +114,13 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	ctx := ctrl.SetupSignalHandler()
+
+	err := kedautil.ConfigureMaxProcs(setupLog)
+	if err != nil {
+		setupLog.Error(err, "failed to set max procs")
+		os.Exit(1)
+	}
+
 	namespaces, err := kedautil.GetWatchNamespaces()
 	if err != nil {
 		setupLog.Error(err, "failed to get watch namespace")
@@ -236,7 +242,7 @@ func main() {
 		Client:            mgr.GetClient(),
 		Scheme:            mgr.GetScheme(),
 		GlobalHTTPTimeout: globalHTTPTimeout,
-		Recorder:          eventRecorder,
+		EventEmitter:      eventEmitter,
 		SecretsLister:     secretInformer.Lister(),
 		SecretsSynced:     secretInformer.Informer().HasSynced,
 	}).SetupWithManager(mgr, controller.Options{
@@ -246,15 +252,15 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&kedacontrollers.TriggerAuthenticationReconciler{
-		Client:        mgr.GetClient(),
-		EventRecorder: eventRecorder,
+		Client:       mgr.GetClient(),
+		EventHandler: eventEmitter,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "TriggerAuthentication")
 		os.Exit(1)
 	}
 	if err = (&kedacontrollers.ClusterTriggerAuthenticationReconciler{
-		Client:        mgr.GetClient(),
-		EventRecorder: eventRecorder,
+		Client:       mgr.GetClient(),
+		EventHandler: eventEmitter,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterTriggerAuthentication")
 		os.Exit(1)

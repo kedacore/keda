@@ -278,7 +278,12 @@ func (m *MongoCrypt) createExplicitEncryptionContext(opts *options.ExplicitEncry
 		if opts.RangeOptions.Precision != nil {
 			mongocryptDoc = bsoncore.AppendInt32Element(mongocryptDoc, "precision", *opts.RangeOptions.Precision)
 		}
-		mongocryptDoc = bsoncore.AppendInt64Element(mongocryptDoc, "sparsity", opts.RangeOptions.Sparsity)
+		if opts.RangeOptions.Sparsity != nil {
+			mongocryptDoc = bsoncore.AppendInt64Element(mongocryptDoc, "sparsity", *opts.RangeOptions.Sparsity)
+		}
+		if opts.RangeOptions.TrimFactor != nil {
+			mongocryptDoc = bsoncore.AppendInt32Element(mongocryptDoc, "trimFactor", *opts.RangeOptions.TrimFactor)
+		}
 
 		mongocryptDoc, err := bsoncore.AppendDocumentEnd(mongocryptDoc, idx)
 		if err != nil {

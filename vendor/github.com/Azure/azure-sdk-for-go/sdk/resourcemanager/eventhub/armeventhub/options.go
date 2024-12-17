@@ -8,6 +8,28 @@
 
 package armeventhub
 
+// ApplicationGroupClientCreateOrUpdateApplicationGroupOptions contains the optional parameters for the ApplicationGroupClient.CreateOrUpdateApplicationGroup
+// method.
+type ApplicationGroupClientCreateOrUpdateApplicationGroupOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationGroupClientDeleteOptions contains the optional parameters for the ApplicationGroupClient.Delete method.
+type ApplicationGroupClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationGroupClientGetOptions contains the optional parameters for the ApplicationGroupClient.Get method.
+type ApplicationGroupClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationGroupClientListByNamespaceOptions contains the optional parameters for the ApplicationGroupClient.NewListByNamespacePager
+// method.
+type ApplicationGroupClientListByNamespaceOptions struct {
+	// placeholder for future optional parameters
+}
+
 // ClustersClientBeginCreateOrUpdateOptions contains the optional parameters for the ClustersClient.BeginCreateOrUpdate method.
 type ClustersClientBeginCreateOrUpdateOptions struct {
 	// Resumes the LRO from the provided token.
@@ -301,6 +323,19 @@ type NamespacesClientRegenerateKeysOptions struct {
 // NamespacesClientUpdateOptions contains the optional parameters for the NamespacesClient.Update method.
 type NamespacesClientUpdateOptions struct {
 	// placeholder for future optional parameters
+}
+
+// NetworkSecurityPerimeterConfigurationClientListOptions contains the optional parameters for the NetworkSecurityPerimeterConfigurationClient.List
+// method.
+type NetworkSecurityPerimeterConfigurationClientListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// NetworkSecurityPerimeterConfigurationsClientBeginCreateOrUpdateOptions contains the optional parameters for the NetworkSecurityPerimeterConfigurationsClient.BeginCreateOrUpdate
+// method.
+type NetworkSecurityPerimeterConfigurationsClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // OperationsClientListOptions contains the optional parameters for the OperationsClient.NewListPager method.

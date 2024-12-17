@@ -19,13 +19,6 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-const (
-	targetQueueLengthDefault           = 5
-	activationTargetQueueLengthDefault = 0
-	defaultScaleOnInFlight             = true
-	defaultScaleOnDelayed              = false
-)
-
 type awsSqsQueueScaler struct {
 	metricType       v2.MetricTargetType
 	metadata         *awsSqsQueueMetadata
@@ -34,16 +27,16 @@ type awsSqsQueueScaler struct {
 }
 
 type awsSqsQueueMetadata struct {
-	targetQueueLength           int64
-	activationTargetQueueLength int64
-	queueURL                    string
+	TargetQueueLength           int64  `keda:"name=queueLength, order=triggerMetadata, default=5"`
+	ActivationTargetQueueLength int64  `keda:"name=activationQueueLength, order=triggerMetadata, default=0"`
+	QueueURL                    string `keda:"name=queueURL;queueURLFromEnv, order=triggerMetadata;resolvedEnv"`
 	queueName                   string
-	awsRegion                   string
-	awsEndpoint                 string
+	AwsRegion                   string `keda:"name=awsRegion, order=triggerMetadata"`
+	AwsEndpoint                 string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
 	awsAuthorization            awsutils.AuthorizationMetadata
 	triggerIndex                int
-	scaleOnInFlight             bool
-	scaleOnDelayed              bool
+	ScaleOnInFlight             bool `keda:"name=scaleOnInFlight, order=triggerMetadata, default=true"`
+	ScaleOnDelayed              bool `keda:"name=scaleOnDelayed, order=triggerMetadata, default=false"`
 	awsSqsQueueMetricNames      []types.QueueAttributeName
 }
 
@@ -56,7 +49,7 @@ func NewAwsSqsQueueScaler(ctx context.Context, config *scalersconfig.ScalerConfi
 
 	logger := InitializeLogger(config, "aws_sqs_queue_scaler")
 
-	meta, err := parseAwsSqsQueueMetadata(config, logger)
+	meta, err := parseAwsSqsQueueMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing SQS queue metadata: %w", err)
 	}
@@ -86,77 +79,26 @@ func (w sqsWrapperClient) GetQueueAttributes(ctx context.Context, params *sqs.Ge
 	return w.sqsClient.GetQueueAttributes(ctx, params, optFns...)
 }
 
-func parseAwsSqsQueueMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*awsSqsQueueMetadata, error) {
-	meta := awsSqsQueueMetadata{}
-	meta.targetQueueLength = defaultTargetQueueLength
-	meta.scaleOnInFlight = defaultScaleOnInFlight
-	meta.scaleOnDelayed = defaultScaleOnDelayed
+func parseAwsSqsQueueMetadata(config *scalersconfig.ScalerConfig) (*awsSqsQueueMetadata, error) {
+	meta := &awsSqsQueueMetadata{}
 
-	if val, ok := config.TriggerMetadata["queueLength"]; ok && val != "" {
-		queueLength, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			meta.targetQueueLength = targetQueueLengthDefault
-			logger.Error(err, "Error parsing SQS queue metadata queueLength, using default %n", targetQueueLengthDefault)
-		} else {
-			meta.targetQueueLength = queueLength
-		}
-	}
-
-	if val, ok := config.TriggerMetadata["activationQueueLength"]; ok && val != "" {
-		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			meta.activationTargetQueueLength = activationTargetQueueLengthDefault
-			logger.Error(err, "Error parsing SQS queue metadata activationQueueLength, using default %n", activationTargetQueueLengthDefault)
-		} else {
-			meta.activationTargetQueueLength = activationQueueLength
-		}
-	}
-
-	if val, ok := config.TriggerMetadata["scaleOnDelayed"]; ok && val != "" {
-		scaleOnDelayed, err := strconv.ParseBool(val)
-		if err != nil {
-			meta.scaleOnDelayed = defaultScaleOnDelayed
-			logger.Error(err, "Error parsing SQS queue metadata scaleOnDelayed, using default %n", defaultScaleOnDelayed)
-		} else {
-			meta.scaleOnDelayed = scaleOnDelayed
-		}
-	}
-
-	if val, ok := config.TriggerMetadata["scaleOnInFlight"]; ok && val != "" {
-		scaleOnInFlight, err := strconv.ParseBool(val)
-		if err != nil {
-			meta.scaleOnInFlight = defaultScaleOnInFlight
-			logger.Error(err, "Error parsing SQS queue metadata scaleOnInFlight, using default %n", defaultScaleOnInFlight)
-		} else {
-			meta.scaleOnInFlight = scaleOnInFlight
-		}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing SQS queue metadata: %w", err)
 	}
 
 	meta.awsSqsQueueMetricNames = []types.QueueAttributeName{}
 	meta.awsSqsQueueMetricNames = append(meta.awsSqsQueueMetricNames, types.QueueAttributeNameApproximateNumberOfMessages)
-	if meta.scaleOnInFlight {
+	if meta.ScaleOnInFlight {
 		meta.awsSqsQueueMetricNames = append(meta.awsSqsQueueMetricNames, types.QueueAttributeNameApproximateNumberOfMessagesNotVisible)
 	}
-	if meta.scaleOnDelayed {
+	if meta.ScaleOnDelayed {
 		meta.awsSqsQueueMetricNames = append(meta.awsSqsQueueMetricNames, types.QueueAttributeNameApproximateNumberOfMessagesDelayed)
 	}
 
-	if val, ok := config.TriggerMetadata["queueURL"]; ok && val != "" {
-		meta.queueURL = val
-	} else if val, ok := config.TriggerMetadata["queueURLFromEnv"]; ok && val != "" {
-		if val, ok := config.ResolvedEnv[val]; ok && val != "" {
-			meta.queueURL = val
-		} else {
-			return nil, fmt.Errorf("queueURLFromEnv `%s` env variable value is empty", config.TriggerMetadata["queueURLFromEnv"])
-		}
-	} else {
-		return nil, fmt.Errorf("no queueURL given")
-	}
-
-	queueURL, err := url.ParseRequestURI(meta.queueURL)
+	queueURL, err := url.ParseRequestURI(meta.QueueURL)
 	if err != nil {
 		// queueURL is not a valid URL, using it as queueName
-		meta.queueName = meta.queueURL
+		meta.queueName = meta.QueueURL
 	} else {
 		queueURLPath := queueURL.Path
 		queueURLPathParts := strings.Split(queueURLPath, "/")
@@ -165,16 +107,6 @@ func parseAwsSqsQueueMetadata(config *scalersconfig.ScalerConfig, logger logr.Lo
 		}
 
 		meta.queueName = queueURLPathParts[2]
-	}
-
-	if val, ok := config.TriggerMetadata["awsRegion"]; ok && val != "" {
-		meta.awsRegion = val
-	} else {
-		return nil, fmt.Errorf("no awsRegion given")
-	}
-
-	if val, ok := config.TriggerMetadata["awsEndpoint"]; ok {
-		meta.awsEndpoint = val
 	}
 
 	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
@@ -186,17 +118,17 @@ func parseAwsSqsQueueMetadata(config *scalersconfig.ScalerConfig, logger logr.Lo
 
 	meta.triggerIndex = config.TriggerIndex
 
-	return &meta, nil
+	return meta, nil
 }
 
 func createSqsClient(ctx context.Context, metadata *awsSqsQueueMetadata) (*sqs.Client, error) {
-	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
 	}
 	return sqs.NewFromConfig(*cfg, func(options *sqs.Options) {
-		if metadata.awsEndpoint != "" {
-			options.BaseEndpoint = aws.String(metadata.awsEndpoint)
+		if metadata.AwsEndpoint != "" {
+			options.BaseEndpoint = aws.String(metadata.AwsEndpoint)
 		}
 	}), nil
 }
@@ -211,7 +143,7 @@ func (s *awsSqsQueueScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("aws-sqs-%s", s.metadata.queueName))),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetQueueLength),
+		Target: GetMetricTarget(s.metricType, s.metadata.TargetQueueLength),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
@@ -228,14 +160,14 @@ func (s *awsSqsQueueScaler) GetMetricsAndActivity(ctx context.Context, metricNam
 
 	metric := GenerateMetricInMili(metricName, float64(queuelen))
 
-	return []external_metrics.ExternalMetricValue{metric}, queuelen > s.metadata.activationTargetQueueLength, nil
+	return []external_metrics.ExternalMetricValue{metric}, queuelen > s.metadata.ActivationTargetQueueLength, nil
 }
 
 // Get SQS Queue Length
 func (s *awsSqsQueueScaler) getAwsSqsQueueLength(ctx context.Context) (int64, error) {
 	input := &sqs.GetQueueAttributesInput{
 		AttributeNames: s.metadata.awsSqsQueueMetricNames,
-		QueueUrl:       aws.String(s.metadata.queueURL),
+		QueueUrl:       aws.String(s.metadata.QueueURL),
 	}
 
 	output, err := s.sqsWrapperClient.GetQueueAttributes(ctx, input)
@@ -243,12 +175,23 @@ func (s *awsSqsQueueScaler) getAwsSqsQueueLength(ctx context.Context) (int64, er
 		return -1, err
 	}
 
+	return s.processQueueLengthFromSqsQueueAttributesOutput(output)
+}
+
+func (s *awsSqsQueueScaler) processQueueLengthFromSqsQueueAttributesOutput(output *sqs.GetQueueAttributesOutput) (int64, error) {
 	var approximateNumberOfMessages int64
+
 	for _, awsSqsQueueMetric := range s.metadata.awsSqsQueueMetricNames {
-		metricValue, err := strconv.ParseInt(output.Attributes[string(awsSqsQueueMetric)], 10, 32)
+		metricValueString, exists := output.Attributes[string(awsSqsQueueMetric)]
+		if !exists {
+			return -1, fmt.Errorf("metric %s not found in SQS queue attributes", awsSqsQueueMetric)
+		}
+
+		metricValue, err := strconv.ParseInt(metricValueString, 10, 64)
 		if err != nil {
 			return -1, err
 		}
+
 		approximateNumberOfMessages += metricValue
 	}
 

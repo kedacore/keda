@@ -73,6 +73,7 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 	if ash.secretManager.Region != "" {
 		awsRegion = ash.secretManager.Region
 	}
+	ash.awsMetadata.AwsRegion = awsRegion
 	podIdentity := ash.secretManager.PodIdentity
 	if podIdentity == nil {
 		podIdentity = &kedav1alpha1.AuthPodIdentity{}
@@ -86,6 +87,7 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 			return fmt.Errorf("AccessKeyID and AccessSecretKey are expected when not using a pod identity provider")
 		}
 	case kedav1alpha1.PodIdentityProviderAws:
+		ash.awsMetadata.UsingPodIdentity = true
 		if ash.secretManager.PodIdentity.IsWorkloadIdentityOwner() {
 			awsRoleArn, err := resolveServiceAccountAnnotation(ctx, client, podSpec.ServiceAccountName, triggerNamespace, kedav1alpha1.PodIdentityAnnotationEKS, true)
 			if err != nil {
@@ -99,7 +101,7 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 		return fmt.Errorf("pod identity provider %s not supported", podIdentity.Provider)
 	}
 
-	config, err := awsutils.GetAwsConfig(ctx, awsRegion, ash.awsMetadata)
+	config, err := awsutils.GetAwsConfig(ctx, ash.awsMetadata)
 	if err != nil {
 		logger.Error(err, "Error getting credentials")
 		return err
