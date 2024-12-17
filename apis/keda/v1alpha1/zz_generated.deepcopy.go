@@ -925,6 +925,11 @@ func (in *ScaledObjectSpec) DeepCopyInto(out *ScaledObjectSpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.InitialCooldownPeriod != nil {
+		in, out := &in.InitialCooldownPeriod, &out.InitialCooldownPeriod
+		*out = new(int32)
+		**out = **in
+	}
 	if in.CooldownPeriod != nil {
 		in, out := &in.CooldownPeriod, &out.CooldownPeriod
 		*out = new(int32)
