@@ -31,10 +31,6 @@ on:
         required: true
         type: boolean
 
-permissions:
-  contents: read
-  security-events: write
-
 jobs:
   trivy-scan:
     name: Trivy - ${{ inputs.runs-on }} - ${{ inputs.scan-type }} ${{ inputs.image-ref }}

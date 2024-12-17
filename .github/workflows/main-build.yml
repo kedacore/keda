@@ -92,6 +92,9 @@ jobs:
 
   trivy-scan:
     needs: build
+    permissions:
+      contents: read
+      security-events: write
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ubuntu-latest
@@ -102,6 +105,9 @@ jobs:
 
   trivy-scan-metrics-server:
     needs: build
+    permissions:
+      contents: read
+      security-events: write
     strategy:
       matrix:
         runner: [ARM64, ubuntu-latest]
@@ -116,6 +122,9 @@ jobs:
 
   trivy-scan-keda:
     needs: build
+    permissions:
+      contents: read
+      security-events: write
     strategy:
       matrix:
         runner: [ARM64, ubuntu-latest]
