@@ -13,9 +13,6 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: read
-
 jobs:
   smoke-tests:
     name: Validate k8s-${{ inputs.kubernetesVersion }}
