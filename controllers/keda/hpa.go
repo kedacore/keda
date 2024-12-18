@@ -102,6 +102,19 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 	minReplicas := scaledObject.GetHPAMinReplicas()
 	maxReplicas := scaledObject.GetHPAMaxReplicas()
 
+	if *minReplicas == 0 {
+		minReplicas = kedav1alpha1.GetDefaultHPAMinReplicas()
+	}
+
+	if maxReplicas == 0 {
+		maxReplicas = kedav1alpha1.GetDefaultHPAMaxReplicas()
+	}
+
+	if *minReplicas < 0 || maxReplicas < 0 {
+		err := fmt.Errorf("MinReplicaCount=%d and MaxReplicaCount=%d must not be negative", minReplicas, maxReplicas)
+		return nil, err
+	}
+
 	pausedCount, err := executor.GetPausedReplicaCount(scaledObject)
 	if err != nil {
 		return nil, err
