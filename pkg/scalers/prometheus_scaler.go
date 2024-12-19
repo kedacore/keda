@@ -47,7 +47,7 @@ type prometheusMetadata struct {
 	ActivationThreshold float64                `keda:"name=activationThreshold, order=triggerMetadata, optional"`
 	Namespace           string                 `keda:"name=namespace,           order=triggerMetadata, optional"`
 	CustomHeaders       map[string]string      `keda:"name=customHeaders,       order=triggerMetadata, optional"`
-	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    order=triggerMetadata, optional, default=true"`
+	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    order=triggerMetadata, default=true"`
 	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata, optional"`
 }
 
