@@ -393,7 +393,7 @@ func installDatadog(t *testing.T) {
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set datadog.apiKey=%s --set datadog.appKey=%s --set datadog.site=%s --set datadog.clusterName=%s --set datadog.kubelet.tlsVerify=false --set clusterAgent.metricsProvider.enabled=true --set clusterAgent.metricsProvider.registerAPIService=false --set clusterAgent.metricsProvider.useDatadogMetrics=true --namespace %s --wait %s datadog/datadog`,
+	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set datadog.apiKey=%s --set datadog.appKey=%s --set datadog.site=%s --set datadog.clusterName=%s --set datadog.kubelet.tlsVerify=false --set clusterAgent.metricsProvider.enabled=true --set clusterAgent.metricsProvider.registerAPIService=false --set clusterAgent.metricsProvider.useDatadogMetrics=true --set clusterAgent.envDict.DD_EXTERNAL_METRICS_PROVIDER_ENABLE_DATADOGMETRIC_AUTOGEN=false --namespace %s --wait %s datadog/datadog`,
 		datadogAPIKey,
 		datadogAppKey,
 		datadogSite,
