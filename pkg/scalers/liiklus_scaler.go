@@ -162,13 +162,6 @@ func parseLiiklusMetadata(config *scalersconfig.ScalerConfig) (*liiklusMetadata,
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing liiklus metadata: %w", err)
 	}
-	switch {
-	case meta.Topic == "":
-		return nil, ErrLiiklusNoTopic
-	case meta.Address == "":
-		return nil, ErrLiiklusNoAddress
-	case meta.Group == "":
-		return nil, ErrLiiklusNoGroup
-	}
+	meta.triggerIndex = config.TriggerIndex
 	return meta, nil
 }

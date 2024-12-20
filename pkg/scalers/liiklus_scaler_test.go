@@ -228,11 +228,10 @@ func TestLiiklusScalerGetMetricsBehavior(t *testing.T) {
 func TestLiiklusGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range liiklusMetricIdentifiers {
 		t.Run(testData.name, func(t *testing.T) {
-			meta, err := parseLiiklusMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata})
+			meta, err := parseLiiklusMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
 			if err != nil {
 				t.Fatal("Could not parse metadata:", err)
 			}
-			meta.triggerIndex = testData.triggerIndex
 			mockLiiklusScaler := liiklusScaler{"", meta, nil, nil, logr.Discard()}
 			metricSpec := mockLiiklusScaler.GetMetricSpecForScaling(context.Background())
 			if metricSpec[0].External.Metric.Name != testData.name {
