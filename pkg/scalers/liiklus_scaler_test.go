@@ -2,8 +2,7 @@ package scalers
 
 import (
 	"context"
-	"errors"
-	"strconv"
+	"fmt"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -15,12 +14,10 @@ import (
 )
 
 type parseLiiklusMetadataTestData struct {
-	metadata       map[string]string
-	err            error
-	liiklusAddress string
-	group          string
-	topic          string
-	threshold      int64
+	name             string
+	metadata         map[string]string
+	ExpectedErr      error
+	ExpectedMetatada *liiklusMetadata
 }
 
 type liiklusMetricIdentifier struct {
@@ -30,12 +27,64 @@ type liiklusMetricIdentifier struct {
 }
 
 var parseLiiklusMetadataTestDataset = []parseLiiklusMetadataTestData{
-	{map[string]string{}, ErrLiiklusNoTopic, "", "", "", 0},
-	{map[string]string{"topic": "foo"}, ErrLiiklusNoAddress, "", "", "", 0},
-	{map[string]string{"topic": "foo", "address": "bar:6565"}, ErrLiiklusNoGroup, "", "", "", 0},
-	{map[string]string{"topic": "foo", "address": "bar:6565", "group": "mygroup"}, nil, "bar:6565", "mygroup", "foo", 10},
-	{map[string]string{"topic": "foo", "address": "bar:6565", "group": "mygroup", "activationLagThreshold": "aa"}, strconv.ErrSyntax, "bar:6565", "mygroup", "foo", 10},
-	{map[string]string{"topic": "foo", "address": "bar:6565", "group": "mygroup", "lagThreshold": "15"}, nil, "bar:6565", "mygroup", "foo", 15},
+	{
+		name:     "Empty metadata",
+		metadata: map[string]string{},
+		ExpectedErr: fmt.Errorf("error parsing liiklus metadata: " +
+			"missing required parameter \"address\" in [triggerMetadata]\n" +
+			"missing required parameter \"topic\" in [triggerMetadata]\n" +
+			"missing required parameter \"group\" in [triggerMetadata]"),
+		ExpectedMetatada: nil,
+	},
+	{
+		name:     "Empty address",
+		metadata: map[string]string{"topic": "foo"},
+		ExpectedErr: fmt.Errorf("error parsing liiklus metadata: " +
+			"missing required parameter \"address\" in [triggerMetadata]\n" +
+			"missing required parameter \"group\" in [triggerMetadata]"),
+		ExpectedMetatada: nil,
+	},
+	{
+		name:     "Empty group",
+		metadata: map[string]string{"topic": "foo", "address": "using-mock"},
+		ExpectedErr: fmt.Errorf("error parsing liiklus metadata: " +
+			"missing required parameter \"group\" in [triggerMetadata]"),
+		ExpectedMetatada: nil,
+	},
+	{
+		name:        "Valid",
+		metadata:    map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup"},
+		ExpectedErr: nil,
+		ExpectedMetatada: &liiklusMetadata{
+			LagThreshold:           defaultLiiklusLagThreshold,
+			ActivationLagThreshold: defaultLiiklusActivationLagThreshold,
+			Address:                "using-mock",
+			Topic:                  "foo",
+			Group:                  "mygroup",
+			GroupVersion:           0,
+			triggerIndex:           0,
+		},
+	},
+	{
+		name:             "Invalid activationLagThreshold",
+		metadata:         map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup", "activationLagThreshold": "invalid"},
+		ExpectedErr:      fmt.Errorf("error parsing liiklus metadata: unable to set param \"activationLagThreshold\" value \"invalid\": unable to unmarshal to field type int64: invalid character 'i' looking for beginning of value"),
+		ExpectedMetatada: nil,
+	},
+	{
+		name:        "Custom lagThreshold",
+		metadata:    map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup", "lagThreshold": "20"},
+		ExpectedErr: nil,
+		ExpectedMetatada: &liiklusMetadata{
+			LagThreshold:           20,
+			ActivationLagThreshold: defaultLiiklusActivationLagThreshold,
+			Address:                "using-mock",
+			Topic:                  "foo",
+			Group:                  "mygroup",
+			GroupVersion:           0,
+			triggerIndex:           0,
+		},
+	},
 }
 
 var liiklusMetricIdentifiers = []liiklusMetricIdentifier{
@@ -45,38 +94,44 @@ var liiklusMetricIdentifiers = []liiklusMetricIdentifier{
 
 func TestLiiklusParseMetadata(t *testing.T) {
 	for _, testData := range parseLiiklusMetadataTestDataset {
-		meta, err := parseLiiklusMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata})
-		if err != nil && testData.err == nil {
-			t.Error("Expected success but got error", err)
-			continue
-		}
-		if testData.err != nil && err == nil {
-			t.Error("Expected error but got success")
-			continue
-		}
-		if testData.err != nil && err != nil && !errors.Is(err, testData.err) {
-			t.Errorf("Expected error %v but got %v", testData.err, err)
-			continue
-		}
-		if err != nil {
-			continue
-		}
-		if testData.liiklusAddress != meta.address {
-			t.Errorf("Expected address %q but got %q\n", testData.liiklusAddress, meta.address)
-			continue
-		}
-		if meta.group != testData.group {
-			t.Errorf("Expected group %q but got %q\n", testData.group, meta.group)
-			continue
-		}
-		if meta.topic != testData.topic {
-			t.Errorf("Expected topic %q but got %q\n", testData.topic, meta.topic)
-			continue
-		}
-		if meta.lagThreshold != testData.threshold {
-			t.Errorf("Expected threshold %d but got %d\n", testData.threshold, meta.lagThreshold)
-			continue
-		}
+		t.Run(testData.name, func(t *testing.T) {
+			meta, err := parseLiiklusMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata})
+
+			// error cases
+			if testData.ExpectedErr != nil {
+				if err == nil {
+					t.Errorf("Expected error %v but got success", testData.ExpectedErr)
+				} else if err.Error() != testData.ExpectedErr.Error() {
+					t.Errorf("Expected error %v but got %v", testData.ExpectedErr, err)
+				}
+				return // Skip the rest of the checks for error cases
+			}
+
+			// success cases
+			if err != nil {
+				t.Errorf("Expected success but got error %v", err)
+			}
+			if testData.ExpectedMetatada != nil {
+				if testData.ExpectedMetatada.Address != meta.Address {
+					t.Errorf("Expected address %q but got %q", testData.ExpectedMetatada.Address, meta.Address)
+				}
+				if meta.Group != testData.ExpectedMetatada.Group {
+					t.Errorf("Expected group %q but got %q", testData.ExpectedMetatada.Group, meta.Group)
+				}
+				if meta.Topic != testData.ExpectedMetatada.Topic {
+					t.Errorf("Expected topic %q but got %q", testData.ExpectedMetatada.Topic, meta.Topic)
+				}
+				if meta.LagThreshold != testData.ExpectedMetatada.LagThreshold {
+					t.Errorf("Expected threshold %d but got %d", testData.ExpectedMetatada.LagThreshold, meta.LagThreshold)
+				}
+				if meta.ActivationLagThreshold != testData.ExpectedMetatada.ActivationLagThreshold {
+					t.Errorf("Expected activation threshold %d but got %d", testData.ExpectedMetatada.ActivationLagThreshold, meta.ActivationLagThreshold)
+				}
+				if meta.GroupVersion != testData.ExpectedMetatada.GroupVersion {
+					t.Errorf("Expected group version %d but got %d", testData.ExpectedMetatada.GroupVersion, meta.GroupVersion)
+				}
+			}
+		})
 	}
 }
 
@@ -172,16 +227,17 @@ func TestLiiklusScalerGetMetricsBehavior(t *testing.T) {
 
 func TestLiiklusGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range liiklusMetricIdentifiers {
-		meta, err := parseLiiklusMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
-		if err != nil {
-			t.Fatal("Could not parse metadata:", err)
-		}
-		mockLiiklusScaler := liiklusScaler{"", meta, nil, nil, logr.Discard()}
-
-		metricSpec := mockLiiklusScaler.GetMetricSpecForScaling(context.Background())
-		metricName := metricSpec[0].External.Metric.Name
-		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName)
-		}
+		t.Run(testData.name, func(t *testing.T) {
+			meta, err := parseLiiklusMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata})
+			if err != nil {
+				t.Fatal("Could not parse metadata:", err)
+			}
+			meta.triggerIndex = testData.triggerIndex
+			mockLiiklusScaler := liiklusScaler{"", meta, nil, nil, logr.Discard()}
+			metricSpec := mockLiiklusScaler.GetMetricSpecForScaling(context.Background())
+			if metricSpec[0].External.Metric.Name != testData.name {
+				t.Errorf("Wrong External metric source name: %s", metricSpec[0].External.Metric.Name)
+			}
+		})
 	}
 }
