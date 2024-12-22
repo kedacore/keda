@@ -15,7 +15,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## History
 
-- [Unreleased](#unreleased)
+- [v2.16.1](#v2161)
 - [v2.16.0](#v2160)
 - [v2.15.1](#v2151)
 - [v2.15.0](#v2150)
@@ -54,21 +54,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
 
-## Unreleased
-
-### New
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-#### Experimental
-
-Here is an overview of all new **experimental** features:
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Improvements
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+## v2.16.1
 
 ### Fixes
 
@@ -76,18 +62,6 @@ Here is an overview of all new **experimental** features:
 - **General**: Paused ScaledObject count is reported correctly after operator restart ([#6321](https://github.com/kedacore/keda/issues/6321))
 - **General**: ScaledJobs ready status set to true when recoverred problem ([#6329](https://github.com/kedacore/keda/pull/6329))
 - **Selenium Grid Scaler**: Exposes sum of pending and ongoing sessions to KDEA ([#6368](https://github.com/kedacore/keda/pull/6368))
-
-### Deprecations
-
-You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
-
-New deprecation(s):
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Breaking Changes
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Other
 
