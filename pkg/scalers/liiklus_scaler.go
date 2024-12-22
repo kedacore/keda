@@ -36,14 +36,7 @@ type liiklusMetadata struct {
 }
 
 const (
-	defaultLiiklusLagThreshold           int64 = 10
-	defaultLiiklusActivationLagThreshold int64 = 0
-)
-
-const (
-	liiklusLagThresholdMetricName           = "lagThreshold"
-	liiklusActivationLagThresholdMetricName = "activationLagThreshold"
-	liiklusMetricType                       = "External"
+	liiklusMetricType = "External"
 )
 
 var (

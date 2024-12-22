@@ -56,8 +56,8 @@ var parseLiiklusMetadataTestDataset = []parseLiiklusMetadataTestData{
 		metadata:    map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup"},
 		ExpectedErr: nil,
 		ExpectedMetatada: &liiklusMetadata{
-			LagThreshold:           defaultLiiklusLagThreshold,
-			ActivationLagThreshold: defaultLiiklusActivationLagThreshold,
+			LagThreshold:           10,
+			ActivationLagThreshold: 0,
 			Address:                "using-mock",
 			Topic:                  "foo",
 			Group:                  "mygroup",
@@ -77,7 +77,7 @@ var parseLiiklusMetadataTestDataset = []parseLiiklusMetadataTestData{
 		ExpectedErr: nil,
 		ExpectedMetatada: &liiklusMetadata{
 			LagThreshold:           20,
-			ActivationLagThreshold: defaultLiiklusActivationLagThreshold,
+			ActivationLagThreshold: 0,
 			Address:                "using-mock",
 			Topic:                  "foo",
 			Group:                  "mygroup",
