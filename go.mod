@@ -163,11 +163,11 @@ replace (
 	// https://avd.aquasec.com/nvd/cve-2024-45337
 	golang.org/x/crypto => golang.org/x/crypto v0.31.0
 
-	// Needed for CVE-2023-39325 https://nvd.nist.gov/vuln/detail/CVE-2023-39325
-	golang.org/x/net => golang.org/x/net v0.30.0
+	// Needed for CVE-2024-45338 https://avd.aquasec.com/nvd/cve-2024-45338
+	golang.org/x/net => golang.org/x/net v0.33.0
 
 	// https://nvd.nist.gov/vuln/detail/CVE-2022-32149
-	golang.org/x/text => golang.org/x/text v0.19.0
+	golang.org/x/text => golang.org/x/text v0.21.0
 
 	// https://github.com/kedacore/keda/issues/5124
 	google.golang.org/grpc => google.golang.org/grpc v1.67.1
@@ -258,7 +258,6 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/cel-go v0.20.1 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
-	github.com/google/go-github/v62 v62.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad // indirect
