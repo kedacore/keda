@@ -21,9 +21,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
-
-	// Local imports
-	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 // Load environment variables from .env file
@@ -286,6 +283,29 @@ spec:
 )
 
 func TestAwsSecretManager(t *testing.T) {
+	// Run the test twice with two different flag values
+	flags := []bool{true, false}
+
+	for _, useJSONSecretFormat := range flags {
+		// Define a subtest for each flag value
+		t.Run(getTestNameForFlag(useJSONSecretFormat), func(t *testing.T) {
+			err := AwsSecretManager(t*testing.T, useJSONSecretFormat)
+			if err != nil {
+				t.Errorf("AwsSecretManager(%v) failed: %v", flag, err)
+			}
+		})
+	}
+}
+
+// Helper to get dynamic test names based on the flag
+func getTestNameForFlag(flag bool) string {
+	if flag {
+		return "WithFlagTrue"
+	}
+	return "WithFlagFalse"
+}
+
+func AwsSecretManager(t *testing.T) {
 	var useJSONSecretFormat = false
 	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
 	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
@@ -327,8 +347,8 @@ func TestAwsSecretManager(t *testing.T) {
 	assert.NoErrorf(t, err, "cannot delete AWS Secret Manager secret - %s", err)
 }
 
-func TestAwsSecretManagerJSONFormat(t *testing.T) {
-	var useJSONSecretFormat = true
+// before I remove this I want to make sure I refactored code as expected.
+func REMOVETestAwsSecretManagerJSONFormat(t *testing.T, useJSONSecretFormat bool) {
 	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
 	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
 
