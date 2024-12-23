@@ -18,16 +18,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/joho/godotenv"
+	_ "github.com/kedacore/keda/tests/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
-
-	 // Local imports
-	. "github.com/kedacore/keda/v2/tests/helper"
-	
-	
-
-
 )
 
 // Load environment variables from .env file
@@ -78,6 +72,7 @@ type templateData struct {
 	SecretManagerSecretName          string
 	AwsAccessKeyID                   string
 	AwsSecretAccessKey               string
+	useJSONSecretFormat              bool
 }
 
 const (
@@ -295,6 +290,7 @@ func TestAwsSecretManager(t *testing.T) {
 
 	for _, useJSONSecretFormat := range flags {
 		// Define a subtest for each flag value
+
 		t.Run(getTestNameForFlag(useJSONSecretFormat), func(t *testing.T) {
 			err := AwsSecretManager(t*testing.T, useJSONSecretFormat)
 			if err != nil {
@@ -312,7 +308,7 @@ func getTestNameForFlag(flag bool) string {
 	return "WithFlagFalse"
 }
 
-func AwsSecretManager(t *testing.T) {
+func AwsSecretManager(t *testing.Ti, useJSONSecretFormat bool) {
 	var useJSONSecretFormat = false
 	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
 	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
