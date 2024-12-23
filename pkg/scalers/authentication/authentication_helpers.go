@@ -13,9 +13,16 @@ import (
 	libs "github.com/dysnix/predictkube-libs/external/configs"
 	"github.com/dysnix/predictkube-libs/external/http_transport"
 	pConfig "github.com/prometheus/common/config"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
+
+type AuthClientSet struct {
+	corev1client.CoreV1Interface
+	corev1listers.SecretLister
+}
 
 const (
 	AuthModesKey = "authModes"
