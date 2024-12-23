@@ -18,14 +18,19 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/joho/godotenv"
-	_ "github.com/kedacore/keda/v2/tests/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
+
+	//local
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 // Load environment variables from .env file
 var _ = godotenv.Load("../../.env")
+
+// makes sure helper is not removed
+var _ = GetRandomNumber()
 
 const (
 	testName = "aws-secret-manager-test"
@@ -308,8 +313,8 @@ func getTestNameForFlag(flag bool) string {
 	return "WithFlagFalse"
 }
 
-func AwsSecretManager(t *testing.Ti, useJSONSecretFormat bool) {
-	var useJSONSecretFormat = false
+func AwsSecretManager(t *testing.T, useJSONSecretFormat bool) {
+
 	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
 	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
 
@@ -410,6 +415,7 @@ var data = templateData{
 	AwsSecretAccessKey:               base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
 	AwsRegion:                        awsRegion,
 	AwsCredentialsSecretName:         awsCredentialsSecretName,
+	useJSONSecretFormat:              false,
 }
 
 func getPostgreSQLTemplateData() (templateData, []Template) {
