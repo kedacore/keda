@@ -139,9 +139,11 @@ spec:
       - name: selenium-chrome-node
         image: selenium/node-chrome:nightly
         imagePullPolicy: IfNotPresent
-		env:
-		- name: SE_NODE_BROWSER_VERSION
-		  value: ''
+        env:
+        - name: SE_NODE_BROWSER_VERSION
+          value: ''
+        - name: SE_NODE_PLATFORM_NAME
+          value: ''
         envFrom:
         - configMapRef:
             name: selenium-event-bus-config
@@ -203,6 +205,7 @@ spec:
     metadata:
       url: '{{.HubGraphURL}}'
       browserName: 'chrome'
+      platformName: ''
       activationThreshold: '1'
     authenticationRef:
       name: '{{.TriggerAuthName}}'
@@ -260,9 +263,11 @@ spec:
       - name: selenium-firefox-node
         image: selenium/node-firefox:nightly
         imagePullPolicy: IfNotPresent
-		env:
-		- name: SE_NODE_BROWSER_VERSION
-		  value: ''
+        env:
+        - name: SE_NODE_BROWSER_VERSION
+          value: ''
+        - name: SE_NODE_PLATFORM_NAME
+          value: ''
         envFrom:
         - configMapRef:
             name: selenium-event-bus-config
@@ -296,6 +301,7 @@ spec:
       metadata:
         url: '{{.HubGraphURL}}'
         browserName: 'firefox'
+        platformName: ''
         activationThreshold: '1'
       authenticationRef:
         name: '{{.TriggerAuthName}}'
@@ -354,9 +360,11 @@ spec:
       - name: selenium-edge-node
         image: selenium/node-edge:nightly
         imagePullPolicy: IfNotPresent
-		env:
-		- name: SE_NODE_BROWSER_VERSION
-		  value: ''
+        env:
+        - name: SE_NODE_BROWSER_VERSION
+          value: ''
+        - name: SE_NODE_PLATFORM_NAME
+          value: ''
         envFrom:
         - configMapRef:
             name: selenium-event-bus-config
@@ -391,6 +399,7 @@ spec:
       url: '{{.HubGraphURL}}'
       browserName: 'MicrosoftEdge'
       sessionBrowserName: 'msedge'
+      platformName: ''
       activationThreshold: '1'
     authenticationRef:
       name: '{{.TriggerAuthName}}'
