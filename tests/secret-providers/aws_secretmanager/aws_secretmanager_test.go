@@ -297,9 +297,9 @@ func TestAwsSecretManager(t *testing.T) {
 		// Define a subtest for each flag value
 
 		t.Run(getTestNameForFlag(useJSONSecretFormat), func(t *testing.T) {
-			err := AwsSecretManager(t, useJSONSecretFormat)
+			err := AwsSecretManager(t*testing.T, useJSONSecretFormat)
 			if err != nil {
-				t.Errorf("AwsSecretManager(%v) failed: %v", flag, err)
+				t.Errorf("AwsSecretManager(%v) failed: %v", getTestNameForFlag(useJSONSecretFormat), err)
 			}
 		})
 	}
@@ -313,7 +313,7 @@ func getTestNameForFlag(flag bool) string {
 	return "WithFlagFalse"
 }
 
-func AwsSecretManager(t *testing.T, useJSONSecretFormat bool) {
+func AwsSecretManager(t *testing.T, useJSONSecretFormat bool) error {
 
 	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
 	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
