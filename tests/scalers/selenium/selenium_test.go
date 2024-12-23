@@ -137,8 +137,11 @@ spec:
     spec:
       containers:
       - name: selenium-chrome-node
-        image: selenium/node-chrome:latest
+        image: selenium/node-chrome:nightly
         imagePullPolicy: IfNotPresent
+		env:
+		- name: SE_NODE_BROWSER_VERSION
+		  value: ''
         envFrom:
         - configMapRef:
             name: selenium-event-bus-config
@@ -255,8 +258,11 @@ spec:
     spec:
       containers:
       - name: selenium-firefox-node
-        image: selenium/node-firefox:latest
+        image: selenium/node-firefox:nightly
         imagePullPolicy: IfNotPresent
+		env:
+		- name: SE_NODE_BROWSER_VERSION
+		  value: ''
         envFrom:
         - configMapRef:
             name: selenium-event-bus-config
@@ -346,8 +352,11 @@ spec:
     spec:
       containers:
       - name: selenium-edge-node
-        image: selenium/node-edge:latest
+        image: selenium/node-edge:nightly
         imagePullPolicy: IfNotPresent
+		env:
+		- name: SE_NODE_BROWSER_VERSION
+		  value: ''
         envFrom:
         - configMapRef:
             name: selenium-event-bus-config
