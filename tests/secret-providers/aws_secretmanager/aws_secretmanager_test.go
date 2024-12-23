@@ -297,10 +297,7 @@ func TestAwsSecretManager(t *testing.T) {
 		// Define a subtest for each flag value
 
 		t.Run(getTestNameForFlag(useJSONSecretFormat), func(t *testing.T) {
-			err := AwsSecretManager(t*testing.T, useJSONSecretFormat)
-			if err != nil {
-				t.Errorf("AwsSecretManager(%v) failed: %v", flag, err)
-			}
+			AwsSecretManager(t*testing.T, useJSONSecretFormat)
 		})
 	}
 }
