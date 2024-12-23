@@ -49,16 +49,16 @@ type redisStreamsScaler struct {
 type redisStreamsMetadata struct {
 	scaleFactor               scaleFactor
 	triggerIndex              int
-	TargetPendingEntriesCount int64               `keda:"name=pendingEntriesCount,       order=triggerMetadata, optional, default=5"`
-	TargetStreamLength        int64               `keda:"name=streamLength,       order=triggerMetadata, optional, default=5"`
-	TargetLag                 int64               `keda:"name=lagCount,       order=triggerMetadata, optional"`
-	StreamName                string              `keda:"name=stream,       order=triggerMetadata"`
+	TargetPendingEntriesCount int64               `keda:"name=pendingEntriesCount, order=triggerMetadata, default=5"`
+	TargetStreamLength        int64               `keda:"name=streamLength,        order=triggerMetadata, default=5"`
+	TargetLag                 int64               `keda:"name=lagCount,            order=triggerMetadata, optional"`
+	StreamName                string              `keda:"name=stream,              order=triggerMetadata"`
 	ConsumerGroupName         string              `keda:"name=consumerGroup,       order=triggerMetadata, optional"`
 	DatabaseIndex             int                 `keda:"name=databaseIndex,       order=triggerMetadata, optional"`
 	ConnectionInfo            redisConnectionInfo `keda:"optional"`
-	ActivationLagCount        int64               `keda:"name=activationLagCount,       order=triggerMetadata, optional"`
-	MetadataEnableTLS         string              `keda:"name=enableTLS,       order=triggerMetadata, optional"`
-	AuthParamEnableTLS        string              `keda:"name=tls,       order=authParams, optional"`
+	ActivationLagCount        int64               `keda:"name=activationLagCount,  order=triggerMetadata, optional"`
+	MetadataEnableTLS         string              `keda:"name=enableTLS,           order=triggerMetadata, optional"`
+	AuthParamEnableTLS        string              `keda:"name=tls,                 order=authParams, optional"`
 }
 
 func (r *redisStreamsMetadata) Validate() error {
