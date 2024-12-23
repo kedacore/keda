@@ -297,7 +297,10 @@ func TestAwsSecretManager(t *testing.T) {
 		// Define a subtest for each flag value
 
 		t.Run(getTestNameForFlag(useJSONSecretFormat), func(t *testing.T) {
-			AwsSecretManager(t*testing.T, useJSONSecretFormat)
+			err := AwsSecretManager(t*testing.T, useJSONSecretFormat)
+			if err != nil {
+				t.Errorf("AwsSecretManager(%v) failed: %v", flag, err)
+			}
 		})
 	}
 }
@@ -350,6 +353,7 @@ func AwsSecretManager(t *testing.T, useJSONSecretFormat bool) {
 	// Delete the secret in AWS
 	err = deleteAWSSecret(t)
 	assert.NoErrorf(t, err, "cannot delete AWS Secret Manager secret - %s", err)
+	return nil
 }
 
 // before I remove this I want to make sure I refactored code as expected.
