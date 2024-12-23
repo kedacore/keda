@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
-	//local
+	// local
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
@@ -314,7 +314,6 @@ func getTestNameForFlag(flag bool) string {
 }
 
 func AwsSecretManager(t *testing.T, useJSONSecretFormat bool) error {
-
 	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
 	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
 
