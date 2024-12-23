@@ -80,6 +80,8 @@ func GetAwsAuthorization(uniqueKey string, podIdentity kedav1alpha1.AuthPodIdent
 
 	if val, ok := authParams["awsRegion"]; ok && val != "" {
 		meta.AwsRegion = val
+	} else if val, ok := triggerMetadata["awsRegion"]; ok && val != "" {
+		meta.AwsRegion = val
 	}
 
 	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAws {
