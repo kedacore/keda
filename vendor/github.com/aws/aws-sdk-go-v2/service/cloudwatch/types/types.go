@@ -296,6 +296,51 @@ type DimensionFilter struct {
 	noSmithyDocumentSerde
 }
 
+// An entity associated with metrics, to allow for finding related telemetry. An
+// entity is typically a resource or service within your system. For example,
+// metrics from an Amazon EC2 instance could be associated with that instance as
+// the entity. Similarly, metrics from a service that you own could be associated
+// with that service as the entity.
+type Entity struct {
+
+	// Additional attributes of the entity that are not used to specify the identity
+	// of the entity. A list of key-value pairs.
+	//
+	// For details about how to use the attributes, see [How to add related information to telemetry] in the CloudWatch User Guide.
+	//
+	// [How to add related information to telemetry]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/adding-your-own-related-telemetry.html
+	Attributes map[string]string
+
+	// The attributes of the entity which identify the specific entity, as a list of
+	// key-value pairs. Entities with the same KeyAttributes are considered to be the
+	// same entity. For an entity to be valid, the KeyAttributes must exist and be
+	// formatted correctly.
+	//
+	// There are five allowed attributes (key names): Type , ResourceType , Identifier
+	// , Name , and Environment .
+	//
+	// For details about how to use the key attributes to specify an entity, see [How to add related information to telemetry] in
+	// the CloudWatch User Guide.
+	//
+	// [How to add related information to telemetry]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/adding-your-own-related-telemetry.html
+	KeyAttributes map[string]string
+
+	noSmithyDocumentSerde
+}
+
+// A set of metrics that are associated with an entity, such as a specific service
+// or resource. Contains the entity and the list of metric data associated with it.
+type EntityMetricData struct {
+
+	// The entity associated with the metrics.
+	Entity *Entity
+
+	// The metric data.
+	MetricData []MetricDatum
+
+	noSmithyDocumentSerde
+}
+
 // This structure contains the definition for a Contributor Insights rule. For
 // more information about this rule, see[Using Constributor Insights to analyze high-cardinality data] in the Amazon CloudWatch User Guide.
 //
@@ -638,10 +683,8 @@ type MetricAlarm struct {
 
 	// An array of MetricDataQuery structures, used in an alarm based on a metric math
 	// expression. Each structure either retrieves a metric or performs a math
-	// expression.
-	//
-	// One item in the Metrics array is the math expression that the alarm watches.
-	// This expression by designated by having ReturnData set to true.
+	// expression. One item in the Metrics array is the math expression that the alarm
+	// watches. This expression by designated by having ReturnData set to true.
 	Metrics []MetricDataQuery
 
 	// The namespace of the metric associated with the alarm.

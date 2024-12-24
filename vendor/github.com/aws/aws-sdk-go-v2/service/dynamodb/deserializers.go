@@ -1003,6 +1003,9 @@ func awsAwsjson10_deserializeOpErrorDeleteItem(response *smithyhttp.Response, me
 	case strings.EqualFold("ProvisionedThroughputExceededException", errorCode):
 		return awsAwsjson10_deserializeErrorProvisionedThroughputExceededException(response, errorBody)
 
+	case strings.EqualFold("ReplicatedWriteConflictException", errorCode):
+		return awsAwsjson10_deserializeErrorReplicatedWriteConflictException(response, errorBody)
+
 	case strings.EqualFold("RequestLimitExceeded", errorCode):
 		return awsAwsjson10_deserializeErrorRequestLimitExceeded(response, errorBody)
 
@@ -4672,6 +4675,9 @@ func awsAwsjson10_deserializeOpErrorPutItem(response *smithyhttp.Response, metad
 	case strings.EqualFold("ProvisionedThroughputExceededException", errorCode):
 		return awsAwsjson10_deserializeErrorProvisionedThroughputExceededException(response, errorBody)
 
+	case strings.EqualFold("ReplicatedWriteConflictException", errorCode):
+		return awsAwsjson10_deserializeErrorReplicatedWriteConflictException(response, errorBody)
+
 	case strings.EqualFold("RequestLimitExceeded", errorCode):
 		return awsAwsjson10_deserializeErrorRequestLimitExceeded(response, errorBody)
 
@@ -6386,6 +6392,9 @@ func awsAwsjson10_deserializeOpErrorUpdateItem(response *smithyhttp.Response, me
 	case strings.EqualFold("ProvisionedThroughputExceededException", errorCode):
 		return awsAwsjson10_deserializeErrorProvisionedThroughputExceededException(response, errorBody)
 
+	case strings.EqualFold("ReplicatedWriteConflictException", errorCode):
+		return awsAwsjson10_deserializeErrorReplicatedWriteConflictException(response, errorBody)
+
 	case strings.EqualFold("RequestLimitExceeded", errorCode):
 		return awsAwsjson10_deserializeErrorRequestLimitExceeded(response, errorBody)
 
@@ -7734,6 +7743,41 @@ func awsAwsjson10_deserializeErrorReplicaNotFoundException(response *smithyhttp.
 	return output
 }
 
+func awsAwsjson10_deserializeErrorReplicatedWriteConflictException(response *smithyhttp.Response, errorBody *bytes.Reader) error {
+	var buff [1024]byte
+	ringBuffer := smithyio.NewRingBuffer(buff[:])
+
+	body := io.TeeReader(errorBody, ringBuffer)
+	decoder := json.NewDecoder(body)
+	decoder.UseNumber()
+	var shape interface{}
+	if err := decoder.Decode(&shape); err != nil && err != io.EOF {
+		var snapshot bytes.Buffer
+		io.Copy(&snapshot, ringBuffer)
+		err = &smithy.DeserializationError{
+			Err:      fmt.Errorf("failed to decode response body, %w", err),
+			Snapshot: snapshot.Bytes(),
+		}
+		return err
+	}
+
+	output := &types.ReplicatedWriteConflictException{}
+	err := awsAwsjson10_deserializeDocumentReplicatedWriteConflictException(&output, shape)
+
+	if err != nil {
+		var snapshot bytes.Buffer
+		io.Copy(&snapshot, ringBuffer)
+		err = &smithy.DeserializationError{
+			Err:      fmt.Errorf("failed to decode response body, %w", err),
+			Snapshot: snapshot.Bytes(),
+		}
+		return err
+	}
+
+	errorBody.Seek(0, io.SeekStart)
+	return output
+}
+
 func awsAwsjson10_deserializeErrorRequestLimitExceeded(response *smithyhttp.Response, errorBody *bytes.Reader) error {
 	var buff [1024]byte
 	ringBuffer := smithyio.NewRingBuffer(buff[:])
@@ -8840,7 +8884,7 @@ func awsAwsjson10_deserializeDocumentBackupInUseException(v **types.BackupInUseE
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -8880,7 +8924,7 @@ func awsAwsjson10_deserializeDocumentBackupNotFoundException(v **types.BackupNot
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -9622,7 +9666,7 @@ func awsAwsjson10_deserializeDocumentConditionalCheckFailedException(v **types.C
 				return err
 			}
 
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -9898,7 +9942,7 @@ func awsAwsjson10_deserializeDocumentContinuousBackupsUnavailableException(v **t
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -10183,7 +10227,7 @@ func awsAwsjson10_deserializeDocumentDuplicateItemException(v **types.DuplicateI
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -10350,7 +10394,7 @@ func awsAwsjson10_deserializeDocumentExportConflictException(v **types.ExportCon
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -10635,7 +10679,7 @@ func awsAwsjson10_deserializeDocumentExportNotFoundException(v **types.ExportNot
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -10881,6 +10925,11 @@ func awsAwsjson10_deserializeDocumentGlobalSecondaryIndex(v **types.GlobalSecond
 				return err
 			}
 
+		case "WarmThroughput":
+			if err := awsAwsjson10_deserializeDocumentWarmThroughput(&sv.WarmThroughput, value); err != nil {
+				return err
+			}
+
 		default:
 			_, _ = key, value
 
@@ -10991,6 +11040,11 @@ func awsAwsjson10_deserializeDocumentGlobalSecondaryIndexDescription(v **types.G
 
 		case "ProvisionedThroughput":
 			if err := awsAwsjson10_deserializeDocumentProvisionedThroughputDescription(&sv.ProvisionedThroughput, value); err != nil {
+				return err
+			}
+
+		case "WarmThroughput":
+			if err := awsAwsjson10_deserializeDocumentGlobalSecondaryIndexWarmThroughputDescription(&sv.WarmThroughput, value); err != nil {
 				return err
 			}
 
@@ -11165,6 +11219,72 @@ func awsAwsjson10_deserializeDocumentGlobalSecondaryIndexList(v *[]types.GlobalS
 	return nil
 }
 
+func awsAwsjson10_deserializeDocumentGlobalSecondaryIndexWarmThroughputDescription(v **types.GlobalSecondaryIndexWarmThroughputDescription, value interface{}) error {
+	if v == nil {
+		return fmt.Errorf("unexpected nil of type %T", v)
+	}
+	if value == nil {
+		return nil
+	}
+
+	shape, ok := value.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("unexpected JSON type %v", value)
+	}
+
+	var sv *types.GlobalSecondaryIndexWarmThroughputDescription
+	if *v == nil {
+		sv = &types.GlobalSecondaryIndexWarmThroughputDescription{}
+	} else {
+		sv = *v
+	}
+
+	for key, value := range shape {
+		switch key {
+		case "ReadUnitsPerSecond":
+			if value != nil {
+				jtv, ok := value.(json.Number)
+				if !ok {
+					return fmt.Errorf("expected PositiveLongObject to be json.Number, got %T instead", value)
+				}
+				i64, err := jtv.Int64()
+				if err != nil {
+					return err
+				}
+				sv.ReadUnitsPerSecond = ptr.Int64(i64)
+			}
+
+		case "Status":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected IndexStatus to be of type string, got %T instead", value)
+				}
+				sv.Status = types.IndexStatus(jtv)
+			}
+
+		case "WriteUnitsPerSecond":
+			if value != nil {
+				jtv, ok := value.(json.Number)
+				if !ok {
+					return fmt.Errorf("expected PositiveLongObject to be json.Number, got %T instead", value)
+				}
+				i64, err := jtv.Int64()
+				if err != nil {
+					return err
+				}
+				sv.WriteUnitsPerSecond = ptr.Int64(i64)
+			}
+
+		default:
+			_, _ = key, value
+
+		}
+	}
+	*v = sv
+	return nil
+}
+
 func awsAwsjson10_deserializeDocumentGlobalTable(v **types.GlobalTable, value interface{}) error {
 	if v == nil {
 		return fmt.Errorf("unexpected nil of type %T", v)
@@ -11232,7 +11352,7 @@ func awsAwsjson10_deserializeDocumentGlobalTableAlreadyExistsException(v **types
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -11385,7 +11505,7 @@ func awsAwsjson10_deserializeDocumentGlobalTableNotFoundException(v **types.Glob
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -11425,7 +11545,7 @@ func awsAwsjson10_deserializeDocumentIdempotentParameterMismatchException(v **ty
 
 	for key, value := range shape {
 		switch key {
-		case "Message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -11465,7 +11585,7 @@ func awsAwsjson10_deserializeDocumentImportConflictException(v **types.ImportCon
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -11505,7 +11625,7 @@ func awsAwsjson10_deserializeDocumentImportNotFoundException(v **types.ImportNot
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -11984,7 +12104,7 @@ func awsAwsjson10_deserializeDocumentIndexNotFoundException(v **types.IndexNotFo
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -12060,7 +12180,7 @@ func awsAwsjson10_deserializeDocumentInternalServerError(v **types.InternalServe
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -12100,7 +12220,7 @@ func awsAwsjson10_deserializeDocumentInvalidEndpointException(v **types.InvalidE
 
 	for key, value := range shape {
 		switch key {
-		case "Message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -12140,7 +12260,7 @@ func awsAwsjson10_deserializeDocumentInvalidExportTimeException(v **types.Invali
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -12180,7 +12300,7 @@ func awsAwsjson10_deserializeDocumentInvalidRestoreTimeException(v **types.Inval
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -12424,7 +12544,7 @@ func awsAwsjson10_deserializeDocumentItemCollectionSizeLimitExceededException(v 
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -12880,7 +13000,7 @@ func awsAwsjson10_deserializeDocumentLimitExceededException(v **types.LimitExcee
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -13468,7 +13588,7 @@ func awsAwsjson10_deserializeDocumentPointInTimeRecoveryUnavailableException(v *
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -13508,7 +13628,7 @@ func awsAwsjson10_deserializeDocumentPolicyNotFoundException(v **types.PolicyNot
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -13752,7 +13872,7 @@ func awsAwsjson10_deserializeDocumentProvisionedThroughputExceededException(v **
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -13946,7 +14066,7 @@ func awsAwsjson10_deserializeDocumentReplicaAlreadyExistsException(v **types.Rep
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -14165,6 +14285,11 @@ func awsAwsjson10_deserializeDocumentReplicaDescription(v **types.ReplicaDescrip
 				return err
 			}
 
+		case "WarmThroughput":
+			if err := awsAwsjson10_deserializeDocumentTableWarmThroughputDescription(&sv.WarmThroughput, value); err != nil {
+				return err
+			}
+
 		default:
 			_, _ = key, value
 
@@ -14339,6 +14464,11 @@ func awsAwsjson10_deserializeDocumentReplicaGlobalSecondaryIndexDescription(v **
 
 		case "ProvisionedThroughputOverride":
 			if err := awsAwsjson10_deserializeDocumentProvisionedThroughputOverride(&sv.ProvisionedThroughputOverride, value); err != nil {
+				return err
+			}
+
+		case "WarmThroughput":
+			if err := awsAwsjson10_deserializeDocumentGlobalSecondaryIndexWarmThroughputDescription(&sv.WarmThroughput, value); err != nil {
 				return err
 			}
 
@@ -14560,7 +14690,7 @@ func awsAwsjson10_deserializeDocumentReplicaNotFoundException(v **types.ReplicaN
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -14712,6 +14842,46 @@ func awsAwsjson10_deserializeDocumentReplicaSettingsDescriptionList(v *[]types.R
 	return nil
 }
 
+func awsAwsjson10_deserializeDocumentReplicatedWriteConflictException(v **types.ReplicatedWriteConflictException, value interface{}) error {
+	if v == nil {
+		return fmt.Errorf("unexpected nil of type %T", v)
+	}
+	if value == nil {
+		return nil
+	}
+
+	shape, ok := value.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("unexpected JSON type %v", value)
+	}
+
+	var sv *types.ReplicatedWriteConflictException
+	if *v == nil {
+		sv = &types.ReplicatedWriteConflictException{}
+	} else {
+		sv = *v
+	}
+
+	for key, value := range shape {
+		switch key {
+		case "message", "Message":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected ErrorMessage to be of type string, got %T instead", value)
+				}
+				sv.Message = ptr.String(jtv)
+			}
+
+		default:
+			_, _ = key, value
+
+		}
+	}
+	*v = sv
+	return nil
+}
+
 func awsAwsjson10_deserializeDocumentRequestLimitExceeded(v **types.RequestLimitExceeded, value interface{}) error {
 	if v == nil {
 		return fmt.Errorf("unexpected nil of type %T", v)
@@ -14734,7 +14904,7 @@ func awsAwsjson10_deserializeDocumentRequestLimitExceeded(v **types.RequestLimit
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -14774,7 +14944,7 @@ func awsAwsjson10_deserializeDocumentResourceInUseException(v **types.ResourceIn
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -14814,7 +14984,7 @@ func awsAwsjson10_deserializeDocumentResourceNotFoundException(v **types.Resourc
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -15418,7 +15588,7 @@ func awsAwsjson10_deserializeDocumentTableAlreadyExistsException(v **types.Table
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -15742,6 +15912,15 @@ func awsAwsjson10_deserializeDocumentTableDescription(v **types.TableDescription
 				return err
 			}
 
+		case "MultiRegionConsistency":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected MultiRegionConsistency to be of type string, got %T instead", value)
+				}
+				sv.MultiRegionConsistency = types.MultiRegionConsistency(jtv)
+			}
+
 		case "OnDemandThroughput":
 			if err := awsAwsjson10_deserializeDocumentOnDemandThroughput(&sv.OnDemandThroughput, value); err != nil {
 				return err
@@ -15826,6 +16005,11 @@ func awsAwsjson10_deserializeDocumentTableDescription(v **types.TableDescription
 				sv.TableStatus = types.TableStatus(jtv)
 			}
 
+		case "WarmThroughput":
+			if err := awsAwsjson10_deserializeDocumentTableWarmThroughputDescription(&sv.WarmThroughput, value); err != nil {
+				return err
+			}
+
 		default:
 			_, _ = key, value
 
@@ -15857,7 +16041,7 @@ func awsAwsjson10_deserializeDocumentTableInUseException(v **types.TableInUseExc
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -15933,13 +16117,79 @@ func awsAwsjson10_deserializeDocumentTableNotFoundException(v **types.TableNotFo
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
 					return fmt.Errorf("expected ErrorMessage to be of type string, got %T instead", value)
 				}
 				sv.Message = ptr.String(jtv)
+			}
+
+		default:
+			_, _ = key, value
+
+		}
+	}
+	*v = sv
+	return nil
+}
+
+func awsAwsjson10_deserializeDocumentTableWarmThroughputDescription(v **types.TableWarmThroughputDescription, value interface{}) error {
+	if v == nil {
+		return fmt.Errorf("unexpected nil of type %T", v)
+	}
+	if value == nil {
+		return nil
+	}
+
+	shape, ok := value.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("unexpected JSON type %v", value)
+	}
+
+	var sv *types.TableWarmThroughputDescription
+	if *v == nil {
+		sv = &types.TableWarmThroughputDescription{}
+	} else {
+		sv = *v
+	}
+
+	for key, value := range shape {
+		switch key {
+		case "ReadUnitsPerSecond":
+			if value != nil {
+				jtv, ok := value.(json.Number)
+				if !ok {
+					return fmt.Errorf("expected PositiveLongObject to be json.Number, got %T instead", value)
+				}
+				i64, err := jtv.Int64()
+				if err != nil {
+					return err
+				}
+				sv.ReadUnitsPerSecond = ptr.Int64(i64)
+			}
+
+		case "Status":
+			if value != nil {
+				jtv, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("expected TableStatus to be of type string, got %T instead", value)
+				}
+				sv.Status = types.TableStatus(jtv)
+			}
+
+		case "WriteUnitsPerSecond":
+			if value != nil {
+				jtv, ok := value.(json.Number)
+				if !ok {
+					return fmt.Errorf("expected PositiveLongObject to be json.Number, got %T instead", value)
+				}
+				i64, err := jtv.Int64()
+				if err != nil {
+					return err
+				}
+				sv.WriteUnitsPerSecond = ptr.Int64(i64)
 			}
 
 		default:
@@ -16159,7 +16409,7 @@ func awsAwsjson10_deserializeDocumentTransactionCanceledException(v **types.Tran
 				return err
 			}
 
-		case "Message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -16199,7 +16449,7 @@ func awsAwsjson10_deserializeDocumentTransactionConflictException(v **types.Tran
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -16239,7 +16489,7 @@ func awsAwsjson10_deserializeDocumentTransactionInProgressException(v **types.Tr
 
 	for key, value := range shape {
 		switch key {
-		case "Message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -16286,6 +16536,63 @@ func awsAwsjson10_deserializeDocumentUpdateKinesisStreamingConfiguration(v **typ
 					return fmt.Errorf("expected ApproximateCreationDateTimePrecision to be of type string, got %T instead", value)
 				}
 				sv.ApproximateCreationDateTimePrecision = types.ApproximateCreationDateTimePrecision(jtv)
+			}
+
+		default:
+			_, _ = key, value
+
+		}
+	}
+	*v = sv
+	return nil
+}
+
+func awsAwsjson10_deserializeDocumentWarmThroughput(v **types.WarmThroughput, value interface{}) error {
+	if v == nil {
+		return fmt.Errorf("unexpected nil of type %T", v)
+	}
+	if value == nil {
+		return nil
+	}
+
+	shape, ok := value.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("unexpected JSON type %v", value)
+	}
+
+	var sv *types.WarmThroughput
+	if *v == nil {
+		sv = &types.WarmThroughput{}
+	} else {
+		sv = *v
+	}
+
+	for key, value := range shape {
+		switch key {
+		case "ReadUnitsPerSecond":
+			if value != nil {
+				jtv, ok := value.(json.Number)
+				if !ok {
+					return fmt.Errorf("expected LongObject to be json.Number, got %T instead", value)
+				}
+				i64, err := jtv.Int64()
+				if err != nil {
+					return err
+				}
+				sv.ReadUnitsPerSecond = ptr.Int64(i64)
+			}
+
+		case "WriteUnitsPerSecond":
+			if value != nil {
+				jtv, ok := value.(json.Number)
+				if !ok {
+					return fmt.Errorf("expected LongObject to be json.Number, got %T instead", value)
+				}
+				i64, err := jtv.Int64()
+				if err != nil {
+					return err
+				}
+				sv.WriteUnitsPerSecond = ptr.Int64(i64)
 			}
 
 		default:

@@ -12,12 +12,18 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Publishes metric data points to Amazon CloudWatch. CloudWatch associates the
-// data points with the specified metric. If the specified metric does not exist,
-// CloudWatch creates the metric. When CloudWatch creates a metric, it can take up
-// to fifteen minutes for the metric to appear in calls to [ListMetrics].
+// Publishes metric data to Amazon CloudWatch. CloudWatch associates the data with
+// the specified metric. If the specified metric does not exist, CloudWatch creates
+// the metric. When CloudWatch creates a metric, it can take up to fifteen minutes
+// for the metric to appear in calls to [ListMetrics].
 //
-// You can publish either individual data points in the Value field, or arrays of
+// You can publish metrics with associated entity data (so that related telemetry
+// can be found and viewed together), or publish metric data by itself. To send
+// entity data with your metrics, use the EntityMetricData parameter. To send
+// metrics without entity data, use the MetricData parameter. The EntityMetricData
+// structure includes MetricData structures for the metric data.
+//
+// You can publish either individual values in the Value field, or arrays of
 // values and the number of times each value occurred during the period by using
 // the Values and Counts fields in the MetricData structure. Using the Values and
 // Counts method enables you to publish up to 150 values per metric with one
@@ -26,7 +32,8 @@ import (
 //
 // Each PutMetricData request is limited to 1 MB in size for HTTP POST requests.
 // You can send a payload compressed by gzip. Each request is also limited to no
-// more than 1000 different metrics.
+// more than 1000 different metrics (across both the MetricData and
+// EntityMetricData properties).
 //
 // Although the Value parameter accepts numbers of type Double , CloudWatch rejects
 // values that are either too small or too large. Values must be in the range of
@@ -45,7 +52,7 @@ import (
 // Data points with time stamps from 24 hours ago or longer can take at least 48
 // hours to become available for [GetMetricData]or [GetMetricStatistics] from the time they are submitted. Data points
 // with time stamps between 3 and 24 hours ago can take as much as 2 hours to
-// become available for for [GetMetricData]or [GetMetricStatistics].
+// become available for [GetMetricData]or [GetMetricStatistics].
 //
 // CloudWatch needs raw data points to calculate percentile statistics. If you
 // publish data using a statistic set instead, you can only retrieve percentile
@@ -78,12 +85,6 @@ func (c *Client) PutMetricData(ctx context.Context, params *PutMetricDataInput, 
 
 type PutMetricDataInput struct {
 
-	// The data for the metric. The array can include no more than 1000 metrics per
-	// call.
-	//
-	// This member is required.
-	MetricData []types.MetricDatum
-
 	// The namespace for the metric data. You can use ASCII characters for the
 	// namespace, except for control characters which are not supported.
 	//
@@ -92,6 +93,59 @@ type PutMetricDataInput struct {
 	//
 	// This member is required.
 	Namespace *string
+
+	// Data for metrics that contain associated entity information. You can include up
+	// to two EntityMetricData objects, each of which can contain a single Entity and
+	// associated metrics.
+	//
+	// The limit of metrics allowed, 1000, is the sum of both EntityMetricData and
+	// MetricData metrics.
+	EntityMetricData []types.EntityMetricData
+
+	// The data for the metrics. Use this parameter if your metrics do not contain
+	// associated entities. The array can include no more than 1000 metrics per call.
+	//
+	// The limit of metrics allowed, 1000, is the sum of both EntityMetricData and
+	// MetricData metrics.
+	MetricData []types.MetricDatum
+
+	// Whether to accept valid metric data when an invalid entity is sent.
+	//
+	//   - When set to true : Any validation error (for entity or metric data) will
+	//   fail the entire request, and no data will be ingested. The failed operation will
+	//   return a 400 result with the error.
+	//
+	//   - When set to false : Validation errors in the entity will not associate the
+	//   metric with the entity, but the metric data will still be accepted and ingested.
+	//   Validation errors in the metric data will fail the entire request, and no data
+	//   will be ingested.
+	//
+	// In the case of an invalid entity, the operation will return a 200 status, but an
+	//   additional response header will contain information about the validation errors.
+	//   The new header, X-Amzn-Failure-Message is an enumeration of the following
+	//   values:
+	//
+	//   - InvalidEntity - The provided entity is invalid.
+	//
+	//   - InvalidKeyAttributes - The provided KeyAttributes of an entity is invalid.
+	//
+	//   - InvalidAttributes - The provided Attributes of an entity is invalid.
+	//
+	//   - InvalidTypeValue - The provided Type in the KeyAttributes of an entity is
+	//   invalid.
+	//
+	//   - EntitySizeTooLarge - The number of EntityMetricData objects allowed is 2.
+	//
+	//   - MissingRequiredFields - There are missing required fields in the
+	//   KeyAttributes for the provided Type .
+	//
+	// For details of the requirements for specifying an entity, see [How to add related information to telemetry]in the CloudWatch
+	//   User Guide.
+	//
+	// This parameter is required when EntityMetricData is included.
+	//
+	// [How to add related information to telemetry]: https://docs.aws.amazon.com/adding-your-own-related-telemetry.html
+	StrictEntityValidation *bool
 
 	noSmithyDocumentSerde
 }
