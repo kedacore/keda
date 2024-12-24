@@ -332,7 +332,7 @@ func parseSaslOAuthAWSMSKIAMParams(config *scalersconfig.ScalerConfig, meta *kaf
 
 	meta.awsRegion = config.TriggerMetadata["awsRegion"]
 
-	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.awsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return fmt.Errorf("error getting AWS authorization: %w", err)
 	}
