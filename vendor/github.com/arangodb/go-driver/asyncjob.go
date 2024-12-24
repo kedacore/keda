@@ -29,7 +29,7 @@ type ClientAsyncJob interface {
 	AsyncJob() AsyncJobService
 }
 
-// AsyncJobService https://www.arangodb.com/docs/devel/http/jobs.html
+// AsyncJobService https://docs.arangodb.com/stable/develop/http-api/jobs/
 type AsyncJobService interface {
 	// List Returns the ids of job results with a specific status
 	List(ctx context.Context, jobType AsyncJobStatusType, opts *AsyncJobListOptions) ([]string, error)

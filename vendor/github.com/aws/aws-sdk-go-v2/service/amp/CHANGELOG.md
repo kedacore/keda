@@ -1,3 +1,24 @@
+# v1.30.5 (2024-12-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.30.4 (2024-12-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.30.3 (2024-11-18)
+
+* **Dependency Update**: Update to smithy-go v1.22.1.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.30.2 (2024-11-07)
+
+* **Bug Fix**: Adds case-insensitive handling of error message fields in service responses
+
+# v1.30.1 (2024-11-06)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.30.0 (2024-10-31)
 
 * **Feature**: Added support for UpdateScraper API, to enable updating collector configuration in-place

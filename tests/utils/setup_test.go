@@ -124,7 +124,7 @@ func TestSetupAwsIdentityComponents(t *testing.T) {
 	KubeClient = GetKubernetesClient(t)
 	CreateNamespace(t, KubeClient, AwsIdentityNamespace)
 
-	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install aws-identity-webhook jkroepke/amazon-eks-pod-identity-webhook --namespace %s --set config.defaultAwsRegion=eu-west-2 --set fullnameOverride=aws-identity-webhook",
+	_, err = ExecuteCommand(fmt.Sprintf("helm upgrade --install aws-identity-webhook jkroepke/amazon-eks-pod-identity-webhook --namespace %s --set config.defaultAwsRegion=eu-west-2 --set readinessProbe.httpGet.scheme=HTTPS --set livenessProbe.httpGet.scheme=HTTPS --set fullnameOverride=aws-identity-webhook",
 		AwsIdentityNamespace))
 	require.NoErrorf(t, err, "cannot install workload identity webhook - %s", err)
 }

@@ -16,6 +16,7 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"math"
 	"path"
+	"sort"
 )
 
 type awsAwsquery_serializeOpDeleteAlarms struct {
@@ -2829,6 +2830,98 @@ func awsAwsquery_serializeDocumentDimensions(v []types.Dimension, value query.Va
 	return nil
 }
 
+func awsAwsquery_serializeDocumentEntity(v *types.Entity, value query.Value) error {
+	object := value.Object()
+	_ = object
+
+	if v.Attributes != nil {
+		objectKey := object.Key("Attributes")
+		if err := awsAwsquery_serializeDocumentEntityAttributesMap(v.Attributes, objectKey); err != nil {
+			return err
+		}
+	}
+
+	if v.KeyAttributes != nil {
+		objectKey := object.Key("KeyAttributes")
+		if err := awsAwsquery_serializeDocumentEntityKeyAttributesMap(v.KeyAttributes, objectKey); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func awsAwsquery_serializeDocumentEntityAttributesMap(v map[string]string, value query.Value) error {
+	if len(v) == 0 {
+		return nil
+	}
+	object := value.Map("key", "value")
+
+	keys := make([]string, 0, len(v))
+	for key := range v {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		om := object.Key(key)
+		om.String(v[key])
+	}
+	return nil
+}
+
+func awsAwsquery_serializeDocumentEntityKeyAttributesMap(v map[string]string, value query.Value) error {
+	if len(v) == 0 {
+		return nil
+	}
+	object := value.Map("key", "value")
+
+	keys := make([]string, 0, len(v))
+	for key := range v {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		om := object.Key(key)
+		om.String(v[key])
+	}
+	return nil
+}
+
+func awsAwsquery_serializeDocumentEntityMetricData(v *types.EntityMetricData, value query.Value) error {
+	object := value.Object()
+	_ = object
+
+	if v.Entity != nil {
+		objectKey := object.Key("Entity")
+		if err := awsAwsquery_serializeDocumentEntity(v.Entity, objectKey); err != nil {
+			return err
+		}
+	}
+
+	if v.MetricData != nil {
+		objectKey := object.Key("MetricData")
+		if err := awsAwsquery_serializeDocumentMetricData(v.MetricData, objectKey); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func awsAwsquery_serializeDocumentEntityMetricDataList(v []types.EntityMetricData, value query.Value) error {
+	array := value.Array("member")
+
+	for i := range v {
+		av := array.Value()
+		if err := awsAwsquery_serializeDocumentEntityMetricData(&v[i], av); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func awsAwsquery_serializeDocumentExtendedStatistics(v []string, value query.Value) error {
 	array := value.Array("member")
 
@@ -4456,6 +4549,13 @@ func awsAwsquery_serializeOpDocumentPutMetricDataInput(v *PutMetricDataInput, va
 	object := value.Object()
 	_ = object
 
+	if v.EntityMetricData != nil {
+		objectKey := object.Key("EntityMetricData")
+		if err := awsAwsquery_serializeDocumentEntityMetricDataList(v.EntityMetricData, objectKey); err != nil {
+			return err
+		}
+	}
+
 	if v.MetricData != nil {
 		objectKey := object.Key("MetricData")
 		if err := awsAwsquery_serializeDocumentMetricData(v.MetricData, objectKey); err != nil {
@@ -4466,6 +4566,11 @@ func awsAwsquery_serializeOpDocumentPutMetricDataInput(v *PutMetricDataInput, va
 	if v.Namespace != nil {
 		objectKey := object.Key("Namespace")
 		objectKey.String(*v.Namespace)
+	}
+
+	if v.StrictEntityValidation != nil {
+		objectKey := object.Key("StrictEntityValidation")
+		objectKey.Boolean(*v.StrictEntityValidation)
 	}
 
 	return nil

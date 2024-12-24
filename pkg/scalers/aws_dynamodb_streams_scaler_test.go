@@ -143,6 +143,7 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 				AwsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
 				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
 				PodIdentityOwner:   true,
+				AwsRegion:          testAWSDynamoDBStreamsRegion,
 			},
 			triggerIndex: 0,
 		},
@@ -168,6 +169,7 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 				AwsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
 				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
 				PodIdentityOwner:   true,
+				AwsRegion:          testAWSDynamoDBStreamsRegion,
 			},
 			triggerIndex: 0,
 		},
@@ -212,6 +214,7 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 				AwsAccessKeyID:     testAWSDynamoDBStreamsAccessKeyID,
 				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
 				PodIdentityOwner:   true,
+				AwsRegion:          testAWSDynamoDBStreamsRegion,
 			},
 			triggerIndex: 3,
 		},
@@ -276,6 +279,7 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 				AwsSecretAccessKey: testAWSDynamoDBStreamsSecretAccessKey,
 				AwsSessionToken:    testAWSDynamoDBStreamsSessionToken,
 				PodIdentityOwner:   true,
+				AwsRegion:          testAWSDynamoDBStreamsRegion,
 			},
 			triggerIndex: 5,
 		},
@@ -326,6 +330,7 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			awsAuthorization: awsutils.AuthorizationMetadata{
 				AwsRoleArn:       testAWSDynamoDBStreamsRoleArn,
 				PodIdentityOwner: true,
+				AwsRegion:        testAWSDynamoDBStreamsRegion,
 			},
 			triggerIndex: 7,
 		},
@@ -345,6 +350,7 @@ var testAwsDynamoDBStreamMetadata = []parseAwsDynamoDBStreamsMetadataTestData{
 			AwsRegion:        testAWSDynamoDBStreamsRegion,
 			awsAuthorization: awsutils.AuthorizationMetadata{
 				PodIdentityOwner: false,
+				AwsRegion:        testAWSDynamoDBStreamsRegion,
 			},
 			triggerIndex: 8,
 		},
@@ -368,17 +374,19 @@ var awsDynamoDBStreamsGetMetricTestData = []*awsDynamoDBStreamsMetadata{
 
 func TestParseAwsDynamoDBStreamsMetadata(t *testing.T) {
 	for _, testData := range testAwsDynamoDBStreamMetadata {
-		result, err := parseAwsDynamoDBStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAwsDynamoDBStreamAuthentication, AuthParams: testData.authParams, TriggerIndex: testData.triggerIndex})
-		if err != nil && !testData.isError {
-			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
-		}
-		if testData.isError && err == nil {
-			t.Errorf("Expected error because %s but got success, %#v", testData.comment, testData)
-		}
+		t.Run(testData.comment, func(t *testing.T) {
+			result, err := parseAwsDynamoDBStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAwsDynamoDBStreamAuthentication, AuthParams: testData.authParams, TriggerIndex: testData.triggerIndex})
+			if err != nil && !testData.isError {
+				t.Errorf("Expected success because %s got error, %s", testData.comment, err)
+			}
+			if testData.isError && err == nil {
+				t.Errorf("Expected error because %s but got success, %#v", testData.comment, testData)
+			}
 
-		if !testData.isError && !reflect.DeepEqual(testData.expected, result) {
-			t.Fatalf("Expected %#v but got %+#v", testData.expected, result)
-		}
+			if !testData.isError && !reflect.DeepEqual(testData.expected, result) {
+				t.Fatalf("Expected %#v but got %+#v", testData.expected, result)
+			}
+		})
 	}
 }
 
