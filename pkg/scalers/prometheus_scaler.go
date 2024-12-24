@@ -42,14 +42,14 @@ type prometheusMetadata struct {
 	PrometheusAuth      *authentication.Config `keda:"optional"`
 	ServerAddress       string                 `keda:"name=serverAddress,       order=triggerMetadata"`
 	Query               string                 `keda:"name=query,               order=triggerMetadata"`
-	QueryParameters     map[string]string      `keda:"name=queryParameters,     order=triggerMetadata, optional"`
+	QueryParameters     map[string]string      `keda:"name=queryParameters,     order=triggerMetadata, 				optional"`
 	Threshold           float64                `keda:"name=threshold,           order=triggerMetadata"`
-	ActivationThreshold float64                `keda:"name=activationThreshold, order=triggerMetadata, optional"`
-	Namespace           string                 `keda:"name=namespace,           order=triggerMetadata, optional"`
-	CustomHeaders       map[string]string      `keda:"name=customHeaders,       order=triggerMetadata, optional"`
-	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    order=triggerMetadata, optional, default=true"`
-	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata, optional"`
-	AwsRegion           string                 `keda:"name=awsRegion, order=triggerMetadata;authParams"`
+	ActivationThreshold float64                `keda:"name=activationThreshold, order=triggerMetadata, 				optional"`
+	Namespace           string                 `keda:"name=namespace,           order=triggerMetadata, 				optional"`
+	CustomHeaders       map[string]string      `keda:"name=customHeaders,       order=triggerMetadata, 				optional"`
+	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    order=triggerMetadata, 				optional, default=true"`
+	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata, 				optional"`
+	AwsRegion           string                 `keda:"name=awsRegion, 			order=triggerMetadata;authParams, 	optional"`
 }
 
 type promQueryResult struct {
