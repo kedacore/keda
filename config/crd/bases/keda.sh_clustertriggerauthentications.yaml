@@ -183,6 +183,8 @@ spec:
                           type: string
                         parameter:
                           type: string
+                        secretKey:
+                          type: string
                         versionId:
                           type: string
                         versionStage:

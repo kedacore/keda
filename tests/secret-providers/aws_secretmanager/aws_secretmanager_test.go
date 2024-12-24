@@ -4,12 +4,15 @@
 package aws_secret_manager_test
 
 import (
+	// Standard imports
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
 
+	// Third-party imports
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -19,11 +22,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
+	// local
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 // Load environment variables from .env file
 var _ = godotenv.Load("../../.env")
+
+// makes sure helper is not removed
+var _ = GetRandomNumber()
 
 const (
 	testName = "aws-secret-manager-test"
@@ -70,6 +77,7 @@ type templateData struct {
 	SecretManagerSecretName          string
 	AwsAccessKeyID                   string
 	AwsSecretAccessKey               string
+	useJSONSecretFormat              bool
 }
 
 const (
@@ -149,6 +157,31 @@ spec:
     secrets:
     - parameter: connection
       name: {{.SecretManagerSecretName}}
+`
+
+	triggerAuthenticationSecretKeyTemplate = `apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TriggerAuthenticationName}}
+  namespace: {{.TestNamespace}}
+spec:
+  awsSecretManager:
+    credentials:
+      accessKey:
+        valueFrom:
+          secretKeyRef:
+            name: {{.AwsCredentialsSecretName}}
+            key: AWS_ACCESS_KEY_ID
+      accessSecretKey:
+        valueFrom:
+          secretKeyRef:
+            name: {{.AwsCredentialsSecretName}}
+            key: AWS_SECRET_ACCESS_KEY
+    region: {{.AwsRegion}}
+    secrets:
+    - parameter: connection
+      name: {{.SecretManagerSecretName}}
+      secretKey: connectionString
 `
 
 	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
@@ -257,11 +290,35 @@ spec:
 )
 
 func TestAwsSecretManager(t *testing.T) {
+	// Run the test twice with two different flag values
+	flags := []bool{true, false}
+
+	for _, useJSONSecretFormat := range flags {
+		// Define a subtest for each flag value
+
+		t.Run(getTestNameForFlag(useJSONSecretFormat), func(t *testing.T) {
+			err := AwsSecretManager(t, useJSONSecretFormat)
+			if err != nil {
+				t.Errorf("AwsSecretManager(%v) failed: %v", getTestNameForFlag(useJSONSecretFormat), err)
+			}
+		})
+	}
+}
+
+// Helper to get dynamic test names based on the flag
+func getTestNameForFlag(flag bool) string {
+	if flag {
+		return "WithFlagTrue"
+	}
+	return "WithFlagFalse"
+}
+
+func AwsSecretManager(t *testing.T, useJSONSecretFormat bool) error {
 	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
 	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
 
-	// Create the secret in GCP
-	err := createAWSSecret(t)
+	// Create the secret in AWS
+	err := createAWSSecret(t, useJSONSecretFormat)
 	assert.NoErrorf(t, err, "cannot create AWS Secret Manager secret - %s", err)
 
 	// Create kubernetes resources for PostgreSQL server
@@ -280,7 +337,7 @@ func TestAwsSecretManager(t *testing.T) {
 	assert.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
 
 	// Create kubernetes resources for testing
-	data, templates := getTemplateData()
+	data, templates := getTemplateData(useJSONSecretFormat)
 
 	KubectlApplyMultipleWithTemplate(t, data, templates)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
@@ -292,7 +349,50 @@ func TestAwsSecretManager(t *testing.T) {
 	KubectlDeleteMultipleWithTemplate(t, data, templates)
 	DeleteKubernetesResources(t, testNamespace, data, postgreSQLtemplates)
 
-	// Delete the secret in GCP
+	// Delete the secret in AWS
+	err = deleteAWSSecret(t)
+	assert.NoErrorf(t, err, "cannot delete AWS Secret Manager secret - %s", err)
+	return nil
+}
+
+// before I remove this I want to make sure I refactored code as expected.
+func REMOVETestAwsSecretManagerJSONFormat(t *testing.T, useJSONSecretFormat bool) {
+	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
+	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
+
+	// Create the secret in AWS
+	err := createAWSSecret(t, useJSONSecretFormat) // Create JSON formatted Secret
+	assert.NoErrorf(t, err, "cannot create AWS Secret Manager secret - %s", err)
+
+	// Create kubernetes resources for PostgreSQL server
+	kc := GetKubernetesClient(t)
+	data, postgreSQLtemplates := getPostgreSQLTemplateData()
+
+	CreateKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
+
+	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
+		"replica count should be %d after 3 minutes", 1)
+
+	createTableSQL := "CREATE TABLE task_instance (id serial PRIMARY KEY,state VARCHAR(10));"
+	psqlCreateTableCmd := fmt.Sprintf("psql -U %s -d %s -c \"%s\"", postgreSQLUsername, postgreSQLDatabase, createTableSQL)
+
+	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace, psqlCreateTableCmd, 60, 3)
+	assert.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
+
+	// Create kubernetes resources for testing
+	data, templates := getTemplateData(useJSONSecretFormat)
+
+	KubectlApplyMultipleWithTemplate(t, data, templates)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+		"replica count should be %d after 3 minutes", minReplicaCount)
+
+	testScaleOut(t, kc, data)
+
+	// cleanup
+	KubectlDeleteMultipleWithTemplate(t, data, templates)
+	DeleteKubernetesResources(t, testNamespace, data, postgreSQLtemplates)
+
+	// Delete the secret in AWS
 	err = deleteAWSSecret(t)
 	assert.NoErrorf(t, err, "cannot delete AWS Secret Manager secret - %s", err)
 }
@@ -315,6 +415,7 @@ var data = templateData{
 	AwsSecretAccessKey:               base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
 	AwsRegion:                        awsRegion,
 	AwsCredentialsSecretName:         awsCredentialsSecretName,
+	useJSONSecretFormat:              false,
 }
 
 func getPostgreSQLTemplateData() (templateData, []Template) {
@@ -324,12 +425,19 @@ func getPostgreSQLTemplateData() (templateData, []Template) {
 	}
 }
 
-func getTemplateData() (templateData, []Template) {
+func getTemplateData(useJSONFormat bool) (templateData, []Template) {
+	var triggerConfig string
+	if useJSONFormat {
+		triggerConfig = triggerAuthenticationSecretKeyTemplate
+	} else {
+		triggerConfig = triggerAuthenticationTemplate
+	}
+
 	return data, []Template{
 		{Name: "secretTemplate", Config: secretTemplate},
 		{Name: "awsCredentialsSecretTemplate", Config: awsCredentialsSecretTemplate},
 		{Name: "deploymentTemplate", Config: deploymentTemplate},
-		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerConfig},
 		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 	}
 }
@@ -342,7 +450,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func createAWSSecret(t *testing.T) error {
+func createAWSSecret(t *testing.T, useJSONFormat bool) error {
 	ctx := context.Background()
 
 	// Create AWS configuration
@@ -360,7 +468,22 @@ func createAWSSecret(t *testing.T) error {
 	client := secretsmanager.NewFromConfig(cfg)
 
 	// Create the secret value
-	secretString := postgreSQLConnectionString
+	var secretString string
+	if useJSONFormat {
+		secretObject := map[string]string{
+			"connectionString": postgreSQLConnectionString,
+		}
+		// Convert the map to a JSON string
+		jsonData, err := json.Marshal(secretObject)
+		if err != nil {
+			return fmt.Errorf("Error converting to JSON: %w", err)
+		}
+
+		// Print the JSON string
+		secretString = string(jsonData)
+	} else {
+		secretString = postgreSQLConnectionString
+	}
 	_, err = client.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
 		Name:         &secretManagerSecretName,
 		SecretString: &secretString,
