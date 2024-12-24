@@ -170,7 +170,7 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 					},
 				}
 
-				if err := vh.k8sClient.SubResource("token").Create(context.TODO(), sa, tokenRequest); err != nil {
+				if err := vh.k8sClient.SubResource("token").Create(context.Background(), sa, tokenRequest); err != nil {
 					return token, errors.New(fmt.Sprintf("Failed to create token for service account name: %s namespace: %s", saName.Name, saName.Namespace))
 				}
 
