@@ -24,6 +24,9 @@ import (
 	"path"
 
 	"google.golang.org/grpc/credentials"
+	ctrl "sigs.k8s.io/controller-runtime"
+
+	kedatls "github.com/kedacore/keda/v2/pkg/common/tls"
 )
 
 // LoadGrpcTLSCredentials reads the certificate from the given path and returns TLS transport credentials
@@ -50,8 +53,12 @@ func LoadGrpcTLSCredentials(certDir string, server bool) (credentials.TransportC
 	}
 
 	// Create the credentials and return it
+	minTLSVersion, err := kedatls.GetMinGrpcTLSVersion()
+	if err != nil {
+		ctrl.Log.WithName("grpc_tls_setup").Info(err.Error())
+	}
 	config := &tls.Config{
-		MinVersion:   tls.VersionTLS13,
+		MinVersion:   minTLSVersion,
 		Certificates: []tls.Certificate{cert},
 	}
 	if server {
