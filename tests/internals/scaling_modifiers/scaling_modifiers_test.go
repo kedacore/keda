@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
 
-	. "github.com/kedacore/keda/v2/tests/helper"
+        . "github.com/kedacore/keda/v2/tests/helper"
 )
 
 const (
@@ -163,12 +163,14 @@ spec:
       url: "{{.MetricsServerEndpoint}}"
       valueLocation: 'value'
       method: "query"
+    metricType: "AverageValue"
     authenticationRef:
       name: {{.TriggerAuthName}}
   - type: kubernetes-workload
     name: kw_trig
     metadata:
       podSelector: pod=workload-test
+    metricType: "AverageValue"
 `
 
 	soComplexFormula = `
@@ -205,12 +207,14 @@ spec:
       url: "{{.MetricsServerEndpoint}}"
       valueLocation: 'value'
       method: "query"
+    metricType: "AverageValue"
     authenticationRef:
       name: {{.TriggerAuthName}}
   - type: kubernetes-workload
     name: kw_trig
     metadata:
       podSelector: pod=workload-test
+    metricType: "AverageValue"
 `
 
 	workloadDeploymentTemplate = `
