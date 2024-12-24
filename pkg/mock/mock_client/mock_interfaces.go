@@ -701,7 +701,10 @@ func (mr *MockWithWatchMockRecorder) DeleteAllOf(ctx, obj any, opts ...any) *gom
 
 // Get mocks base method.
 func (m *MockWithWatch) Get(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, key, obj}
 	for _, a := range opts {
+		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Get", varargs...)
 	ret0, _ := ret[0].(error)
