@@ -100,7 +100,7 @@ func (m *MockReader) EXPECT() *MockReaderMockRecorder {
 }
 
 // Get mocks base method.
-func (m *MockReader) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+func (m *MockReader) Get(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 	m.ctrl.T.Helper()
 	varargs := []any{ctx, key, obj}
 	for _, a := range opts {
@@ -457,7 +457,7 @@ func (mr *MockClientMockRecorder) DeleteAllOf(ctx, obj any, opts ...any) *gomock
 }
 
 // Get mocks base method.
-func (m *MockClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+func (m *MockClient) Get(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 	m.ctrl.T.Helper()
 	varargs := []any{ctx, key, obj}
 	for _, a := range opts {
@@ -700,11 +700,11 @@ func (mr *MockWithWatchMockRecorder) DeleteAllOf(ctx, obj any, opts ...any) *gom
 }
 
 // Get mocks base method.
+<<<<<<< HEAD
 func (m *MockWithWatch) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	m.ctrl.T.Helper()
-	varargs := []any{ctx, key, obj}
+=======
+func (m *MockWithWatch) Get(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 	for _, a := range opts {
-		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Get", varargs...)
 	ret0, _ := ret[0].(error)
@@ -917,6 +917,7 @@ func (m *MockFieldIndexer) IndexField(ctx context.Context, obj client.Object, fi
 func (mr *MockFieldIndexerMockRecorder) IndexField(ctx, obj, field, extractValue any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IndexField", reflect.TypeOf((*MockFieldIndexer)(nil).IndexField), ctx, obj, field, extractValue)
+<<<<<<< HEAD
 }
 
 // MockSubResourceClient is a mock of SubResourceClient interface.
@@ -1017,4 +1018,6 @@ func (mr *MockSubResourceClientMockRecorder) Update(ctx, obj any, opts ...any) *
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, obj}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockSubResourceClient)(nil).Update), varargs...)
+=======
+>>>>>>> 5db5a3a42a9a233eb76cffd77bd5666b4ef87a08
 }

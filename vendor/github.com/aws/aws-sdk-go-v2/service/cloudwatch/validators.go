@@ -903,6 +903,40 @@ func validateDimensions(v []types.Dimension) error {
 	}
 }
 
+func validateEntityMetricData(v *types.EntityMetricData) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "EntityMetricData"}
+	if v.MetricData != nil {
+		if err := validateMetricData(v.MetricData); err != nil {
+			invalidParams.AddNested("MetricData", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateEntityMetricDataList(v []types.EntityMetricData) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "EntityMetricDataList"}
+	for i := range v {
+		if err := validateEntityMetricData(&v[i]); err != nil {
+			invalidParams.AddNested(fmt.Sprintf("[%d]", i), err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateManagedRule(v *types.ManagedRule) error {
 	if v == nil {
 		return nil
@@ -1768,11 +1802,14 @@ func validateOpPutMetricDataInput(v *PutMetricDataInput) error {
 	if v.Namespace == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("Namespace"))
 	}
-	if v.MetricData == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("MetricData"))
-	} else if v.MetricData != nil {
+	if v.MetricData != nil {
 		if err := validateMetricData(v.MetricData); err != nil {
 			invalidParams.AddNested("MetricData", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.EntityMetricData != nil {
+		if err := validateEntityMetricDataList(v.EntityMetricData); err != nil {
+			invalidParams.AddNested("EntityMetricData", err.(smithy.InvalidParamsError))
 		}
 	}
 	if invalidParams.Len() > 0 {

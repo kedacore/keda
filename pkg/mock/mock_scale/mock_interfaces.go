@@ -25,6 +25,7 @@ import (
 type MockScalesGetter struct {
 	ctrl     *gomock.Controller
 	recorder *MockScalesGetterMockRecorder
+	isgomock struct{}
 }
 
 // MockScalesGetterMockRecorder is the mock recorder for MockScalesGetter.
@@ -45,23 +46,24 @@ func (m *MockScalesGetter) EXPECT() *MockScalesGetterMockRecorder {
 }
 
 // Scales mocks base method.
-func (m *MockScalesGetter) Scales(arg0 string) scale.ScaleInterface {
+func (m *MockScalesGetter) Scales(namespace string) scale.ScaleInterface {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Scales", arg0)
+	ret := m.ctrl.Call(m, "Scales", namespace)
 	ret0, _ := ret[0].(scale.ScaleInterface)
 	return ret0
 }
 
 // Scales indicates an expected call of Scales.
-func (mr *MockScalesGetterMockRecorder) Scales(arg0 any) *gomock.Call {
+func (mr *MockScalesGetterMockRecorder) Scales(namespace any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Scales", reflect.TypeOf((*MockScalesGetter)(nil).Scales), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Scales", reflect.TypeOf((*MockScalesGetter)(nil).Scales), namespace)
 }
 
 // MockScaleInterface is a mock of ScaleInterface interface.
 type MockScaleInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockScaleInterfaceMockRecorder
+	isgomock struct{}
 }
 
 // MockScaleInterfaceMockRecorder is the mock recorder for MockScaleInterface.
@@ -82,46 +84,46 @@ func (m *MockScaleInterface) EXPECT() *MockScaleInterfaceMockRecorder {
 }
 
 // Get mocks base method.
-func (m *MockScaleInterface) Get(arg0 context.Context, arg1 schema.GroupResource, arg2 string, arg3 v10.GetOptions) (*v1.Scale, error) {
+func (m *MockScaleInterface) Get(ctx context.Context, resource schema.GroupResource, name string, opts v10.GetOptions) (*v1.Scale, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "Get", ctx, resource, name, opts)
 	ret0, _ := ret[0].(*v1.Scale)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockScaleInterfaceMockRecorder) Get(arg0, arg1, arg2, arg3 any) *gomock.Call {
+func (mr *MockScaleInterfaceMockRecorder) Get(ctx, resource, name, opts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockScaleInterface)(nil).Get), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockScaleInterface)(nil).Get), ctx, resource, name, opts)
 }
 
 // Patch mocks base method.
-func (m *MockScaleInterface) Patch(arg0 context.Context, arg1 schema.GroupVersionResource, arg2 string, arg3 types.PatchType, arg4 []byte, arg5 v10.PatchOptions) (*v1.Scale, error) {
+func (m *MockScaleInterface) Patch(ctx context.Context, gvr schema.GroupVersionResource, name string, pt types.PatchType, data []byte, opts v10.PatchOptions) (*v1.Scale, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Patch", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "Patch", ctx, gvr, name, pt, data, opts)
 	ret0, _ := ret[0].(*v1.Scale)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Patch indicates an expected call of Patch.
-func (mr *MockScaleInterfaceMockRecorder) Patch(arg0, arg1, arg2, arg3, arg4, arg5 any) *gomock.Call {
+func (mr *MockScaleInterfaceMockRecorder) Patch(ctx, gvr, name, pt, data, opts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Patch", reflect.TypeOf((*MockScaleInterface)(nil).Patch), arg0, arg1, arg2, arg3, arg4, arg5)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Patch", reflect.TypeOf((*MockScaleInterface)(nil).Patch), ctx, gvr, name, pt, data, opts)
 }
 
 // Update mocks base method.
-func (m *MockScaleInterface) Update(arg0 context.Context, arg1 schema.GroupResource, arg2 *v1.Scale, arg3 v10.UpdateOptions) (*v1.Scale, error) {
+func (m *MockScaleInterface) Update(ctx context.Context, resource schema.GroupResource, scale *v1.Scale, opts v10.UpdateOptions) (*v1.Scale, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "Update", ctx, resource, scale, opts)
 	ret0, _ := ret[0].(*v1.Scale)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockScaleInterfaceMockRecorder) Update(arg0, arg1, arg2, arg3 any) *gomock.Call {
+func (mr *MockScaleInterfaceMockRecorder) Update(ctx, resource, scale, opts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockScaleInterface)(nil).Update), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockScaleInterface)(nil).Update), ctx, resource, scale, opts)
 }
