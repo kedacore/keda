@@ -36,7 +36,7 @@ type seleniumGridScalerMetadata struct {
 	BrowserName         string `keda:"name=browserName,              order=triggerMetadata, optional"`
 	SessionBrowserName  string `keda:"name=sessionBrowserName,       order=triggerMetadata, optional"`
 	BrowserVersion      string `keda:"name=browserVersion,           order=triggerMetadata, optional"`
-	PlatformName        string `keda:"name=platformName,             order=triggerMetadata, default=linux"`
+	PlatformName        string `keda:"name=platformName,             order=triggerMetadata, optional"`
 	ActivationThreshold int64  `keda:"name=activationThreshold,      order=triggerMetadata, optional"`
 	UnsafeSsl           bool   `keda:"name=unsafeSsl,                order=triggerMetadata, default=false"`
 	NodeMaxSessions     int64  `keda:"name=nodeMaxSessions,          order=triggerMetadata, default=1"`
