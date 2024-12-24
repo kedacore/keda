@@ -83,9 +83,10 @@ func GetAwsConfig(ctx context.Context, awsRegion string, awsAuthorization Author
 }
 
 // GetAwsAuthorization returns an AuthorizationMetadata based on trigger information
-func GetAwsAuthorization(uniqueKey string, podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata, authParams, resolvedEnv map[string]string) (AuthorizationMetadata, error) {
+func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata, authParams, resolvedEnv map[string]string) (AuthorizationMetadata, error) {
 	meta := AuthorizationMetadata{
 		TriggerUniqueKey: uniqueKey,
+		AwsRegion:        awsRegion,
 	}
 
 	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAws {

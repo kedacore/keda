@@ -18,6 +18,7 @@ package aws
 
 type AuthorizationMetadata struct {
 	AwsRoleArn string
+	AwsRegion  string
 
 	AwsAccessKeyID     string
 	AwsSecretAccessKey string
