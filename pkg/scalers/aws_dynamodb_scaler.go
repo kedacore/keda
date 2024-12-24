@@ -33,7 +33,7 @@ type awsDynamoDBMetadata struct {
 	triggerIndex              int
 	metricName                string
 	TableName                 string `keda:"name=tableName, order=triggerMetadata"`
-	AwsRegion                 string `keda:"name=awsRegion, order=triggerMetadata,authParams"`
+	AwsRegion                 string `keda:"name=awsRegion, order=triggerMetadata;authParams"`
 	AwsEndpoint               string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
 	KeyConditionExpression    string `keda:"name=keyConditionExpression, order=triggerMetadata"`
 	IndexName                 string `keda:"name=indexName, order=triggerMetadata, optional"`

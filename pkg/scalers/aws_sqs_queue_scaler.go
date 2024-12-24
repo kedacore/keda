@@ -31,7 +31,7 @@ type awsSqsQueueMetadata struct {
 	ActivationTargetQueueLength int64  `keda:"name=activationQueueLength, order=triggerMetadata, default=0"`
 	QueueURL                    string `keda:"name=queueURL;queueURLFromEnv, order=triggerMetadata;resolvedEnv"`
 	queueName                   string
-	AwsRegion                   string `keda:"name=awsRegion, order=triggerMetadata,authParams"`
+	AwsRegion                   string `keda:"name=awsRegion, order=triggerMetadata;authParams"`
 	AwsEndpoint                 string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
 	awsAuthorization            awsutils.AuthorizationMetadata
 	triggerIndex                int

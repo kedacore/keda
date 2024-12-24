@@ -45,7 +45,7 @@ type awsCloudwatchMetadata struct {
 	MetricStatPeriod     int64  `keda:"name=metricStatPeriod, order=triggerMetadata, optional, default=300"`
 	MetricEndTimeOffset  int64  `keda:"name=metricEndTimeOffset, order=triggerMetadata, optional, default=0"`
 
-	AwsRegion   string `keda:"name=awsRegion, order=triggerMetadata,authParams"`
+	AwsRegion   string `keda:"name=awsRegion, order=triggerMetadata;authParams"`
 	AwsEndpoint string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
 }
 

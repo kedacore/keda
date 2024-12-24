@@ -49,7 +49,7 @@ type prometheusMetadata struct {
 	CustomHeaders       map[string]string      `keda:"name=customHeaders,       order=triggerMetadata, optional"`
 	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    order=triggerMetadata, optional, default=true"`
 	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata, optional"`
-	AwsRegion           string                 `keda:"name=awsRegion, order=triggerMetadata,authParams"`
+	AwsRegion           string                 `keda:"name=awsRegion, order=triggerMetadata;authParams"`
 }
 
 type promQueryResult struct {
