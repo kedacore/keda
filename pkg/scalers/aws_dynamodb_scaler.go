@@ -33,7 +33,7 @@ type awsDynamoDBMetadata struct {
 	triggerIndex              int
 	metricName                string
 	TableName                 string `keda:"name=tableName, order=triggerMetadata"`
-	AwsRegion                 string `keda:"name=awsRegion, order=triggerMetadata"`
+	AwsRegion                 string `keda:"name=awsRegion, order=triggerMetadata,authParams"`
 	AwsEndpoint               string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
 	KeyConditionExpression    string `keda:"name=keyConditionExpression, order=triggerMetadata"`
 	IndexName                 string `keda:"name=indexName, order=triggerMetadata, optional"`
@@ -110,7 +110,7 @@ func parseAwsDynamoDBMetadata(config *scalersconfig.ScalerConfig) (*awsDynamoDBM
 		return nil, ErrAwsDynamoNoTargetValue
 	}
 
-	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AwsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}

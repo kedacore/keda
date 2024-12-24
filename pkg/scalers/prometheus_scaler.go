@@ -49,6 +49,7 @@ type prometheusMetadata struct {
 	CustomHeaders       map[string]string      `keda:"name=customHeaders,       order=triggerMetadata, optional"`
 	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    order=triggerMetadata, optional, default=true"`
 	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata, optional"`
+	AwsRegion           string                 `keda:"name=awsRegion, order=triggerMetadata,authParams"`
 }
 
 type promQueryResult struct {
@@ -116,7 +117,7 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			httpClient.Transport = gcpTransport
 		}
 
-		awsTransport, err := aws.NewSigV4RoundTripper(config)
+		awsTransport, err := aws.NewSigV4RoundTripper(config, meta.AwsRegion)
 		if err != nil {
 			logger.V(1).Error(err, "failed to get AWS client HTTP transport ")
 			return nil, err

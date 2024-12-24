@@ -45,7 +45,7 @@ type awsCloudwatchMetadata struct {
 	MetricStatPeriod     int64  `keda:"name=metricStatPeriod, order=triggerMetadata, optional, default=300"`
 	MetricEndTimeOffset  int64  `keda:"name=metricEndTimeOffset, order=triggerMetadata, optional, default=0"`
 
-	AwsRegion   string `keda:"name=awsRegion, order=triggerMetadata"`
+	AwsRegion   string `keda:"name=awsRegion, order=triggerMetadata,authParams"`
 	AwsEndpoint string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
 }
 
@@ -133,7 +133,7 @@ func parseAwsCloudwatchMetadata(config *scalersconfig.ScalerConfig) (*awsCloudwa
 		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
 	}
 
-	awsAuthorization, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	awsAuthorization, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AwsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
