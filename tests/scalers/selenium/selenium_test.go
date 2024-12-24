@@ -138,7 +138,7 @@ spec:
       containers:
       - name: selenium-chrome-node
         image: selenium/node-chrome:nightly
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         env:
         - name: SE_NODE_BROWSER_VERSION
           value: ''
@@ -262,7 +262,7 @@ spec:
       containers:
       - name: selenium-firefox-node
         image: selenium/node-firefox:nightly
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         env:
         - name: SE_NODE_BROWSER_VERSION
           value: ''
@@ -359,7 +359,7 @@ spec:
       containers:
       - name: selenium-edge-node
         image: selenium/node-edge:nightly
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         env:
         - name: SE_NODE_BROWSER_VERSION
           value: ''
@@ -462,8 +462,8 @@ spec:
     spec:
       containers:
       - name: selenium-hub
-        image: selenium/hub:latest
-        imagePullPolicy: IfNotPresent
+        image: selenium/hub:nightly
+        imagePullPolicy: Always
         env:
         - name: SE_ROUTER_USERNAME
           value: '{{.HubBasicAuthUsername}}'
