@@ -265,7 +265,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				}
 			}
 			if triggerAuthSpec.HashiCorpVault != nil && len(triggerAuthSpec.HashiCorpVault.Secrets) > 0 {
-				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault)
+				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault, client, namespace)
 				err := vault.Initialize(logger)
 				defer vault.Stop()
 				if err != nil {

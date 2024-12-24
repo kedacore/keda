@@ -182,7 +182,7 @@ pkg/mock/mock_scale/mock_interfaces.go: vendor/k8s.io/client-go/scale/interfaces
 	$(MOCKGEN) k8s.io/client-go/scale ScalesGetter,ScaleInterface > $@
 pkg/mock/mock_client/mock_interfaces.go: vendor/sigs.k8s.io/controller-runtime/pkg/client/interfaces.go
 	mkdir -p pkg/mock/mock_client
-	$(MOCKGEN) sigs.k8s.io/controller-runtime/pkg/client Patch,Reader,Writer,StatusClient,StatusWriter,Client,WithWatch,FieldIndexer > $@
+	$(MOCKGEN) sigs.k8s.io/controller-runtime/pkg/client Patch,Reader,Writer,StatusClient,StatusWriter,Client,WithWatch,FieldIndexer,SubResourceClient > $@
 pkg/scalers/liiklus/mocks/mock_liiklus.go:
 	$(MOCKGEN) -destination=$@ github.com/kedacore/keda/v2/pkg/scalers/liiklus LiiklusServiceClient
 

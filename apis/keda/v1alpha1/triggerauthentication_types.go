@@ -236,6 +236,9 @@ type Credential struct {
 
 	// +optional
 	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // VaultAuthentication contains the list of Hashicorp Vault authentication methods

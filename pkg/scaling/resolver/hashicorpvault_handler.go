@@ -17,29 +17,41 @@ limitations under the License.
 package resolver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
 	"github.com/go-logr/logr"
 	vaultapi "github.com/hashicorp/vault/api"
+	"k8s.io/apimachinery/pkg/types"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	authenticationv1 "k8s.io/api/authentication/v1"
+
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // HashicorpVaultHandler is specification of Hashi Corp Vault
 type HashicorpVaultHandler struct {
-	vault  *kedav1alpha1.HashiCorpVault
-	client *vaultapi.Client
-	stopCh chan struct{}
+	vault     *kedav1alpha1.HashiCorpVault
+	client    *vaultapi.Client
+	k8sClient client.Client
+	namespace string
+	stopCh    chan struct{}
 }
 
 // NewHashicorpVaultHandler creates a HashicorpVaultHandler object
-func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault) *HashicorpVaultHandler {
+func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault, client client.Client, namespace string) *HashicorpVaultHandler {
 	return &HashicorpVaultHandler{
-		vault: v,
+		vault:     v,
+		k8sClient: client,
+		namespace: namespace,
 	}
 }
 
@@ -88,6 +100,8 @@ func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
 // token Extract a vault token from the Authentication method
 func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) {
 	var token string
+	var jwt []byte
+	var err error
 
 	switch vh.vault.Authentication {
 	case kedav1alpha1.VaultAuthenticationToken:
@@ -116,14 +130,59 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 			vh.vault.Credential = &defaultCred
 		}
 
-		if len(vh.vault.Credential.ServiceAccount) == 0 {
-			return token, errors.New("k8s SA file not in config")
+		if vh.vault.Credential.ServiceAccountName == "" && len(vh.vault.Credential.ServiceAccount) == 0 {
+			return token, errors.New("k8s SA file not in config or serviceAccountName not supplied")
 		}
 
-		// Get the JWT from POD
-		jwt, err := os.ReadFile(vh.vault.Credential.ServiceAccount)
-		if err != nil {
-			return token, err
+		if vh.vault.Credential.ServiceAccountName != "" {
+			// generate token from namespace
+			saName := types.NamespacedName{Name: vh.vault.Credential.ServiceAccountName, Namespace: vh.namespace}
+			sa := &corev1.ServiceAccount{}
+			secret := &corev1.Secret{}
+
+			if err = vh.k8sClient.Get(context.Background(), saName, sa); err != nil {
+				if apierrors.IsNotFound(err) {
+					return token, errors.New(fmt.Sprintf("Failed to retreive service account name: %s namespace: %s", saName.Name, saName.Namespace))
+				}
+			}
+
+			if len(sa.Secrets) > 0 {
+				//using legacy service account secrets
+				secretName := types.NamespacedName{Name: sa.Secrets[0].Name, Namespace: vh.namespace}
+
+				if err = vh.k8sClient.Get(context.Background(), secretName, secret); err != nil {
+					if apierrors.IsNotFound(err) {
+						return token, errors.New(fmt.Sprintf("Failed to retreive secret for service account name: %s namespace: %s", secretName.Name, secretName.Namespace))
+					}
+				}
+
+				jwt = secret.Data["token"]
+			}
+
+			if len(jwt) == 0 {
+				tokenTTL := int64(600) // min allowed duration is 10 mins
+				// this token is only used once for the initial authentication
+				// renewals happen independently on the vault token
+				tokenRequest := &authenticationv1.TokenRequest{
+					Spec: authenticationv1.TokenRequestSpec{
+						Audiences:         []string{"https://kubernetes.default.svc"},
+						ExpirationSeconds: &tokenTTL,
+					},
+				}
+
+				if err := vh.k8sClient.SubResource("token").Create(context.TODO(), sa, tokenRequest); err != nil {
+					return token, errors.New(fmt.Sprintf("Failed to create token for service account name: %s namespace: %s", saName.Name, saName.Namespace))
+				}
+
+				jwt = []byte(tokenRequest.Status.Token)
+			}
+
+		} else if len(vh.vault.Credential.ServiceAccount) != 0 {
+			// Get the JWT from POD
+			jwt, err = os.ReadFile(vh.vault.Credential.ServiceAccount)
+			if err != nil {
+				return token, err
+			}
 		}
 
 		data := map[string]interface{}{"jwt": string(jwt), "role": vh.vault.Role}
@@ -131,8 +190,8 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 		if err != nil {
 			return token, err
 		}
-
 		token = secret.Auth.ClientToken
+
 	default:
 		return token, fmt.Errorf("vault auth method %s is not supported", vh.vault.Authentication)
 	}
