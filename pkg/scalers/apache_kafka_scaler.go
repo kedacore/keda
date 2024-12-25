@@ -164,7 +164,7 @@ func parseApacheKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *apache
 		return errors.New("unable to set `tls` in both ScaledObject and TriggerAuthentication together")
 	}
 	if meta.SASLType == KafkaSASLTypeMskIam {
-		auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+		auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AWSRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 		if err != nil {
 			return err
 		}
