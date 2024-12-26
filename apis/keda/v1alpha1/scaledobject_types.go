@@ -88,6 +88,8 @@ type ScaledObjectSpec struct {
 	// +optional
 	PollingInterval *int32 `json:"pollingInterval,omitempty"`
 	// +optional
+	InitialCooldownPeriod *int32 `json:"initialCooldownPeriod,omitempty"`
+	// +optional
 	CooldownPeriod *int32 `json:"cooldownPeriod,omitempty"`
 	// +optional
 	IdleReplicaCount *int32 `json:"idleReplicaCount,omitempty"`
@@ -101,8 +103,6 @@ type ScaledObjectSpec struct {
 	Triggers []ScaleTriggers `json:"triggers"`
 	// +optional
 	Fallback *Fallback `json:"fallback,omitempty"`
-	// +optional
-	InitialCooldownPeriod int32 `json:"initialCooldownPeriod,omitempty"`
 }
 
 // Fallback is the spec for fallback options
