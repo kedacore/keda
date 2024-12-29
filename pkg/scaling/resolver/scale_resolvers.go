@@ -26,9 +26,11 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	corev1listers "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/scale"
 	"knative.dev/pkg/apis/duck"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -614,4 +616,39 @@ func resolveServiceAccountAnnotation(ctx context.Context, client client.Client, 
 		return "", fmt.Errorf("annotation '%s' not found", annotation)
 	}
 	return value, nil
+}
+
+// GetCurrentReplicas returns the current replica count for a ScaledObject
+func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient scale.ScalesGetter, scaledObject *kedav1alpha1.ScaledObject) (int32, error) {
+	targetName := scaledObject.Spec.ScaleTargetRef.Name
+	targetGVKR := scaledObject.Status.ScaleTargetGVKR
+
+	logger := log.WithValues("scaledObject.Namespace", scaledObject.Namespace, 
+		"scaledObject.Name", scaledObject.Name, 
+		"resource", fmt.Sprintf("%s/%s", targetGVKR.Group, targetGVKR.Kind), 
+		"name", targetName)
+
+	switch {
+	case targetGVKR.Group == "apps" && targetGVKR.Kind == "Deployment":
+		deployment := &appsv1.Deployment{}
+		if err := client.Get(ctx, types.NamespacedName{Name: targetName, Namespace: scaledObject.Namespace}, deployment); err != nil {
+			logger.Error(err, "target deployment doesn't exist")
+			return 0, err
+		}
+		return *deployment.Spec.Replicas, nil
+	case targetGVKR.Group == "apps" && targetGVKR.Kind == "StatefulSet":
+		statefulSet := &appsv1.StatefulSet{}
+		if err := client.Get(ctx, types.NamespacedName{Name: targetName, Namespace: scaledObject.Namespace}, statefulSet); err != nil {
+			logger.Error(err, "target statefulset doesn't exist")
+			return 0, err
+		}
+		return *statefulSet.Spec.Replicas, nil
+	default:
+		scale, err := scaleClient.Scales(scaledObject.Namespace).Get(ctx, targetGVKR.GroupResource(), targetName, v1.GetOptions{})
+		if err != nil {
+			logger.Error(err, "error getting scale subresource")
+			return 0, err
+		}
+		return scale.Spec.Replicas, nil
+	}
 }

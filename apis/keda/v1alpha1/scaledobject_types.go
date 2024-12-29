@@ -109,6 +109,8 @@ type ScaledObjectSpec struct {
 type Fallback struct {
 	FailureThreshold int32 `json:"failureThreshold"`
 	Replicas         int32 `json:"replicas"`
+	// +optional
+	UseCurrentReplicasAsMinimum *bool `json:"useCurrentReplicasAsMinimum,omitempty"`
 }
 
 // AdvancedConfig specifies advance scaling options
