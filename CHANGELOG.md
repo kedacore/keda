@@ -62,6 +62,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Enable OpenSSF Scorecard to enhance security practices across the project ([#5913](https://github.com/kedacore/keda/issues/5913))
 - **General**: Introduce new NSQ scaler ([#3281](https://github.com/kedacore/keda/issues/3281))
 - **General**: Operator flag to control patching of webhook resources certificates ([#6184](https://github.com/kedacore/keda/issues/6184))
+- **Gitlab scaler**: Add support for Gitlab CI/CD scaler. ([#5616](https://github.com/kedacore/keda/issues/5616))
 
 #### Experimental
 
@@ -189,8 +190,8 @@ New deprecation(s):
 
 - **General**: Add `--ca-dir` flag to KEDA operator to specify directories with CA certificates for scalers to authenticate TLS connections (defaults to /custom/ca) ([#5860](https://github.com/kedacore/keda/issues/5860))
 - **General**: Add Dynatrace Scaler ([#5685](https://github.com/kedacore/keda/pull/5685))
-- **General**: Add Splunk Scaler ([#5904](https://github.com/kedacore/keda/issues/5904))
 - **General**: Added `eagerScalingStrategy` for `ScaledJob`  ([#5114](https://github.com/kedacore/keda/issues/5114))
+- **General**: Add Splunk Scaler ([#5904](https://github.com/kedacore/keda/issues/5904))
 - **General**: Provide CloudEvents around the management of ScaledObjects resources ([#3522](https://github.com/kedacore/keda/issues/3522))
 - **General**: Support for Kubernetes v1.30 ([#5828](https://github.com/kedacore/keda/issues/5828))
 
