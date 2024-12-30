@@ -96,10 +96,29 @@ var testPodIdentityAzureWorkloadPostgreSQLConnectionstring = []postgreSQLConnect
 	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "host": "localhost", "port": "1234", "dbName": "testDb", "userName": "user", "sslmode": "required"}, connectionString: "host=localhost port=1234 user=user dbname=testDb sslmode=required %PASSWORD%"},
 }
 
+var testPodIdentityAwsWorkloadPostgresSQLConnectionstring = []postgreSQLConnectionStringTestData{
+	// from meta
+	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "host": "localhost", "port": "1234", "dbName": "testDb", "userName": "user", "sslmode": "required"}, connectionString: "host=localhost port=1234 user=user dbname=testDb sslmode=required %PASSWORD%"},
+}
+
 func TestPodIdentityAzureWorkloadPosgresSQLConnectionStringGeneration(t *testing.T) {
 	identityID := "IDENTITY_ID_CORRESPONDING_TO_USERNAME_FIELD"
 	for _, testData := range testPodIdentityAzureWorkloadPostgreSQLConnectionstring {
 		meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, IdentityID: &identityID}, AuthParams: testData.authParam, TriggerIndex: 0})
+		if err != nil {
+			t.Fatal("Could not parse metadata:", err)
+		}
+
+		if meta.Connection != testData.connectionString {
+			t.Errorf("Error generating connectionString, expected '%s' and get '%s'", testData.connectionString, meta.Connection)
+		}
+	}
+}
+
+func TestPodIdentityAWSWorkloadPosgresSQLConnectionStringGeneration(t *testing.T) {
+	identityID := "IDENTITY_ID_CORRESPONDING_TO_USERNAME_FIELD"
+	for _, testData := range testPodIdentityAwsWorkloadPostgresSQLConnectionstring {
+		meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAWSWorkload, IdentityID: &identityID}, AuthParams: testData.authParam, TriggerIndex: 0})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

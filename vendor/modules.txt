@@ -374,6 +374,9 @@ github.com/aws/aws-sdk-go-v2/credentials/stscreds
 ## explicit; go 1.21
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds/internal/config
+# github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.5.2
+## explicit; go 1.21
+github.com/aws/aws-sdk-go-v2/feature/rds/auth
 # github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.26
 ## explicit; go 1.21
 github.com/aws/aws-sdk-go-v2/internal/configsources

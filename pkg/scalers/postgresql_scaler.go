@@ -11,8 +11,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
 	"github.com/go-logr/logr"
 	_ "github.com/jackc/pgx/v5/stdlib" // PostreSQL drive required for this scaler
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -47,6 +49,9 @@ type postgreSQLMetadata struct {
 	Query                      string  `keda:"name=query, order=triggerMetadata"`
 	triggerIndex               int
 	azureAuthContext           azureAuthContext
+	AwsRegion                  string `keda:"name=awsRegion, order=triggerMetadata;authParams"`
+	awsAuthorization           awsutils.AuthorizationMetadata
+	awsAuthContext             awsAuthContext
 
 	Host     string `keda:"name=host, order=authParams;triggerMetadata, optional"`
 	Port     string `keda:"name=port, order=authParams;triggerMetadata, optional"`
@@ -86,6 +91,10 @@ func (p *postgreSQLMetadata) Validate() error {
 type azureAuthContext struct {
 	cred  *azidentity.ChainedTokenCredential
 	token *azcore.AccessToken
+}
+
+type awsAuthContext struct {
+	expiry time.Time
 }
 
 // NewPostgreSQLScaler creates a new postgreSQL scaler
@@ -146,6 +155,19 @@ func parsePostgreSQLMetadata(logger logr.Logger, config *scalersconfig.ScalerCon
 
 		params = append(params, "%PASSWORD%")
 		meta.Connection = strings.Join(params, " ")
+	case kedav1alpha1.PodIdentityProviderAws:
+		params := buildConnArray(meta)
+
+		auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AwsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+		if err != nil {
+			return nil, authPodIdentity, err
+		}
+
+		meta.awsAuthorization = auth
+		authPodIdentity = kedav1alpha1.AuthPodIdentity{Provider: config.PodIdentity.Provider}
+
+		params = append(params, "%PASSWORD%")
+		meta.Connection = strings.Join(params, " ")
 	}
 	meta.triggerIndex = config.TriggerIndex
 
@@ -172,6 +194,22 @@ func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity ke
 			return nil, err
 		}
 		newPasswordField := "password=" + escapePostgreConnectionParameter(accessToken)
+		connectionString = passwordConnPattern.ReplaceAllString(meta.Connection, newPasswordField)
+	}
+
+	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAws {
+		cfg, err := awsutils.GetAwsConfig(ctx, meta.awsAuthorization)
+		if err != nil {
+			return nil, err
+		}
+		DBendpoint := fmt.Sprintf("%s:%s", meta.Host, meta.Port)
+		password, err := auth.BuildAuthToken(ctx, DBendpoint, meta.AwsRegion, meta.UserName, cfg.Credentials)
+		if err != nil {
+			return nil, err
+		}
+		meta.awsAuthContext.expiry = time.Now().Add(14 * time.Minute)
+
+		newPasswordField := "password=" + escapePostgreConnectionParameter(password)
 		connectionString = passwordConnPattern.ReplaceAllString(meta.Connection, newPasswordField)
 	}
 
@@ -204,6 +242,18 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error)
 	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
 		if s.metadata.azureAuthContext.token.ExpiresOn.Before(time.Now()) {
 			s.logger.Info("The Azure Access Token expired, retrieving a new Azure Access Token and instantiating a new Postgres connection object.")
+			s.connection.Close()
+			newConnection, err := getConnection(ctx, s.metadata, s.podIdentity, s.logger)
+			if err != nil {
+				return 0, fmt.Errorf("error establishing postgreSQL connection: %w", err)
+			}
+			s.connection = newConnection
+		}
+	}
+
+	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAws {
+		if s.metadata.awsAuthContext.expiry.Before(time.Now()) {
+			s.logger.Info("The AWS Access Token expired, retrieving a new AWS Access Token and instantiating a new Postgres connection object.")
 			s.connection.Close()
 			newConnection, err := getConnection(ctx, s.metadata, s.podIdentity, s.logger)
 			if err != nil {
