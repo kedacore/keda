@@ -98,7 +98,7 @@ var testPodIdentityAzureWorkloadPostgreSQLConnectionstring = []postgreSQLConnect
 
 var testPodIdentityAwsWorkloadPostgresSQLConnectionstring = []postgreSQLConnectionStringTestData{
 	// from meta
-	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "host": "localhost", "port": "1234", "dbName": "testDb", "userName": "user", "sslmode": "required"}, connectionString: "host=localhost port=1234 user=user dbname=testDb sslmode=required %PASSWORD%"},
+	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "host": "localhost", "port": "1234", "dbName": "testDb", "userName": "user", "sslmode": "required", "awsRegion": "eu-central-1"}, connectionString: "host=localhost port=1234 user=user dbname=testDb sslmode=required %PASSWORD%"},
 }
 
 func TestPodIdentityAzureWorkloadPosgresSQLConnectionStringGeneration(t *testing.T) {
@@ -118,7 +118,7 @@ func TestPodIdentityAzureWorkloadPosgresSQLConnectionStringGeneration(t *testing
 func TestPodIdentityAWSWorkloadPosgresSQLConnectionStringGeneration(t *testing.T) {
 	identityID := "IDENTITY_ID_CORRESPONDING_TO_USERNAME_FIELD"
 	for _, testData := range testPodIdentityAwsWorkloadPostgresSQLConnectionstring {
-		meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAWSWorkload, IdentityID: &identityID}, AuthParams: testData.authParam, TriggerIndex: 0})
+		meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAws, IdentityID: &identityID}, AuthParams: testData.authParam, TriggerIndex: 0})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}

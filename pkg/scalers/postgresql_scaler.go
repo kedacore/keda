@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net"
 	"regexp"
 	"strings"
 	"time"
@@ -14,11 +15,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
 	"github.com/go-logr/logr"
 	_ "github.com/jackc/pgx/v5/stdlib" // PostreSQL drive required for this scaler
-	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	awsutils "github.com/kedacore/keda/v2/pkg/scalers/aws"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -49,7 +50,7 @@ type postgreSQLMetadata struct {
 	Query                      string  `keda:"name=query, order=triggerMetadata"`
 	triggerIndex               int
 	azureAuthContext           azureAuthContext
-	AwsRegion                  string `keda:"name=awsRegion, order=triggerMetadata;authParams"`
+	AwsRegion                  string `keda:"name=awsRegion, order=triggerMetadata;authParams, optional"`
 	awsAuthorization           awsutils.AuthorizationMetadata
 	awsAuthContext             awsAuthContext
 
@@ -202,7 +203,7 @@ func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity ke
 		if err != nil {
 			return nil, err
 		}
-		DBendpoint := fmt.Sprintf("%s:%s", meta.Host, meta.Port)
+		DBendpoint := net.JoinHostPort(meta.Host, meta.Port)
 		password, err := auth.BuildAuthToken(ctx, DBendpoint, meta.AwsRegion, meta.UserName, cfg.Credentials)
 		if err != nil {
 			return nil, err
