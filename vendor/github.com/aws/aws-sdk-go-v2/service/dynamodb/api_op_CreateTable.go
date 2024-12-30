@@ -246,6 +246,10 @@ type CreateTableInput struct {
 	// [Tagging for DynamoDB]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Tagging.html
 	Tags []types.Tag
 
+	// Represents the warm throughput (in read units per second and write units per
+	// second) for creating a table.
+	WarmThroughput *types.WarmThroughput
+
 	noSmithyDocumentSerde
 }
 

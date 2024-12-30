@@ -680,6 +680,33 @@ func (e *ReplicaNotFoundException) ErrorCode() string {
 }
 func (e *ReplicaNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
+// The request was rejected because one or more items in the request are being
+// modified by a request in another Region.
+type ReplicatedWriteConflictException struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *ReplicatedWriteConflictException) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *ReplicatedWriteConflictException) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *ReplicatedWriteConflictException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "ReplicatedWriteConflictException"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *ReplicatedWriteConflictException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
 // Throughput exceeds the current throughput quota for your account. Please
 // contact [Amazon Web Services Support]to request a quota increase.
 //
