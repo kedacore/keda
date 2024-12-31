@@ -19,22 +19,19 @@ package resolver
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/go-logr/logr"
 	vaultapi "github.com/hashicorp/vault/api"
+	"github.com/pkg/errors"
+	authenticationv1 "k8s.io/api/authentication/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	authenticationv1 "k8s.io/api/authentication/v1"
-
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // HashicorpVaultHandler is specification of Hashi Corp Vault
@@ -141,19 +138,15 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 			secret := &corev1.Secret{}
 
 			if err = vh.k8sClient.Get(context.Background(), saName, sa); err != nil {
-				if apierrors.IsNotFound(err) {
-					return token, errors.New(fmt.Sprintf("Failed to retreive service account name: %s namespace: %s", saName.Name, saName.Namespace))
-				}
+				return token, errors.Wrap(err, fmt.Sprintf("Failed to retrieve service account name: %s namespace: %s", saName.Name, saName.Namespace))
 			}
 
 			if len(sa.Secrets) > 0 {
-				//using legacy service account secrets
+				// using legacy service account secrets
 				secretName := types.NamespacedName{Name: sa.Secrets[0].Name, Namespace: vh.namespace}
 
 				if err = vh.k8sClient.Get(context.Background(), secretName, secret); err != nil {
-					if apierrors.IsNotFound(err) {
-						return token, errors.New(fmt.Sprintf("Failed to retreive secret for service account name: %s namespace: %s", secretName.Name, secretName.Namespace))
-					}
+					return token, errors.Wrap(err, fmt.Sprintf("Failed to retrieve secret for service account name: %s namespace: %s", secretName.Name, secretName.Namespace))
 				}
 
 				jwt = secret.Data["token"]
@@ -171,12 +164,11 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 				}
 
 				if err := vh.k8sClient.SubResource("token").Create(context.Background(), sa, tokenRequest); err != nil {
-					return token, errors.New(fmt.Sprintf("Failed to create token for service account name: %s namespace: %s", saName.Name, saName.Namespace))
+					return token, errors.Wrap(err, fmt.Sprintf("Failed to create token for service account name: %s namespace: %s", saName.Name, saName.Namespace))
 				}
 
 				jwt = []byte(tokenRequest.Status.Token)
 			}
-
 		} else if len(vh.vault.Credential.ServiceAccount) != 0 {
 			// Get the JWT from POD
 			jwt, err = os.ReadFile(vh.vault.Credential.ServiceAccount)

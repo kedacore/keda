@@ -29,14 +29,14 @@ import (
 	vaultapi "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
+	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
-	authenticationv1 "k8s.io/api/authentication/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -77,11 +77,6 @@ var (
 	kvV1SecretDataKeda = map[string]interface{}{
 		"test":  kedaSecretValue,
 		"array": []string{kedaSecretValue},
-	}
-	kubernetesAuthDataKeda = map[string]interface{}{
-		"auth": map[string]interface{}{
-			"client_token": vaultTestToken,
-		},
 	}
 )
 

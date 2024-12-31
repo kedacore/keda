@@ -1,0 +1,9 @@
+  - op: add
+    path: /rules/-
+    value:
+      apiGroups:
+        - ""
+      resources:
+        - serviceaccounts/token
+      verbs:
+        - create
