@@ -16,10 +16,11 @@ package labels
 import (
 	"bytes"
 	"encoding/json"
+	"slices"
 	"strconv"
+	"unsafe"
 
 	"github.com/prometheus/common/model"
-	"golang.org/x/exp/slices"
 )
 
 const (
@@ -28,10 +29,11 @@ const (
 	BucketLabel  = "le"
 	InstanceName = "instance"
 
-	labelSep = '\xfe'
+	labelSep = '\xfe' // Used at beginning of `Bytes` return.
+	sep      = '\xff' // Used between labels in `Bytes` and `Hash`.
 )
 
-var seps = []byte{'\xff'}
+var seps = []byte{sep} // Used with Hash, which has no WriteByte method.
 
 // Label is a key/value pair of strings.
 type Label struct {
@@ -39,7 +41,8 @@ type Label struct {
 }
 
 func (ls Labels) String() string {
-	var b bytes.Buffer
+	var bytea [1024]byte // On stack to avoid memory allocation while building the output.
+	b := bytes.NewBuffer(bytea[:0])
 
 	b.WriteByte('{')
 	i := 0
@@ -50,7 +53,7 @@ func (ls Labels) String() string {
 		}
 		b.WriteString(l.Name)
 		b.WriteByte('=')
-		b.WriteString(strconv.Quote(l.Value))
+		b.Write(strconv.AppendQuote(b.AvailableBuffer(), l.Value))
 		i++
 	})
 	b.WriteByte('}')
@@ -92,12 +95,23 @@ func (ls *Labels) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // IsValid checks if the metric name or label names are valid.
-func (ls Labels) IsValid() bool {
+func (ls Labels) IsValid(validationScheme model.ValidationScheme) bool {
 	err := ls.Validate(func(l Label) error {
-		if l.Name == model.MetricNameLabel && !model.IsValidMetricName(model.LabelValue(l.Value)) {
-			return strconv.ErrSyntax
+		if l.Name == model.MetricNameLabel {
+			// If the default validation scheme has been overridden with legacy mode,
+			// we need to call the special legacy validation checker.
+			if validationScheme == model.LegacyValidation && model.NameValidationScheme == model.UTF8Validation && !model.IsValidLegacyMetricName(string(model.LabelValue(l.Value))) {
+				return strconv.ErrSyntax
+			}
+			if !model.IsValidMetricName(model.LabelValue(l.Value)) {
+				return strconv.ErrSyntax
+			}
 		}
-		if !model.LabelName(l.Name).IsValid() || !model.LabelValue(l.Value).IsValid() {
+		if validationScheme == model.LegacyValidation && model.NameValidationScheme == model.UTF8Validation {
+			if !model.LabelName(l.Name).IsValidLegacy() || !model.LabelValue(l.Value).IsValid() {
+				return strconv.ErrSyntax
+			}
+		} else if !model.LabelName(l.Name).IsValid() || !model.LabelValue(l.Value).IsValid() {
 			return strconv.ErrSyntax
 		}
 		return nil
@@ -123,13 +137,6 @@ func FromMap(m map[string]string) Labels {
 	return New(l...)
 }
 
-// Builder allows modifying Labels.
-type Builder struct {
-	base Labels
-	del  []string
-	add  []Label
-}
-
 // NewBuilder returns a new LabelsBuilder.
 func NewBuilder(base Labels) *Builder {
 	b := &Builder{
@@ -138,18 +145,6 @@ func NewBuilder(base Labels) *Builder {
 	}
 	b.Reset(base)
 	return b
-}
-
-// Reset clears all current state for the builder.
-func (b *Builder) Reset(base Labels) {
-	b.base = base
-	b.del = b.del[:0]
-	b.add = b.add[:0]
-	b.base.Range(func(l Label) {
-		if l.Value == "" {
-			b.del = append(b.del, l.Name)
-		}
-	})
 }
 
 // Del deletes the label of the given name.
@@ -232,4 +227,8 @@ func contains(s []Label, n string) bool {
 		}
 	}
 	return false
+}
+
+func yoloString(b []byte) string {
+	return unsafe.String(unsafe.SliceData(b), len(b))
 }
