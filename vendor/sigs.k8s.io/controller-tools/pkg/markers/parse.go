@@ -208,7 +208,7 @@ func makeSliceType(itemType Argument) (reflect.Type, error) {
 	}
 
 	if itemType.Pointer {
-		itemReflectedType = reflect.PtrTo(itemReflectedType)
+		itemReflectedType = reflect.PointerTo(itemReflectedType)
 	}
 
 	return reflect.SliceOf(itemReflectedType), nil
@@ -248,7 +248,7 @@ func makeMapType(itemType Argument) (reflect.Type, error) {
 	}
 
 	if itemType.Pointer {
-		itemReflectedType = reflect.PtrTo(itemReflectedType)
+		itemReflectedType = reflect.PointerTo(itemReflectedType)
 	}
 
 	return reflect.MapOf(reflect.TypeOf(""), itemReflectedType), nil
