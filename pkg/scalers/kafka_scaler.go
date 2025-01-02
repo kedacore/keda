@@ -332,7 +332,7 @@ func parseSaslOAuthAWSMSKIAMParams(config *scalersconfig.ScalerConfig, meta *kaf
 
 	meta.awsRegion = config.TriggerMetadata["awsRegion"]
 
-	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.awsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return fmt.Errorf("error getting AWS authorization: %w", err)
 	}
@@ -669,7 +669,7 @@ func getKafkaClientConfig(ctx context.Context, metadata kafkaMetadata) (*sarama.
 		case KafkaSASLOAuthTokenProviderBearer:
 			config.Net.SASL.TokenProvider = kafka.OAuthBearerTokenProvider(metadata.username, metadata.password, metadata.oauthTokenEndpointURI, metadata.scopes, metadata.oauthExtensions)
 		case KafkaSASLOAuthTokenProviderAWSMSKIAM:
-			awsAuth, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+			awsAuth, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 			if err != nil {
 				return nil, fmt.Errorf("error getting AWS config: %w", err)
 			}

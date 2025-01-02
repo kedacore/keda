@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
-	_ "go.uber.org/automaxprocs"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeinformers "k8s.io/client-go/informers"
@@ -86,6 +85,7 @@ func main() {
 	var enableCertRotation bool
 	var validatingWebhookName string
 	var caDirs []string
+	var enableWebhookPatching bool
 	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
 	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the prometheus metric endpoint binds to.")
@@ -108,6 +108,7 @@ func main() {
 	pflag.BoolVar(&enableCertRotation, "enable-cert-rotation", false, "enable automatic generation and rotation of TLS certificates/keys")
 	pflag.StringVar(&validatingWebhookName, "validating-webhook-name", "keda-admission", "ValidatingWebhookConfiguration name. Defaults to keda-admission")
 	pflag.StringArrayVar(&caDirs, "ca-dir", []string{"/custom/ca"}, "Directory with CA certificates for scalers to authenticate TLS connections. Can be specified multiple times. Defaults to /custom/ca")
+	pflag.BoolVar(&enableWebhookPatching, "enable-webhook-patching", true, "Enable patching of webhook resources. Defaults to true.")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -115,6 +116,13 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	ctx := ctrl.SetupSignalHandler()
+
+	err := kedautil.ConfigureMaxProcs(setupLog)
+	if err != nil {
+		setupLog.Error(err, "failed to set max procs")
+		os.Exit(1)
+	}
+
 	namespaces, err := kedautil.GetWatchNamespaces()
 	if err != nil {
 		setupLog.Error(err, "failed to get watch namespace")
@@ -299,6 +307,7 @@ func main() {
 			APIServiceName:        "v1beta1.external.metrics.k8s.io",
 			Logger:                setupLog,
 			Ready:                 certReady,
+			EnableWebhookPatching: enableWebhookPatching,
 		}
 		if err := certManager.AddCertificateRotation(ctx, mgr); err != nil {
 			setupLog.Error(err, "unable to set up cert rotation")

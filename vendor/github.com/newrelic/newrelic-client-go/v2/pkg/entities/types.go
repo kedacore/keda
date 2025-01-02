@@ -1716,6 +1716,47 @@ var EntityInfrastructureIntegrationTypeTypes = struct {
 	VARNISH_INSTANCE: "VARNISH_INSTANCE",
 }
 
+// EntityManagementEntityScope - The list of possible scopes of an entity.
+type EntityManagementEntityScope string
+
+var EntityManagementEntityScopeTypes = struct {
+	// Account scope.
+	ACCOUNT EntityManagementEntityScope
+	// Organization scope.
+	ORGANIZATION EntityManagementEntityScope
+}{
+	// Account scope.
+	ACCOUNT: "ACCOUNT",
+	// Organization scope.
+	ORGANIZATION: "ORGANIZATION",
+}
+
+// EntityManagementManagedEntityType - Entity types that a Fleet can manage
+type EntityManagementManagedEntityType string
+
+var EntityManagementManagedEntityTypeTypes = struct {
+	// Infra Host
+	HOST EntityManagementManagedEntityType
+	// Kubernetes Cluster
+	KUBERNETESCLUSTER EntityManagementManagedEntityType
+}{
+	// Infra Host
+	HOST: "HOST",
+	// Kubernetes Cluster
+	KUBERNETESCLUSTER: "KUBERNETESCLUSTER",
+}
+
+// EntityManagementTeamExternalIntegrationType - Possible types for the External Integration.
+type EntityManagementTeamExternalIntegrationType string
+
+var EntityManagementTeamExternalIntegrationTypeTypes = struct {
+	// IAM Group Integration.
+	IAM_GROUP EntityManagementTeamExternalIntegrationType
+}{
+	// IAM Group Integration.
+	IAM_GROUP: "IAM_GROUP",
+}
+
 // EntityRelationshipEdgeDirection - Values for relationship direction filter.
 type EntityRelationshipEdgeDirection string
 
@@ -5699,6 +5740,605 @@ type EntityGoldenTag struct {
 	// The golden tag key.
 	Key string `json:"key"`
 }
+
+// EntityManagementActor - Represents an actor.
+type EntityManagementActor struct {
+	// Id of the actor.
+	ID string `json:"id"`
+}
+
+func (x *EntityManagementActor) ImplementsEntityManagementActor() {}
+
+// EntityManagementAgentConfigurationEntity - A configuration that can contain multiple immutable versions and can be deployed to a fleet
+type EntityManagementAgentConfigurationEntity struct {
+	// The agentType
+	AgentType string `json:"agentType"`
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// A unique user provided name for the configuration
+	Name string `json:"name"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// Collection of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+	// The total number of versions that have been created for this configuration
+	VersionCount int `json:"versionCount,omitempty"`
+}
+
+func (x *EntityManagementAgentConfigurationEntity) ImplementsEntityManagementEntity() {}
+
+// EntityManagementAgentConfigurationVersionEntity - A version of an agent configuration
+type EntityManagementAgentConfigurationVersionEntity struct {
+	// EntityGuid of the parent AgentConfiguration object
+	AgentConfiguration string `json:"agentConfiguration"`
+	// Metadata about the configuration blob
+	Blob EntityManagementBlob `json:"blob,omitempty"`
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// The name of this entity.
+	Name string `json:"name"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// Collection of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+	// Monotonically increasing version number
+	Version int `json:"version"`
+}
+
+func (x *EntityManagementAgentConfigurationVersionEntity) ImplementsEntityManagementEntity() {}
+
+// EntityManagementAgentDeployment - A set of configurations that are currently deployed
+type EntityManagementAgentDeployment struct {
+	// Deployment finish
+	CompletedAt *nrtime.EpochMilliseconds `json:"completedAt,omitempty"`
+	// Deployment started
+	DeployedAt *nrtime.EpochMilliseconds `json:"deployedAt"`
+	// Deployment status
+	Status string `json:"status,omitempty"`
+}
+
+// EntityManagementAgentEffectiveConfigurationEntity - The configuration that is actively being used to configure an agent
+type EntityManagementAgentEffectiveConfigurationEntity struct {
+	// Metadata about the effective configuration blob
+	Blob EntityManagementBlob `json:"blob"`
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// The name of this entity.
+	Name string `json:"name"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// Collection of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+}
+
+func (x *EntityManagementAgentEffectiveConfigurationEntity) ImplementsEntityManagementEntity() {}
+
+// EntityManagementAgentEntity - A software component that collects or processes telemetry
+type EntityManagementAgentEntity struct {
+	// The agentType
+	AgentType string `json:"agentType"`
+	// Properties specific to fleet control
+	FleetControlProperties EntityManagementFleetControlProperties `json:"fleetControlProperties"`
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// The name of this entity.
+	Name string `json:"name"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// Collection of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+}
+
+func (x *EntityManagementAgentEntity) ImplementsEntityManagementEntity() {}
+
+// EntityManagementAgentTypeDefinitionEntity - An Agent Type Definition
+type EntityManagementAgentTypeDefinitionEntity struct {
+	// The agent type
+	AgentType string `json:"agentType"`
+	// The display name of the agent
+	DisplayName string `json:"displayName"`
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// The name of this entity.
+	Name string `json:"name"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// Collection of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+}
+
+func (x *EntityManagementAgentTypeDefinitionEntity) ImplementsEntityManagementEntity() {}
+
+// EntityManagementBlob - Metadata used by the blob service to read blob contents
+type EntityManagementBlob struct {
+	// The checksum of the blob content
+	Checksum string `json:"checksum,omitempty"`
+	// The checksum algorithm used to calculate the checksum of the blob content
+	ChecksumAlgorithm string `json:"checksumAlgorithm,omitempty"`
+	// The content type of the blob
+	ContentType string `json:"contentType"`
+	// The URL to download the blob content
+	URL string `json:"url"`
+}
+
+// EntityManagementCollectionEntity - An entity type to represent collections of entities
+type EntityManagementCollectionEntity struct {
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// The name of this entity.
+	Name string `json:"name"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// Collection of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+}
+
+func (x *EntityManagementCollectionEntity) ImplementsEntityManagementEntity() {}
+
+// EntityManagementDiscoverySettings - Discovery related settings.
+type EntityManagementDiscoverySettings struct {
+	// If discovery is enabled for that organization or not.
+	Enabled bool `json:"enabled"`
+	// Tag keys used for discovery for the organization.
+	TagKeys []string `json:"tagKeys"`
+}
+
+// EntityManagementEntity - The Entity interface.
+type EntityManagementEntity struct {
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// The name of this entity.
+	Name string `json:"name"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// Collection of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+}
+
+func (x *EntityManagementEntity) ImplementsEntityManagementEntity() {}
+
+// EntityManagementEntitySearchResult - The result of an entities query.
+type EntityManagementEntitySearchResult struct {
+	// The current page of results.
+	Entities []EntityManagementEntityInterface `json:"entities"`
+	// Cursor pointing to the next page of results.
+	NextCursor string `json:"nextCursor,omitempty"`
+}
+
+// special
+func (x *EntityManagementEntitySearchResult) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range objMap {
+		if v == nil {
+			continue
+		}
+
+		switch k {
+		case "entities":
+			if v == nil {
+				continue
+			}
+			var rawMessageEntities []*json.RawMessage
+			err = json.Unmarshal(*v, &rawMessageEntities)
+			if err != nil {
+				return err
+			}
+
+			for _, m := range rawMessageEntities {
+				xxx, err := UnmarshalEntityManagementEntityInterface(*m)
+				if err != nil {
+					return err
+				}
+
+				if xxx != nil {
+					x.Entities = append(x.Entities, *xxx)
+				}
+			}
+		case "nextCursor":
+			err = json.Unmarshal(*v, &x.NextCursor)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// EntityManagementFleetControlProperties - Properties specific to fleet control
+type EntityManagementFleetControlProperties struct {
+	// Object holds state of current deployment
+	CurrentDeployment EntityManagementAgentDeployment `json:"currentDeployment,omitempty"`
+	// Environment the agent is running in
+	Environment string `json:"environment,omitempty"`
+	// True if the Agent is up and healthy
+	Healthy bool `json:"healthy,omitempty"`
+	// Error message returned by the agent when it is unhealthy
+	LastError string `json:"lastError,omitempty"`
+	// Error message returned when the last remote configuration deploy is not successful
+	LastRemoteConfigError string `json:"lastRemoteConfigError,omitempty"`
+	// Status of the last remote configuration deploy
+	LastRemoteConfigStatus string `json:"lastRemoteConfigStatus,omitempty"`
+	// Timestamp indicating when the agent was started
+	StartTime *nrtime.EpochMilliseconds `json:"startTime,omitempty"`
+	// The UID of this agent
+	Uid string `json:"uid,omitempty"`
+}
+
+// EntityManagementFleetDeployment - A set of configurations that are currently deployed
+type EntityManagementFleetDeployment struct {
+	// The number of configurations changed during this deployment
+	ConfigsChanged int `json:"configsChanged"`
+	// A list of configurations included in this deployment
+	ConfigurationVersions []string `json:"configurationVersions"`
+	// Deployment started
+	DeployedAt *nrtime.EpochMilliseconds `json:"deployedAt"`
+	// Deployment description
+	Description string `json:"description,omitempty"`
+	// The number of entities changed during this deployment
+	EntitiesChanged int `json:"entitiesChanged"`
+	// Deployment name
+	Name string `json:"name"`
+	// Deployment status
+	Status string `json:"status,omitempty"`
+}
+
+// EntityManagementFleetEntity - A fleet of entities that are managed by NRAgentControl
+type EntityManagementFleetEntity struct {
+	// Object holds state of current deployment
+	CurrentDeployment EntityManagementFleetDeployment `json:"currentDeployment,omitempty"`
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// CollectionEntity that associates with managed entities for Fleet
+	ManagedEntities EntityManagementCollectionEntity `json:"managedEntities,omitempty"`
+	// The type of entity the fleet will manage. e.g. HOST
+	ManagedEntityType EntityManagementManagedEntityType `json:"managedEntityType"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// A unique user provided name for the fleet
+	Name string `json:"name"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// Collection of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+}
+
+func (x *EntityManagementFleetEntity) ImplementsEntityManagementEntity() {}
+
+// EntityManagementGenericEntity - A generic entity.
+type EntityManagementGenericEntity struct {
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// The name of this entity.
+	Name string `json:"name"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// Collection of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+}
+
+func (x *EntityManagementGenericEntity) ImplementsEntityManagementEntity() {}
+
+// EntityManagementMetadata - Metadata about an entity.
+type EntityManagementMetadata struct {
+	// The entity's creation time.
+	CreatedAt *nrtime.EpochMilliseconds `json:"createdAt,omitempty"`
+	// Actor that created this entity.
+	CreatedBy EntityManagementActorInterface `json:"createdBy,omitempty"`
+	// The entity's last update time.
+	UpdatedAt *nrtime.EpochMilliseconds `json:"updatedAt,omitempty"`
+}
+
+// special
+func (x *EntityManagementMetadata) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range objMap {
+		if v == nil {
+			continue
+		}
+
+		switch k {
+		case "createdAt":
+			err = json.Unmarshal(*v, &x.CreatedAt)
+			if err != nil {
+				return err
+			}
+		case "createdBy":
+			if v == nil {
+				continue
+			}
+			xxx, err := UnmarshalEntityManagementActorInterface(*v)
+			if err != nil {
+				return err
+			}
+
+			if xxx != nil {
+				x.CreatedBy = *xxx
+			}
+		case "updatedAt":
+			err = json.Unmarshal(*v, &x.UpdatedAt)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// EntityManagementNRQLRuleEngine - NRQL engine configuration.
+type EntityManagementNRQLRuleEngine struct {
+	// The accounts to be queried.
+	Accounts []int `json:"accounts"`
+	// The query to be executed.
+	Query string `json:"query"`
+}
+
+// EntityManagementScopedReference - An entity with scope.
+type EntityManagementScopedReference struct {
+	// The unique reference identifier of the an object within the given scope
+	ID string `json:"id"`
+	// The scope of the entity
+	Type EntityManagementEntityScope `json:"type"`
+}
+
+// EntityManagementScorecardEntity - An entity with collection of scorecard rules.
+type EntityManagementScorecardEntity struct {
+	// The scorecard description.
+	Description string `json:"description,omitempty"`
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// A unique user provided name for the scorecard.
+	Name string `json:"name"`
+	// List of rules in the scorecard.
+	Rules EntityManagementCollectionEntity `json:"rules,omitempty"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// Collection of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+}
+
+func (x *EntityManagementScorecardEntity) ImplementsEntityManagementEntity() {}
+
+// EntityManagementScorecardRuleEntity - An entity representing rule in scorecards.
+type EntityManagementScorecardRuleEntity struct {
+	// The rule description.
+	Description string `json:"description,omitempty"`
+	// Is rule enabled.
+	Enabled bool `json:"enabled"`
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// The NRQL rule engine.
+	NRQLEngine EntityManagementNRQLRuleEngine `json:"nrqlEngine"`
+	// A unique user provided name for the rule
+	Name string `json:"name"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// Collection of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+}
+
+func (x *EntityManagementScorecardRuleEntity) ImplementsEntityManagementEntity() {}
+
+// EntityManagementSystemActor - A system actor.
+type EntityManagementSystemActor struct {
+	// Id of the actor.
+	ID string `json:"id"`
+}
+
+func (x *EntityManagementSystemActor) ImplementsEntityManagementActor() {}
+
+// EntityManagementTag - An entity tag.
+type EntityManagementTag struct {
+	// The key or name of the tag.
+	Key string `json:"key"`
+	// The list of values of the tag.
+	Values []string `json:"values"`
+}
+
+// EntityManagementTeamEntities - A list of entities owned by a Team.
+type EntityManagementTeamEntities struct {
+	// List of the static entities owned by the team.
+	Static []EntityManagementEntityInterface `json:"static"`
+}
+
+// special
+func (x *EntityManagementTeamEntities) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range objMap {
+		if v == nil {
+			continue
+		}
+
+		switch k {
+		case "static":
+			if v == nil {
+				continue
+			}
+			var rawMessageStatic []*json.RawMessage
+			err = json.Unmarshal(*v, &rawMessageStatic)
+			if err != nil {
+				return err
+			}
+
+			for _, m := range rawMessageStatic {
+				xxx, err := UnmarshalEntityManagementEntityInterface(*m)
+				if err != nil {
+					return err
+				}
+
+				if xxx != nil {
+					x.Static = append(x.Static, *xxx)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// EntityManagementTeamEntity - An entity representing a New Relic Team.
+type EntityManagementTeamEntity struct {
+	// List of aliases associated to the team.
+	Aliases []string `json:"aliases"`
+	// Further information about team.
+	Description string `json:"description,omitempty"`
+	// List of the entities owned by the team.
+	Entities EntityManagementTeamEntities `json:"entities,omitempty"`
+	// External Integration with another system.
+	ExternalIntegration EntityManagementTeamExternalIntegration `json:"externalIntegration,omitempty"`
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// List of members belonging to the team.
+	Members []EntityManagementTeamMember `json:"members"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// The name of this entity.
+	Name string `json:"name"`
+	// List of resources attached to the team.
+	Resources []EntityManagementTeamResource `json:"resources"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// Collection of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+}
+
+func (x *EntityManagementTeamEntity) ImplementsEntityManagementEntity() {}
+
+// EntityManagementTeamExternalIntegration - Integration with an external system.
+type EntityManagementTeamExternalIntegration struct {
+	// The id in the external system.
+	ExternalId string `json:"externalId"`
+	// The type of the Integration.
+	Type EntityManagementTeamExternalIntegrationType `json:"type,omitempty"`
+}
+
+// EntityManagementTeamMember - Any user belonging to a Team.
+type EntityManagementTeamMember struct {
+	// List of roles of the user.
+	Roles []string `json:"roles"`
+	// The user who performed the action..
+	User EntityManagementUserEntity `json:"user"`
+}
+
+// EntityManagementTeamResource - Any extra information attached to a Team.
+type EntityManagementTeamResource struct {
+	// Holds the content of the resource.
+	Content string `json:"content"`
+	// Main text for the resource, use the content if null.
+	Title string `json:"title,omitempty"`
+	// Type of resource, the UI might be enriched based on the value.
+	Type string `json:"type"`
+}
+
+// EntityManagementTeamsOrganizationSettingsEntity - Teams global settings per organization.
+type EntityManagementTeamsOrganizationSettingsEntity struct {
+	// Discovery settings.
+	Discovery EntityManagementDiscoverySettings `json:"discovery,omitempty"`
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// The name of this entity.
+	Name string `json:"name"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// Collection of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+}
+
+func (x *EntityManagementTeamsOrganizationSettingsEntity) ImplementsEntityManagementEntity() {}
+
+// EntityManagementUserActor - A user actor.
+type EntityManagementUserActor struct {
+	// Id of the actor.
+	ID string `json:"id"`
+}
+
+func (x *EntityManagementUserActor) ImplementsEntityManagementActor() {}
+
+// EntityManagementUserEntity - An entity representing a New Relic User.
+type EntityManagementUserEntity struct {
+	// The represented user email.
+	Email string `json:"email"`
+	// The entity's global unique identifier.
+	ID string `json:"id"`
+	// Metadata about the entity.
+	Metadata EntityManagementMetadata `json:"metadata"`
+	// The name of this entity.
+	Name string `json:"name"`
+	// The entity's scope.
+	Scope EntityManagementScopedReference `json:"scope"`
+	// Collection of tags.
+	Tags []EntityManagementTag `json:"tags"`
+	// The entity type.
+	Type string `json:"type"`
+	// User domain identifier.
+	UserID int `json:"userId"`
+}
+
+func (x *EntityManagementUserEntity) ImplementsEntityManagementEntity() {}
 
 // EntityOutline - The `EntityOutline` interface object allows fetching basic entity data for many entities at a time.
 //
@@ -12153,6 +12793,240 @@ func UnmarshalEntityInterface(b []byte) (*EntityInterface, error) {
 	}
 
 	return nil, fmt.Errorf("interface Entity was not matched against all PossibleTypes: %s", typeName)
+}
+
+// EntityManagementActor - Represents an actor.
+type EntityManagementActorInterface interface {
+	ImplementsEntityManagementActor()
+}
+
+// UnmarshalEntityManagementActorInterface unmarshals the interface into the correct type
+// based on __typename provided by GraphQL
+func UnmarshalEntityManagementActorInterface(b []byte) (*EntityManagementActorInterface, error) {
+	var err error
+
+	var rawMessageEntityManagementActor map[string]*json.RawMessage
+	err = json.Unmarshal(b, &rawMessageEntityManagementActor)
+	if err != nil {
+		return nil, err
+	}
+
+	// Nothing to unmarshal
+	if len(rawMessageEntityManagementActor) < 1 {
+		return nil, nil
+	}
+
+	var typeName string
+
+	if rawTypeName, ok := rawMessageEntityManagementActor["__typename"]; ok {
+		err = json.Unmarshal(*rawTypeName, &typeName)
+		if err != nil {
+			return nil, err
+		}
+
+		switch typeName {
+		case "EntityManagementSystemActor":
+			var interfaceType EntityManagementSystemActor
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementActorInterface = &interfaceType
+
+			return &xxx, nil
+		case "EntityManagementUserActor":
+			var interfaceType EntityManagementUserActor
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementActorInterface = &interfaceType
+
+			return &xxx, nil
+		}
+	} else {
+		keys := []string{}
+		for k := range rawMessageEntityManagementActor {
+			keys = append(keys, k)
+		}
+		return nil, fmt.Errorf("interface EntityManagementActor did not include a __typename field for inspection: %s", keys)
+	}
+
+	return nil, fmt.Errorf("interface EntityManagementActor was not matched against all PossibleTypes: %s", typeName)
+}
+
+// EntityManagementEntity - The Entity interface.
+type EntityManagementEntityInterface interface {
+	ImplementsEntityManagementEntity()
+}
+
+// UnmarshalEntityManagementEntityInterface unmarshals the interface into the correct type
+// based on __typename provided by GraphQL
+func UnmarshalEntityManagementEntityInterface(b []byte) (*EntityManagementEntityInterface, error) {
+	var err error
+
+	var rawMessageEntityManagementEntity map[string]*json.RawMessage
+	err = json.Unmarshal(b, &rawMessageEntityManagementEntity)
+	if err != nil {
+		return nil, err
+	}
+
+	// Nothing to unmarshal
+	if len(rawMessageEntityManagementEntity) < 1 {
+		return nil, nil
+	}
+
+	var typeName string
+
+	if rawTypeName, ok := rawMessageEntityManagementEntity["__typename"]; ok {
+		err = json.Unmarshal(*rawTypeName, &typeName)
+		if err != nil {
+			return nil, err
+		}
+
+		switch typeName {
+		case "EntityManagementAgentConfigurationEntity":
+			var interfaceType EntityManagementAgentConfigurationEntity
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementEntityInterface = &interfaceType
+
+			return &xxx, nil
+		case "EntityManagementAgentConfigurationVersionEntity":
+			var interfaceType EntityManagementAgentConfigurationVersionEntity
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementEntityInterface = &interfaceType
+
+			return &xxx, nil
+		case "EntityManagementAgentEffectiveConfigurationEntity":
+			var interfaceType EntityManagementAgentEffectiveConfigurationEntity
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementEntityInterface = &interfaceType
+
+			return &xxx, nil
+		case "EntityManagementAgentEntity":
+			var interfaceType EntityManagementAgentEntity
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementEntityInterface = &interfaceType
+
+			return &xxx, nil
+		case "EntityManagementAgentTypeDefinitionEntity":
+			var interfaceType EntityManagementAgentTypeDefinitionEntity
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementEntityInterface = &interfaceType
+
+			return &xxx, nil
+		case "EntityManagementCollectionEntity":
+			var interfaceType EntityManagementCollectionEntity
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementEntityInterface = &interfaceType
+
+			return &xxx, nil
+		case "EntityManagementFleetEntity":
+			var interfaceType EntityManagementFleetEntity
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementEntityInterface = &interfaceType
+
+			return &xxx, nil
+		case "EntityManagementGenericEntity":
+			var interfaceType EntityManagementGenericEntity
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementEntityInterface = &interfaceType
+
+			return &xxx, nil
+		case "EntityManagementScorecardEntity":
+			var interfaceType EntityManagementScorecardEntity
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementEntityInterface = &interfaceType
+
+			return &xxx, nil
+		case "EntityManagementScorecardRuleEntity":
+			var interfaceType EntityManagementScorecardRuleEntity
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementEntityInterface = &interfaceType
+
+			return &xxx, nil
+		case "EntityManagementTeamEntity":
+			var interfaceType EntityManagementTeamEntity
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementEntityInterface = &interfaceType
+
+			return &xxx, nil
+		case "EntityManagementTeamsOrganizationSettingsEntity":
+			var interfaceType EntityManagementTeamsOrganizationSettingsEntity
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementEntityInterface = &interfaceType
+
+			return &xxx, nil
+		case "EntityManagementUserEntity":
+			var interfaceType EntityManagementUserEntity
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityManagementEntityInterface = &interfaceType
+
+			return &xxx, nil
+		}
+	} else {
+		keys := []string{}
+		for k := range rawMessageEntityManagementEntity {
+			keys = append(keys, k)
+		}
+		return nil, fmt.Errorf("interface EntityManagementEntity did not include a __typename field for inspection: %s", keys)
+	}
+
+	return nil, fmt.Errorf("interface EntityManagementEntity was not matched against all PossibleTypes: %s", typeName)
 }
 
 // EntityOutline - The `EntityOutline` interface object allows fetching basic entity data for many entities at a time.
