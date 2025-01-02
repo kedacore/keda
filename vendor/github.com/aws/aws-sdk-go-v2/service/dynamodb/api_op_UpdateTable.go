@@ -98,6 +98,29 @@ type UpdateTableInput struct {
 	// [Managing Global Secondary Indexes]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.OnlineOps.html
 	GlobalSecondaryIndexUpdates []types.GlobalSecondaryIndexUpdate
 
+	// Specifies the consistency mode for a new global table. This parameter is only
+	// valid when you create a global table by specifying one or more [Create]actions in the [ReplicaUpdates]
+	// action list.
+	//
+	// You can specify one of the following consistency modes:
+	//
+	//   - EVENTUAL : Configures a new global table for multi-Region eventual
+	//   consistency. This is the default consistency mode for global tables.
+	//
+	//   - STRONG : Configures a new global table for multi-Region strong consistency
+	//   (preview).
+	//
+	// Multi-Region strong consistency (MRSC) is a new DynamoDB global tables
+	//   capability currently available in preview mode. For more information, see [Global tables multi-Region strong consistency].
+	//
+	// If you don't specify this parameter, the global table consistency mode defaults
+	// to EVENTUAL .
+	//
+	// [ReplicaUpdates]: https://docs.aws.amazon.com/https:/docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateTable.html#DDB-UpdateTable-request-ReplicaUpdates
+	// [Create]: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_ReplicationGroupUpdate.html#DDB-Type-ReplicationGroupUpdate-Create
+	// [Global tables multi-Region strong consistency]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/PreviewFeatures.html#multi-region-strong-consistency-gt
+	MultiRegionConsistency types.MultiRegionConsistency
+
 	// Updates the maximum number of read and write units for the specified table in
 	// on-demand capacity mode. If you use this parameter, you must specify
 	// MaxReadRequestUnits , MaxWriteRequestUnits , or both.
@@ -125,6 +148,10 @@ type UpdateTableInput struct {
 	// The table class of the table to be updated. Valid values are STANDARD and
 	// STANDARD_INFREQUENT_ACCESS .
 	TableClass types.TableClass
+
+	// Represents the warm throughput (in read units per second and write units per
+	// second) for updating a table.
+	WarmThroughput *types.WarmThroughput
 
 	noSmithyDocumentSerde
 }

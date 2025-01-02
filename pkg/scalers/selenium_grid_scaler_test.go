@@ -16,13 +16,14 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 		sessionBrowserName string
 		browserVersion     string
 		platformName       string
-		nodeMaxSessions    int
+		nodeMaxSessions    int64
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    int64
-		wantErr bool
+		name                string
+		args                args
+		wantNewRequestNodes int64
+		wantOnGoingSessions int64
+		wantErr             bool
 	}{
 		{
 			name: "nil response body should throw error",
@@ -61,8 +62,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				`),
 				browserName: "",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
 			name: "12 sessionQueueRequests with 4 requests matching browserName chrome should return count as 4",
@@ -98,14 +100,15 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 			},
-			want:    4,
-			wantErr: false,
+			wantNewRequestNodes: 4,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
-			name: "2 sessionQueueRequests and 1 available nodeStereotypes with matching browserName firefox should return count as 1",
+			name: "2_sessionQueueRequests_and_1_available_nodeStereotypes_with_matching_browserName_firefox_should_return_count_as_1",
 			args: args{
 				b: []byte(`{
 					  "data": {
@@ -122,14 +125,14 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							  "sessionCount": 1,
 							  "maxSession": 1,
 							  "slotCount": 1,
-							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"chrome\",\n      \"browserVersion\": \"128.0\",\n      \"goog:chromeOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-chrome-name-m5n8z-4br6x\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
+							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"chrome\",\n      \"browserVersion\": \"\",\n      \"goog:chromeOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-chrome-name-m5n8z-4br6x\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
 							  "sessions": [
 								{
 								  "id": "reserved",
 								  "capabilities": "{\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"128.0\",\n  \"goog:chromeOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-chrome-name-m5n8z-4br6x\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}",
 								  "slot": {
 									"id": "83c9d9f5-f79d-4dea-bc9b-ce61bf2bc01c",
-									"stereotype": "{\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"128.0\",\n  \"goog:chromeOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-chrome-name-m5n8z-4br6x\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}"
+									"stereotype": "{\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"\",\n  \"goog:chromeOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-chrome-name-m5n8z-4br6x\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}"
 								  }
 								}
 							  ]
@@ -140,14 +143,14 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							  "sessionCount": 1,
 							  "maxSession": 1,
 							  "slotCount": 1,
-							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"firefox\",\n      \"browserVersion\": \"130.0\",\n      \"moz:firefoxOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-firefox-name-s2gq6-82lwb\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
+							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"firefox\",\n      \"browserVersion\": \"\",\n      \"moz:firefoxOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-firefox-name-s2gq6-82lwb\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
 							  "sessions": [
 								{
 								  "id": "reserved",
 								  "capabilities": "{\n  \"browserName\": \"firefox\",\n  \"browserVersion\": \"130.0\",\n  \"moz:firefoxOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-firefox-name-s2gq6-82lwb\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}",
 								  "slot": {
 									"id": "b03b80c0-95f8-4b9c-ba06-bebd2568ce3d",
-									"stereotype": "{\n  \"browserName\": \"firefox\",\n  \"browserVersion\": \"130.0\",\n  \"moz:firefoxOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-firefox-name-s2gq6-82lwb\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}"
+									"stereotype": "{\n  \"browserName\": \"firefox\",\n  \"browserVersion\": \"\",\n  \"moz:firefoxOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-firefox-name-s2gq6-82lwb\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}"
 								  }
 								}
 							  ]
@@ -158,7 +161,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							  "sessionCount": 0,
 							  "maxSession": 1,
 							  "slotCount": 1,
-							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"chrome\",\n      \"browserVersion\": \"128.0\",\n      \"goog:chromeOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-chrome-name-xh95p-9c2cl\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
+							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"chrome\",\n      \"browserVersion\": \"\",\n      \"goog:chromeOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-chrome-name-xh95p-9c2cl\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
 							  "sessions": []
 							},
 							{
@@ -167,14 +170,14 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							  "sessionCount": 1,
 							  "maxSession": 1,
 							  "slotCount": 1,
-							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"chrome\",\n      \"browserVersion\": \"128.0\",\n      \"goog:chromeOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-chrome-name-j2xbn-lq76c\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
+							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"chrome\",\n      \"browserVersion\": \"\",\n      \"goog:chromeOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-chrome-name-j2xbn-lq76c\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
 							  "sessions": [
 								{
 								  "id": "reserved",
 								  "capabilities": "{\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"128.0\",\n  \"goog:chromeOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-chrome-name-j2xbn-lq76c\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}",
 								  "slot": {
 									"id": "9d91cd87-b443-4a0c-93e7-eea8c4661207",
-									"stereotype": "{\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"128.0\",\n  \"goog:chromeOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-chrome-name-j2xbn-lq76c\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}"
+									"stereotype": "{\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"\",\n  \"goog:chromeOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-chrome-name-j2xbn-lq76c\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}"
 								  }
 								}
 							  ]
@@ -185,14 +188,14 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							  "sessionCount": 1,
 							  "maxSession": 1,
 							  "slotCount": 1,
-							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"firefox\",\n      \"browserVersion\": \"130.0\",\n      \"moz:firefoxOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-firefox-name-xk6mm-2m6jh\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
+							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"firefox\",\n      \"browserVersion\": \"\",\n      \"moz:firefoxOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-firefox-name-xk6mm-2m6jh\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
 							  "sessions": [
 								{
 								  "id": "reserved",
 								  "capabilities": "{\n  \"browserName\": \"firefox\",\n  \"browserVersion\": \"130.0\",\n  \"moz:firefoxOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-firefox-name-xk6mm-2m6jh\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}",
 								  "slot": {
 									"id": "2c1fc5c4-881a-48fd-9b9e-b4d3ecbc1bd8",
-									"stereotype": "{\n  \"browserName\": \"firefox\",\n  \"browserVersion\": \"130.0\",\n  \"moz:firefoxOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-firefox-name-xk6mm-2m6jh\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}"
+									"stereotype": "{\n  \"browserName\": \"firefox\",\n  \"browserVersion\": \"\",\n  \"moz:firefoxOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-firefox-name-xk6mm-2m6jh\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}"
 								  }
 								}
 							  ]
@@ -203,14 +206,14 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							  "sessionCount": 1,
 							  "maxSession": 1,
 							  "slotCount": 1,
-							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"firefox\",\n      \"browserVersion\": \"130.0\",\n      \"moz:firefoxOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-firefox-name-bvq59-6dh6q\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
+							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"firefox\",\n      \"browserVersion\": \"\",\n      \"moz:firefoxOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-firefox-name-bvq59-6dh6q\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
 							  "sessions": [
 								{
 								  "id": "reserved",
 								  "capabilities": "{\n  \"browserName\": \"firefox\",\n  \"browserVersion\": \"130.0\",\n  \"moz:firefoxOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-firefox-name-bvq59-6dh6q\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}",
 								  "slot": {
 									"id": "5f8f9ba0-0f61-473e-b367-b68d9368dc24",
-									"stereotype": "{\n  \"browserName\": \"firefox\",\n  \"browserVersion\": \"130.0\",\n  \"moz:firefoxOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-firefox-name-bvq59-6dh6q\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}"
+									"stereotype": "{\n  \"browserName\": \"firefox\",\n  \"browserVersion\": \"\",\n  \"moz:firefoxOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-firefox-name-bvq59-6dh6q\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}"
 								  }
 								}
 							  ]
@@ -221,7 +224,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							  "sessionCount": 0,
 							  "maxSession": 1,
 							  "slotCount": 1,
-							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"firefox\",\n      \"browserVersion\": \"130.0\",\n      \"moz:firefoxOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-firefox-name-42xbf-zpdd4\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
+							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"firefox\",\n      \"browserVersion\": \"\",\n      \"moz:firefoxOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-firefox-name-42xbf-zpdd4\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
 							  "sessions": []
 							},
 							{
@@ -230,14 +233,14 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							  "sessionCount": 1,
 							  "maxSession": 1,
 							  "slotCount": 1,
-							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"firefox\",\n      \"browserVersion\": \"130.0\",\n      \"moz:firefoxOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-firefox-name-qt9z2-6xx86\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
+							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"firefox\",\n      \"browserVersion\": \"\",\n      \"moz:firefoxOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-firefox-name-qt9z2-6xx86\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
 							  "sessions": [
 								{
 								  "id": "reserved",
 								  "capabilities": "{\n  \"browserName\": \"firefox\",\n  \"browserVersion\": \"130.0\",\n  \"moz:firefoxOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-firefox-name-qt9z2-6xx86\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}",
 								  "slot": {
 									"id": "38bd0b09-ffe0-46e9-8983-bd208270c8da",
-									"stereotype": "{\n  \"browserName\": \"firefox\",\n  \"browserVersion\": \"130.0\",\n  \"moz:firefoxOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-firefox-name-qt9z2-6xx86\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}"
+									"stereotype": "{\n  \"browserName\": \"firefox\",\n  \"browserVersion\": \"\",\n  \"moz:firefoxOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002ffirefox\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-firefox-name-qt9z2-6xx86\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}"
 								  }
 								}
 							  ]
@@ -248,14 +251,14 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 							  "sessionCount": 1,
 							  "maxSession": 1,
 							  "slotCount": 1,
-							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"chrome\",\n      \"browserVersion\": \"128.0\",\n      \"goog:chromeOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-chrome-name-v7nrv-xsfkb\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
+							  "stereotypes": "[\n  {\n    \"slots\": 1,\n    \"stereotype\": {\n      \"browserName\": \"chrome\",\n      \"browserVersion\": \"\",\n      \"goog:chromeOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n      },\n      \"platformName\": \"linux\",\n      \"se:containerName\": \"my-chrome-name-v7nrv-xsfkb\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
 							  "sessions": [
 								{
 								  "id": "reserved",
-								  "capabilities": "{\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"128.0\",\n  \"goog:chromeOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-chrome-name-v7nrv-xsfkb\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}",
+								  "capabilities": "{\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"\",\n  \"goog:chromeOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-chrome-name-v7nrv-xsfkb\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}",
 								  "slot": {
 									"id": "43b992cc-39bb-4b0f-92b6-99603a543459",
-									"stereotype": "{\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"128.0\",\n  \"goog:chromeOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-chrome-name-v7nrv-xsfkb\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}"
+									"stereotype": "{\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"\",\n  \"goog:chromeOptions\": {\n    \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n  },\n  \"platformName\": \"linux\",\n  \"se:containerName\": \"my-chrome-name-v7nrv-xsfkb\",\n  \"se:downloadsEnabled\": true,\n  \"se:noVncPort\": 7900,\n  \"se:vncEnabled\": true\n}"
 								  }
 								}
 							  ]
@@ -273,14 +276,15 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				`),
 				browserName:        "firefox",
 				sessionBrowserName: "firefox",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 4,
+			wantErr:             false,
 		},
 		{
-			name: "1 sessionQueueRequests and 1 available nodeStereotypes with matching browserName chrome should return count as 0",
+			name: "1_sessionQueueRequests_and_1_available_nodeStereotypes_with_matching_browserName_chrome_should_return_count_as_0",
 			args: args{
 				b: []byte(`{
 				  "data": {
@@ -322,14 +326,15 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
-			name: "1 sessionQueueRequests Linux and 1 available nodeStereotypes Windows with matching browserName chrome should return count as 1",
+			name: `Given_2_requests_with_explicit_name_version_platform_When_2_existing_node_with_platform_not_matching_And_scaler_metadata_with_browser_version_as_latest_Then_scaler_should_not_scale_up_and_return_0`,
 			args: args{
 				b: []byte(`{
 				  "data": {
@@ -371,14 +376,15 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
-			name: "scaler browserVersion is latest, 2 sessionQueueRequests wihtout browserVersion, 2 available nodeStereotypes with different versions and platforms, should return count as 1",
+			name: "scaler_browserVersion_is_latest,_2_sessionQueueRequests_without_browserVersion,_2_available_nodeStereotypes_with_different_versions_and_platforms,_should_return_count_as_1",
 			args: args{
 				b: []byte(`{
                     "data": {
@@ -395,7 +401,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
                                     "sessionCount": 0,
                                     "maxSession": 1,
                                     "slotCount": 1,
-                                    "stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}}]",
+                                    "stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\"}}]",
                                     "sessions": []
                                 },
                                 {
@@ -404,7 +410,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
                                     "sessionCount": 0,
                                     "maxSession": 1,
                                     "slotCount": 1,
-                                    "stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"92.0\", \"platformName\": \"Windows 11\"}}]",
+                                    "stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"Windows 11\"}}]",
                                     "sessions": []
                                 }
                             ]
@@ -419,14 +425,15 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
                 }`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
-			name: "scaler browserVersion is latest, 5 sessionQueueRequests wihtout browserVersion also 1 different platformName, 1 available nodeStereotypes with 3 slots Linux and 1 node Windows, should return count as 1",
+			name: "scaler_browserVersion_is_latest,_5_sessionQueueRequests_wihtout_browserVersion_also_1_different_platformName,_1_available_nodeStereotypes_with_3_slots_Linux_and_1_node_Windows,_should_return_count_as_1",
 			args: args{
 				b: []byte(`{
                     "data": {
@@ -443,7 +450,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
                                     "sessionCount": 0,
                                     "maxSession": 3,
                                     "slotCount": 3,
-                                    "stereotypes": "[{\"slots\": 3, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}}]",
+                                    "stereotypes": "[{\"slots\": 3, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\"}}]",
                                     "sessions": []
                                 },
                                 {
@@ -452,7 +459,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
                                     "sessionCount": 0,
                                     "maxSession": 3,
                                     "slotCount": 3,
-                                    "stereotypes": "[{\"slots\": 3, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"92.0\", \"platformName\": \"Windows 11\"}}]",
+                                    "stereotypes": "[{\"slots\": 3, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"Windows 11\"}}]",
                                     "sessions": []
                                 }
                             ]
@@ -470,11 +477,12 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
                 }`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
 			name: "queue request with browserName browserVersion and browserVersion but no available nodes should return count as 1",
@@ -498,7 +506,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-1",
-											"capabilities": "{\"browserName\": \"firefox\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"firefox\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"firefox\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								}
@@ -516,8 +528,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
 			name: "1 queue request with browserName browserVersion and browserVersion but 2 nodes without available slots should return count as 1",
@@ -541,7 +554,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-1",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								},
@@ -555,7 +572,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-2",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								}
@@ -573,8 +594,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 		{
 			name: "2 session queue with matching browsername and browserversion of 2 available slots should return count as 0",
@@ -621,8 +643,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
 			name: "2 queue requests with browserName browserVersion and platformName matching 2 available slots on 2 different nodes should return count as 0",
@@ -646,7 +669,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-1",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								},
@@ -660,7 +687,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-2",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								}
@@ -679,8 +710,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 		{
 			name: "1 queue request with browserName browserVersion and platformName matching 1 available slot on node has 3 max sessions should return count as 0",
@@ -704,11 +736,19 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-1",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										},
 										{
 											"id": "session-2",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								}
@@ -726,8 +766,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 		{
 			name: "3 queue requests with browserName browserVersion and platformName but 2 running nodes are busy should return count as 3",
@@ -751,7 +792,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-1",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								},
@@ -765,7 +810,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-2",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								}
@@ -785,11 +834,12 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    3,
-			wantErr: false,
+			wantNewRequestNodes: 3,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 		{
-			name: "3 queue requests with browserName browserVersion and platformName but 2 running nodes are busy with different versions should return count as 3",
+			name: "Given_3_requests_explicit_name_version_platform_When_2_existing_nodes_not_available_And_scaler_metadate_with_browserVersion_as_latest_Then_scaler_should_not_scale_up_and_return_2_on_going_session",
 			args: args{
 				b: []byte(`{
 					"data": {
@@ -810,7 +860,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-1",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								},
@@ -824,7 +878,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-2",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								}
@@ -841,11 +899,80 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				}`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 			},
-			want:    3,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
+		},
+		{
+			name: "Given_3_requests_explicit_name_version_platform_When_2_existing_nodes_not_available_And_scaler_metadate_with_browserVersion_92.0_Then_scaler_should_scale_up_1_and_return_0_on_going_session",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 2,
+							"maxSession": 2,
+							"totalSlots": 2
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-1",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-2",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-2",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\"browserName\": \"chrome\", \"browserVersion\": \"90.0\", \"platformName\": \"linux\"}",
+								"{\"browserName\": \"chrome\", \"browserVersion\": \"92.0\", \"platformName\": \"linux\"}",
+								"{\"browserName\": \"chrome\", \"browserVersion\": \"93.0\", \"platformName\": \"linux\"}"
+							]
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "92.0",
+				platformName:       "linux",
+			},
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
 			name: "3 queue requests with browserName and platformName but 2 running nodes are busy with different versions should return count as 3",
@@ -869,7 +996,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-1",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								},
@@ -883,7 +1014,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-2",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								}
@@ -900,11 +1035,12 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				}`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 			},
-			want:    3,
-			wantErr: false,
+			wantNewRequestNodes: 3,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 		{
 			name: "1 active session with matching browsername and version should return count as 2",
@@ -928,7 +1064,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-1",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								}
@@ -947,11 +1087,12 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 2,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
 		},
 		{
-			name: "1 request without browserName and browserVersion stable can be match any available node should return count as 0",
+			name: "1_request_without_browserVersion_can_be_match_any_available_node_should_return_count_as_0",
 			args: args{
 				b: []byte(`{
 					"data": {
@@ -975,21 +1116,22 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						},
 						"sessionsInfo": {
 							"sessionQueueRequests": [
-								"{\"browserVersion\": \"stable\", \"platformName\": \"linux\"}"
+								"{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\"}"
 							]
 						}
 					}
 				}`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
-			name: "1 request without browserName and browserVersion stable should return count as 1",
+			name: "1 request without platformName and browserVersion should return count as 1",
 			args: args{
 				b: []byte(`{
 					"data": {
@@ -1006,11 +1148,15 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessionCount": 1,
 									"maxSession": 1,
 									"slotCount": 1,
-									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"v128.0\", \"platformName\": \"linux\"}}]",
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}}]",
 									"sessions": [
 										{
 											"id": "session-1",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"v128.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								}
@@ -1018,18 +1164,19 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						},
 						"sessionsInfo": {
 							"sessionQueueRequests": [
-								"{\"browserVersion\": \"stable\", \"platformName\": \"linux\"}"
+								"{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"\"}"
 							]
 						}
 					}
 				}`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
-				platformName:       "linux",
+				browserVersion:     "",
+				platformName:       "",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
 			name: "2 queue requests with browserName in string match node stereotype and scaler metadata browserVersion should return count as 1",
@@ -1053,7 +1200,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-1",
-											"capabilities": "{\"browserName\": \"msedge\", \"browserVersion\": \"dev\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"msedge\", \"browserVersion\": \"dev\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"msedge\", \"browserVersion\": \"dev\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								}
@@ -1072,8 +1223,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "dev",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
 		},
 		{
 			name: "2 queue requests with matching browsername/sessionBrowserName but 1 node is busy should return count as 2",
@@ -1097,7 +1249,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-1",
-											"capabilities": "{\"browserName\": \"msedge\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"msedge\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"msedge\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								}
@@ -1116,8 +1272,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 2,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
 		},
 		{
 			name: "2 queue requests with matching browsername/sessionBrowserName and 1 node is is available should return count as 1",
@@ -1155,10 +1312,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		}, {
-			name: "2 queue requests with platformName and without platformName and node with 1 slot available should return count as 1",
+			name: "2_queue_requests_with_platformName_and_without_platformName_and_node_with_1_slot_available_should_return_count_as_1",
 			args: args{
 				b: []byte(`{
 					"data": {
@@ -1179,7 +1337,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-1",
-											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"Windows 11\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"Windows 11\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"Windows 11\"}"
+											}
 										}
 									]
 								}
@@ -1198,8 +1360,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "Windows 11",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
 		},
 		{
 			name: "1 active msedge session while asking for 2 chrome sessions should return a count of 2",
@@ -1223,7 +1386,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-1",
-											"capabilities": "{\"browserName\": \"msedge\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"msedge\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"msedge\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								}
@@ -1239,11 +1406,12 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				}`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 2,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
 			name: "3 queue requests browserName chrome platformName linux but 1 node has maxSessions=3 with browserName msedge should return a count of 3",
@@ -1267,7 +1435,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "session-1",
-											"capabilities": "{\"browserName\": \"msedge\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											"capabilities": "{\"browserName\": \"msedge\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"msedge\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}"
+											}
 										}
 									]
 								}
@@ -1284,14 +1456,15 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				}`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 			},
-			want:    3,
-			wantErr: false,
+			wantNewRequestNodes: 3,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
-			name: "session request with matching browsername and no specific platformName should return count as 2",
+			name: "Given_2_requests_with_1_matching_browser_name_and_1_mismatch_platformName_When_no_node_available_Then_scaler_should_return_1_for_matching_request_and_0_ongoing_session",
 			args: args{
 				b: []byte(`{
 					"data": {
@@ -1313,14 +1486,15 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				}`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "",
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
-			name: "2 queue requests with 1 matching browsername and platformName and 1 existing slot is available should return count as 0",
+			name: "2_queue_requests_with_1_matching_browsername_and_platformName_and_1_existing_slot_is_available_should_return_count_as_1",
 			args: args{
 				b: []byte(`{
 					"data": {
@@ -1352,14 +1526,15 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				}`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "Windows 11",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
-			name: "2 queue requests with 1 request matching browserName and platformName but 1 existing node is busy should return count as 1",
+			name: "Given_2_requests_without_browserVersion_When_scaler_metadata_explicit_name_version_platform_Then_scaler_should_not_scale_up_and_return_1_on_going_session",
 			args: args{
 				b: []byte(`{
 					"data": {
@@ -1376,15 +1551,23 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessionCount": 2,
 									"maxSession": 2,
 									"slotCount": 2,
-									"stereotypes": "[\n  {\n    \"slots\": 2,\n    \"stereotype\": {\n      \"browserName\": \"chrome\",\n      \"browserVersion\": \"128.0\",\n      \"goog:chromeOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n      },\n      \"se:containerName\": \"my-chrome-name-m5n8z-4br6x\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
+									"stereotypes": "[\n  {\n    \"slots\": 2,\n    \"stereotype\": {\n      \"browserName\": \"chrome\",\n      \"browserVersion\": \"91.0\",\n      \"browserPlatform\": \"Windows 11\",\n      \"goog:chromeOptions\": {\n        \"binary\": \"\\u002fusr\\u002fbin\\u002fchromium\"\n      },\n      \"se:containerName\": \"my-chrome-name-m5n8z-4br6x\",\n      \"se:downloadsEnabled\": true,\n      \"se:noVncPort\": 7900,\n      \"se:vncEnabled\": true\n    }\n  }\n]",
 									"sessions": [
 										{
 											"id": "0f9c5a941aa4d755a54b84be1f6535b1",
-											"capabilities": "{\"browserName\": \"chrome\", \"platformName\": \"Windows 11\", \"browserVersion\": \"91.0\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"platformName\": \"Windows 11\", \"browserVersion\": \"91.0\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"platformName\": \"Windows 11\", \"browserVersion\": \"91.0\"}"
+											}
 										},
 										{
 											"id": "0f9c5a941aa4d755a54b84be1f6535b1",
-											"capabilities": "{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"91.0\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"platformName\": \"Windows 11\", \"browserVersion\": \"91.0\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"platformName\": \"Windows 11\", \"browserVersion\": \"91.0\"}"
+											}
 										}
 									]
 								}
@@ -1403,11 +1586,12 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0",
 				platformName:       "Windows 11",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 		{
-			name: "5 queue requests with scaler parameter nodeMaxSessions is 2 should return count as 3",
+			name: "Given_5_requests_explicit_name_version_platform_When_scaler_metadata_set_browserVersion_as_latest_Then_scaler_should_not_scale_up_for_those_request_and_return_0",
 			args: args{
 				b: []byte(`{
 				  "data": {
@@ -1433,15 +1617,16 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 				nodeMaxSessions:    2,
 			},
-			want:    3,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
-			name: "5 queue requests with scaler parameter nodeMaxSessions is 3 should return count as 2",
+			name: "Given_5_requests_explicit_name_version_platform_When_scaler_metadata_set_browserVersion_as_latest_Then_scaler_should_not_scale_up_for_those_requests_and_return_0",
 			args: args{
 				b: []byte(`{
 				  "data": {
@@ -1467,15 +1652,16 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 				nodeMaxSessions:    3,
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
-			name: "5 queue requests with request matching browserName and platformName and scaler param nodeMaxSessions is 3 and existing node with 1 available slot should return count as 2",
+			name: "Given_5_requests_without_browserVersion_When_scaler_metadata_explicit_name_version_platform_Then_scaler_should_not_scaler_up_for_those_requests_and_return_0",
 			args: args{
 				b: []byte(`{
 					"data": {
@@ -1496,11 +1682,19 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 									"sessions": [
 										{
 											"id": "0f9c5a941aa4d755a54b84be1f6535b1",
-											"capabilities": "{\"browserName\": \"chrome\", \"platformName\": \"Linux\", \"browserVersion\": \"91.0\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"platformName\": \"Linux\", \"browserVersion\": \"91.0\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"platformName\": \"Linux\", \"browserVersion\": \"91.0\"}"
+											}
 										},
 										{
 											"id": "0f9c5a941aa4d755a54b84be1f6535b1",
-											"capabilities": "{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"91.0\"}"
+											"capabilities": "{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"91.0\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"platformName\": \"Linux\", \"browserVersion\": \"91.0\"}"
+											}
 										}
 									]
 								}
@@ -1523,8 +1717,9 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				platformName:       "linux",
 				nodeMaxSessions:    3,
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
 		},
 		// Tests from PR: https://github.com/kedacore/keda/pull/6055
 		{
@@ -1560,11 +1755,12 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				}`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 			},
-			want:    0,
-			wantErr: false,
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
 			name: "4 sessions requests with matching browsername and platformName when setSessionsFromHub turned on and node with 2 slots matches should return count as 2",
@@ -1602,11 +1798,12 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				}`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 2,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
 			name: "4 sessions requests with matching browsername and platformName when setSessionsFromHub turned on, no nodes and sessionsPerNode=2 matches should return count as 2",
@@ -1633,15 +1830,16 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				}`),
 				browserName:        "chrome",
 				sessionBrowserName: "chrome",
-				browserVersion:     "latest",
+				browserVersion:     "",
 				platformName:       "linux",
 				nodeMaxSessions:    2,
 			},
-			want:    2,
-			wantErr: false,
+			wantNewRequestNodes: 2,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 		{
-			name: "sessions requests and active sessions with 1 matching browsername, platformName and sessionBrowserVersion should return count as 1",
+			name: "Given_2_requests_include_1_without_browserVersion_When_scaler_metadata_explicit_name_version_platform_Then_scaler_should_scale_up_for_1_request_has_browserVersion_and_return_0_ongoing_sessions",
 			args: args{
 				b: []byte(`{
 					"data": {
@@ -1663,12 +1861,20 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 										{
 											"id": "0f9c5a941aa4d755a54b84be1f6535b1",
 											"capabilities": "{\n  \"acceptInsecureCerts\": false,\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"91.0.4472.114\",\n  \"chrome\": {\n    \"chromedriverVersion\": \"91.0.4472.101 (af52a90bf87030dd1523486a1cd3ae25c5d76c9b-refs\\u002fbranch-heads\\u002f4472@{#1462})\",\n    \"userDataDir\": \"\\u002ftmp\\u002f.com.google.Chrome.DMqx9m\"\n  },\n  \"goog:chromeOptions\": {\n    \"debuggerAddress\": \"localhost:35839\"\n  },\n  \"networkConnectionEnabled\": false,\n  \"pageLoadStrategy\": \"normal\",\n  \"platformName\": \"linux\",\n  \"proxy\": {\n  },\n  \"se:cdp\": \"http:\\u002f\\u002flocalhost:35839\",\n  \"se:cdpVersion\": \"91.0.4472.114\",\n  \"se:vncEnabled\": true,\n  \"se:vncLocalAddress\": \"ws:\\u002f\\u002flocalhost:7900\\u002fwebsockify\",\n  \"setWindowRect\": true,\n  \"strictFileInteractability\": false,\n  \"timeouts\": {\n    \"implicit\": 0,\n    \"pageLoad\": 300000,\n    \"script\": 30000\n  },\n  \"unhandledPromptBehavior\": \"dismiss and notify\",\n  \"webauthn:extension:largeBlob\": true,\n  \"webauthn:virtualAuthenticators\": true\n}",
-											"nodeId": "d44dcbc5-0b2c-4d5e-abf4-6f6aa5e0983c"
+											"nodeId": "d44dcbc5-0b2c-4d5e-abf4-6f6aa5e0983c",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\":\"chrome\",\"platformName\":\"linux\"}"
+											}
 										},
 										{
 											"id": "0f9c5a941aa4d755a54b84be1f6535b1",
 											"capabilities": "{\n  \"acceptInsecureCerts\": false,\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"91.0.4472.114\",\n  \"chrome\": {\n    \"chromedriverVersion\": \"91.0.4472.101 (af52a90bf87030dd1523486a1cd3ae25c5d76c9b-refs\\u002fbranch-heads\\u002f4472@{#1462})\",\n    \"userDataDir\": \"\\u002ftmp\\u002f.com.google.Chrome.DMqx9m\"\n  },\n  \"goog:chromeOptions\": {\n    \"debuggerAddress\": \"localhost:35839\"\n  },\n  \"networkConnectionEnabled\": false,\n  \"pageLoadStrategy\": \"normal\",\n  \"platformName\": \"linux\",\n  \"proxy\": {\n  },\n  \"se:cdp\": \"http:\\u002f\\u002flocalhost:35839\",\n  \"se:cdpVersion\": \"91.0.4472.114\",\n  \"se:vncEnabled\": true,\n  \"se:vncLocalAddress\": \"ws:\\u002f\\u002flocalhost:7900\\u002fwebsockify\",\n  \"setWindowRect\": true,\n  \"strictFileInteractability\": false,\n  \"timeouts\": {\n    \"implicit\": 0,\n    \"pageLoad\": 300000,\n    \"script\": 30000\n  },\n  \"unhandledPromptBehavior\": \"dismiss and notify\",\n  \"webauthn:extension:largeBlob\": true,\n  \"webauthn:virtualAuthenticators\": true\n}",
-											"nodeId": "d44dcbc5-0b2c-4d5e-abf4-6f6aa5e0983c"
+											"nodeId": "d44dcbc5-0b2c-4d5e-abf4-6f6aa5e0983c",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\":\"chrome\",\"platformName\":\"linux\"}"
+											}
 										}
 									]
 								}
@@ -1677,7 +1883,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 						"sessionsInfo": {
 							"sessionQueueRequests": [
 								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}",
-								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\",\n \"browserVersion\": \"91.0\"\n}"
+								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\",\n \"browserVersion\": \"91.0\"\n}"
 							]
 						}
 					}
@@ -1687,19 +1893,917 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:     "91.0.4472.114",
 				platformName:       "linux",
 			},
-			want:    1,
-			wantErr: false,
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
+		},
+		{
+			name: "Given_2_requests_include_1_without_browserVersion_When_scaler_metadata_without_browserVersion_Then_scaler_should_scale_up_for_1_request_has_browserVersion_and_return_2_ongoing_sessions",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 2,
+							"maxSession": 2,
+							"totalSlots": 2
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "d44dcbc5-0b2c-4d5e-abf4-6f6aa5e0983c",
+									"status": "UP",
+									"sessionCount": 2,
+									"maxSession": 2,
+									"slotCount": 2,
+									"stereotypes":"[{\"slots\":2,\"stereotype\":{\"browserName\":\"chrome\",\"platformName\":\"linux\"}}]",
+									"sessions": [
+										{
+											"id": "0f9c5a941aa4d755a54b84be1f6535b1",
+											"capabilities": "{\n  \"acceptInsecureCerts\": false,\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"91.0.4472.114\",\n  \"chrome\": {\n    \"chromedriverVersion\": \"91.0.4472.101 (af52a90bf87030dd1523486a1cd3ae25c5d76c9b-refs\\u002fbranch-heads\\u002f4472@{#1462})\",\n    \"userDataDir\": \"\\u002ftmp\\u002f.com.google.Chrome.DMqx9m\"\n  },\n  \"goog:chromeOptions\": {\n    \"debuggerAddress\": \"localhost:35839\"\n  },\n  \"networkConnectionEnabled\": false,\n  \"pageLoadStrategy\": \"normal\",\n  \"platformName\": \"linux\",\n  \"proxy\": {\n  },\n  \"se:cdp\": \"http:\\u002f\\u002flocalhost:35839\",\n  \"se:cdpVersion\": \"91.0.4472.114\",\n  \"se:vncEnabled\": true,\n  \"se:vncLocalAddress\": \"ws:\\u002f\\u002flocalhost:7900\\u002fwebsockify\",\n  \"setWindowRect\": true,\n  \"strictFileInteractability\": false,\n  \"timeouts\": {\n    \"implicit\": 0,\n    \"pageLoad\": 300000,\n    \"script\": 30000\n  },\n  \"unhandledPromptBehavior\": \"dismiss and notify\",\n  \"webauthn:extension:largeBlob\": true,\n  \"webauthn:virtualAuthenticators\": true\n}",
+											"nodeId": "d44dcbc5-0b2c-4d5e-abf4-6f6aa5e0983c",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\":\"chrome\",\"platformName\":\"linux\"}"
+											}
+										},
+										{
+											"id": "0f9c5a941aa4d755a54b84be1f6535b1",
+											"capabilities": "{\n  \"acceptInsecureCerts\": false,\n  \"browserName\": \"chrome\",\n  \"browserVersion\": \"91.0.4472.114\",\n  \"chrome\": {\n    \"chromedriverVersion\": \"91.0.4472.101 (af52a90bf87030dd1523486a1cd3ae25c5d76c9b-refs\\u002fbranch-heads\\u002f4472@{#1462})\",\n    \"userDataDir\": \"\\u002ftmp\\u002f.com.google.Chrome.DMqx9m\"\n  },\n  \"goog:chromeOptions\": {\n    \"debuggerAddress\": \"localhost:35839\"\n  },\n  \"networkConnectionEnabled\": false,\n  \"pageLoadStrategy\": \"normal\",\n  \"platformName\": \"linux\",\n  \"proxy\": {\n  },\n  \"se:cdp\": \"http:\\u002f\\u002flocalhost:35839\",\n  \"se:cdpVersion\": \"91.0.4472.114\",\n  \"se:vncEnabled\": true,\n  \"se:vncLocalAddress\": \"ws:\\u002f\\u002flocalhost:7900\\u002fwebsockify\",\n  \"setWindowRect\": true,\n  \"strictFileInteractability\": false,\n  \"timeouts\": {\n    \"implicit\": 0,\n    \"pageLoad\": 300000,\n    \"script\": 30000\n  },\n  \"unhandledPromptBehavior\": \"dismiss and notify\",\n  \"webauthn:extension:largeBlob\": true,\n  \"webauthn:virtualAuthenticators\": true\n}",
+											"nodeId": "d44dcbc5-0b2c-4d5e-abf4-6f6aa5e0983c",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\":\"chrome\",\"platformName\":\"linux\"}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\",\n \"browserVersion\": \"91.0\"\n}"
+							]
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "",
+				platformName:       "linux",
+			},
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
+		},
+		{
+			name: `Given_3_requests_include_1_without_browserVersion_
+			When_4_existing_nodes_with_different_stereotypes_browserVersion_
+			And_scaler_metadata_set_browserVersion_as_latest_
+			Then_return_1_new_scale_and_4_ongoing`,
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 4,
+							"maxSession": 4,
+							"totalSlots": 4
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-131",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-130",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"130.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"130.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"130.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-129",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-2",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-128",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"131\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"130\"}"
+							]
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "",
+				platformName:       "linux",
+			},
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
+		},
+		{
+			name: `Given_3_requests_include_1_without_browserVersion_
+			When_4_existing_nodes_with_different_stereotypes_browserVersion_
+			And_scaler_metadata_set_browserVersion_131.0_
+			Then_return_1_new_scale_and_1_ongoing`,
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 4,
+							"maxSession": 4,
+							"totalSlots": 4
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-131",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-130",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"130.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"130.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"130.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-129",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-2",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-128",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"131\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"130\"}"
+							]
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "131.0",
+				platformName:       "linux",
+			},
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
+		},
+		{
+			name: `Given_3_requests_include_1_without_browserVersion_
+			When_4_existing_nodes_with_different_stereotypes_browserVersion_
+			And_scaler_metadata_set_browserVersion_130.0_
+			Then_return_1_new_scale_and_1_ongoing`,
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 4,
+							"maxSession": 4,
+							"totalSlots": 4
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-131",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-130",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"130.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"130.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"130.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-129",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-2",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-128",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"131\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"130\"}"
+							]
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "130.0",
+				platformName:       "linux",
+			},
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
+		},
+		{
+			name: `Given_3_requests_include_1_without_browserVersion_
+			When_4_existing_nodes_with_different_stereotypes_browserVersion_and_1_available_
+			And_scaler_metadata_set_browserVersion_as_latest_
+			Then_return_0_new_scale_and_0_ongoing`,
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 3,
+							"maxSession": 4,
+							"totalSlots": 4
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-131",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-130",
+									"status": "UP",
+									"sessionCount": 0,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\"}}]",
+									"sessions": []
+								},
+								{
+									"id": "node-129",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-128",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"131\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"130\"}"
+							]
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "",
+				platformName:       "linux",
+			},
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
+		},
+		{
+			name: `Given_3_requests_include_1_without_browserVersion_
+			When_4_existing_nodes_with_different_stereotypes_browserVersion_and_1_available_
+			And_scaler_metadata_set_browserVersion_131.0_
+			Then_return_0_new_scale_and_0_ongoing`,
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 3,
+							"maxSession": 4,
+							"totalSlots": 4
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-131",
+									"status": "UP",
+									"sessionCount": 0,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}}]",
+									"sessions": []
+								},
+								{
+									"id": "node-130",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"130.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"130.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"130.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-129",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-128",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"131\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"130\"}"
+							]
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "131.0",
+				platformName:       "linux",
+			},
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
+		},
+		{
+			name: `Given_3_requests_include_1_without_browserVersion_
+			When_4_existing_nodes_with_different_stereotypes_browserVersion_and_1_available_
+			And_scaler_metadata_set_browserVersion_130.0_
+			Then_return_0_new_scale_and_0_ongoing`,
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 3,
+							"maxSession": 4,
+							"totalSlots": 4
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-131",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-130",
+									"status": "UP",
+									"sessionCount": 0,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"130.0\", \"platformName\": \"linux\"}}]",
+									"sessions": []
+								},
+								{
+									"id": "node-129",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-128",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"131\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"130\"}"
+							]
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "130.0",
+				platformName:       "linux",
+			},
+			wantNewRequestNodes: 0,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
+		},
+		{
+			name: `Given_3_requests_include_1_without_browserVersion_
+			When_5_existing_nodes_with_different_stereotypes_browserVersion_
+			And_scaler_metadata_set_browserVersion_as_empty_
+			Then_return_1_new_scale_and_1_ongoing`,
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 4,
+							"maxSession": 5,
+							"totalSlots": 5
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-131",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-130",
+									"status": "UP",
+									"sessionCount": 0,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"130.0\", \"platformName\": \"linux\"}}]",
+									"sessions": []
+								},
+								{
+									"id": "node-129",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-128",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-any",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"131\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"130\"}"
+							]
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "",
+				platformName:       "linux",
+			},
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
+		},
+		{
+			name: `Given_3_requests_include_1_without_browserVersion_
+			When_4_existing_nodes_with_different_stereotypes_browserVersion_
+			And_scaler_metadata_set_browserVersion_130.0_
+			Then_return_1_new_scale_and_0_ongoing`,
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 4,
+							"maxSession": 4,
+							"totalSlots": 4
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-131",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"131.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-129",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"129.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-128",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-any",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"128.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"131\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\", \"browserVersion\": \"130\"}"
+							]
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "130.0",
+				platformName:       "linux",
+			},
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion, tt.args.sessionBrowserName, tt.args.platformName, tt.args.nodeMaxSessions, logr.Discard())
+			newRequestNodes, onGoingSessions, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion, tt.args.sessionBrowserName, tt.args.platformName, tt.args.nodeMaxSessions, logr.Discard())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCountFromSeleniumResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getCountFromSeleniumResponse() = %v, want %v", got, tt.want)
+			if !reflect.DeepEqual(newRequestNodes, tt.wantNewRequestNodes) || !reflect.DeepEqual(onGoingSessions, tt.wantOnGoingSessions) {
+				t.Errorf("getCountFromSeleniumResponse() = [%v, %v], want [%v, %v]", newRequestNodes, onGoingSessions, tt.wantNewRequestNodes, tt.wantOnGoingSessions)
 			}
 		})
 	}
@@ -1751,8 +2855,8 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				BrowserName:        "chrome",
 				SessionBrowserName: "chrome",
 				TargetValue:        1,
-				BrowserVersion:     "latest",
-				PlatformName:       "linux",
+				BrowserVersion:     "",
+				PlatformName:       "",
 				NodeMaxSessions:    1,
 			},
 		},
@@ -1773,8 +2877,29 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				BrowserName:        "MicrosoftEdge",
 				SessionBrowserName: "msedge",
 				TargetValue:        1,
-				BrowserVersion:     "latest",
-				PlatformName:       "linux",
+				BrowserVersion:     "",
+				PlatformName:       "",
+				NodeMaxSessions:    1,
+			},
+		},
+		{
+			name: "can input browserName as empty",
+			args: args{
+				config: &scalersconfig.ScalerConfig{
+					TriggerMetadata: map[string]string{
+						"url":         "http://selenium-hub:4444/graphql",
+						"browserName": "",
+					},
+				},
+			},
+			wantErr: false,
+			want: &seleniumGridScalerMetadata{
+				URL:                "http://selenium-hub:4444/graphql",
+				BrowserName:        "",
+				SessionBrowserName: "",
+				TargetValue:        1,
+				BrowserVersion:     "",
+				PlatformName:       "",
 				NodeMaxSessions:    1,
 			},
 		},
@@ -1801,8 +2926,8 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				BrowserName:        "MicrosoftEdge",
 				SessionBrowserName: "msedge",
 				TargetValue:        1,
-				BrowserVersion:     "latest",
-				PlatformName:       "linux",
+				BrowserVersion:     "",
+				PlatformName:       "",
 				NodeMaxSessions:    1,
 			},
 		},
@@ -1827,8 +2952,8 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				BrowserName:        "MicrosoftEdge",
 				SessionBrowserName: "msedge",
 				TargetValue:        1,
-				BrowserVersion:     "latest",
-				PlatformName:       "linux",
+				BrowserVersion:     "",
+				PlatformName:       "",
 				Username:           "username",
 				Password:           "password",
 				NodeMaxSessions:    1,
@@ -1854,7 +2979,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				TargetValue:        1,
 				BrowserVersion:     "91.0",
 				UnsafeSsl:          false,
-				PlatformName:       "linux",
+				PlatformName:       "",
 				NodeMaxSessions:    1,
 			},
 		},
@@ -1880,7 +3005,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				ActivationThreshold: 10,
 				BrowserVersion:      "91.0",
 				UnsafeSsl:           true,
-				PlatformName:        "linux",
+				PlatformName:        "",
 				NodeMaxSessions:     1,
 			},
 		},
@@ -1921,7 +3046,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				ActivationThreshold: 10,
 				BrowserVersion:      "91.0",
 				UnsafeSsl:           true,
-				PlatformName:        "linux",
+				PlatformName:        "",
 				NodeMaxSessions:     1,
 			},
 		},

@@ -21,7 +21,7 @@ type cpuMemoryScaler struct {
 }
 
 type cpuMemoryMetadata struct {
-	Type               string `keda:"name=type,          order=triggerMetadata, enum=Utilization;AverageValue, optional"`
+	Type               string `keda:"name=type,          order=triggerMetadata, enum=Utilization;AverageValue, optional, deprecatedAnnounce=The 'type' setting is DEPRECATED and will be removed in v2.18 - Use 'metricType' instead."`
 	Value              string `keda:"name=value,         order=triggerMetadata"`
 	ContainerName      string `keda:"name=containerName, order=triggerMetadata, optional"`
 	AverageValue       *resource.Quantity
@@ -33,19 +33,21 @@ type cpuMemoryMetadata struct {
 func NewCPUMemoryScaler(resourceName v1.ResourceName, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "cpu_memory_scaler")
 
-	meta, err := parseResourceMetadata(config, logger)
+	meta, err := parseResourceMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing %s metadata: %w", resourceName, err)
 	}
 
-	return &cpuMemoryScaler{
+	scaler := &cpuMemoryScaler{
 		metadata:     meta,
 		resourceName: resourceName,
 		logger:       logger,
-	}, nil
+	}
+
+	return scaler, nil
 }
 
-func parseResourceMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (cpuMemoryMetadata, error) {
+func parseResourceMetadata(config *scalersconfig.ScalerConfig) (cpuMemoryMetadata, error) {
 	meta := cpuMemoryMetadata{}
 	err := config.TypedConfig(&meta)
 	if err != nil {
@@ -58,7 +60,6 @@ func parseResourceMetadata(config *scalersconfig.ScalerConfig, logger logr.Logge
 
 	// This is deprecated and can be removed later
 	if meta.Type != "" {
-		logger.Info("The 'type' setting is DEPRECATED and will be removed in v2.18 - Use 'metricType' instead.")
 		switch meta.Type {
 		case "AverageValue":
 			meta.MetricType = v2.AverageValueMetricType
