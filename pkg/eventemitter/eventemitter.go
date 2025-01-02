@@ -36,7 +36,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -44,6 +43,7 @@ import (
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
@@ -66,7 +66,7 @@ type EventEmitter struct {
 	eventFilterCacheLock     *sync.RWMutex
 	eventLoopContexts        *sync.Map
 	cloudEventProcessingChan chan eventdata.EventData
-	secretsLister            corev1listers.SecretLister
+	authClientSet            *authentication.AuthClientSet
 }
 
 // EventHandler defines the behavior for EventEmitter clients
@@ -96,7 +96,7 @@ const (
 )
 
 // NewEventEmitter creates a new EventEmitter
-func NewEventEmitter(client client.Client, recorder record.EventRecorder, clusterName string, secretsLister corev1listers.SecretLister) EventHandler {
+func NewEventEmitter(client client.Client, recorder record.EventRecorder, clusterName string, authClientSet *authentication.AuthClientSet) EventHandler {
 	return &EventEmitter{
 		log:                      logf.Log.WithName("event_emitter"),
 		client:                   client,
@@ -108,7 +108,7 @@ func NewEventEmitter(client client.Client, recorder record.EventRecorder, cluste
 		eventFilterCacheLock:     &sync.RWMutex{},
 		eventLoopContexts:        &sync.Map{},
 		cloudEventProcessingChan: make(chan eventdata.EventData, maxChannelBuffer),
-		secretsLister:            secretsLister,
+		authClientSet:            authClientSet,
 	}
 }
 
@@ -188,7 +188,7 @@ func (e *EventEmitter) createEventHandlers(ctx context.Context, cloudEventSource
 	}
 
 	// Resolve auth related
-	authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, e.client, e.log, spec.AuthenticationRef, nil, cloudEventSourceI.GetNamespace(), e.secretsLister)
+	authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, e.client, e.log, spec.AuthenticationRef, nil, cloudEventSourceI.GetNamespace(), e.authClientSet)
 	if err != nil {
 		e.log.Error(err, "error resolving auth params", "cloudEventSource", cloudEventSourceI)
 		return
