@@ -149,7 +149,6 @@ subjects:
   name: default
   namespace: {{.TestNamespace}}
 `
-	// TODO(macao): replace the image when https://github.com/kedacore/test-tools/pull/186 merged
 	metricsServerDeploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
@@ -171,7 +170,7 @@ spec:
     spec:
       containers:
       - name: k8s-protected-metrics-api
-        image: quay.io/macao/metrics-api:latest
+        image: ghcr.io/kedacore/tests-bound-service-account-token:latest
         imagePullPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false
