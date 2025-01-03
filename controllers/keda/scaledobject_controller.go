@@ -635,7 +635,7 @@ func (r *ScaledObjectReconciler) updateStatusWithTriggersAndAuthsTypes(ctx conte
 
 func (r *ScaledObjectReconciler) getFromCacheOrDirect(ctx context.Context, key client.ObjectKey, obj client.Object) error {
 	// r.Client from controller-runtime here had implemented the logic to choose to perform a cache or live lookup.
-	// this functionality is mostly used in the admission webhooks or places where we acutally want to implement this on our own
+	// this functionality is mostly used in the admission webhooks or places where we actually want to implement this on our own
 	err := r.Client.Get(ctx, key, obj, &client.GetOptions{})
 	return err
 }
