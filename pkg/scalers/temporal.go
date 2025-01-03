@@ -43,7 +43,7 @@ type temporalMetadata struct {
 	BuildID                   string   `keda:"name=buildId,                   order=triggerMetadata;resolvedEnv, optional"`
 	AllActive                 bool     `keda:"name=selectAllActive,           order=triggerMetadata, default=false"`
 	Unversioned               bool     `keda:"name=selectUnversioned,         order=triggerMetadata, default=false"`
-	APIKey                    string   `keda:"name=apiKey,                    order=authParams;resolvedEnv;triggerMetadata, optional"`
+	APIKey                    string   `keda:"name=apiKey,                    order=authParams;resolvedEnv, optional"`
 	MinConnectTimeout         int      `keda:"name=minConnectTimeout,         order=triggerMetadata, default=5"`
 
 	UnsafeSsl   bool   `keda:"name=unsafeSsl,                 order=triggerMetadata, optional"`
