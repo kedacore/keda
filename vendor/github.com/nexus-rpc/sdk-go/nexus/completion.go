@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 // NewCompletionHTTPRequest creates an HTTP request deliver an operation completion to a given URL.
@@ -33,10 +35,19 @@ type OperationCompletion interface {
 // OperationCompletionSuccessful is input for [NewCompletionHTTPRequest], used to deliver successful operation results.
 type OperationCompletionSuccessful struct {
 	// Header to send in the completion request.
-	Header http.Header
-	// Body to send in the completion HTTP request.
-	// If it implements `io.Closer` it will automatically be closed by the client.
-	Body io.Reader
+	// Note that this is a Nexus header, not an HTTP header.
+	Header Header
+
+	// A [Reader] that may be directly set on the completion or constructed when instantiating via
+	// [NewOperationCompletionSuccessful].
+	// Automatically closed when the completion is delivered.
+	Reader *Reader
+	// OperationID is the unique ID for this operation. Used when a completion callback is received before a started response.
+	OperationID string
+	// StartTime is the time the operation started. Used when a completion callback is received before a started response.
+	StartTime time.Time
+	// Links are used to link back to the operation when a completion callback is received before a started response.
+	Links []Link
 }
 
 // OperationCompletionSuccessfulOptions are options for [NewOperationCompletionSuccessful].
@@ -44,47 +55,75 @@ type OperationCompletionSuccessfulOptions struct {
 	// Optional serializer for the result. Defaults to the SDK's default Serializer, which handles JSONables, byte
 	// slices and nils.
 	Serializer Serializer
+	// OperationID is the unique ID for this operation. Used when a completion callback is received before a started response.
+	OperationID string
+	// StartTime is the time the operation started. Used when a completion callback is received before a started response.
+	StartTime time.Time
+	// Links are used to link back to the operation when a completion callback is received before a started response.
+	Links []Link
 }
 
 // NewOperationCompletionSuccessful constructs an [OperationCompletionSuccessful] from a given result.
 func NewOperationCompletionSuccessful(result any, options OperationCompletionSuccessfulOptions) (*OperationCompletionSuccessful, error) {
-	if reader, ok := result.(*Reader); ok {
-		return &OperationCompletionSuccessful{
-			Header: addContentHeaderToHTTPHeader(reader.Header, make(http.Header)),
-			Body:   reader.ReadCloser,
-		}, nil
-	} else {
+	reader, ok := result.(*Reader)
+	if !ok {
 		content, ok := result.(*Content)
 		if !ok {
-			var err error
 			serializer := options.Serializer
 			if serializer == nil {
 				serializer = defaultSerializer
 			}
+			var err error
 			content, err = serializer.Serialize(result)
 			if err != nil {
 				return nil, err
 			}
 		}
-		header := http.Header{"Content-Length": []string{strconv.Itoa(len(content.Data))}}
+		header := maps.Clone(content.Header)
+		if header == nil {
+			header = make(Header, 1)
+		}
+		header["length"] = strconv.Itoa(len(content.Data))
 
-		return &OperationCompletionSuccessful{
-			Header: addContentHeaderToHTTPHeader(content.Header, header),
-			Body:   bytes.NewReader(content.Data),
-		}, nil
+		reader = &Reader{
+			Header:     header,
+			ReadCloser: io.NopCloser(bytes.NewReader(content.Data)),
+		}
 	}
+
+	return &OperationCompletionSuccessful{
+		Header:      make(Header),
+		Reader:      reader,
+		OperationID: options.OperationID,
+		StartTime:   options.StartTime,
+		Links:       options.Links,
+	}, nil
 }
 
 func (c *OperationCompletionSuccessful) applyToHTTPRequest(request *http.Request) error {
+	if request.Header == nil {
+		request.Header = make(http.Header, len(c.Header)+len(c.Reader.Header)+1) // +1 for headerOperationState
+	}
+	if c.Reader.Header != nil {
+		addContentHeaderToHTTPHeader(c.Reader.Header, request.Header)
+	}
 	if c.Header != nil {
-		request.Header = c.Header.Clone()
+		addNexusHeaderToHTTPHeader(c.Header, request.Header)
 	}
 	request.Header.Set(headerOperationState, string(OperationStateSucceeded))
-	if closer, ok := c.Body.(io.ReadCloser); ok {
-		request.Body = closer
-	} else {
-		request.Body = io.NopCloser(c.Body)
+	if c.Header.Get(HeaderOperationID) == "" && c.OperationID != "" {
+		request.Header.Set(HeaderOperationID, c.OperationID)
 	}
+	if c.Header.Get(headerOperationStartTime) == "" && !c.StartTime.IsZero() {
+		request.Header.Set(headerOperationStartTime, c.StartTime.Format(http.TimeFormat))
+	}
+	if c.Header.Get(headerLink) == "" {
+		if err := addLinksToHTTPHeader(c.Links, request.Header); err != nil {
+			return err
+		}
+	}
+
+	request.Body = c.Reader.ReadCloser
 	return nil
 }
 
@@ -92,19 +131,69 @@ func (c *OperationCompletionSuccessful) applyToHTTPRequest(request *http.Request
 // results.
 type OperationCompletionUnsuccessful struct {
 	// Header to send in the completion request.
-	Header http.Header
+	// Note that this is a Nexus header, not an HTTP header.
+	Header Header
 	// State of the operation, should be failed or canceled.
 	State OperationState
+	// OperationID is the unique ID for this operation. Used when a completion callback is received before a started response.
+	OperationID string
+	// StartTime is the time the operation started. Used when a completion callback is received before a started response.
+	StartTime time.Time
+	// Links are used to link back to the operation when a completion callback is received before a started response.
+	Links []Link
 	// Failure object to send with the completion.
-	Failure *Failure
+	Failure Failure
+}
+
+// OperationCompletionUnsuccessfulOptions are options for [NewOperationCompletionUnsuccessful].
+type OperationCompletionUnsuccessfulOptions struct {
+	// A [FailureConverter] to convert a [Failure] instance to and from an [error]. Defaults to
+	// [DefaultFailureConverter].
+	FailureConverter FailureConverter
+	// OperationID is the unique ID for this operation. Used when a completion callback is received before a started response.
+	OperationID string
+	// StartTime is the time the operation started. Used when a completion callback is received before a started response.
+	StartTime time.Time
+	// Links are used to link back to the operation when a completion callback is received before a started response.
+	Links []Link
+}
+
+// NewOperationCompletionUnsuccessful constructs an [OperationCompletionUnsuccessful] from a given error.
+func NewOperationCompletionUnsuccessful(error *UnsuccessfulOperationError, options OperationCompletionUnsuccessfulOptions) (*OperationCompletionUnsuccessful, error) {
+	if options.FailureConverter == nil {
+		options.FailureConverter = defaultFailureConverter
+	}
+
+	return &OperationCompletionUnsuccessful{
+		Header:      make(Header),
+		State:       error.State,
+		Failure:     options.FailureConverter.ErrorToFailure(error.Cause),
+		OperationID: options.OperationID,
+		StartTime:   options.StartTime,
+		Links:       options.Links,
+	}, nil
 }
 
 func (c *OperationCompletionUnsuccessful) applyToHTTPRequest(request *http.Request) error {
+	if request.Header == nil {
+		request.Header = make(http.Header, len(c.Header)+2) // +2 for headerOperationState and content-type
+	}
 	if c.Header != nil {
-		request.Header = c.Header.Clone()
+		addNexusHeaderToHTTPHeader(c.Header, request.Header)
 	}
 	request.Header.Set(headerOperationState, string(c.State))
 	request.Header.Set("Content-Type", contentTypeJSON)
+	if c.Header.Get(HeaderOperationID) == "" && c.OperationID != "" {
+		request.Header.Set(HeaderOperationID, c.OperationID)
+	}
+	if c.Header.Get(headerOperationStartTime) == "" && !c.StartTime.IsZero() {
+		request.Header.Set(headerOperationStartTime, c.StartTime.Format(http.TimeFormat))
+	}
+	if c.Header.Get(headerLink) == "" {
+		if err := addLinksToHTTPHeader(c.Links, request.Header); err != nil {
+			return err
+		}
+	}
 
 	b, err := json.Marshal(c.Failure)
 	if err != nil {
@@ -121,8 +210,14 @@ type CompletionRequest struct {
 	HTTPRequest *http.Request
 	// State of the operation.
 	State OperationState
+	// OperationID is the ID of the operation. Used when a completion callback is received before a started response.
+	OperationID string
+	// StartTime is the time the operation started. Used when a completion callback is received before a started response.
+	StartTime time.Time
+	// Links are used to link back to the operation when a completion callback is received before a started response.
+	Links []Link
 	// Parsed from request and set if State is failed or canceled.
-	Failure *Failure
+	Error error
 	// Extracted from request and set if State is succeeded.
 	Result *LazyValue
 }
@@ -143,6 +238,9 @@ type CompletionHandlerOptions struct {
 	// A [Serializer] to customize handler serialization behavior.
 	// By default the handler handles, JSONables, byte slices, and nil.
 	Serializer Serializer
+	// A [FailureConverter] to convert a [Failure] instance to and from an [error]. Defaults to
+	// [DefaultFailureConverter].
+	FailureConverter FailureConverter
 }
 
 type completionHTTPHandler struct {
@@ -154,7 +252,20 @@ func (h *completionHTTPHandler) ServeHTTP(writer http.ResponseWriter, request *h
 	ctx := request.Context()
 	completion := CompletionRequest{
 		State:       OperationState(request.Header.Get(headerOperationState)),
+		OperationID: request.Header.Get(HeaderOperationID),
 		HTTPRequest: request,
+	}
+	if startTimeHeader := request.Header.Get(headerOperationStartTime); startTimeHeader != "" {
+		var parseTimeErr error
+		if completion.StartTime, parseTimeErr = http.ParseTime(startTimeHeader); parseTimeErr != nil {
+			h.writeFailure(writer, HandlerErrorf(HandlerErrorTypeBadRequest, "failed to parse operation start time header"))
+			return
+		}
+	}
+	var decodeErr error
+	if completion.Links, decodeErr = getLinksFromHeader(request.Header); decodeErr != nil {
+		h.writeFailure(writer, HandlerErrorf(HandlerErrorTypeBadRequest, "failed to decode links from request headers"))
+		return
 	}
 	switch completion.State {
 	case OperationStateFailed, OperationStateCanceled:
@@ -172,7 +283,7 @@ func (h *completionHTTPHandler) ServeHTTP(writer http.ResponseWriter, request *h
 			h.writeFailure(writer, HandlerErrorf(HandlerErrorTypeBadRequest, "failed to read Failure from request body"))
 			return
 		}
-		completion.Failure = &failure
+		completion.Error = h.failureConverter.FailureToError(failure)
 	case OperationStateSucceeded:
 		completion.Result = &LazyValue{
 			serializer: h.options.Serializer,
@@ -198,10 +309,14 @@ func NewCompletionHTTPHandler(options CompletionHandlerOptions) http.Handler {
 	if options.Serializer == nil {
 		options.Serializer = defaultSerializer
 	}
+	if options.FailureConverter == nil {
+		options.FailureConverter = defaultFailureConverter
+	}
 	return &completionHTTPHandler{
 		options: options,
 		baseHTTPHandler: baseHTTPHandler{
-			logger: options.Logger,
+			logger:           options.Logger,
+			failureConverter: options.FailureConverter,
 		},
 	}
 }

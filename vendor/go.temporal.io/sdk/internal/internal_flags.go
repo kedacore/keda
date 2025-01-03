@@ -47,8 +47,13 @@ const (
 	// SDKPriorityUpdateHandling will cause update request to be handled before the main workflow method.
 	// It will also cause the SDK to immediately handle updates when a handler is registered.
 	SDKPriorityUpdateHandling = 4
-	SDKFlagUnknown            = math.MaxUint32
+	// SDKFlagBlockedSelectorSignalReceive will cause a signal to not be lost
+	// when the Default path is blocked.
+	SDKFlagBlockedSelectorSignalReceive = 5
+	SDKFlagUnknown                      = math.MaxUint32
 )
+
+var unblockSelectorSignal bool
 
 func sdkFlagFromUint(value uint32) sdkFlag {
 	switch value {
@@ -62,6 +67,8 @@ func sdkFlagFromUint(value uint32) sdkFlag {
 		return SDKFlagProtocolMessageCommand
 	case uint32(SDKPriorityUpdateHandling):
 		return SDKPriorityUpdateHandling
+	case uint32(SDKFlagBlockedSelectorSignalReceive):
+		return SDKFlagBlockedSelectorSignalReceive
 	default:
 		return SDKFlagUnknown
 	}
@@ -105,6 +112,11 @@ func (sf *sdkFlags) tryUse(flag sdkFlag, record bool) bool {
 	}
 }
 
+// getFlag returns true if the flag is currently set.
+func (sf *sdkFlags) getFlag(flag sdkFlag) bool {
+	return sf.currentFlags[flag] || sf.newFlags[flag]
+}
+
 // set marks a flag as in current use regardless of replay status.
 func (sf *sdkFlags) set(flags ...sdkFlag) {
 	if !sf.capabilities.GetSdkMetadata() {
@@ -130,4 +142,10 @@ func (sf *sdkFlags) gatherNewSDKFlags() []sdkFlag {
 		flags = append(flags, flag)
 	}
 	return flags
+}
+
+// SetUnblockSelectorSignal toggles the flag to unblock the selector signal.
+// For test use only,
+func SetUnblockSelectorSignal(unblockSignal bool) {
+	unblockSelectorSignal = unblockSignal
 }

@@ -84,6 +84,7 @@ var (
 		"NexusOperationCanceled":                          52,
 		"NexusOperationTimedOut":                          53,
 		"NexusOperationCancelRequested":                   54,
+		"WorkflowExecutionOptionsUpdated":                 55,
 	}
 )
 

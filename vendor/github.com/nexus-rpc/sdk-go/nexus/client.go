@@ -17,8 +17,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// ClientOptions are options for creating a Client.
-type ClientOptions struct {
+// HTTPClientOptions are options for creating an [HTTPClient].
+type HTTPClientOptions struct {
 	// Base URL for all requests. Required.
 	BaseURL string
 	// Service name. Required.
@@ -27,8 +27,11 @@ type ClientOptions struct {
 	// Defaults to [http.DefaultClient.Do].
 	HTTPCaller func(*http.Request) (*http.Response, error)
 	// A [Serializer] to customize client serialization behavior.
-	// By default the client handles, JSONables, byte slices, and nil.
+	// By default the client handles JSONables, byte slices, and nil.
 	Serializer Serializer
+	// A [FailureConverter] to convert a [Failure] instance to and from an [error]. Defaults to
+	// [DefaultFailureConverter].
+	FailureConverter FailureConverter
 }
 
 // User-Agent header set on HTTP requests.
@@ -46,10 +49,12 @@ var errOperationWaitTimeout = errors.New("operation wait timeout")
 type UnexpectedResponseError struct {
 	// Error message.
 	Message string
-	// The HTTP response. The response body will have already been read into memory and does not need to be closed.
-	Response *http.Response
-	// Optional failure that may have been emedded in the HTTP response body.
+	// Optional failure that may have been emedded in the response.
 	Failure *Failure
+	// Additional transport specific details.
+	// For HTTP, this would include the HTTP response. The response body will have already been read into memory and
+	// does not need to be closed.
+	Details any
 }
 
 // Error implements the error interface.
@@ -66,31 +71,31 @@ func newUnexpectedResponseError(message string, response *http.Response, body []
 	}
 
 	return &UnexpectedResponseError{
-		Message:  message,
-		Response: response,
-		Failure:  failure,
+		Message: message,
+		Details: response,
+		Failure: failure,
 	}
 }
 
-// A Client makes Nexus service requests as defined in the [Nexus HTTP API].
+// An HTTPClient makes Nexus service requests as defined in the [Nexus HTTP API].
 //
 // It can start a new operation and get an [OperationHandle] to an existing, asynchronous operation.
 //
 // Use an [OperationHandle] to cancel, get the result of, and get information about asynchronous operations.
 //
-// OperationHandles can be obtained either by starting new operations or by calling [Client.NewHandle] for existing
+// OperationHandles can be obtained either by starting new operations or by calling [HTTPClient.NewHandle] for existing
 // operations.
 //
 // [Nexus HTTP API]: https://github.com/nexus-rpc/api
-type Client struct {
+type HTTPClient struct {
 	// The options this client was created with after applying defaults.
-	options        ClientOptions
+	options        HTTPClientOptions
 	serviceBaseURL *url.URL
 }
 
-// NewClient creates a new [Client] from provided [ClientOptions].
+// NewHTTPClient creates a new [HTTPClient] from provided [HTTPClientOptions].
 // BaseURL and Service are required.
-func NewClient(options ClientOptions) (*Client, error) {
+func NewHTTPClient(options HTTPClientOptions) (*HTTPClient, error) {
 	if options.HTTPCaller == nil {
 		options.HTTPCaller = http.DefaultClient.Do
 	}
@@ -112,14 +117,17 @@ func NewClient(options ClientOptions) (*Client, error) {
 	if options.Serializer == nil {
 		options.Serializer = defaultSerializer
 	}
+	if options.FailureConverter == nil {
+		options.FailureConverter = defaultFailureConverter
+	}
 
-	return &Client{
+	return &HTTPClient{
 		options:        options,
 		serviceBaseURL: baseURL,
 	}, nil
 }
 
-// ClientStartOperationResult is the return type of [Client.StartOperation].
+// ClientStartOperationResult is the return type of [HTTPClient.StartOperation].
 // One and only one of Successful or Pending will be non-nil.
 type ClientStartOperationResult[T any] struct {
 	// Set when start completes synchronously and successfully.
@@ -149,7 +157,7 @@ type ClientStartOperationResult[T any] struct {
 //     [UnsuccessfulOperationError].
 //
 //  4. Any other error.
-func (c *Client) StartOperation(
+func (c *HTTPClient) StartOperation(
 	ctx context.Context,
 	operation string,
 	input any,
@@ -265,21 +273,22 @@ func (c *Client) StartOperation(
 			return nil, err
 		}
 
-		failure, err := failureFromResponse(response, body)
+		failure, err := c.failureFromResponse(response, body)
 		if err != nil {
 			return nil, err
 		}
 
+		failureErr := c.options.FailureConverter.FailureToError(failure)
 		return nil, &UnsuccessfulOperationError{
-			State:   state,
-			Failure: failure,
+			State: state,
+			Cause: failureErr,
 		}
 	default:
-		return nil, bestEffortHandlerErrorFromResponse(response, body)
+		return nil, c.bestEffortHandlerErrorFromResponse(response, body)
 	}
 }
 
-// ExecuteOperationOptions are options for [Client.ExecuteOperation].
+// ExecuteOperationOptions are options for [HTTPClient.ExecuteOperation].
 type ExecuteOperationOptions struct {
 	// Callback URL to provide to the handle for receiving async operation completions. Optional.
 	// Even though Client.ExecuteOperation waits for operation completion, some applications may want to set this
@@ -321,7 +330,7 @@ type ExecuteOperationOptions struct {
 //
 // ⚠️ If this method completes successfully, the returned response's body must be read in its entirety and closed to
 // free up the underlying connection.
-func (c *Client) ExecuteOperation(ctx context.Context, operation string, input any, options ExecuteOperationOptions) (*LazyValue, error) {
+func (c *HTTPClient) ExecuteOperation(ctx context.Context, operation string, input any, options ExecuteOperationOptions) (*LazyValue, error) {
 	so := StartOperationOptions{
 		CallbackURL:    options.CallbackURL,
 		CallbackHeader: options.CallbackHeader,
@@ -351,7 +360,7 @@ func (c *Client) ExecuteOperation(ctx context.Context, operation string, input a
 // NewHandle gets a handle to an asynchronous operation by name and ID.
 // Does not incur a trip to the server.
 // Fails if provided an empty operation or ID.
-func (c *Client) NewHandle(operation string, operationID string) (*OperationHandle[*LazyValue], error) {
+func (c *HTTPClient) NewHandle(operation string, operationID string) (*OperationHandle[*LazyValue], error) {
 	var es []error
 	if operation == "" {
 		es = append(es, errEmptyOperationName)
@@ -391,7 +400,7 @@ func operationInfoFromResponse(response *http.Response, body []byte) (*Operation
 	return &info, nil
 }
 
-func failureFromResponse(response *http.Response, body []byte) (Failure, error) {
+func (c *HTTPClient) failureFromResponse(response *http.Response, body []byte) (Failure, error) {
 	if !isMediaTypeJSON(response.Header.Get("Content-Type")) {
 		return Failure{}, newUnexpectedResponseError(fmt.Sprintf("invalid response content type: %q", response.Header.Get("Content-Type")), response, body)
 	}
@@ -400,43 +409,49 @@ func failureFromResponse(response *http.Response, body []byte) (Failure, error) 
 	return failure, err
 }
 
-func failureFromResponseOrDefault(response *http.Response, body []byte, defaultMessage string) Failure {
-	failure, err := failureFromResponse(response, body)
+func (c *HTTPClient) failureFromResponseOrDefault(response *http.Response, body []byte, defaultMessage string) Failure {
+	failure, err := c.failureFromResponse(response, body)
 	if err != nil {
 		failure.Message = defaultMessage
 	}
 	return failure
 }
 
-func bestEffortHandlerErrorFromResponse(response *http.Response, body []byte) error {
+func (c *HTTPClient) failureErrorFromResponseOrDefault(response *http.Response, body []byte, defaultMessage string) error {
+	failure := c.failureFromResponseOrDefault(response, body, defaultMessage)
+	failureErr := c.options.FailureConverter.FailureToError(failure)
+	return failureErr
+}
+
+func (c *HTTPClient) bestEffortHandlerErrorFromResponse(response *http.Response, body []byte) error {
 	switch response.StatusCode {
 	case http.StatusBadRequest:
-		failure := failureFromResponseOrDefault(response, body, "bad request")
-		return &HandlerError{Type: HandlerErrorTypeBadRequest, Failure: &failure}
+		failureErr := c.failureErrorFromResponseOrDefault(response, body, "bad request")
+		return &HandlerError{Type: HandlerErrorTypeBadRequest, Cause: failureErr}
 	case http.StatusUnauthorized:
-		failure := failureFromResponseOrDefault(response, body, "unauthenticated")
-		return &HandlerError{Type: HandlerErrorTypeUnauthenticated, Failure: &failure}
+		failureErr := c.failureErrorFromResponseOrDefault(response, body, "unauthenticated")
+		return &HandlerError{Type: HandlerErrorTypeUnauthenticated, Cause: failureErr}
 	case http.StatusForbidden:
-		failure := failureFromResponseOrDefault(response, body, "unauthorized")
-		return &HandlerError{Type: HandlerErrorTypeUnauthorized, Failure: &failure}
+		failureErr := c.failureErrorFromResponseOrDefault(response, body, "unauthorized")
+		return &HandlerError{Type: HandlerErrorTypeUnauthorized, Cause: failureErr}
 	case http.StatusNotFound:
-		failure := failureFromResponseOrDefault(response, body, "not found")
-		return &HandlerError{Type: HandlerErrorTypeNotFound, Failure: &failure}
+		failureErr := c.failureErrorFromResponseOrDefault(response, body, "not found")
+		return &HandlerError{Type: HandlerErrorTypeNotFound, Cause: failureErr}
 	case http.StatusTooManyRequests:
-		failure := failureFromResponseOrDefault(response, body, "resource exhausted")
-		return &HandlerError{Type: HandlerErrorTypeResourceExhausted, Failure: &failure}
+		failureErr := c.failureErrorFromResponseOrDefault(response, body, "resource exhausted")
+		return &HandlerError{Type: HandlerErrorTypeResourceExhausted, Cause: failureErr}
 	case http.StatusInternalServerError:
-		failure := failureFromResponseOrDefault(response, body, "internal error")
-		return &HandlerError{Type: HandlerErrorTypeInternal, Failure: &failure}
+		failureErr := c.failureErrorFromResponseOrDefault(response, body, "internal error")
+		return &HandlerError{Type: HandlerErrorTypeInternal, Cause: failureErr}
 	case http.StatusNotImplemented:
-		failure := failureFromResponseOrDefault(response, body, "not implemented")
-		return &HandlerError{Type: HandlerErrorTypeNotImplemented, Failure: &failure}
+		failureErr := c.failureErrorFromResponseOrDefault(response, body, "not implemented")
+		return &HandlerError{Type: HandlerErrorTypeNotImplemented, Cause: failureErr}
 	case http.StatusServiceUnavailable:
-		failure := failureFromResponseOrDefault(response, body, "unavailable")
-		return &HandlerError{Type: HandlerErrorTypeUnavailable, Failure: &failure}
+		failureErr := c.failureErrorFromResponseOrDefault(response, body, "unavailable")
+		return &HandlerError{Type: HandlerErrorTypeUnavailable, Cause: failureErr}
 	case StatusUpstreamTimeout:
-		failure := failureFromResponseOrDefault(response, body, "upstream timeout")
-		return &HandlerError{Type: HandlerErrorTypeUpstreamTimeout, Failure: &failure}
+		failureErr := c.failureErrorFromResponseOrDefault(response, body, "upstream timeout")
+		return &HandlerError{Type: HandlerErrorTypeUpstreamTimeout, Cause: failureErr}
 	default:
 		return newUnexpectedResponseError(fmt.Sprintf("unexpected response status: %q", response.Status), response, body)
 	}

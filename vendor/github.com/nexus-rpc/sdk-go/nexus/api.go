@@ -18,20 +18,23 @@ import (
 )
 
 // Package version.
-const version = "v0.0.11"
+const version = "v0.1.0"
 
 const (
 	// Nexus specific headers.
-	headerOperationState = "Nexus-Operation-State"
-	headerOperationID    = "Nexus-Operation-Id"
-	headerRequestID      = "Nexus-Request-Id"
-	headerLink           = "Nexus-Link"
+	headerOperationState     = "nexus-operation-state"
+	headerRequestID          = "nexus-request-id"
+	headerLink               = "nexus-link"
+	headerOperationStartTime = "nexus-operation-start-time"
+	// HeaderOperationID is the unique ID returned by the StartOperation response for async operations.
+	// Must be set on callback headers to support completing operations before the start response is received.
+	HeaderOperationID = "nexus-operation-id"
 
 	// HeaderRequestTimeout is the total time to complete a Nexus HTTP request.
-	HeaderRequestTimeout = "Request-Timeout"
+	HeaderRequestTimeout = "request-timeout"
 	// HeaderOperationTimeout is the total time to complete a Nexus operation.
 	// Unlike HeaderRequestTimeout, this applies to the whole operation, not just a single HTTP request.
-	HeaderOperationTimeout = "Operation-Timeout"
+	HeaderOperationTimeout = "operation-timeout"
 )
 
 const contentTypeJSON = "application/json"
@@ -50,7 +53,9 @@ const (
 	StatusUpstreamTimeout = 520
 )
 
-// A Failure represents failed handler invocations as well as `failed` or `canceled` operation results.
+// A Failure represents failed handler invocations as well as `failed` or `canceled` operation results. Failures
+// shouldn't typically be constructed directly. The SDK APIs take a [FailureConverter] instance that can translate
+// language errors to and from [Failure] instances.
 type Failure struct {
 	// A simple text message.
 	Message string `json:"message"`
@@ -60,18 +65,55 @@ type Failure struct {
 	Details json.RawMessage `json:"details,omitempty"`
 }
 
-// UnsuccessfulOperationError represents "failed" and "canceled" operation results.
-type UnsuccessfulOperationError struct {
-	State   OperationState
+// An error that directly represents a wire representation of [Failure].
+// The SDK will convert to this error by default unless the [FailureConverter] instance is customized.
+type FailureError struct {
+	// The underlying Failure object this error represents.
 	Failure Failure
 }
 
 // Error implements the error interface.
-func (e *UnsuccessfulOperationError) Error() string {
-	if e.Failure.Message != "" {
-		return fmt.Sprintf("operation %s: %s", e.State, e.Failure.Message)
+func (e *FailureError) Error() string {
+	return e.Failure.Message
+}
+
+// UnsuccessfulOperationError represents "failed" and "canceled" operation results.
+type UnsuccessfulOperationError struct {
+	// State of the operation. Only [OperationStateFailed] and [OperationStateCanceled] are valid.
+	State OperationState
+	// The underlying cause for this error.
+	Cause error
+}
+
+// NewFailedOperationError is shorthand for constructing an [UnsuccessfulOperationError] with State set to
+// [OperationStateFailed] and the given err as the Cause.
+func NewFailedOperationError(err error) *UnsuccessfulOperationError {
+	return &UnsuccessfulOperationError{
+		State: OperationStateFailed,
+		Cause: err,
 	}
-	return fmt.Sprintf("operation %s", e.State)
+}
+
+// NewFailedOperationError is shorthand for constructing an [UnsuccessfulOperationError] with State set to
+// [OperationStateCanceled] and the given err as the Cause.
+func NewCanceledOperationError(err error) *UnsuccessfulOperationError {
+	return &UnsuccessfulOperationError{
+		State: OperationStateCanceled,
+		Cause: err,
+	}
+}
+
+// Error implements the error interface.
+func (e *UnsuccessfulOperationError) Error() string {
+	if e.Cause == nil {
+		return fmt.Sprintf("operation %s", e.State)
+	}
+	return fmt.Sprintf("operation %s: %s", e.State, e.Cause.Error())
+}
+
+// Unwrap returns the cause for use with utilities in the errors package.
+func (e *UnsuccessfulOperationError) Unwrap() error {
+	return e.Cause
 }
 
 // ErrOperationStillRunning indicates that an operation is still running while trying to get its result.
@@ -119,11 +161,17 @@ func isMediaTypeOctetStream(contentType string) bool {
 
 // Header is a mapping of string to string.
 // It is used throughout the framework to transmit metadata.
+// The keys should be in lower case form.
 type Header map[string]string
 
 // Get is a case-insensitive key lookup from the header map.
 func (h Header) Get(k string) string {
 	return h[strings.ToLower(k)]
+}
+
+// Set sets the header key to the given value transforming the key to its lower case form.
+func (h Header) Set(k, v string) {
+	h[strings.ToLower(k)] = v
 }
 
 func prefixStrippedHTTPHeaderToNexusHeader(httpHeader http.Header, prefix string) Header {

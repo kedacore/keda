@@ -234,3 +234,22 @@ func TimeoutTypeFromString(s string) (TimeoutType, error) {
 	}
 	return TimeoutType(0), fmt.Errorf("%s is not a valid TimeoutType", s)
 }
+
+var (
+	VersioningBehavior_shorthandValue = map[string]int32{
+		"Unspecified": 0,
+		"Pinned":      1,
+		"AutoUpgrade": 2,
+	}
+)
+
+// VersioningBehaviorFromString parses a VersioningBehavior value from  either the protojson
+// canonical SCREAMING_CASE enum or the traditional temporal PascalCase enum to VersioningBehavior
+func VersioningBehaviorFromString(s string) (VersioningBehavior, error) {
+	if v, ok := VersioningBehavior_value[s]; ok {
+		return VersioningBehavior(v), nil
+	} else if v, ok := VersioningBehavior_shorthandValue[s]; ok {
+		return VersioningBehavior(v), nil
+	}
+	return VersioningBehavior(0), fmt.Errorf("%s is not a valid VersioningBehavior", s)
+}

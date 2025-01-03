@@ -54,6 +54,7 @@ func newNexusWorker(opts nexusWorkerOptions) (*nexusWorker, error) {
 			opts.executionParameters.TaskQueue,
 			opts.client,
 			opts.executionParameters.DataConverter,
+			opts.executionParameters.FailureConverter,
 			opts.executionParameters.Logger,
 			opts.executionParameters.MetricsHandler,
 		),

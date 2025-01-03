@@ -66,6 +66,8 @@ func ResumeDeadlockDetector(ctx Context) {
 // be used for advanced data converters that may perform remote calls or
 // otherwise intentionally execute longer than the default deadlock detection
 // timeout.
+//
+// Exposed as: [go.temporal.io/sdk/workflow.DataConverterWithoutDeadlockDetection]
 func DataConverterWithoutDeadlockDetection(c converter.DataConverter) converter.DataConverter {
 	return &dataConverterWithoutDeadlock{underlying: c}
 }
@@ -172,6 +174,7 @@ type dataConverterWithoutDeadlock struct {
 	underlying converter.DataConverter
 }
 
+// Exposed as: [go.temporal.io/sdk/workflow.ContextAware]
 var _ ContextAware = &dataConverterWithoutDeadlock{}
 
 func (d *dataConverterWithoutDeadlock) ToPayload(value interface{}) (*commonpb.Payload, error) {

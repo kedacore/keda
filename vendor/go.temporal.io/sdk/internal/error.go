@@ -121,6 +121,8 @@ Workflow consumers will get an instance of *WorkflowExecutionError. This error w
 type (
 	// ApplicationErrorOptions represents a combination of error attributes and additional requests.
 	// All fields are optional, providing flexibility in error customization.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.ApplicationErrorOptions]
 	ApplicationErrorOptions struct {
 		// NonRetryable indicates if the error should not be retried regardless of the retry policy.
 		NonRetryable bool
@@ -137,6 +139,8 @@ type (
 	}
 
 	// ApplicationError returned from activity implementations with message and optional details.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.ApplicationError]
 	ApplicationError struct {
 		temporalError
 		msg            string
@@ -148,6 +152,8 @@ type (
 	}
 
 	// TimeoutError returned when activity or child workflow timed out.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.TimeoutError]
 	TimeoutError struct {
 		temporalError
 		msg                  string
@@ -157,17 +163,23 @@ type (
 	}
 
 	// CanceledError returned when operation was canceled.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.CanceledError]
 	CanceledError struct {
 		temporalError
 		details converter.EncodedValues
 	}
 
 	// TerminatedError returned when workflow was terminated.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.TerminatedError]
 	TerminatedError struct {
 		temporalError
 	}
 
 	// PanicError contains information about panicked workflow/activity.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.PanicError]
 	PanicError struct {
 		temporalError
 		value      interface{}
@@ -182,6 +194,8 @@ type (
 	}
 
 	// ContinueAsNewError contains information about how to continue the workflow as new.
+	//
+	// Exposed as: [go.temporal.io/sdk/workflow.ContinueAsNewError]
 	ContinueAsNewError struct {
 		// params *ExecuteWorkflowParams
 		WorkflowType        *WorkflowType
@@ -212,6 +226,8 @@ type (
 	}
 
 	// ContinueAsNewErrorOptions specifies optional attributes to be carried over to the next run.
+	//
+	// Exposed as: [go.temporal.io/sdk/workflow.ContinueAsNewErrorOptions]
 	ContinueAsNewErrorOptions struct {
 		// RetryPolicy specifies the retry policy to be used for the next run.
 		// If nil, the current workflow's retry policy will be used.
@@ -222,6 +238,8 @@ type (
 	UnknownExternalWorkflowExecutionError struct{}
 
 	// ServerError can be returned from server.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.ServerError]
 	ServerError struct {
 		temporalError
 		msg          string
@@ -231,6 +249,8 @@ type (
 
 	// ActivityError is returned from workflow when activity returned an error.
 	// Unwrap this error to get actual cause.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.ActivityError]
 	ActivityError struct {
 		temporalError
 		scheduledEventID int64
@@ -244,6 +264,8 @@ type (
 
 	// ChildWorkflowExecutionError is returned from workflow when child workflow returned an error.
 	// Unwrap this error to get actual cause.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.ChildWorkflowExecutionError]
 	ChildWorkflowExecutionError struct {
 		temporalError
 		namespace        string
@@ -259,6 +281,8 @@ type (
 	// NexusOperationError is an error returned when a Nexus Operation has failed.
 	//
 	// NOTE: Experimental
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.NexusOperationError]
 	NexusOperationError struct {
 		// The raw proto failure object this error was created from.
 		Failure *failurepb.Failure
@@ -288,6 +312,8 @@ type (
 
 	// WorkflowExecutionError is returned from workflow.
 	// Unwrap this error to get actual cause.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.WorkflowExecutionError]
 	WorkflowExecutionError struct {
 		workflowID   string
 		runID        string
@@ -321,6 +347,8 @@ var (
 	goErrType = reflect.TypeOf(errors.New("")).Elem().Name()
 
 	// ErrNoData is returned when trying to extract strong typed data while there is no data available.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.ErrNoData]
 	ErrNoData = errors.New("no data available")
 
 	// ErrTooManyArg is returned when trying to extract strong typed data with more arguments than available data.
@@ -331,13 +359,22 @@ var (
 	// activity require human interaction (like approve an expense report), the activity could return activity.ErrResultPending
 	// which indicate the activity is not done yet. Then, when the waited human action happened, it needs to trigger something
 	// that could report the activity completed event to temporal server via Client.CompleteActivity() API.
+	//
+	// Exposed as: [go.temporal.io/sdk/activity.ErrResultPending]
 	ErrActivityResultPending = errors.New("not error: do not autocomplete, using Client.CompleteActivity() to complete")
 
 	// ErrScheduleAlreadyRunning is returned if there's already a running (not deleted) Schedule with the same ID
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.ErrScheduleAlreadyRunning]
 	ErrScheduleAlreadyRunning = errors.New("schedule with this ID is already registered")
 
 	// ErrSkipScheduleUpdate is used by a user if they want to skip updating a schedule.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.ErrSkipScheduleUpdate]
 	ErrSkipScheduleUpdate = errors.New("skip schedule update")
+
+	// ErrMissingWorkflowID is returned when trying to start an async Nexus operation but no workflow ID is set on the request.
+	ErrMissingWorkflowID = errors.New("workflow ID is unset for Nexus operation")
 )
 
 // NewApplicationError create new instance of *ApplicationError with message, type, and optional details.
@@ -349,6 +386,7 @@ func NewApplicationError(msg string, errType string, nonRetryable bool, cause er
 	)
 }
 
+// Exposed as: [go.temporal.io/sdk/temporal.NewApplicationErrorWithOptions], [go.temporal.io/sdk/temporal.NewApplicationErrorWithCause], [go.temporal.io/sdk/temporal.NewApplicationError], [go.temporal.io/sdk/temporal.NewNonRetryableApplicationError]
 func NewApplicationErrorWithOptions(msg string, errType string, options ApplicationErrorOptions) error {
 	applicationErr := &ApplicationError{
 		msg:            msg,
@@ -373,6 +411,8 @@ func NewApplicationErrorWithOptions(msg string, errType string, options Applicat
 
 // NewTimeoutError creates TimeoutError instance.
 // Use NewHeartbeatTimeoutError to create heartbeat TimeoutError.
+//
+// Exposed as: [go.temporal.io/sdk/temporal.NewTimeoutError]
 func NewTimeoutError(msg string, timeoutType enumspb.TimeoutType, cause error, lastHeartbeatDetails ...interface{}) error {
 	timeoutErr := &TimeoutError{
 		msg:         msg,
@@ -391,11 +431,15 @@ func NewTimeoutError(msg string, timeoutType enumspb.TimeoutType, cause error, l
 }
 
 // NewHeartbeatTimeoutError creates TimeoutError instance.
+//
+// Exposed as: [go.temporal.io/sdk/temporal.NewHeartbeatTimeoutError]
 func NewHeartbeatTimeoutError(details ...interface{}) error {
 	return NewTimeoutError("heartbeat timeout", enumspb.TIMEOUT_TYPE_HEARTBEAT, nil, details...)
 }
 
 // NewCanceledError creates CanceledError instance.
+//
+// Exposed as: [go.temporal.io/sdk/temporal.NewCanceledError]
 func NewCanceledError(details ...interface{}) error {
 	if len(details) == 1 {
 		if d, ok := details[0].(*EncodedValues); ok {
@@ -495,6 +539,8 @@ func IsCanceledError(err error) bool {
 //		  ctx := WithWorkflowTaskQueue(ctx, "example-group")
 //	 wfn - workflow function. for new execution it can be different from the currently running.
 //	 args - arguments for the new workflow.
+//
+// Exposed as: [go.temporal.io/sdk/workflow.NewContinueAsNewError]
 func NewContinueAsNewError(ctx Context, wfn interface{}, args ...interface{}) error {
 	i := getWorkflowOutboundInterceptor(ctx)
 	// Put header on context before executing
@@ -503,6 +549,8 @@ func NewContinueAsNewError(ctx Context, wfn interface{}, args ...interface{}) er
 }
 
 // NewContinueAsNewErrorWithOptions creates ContinueAsNewError instance with additional options.
+//
+// Exposed as: [go.temporal.io/sdk/workflow.NewContinueAsNewErrorWithOptions]
 func NewContinueAsNewErrorWithOptions(ctx Context, options ContinueAsNewErrorOptions, wfn interface{}, args ...interface{}) error {
 	err := NewContinueAsNewError(ctx, wfn, args...)
 
@@ -821,6 +869,41 @@ func (e *ChildWorkflowExecutionError) message() string {
 
 func (e *ChildWorkflowExecutionError) Unwrap() error {
 	return e.cause
+}
+
+// Namespace returns namespace of the child workflow.
+func (e *ChildWorkflowExecutionError) Namespace() string {
+	return e.namespace
+}
+
+// WorkflowId returns workflow ID of the child workflow.
+func (e *ChildWorkflowExecutionError) WorkflowID() string {
+	return e.workflowID
+}
+
+// RunID returns run ID of the child workflow.
+func (e *ChildWorkflowExecutionError) RunID() string {
+	return e.runID
+}
+
+// WorkflowType returns type of the child workflow.
+func (e *ChildWorkflowExecutionError) WorkflowType() string {
+	return e.workflowType
+}
+
+// InitiatedEventID returns event ID of the child workflow initiated event.
+func (e *ChildWorkflowExecutionError) InitiatedEventID() int64 {
+	return e.initiatedEventID
+}
+
+// StartedEventID returns event ID of the child workflow started event.
+func (e *ChildWorkflowExecutionError) StartedEventID() int64 {
+	return e.startedEventID
+}
+
+// RetryState returns details on why child workflow failed.
+func (e *ChildWorkflowExecutionError) RetryState() enumspb.RetryState {
+	return e.retryState
 }
 
 // Error implements the error interface.

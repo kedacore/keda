@@ -29,10 +29,11 @@ import (
 
 var (
 	ResetReapplyExcludeType_shorthandValue = map[string]int32{
-		"Unspecified": 0,
-		"Signal":      1,
-		"Update":      2,
-		"Nexus":       3,
+		"Unspecified":   0,
+		"Signal":        1,
+		"Update":        2,
+		"Nexus":         3,
+		"CancelRequest": 4,
 	}
 )
 

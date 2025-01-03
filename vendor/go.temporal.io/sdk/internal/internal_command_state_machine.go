@@ -79,8 +79,9 @@ type (
 
 	activityCommandStateMachine struct {
 		*commandStateMachineBase
-		scheduleID int64
-		attributes *commandpb.ScheduleActivityTaskCommandAttributes
+		scheduleID    int64
+		attributes    *commandpb.ScheduleActivityTaskCommandAttributes
+		startMetadata *sdk.UserMetadata
 	}
 
 	cancelActivityStateMachine struct {
@@ -348,12 +349,14 @@ func (h *commandsHelper) newCommandStateMachineBase(commandType commandType, id 
 func (h *commandsHelper) newActivityCommandStateMachine(
 	scheduleID int64,
 	attributes *commandpb.ScheduleActivityTaskCommandAttributes,
+	startMetadata *sdk.UserMetadata,
 ) *activityCommandStateMachine {
 	base := h.newCommandStateMachineBase(commandTypeActivity, attributes.GetActivityId())
 	return &activityCommandStateMachine{
 		commandStateMachineBase: base,
 		scheduleID:              scheduleID,
 		attributes:              attributes,
+		startMetadata:           startMetadata,
 	}
 }
 
@@ -618,6 +621,7 @@ func (d *activityCommandStateMachine) getCommand() *commandpb.Command {
 	case commandStateCreated, commandStateCanceledBeforeSent:
 		command := createNewCommand(enumspb.COMMAND_TYPE_SCHEDULE_ACTIVITY_TASK)
 		command.Attributes = &commandpb.Command_ScheduleActivityTaskCommandAttributes{ScheduleActivityTaskCommandAttributes: d.attributes}
+		command.UserMetadata = d.startMetadata
 		return command
 	default:
 		return nil
@@ -1118,9 +1122,10 @@ func (h *commandsHelper) moveCommandToBack(command commandStateMachine) {
 func (h *commandsHelper) scheduleActivityTask(
 	scheduleID int64,
 	attributes *commandpb.ScheduleActivityTaskCommandAttributes,
+	metadata *sdk.UserMetadata,
 ) commandStateMachine {
 	h.scheduledEventIDToActivityID[scheduleID] = attributes.GetActivityId()
-	command := h.newActivityCommandStateMachine(scheduleID, attributes)
+	command := h.newActivityCommandStateMachine(scheduleID, attributes, metadata)
 	h.addCommand(command)
 	return command
 }

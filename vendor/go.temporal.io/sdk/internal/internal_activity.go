@@ -73,6 +73,7 @@ type (
 		RetryPolicy            *commonpb.RetryPolicy
 		DisableEagerExecution  bool
 		VersioningIntent       VersioningIntent
+		Summary                string
 	}
 
 	// ExecuteLocalActivityOptions options for executing a local activity

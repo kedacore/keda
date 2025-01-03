@@ -157,6 +157,14 @@ type (
 		taskQueues map[string]struct{}
 	}
 
+	updateResult struct {
+		success   interface{}
+		err       error
+		update_id string
+		callbacks []updateCallbacksWrapper
+		completed bool
+	}
+
 	// testWorkflowEnvironmentShared is the shared data between parent workflow and child workflow test environments
 	testWorkflowEnvironmentShared struct {
 		locker    sync.Mutex
@@ -229,6 +237,7 @@ type (
 		signalHandler         func(name string, input *commonpb.Payloads, header *commonpb.Header) error
 		queryHandler          func(string, *commonpb.Payloads, *commonpb.Header) (*commonpb.Payloads, error)
 		updateHandler         func(name string, id string, input *commonpb.Payloads, header *commonpb.Header, resp UpdateCallbacks)
+		updateMap             map[string]*updateResult
 		startedHandler        func(r WorkflowExecution, e error)
 
 		isWorkflowCompleted bool
@@ -250,11 +259,20 @@ type (
 
 		workflowFunctionExecuting bool
 		bufferedUpdateRequests    map[string][]func()
+
+		sdkFlags *sdkFlags
 	}
 
 	testSessionEnvironmentImpl struct {
 		*sessionEnvironmentImpl
 		testWorkflowEnvironment *testWorkflowEnvironmentImpl
+	}
+
+	// UpdateCallbacksWrapper is a wrapper to UpdateCallbacks. It allows us to dedup duplicate update IDs in the test environment.
+	updateCallbacksWrapper struct {
+		uc       UpdateCallbacks
+		env      *testWorkflowEnvironmentImpl
+		updateID string
 	}
 )
 
@@ -313,6 +331,7 @@ func newTestWorkflowEnvironmentImpl(s *WorkflowTestSuite, parentRegistry *regist
 		failureConverter:       GetDefaultFailureConverter(),
 		runTimeout:             maxWorkflowTimeout,
 		bufferedUpdateRequests: make(map[string][]func()),
+		sdkFlags:               newSDKFlags(&workflowservice.GetSystemInfoResponse_Capabilities{SdkMetadata: true}),
 	}
 
 	if debugMode {
@@ -605,7 +624,11 @@ func (env *testWorkflowEnvironmentImpl) getWorkflowDefinition(wt WorkflowType) (
 }
 
 func (env *testWorkflowEnvironmentImpl) TryUse(flag sdkFlag) bool {
-	return true
+	return env.sdkFlags.tryUse(flag, true)
+}
+
+func (env *testWorkflowEnvironmentImpl) GetFlag(flag sdkFlag) bool {
+	return env.sdkFlags.getFlag(flag)
 }
 
 func (env *testWorkflowEnvironmentImpl) QueueUpdate(name string, f func()) {
@@ -2382,6 +2405,7 @@ func (env *testWorkflowEnvironmentImpl) newTestNexusTaskHandler(
 		env.workflowInfo.TaskQueueName,
 		&testSuiteClientForNexusOperations{env: env},
 		env.dataConverter,
+		env.failureConverter,
 		env.logger,
 		env.metricsHandler,
 	)
@@ -2910,10 +2934,35 @@ func (env *testWorkflowEnvironmentImpl) updateWorkflow(name string, id string, u
 	if err != nil {
 		panic(err)
 	}
-	env.postCallback(func() {
-		// Do not send any headers on test invocations
-		env.updateHandler(name, id, data, nil, uc)
-	}, true)
+	if id == "" {
+		id = uuid.NewString()
+	}
+
+	if env.updateMap == nil {
+		env.updateMap = make(map[string]*updateResult)
+	}
+
+	var ucWrapper = updateCallbacksWrapper{uc: uc, env: env, updateID: id}
+
+	// check for duplicate update ID
+	if result, ok := env.updateMap[id]; ok {
+		if result.completed {
+			env.postCallback(func() {
+				ucWrapper.uc.Accept()
+				ucWrapper.uc.Complete(result.success, result.err)
+			}, false)
+		} else {
+			result.callbacks = append(result.callbacks, ucWrapper)
+		}
+		env.updateMap[id] = result
+	} else {
+		env.updateMap[id] = &updateResult{nil, nil, id, []updateCallbacksWrapper{}, false}
+		env.postCallback(func() {
+			// Do not send any headers on test invocations
+			env.updateHandler(name, id, data, nil, ucWrapper)
+		}, true)
+	}
+
 }
 
 func (env *testWorkflowEnvironmentImpl) updateWorkflowByID(workflowID, name, id string, uc UpdateCallbacks, args ...interface{}) error {
@@ -2925,9 +2974,31 @@ func (env *testWorkflowEnvironmentImpl) updateWorkflowByID(workflowID, name, id 
 		if err != nil {
 			panic(err)
 		}
-		workflowHandle.env.postCallback(func() {
-			workflowHandle.env.updateHandler(name, id, data, nil, uc)
-		}, true)
+
+		if env.updateMap == nil {
+			env.updateMap = make(map[string]*updateResult)
+		}
+
+		var ucWrapper = updateCallbacksWrapper{uc: uc, env: env, updateID: id}
+
+		// Check for duplicate update ID
+		if result, ok := env.updateMap[id]; ok {
+			if result.completed {
+				env.postCallback(func() {
+					ucWrapper.uc.Accept()
+					ucWrapper.uc.Complete(result.success, result.err)
+				}, false)
+			} else {
+				result.callbacks = append(result.callbacks, ucWrapper)
+			}
+			env.updateMap[id] = result
+		} else {
+			env.updateMap[id] = &updateResult{nil, nil, id, []updateCallbacksWrapper{}, false}
+			workflowHandle.env.postCallback(func() {
+				workflowHandle.env.updateHandler(name, id, data, nil, ucWrapper)
+			}, true)
+		}
+
 		return nil
 	}
 
@@ -3067,6 +3138,34 @@ func mockFnGetVersion(string, Version, Version) Version {
 
 // make sure interface is implemented
 var _ WorkflowEnvironment = (*testWorkflowEnvironmentImpl)(nil)
+
+func (uc updateCallbacksWrapper) Accept() {
+	uc.uc.Accept()
+}
+
+func (uc updateCallbacksWrapper) Reject(err error) {
+	uc.uc.Reject(err)
+}
+
+func (uc updateCallbacksWrapper) Complete(success interface{}, err error) {
+	// cache update result so we can dedup duplicate update IDs
+	if uc.env == nil {
+		panic("env is needed in updateCallback to cache update results for deduping purposes")
+	}
+	if result, ok := uc.env.updateMap[uc.updateID]; ok {
+		if !result.completed {
+			result.success = success
+			result.err = err
+			uc.uc.Complete(success, err)
+			result.completed = true
+			result.post_callbacks(uc.env)
+		} else {
+			uc.uc.Complete(result.success, result.err)
+		}
+	} else {
+		panic("updateMap[updateID] should already be created from updateWorkflow()")
+	}
+}
 
 func (h *testNexusOperationHandle) newStartTask() *workflowservice.PollNexusTaskQueueResponse {
 	return &workflowservice.PollNexusTaskQueueResponse{
@@ -3417,4 +3516,14 @@ func newTestNexusOperation(opRef testNexusOperationReference) *testNexusOperatio
 	return &testNexusOperation{
 		testNexusOperationReference: opRef,
 	}
+}
+
+func (res *updateResult) post_callbacks(env *testWorkflowEnvironmentImpl) {
+	for _, uc := range res.callbacks {
+		env.postCallback(func() {
+			uc.Accept()
+			uc.Complete(res.success, res.err)
+		}, false)
+	}
+	res.callbacks = []updateCallbacksWrapper{}
 }

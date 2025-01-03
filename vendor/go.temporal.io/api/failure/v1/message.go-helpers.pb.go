@@ -360,6 +360,43 @@ func (this *NexusOperationFailureInfo) Equal(that interface{}) bool {
 	return proto.Equal(this, that1)
 }
 
+// Marshal an object of type NexusHandlerFailureInfo to the protobuf v3 wire format
+func (val *NexusHandlerFailureInfo) Marshal() ([]byte, error) {
+	return proto.Marshal(val)
+}
+
+// Unmarshal an object of type NexusHandlerFailureInfo from the protobuf v3 wire format
+func (val *NexusHandlerFailureInfo) Unmarshal(buf []byte) error {
+	return proto.Unmarshal(buf, val)
+}
+
+// Size returns the size of the object, in bytes, once serialized
+func (val *NexusHandlerFailureInfo) Size() int {
+	return proto.Size(val)
+}
+
+// Equal returns whether two NexusHandlerFailureInfo values are equivalent by recursively
+// comparing the message's fields.
+// For more information see the documentation for
+// https://pkg.go.dev/google.golang.org/protobuf/proto#Equal
+func (this *NexusHandlerFailureInfo) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	var that1 *NexusHandlerFailureInfo
+	switch t := that.(type) {
+	case *NexusHandlerFailureInfo:
+		that1 = t
+	case NexusHandlerFailureInfo:
+		that1 = &t
+	default:
+		return false
+	}
+
+	return proto.Equal(this, that1)
+}
+
 // Marshal an object of type Failure to the protobuf v3 wire format
 func (val *Failure) Marshal() ([]byte, error) {
 	return proto.Marshal(val)

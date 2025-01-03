@@ -162,15 +162,10 @@ type (
 	// StartWorkflowOptions configuration parameters for starting a workflow execution.
 	StartWorkflowOptions = internal.StartWorkflowOptions
 
-	// WithStartWorkflowOperation is a type of operation that can be executed as part of a workflow start.
-	// For example, use NewUpdateWithStartWorkflowOperation to perform Update-with-Start.
+	// WithStartWorkflowOperation defines how to start a workflow when using UpdateWithStartWorkflow.
+	// See [Client.NewWithStartWorkflowOperation] and [Client.UpdateWithStartWorkflow].
 	// NOTE: Experimental
 	WithStartWorkflowOperation = internal.WithStartWorkflowOperation
-
-	// UpdateWithStartWorkflowOperation is used to perform Update-with-Start.
-	// See NewUpdateWithStartWorkflowOperation for details.
-	// NOTE: Experimental
-	UpdateWithStartWorkflowOperation = internal.UpdateWithStartWorkflowOperation
 
 	// HistoryEventIterator is a iterator which can return history events.
 	HistoryEventIterator = internal.HistoryEventIterator
@@ -278,6 +273,11 @@ type (
 	// sending an update to a workflow execution.
 	// NOTE: Experimental
 	UpdateWorkflowOptions = internal.UpdateWorkflowOptions
+
+	// UpdateWithStartWorkflowOptions encapsulates the parameters used by UpdateWithStartWorkflow.
+	// See [Client.UpdateWithStartWorkflow] and [Client.NewWithStartWorkflowOperation].
+	// NOTE: Experimental
+	UpdateWithStartWorkflowOptions = internal.UpdateWithStartWorkflowOptions
 
 	// WorkflowUpdateHandle represents a running or completed workflow
 	// execution update and gives the holder access to the outcome of the same.
@@ -564,6 +564,11 @@ type (
 		SignalWithStartWorkflow(ctx context.Context, workflowID string, signalName string, signalArg interface{},
 			options StartWorkflowOptions, workflow interface{}, workflowArgs ...interface{}) (WorkflowRun, error)
 
+		// NewWithStartWorkflowOperation returns a WithStartWorkflowOperation for use with UpdateWithStartWorkflow.
+		// See [Client.UpdateWithStartWorkflow].
+		// NOTE: Experimental
+		NewWithStartWorkflowOperation(options StartWorkflowOptions, workflow interface{}, args ...interface{}) WithStartWorkflowOperation
+
 		// CancelWorkflow request cancellation of a workflow in execution. Cancellation request closes the channel
 		// returned by the workflow.Context.Done() of the workflow that is target of the request.
 		// - workflow ID of the workflow.
@@ -826,19 +831,35 @@ type (
 		// API. If the check fails, an error is returned.
 		CheckHealth(ctx context.Context, request *CheckHealthRequest) (*CheckHealthResponse, error)
 
-		// UpdateWorkflow issues an update request to the
-		// specified workflow execution and returns a handle to the update that
-		// is running in in parallel with the calling thread. Errors returned
-		// from the server will be exposed through the return value of
-		// WorkflowUpdateHandle.Get(). Errors that occur before the
-		// update is requested (e.g. if the required workflow ID field is
-		// missing from the UpdateWorkflowOptions) are returned
-		// directly from this function call.
+		// UpdateWorkflow issues an update request to the specified workflow and
+		// returns a handle to the update. The call will block until the update
+		// has reached the WaitForStage in the options. Note that this means
+		// that the call will not return successfully until the update has been
+		// delivered to a worker. Errors returned from the update handler or its
+		// validator will be exposed through the return value of
+		// WorkflowUpdateHandle.Get(). Errors that occur before the update is
+		// delivered to the workflow (e.g. if the required workflow ID field is
+		// missing from the UpdateWorkflowOptions) are returned directly from
+		// this function call.
 		//
 		// The errors it can return:
 		//  - WorkflowUpdateServiceTimeoutOrCanceledError
 		// NOTE: Experimental
 		UpdateWorkflow(ctx context.Context, options UpdateWorkflowOptions) (WorkflowUpdateHandle, error)
+
+		// UpdateWithStartWorkflow issues an update-with-start request. A
+		// WorkflowIDConflictPolicy must be set in the options. If the specified
+		// workflow execution is not running, then a new workflow execution is
+		// started and the update is sent in the first workflow task.
+		// Alternatively if the specified workflow execution is running then, if
+		// the WorkflowIDConflictPolicy is USE_EXISTING, the update is issued
+		// against the specified workflow, and if the WorkflowIDConflictPolicy
+		// is FAIL, an error is returned. The call will block until the update
+		// has reached the WaitForStage in the options. Note that this means
+		// that the call will not return successfully until the update has been
+		// delivered to a worker.
+		// NOTE: Experimental
+		UpdateWithStartWorkflow(ctx context.Context, options UpdateWithStartWorkflowOptions) (WorkflowUpdateHandle, error)
 
 		// GetWorkflowUpdateHandle creates a handle to the referenced update
 		// which can be polled for an outcome. Note that runID is optional and
@@ -933,14 +954,6 @@ type MetricsTimer = metrics.Timer
 
 // MetricsNopHandler is a noop handler that does nothing with the metrics.
 var MetricsNopHandler = metrics.NopHandler
-
-// NewUpdateWithStartWorkflowOperation returns an UpdateWithStartWorkflowOperation to perform Update-with-Start.
-// After executing Client.ExecuteWorkflow with the UpdateWithStartWorkflow in the start options,
-// the update result can be obtained.
-// NOTE: Experimental
-func NewUpdateWithStartWorkflowOperation(options UpdateWorkflowOptions) *UpdateWithStartWorkflowOperation {
-	return internal.NewUpdateWithStartWorkflowOperation(options)
-}
 
 // Dial creates an instance of a workflow client. This will attempt to connect
 // to the server eagerly and will return an error if the server is not

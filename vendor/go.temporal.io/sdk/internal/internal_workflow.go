@@ -47,6 +47,7 @@ import (
 
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/internal/common/metrics"
+	"go.temporal.io/sdk/log"
 )
 
 const (
@@ -193,6 +194,7 @@ type (
 		mutex            sync.Mutex // used to synchronize executing
 		closed           bool
 		interceptor      WorkflowOutboundInterceptor
+		logger           log.Logger
 		deadlockDetector *deadlockDetector
 		readOnly         bool
 		// allBlockedCallback is called when all coroutines are blocked,
@@ -222,6 +224,8 @@ type (
 		SearchAttributes         map[string]interface{}
 		TypedSearchAttributes    SearchAttributes
 		ParentClosePolicy        enumspb.ParentClosePolicy
+		StaticSummary            string
+		StaticDetails            string
 		signalChannels           map[string]Channel
 		requestedSignalChannels  map[string]*requestedSignalChannel
 		queryHandlers            map[string]*queryHandler
@@ -229,9 +233,6 @@ type (
 		// runningUpdatesHandles is a map of update handlers that are currently running.
 		runningUpdatesHandles map[string]UpdateInfo
 		VersioningIntent      VersioningIntent
-		// TODO(cretz): Expose once https://github.com/temporalio/temporal/issues/6412 is fixed
-		staticSummary string
-		staticDetails string
 		// currentDetails is the user-set string returned on metadata query as
 		// WorkflowMetadata.current_details
 		currentDetails string
@@ -676,8 +677,11 @@ func (d *syncWorkflowDefinition) Close() {
 // Context passed to the root function is child of the passed rootCtx.
 // This way rootCtx can be used to pass values to the coroutine code.
 func newDispatcher(rootCtx Context, interceptor *workflowEnvironmentInterceptor, root func(ctx Context), allBlockedCallback func() bool) (*dispatcherImpl, Context) {
+	env := getWorkflowEnvironment(rootCtx)
+
 	result := &dispatcherImpl{
 		interceptor:        interceptor.outboundInterceptor,
+		logger:             env.GetLogger(),
 		deadlockDetector:   newDeadlockDetector(),
 		allBlockedCallback: allBlockedCallback,
 	}
@@ -1158,21 +1162,31 @@ func (s *coroutineState) close() {
 }
 
 // exit tries to run Goexit on the coroutine and wait for it to exit
-// within timeout.
-func (s *coroutineState) exit(timeout time.Duration) {
+// within timeout. If it doesn't exit within timeout, it will log a warning.
+func (s *coroutineState) exit(logger log.Logger, warnTimeout time.Duration) {
 	if !s.closed.Load() {
 		s.unblock <- func(status string, stackDepth int) bool {
 			runtime.Goexit()
 			return true
 		}
 
-		timer := time.NewTimer(timeout)
+		timer := time.NewTimer(warnTimeout)
 		defer timer.Stop()
 
 		select {
 		case <-s.aboutToBlock:
+			return
 		case <-timer.C:
+			st, err := getCoroStackTrace(s, "running", 0)
+			if err != nil {
+				st = fmt.Sprintf("<%s>", err)
+			}
+
+			logger.Warn(fmt.Sprintf("Workflow coroutine %q didn't exit within %v", s.name, warnTimeout), "stackTrace", st)
 		}
+		// We need to make sure the coroutine is closed, otherwise we risk concurrent coroutines running
+		// at the same time causing a race condition.
+		<-s.aboutToBlock
 	}
 }
 
@@ -1332,7 +1346,7 @@ func (d *dispatcherImpl) Close() {
 	// 	* On exit the coroutines defers will still run and that may block.
 	go func() {
 		for _, c := range d.coroutines {
-			c.exit(defaultCoroutineExitTimeout)
+			c.exit(d.logger, defaultDeadlockDetectionTimeout)
 		}
 	}()
 }
@@ -1407,8 +1421,24 @@ func (s *selectorImpl) Select(ctx Context) {
 					if readyBranch != nil {
 						return false
 					}
-					readyBranch = func() {
+					// readyBranch is not executed when AddDefault is specified,
+					// setting the value here prevents the signal from being dropped
+					env := getWorkflowEnvironment(ctx)
+					var dropSignalFlag bool
+					if unblockSelectorSignal {
+						dropSignalFlag = env.TryUse(SDKFlagBlockedSelectorSignalReceive)
+					} else {
+						dropSignalFlag = env.GetFlag(SDKFlagBlockedSelectorSignalReceive)
+					}
+
+					if dropSignalFlag {
 						c.recValue = &v
+					}
+
+					readyBranch = func() {
+						if !dropSignalFlag {
+							c.recValue = &v
+						}
 						f(c, more)
 					}
 					return true

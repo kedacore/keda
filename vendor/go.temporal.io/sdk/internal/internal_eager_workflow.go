@@ -33,14 +33,25 @@ import (
 // eagerWorkflowDispatcher is responsible for finding an available worker for an eager workflow task.
 type eagerWorkflowDispatcher struct {
 	lock               sync.RWMutex
-	workersByTaskQueue map[string][]eagerWorker
+	workersByTaskQueue map[string]map[eagerWorker]struct{}
 }
 
 // registerWorker registers a worker that can be used for eager workflow dispatch
 func (e *eagerWorkflowDispatcher) registerWorker(worker *workflowWorker) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
-	e.workersByTaskQueue[worker.executionParameters.TaskQueue] = append(e.workersByTaskQueue[worker.executionParameters.TaskQueue], worker.worker)
+	taskQueue := worker.executionParameters.TaskQueue
+	if e.workersByTaskQueue[taskQueue] == nil {
+		e.workersByTaskQueue[taskQueue] = make(map[eagerWorker]struct{})
+	}
+	e.workersByTaskQueue[taskQueue][worker.worker] = struct{}{}
+}
+
+// deregisterWorker deregister a worker so that it will not be used for eager workflow dispatch
+func (e *eagerWorkflowDispatcher) deregisterWorker(worker *workflowWorker) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+	delete(e.workersByTaskQueue[worker.executionParameters.TaskQueue], worker.worker)
 }
 
 // applyToRequest updates request if eager workflow dispatch is possible and returns the eagerWorkflowExecutor to use
@@ -48,9 +59,11 @@ func (e *eagerWorkflowDispatcher) applyToRequest(request *workflowservice.StartW
 	// Try every worker that is assigned to the desired task queue.
 	e.lock.RLock()
 	workers := e.workersByTaskQueue[request.GetTaskQueue().Name]
-	randWorkers := make([]eagerWorker, len(workers))
-	// Copy the slice so we can release the lock.
-	copy(randWorkers, workers)
+	randWorkers := make([]eagerWorker, 0, len(workers))
+	// Copy the workers so we can release the lock.
+	for worker := range workers {
+		randWorkers = append(randWorkers, worker)
+	}
 	e.lock.RUnlock()
 	rand.Shuffle(len(randWorkers), func(i, j int) { randWorkers[i], randWorkers[j] = randWorkers[j], randWorkers[i] })
 	for _, worker := range randWorkers {

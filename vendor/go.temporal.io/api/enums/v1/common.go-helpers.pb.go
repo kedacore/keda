@@ -98,6 +98,7 @@ var (
 		"BackingOff":  3,
 		"Failed":      4,
 		"Succeeded":   5,
+		"Blocked":     6,
 	}
 )
 
@@ -118,6 +119,7 @@ var (
 		"Scheduled":   1,
 		"BackingOff":  2,
 		"Started":     3,
+		"Blocked":     4,
 	}
 )
 
@@ -140,6 +142,7 @@ var (
 		"Succeeded":   3,
 		"Failed":      4,
 		"TimedOut":    5,
+		"Blocked":     6,
 	}
 )
 

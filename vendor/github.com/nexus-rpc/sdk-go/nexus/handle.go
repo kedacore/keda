@@ -16,7 +16,7 @@ type OperationHandle[T any] struct {
 	Operation string
 	// Handler generated ID for this handle's operation.
 	ID     string
-	client *Client
+	client *HTTPClient
 }
 
 // GetInfo gets operation information, issuing a network request to the service handler.
@@ -42,7 +42,7 @@ func (h *OperationHandle[T]) GetInfo(ctx context.Context, options GetOperationIn
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return nil, bestEffortHandlerErrorFromResponse(response, body)
+		return nil, h.client.bestEffortHandlerErrorFromResponse(response, body)
 	}
 
 	return operationInfoFromResponse(response, body)
@@ -94,7 +94,7 @@ func (h *OperationHandle[T]) GetResult(ctx context.Context, options GetOperation
 			request.URL.RawQuery = ""
 		}
 
-		response, err := h.sendGetOperationRequest(ctx, request)
+		response, err := h.sendGetOperationResultRequest(request)
 		if err != nil {
 			if wait > 0 && errors.Is(err, errOperationWaitTimeout) {
 				// TODO: Backoff a bit in case the server is continually returning timeouts due to some LB configuration
@@ -119,7 +119,7 @@ func (h *OperationHandle[T]) GetResult(ctx context.Context, options GetOperation
 	}
 }
 
-func (h *OperationHandle[T]) sendGetOperationRequest(ctx context.Context, request *http.Request) (*http.Response, error) {
+func (h *OperationHandle[T]) sendGetOperationResultRequest(request *http.Request) (*http.Response, error) {
 	response, err := h.client.options.HTTPCaller(request)
 	if err != nil {
 		return nil, err
@@ -145,16 +145,17 @@ func (h *OperationHandle[T]) sendGetOperationRequest(ctx context.Context, reques
 		if err != nil {
 			return nil, err
 		}
-		failure, err := failureFromResponse(response, body)
+		failure, err := h.client.failureFromResponse(response, body)
 		if err != nil {
 			return nil, err
 		}
+		failureErr := h.client.options.FailureConverter.FailureToError(failure)
 		return nil, &UnsuccessfulOperationError{
-			State:   state,
-			Failure: failure,
+			State: state,
+			Cause: failureErr,
 		}
 	default:
-		return nil, bestEffortHandlerErrorFromResponse(response, body)
+		return nil, h.client.bestEffortHandlerErrorFromResponse(response, body)
 	}
 }
 
@@ -182,7 +183,7 @@ func (h *OperationHandle[T]) Cancel(ctx context.Context, options CancelOperation
 	}
 
 	if response.StatusCode != http.StatusAccepted {
-		return bestEffortHandlerErrorFromResponse(response, body)
+		return h.client.bestEffortHandlerErrorFromResponse(response, body)
 	}
 	return nil
 }

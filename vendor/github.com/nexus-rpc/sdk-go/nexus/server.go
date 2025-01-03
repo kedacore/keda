@@ -131,10 +131,18 @@ const (
 // HandlerError is a special error that can be returned from [Handler] methods for failing a request with a custom
 // status code and failure message.
 type HandlerError struct {
-	// Defaults to HandlerErrorTypeInternal
+	// Error Type. Defaults to HandlerErrorTypeInternal.
 	Type HandlerErrorType
-	// Failure to report back in the response. Optional.
-	Failure *Failure
+	// The underlying cause for this error.
+	Cause error
+}
+
+// HandlerErrorf creates a [HandlerError] with the given type using [fmt.Errorf] to construct the cause.
+func HandlerErrorf(typ HandlerErrorType, format string, args ...any) *HandlerError {
+	return &HandlerError{
+		Type:  typ,
+		Cause: fmt.Errorf(format, args...),
+	}
 }
 
 // Error implements the error interface.
@@ -143,24 +151,20 @@ func (e *HandlerError) Error() string {
 	if len(typ) == 0 {
 		typ = HandlerErrorTypeInternal
 	}
-	if e.Failure != nil {
-		return fmt.Sprintf("handler error (%s): %s", typ, e.Failure.Message)
+	if e.Cause == nil {
+		return fmt.Sprintf("handler error (%s)", typ)
 	}
-	return fmt.Sprintf("handler error (%s)", typ)
+	return fmt.Sprintf("handler error (%s): %s", typ, e.Cause.Error())
 }
 
-// HandlerErrorf creates a [HandlerError] with the given type and a formatted failure message.
-func HandlerErrorf(typ HandlerErrorType, format string, args ...any) *HandlerError {
-	return &HandlerError{
-		Type: typ,
-		Failure: &Failure{
-			Message: fmt.Sprintf(format, args...),
-		},
-	}
+// Unwrap returns the cause for use with utilities in the errors package.
+func (e *HandlerError) Unwrap() error {
+	return e.Cause
 }
 
 type baseHTTPHandler struct {
-	logger *slog.Logger
+	logger           *slog.Logger
+	failureConverter FailureConverter
 }
 
 type httpHandler struct {
@@ -205,7 +209,7 @@ func (h *httpHandler) writeResult(writer http.ResponseWriter, result any) {
 }
 
 func (h *baseHTTPHandler) writeFailure(writer http.ResponseWriter, err error) {
-	var failure *Failure
+	var failure Failure
 	var unsuccessfulError *UnsuccessfulOperationError
 	var handlerError *HandlerError
 	var operationState OperationState
@@ -213,7 +217,7 @@ func (h *baseHTTPHandler) writeFailure(writer http.ResponseWriter, err error) {
 
 	if errors.As(err, &unsuccessfulError) {
 		operationState = unsuccessfulError.State
-		failure = &unsuccessfulError.Failure
+		failure = h.failureConverter.ErrorToFailure(unsuccessfulError.Cause)
 		statusCode = statusOperationFailed
 
 		if operationState == OperationStateFailed || operationState == OperationStateCanceled {
@@ -224,7 +228,7 @@ func (h *baseHTTPHandler) writeFailure(writer http.ResponseWriter, err error) {
 			return
 		}
 	} else if errors.As(err, &handlerError) {
-		failure = handlerError.Failure
+		failure = h.failureConverter.ErrorToFailure(handlerError.Cause)
 		switch handlerError.Type {
 		case HandlerErrorTypeBadRequest:
 			statusCode = http.StatusBadRequest
@@ -248,22 +252,19 @@ func (h *baseHTTPHandler) writeFailure(writer http.ResponseWriter, err error) {
 			h.logger.Error("unexpected handler error type", "type", handlerError.Type)
 		}
 	} else {
-		failure = &Failure{
+		failure = Failure{
 			Message: "internal server error",
 		}
 		h.logger.Error("handler failed", "error", err)
 	}
 
-	var bytes []byte
-	if failure != nil {
-		bytes, err = json.Marshal(failure)
-		if err != nil {
-			h.logger.Error("failed to marshal failure", "error", err)
-			writer.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		writer.Header().Set("Content-Type", contentTypeJSON)
+	bytes, err := json.Marshal(failure)
+	if err != nil {
+		h.logger.Error("failed to marshal failure", "error", err)
+		writer.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+	writer.Header().Set("Content-Type", contentTypeJSON)
 
 	writer.WriteHeader(statusCode)
 
@@ -439,8 +440,11 @@ type HandlerOptions struct {
 	// Defaults to one minute.
 	GetResultTimeout time.Duration
 	// A [Serializer] to customize handler serialization behavior.
-	// By default the handler handles, JSONables, byte slices, and nil.
+	// By default the handler handles JSONables, byte slices, and nil.
 	Serializer Serializer
+	// A [FailureConverter] to convert a [Failure] instance to and from an [error].
+	// Defaults to [DefaultFailureConverter].
+	FailureConverter FailureConverter
 }
 
 func (h *httpHandler) handleRequest(writer http.ResponseWriter, request *http.Request) {
@@ -515,9 +519,13 @@ func NewHTTPHandler(options HandlerOptions) http.Handler {
 	if options.Serializer == nil {
 		options.Serializer = defaultSerializer
 	}
+	if options.FailureConverter == nil {
+		options.FailureConverter = defaultFailureConverter
+	}
 	handler := &httpHandler{
 		baseHTTPHandler: baseHTTPHandler{
-			logger: options.Logger,
+			logger:           options.Logger,
+			failureConverter: options.FailureConverter,
 		},
 		options: options,
 	}

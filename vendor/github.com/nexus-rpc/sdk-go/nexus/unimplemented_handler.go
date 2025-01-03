@@ -14,22 +14,22 @@ func (h UnimplementedHandler) mustEmbedUnimplementedHandler() {}
 
 // StartOperation implements the Handler interface.
 func (h UnimplementedHandler) StartOperation(ctx context.Context, service, operation string, input *LazyValue, options StartOperationOptions) (HandlerStartOperationResult[any], error) {
-	return nil, &HandlerError{HandlerErrorTypeNotImplemented, &Failure{Message: "not implemented"}}
+	return nil, HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }
 
 // GetOperationResult implements the Handler interface.
 func (h UnimplementedHandler) GetOperationResult(ctx context.Context, service, operation, operationID string, options GetOperationResultOptions) (any, error) {
-	return nil, &HandlerError{HandlerErrorTypeNotImplemented, &Failure{Message: "not implemented"}}
+	return nil, HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }
 
 // GetOperationInfo implements the Handler interface.
 func (h UnimplementedHandler) GetOperationInfo(ctx context.Context, service, operation, operationID string, options GetOperationInfoOptions) (*OperationInfo, error) {
-	return nil, &HandlerError{HandlerErrorTypeNotImplemented, &Failure{Message: "not implemented"}}
+	return nil, HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }
 
 // CancelOperation implements the Handler interface.
 func (h UnimplementedHandler) CancelOperation(ctx context.Context, service, operation, operationID string, options CancelOperationOptions) error {
-	return &HandlerError{HandlerErrorTypeNotImplemented, &Failure{Message: "not implemented"}}
+	return HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }
 
 // UnimplementedOperation must be embedded into any [Operation] implementation for future compatibility.

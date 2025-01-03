@@ -29,12 +29,13 @@ import (
 
 var (
 	BatchOperationType_shorthandValue = map[string]int32{
-		"Unspecified": 0,
-		"Terminate":   1,
-		"Cancel":      2,
-		"Signal":      3,
-		"Delete":      4,
-		"Reset":       5,
+		"Unspecified":            0,
+		"Terminate":              1,
+		"Cancel":                 2,
+		"Signal":                 3,
+		"Delete":                 4,
+		"Reset":                  5,
+		"UpdateExecutionOptions": 6,
 	}
 )
 

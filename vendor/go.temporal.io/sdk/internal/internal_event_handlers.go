@@ -602,7 +602,7 @@ func (wc *workflowEnvironmentImpl) ExecuteChildWorkflow(
 	attributes.InheritBuildId = determineInheritBuildIdFlagForCommand(
 		params.VersioningIntent, wc.workflowInfo.TaskQueueName, params.TaskQueueName)
 
-	startMetadata, err := buildUserMetadata(params.staticSummary, params.staticDetails, wc.dataConverter)
+	startMetadata, err := buildUserMetadata(params.StaticSummary, params.StaticDetails, wc.dataConverter)
 	if err != nil {
 		callback(nil, err)
 		return
@@ -759,7 +759,13 @@ func (wc *workflowEnvironmentImpl) ExecuteActivity(parameters ExecuteActivityPar
 	scheduleTaskAttr.UseWorkflowBuildId = determineInheritBuildIdFlagForCommand(
 		parameters.VersioningIntent, wc.workflowInfo.TaskQueueName, parameters.TaskQueueName)
 
-	command := wc.commandsHelper.scheduleActivityTask(scheduleID, scheduleTaskAttr)
+	startMetadata, err := buildUserMetadata(parameters.Summary, "", wc.dataConverter)
+	if err != nil {
+		callback(nil, err)
+		return ActivityID{}
+	}
+
+	command := wc.commandsHelper.scheduleActivityTask(scheduleID, scheduleTaskAttr, startMetadata)
 	command.setData(&scheduledActivity{
 		callback:             callback,
 		waitForCancelRequest: parameters.WaitForCancellation,
@@ -976,6 +982,10 @@ func (wc *workflowEnvironmentImpl) SideEffect(f func() (*commonpb.Payloads, erro
 
 func (wc *workflowEnvironmentImpl) TryUse(flag sdkFlag) bool {
 	return wc.sdkFlags.tryUse(flag, !wc.isReplay)
+}
+
+func (wc *workflowEnvironmentImpl) GetFlag(flag sdkFlag) bool {
+	return wc.sdkFlags.getFlag(flag)
 }
 
 func (wc *workflowEnvironmentImpl) QueueUpdate(name string, f func()) {

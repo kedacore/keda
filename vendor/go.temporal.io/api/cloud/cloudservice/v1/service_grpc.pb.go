@@ -83,6 +83,12 @@ const (
 	CloudService_GetUsage_FullMethodName                    = "/temporal.api.cloud.cloudservice.v1.CloudService/GetUsage"
 	CloudService_GetAccount_FullMethodName                  = "/temporal.api.cloud.cloudservice.v1.CloudService/GetAccount"
 	CloudService_UpdateAccount_FullMethodName               = "/temporal.api.cloud.cloudservice.v1.CloudService/UpdateAccount"
+	CloudService_CreateNamespaceExportSink_FullMethodName   = "/temporal.api.cloud.cloudservice.v1.CloudService/CreateNamespaceExportSink"
+	CloudService_GetNamespaceExportSink_FullMethodName      = "/temporal.api.cloud.cloudservice.v1.CloudService/GetNamespaceExportSink"
+	CloudService_GetNamespaceExportSinks_FullMethodName     = "/temporal.api.cloud.cloudservice.v1.CloudService/GetNamespaceExportSinks"
+	CloudService_UpdateNamespaceExportSink_FullMethodName   = "/temporal.api.cloud.cloudservice.v1.CloudService/UpdateNamespaceExportSink"
+	CloudService_DeleteNamespaceExportSink_FullMethodName   = "/temporal.api.cloud.cloudservice.v1.CloudService/DeleteNamespaceExportSink"
+	CloudService_ValidateNamespaceExportSink_FullMethodName = "/temporal.api.cloud.cloudservice.v1.CloudService/ValidateNamespaceExportSink"
 )
 
 // CloudServiceClient is the client API for CloudService service.
@@ -175,6 +181,19 @@ type CloudServiceClient interface {
 	GetAccount(ctx context.Context, in *GetAccountRequest, opts ...grpc.CallOption) (*GetAccountResponse, error)
 	// Update account information.
 	UpdateAccount(ctx context.Context, in *UpdateAccountRequest, opts ...grpc.CallOption) (*UpdateAccountResponse, error)
+	// Create an export sink
+	CreateNamespaceExportSink(ctx context.Context, in *CreateNamespaceExportSinkRequest, opts ...grpc.CallOption) (*CreateNamespaceExportSinkResponse, error)
+	// Get an export sink
+	GetNamespaceExportSink(ctx context.Context, in *GetNamespaceExportSinkRequest, opts ...grpc.CallOption) (*GetNamespaceExportSinkResponse, error)
+	// Get export sinks
+	GetNamespaceExportSinks(ctx context.Context, in *GetNamespaceExportSinksRequest, opts ...grpc.CallOption) (*GetNamespaceExportSinksResponse, error)
+	// Update an export sink
+	UpdateNamespaceExportSink(ctx context.Context, in *UpdateNamespaceExportSinkRequest, opts ...grpc.CallOption) (*UpdateNamespaceExportSinkResponse, error)
+	// Delete an export sink
+	DeleteNamespaceExportSink(ctx context.Context, in *DeleteNamespaceExportSinkRequest, opts ...grpc.CallOption) (*DeleteNamespaceExportSinkResponse, error)
+	// Validates an export sink configuration by delivering an empty test file to the specified sink.
+	// This operation verifies that the sink is correctly configured, accessible, and ready for data export.
+	ValidateNamespaceExportSink(ctx context.Context, in *ValidateNamespaceExportSinkRequest, opts ...grpc.CallOption) (*ValidateNamespaceExportSinkResponse, error)
 }
 
 type cloudServiceClient struct {
@@ -595,6 +614,66 @@ func (c *cloudServiceClient) UpdateAccount(ctx context.Context, in *UpdateAccoun
 	return out, nil
 }
 
+func (c *cloudServiceClient) CreateNamespaceExportSink(ctx context.Context, in *CreateNamespaceExportSinkRequest, opts ...grpc.CallOption) (*CreateNamespaceExportSinkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateNamespaceExportSinkResponse)
+	err := c.cc.Invoke(ctx, CloudService_CreateNamespaceExportSink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *cloudServiceClient) GetNamespaceExportSink(ctx context.Context, in *GetNamespaceExportSinkRequest, opts ...grpc.CallOption) (*GetNamespaceExportSinkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetNamespaceExportSinkResponse)
+	err := c.cc.Invoke(ctx, CloudService_GetNamespaceExportSink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *cloudServiceClient) GetNamespaceExportSinks(ctx context.Context, in *GetNamespaceExportSinksRequest, opts ...grpc.CallOption) (*GetNamespaceExportSinksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetNamespaceExportSinksResponse)
+	err := c.cc.Invoke(ctx, CloudService_GetNamespaceExportSinks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *cloudServiceClient) UpdateNamespaceExportSink(ctx context.Context, in *UpdateNamespaceExportSinkRequest, opts ...grpc.CallOption) (*UpdateNamespaceExportSinkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateNamespaceExportSinkResponse)
+	err := c.cc.Invoke(ctx, CloudService_UpdateNamespaceExportSink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *cloudServiceClient) DeleteNamespaceExportSink(ctx context.Context, in *DeleteNamespaceExportSinkRequest, opts ...grpc.CallOption) (*DeleteNamespaceExportSinkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteNamespaceExportSinkResponse)
+	err := c.cc.Invoke(ctx, CloudService_DeleteNamespaceExportSink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *cloudServiceClient) ValidateNamespaceExportSink(ctx context.Context, in *ValidateNamespaceExportSinkRequest, opts ...grpc.CallOption) (*ValidateNamespaceExportSinkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ValidateNamespaceExportSinkResponse)
+	err := c.cc.Invoke(ctx, CloudService_ValidateNamespaceExportSink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CloudServiceServer is the server API for CloudService service.
 // All implementations must embed UnimplementedCloudServiceServer
 // for forward compatibility.
@@ -685,6 +764,19 @@ type CloudServiceServer interface {
 	GetAccount(context.Context, *GetAccountRequest) (*GetAccountResponse, error)
 	// Update account information.
 	UpdateAccount(context.Context, *UpdateAccountRequest) (*UpdateAccountResponse, error)
+	// Create an export sink
+	CreateNamespaceExportSink(context.Context, *CreateNamespaceExportSinkRequest) (*CreateNamespaceExportSinkResponse, error)
+	// Get an export sink
+	GetNamespaceExportSink(context.Context, *GetNamespaceExportSinkRequest) (*GetNamespaceExportSinkResponse, error)
+	// Get export sinks
+	GetNamespaceExportSinks(context.Context, *GetNamespaceExportSinksRequest) (*GetNamespaceExportSinksResponse, error)
+	// Update an export sink
+	UpdateNamespaceExportSink(context.Context, *UpdateNamespaceExportSinkRequest) (*UpdateNamespaceExportSinkResponse, error)
+	// Delete an export sink
+	DeleteNamespaceExportSink(context.Context, *DeleteNamespaceExportSinkRequest) (*DeleteNamespaceExportSinkResponse, error)
+	// Validates an export sink configuration by delivering an empty test file to the specified sink.
+	// This operation verifies that the sink is correctly configured, accessible, and ready for data export.
+	ValidateNamespaceExportSink(context.Context, *ValidateNamespaceExportSinkRequest) (*ValidateNamespaceExportSinkResponse, error)
 	mustEmbedUnimplementedCloudServiceServer()
 }
 
@@ -817,6 +909,24 @@ func (UnimplementedCloudServiceServer) GetAccount(context.Context, *GetAccountRe
 }
 func (UnimplementedCloudServiceServer) UpdateAccount(context.Context, *UpdateAccountRequest) (*UpdateAccountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateAccount not implemented")
+}
+func (UnimplementedCloudServiceServer) CreateNamespaceExportSink(context.Context, *CreateNamespaceExportSinkRequest) (*CreateNamespaceExportSinkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateNamespaceExportSink not implemented")
+}
+func (UnimplementedCloudServiceServer) GetNamespaceExportSink(context.Context, *GetNamespaceExportSinkRequest) (*GetNamespaceExportSinkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetNamespaceExportSink not implemented")
+}
+func (UnimplementedCloudServiceServer) GetNamespaceExportSinks(context.Context, *GetNamespaceExportSinksRequest) (*GetNamespaceExportSinksResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetNamespaceExportSinks not implemented")
+}
+func (UnimplementedCloudServiceServer) UpdateNamespaceExportSink(context.Context, *UpdateNamespaceExportSinkRequest) (*UpdateNamespaceExportSinkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateNamespaceExportSink not implemented")
+}
+func (UnimplementedCloudServiceServer) DeleteNamespaceExportSink(context.Context, *DeleteNamespaceExportSinkRequest) (*DeleteNamespaceExportSinkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteNamespaceExportSink not implemented")
+}
+func (UnimplementedCloudServiceServer) ValidateNamespaceExportSink(context.Context, *ValidateNamespaceExportSinkRequest) (*ValidateNamespaceExportSinkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ValidateNamespaceExportSink not implemented")
 }
 func (UnimplementedCloudServiceServer) mustEmbedUnimplementedCloudServiceServer() {}
 func (UnimplementedCloudServiceServer) testEmbeddedByValue()                      {}
@@ -1577,6 +1687,114 @@ func _CloudService_UpdateAccount_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CloudService_CreateNamespaceExportSink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateNamespaceExportSinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CloudServiceServer).CreateNamespaceExportSink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CloudService_CreateNamespaceExportSink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CloudServiceServer).CreateNamespaceExportSink(ctx, req.(*CreateNamespaceExportSinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CloudService_GetNamespaceExportSink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNamespaceExportSinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CloudServiceServer).GetNamespaceExportSink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CloudService_GetNamespaceExportSink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CloudServiceServer).GetNamespaceExportSink(ctx, req.(*GetNamespaceExportSinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CloudService_GetNamespaceExportSinks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNamespaceExportSinksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CloudServiceServer).GetNamespaceExportSinks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CloudService_GetNamespaceExportSinks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CloudServiceServer).GetNamespaceExportSinks(ctx, req.(*GetNamespaceExportSinksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CloudService_UpdateNamespaceExportSink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateNamespaceExportSinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CloudServiceServer).UpdateNamespaceExportSink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CloudService_UpdateNamespaceExportSink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CloudServiceServer).UpdateNamespaceExportSink(ctx, req.(*UpdateNamespaceExportSinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CloudService_DeleteNamespaceExportSink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteNamespaceExportSinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CloudServiceServer).DeleteNamespaceExportSink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CloudService_DeleteNamespaceExportSink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CloudServiceServer).DeleteNamespaceExportSink(ctx, req.(*DeleteNamespaceExportSinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CloudService_ValidateNamespaceExportSink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ValidateNamespaceExportSinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CloudServiceServer).ValidateNamespaceExportSink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CloudService_ValidateNamespaceExportSink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CloudServiceServer).ValidateNamespaceExportSink(ctx, req.(*ValidateNamespaceExportSinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CloudService_ServiceDesc is the grpc.ServiceDesc for CloudService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1747,6 +1965,30 @@ var CloudService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateAccount",
 			Handler:    _CloudService_UpdateAccount_Handler,
+		},
+		{
+			MethodName: "CreateNamespaceExportSink",
+			Handler:    _CloudService_CreateNamespaceExportSink_Handler,
+		},
+		{
+			MethodName: "GetNamespaceExportSink",
+			Handler:    _CloudService_GetNamespaceExportSink_Handler,
+		},
+		{
+			MethodName: "GetNamespaceExportSinks",
+			Handler:    _CloudService_GetNamespaceExportSinks_Handler,
+		},
+		{
+			MethodName: "UpdateNamespaceExportSink",
+			Handler:    _CloudService_UpdateNamespaceExportSink_Handler,
+		},
+		{
+			MethodName: "DeleteNamespaceExportSink",
+			Handler:    _CloudService_DeleteNamespaceExportSink_Handler,
+		},
+		{
+			MethodName: "ValidateNamespaceExportSink",
+			Handler:    _CloudService_ValidateNamespaceExportSink_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

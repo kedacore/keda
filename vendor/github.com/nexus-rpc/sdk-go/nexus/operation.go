@@ -316,13 +316,13 @@ func (r *registryHandler) StartOperation(ctx context.Context, service, operation
 
 var _ Handler = &registryHandler{}
 
-// ExecuteOperation is the type safe version of [Client.ExecuteOperation].
+// ExecuteOperation is the type safe version of [HTTPClient.ExecuteOperation].
 // It accepts input of type I and returns output of type O, removing the need to consume the [LazyValue] returned by the
 // client method.
 //
 //	ref := NewOperationReference[MyInput, MyOutput]("my-operation")
 //	out, err := ExecuteOperation(ctx, client, ref, MyInput{}, options) // returns MyOutput, error
-func ExecuteOperation[I, O any](ctx context.Context, client *Client, operation OperationReference[I, O], input I, request ExecuteOperationOptions) (O, error) {
+func ExecuteOperation[I, O any](ctx context.Context, client *HTTPClient, operation OperationReference[I, O], input I, request ExecuteOperationOptions) (O, error) {
 	var o O
 	value, err := client.ExecuteOperation(ctx, operation.Name(), input, request)
 	if err != nil {
@@ -331,10 +331,10 @@ func ExecuteOperation[I, O any](ctx context.Context, client *Client, operation O
 	return o, value.Consume(&o)
 }
 
-// StartOperation is the type safe version of [Client.StartOperation].
+// StartOperation is the type safe version of [HTTPClient.StartOperation].
 // It accepts input of type I and returns a [ClientStartOperationResult] of type O, removing the need to consume the
 // [LazyValue] returned by the client method.
-func StartOperation[I, O any](ctx context.Context, client *Client, operation OperationReference[I, O], input I, request StartOperationOptions) (*ClientStartOperationResult[O], error) {
+func StartOperation[I, O any](ctx context.Context, client *HTTPClient, operation OperationReference[I, O], input I, request StartOperationOptions) (*ClientStartOperationResult[O], error) {
 	result, err := client.StartOperation(ctx, operation.Name(), input, request)
 	if err != nil {
 		return nil, err
@@ -353,9 +353,9 @@ func StartOperation[I, O any](ctx context.Context, client *Client, operation Ope
 	}, nil
 }
 
-// NewHandle is the type safe version of [Client.NewHandle].
+// NewHandle is the type safe version of [HTTPClient.NewHandle].
 // The [Handle.GetResult] method will return an output of type O.
-func NewHandle[I, O any](client *Client, operation OperationReference[I, O], operationID string) (*OperationHandle[O], error) {
+func NewHandle[I, O any](client *HTTPClient, operation OperationReference[I, O], operationID string) (*OperationHandle[O], error) {
 	if operationID == "" {
 		return nil, errEmptyOperationID
 	}
