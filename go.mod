@@ -93,6 +93,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.33.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.33.0
 	go.opentelemetry.io/otel/metric v1.33.0
+	go.temporal.io/sdk v1.31.0
 	go.uber.org/mock v0.5.0
 	golang.org/x/oauth2 v0.24.0
 	golang.org/x/sync v0.10.0
@@ -131,6 +132,7 @@ require (
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.31.0 // indirect
+	go.temporal.io/api v1.43.0 // indirect
 	google.golang.org/grpc/stats/opentelemetry v0.0.0-20241028142157-ada6787961b3 // indirect
 )
 
@@ -316,7 +318,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
-	github.com/nexus-rpc/sdk-go v0.0.11 // indirect
+	github.com/nexus-rpc/sdk-go v0.1.0 // indirect
 	github.com/oapi-codegen/runtime v1.1.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
