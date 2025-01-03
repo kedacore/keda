@@ -28,6 +28,7 @@ var (
 	namespace                       = fmt.Sprintf("%s-ns", testName)
 	scaledObjectName                = fmt.Sprintf("%s-so", testName)
 	deploymentName                  = fmt.Sprintf("%s-d", testName)
+	daemonsetName                   = fmt.Sprintf("%s-daemonset", testName)
 	clientName                      = fmt.Sprintf("%s-client", testName)
 	cloudeventSourceName            = fmt.Sprintf("%s-ce", testName)
 	cloudeventSourceErrName         = fmt.Sprintf("%s-ce-err", testName)
@@ -42,12 +43,14 @@ var (
 	expectedSubject                 = fmt.Sprintf("/%s/%s/scaledobject/%s", clusterName, namespace, scaledObjectName)
 	expectedSource                  = fmt.Sprintf("/%s/keda/keda", clusterName)
 	lastCloudEventTime              = time.Now()
+	test                            = "test"
 )
 
 type templateData struct {
 	TestNamespace                   string
 	ScaledObject                    string
 	DeploymentName                  string
+	DaemonsetName                   string
 	ClientName                      string
 	CloudEventSourceName            string
 	CloudeventSourceErrName         string
@@ -108,7 +111,7 @@ const (
               cpu: "500m"
   `
 
-	scaledObjectErrTemplate = `
+	scaledObjectTargetNotSupportTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -116,13 +119,35 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   scaleTargetRef:
-    name: test
+    name: {{.DaemonsetName}}
+    kind: DaemonSet
   triggers:
     - type: kubernetes-workload
       metadata:
         podSelector: 'pod=testWorkloadDeploymentName'
         value: '1'
-        activationValue: '3'
+`
+
+	daemonSetTemplate = `
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{.DaemonsetName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DaemonsetName}}
+spec:
+  selector:
+    matchLabels:
+      app: {{.DaemonsetName}}
+  template:
+    metadata:
+      labels:
+        app: {{.DaemonsetName}}
+    spec:
+      containers:
+        - name: {{.DaemonsetName}}
+          image: nginxinc/nginx-unprivileged:alpine-slim
 `
 
 	clientTemplate = `
@@ -379,11 +404,13 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 
 	t.Log("--- test emitting eventsource about scaledobject err---")
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", ceTemplate)
-	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
+	data.DeploymentName = test
+	KubectlApplyWithTemplate(t, data, "daemonSetTemplate", daemonSetTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTargetNotSupportTemplate", scaledObjectTargetNotSupportTemplate)
 
 	// wait 15 seconds to ensure event propagation
 	time.Sleep(5 * time.Second)
-	KubectlDeleteWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTargetNotSupportTemplate", scaledObjectTargetNotSupportTemplate)
 	time.Sleep(10 * time.Second)
 
 	out, outErr, err := ExecCommandOnSpecificPod(t, clientName, namespace, fmt.Sprintf("curl -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectCheckFailed"))
@@ -408,7 +435,7 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 
 			assert.NoError(t, err)
 			assert.Condition(t, func() bool {
-				if data["message"] == "ScaledObject doesn't have correct scaleTargetRef specification" || data["message"] == "Target resource doesn't exist" {
+				if data["message"] == "ScaledObject doesn't have correct scaleTargetRef specification" || data["message"] == "Target resource doesn't expose /scale subresource" {
 					return true
 				}
 				return false
@@ -430,8 +457,8 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 
 func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templateData) {
 	t.Log("--- test emitting eventsource about scaledobject removed---")
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	// wait 15 seconds to ensure event propagation
 	time.Sleep(5 * time.Second)
@@ -469,6 +496,7 @@ func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templa
 		}
 	}
 	assert.NotEmpty(t, foundEvents)
+	KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 }
 
 // tests error events not emitted by
@@ -483,7 +511,9 @@ func testErrEventSourceExcludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", ceTemplate)
-	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
+	data.DeploymentName = test
+	KubectlApplyWithTemplate(t, data, "daemonSetTemplate", daemonSetTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTargetNotSupportTemplate", scaledObjectTargetNotSupportTemplate)
 
 	// wait 15 seconds to ensure event propagation
 	time.Sleep(15 * time.Second)
@@ -524,7 +554,9 @@ func testErrEventSourceIncludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", ceTemplate)
-	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
+	data.DeploymentName = test
+	KubectlApplyWithTemplate(t, data, "daemonSetTemplate", daemonSetTemplate)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTargetNotSupportTemplate", scaledObjectTargetNotSupportTemplate)
 
 	// wait 15 seconds to ensure event propagation
 	time.Sleep(15 * time.Second)
@@ -583,6 +615,7 @@ func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:                   namespace,
 			ScaledObject:                    scaledObjectName,
+			DaemonsetName:                   daemonsetName,
 			DeploymentName:                  deploymentName,
 			ClientName:                      clientName,
 			CloudEventSourceName:            cloudeventSourceName,
