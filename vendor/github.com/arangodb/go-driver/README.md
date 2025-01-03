@@ -6,13 +6,13 @@ This project contains the official Go driver for the [ArangoDB database system](
 [![GoDoc](https://godoc.org/github.com/arangodb/go-driver?status.svg)](http://godoc.org/github.com/arangodb/go-driver)
 
 Version 2:
-- Tutorial coming soon
+- [Tutorial](https://docs.arangodb.com/stable/develop/drivers/go/)
 - [Code examples](v2/examples/)
 - [Reference documentation](https://godoc.org/github.com/arangodb/go-driver/v2)
 
 Version 1:
 - ⚠️ This version is deprecated and will not receive any new features.
-  Please use version 2 ([v2](v2/)) instead.
+  Please use version 2 ([v2/](v2/)) instead.
 - [Tutorial](Tutorial_v1.md)
 - [Code examples](examples/)
 - [Reference documentation](https://godoc.org/github.com/arangodb/go-driver)

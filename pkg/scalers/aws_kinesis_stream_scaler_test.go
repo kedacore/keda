@@ -86,6 +86,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 				AwsAccessKeyID:     testAWSKinesisAccessKeyID,
 				AwsSecretAccessKey: testAWSKinesisSecretAccessKey,
 				PodIdentityOwner:   true,
+				AwsRegion:          testAWSRegion,
 			},
 			triggerIndex: 0,
 		},
@@ -111,6 +112,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 				AwsAccessKeyID:     testAWSKinesisAccessKeyID,
 				AwsSecretAccessKey: testAWSKinesisSecretAccessKey,
 				PodIdentityOwner:   true,
+				AwsRegion:          testAWSRegion,
 			},
 			triggerIndex: 0,
 		},
@@ -156,6 +158,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 				AwsAccessKeyID:     testAWSKinesisAccessKeyID,
 				AwsSecretAccessKey: testAWSKinesisSecretAccessKey,
 				PodIdentityOwner:   true,
+				AwsRegion:          testAWSRegion,
 			},
 			triggerIndex: 3,
 		},
@@ -220,6 +223,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 				AwsSecretAccessKey: testAWSKinesisSecretAccessKey,
 				AwsSessionToken:    testAWSKinesisSessionToken,
 				PodIdentityOwner:   true,
+				AwsRegion:          testAWSRegion,
 			},
 			triggerIndex: 5,
 		},
@@ -270,6 +274,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			awsAuthorization: awsutils.AuthorizationMetadata{
 				AwsRoleArn:       testAWSKinesisRoleArn,
 				PodIdentityOwner: true,
+				AwsRegion:        testAWSRegion,
 			},
 			triggerIndex: 7,
 		},
@@ -289,6 +294,7 @@ var testAWSKinesisMetadata = []parseAWSKinesisMetadataTestData{
 			AwsRegion:        testAWSRegion,
 			awsAuthorization: awsutils.AuthorizationMetadata{
 				PodIdentityOwner: false,
+				AwsRegion:        testAWSRegion,
 			},
 			triggerIndex: 8,
 		},
@@ -310,17 +316,19 @@ var awsKinesisGetMetricTestData = []*awsKinesisStreamMetadata{
 
 func TestKinesisParseMetadata(t *testing.T) {
 	for _, testData := range testAWSKinesisMetadata {
-		result, err := parseAwsKinesisStreamMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSKinesisAuthentication, AuthParams: testData.authParams, TriggerIndex: testData.triggerIndex})
-		if err != nil && !testData.isError {
-			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
-		}
-		if testData.isError && err == nil {
-			t.Errorf("Expected error because %s but got success, %#v", testData.comment, testData)
-		}
+		t.Run(testData.comment, func(t *testing.T) {
+			result, err := parseAwsKinesisStreamMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testAWSKinesisAuthentication, AuthParams: testData.authParams, TriggerIndex: testData.triggerIndex})
+			if err != nil && !testData.isError {
+				t.Errorf("Expected success because %s got error, %s", testData.comment, err)
+			}
+			if testData.isError && err == nil {
+				t.Errorf("Expected error because %s but got success, %#v", testData.comment, testData)
+			}
 
-		if !testData.isError && !reflect.DeepEqual(testData.expected, result) {
-			t.Fatalf("Expected %#v but got %+#v", testData.expected, result)
-		}
+			if !testData.isError && !reflect.DeepEqual(testData.expected, result) {
+				t.Fatalf("Expected %#v but got %+#v", testData.expected, result)
+			}
+		})
 	}
 }
 

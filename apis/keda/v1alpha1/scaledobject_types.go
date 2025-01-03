@@ -78,7 +78,7 @@ const (
 	// HealthStatusFailing means the status of the health object is failing
 	HealthStatusFailing HealthStatusType = "Failing"
 
-	// Composite metric name used for scalingModifiers composite metric
+	// CompositeMetricName is used for scalingModifiers composite metric
 	CompositeMetricName string = "composite-metric"
 
 	defaultHPAMinReplicas int32 = 1
@@ -90,6 +90,8 @@ type ScaledObjectSpec struct {
 	ScaleTargetRef *ScaleTarget `json:"scaleTargetRef"`
 	// +optional
 	PollingInterval *int32 `json:"pollingInterval,omitempty"`
+	// +optional
+	InitialCooldownPeriod *int32 `json:"initialCooldownPeriod,omitempty"`
 	// +optional
 	CooldownPeriod *int32 `json:"cooldownPeriod,omitempty"`
 	// +optional
@@ -104,8 +106,6 @@ type ScaledObjectSpec struct {
 	Triggers []ScaleTriggers `json:"triggers"`
 	// +optional
 	Fallback *Fallback `json:"fallback,omitempty"`
-	// +optional
-	InitialCooldownPeriod int32 `json:"initialCooldownPeriod,omitempty"`
 }
 
 // Fallback is the spec for fallback options
