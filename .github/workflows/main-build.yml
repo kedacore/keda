@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - main
+permissions:
+  contents: read
+
 jobs:
   build:
     name: build
@@ -29,13 +32,13 @@ jobs:
           echo "build_cache=$(go env GOCACHE)" >> $GITHUB_OUTPUT
 
       - name: Go modules cache
-        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: ${{ steps.go-paths.outputs.mod_cache }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Go build cache
-        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: ${{ steps.go-paths.outputs.build_cache }}
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
@@ -47,7 +50,7 @@ jobs:
         run: make test
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
@@ -57,14 +60,14 @@ jobs:
           registry: ghcr.io
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
 
       - name: Publish on GitHub Container Registry
         run: make publish-multiarch
 
       # https://github.com/sigstore/cosign-installer
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
 
       - name: Check Cosign install!
         run: cosign version
@@ -89,6 +92,9 @@ jobs:
 
   trivy-scan:
     needs: build
+    permissions:
+      contents: read
+      security-events: write
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ubuntu-latest
@@ -99,6 +105,9 @@ jobs:
 
   trivy-scan-metrics-server:
     needs: build
+    permissions:
+      contents: read
+      security-events: write
     strategy:
       matrix:
         runner: [ARM64, ubuntu-latest]
@@ -113,6 +122,9 @@ jobs:
 
   trivy-scan-keda:
     needs: build
+    permissions:
+      contents: read
+      security-events: write
     strategy:
       matrix:
         runner: [ARM64, ubuntu-latest]
