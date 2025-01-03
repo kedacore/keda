@@ -650,6 +650,65 @@ func TestGetTopicPartitions(t *testing.T) {
 	}
 }
 
+func TestFindFactors(t *testing.T) {
+	factors := FindFactors(10)
+	if !reflect.DeepEqual(factors, []int64{1, 2, 5, 10}) {
+		t.Errorf("Expected factors to be %v but got %v", []int64{1, 2, 5, 10}, factors)
+	}
+
+	factors = FindFactors(13)
+	if !reflect.DeepEqual(factors, []int64{1, 13}) {
+		t.Errorf("Expected factors to be %v but got %v", []int64{1, 13}, factors)
+	}
+
+	factors = FindFactors(17)
+	if !reflect.DeepEqual(factors, []int64{1, 17}) {
+		t.Errorf("Expected factors to be %v but got %v", []int64{1, 17}, factors)
+	}
+
+	factors = FindFactors(25)
+	if !reflect.DeepEqual(factors, []int64{1, 5, 25}) {
+		t.Errorf("Expected factors to be %v but got %v", []int64{1, 5, 25}, factors)
+	}
+
+	factors = FindFactors(50)
+	if !reflect.DeepEqual(factors, []int64{1, 2, 5, 10, 25, 50}) {
+		t.Errorf("Expected factors to be %v but got %v", []int64{1, 2, 5, 10, 25, 50}, factors)
+	}
+
+	factors = FindFactors(100)
+	if !reflect.DeepEqual(factors, []int64{1, 2, 4, 5, 10, 20, 25, 50, 100}) {
+		t.Errorf("Expected factors to be %v but got %v", []int64{1, 2, 4, 5, 10, 20, 25, 50, 100}, factors)
+	}
+}
+
+func TestGetNextFactor(t *testing.T) {
+	factor := GetNextFactor(1, 100)
+	if factor != 2 {
+		t.Errorf("Expected factor to be %v but got %v", 2, factor)
+	}
+
+	factor = GetNextFactor(2, 100)
+	if factor != 4 {
+		t.Errorf("Expected factor to be %v but got %v", 4, factor)
+	}
+
+	factor = GetNextFactor(4, 100)
+	if factor != 5 {
+		t.Errorf("Expected factor to be %v but got %v", 5, factor)
+	}
+
+	factor = GetNextFactor(5, 100)
+	if factor != 10 {
+		t.Errorf("Expected factor to be %v but got %v", 10, factor)
+	}
+
+	factor = GetNextFactor(100, 100)
+	if factor != 100 {
+		t.Errorf("Expected factor to be %v but got %v", 10, factor)
+	}
+}
+
 type MockClusterAdmin struct {
 	partitionIds []int32
 }

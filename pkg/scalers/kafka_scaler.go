@@ -23,7 +23,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -68,8 +70,9 @@ type kafkaMetadata struct {
 
 	// If an invalid offset is found, whether to scale to 1 (false - the default) so consumption can
 	// occur or scale to 0 (true). See discussion in https://github.com/kedacore/keda/issues/2612
-	scaleToZeroOnInvalidOffset bool
-	limitToPartitionsWithLag   bool
+	scaleToZeroOnInvalidOffset         bool
+	limitToPartitionsWithLag           bool
+	ensureEvenDistributionOfPartitions bool
 
 	// SASL
 	saslType kafkaSaslType
@@ -974,8 +977,14 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 	s.logger.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics based on totalLag %v, topicPartitions %v, threshold %v", totalLag, len(topicPartitions), s.metadata.lagThreshold))
 
 	if !s.metadata.allowIdleConsumers || s.metadata.limitToPartitionsWithLag {
-		// don't scale out beyond the number of topicPartitions or partitionsWithLag depending on settings
 		upperBound := totalTopicPartitions
+		// Ensure that the number of partitions is evenly distributed across the number of consumers
+		if s.metadata.ensureEvenDistributionOfPartitions {
+			// How do we find the current number of consumers?
+			nextFactor := GetNextFactor(1, totalTopicPartitions)
+			totalLag = nextFactor * s.metadata.lagThreshold
+		}
+		// don't scale out beyond the number of topicPartitions or partitionsWithLag depending on settings
 		if s.metadata.limitToPartitionsWithLag {
 			upperBound = partitionsWithLag
 		}
@@ -985,6 +994,16 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 		}
 	}
 	return totalLag, totalLagWithPersistent, nil
+}
+
+func GetNextFactor(current int64, totalTopicPartitions int64) int64 {
+	factors := FindFactors(totalTopicPartitions)
+	for _, factor := range factors {
+		if factor > current {
+			return factor
+		}
+	}
+	return totalTopicPartitions
 }
 
 type brokerOffsetResult struct {
@@ -1051,4 +1070,28 @@ func (s *kafkaScaler) getProducerOffsets(topicPartitions map[string][]int32) (ma
 	}
 
 	return topicPartitionsOffsets, nil
+}
+
+func FindFactors(n int64) []int64 {
+	if n < 1 {
+		return nil
+	}
+
+	var factors []int64
+	sqrtN := int64(math.Sqrt(float64(n)))
+
+	for i := int64(1); i <= sqrtN; i++ {
+		if n%i == 0 {
+			factors = append(factors, i)
+			if i != n/i {
+				factors = append(factors, n/i)
+			}
+		}
+	}
+
+	sort.Slice(factors, func(i, j int) bool {
+		return factors[i] < factors[j]
+	})
+
+	return factors
 }
