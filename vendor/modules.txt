@@ -659,6 +659,9 @@ github.com/expr-lang/expr/parser/utils
 github.com/expr-lang/expr/patcher
 github.com/expr-lang/expr/vm
 github.com/expr-lang/expr/vm/runtime
+# github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a
+## explicit
+github.com/facebookgo/clock
 # github.com/fatih/color v1.18.0
 ## explicit; go 1.17
 github.com/fatih/color
@@ -764,6 +767,7 @@ github.com/gofrs/uuid
 # github.com/gogo/protobuf v1.3.2
 ## explicit; go 1.15
 github.com/gogo/protobuf/gogoproto
+github.com/gogo/protobuf/jsonpb
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/protoc-gen-gogo/descriptor
 github.com/gogo/protobuf/sortkeys
@@ -786,6 +790,9 @@ github.com/golang-sql/sqlexp
 # github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 ## explicit
 github.com/golang/groupcache/lru
+# github.com/golang/mock v1.6.0
+## explicit; go 1.11
+github.com/golang/mock/gomock
 # github.com/golang/protobuf v1.5.4
 ## explicit; go 1.17
 github.com/golang/protobuf/proto
@@ -918,6 +925,9 @@ github.com/grafana/regexp/syntax
 # github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 ## explicit; go 1.14
 github.com/grpc-ecosystem/go-grpc-middleware
+github.com/grpc-ecosystem/go-grpc-middleware/retry
+github.com/grpc-ecosystem/go-grpc-middleware/util/backoffutils
+github.com/grpc-ecosystem/go-grpc-middleware/util/metautils
 # github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.0.1
 ## explicit; go 1.19
 github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus
@@ -1233,6 +1243,9 @@ github.com/newrelic/newrelic-client-go/v2/pkg/usermanagement
 github.com/newrelic/newrelic-client-go/v2/pkg/users
 github.com/newrelic/newrelic-client-go/v2/pkg/workflows
 github.com/newrelic/newrelic-client-go/v2/pkg/workloads
+# github.com/nexus-rpc/sdk-go v0.1.0
+## explicit; go 1.21
+github.com/nexus-rpc/sdk-go/nexus
 # github.com/oapi-codegen/runtime v1.1.1
 ## explicit; go 1.20
 github.com/oapi-codegen/runtime
@@ -1278,6 +1291,9 @@ github.com/onsi/gomega/types
 # github.com/open-policy-agent/cert-controller v0.12.0
 ## explicit; go 1.22.0
 github.com/open-policy-agent/cert-controller/pkg/rotator
+# github.com/pborman/uuid v1.2.1
+## explicit
+github.com/pborman/uuid
 # github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 ## explicit
 github.com/phayes/freeport
@@ -1368,6 +1384,9 @@ github.com/redis/go-redis/v9/internal/util
 # github.com/rivo/uniseg v0.4.4
 ## explicit; go 1.18
 github.com/rivo/uniseg
+# github.com/robfig/cron v1.2.0
+## explicit
+github.com/robfig/cron
 # github.com/robfig/cron/v3 v3.0.1
 ## explicit; go 1.12
 github.com/robfig/cron/v3
@@ -1692,6 +1711,68 @@ go.opentelemetry.io/proto/otlp/common/v1
 go.opentelemetry.io/proto/otlp/metrics/v1
 go.opentelemetry.io/proto/otlp/resource/v1
 go.opentelemetry.io/proto/otlp/trace/v1
+# go.temporal.io/api v1.43.0
+## explicit; go 1.21
+go.temporal.io/api/activity/v1
+go.temporal.io/api/batch/v1
+go.temporal.io/api/cloud/account/v1
+go.temporal.io/api/cloud/cloudservice/v1
+go.temporal.io/api/cloud/identity/v1
+go.temporal.io/api/cloud/namespace/v1
+go.temporal.io/api/cloud/nexus/v1
+go.temporal.io/api/cloud/operation/v1
+go.temporal.io/api/cloud/region/v1
+go.temporal.io/api/cloud/resource/v1
+go.temporal.io/api/cloud/sink/v1
+go.temporal.io/api/cloud/usage/v1
+go.temporal.io/api/command/v1
+go.temporal.io/api/common/v1
+go.temporal.io/api/deployment/v1
+go.temporal.io/api/enums/v1
+go.temporal.io/api/errordetails/v1
+go.temporal.io/api/export/v1
+go.temporal.io/api/failure/v1
+go.temporal.io/api/filter/v1
+go.temporal.io/api/history/v1
+go.temporal.io/api/internal/protojson
+go.temporal.io/api/internal/protojson/errors
+go.temporal.io/api/internal/protojson/genid
+go.temporal.io/api/internal/protojson/json
+go.temporal.io/api/internal/protojson/order
+go.temporal.io/api/internal/protojson/set
+go.temporal.io/api/internal/protojson/strs
+go.temporal.io/api/internal/strcase
+go.temporal.io/api/namespace/v1
+go.temporal.io/api/nexus/v1
+go.temporal.io/api/operatorservice/v1
+go.temporal.io/api/protocol/v1
+go.temporal.io/api/proxy
+go.temporal.io/api/query/v1
+go.temporal.io/api/replication/v1
+go.temporal.io/api/schedule/v1
+go.temporal.io/api/sdk/v1
+go.temporal.io/api/serviceerror
+go.temporal.io/api/taskqueue/v1
+go.temporal.io/api/temporalproto
+go.temporal.io/api/update/v1
+go.temporal.io/api/version/v1
+go.temporal.io/api/workflow/v1
+go.temporal.io/api/workflowservice/v1
+go.temporal.io/api/workflowservicemock/v1
+# go.temporal.io/sdk v1.31.0
+## explicit; go 1.21
+go.temporal.io/sdk/client
+go.temporal.io/sdk/converter
+go.temporal.io/sdk/internal
+go.temporal.io/sdk/internal/common/backoff
+go.temporal.io/sdk/internal/common/cache
+go.temporal.io/sdk/internal/common/metrics
+go.temporal.io/sdk/internal/common/retry
+go.temporal.io/sdk/internal/common/serializer
+go.temporal.io/sdk/internal/common/util
+go.temporal.io/sdk/internal/log
+go.temporal.io/sdk/internal/protocol
+go.temporal.io/sdk/log
 # go.uber.org/atomic v1.11.0
 ## explicit; go 1.18
 go.uber.org/atomic
