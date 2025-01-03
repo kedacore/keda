@@ -43,7 +43,7 @@ type awsKinesisStreamMetadata struct {
 	TargetShardCount           int64  `keda:"name=shardCount, order=triggerMetadata, default=2"`
 	ActivationTargetShardCount int64  `keda:"name=activationShardCount, order=triggerMetadata, default=0"`
 	StreamName                 string `keda:"name=streamName, order=triggerMetadata"`
-	AwsRegion                  string `keda:"name=awsRegion, order=triggerMetadata"`
+	AwsRegion                  string `keda:"name=awsRegion, order=triggerMetadata;authParams"`
 	AwsEndpoint                string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
 	awsAuthorization           awsutils.AuthorizationMetadata
 	triggerIndex               int
@@ -84,7 +84,7 @@ func parseAwsKinesisStreamMetadata(config *scalersconfig.ScalerConfig) (*awsKine
 		return nil, fmt.Errorf("error parsing Kinesis stream metadata: %w", err)
 	}
 
-	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AwsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
