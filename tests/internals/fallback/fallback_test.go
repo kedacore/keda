@@ -189,6 +189,7 @@ spec:
       url: "{{.MetricsServerEndpoint}}"
       valueLocation: 'value'
       method: "query"
+    metricType: "AverageValue"
     authenticationRef:
       name: {{.TriggerAuthName}}
 `

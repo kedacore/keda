@@ -75,6 +75,10 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **General**: Centralize and improve automaxprocs configuration with proper structured logging ([#5970](https://github.com/kedacore/keda/issues/5970))
+- **General**: Paused ScaledObject count is reported correctly after operator restart ([#6321](https://github.com/kedacore/keda/issues/6321))
+- **General**: Revise some annotations above function and fix fallback check bug ([#6407](https://github.com/kedacore/keda/pull/6407))
+- **General**: ScaledJobs ready status set to true when recoverred problem ([#6329](https://github.com/kedacore/keda/pull/6329))
 - **AWS Scalers**: Add AWS region to the AWS Config Cache key ([#6128](https://github.com/kedacore/keda/issues/6128))
 
 ### Deprecations
