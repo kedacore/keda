@@ -522,3 +522,204 @@ func TestEventWitTriggerInfo(t *testing.T) {
 	eventstring := <-recorder.Events
 	assert.Equal(t, "Normal KEDAScaleTargetActivated Scaled  namespace/name from 2 to 5, triggered by testTrigger", eventstring)
 }
+
+// UseCurrentReplicasAsMinimum is true and current replicas is higher than fallback replicas
+func TestScaleToFallbackWithCurrentReplicasAsMinimum(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+
+	useCurrentAsMin := true
+	scaledObject := v1alpha1.ScaledObject{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: v1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &v1alpha1.ScaleTarget{
+				Name: "name",
+			},
+			Fallback: &v1alpha1.Fallback{
+				FailureThreshold:           3,
+				Replicas:                   5,
+				UseCurrentReplicasAsMinimum: &useCurrentAsMin,
+			},
+		},
+		Status: v1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+		},
+	}
+
+	scaledObject.Status.Conditions = *v1alpha1.GetInitializedConditions()
+
+	// Current replicas is higher than fallback replicas
+	currentReplicas := int32(8)
+
+	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &currentReplicas,
+		},
+	})
+
+	scale := &autoscalingv1.Scale{
+		Spec: autoscalingv1.ScaleSpec{
+			Replicas: currentReplicas,
+		},
+	}
+
+	mockScaleClient.EXPECT().Scales(gomock.Any()).Return(mockScaleInterface).Times(2)
+	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
+	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
+
+	client.EXPECT().Status().Times(2).Return(statusWriter)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+
+	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, true, &ScaleExecutorOptions{})
+
+	// Should use current replicas as it's higher than fallback replicas
+	assert.Equal(t, int32(8), scale.Spec.Replicas)
+	condition := scaledObject.Status.Conditions.GetFallbackCondition()
+	assert.Equal(t, true, condition.IsTrue())
+}
+
+// UseCurrentReplicasAsMinimum is true and current replicas is lower than fallback replicas
+func TestScaleToFallbackIgnoringLowerCurrentReplicas(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+
+	useCurrentAsMin := true
+	scaledObject := v1alpha1.ScaledObject{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: v1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &v1alpha1.ScaleTarget{
+				Name: "name",
+			},
+			Fallback: &v1alpha1.Fallback{
+				FailureThreshold:           3,
+				Replicas:                   5,
+				UseCurrentReplicasAsMinimum: &useCurrentAsMin,
+			},
+		},
+		Status: v1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+		},
+	}
+
+	scaledObject.Status.Conditions = *v1alpha1.GetInitializedConditions()
+
+	// Current replicas is lower than fallback replicas
+	currentReplicas := int32(2)
+
+	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &currentReplicas,
+		},
+	})
+
+	scale := &autoscalingv1.Scale{
+		Spec: autoscalingv1.ScaleSpec{
+			Replicas: currentReplicas,
+		},
+	}
+
+	mockScaleClient.EXPECT().Scales(gomock.Any()).Return(mockScaleInterface).Times(2)
+	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
+	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
+
+	client.EXPECT().Status().Times(2).Return(statusWriter)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+
+	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, true, &ScaleExecutorOptions{})
+
+	// Should use fallback replicas as it's higher than current replicas
+	assert.Equal(t, int32(5), scale.Spec.Replicas)
+	condition := scaledObject.Status.Conditions.GetFallbackCondition()
+	assert.Equal(t, true, condition.IsTrue())
+}
+
+// UseCurrentReplicasAsMinimum is false and current replicas is higher than fallback replicas
+func TestScaleToFallbackWithoutCurrentReplicasAsMinimum(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+
+	useCurrentAsMin := false
+	scaledObject := v1alpha1.ScaledObject{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: v1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &v1alpha1.ScaleTarget{
+				Name: "name",
+			},
+			Fallback: &v1alpha1.Fallback{
+				FailureThreshold:           3,
+				Replicas:                   5,
+				UseCurrentReplicasAsMinimum: &useCurrentAsMin,
+			},
+		},
+		Status: v1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+		},
+	}
+
+	scaledObject.Status.Conditions = *v1alpha1.GetInitializedConditions()
+
+	// Current replicas is higher than fallback replicas
+	currentReplicas := int32(8)
+
+	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &currentReplicas,
+		},
+	})
+
+	scale := &autoscalingv1.Scale{
+		Spec: autoscalingv1.ScaleSpec{
+			Replicas: currentReplicas,
+		},
+	}
+
+	mockScaleClient.EXPECT().Scales(gomock.Any()).Return(mockScaleInterface).Times(2)
+	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
+	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
+
+	client.EXPECT().Status().Times(2).Return(statusWriter)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+
+	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, true, &ScaleExecutorOptions{})
+
+	// Should use fallback replicas even though current replicas is higher
+	assert.Equal(t, int32(5), scale.Spec.Replicas)
+	condition := scaledObject.Status.Conditions.GetFallbackCondition()
+	assert.Equal(t, true, condition.IsTrue())
+}
