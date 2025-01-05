@@ -28,7 +28,7 @@ type stackdriverMetadata struct {
 	TargetValue           float64 `keda:"name=targetValue, order=triggerMetadata, optional, default=5"`
 	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata, optional, default=0"`
 	metricName            string
-	ValueIfNull           *float64 `keda:"name=valueIfNull, order=triggerMetadata, optional"` 
+	ValueIfNull           *float64 `keda:"name=valueIfNull, order=triggerMetadata, optional"`
 	FilterDuration        int64    `keda:"name=filterDuration, order=triggerMetadata, optional"`
 
 	gcpAuthorization *gcp.AuthorizationMetadata

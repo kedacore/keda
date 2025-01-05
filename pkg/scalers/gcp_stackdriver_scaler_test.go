@@ -14,10 +14,6 @@ var testStackdriverResolvedEnv = map[string]string{
 	"SAMPLE_CREDS": "{}",
 }
 
-func float64Ptr(v float64) *float64 {
-	return &v
-}
-
 type parseStackdriverMetadataTestData struct {
 	authParams map[string]string
 	metadata   map[string]string
