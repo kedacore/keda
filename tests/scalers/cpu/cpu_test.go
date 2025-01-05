@@ -28,7 +28,7 @@ var (
 	workloadDeploymentName = fmt.Sprintf("%s-workload-deployment", testName)
 	testNamespace          = fmt.Sprintf("%s-ns", testName)
 	deploymentName         = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName       = fmt.Sprintf("%s-so", testName)
+	scaledObjectName := "this-is-a-very-long-name-that-exceeds-kubernetes-label-length-limit-xxxxx"
 	hpaName                = fmt.Sprintf("keda-hpa-%s-so", testName)
 )
 
