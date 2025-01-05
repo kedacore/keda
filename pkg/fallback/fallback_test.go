@@ -333,8 +333,8 @@ var _ = Describe("fallback", func() {
 		mockScaleAndDeployment(ctrl, client, scaleClient, 5)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
-		metrics, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
-		
+		_, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+
 		Expect(err).ToNot(HaveOccurred())
 		condition := so.Status.Conditions.GetFallbackCondition()
 		Expect(condition.IsTrue()).Should(BeTrue())
@@ -368,7 +368,7 @@ var _ = Describe("fallback", func() {
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
 		_, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
-		
+
 		Expect(err).ShouldNot(BeNil())
 		Expect(err.Error()).Should(Equal("some error"))
 		condition := so.Status.Conditions.GetFallbackCondition()
@@ -382,8 +382,8 @@ var _ = Describe("fallback", func() {
 
 		so := buildScaledObject(
 			&kedav1alpha1.Fallback{
-				FailureThreshold:           int32(3),
-				Replicas:                   int32(10),
+				FailureThreshold:            int32(3),
+				Replicas:                    int32(10),
 				UseCurrentReplicasAsMinimum: &useCurrentAsMin,
 			},
 			&kedav1alpha1.ScaledObjectStatus{
@@ -416,8 +416,8 @@ var _ = Describe("fallback", func() {
 
 		so := buildScaledObject(
 			&kedav1alpha1.Fallback{
-				FailureThreshold:           int32(3),
-				Replicas:                   int32(10),
+				FailureThreshold:            int32(3),
+				Replicas:                    int32(10),
 				UseCurrentReplicasAsMinimum: &useCurrentAsMin,
 			},
 			&kedav1alpha1.ScaledObjectStatus{
@@ -450,7 +450,7 @@ var _ = Describe("fallback", func() {
 		so := buildScaledObject(
 			&kedav1alpha1.Fallback{
 				FailureThreshold: int32(3),
-				Replicas:        int32(10),
+				Replicas:         int32(10),
 				// UseCurrentReplicasAsMinimum is nil
 			},
 			&kedav1alpha1.ScaledObjectStatus{

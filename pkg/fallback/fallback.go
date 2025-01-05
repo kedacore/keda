@@ -113,7 +113,7 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpe
 	replicas := int64(scaledObject.Spec.Fallback.Replicas)
 
 	// Check if we should use current replicas as minimum
-	if scaledObject.Spec.Fallback.UseCurrentReplicasAsMinimum != nil && 
+	if scaledObject.Spec.Fallback.UseCurrentReplicasAsMinimum != nil &&
 		*scaledObject.Spec.Fallback.UseCurrentReplicasAsMinimum {
 		currentReplicasCount := int64(currentReplicas)
 		if currentReplicasCount > replicas {
@@ -137,10 +137,10 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpe
 	}
 	fallbackMetrics := []external_metrics.ExternalMetricValue{metric}
 
-	log.Info("Suppressing error, using fallback metrics", 
-		"scaledObject.Namespace", scaledObject.Namespace, 
-		"scaledObject.Name", scaledObject.Name, 
-		"suppressedError", suppressedError, 
+	log.Info("Suppressing error, using fallback metrics",
+		"scaledObject.Namespace", scaledObject.Namespace,
+		"scaledObject.Name", scaledObject.Name,
+		"suppressedError", suppressedError,
 		"fallback.replicas", replicas)
 	return fallbackMetrics
 }

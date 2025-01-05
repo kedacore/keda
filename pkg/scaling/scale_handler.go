@@ -548,7 +548,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 			metricTriggerPairList[key] = value
 		}
 		// check if we need to set a fallback
-		metrics, fallbackActive, err := fallback.GetMetricsWithFallback(ctx, h.client,h.scaleClient, result.metrics, result.err, result.metricName, scaledObject, result.metricSpec)
+		metrics, fallbackActive, err := fallback.GetMetricsWithFallback(ctx, h.client, h.scaleClient, result.metrics, result.err, result.metricName, scaledObject, result.metricSpec)
 		if err != nil {
 			isScalerError = true
 			logger.Error(err, "error getting metric for trigger", "trigger", result.triggerName)

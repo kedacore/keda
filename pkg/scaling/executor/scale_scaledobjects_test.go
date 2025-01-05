@@ -545,8 +545,8 @@ func TestScaleToFallbackWithCurrentReplicasAsMinimum(t *testing.T) {
 				Name: "name",
 			},
 			Fallback: &v1alpha1.Fallback{
-				FailureThreshold:           3,
-				Replicas:                   5,
+				FailureThreshold:            3,
+				Replicas:                    5,
 				UseCurrentReplicasAsMinimum: &useCurrentAsMin,
 			},
 		},
@@ -612,8 +612,8 @@ func TestScaleToFallbackIgnoringLowerCurrentReplicas(t *testing.T) {
 				Name: "name",
 			},
 			Fallback: &v1alpha1.Fallback{
-				FailureThreshold:           3,
-				Replicas:                   5,
+				FailureThreshold:            3,
+				Replicas:                    5,
 				UseCurrentReplicasAsMinimum: &useCurrentAsMin,
 			},
 		},
@@ -679,8 +679,8 @@ func TestScaleToFallbackWithoutCurrentReplicasAsMinimum(t *testing.T) {
 				Name: "name",
 			},
 			Fallback: &v1alpha1.Fallback{
-				FailureThreshold:           3,
-				Replicas:                   5,
+				FailureThreshold:            3,
+				Replicas:                    5,
 				UseCurrentReplicasAsMinimum: &useCurrentAsMin,
 			},
 		},
