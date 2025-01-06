@@ -97,13 +97,13 @@ type SolaceMetadata struct {
 
 	// Target Message Count
 	MsgCountTarget      int64 `keda:"name=messageCountTarget,       order=triggerMetadata, optional"`
-	MsgSpoolUsageTarget int64 `keda:"name=messageSpoolUsageTarget,  order=triggerMetadata, optional"`      // Spool Use Target in Megabytes
-	MsgRxRateTarget     int64 `keda:"name=messageReceiveRateTarget,      order=triggerMetadata, optional"` // Ingress Rate Target per consumer in msgs/second
+	MsgSpoolUsageTarget int64 `keda:"name=messageSpoolUsageTarget,  order=triggerMetadata, optional"` // Spool Use Target in Megabytes
+	MsgRxRateTarget     int64 `keda:"name=messageReceiveRateTarget, order=triggerMetadata, optional"` // Ingress Rate Target per consumer in msgs/second
 
 	// Activation Target Message Count
-	ActivationMsgCountTarget      int `keda:"name=activationMessageCountTarget,      order=triggerMetadata, optional, default=0"`
-	ActivationMsgSpoolUsageTarget int `keda:"name=activationMessageSpoolUsageTarget, order=triggerMetadata, optional, default=0"`      // Spool Use Target in Megabytes
-	ActivationMsgRxRateTarget     int `keda:"name=activationMessageReceiveRateTarget,     order=triggerMetadata, optional, default=0"` // Ingress Rate Target per consumer in msgs/second
+	ActivationMsgCountTarget      int `keda:"name=activationMessageCountTarget,       order=triggerMetadata, default=0"`
+	ActivationMsgSpoolUsageTarget int `keda:"name=activationMessageSpoolUsageTarget,  order=triggerMetadata, default=0"` // Spool Use Target in Megabytes
+	ActivationMsgRxRateTarget     int `keda:"name=activationMessageReceiveRateTarget, order=triggerMetadata, default=0"` // Ingress Rate Target per consumer in msgs/second
 }
 
 func (s *SolaceMetadata) Validate() error {
