@@ -582,7 +582,7 @@ func TestScaleToFallbackWithCurrentReplicasAsMinimum(t *testing.T) {
 	client.EXPECT().Status().Times(2).Return(statusWriter)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, true, &ScaleExecutorOptions{})
+	scaleExecutor.RequestScale(context.Background(), &scaledObject, false, true, &ScaleExecutorOptions{})
 
 	// Should use current replicas as it's higher than fallback replicas
 	assert.Equal(t, int32(8), scale.Spec.Replicas)
@@ -649,7 +649,7 @@ func TestScaleToFallbackIgnoringLowerCurrentReplicas(t *testing.T) {
 	client.EXPECT().Status().Times(2).Return(statusWriter)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, true, &ScaleExecutorOptions{})
+	scaleExecutor.RequestScale(context.Background(), &scaledObject, false, true, &ScaleExecutorOptions{})
 
 	// Should use fallback replicas as it's higher than current replicas
 	assert.Equal(t, int32(5), scale.Spec.Replicas)
@@ -716,7 +716,7 @@ func TestScaleToFallbackWithoutCurrentReplicasAsMinimum(t *testing.T) {
 	client.EXPECT().Status().Times(2).Return(statusWriter)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, true, &ScaleExecutorOptions{})
+	scaleExecutor.RequestScale(context.Background(), &scaledObject, false, true, &ScaleExecutorOptions{})
 
 	// Should use fallback replicas even though current replicas is higher
 	assert.Equal(t, int32(5), scale.Spec.Replicas)
