@@ -28,7 +28,7 @@ type cassandraScaler struct {
 type cassandraMetadata struct {
 	Username                   string `keda:"name=username,                   order=triggerMetadata"`
 	Password                   string `keda:"name=password,                   order=authParams"`
-	TLS                        string `keda:"name=tls,                        order=authParams, enum=enable;disable, default=disable, optional"`
+	TLS                        string `keda:"name=tls,                        order=authParams, enum=enable;disable, default=disable"`
 	Cert                       string `keda:"name=cert,                       order=authParams, optional"`
 	Key                        string `keda:"name=key,                        order=authParams, optional"`
 	CA                         string `keda:"name=ca,                         order=authParams, optional"`

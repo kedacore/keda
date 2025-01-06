@@ -27,6 +27,7 @@ type artemisScaler struct {
 //revive:disable:var-naming breaking change on restApiTemplate, wouldn't bring any benefit to users
 type artemisMetadata struct {
 	TriggerIndex          int
+<<<<<<< HEAD
 	ManagementEndpoint    string `keda:"name=managementEndpoint, order=triggerMetadata, optional"`
 	QueueName             string `keda:"name=queueName, order=triggerMetadata, optional"`
 	BrokerName            string `keda:"name=brokerName, order=triggerMetadata, optional"`
@@ -43,6 +44,18 @@ type artemisMetadata struct {
 	Cert                  string `keda:"name=cert, order=triggerMetadata, optional"`
 	Key                   string `keda:"name=key, order=triggerMetadata, optional"`
 	KeyPassword           string `keda:"name=keyPassword, order=triggerMetadata, optional"`
+=======
+	ManagementEndpoint    string `keda:"name=managementEndpoint,    order=triggerMetadata, optional"`
+	QueueName             string `keda:"name=queueName,             order=triggerMetadata, optional"`
+	BrokerName            string `keda:"name=brokerName,            order=triggerMetadata, optional"`
+	BrokerAddress         string `keda:"name=brokerAddress,         order=triggerMetadata, optional"`
+	Username              string `keda:"name=username,              order=authParams;triggerMetadata;resolvedEnv"`
+	Password              string `keda:"name=password,              order=authParams;triggerMetadata;resolvedEnv"`
+	RestAPITemplate       string `keda:"name=restApiTemplate,       order=triggerMetadata, optional"`
+	QueueLength           int64  `keda:"name=queueLength,           order=triggerMetadata, default=10"`
+	ActivationQueueLength int64  `keda:"name=activationQueueLength, order=triggerMetadata, default=10"`
+	CorsHeader            string `keda:"name=corsHeader,            order=triggerMetadata, optional"`
+>>>>>>> 3e87999f7 (Multiple minor corrections (#6404))
 }
 
 //revive:enable:var-naming

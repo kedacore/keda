@@ -39,21 +39,21 @@ type etcdScaler struct {
 type etcdMetadata struct {
 	triggerIndex int
 
-	Endpoints                   []string `keda:"name=endpoints, order=triggerMetadata"`
-	WatchKey                    string   `keda:"name=watchKey, order=triggerMetadata"`
-	Value                       float64  `keda:"name=value, order=triggerMetadata"`
-	ActivationValue             float64  `keda:"name=activationValue, order=triggerMetadata, optional, default=0"`
-	WatchProgressNotifyInterval int      `keda:"name=watchProgressNotifyInterval, order=triggerMetadata, optional, default=600"`
+	Endpoints                   []string `keda:"name=endpoints,                   order=triggerMetadata"`
+	WatchKey                    string   `keda:"name=watchKey,                    order=triggerMetadata"`
+	Value                       float64  `keda:"name=value,                       order=triggerMetadata"`
+	ActivationValue             float64  `keda:"name=activationValue,             order=triggerMetadata, default=0"`
+	WatchProgressNotifyInterval int      `keda:"name=watchProgressNotifyInterval, order=triggerMetadata, default=600"`
 
 	Username string `keda:"name=username,order=authParams;resolvedEnv, optional"`
 	Password string `keda:"name=password,order=authParams;resolvedEnv, optional"`
 
 	// TLS
-	EnableTLS   string `keda:"name=tls, order=authParams, optional, default=disable"`
-	Cert        string `keda:"name=cert, order=authParams, optional"`
-	Key         string `keda:"name=key, order=authParams, optional"`
+	EnableTLS   string `keda:"name=tls,         order=authParams, default=disable"`
+	Cert        string `keda:"name=cert,        order=authParams, optional"`
+	Key         string `keda:"name=key,         order=authParams, optional"`
 	KeyPassword string `keda:"name=keyPassword, order=authParams, optional"`
-	Ca          string `keda:"name=ca, order=authParams, optional"`
+	Ca          string `keda:"name=ca,          order=authParams, optional"`
 }
 
 func (meta *etcdMetadata) Validate() error {
