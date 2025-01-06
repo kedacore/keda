@@ -232,7 +232,6 @@ spec:
                     format: int32
                     type: integer
                   useCurrentReplicasAsMinimum:
-                    description: UseCurrentReplicasAsMinimum indicates whether the current number of replicas should be used as a minimum fallback.
                     type: boolean
                 required:
                 - failureThreshold
