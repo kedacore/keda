@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+
 	"github.com/kedacore/keda/v2/pkg/scalers/gcp"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
