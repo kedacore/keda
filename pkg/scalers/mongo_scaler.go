@@ -28,17 +28,17 @@ type mongoDBScaler struct {
 }
 
 type mongoDBMetadata struct {
-	ConnectionString     string `keda:"name=connectionString,order=authParams;triggerMetadata;resolvedEnv,optional"`
-	Scheme               string `keda:"name=scheme,order=authParams;triggerMetadata,default=mongodb,optional"`
-	Host                 string `keda:"name=host,order=authParams;triggerMetadata,optional"`
-	Port                 string `keda:"name=port,order=authParams;triggerMetadata,optional"`
-	Username             string `keda:"name=username,order=authParams;triggerMetadata,optional"`
-	Password             string `keda:"name=password,order=authParams;triggerMetadata;resolvedEnv,optional"`
-	DBName               string `keda:"name=dbName,order=authParams;triggerMetadata"`
-	Collection           string `keda:"name=collection,order=triggerMetadata"`
-	Query                string `keda:"name=query,order=triggerMetadata"`
-	QueryValue           int64  `keda:"name=queryValue,order=triggerMetadata"`
-	ActivationQueryValue int64  `keda:"name=activationQueryValue,order=triggerMetadata,default=0"`
+	ConnectionString     string `keda:"name=connectionString,     order=authParams;triggerMetadata;resolvedEnv,optional"`
+	Scheme               string `keda:"name=scheme,               order=authParams;triggerMetadata,default=mongodb"`
+	Host                 string `keda:"name=host,                 order=authParams;triggerMetadata,optional"`
+	Port                 string `keda:"name=port,                 order=authParams;triggerMetadata,optional"`
+	Username             string `keda:"name=username,             order=authParams;triggerMetadata,optional"`
+	Password             string `keda:"name=password,             order=authParams;triggerMetadata;resolvedEnv,optional"`
+	DBName               string `keda:"name=dbName,               order=authParams;triggerMetadata"`
+	Collection           string `keda:"name=collection,           order=triggerMetadata"`
+	Query                string `keda:"name=query,                order=triggerMetadata"`
+	QueryValue           int64  `keda:"name=queryValue,           order=triggerMetadata"`
+	ActivationQueryValue int64  `keda:"name=activationQueryValue, order=triggerMetadata,default=0"`
 	TriggerIndex         int
 }
 
