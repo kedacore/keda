@@ -25,8 +25,8 @@ type stackdriverScaler struct {
 type stackdriverMetadata struct {
 	ProjectID             string  `keda:"name=projectID, order=triggerMetadata"`
 	Filter                string  `keda:"name=filter, order=triggerMetadata"`
-	TargetValue           float64 `keda:"name=targetValue, order=triggerMetadata, optional, default=5"`
-	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata, optional, default=0"`
+	TargetValue           float64 `keda:"name=targetValue, order=triggerMetadata, default=5"`
+	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
 	metricName            string
 	ValueIfNull           *float64 `keda:"name=valueIfNull, order=triggerMetadata, optional"`
 	FilterDuration        int64    `keda:"name=filterDuration, order=triggerMetadata, optional"`
