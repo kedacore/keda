@@ -163,3 +163,30 @@ func TestArtemisGetMetricSpecForScaling(t *testing.T) {
 		}
 	}
 }
+
+func TestArtemisTLSConfiguration(t *testing.T) {
+	metadata := map[string]string{
+		"managementEndpoint": "localhost:8161",
+		"queueName":          "queue1",
+		"brokerName":         "broker-activemq",
+		"brokerAddress":      "test",
+		"ca":                 "/path/to/ca.pem",
+		"cert":               "/path/to/cert.pem",
+		"key":                "/path/to/key.pem",
+	}
+
+	resolvedEnv := map[string]string{
+		"username": "admin",
+		"password": "admin",
+	}
+
+	_, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{
+		ResolvedEnv:     resolvedEnv,
+		TriggerMetadata: metadata,
+		AuthParams:      artemisAuthParams, // Ensure valid AuthParams are provided
+	})
+
+	if err != nil {
+		t.Errorf("Expected success but got error: %v", err)
+	}
+}

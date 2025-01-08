@@ -27,16 +27,22 @@ type artemisScaler struct {
 //revive:disable:var-naming breaking change on restApiTemplate, wouldn't bring any benefit to users
 type artemisMetadata struct {
 	TriggerIndex          int
-	ManagementEndpoint    string `keda:"name=managementEndpoint,    order=triggerMetadata, optional"`
-	QueueName             string `keda:"name=queueName,             order=triggerMetadata, optional"`
-	BrokerName            string `keda:"name=brokerName,            order=triggerMetadata, optional"`
-	BrokerAddress         string `keda:"name=brokerAddress,         order=triggerMetadata, optional"`
-	Username              string `keda:"name=username,              order=authParams;triggerMetadata;resolvedEnv"`
-	Password              string `keda:"name=password,              order=authParams;triggerMetadata;resolvedEnv"`
-	RestAPITemplate       string `keda:"name=restApiTemplate,       order=triggerMetadata, optional"`
-	QueueLength           int64  `keda:"name=queueLength,           order=triggerMetadata, default=10"`
-	ActivationQueueLength int64  `keda:"name=activationQueueLength, order=triggerMetadata, default=10"`
-	CorsHeader            string `keda:"name=corsHeader,            order=triggerMetadata, optional"`
+	ManagementEndpoint    string `keda:"name=managementEndpoint, order=triggerMetadata, optional"`
+	QueueName             string `keda:"name=queueName, order=triggerMetadata, optional"`
+	BrokerName            string `keda:"name=brokerName, order=triggerMetadata, optional"`
+	BrokerAddress         string `keda:"name=brokerAddress, order=triggerMetadata, optional"`
+	Username              string `keda:"name=username, order=authParams;triggerMetadata;resolvedEnv"`
+	Password              string `keda:"name=password, order=authParams;triggerMetadata;resolvedEnv"`
+	RestAPITemplate       string `keda:"name=restApiTemplate, order=triggerMetadata, optional"`
+	QueueLength           int64  `keda:"name=queueLength, order=triggerMetadata, optional, default=10"`
+	ActivationQueueLength int64  `keda:"name=activationQueueLength, order=triggerMetadata, optional, default=10"`
+	CorsHeader            string `keda:"name=corsHeader, order=triggerMetadata, optional"`
+	UnsafeSsl             bool   `keda:"name=unsafeSsl, order=triggerMetadata, optional, default=false"`
+	TLS                   bool   `keda:"name=tls, order=triggerMetadata, optional, default=false"`
+	CA                    string `keda:"name=ca, order=triggerMetadata, optional"`
+	Cert                  string `keda:"name=cert, order=triggerMetadata, optional"`
+	Key                   string `keda:"name=key, order=triggerMetadata, optional"`
+	KeyPassword           string `keda:"name=keyPassword, order=triggerMetadata, optional"`
 }
 
 //revive:enable:var-naming
@@ -77,15 +83,24 @@ func (a *artemisMetadata) Validate() error {
 	if a.CorsHeader == "" {
 		a.CorsHeader = fmt.Sprintf(defaultCorsHeader, a.ManagementEndpoint)
 	}
+
+	if (a.Cert == "") != (a.Key == "") {
+		return fmt.Errorf("both cert and key must be provided when using TLS")
+	}
+
+	if a.TLS && a.CA == "" {
+		return fmt.Errorf("CA certificate must be provided when using TLS")
+	}
+
+	if a.TLS && a.UnsafeSsl {
+		return fmt.Errorf("'tls' and 'unsafeSsl' cannot both be specified")
+	}
+
 	return nil
 }
 
 // NewArtemisQueueScaler creates a new artemis queue Scaler
 func NewArtemisQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
-	// do we need to guarantee this timeout for a specific
-	// reason? if not, we can have buildScaler pass in
-	// the global client
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
@@ -95,6 +110,24 @@ func NewArtemisQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	artemisMetadata, err := parseArtemisMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing artemis metadata: %w", err)
+	}
+	// do we need to guarantee this timeout for a specific
+	// reason? if not, we can have buildScaler pass in
+	// the global client
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, artemisMetadata.UnsafeSsl)
+
+	if artemisMetadata.TLS {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(
+			artemisMetadata.Cert,
+			artemisMetadata.Key,
+			artemisMetadata.KeyPassword,
+			artemisMetadata.CA,
+			artemisMetadata.UnsafeSsl,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to configure TLS: %w", err)
+		}
+		httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
 	}
 
 	return &artemisScaler{
@@ -149,7 +182,13 @@ func getAPIParameters(meta artemisMetadata) (artemisMetadata, error) {
 }
 
 func (s *artemisScaler) getMonitoringEndpoint() string {
-	replacer := strings.NewReplacer("<<managementEndpoint>>", s.metadata.ManagementEndpoint,
+	scheme := "http"
+
+	if s.metadata.TLS {
+		scheme = "https"
+	}
+	replacer := strings.NewReplacer(
+		"<<managementEndpoint>>", fmt.Sprintf("%s://%s", scheme, s.metadata.ManagementEndpoint),
 		"<<queueName>>", s.metadata.QueueName,
 		"<<brokerName>>", s.metadata.BrokerName,
 		"<<brokerAddress>>", s.metadata.BrokerAddress)
