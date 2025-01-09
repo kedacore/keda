@@ -52,7 +52,7 @@ GO_LDFLAGS="-X=github.com/kedacore/keda/v2/version.GitCommit=$(GIT_COMMIT) -X=gi
 COSIGN_FLAGS ?= -y -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_DATE=${DATE}
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.30
+ENVTEST_K8S_VERSION = 1.31
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -131,7 +131,7 @@ smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/co
 ##@ Development
 
 manifests: controller-gen ## Generate ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=keda-operator paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true rbac:roleName=keda-operator paths="./..." output:crd:artifacts:config=config/crd/bases
 	# withTriggers is only used for duck typing so we only need the deepcopy methods
 	# However operator-sdk generate doesn't appear to have an option for that
 	# until this issue is fixed: https://github.com/kubernetes-sigs/controller-tools/issues/398

@@ -20,6 +20,7 @@ import (
 )
 
 type server struct {
+	pb.UnimplementedMlEngineServiceServer
 	grpcSrv  *grpc.Server
 	listener net.Listener
 	port     int

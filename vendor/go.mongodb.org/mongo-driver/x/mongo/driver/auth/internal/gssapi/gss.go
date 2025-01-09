@@ -19,6 +19,7 @@ package gssapi
 */
 import "C"
 import (
+	"context"
 	"fmt"
 	"runtime"
 	"strings"
@@ -91,12 +92,12 @@ func (sc *SaslClient) Start() (string, []byte, error) {
 		return mechName, nil, sc.getError("unable to initialize client")
 	}
 
-	payload, err := sc.Next(nil)
+	payload, err := sc.Next(nil, nil)
 
 	return mechName, payload, err
 }
 
-func (sc *SaslClient) Next(challenge []byte) ([]byte, error) {
+func (sc *SaslClient) Next(_ context.Context, challenge []byte) ([]byte, error) {
 
 	var buf unsafe.Pointer
 	var bufLen C.size_t

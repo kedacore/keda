@@ -12,7 +12,7 @@ import (
 
 // The ListTagsForResource operation returns the tags that are associated with an
 // Amazon Managed Service for Prometheus resource. Currently, the only resources
-// that can be tagged are workspaces and rule groups namespaces.
+// that can be tagged are scrapers, workspaces, and rule groups namespaces.
 func (c *Client) ListTagsForResource(ctx context.Context, params *ListTagsForResourceInput, optFns ...func(*Options)) (*ListTagsForResourceOutput, error) {
 	if params == nil {
 		params = &ListTagsForResourceInput{}
@@ -30,8 +30,8 @@ func (c *Client) ListTagsForResource(ctx context.Context, params *ListTagsForRes
 
 type ListTagsForResourceInput struct {
 
-	// The ARN of the resource to list tages for. Must be a workspace or rule groups
-	// namespace resource.
+	// The ARN of the resource to list tages for. Must be a workspace, scraper, or
+	// rule groups namespace resource.
 	//
 	// This member is required.
 	ResourceArn *string
@@ -93,6 +93,9 @@ func (c *Client) addOperationListTagsForResourceMiddlewares(stack *middleware.St
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -130,6 +133,18 @@ func (c *Client) addOperationListTagsForResourceMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

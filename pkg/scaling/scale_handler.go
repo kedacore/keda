@@ -580,7 +580,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	}
 
 	if len(matchingMetrics) == 0 {
-		return nil, fmt.Errorf("no matching metrics found for " + metricsName)
+		return nil, fmt.Errorf("no matching metrics found for %s", metricsName)
 	}
 
 	// handle scalingModifiers here and simply return the matchingMetrics

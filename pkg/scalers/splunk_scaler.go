@@ -28,9 +28,9 @@ type SplunkMetadata struct {
 	APIToken        string `keda:"name=apiToken,        order=authParams, optional"`
 	Password        string `keda:"name=password,        order=authParams, optional"`
 	Username        string `keda:"name=username,        order=authParams"`
-	Host            string `keda:"name=host, 	       	  order=triggerMetadata"`
+	Host            string `keda:"name=host,            order=triggerMetadata"`
 	UnsafeSsl       bool   `keda:"name=unsafeSsl,       order=triggerMetadata, optional"`
-	TargetValue     int    `keda:"name=targetValue, 	  order=triggerMetadata"`
+	TargetValue     int    `keda:"name=targetValue,     order=triggerMetadata"`
 	ActivationValue int    `keda:"name=activationValue, order=triggerMetadata"`
 	SavedSearchName string `keda:"name=savedSearchName, order=triggerMetadata"`
 	ValueField      string `keda:"name=valueField,      order=triggerMetadata"`

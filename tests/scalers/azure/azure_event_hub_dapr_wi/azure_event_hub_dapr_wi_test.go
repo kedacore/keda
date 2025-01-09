@@ -26,7 +26,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName              = "azure-event-hub-dapr"
+	testName              = "azure-event-hub-dapr-wi"
 	eventhubConsumerGroup = "$Default"
 )
 

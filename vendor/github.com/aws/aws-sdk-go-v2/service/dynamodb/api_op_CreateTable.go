@@ -246,6 +246,10 @@ type CreateTableInput struct {
 	// [Tagging for DynamoDB]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Tagging.html
 	Tags []types.Tag
 
+	// Represents the warm throughput (in read units per second and write units per
+	// second) for creating a table.
+	WarmThroughput *types.WarmThroughput
+
 	noSmithyDocumentSerde
 }
 
@@ -304,6 +308,9 @@ func (c *Client) addOperationCreateTableMiddlewares(stack *middleware.Stack, opt
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -350,6 +357,18 @@ func (c *Client) addOperationCreateTableMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

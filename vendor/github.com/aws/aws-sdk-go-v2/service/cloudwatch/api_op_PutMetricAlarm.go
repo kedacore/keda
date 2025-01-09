@@ -159,6 +159,10 @@ type PutMetricAlarmInput struct {
 	//   - arn:aws:ssm:region:account-id:opsitem:severity#CATEGORY=category-name
 	//
 	//   - arn:aws:ssm-incidents::account-id:responseplan/response-plan-name
+	//
+	// Start a Amazon Q Developer operational investigation
+	//
+	//     arn:aws:aiops:region:account-id:investigation-group:ingestigation-group-id
 	AlarmActions []string
 
 	// The description for the alarm.
@@ -389,6 +393,10 @@ type PutMetricAlarmInput struct {
 	// specify in this parameter are ignored. To change the tags of an existing alarm,
 	// use [TagResource]or [UntagResource].
 	//
+	// To use this field to set tags for an alarm when you create it, you must be
+	// signed on with both the cloudwatch:PutMetricAlarm and cloudwatch:TagResource
+	// permissions.
+	//
 	// [TagResource]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_TagResource.html
 	// [UntagResource]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_UntagResource.html
 	Tags []types.Tag
@@ -496,6 +504,9 @@ func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, 
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -533,6 +544,18 @@ func (c *Client) addOperationPutMetricAlarmMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

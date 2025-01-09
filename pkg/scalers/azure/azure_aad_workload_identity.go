@@ -89,7 +89,7 @@ func GetAzureADWorkloadIdentityToken(ctx context.Context, identityID, identityTe
 	})
 
 	confidentialClient, err := confidential.New(
-		fmt.Sprintf("%s%s/oauth2/token", authorityHost, tenantID),
+		fmt.Sprintf("%s%s", authorityHost, tenantID),
 		clientID,
 		cred,
 	)

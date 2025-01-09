@@ -85,8 +85,8 @@ func TestPosgresSQLConnectionStringGeneration(t *testing.T) {
 			t.Fatal("Could not parse metadata:", err)
 		}
 
-		if meta.connection != testData.connectionString {
-			t.Errorf("Error generating connectionString, expected '%s' and get '%s'", testData.connectionString, meta.connection)
+		if meta.Connection != testData.connectionString {
+			t.Errorf("Error generating connectionString, expected '%s' and get '%s'", testData.connectionString, meta.Connection)
 		}
 	}
 }
@@ -104,8 +104,8 @@ func TestPodIdentityAzureWorkloadPosgresSQLConnectionStringGeneration(t *testing
 			t.Fatal("Could not parse metadata:", err)
 		}
 
-		if meta.connection != testData.connectionString {
-			t.Errorf("Error generating connectionString, expected '%s' and get '%s'", testData.connectionString, meta.connection)
+		if meta.Connection != testData.connectionString {
+			t.Errorf("Error generating connectionString, expected '%s' and get '%s'", testData.connectionString, meta.Connection)
 		}
 	}
 }

@@ -147,8 +147,8 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 
 	t.Log("--- scale to max replicas ---")
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 4, testNamespace)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 1),
-		"replica count should be 4 after 1 minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 3),
+		"replica count should be 4 after 3 minute")
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {

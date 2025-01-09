@@ -190,6 +190,10 @@ type PutCompositeAlarmInput struct {
 	// Systems Manager actions:
 	//
 	//     arn:aws:ssm:region:account-id:opsitem:severity
+	//
+	// Start a Amazon Q Developer operational investigation
+	//
+	//     arn:aws:aiops:region:account-id:investigation-group:ingestigation-group-id
 	AlarmActions []string
 
 	// The description for the composite alarm.
@@ -307,6 +311,9 @@ func (c *Client) addOperationPutCompositeAlarmMiddlewares(stack *middleware.Stac
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -344,6 +351,18 @@ func (c *Client) addOperationPutCompositeAlarmMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

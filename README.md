@@ -4,6 +4,7 @@
 <a href="https://github.com/kedacore/keda/actions?query=workflow%3Amain-build"><img src="https://github.com/kedacore/keda/actions/workflows/main-build.yml/badge.svg" alt="main build"></a>
 <a href="https://github.com/kedacore/keda/actions?query=workflow%3Anightly-e2e-test"><img src="https://github.com/kedacore/keda/actions/workflows/nightly-e2e.yml/badge.svg" alt="nightly e2e"></a>
 <a href="https://bestpractices.coreinfrastructure.org/projects/3791"><img src="https://bestpractices.coreinfrastructure.org/projects/3791/badge"></a>
+<a href="https://api.scorecard.dev/projects/github.com/kedacore/keda/badge"><img src="https://img.shields.io/ossf-scorecard/github.com/kedacore/keda?label=openssf%20scorecard&style=flat"></a>
 <a href="https://artifacthub.io/packages/helm/kedacore/keda"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/kedacore"></a>
 <a href="https://app.fossa.com/projects/custom%2B162%2Fgithub.com%2Fkedacore%2Fkeda?ref=badge_shield" alt="FOSSA Status"><img src="https://app.fossa.com/api/projects/custom%2B162%2Fgithub.com%2Fkedacore%2Fkeda.svg?type=shield"/></a>
 <a href="https://twitter.com/kedaorg"><img src="https://img.shields.io/twitter/follow/kedaorg?style=social" alt="Twitter"></a></p>

@@ -25,18 +25,6 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-const (
-	promServerAddress       = "serverAddress"
-	promQuery               = "query"
-	promQueryParameters     = "queryParameters"
-	promThreshold           = "threshold"
-	promActivationThreshold = "activationThreshold"
-	promNamespace           = "namespace"
-	promCustomHeaders       = "customHeaders"
-	ignoreNullValues        = "ignoreNullValues"
-	unsafeSsl               = "unsafeSsl"
-)
-
 type prometheusScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *prometheusMetadata
@@ -54,13 +42,14 @@ type prometheusMetadata struct {
 	PrometheusAuth      *authentication.Config `keda:"optional"`
 	ServerAddress       string                 `keda:"name=serverAddress,       order=triggerMetadata"`
 	Query               string                 `keda:"name=query,               order=triggerMetadata"`
-	QueryParameters     map[string]string      `keda:"name=queryParameters,     order=triggerMetadata, optional"`
+	QueryParameters     map[string]string      `keda:"name=queryParameters,     order=triggerMetadata,    				optional"`
 	Threshold           float64                `keda:"name=threshold,           order=triggerMetadata"`
-	ActivationThreshold float64                `keda:"name=activationThreshold, order=triggerMetadata, optional"`
-	Namespace           string                 `keda:"name=namespace,           order=triggerMetadata, optional"`
-	CustomHeaders       map[string]string      `keda:"name=customHeaders,       order=triggerMetadata, optional"`
-	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    order=triggerMetadata, optional, default=true"`
-	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata, optional"`
+	ActivationThreshold float64                `keda:"name=activationThreshold, order=triggerMetadata, 				    optional"`
+	Namespace           string                 `keda:"name=namespace,           order=triggerMetadata, 				    optional"`
+	CustomHeaders       map[string]string      `keda:"name=customHeaders,       order=triggerMetadata, 				    optional"`
+	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    order=triggerMetadata, 				    default=true"`
+	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata, 				    optional"`
+	AwsRegion           string                 `keda:"name=awsRegion, 			    order=triggerMetadata;authParams, optional"`
 }
 
 type promQueryResult struct {
@@ -128,7 +117,7 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			httpClient.Transport = gcpTransport
 		}
 
-		awsTransport, err := aws.NewSigV4RoundTripper(config)
+		awsTransport, err := aws.NewSigV4RoundTripper(config, meta.AwsRegion)
 		if err != nil {
 			logger.V(1).Error(err, "failed to get AWS client HTTP transport ")
 			return nil, err

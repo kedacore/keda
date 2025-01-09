@@ -24,21 +24,22 @@ import (
 
 // CreateIndexes performs a createIndexes operation.
 type CreateIndexes struct {
-	commitQuorum bsoncore.Value
-	indexes      bsoncore.Document
-	maxTime      *time.Duration
-	session      *session.Client
-	clock        *session.ClusterClock
-	collection   string
-	monitor      *event.CommandMonitor
-	crypt        driver.Crypt
-	database     string
-	deployment   driver.Deployment
-	selector     description.ServerSelector
-	writeConcern *writeconcern.WriteConcern
-	result       CreateIndexesResult
-	serverAPI    *driver.ServerAPIOptions
-	timeout      *time.Duration
+	authenticator driver.Authenticator
+	commitQuorum  bsoncore.Value
+	indexes       bsoncore.Document
+	maxTime       *time.Duration
+	session       *session.Client
+	clock         *session.ClusterClock
+	collection    string
+	monitor       *event.CommandMonitor
+	crypt         driver.Crypt
+	database      string
+	deployment    driver.Deployment
+	selector      description.ServerSelector
+	writeConcern  *writeconcern.WriteConcern
+	result        CreateIndexesResult
+	serverAPI     *driver.ServerAPIOptions
+	timeout       *time.Duration
 }
 
 // CreateIndexesResult represents a createIndexes result returned by the server.
@@ -119,6 +120,7 @@ func (ci *CreateIndexes) Execute(ctx context.Context) error {
 		ServerAPI:         ci.serverAPI,
 		Timeout:           ci.timeout,
 		Name:              driverutil.CreateIndexesOp,
+		Authenticator:     ci.authenticator,
 	}.Execute(ctx)
 
 }
@@ -276,5 +278,15 @@ func (ci *CreateIndexes) Timeout(timeout *time.Duration) *CreateIndexes {
 	}
 
 	ci.timeout = timeout
+	return ci
+}
+
+// Authenticator sets the authenticator to use for this operation.
+func (ci *CreateIndexes) Authenticator(authenticator driver.Authenticator) *CreateIndexes {
+	if ci == nil {
+		ci = new(CreateIndexes)
+	}
+
+	ci.authenticator = authenticator
 	return ci
 }

@@ -315,6 +315,10 @@ type Operation struct {
 	// [Operation.MaxTime].
 	OmitCSOTMaxTimeMS bool
 
+	// Authenticator is the authenticator to use for this operation when a reauthentication is
+	// required.
+	Authenticator Authenticator
+
 	// omitReadPreference is a boolean that indicates whether to omit the
 	// read preference from the command. This omition includes the case
 	// where a default read preference is used when the operation
@@ -573,8 +577,7 @@ func (op Operation) Execute(ctx context.Context) error {
 
 		// Set the previous indefinite error to be returned in any case where a retryable write error does not have a
 		// NoWritesPerfomed label (the definite case).
-		switch err := err.(type) {
-		case labeledError:
+		if err, ok := err.(labeledError); ok {
 			// If the "prevIndefiniteErr" is nil, then the current error is the first error encountered
 			// during the retry attempt cycle. We must persist the first error in the case where all
 			// following errors are labeled "NoWritesPerformed", which would otherwise raise nil as the
@@ -912,6 +915,28 @@ func (op Operation) Execute(ctx context.Context) error {
 			operationErr.Labels = tt.Labels
 			operationErr.Raw = tt.Raw
 		case Error:
+			// 391 is the reauthentication required error code, so we will attempt a reauth and
+			// retry the operation, if it is successful.
+			if tt.Code == 391 {
+				if op.Authenticator != nil {
+					cfg := AuthConfig{
+						Description:  conn.Description(),
+						Connection:   conn,
+						ClusterClock: op.Clock,
+						ServerAPI:    op.ServerAPI,
+					}
+					if err := op.Authenticator.Reauth(ctx, &cfg); err != nil {
+						return fmt.Errorf("error reauthenticating: %w", err)
+					}
+					if op.Client != nil && op.Client.Committing {
+						// Apply majority write concern for retries
+						op.Client.UpdateCommitTransactionWriteConcern()
+						op.WriteConcern = op.Client.CurrentWc
+					}
+					resetForRetry(tt)
+					continue
+				}
+			}
 			if tt.HasErrorLabel(TransientTransactionError) || tt.HasErrorLabel(UnknownTransactionCommitResult) {
 				if err := op.Client.ClearPinnedResources(); err != nil {
 					return err
@@ -1173,18 +1198,12 @@ func (Operation) decompressWireMessage(wm []byte) (wiremessage.OpCode, []byte, e
 	if !ok {
 		return 0, nil, errors.New("malformed OP_COMPRESSED: missing compressor ID")
 	}
-	compressedSize := len(wm) - 9 // original opcode (4) + uncompressed size (4) + compressor ID (1)
-	// return the original wiremessage
-	msg, _, ok := wiremessage.ReadCompressedCompressedMessage(rem, int32(compressedSize))
-	if !ok {
-		return 0, nil, errors.New("malformed OP_COMPRESSED: insufficient bytes for compressed wiremessage")
-	}
 
 	opts := CompressionOpts{
 		Compressor:       compressorID,
 		UncompressedSize: uncompressedSize,
 	}
-	uncompressed, err := DecompressPayload(msg, opts)
+	uncompressed, err := DecompressPayload(rem, opts)
 	if err != nil {
 		return 0, nil, err
 	}

@@ -348,7 +348,7 @@ func (s *azureMonitorScaler) requestMetric(ctx context.Context) (float64, error)
 		return -1, err
 	}
 
-	if response.Value == nil || len(response.Value) == 0 {
+	if len(response.Value) == 0 {
 		err := fmt.Errorf("got an empty response for metric %s/%s and aggregate type %s", "azMetricRequest.ResourceProviderNamespace", "azMetricRequest.MetricName", "azMetricRequest.Aggregation")
 		return -1, err
 	}

@@ -53,6 +53,12 @@ import (
 //
 // CreateStreamhas a limit of five transactions per second per account.
 //
+// You can add tags to the stream when making a CreateStream request by setting
+// the Tags parameter. If you pass Tags parameter, in addition to having
+// kinesis:createStream permission, you must also have kinesis:addTagsToStream
+// permission for the stream that will be created. Tags will take effect from the
+// CREATING status of the stream.
+//
 // [contact Amazon Web Services Support]: https://docs.aws.amazon.com/general/latest/gr/aws_service_limits.html
 // [Amazon Kinesis Data Streams Limits]: https://docs.aws.amazon.com/kinesis/latest/dev/service-sizes-and-limits.html
 func (c *Client) CreateStream(ctx context.Context, params *CreateStreamInput, optFns ...func(*Options)) (*CreateStreamOutput, error) {
@@ -92,6 +98,9 @@ type CreateStreamInput struct {
 	// Streams, you can choose between an on-demand capacity mode and a provisioned
 	// capacity mode for your data streams.
 	StreamModeDetails *types.StreamModeDetails
+
+	// A set of up to 10 key-value pairs to use to create the tags.
+	Tags map[string]string
 
 	noSmithyDocumentSerde
 }
@@ -146,6 +155,9 @@ func (c *Client) addOperationCreateStreamMiddlewares(stack *middleware.Stack, op
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -183,6 +195,18 @@ func (c *Client) addOperationCreateStreamMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

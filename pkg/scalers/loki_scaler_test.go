@@ -38,7 +38,7 @@ var testLokiMetadata = []parseLokiMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:3100", "threshold": "1", "query": ""}, true},
 	// ignoreNullValues with wrong value
 	{map[string]string{"serverAddress": "http://localhost:3100", "threshold": "1", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "ignoreNullValues": "xxxx"}, true},
-
+	// with unsafeSsl
 	{map[string]string{"serverAddress": "https://localhost:3100", "threshold": "1", "query": "sum(rate({filename=\"/var/log/syslog\"}[1m])) by (level)", "unsafeSsl": "true"}, false},
 }
 
@@ -83,14 +83,14 @@ func TestLokiScalerAuthParams(t *testing.T) {
 		}
 
 		if err == nil {
-			if meta.lokiAuth.EnableBasicAuth && !strings.Contains(testData.metadata["authModes"], "basic") {
+			if meta.Auth.EnableBasicAuth && !strings.Contains(testData.metadata["authModes"], "basic") {
 				t.Error("wrong auth mode detected")
 			}
 		}
 	}
 }
 
-type lokiQromQueryResultTestData struct {
+type lokiQueryResultTestData struct {
 	name             string
 	bodyStr          string
 	responseStatus   int
@@ -100,7 +100,7 @@ type lokiQromQueryResultTestData struct {
 	unsafeSsl        bool
 }
 
-var testLokiQueryResult = []lokiQromQueryResultTestData{
+var testLokiQueryResult = []lokiQueryResultTestData{
 	{
 		name:             "no results",
 		bodyStr:          `{}`,
@@ -189,17 +189,16 @@ func TestLokiScalerExecuteLogQLQuery(t *testing.T) {
 		t.Run(testData.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 				writer.WriteHeader(testData.responseStatus)
-
 				if _, err := writer.Write([]byte(testData.bodyStr)); err != nil {
 					t.Fatal(err)
 				}
 			}))
 
 			scaler := lokiScaler{
-				metadata: &lokiMetadata{
-					serverAddress:    server.URL,
-					ignoreNullValues: testData.ignoreNullValues,
-					unsafeSsl:        testData.unsafeSsl,
+				metadata: lokiMetadata{
+					ServerAddress:    server.URL,
+					IgnoreNullValues: testData.ignoreNullValues,
+					UnsafeSsl:        testData.unsafeSsl,
 				},
 				httpClient: http.DefaultClient,
 				logger:     logr.Discard(),
@@ -208,7 +207,6 @@ func TestLokiScalerExecuteLogQLQuery(t *testing.T) {
 			value, err := scaler.ExecuteLokiQuery(context.TODO())
 
 			assert.Equal(t, testData.expectedValue, value)
-
 			if testData.isError {
 				assert.Error(t, err)
 			} else {
@@ -219,7 +217,7 @@ func TestLokiScalerExecuteLogQLQuery(t *testing.T) {
 }
 
 func TestLokiScalerTenantHeader(t *testing.T) {
-	testData := lokiQromQueryResultTestData{
+	testData := lokiQueryResultTestData{
 		name:             "no values",
 		bodyStr:          `{"data":{"result":[]}}`,
 		responseStatus:   http.StatusOK,
@@ -238,15 +236,14 @@ func TestLokiScalerTenantHeader(t *testing.T) {
 	}))
 
 	scaler := lokiScaler{
-		metadata: &lokiMetadata{
-			serverAddress:    server.URL,
-			tenantName:       tenantName,
-			ignoreNullValues: testData.ignoreNullValues,
+		metadata: lokiMetadata{
+			ServerAddress:    server.URL,
+			TenantName:       tenantName,
+			IgnoreNullValues: testData.ignoreNullValues,
 		},
 		httpClient: http.DefaultClient,
 	}
 
 	_, err := scaler.ExecuteLokiQuery(context.TODO())
-
 	assert.NoError(t, err)
 }

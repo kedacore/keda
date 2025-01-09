@@ -22,6 +22,7 @@ import (
 
 // Command is used to run a generic operation.
 type Command struct {
+	authenticator  driver.Authenticator
 	command        bsoncore.Document
 	database       string
 	deployment     driver.Deployment
@@ -78,7 +79,7 @@ func (c *Command) Execute(ctx context.Context) error {
 	}
 
 	return driver.Operation{
-		CommandFn: func(dst []byte, desc description.SelectedServer) ([]byte, error) {
+		CommandFn: func(dst []byte, _ description.SelectedServer) ([]byte, error) {
 			return append(dst, c.command[4:len(c.command)-1]...), nil
 		},
 		ProcessResponseFn: func(info driver.ResponseInfo) error {
@@ -107,6 +108,7 @@ func (c *Command) Execute(ctx context.Context) error {
 		ServerAPI:      c.serverAPI,
 		Timeout:        c.timeout,
 		Logger:         c.logger,
+		Authenticator:  c.authenticator,
 	}.Execute(ctx)
 }
 
@@ -217,5 +219,15 @@ func (c *Command) Logger(logger *logger.Logger) *Command {
 	}
 
 	c.logger = logger
+	return c
+}
+
+// Authenticator sets the authenticator to use for this operation.
+func (c *Command) Authenticator(authenticator driver.Authenticator) *Command {
+	if c == nil {
+		c = new(Command)
+	}
+
+	c.authenticator = authenticator
 	return c
 }

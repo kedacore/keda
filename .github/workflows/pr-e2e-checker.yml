@@ -29,7 +29,7 @@ jobs:
 
       - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
         name: Skip e2e
-        if:  ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_TAG )}}
+        if: ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_TAG )}}
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ github.event.pull_request.head.sha }}

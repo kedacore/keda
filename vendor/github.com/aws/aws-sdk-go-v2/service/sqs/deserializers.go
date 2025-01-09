@@ -15,6 +15,7 @@ import (
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithytime "github.com/aws/smithy-go/time"
+	"github.com/aws/smithy-go/tracing"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"io"
 	"io/ioutil"
@@ -45,6 +46,10 @@ func (m *awsAwsjson10_deserializeOpAddPermission) HandleDeserialize(ctx context.
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -149,6 +154,10 @@ func (m *awsAwsjson10_deserializeOpCancelMessageMoveTask) HandleDeserialize(ctx 
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -272,6 +281,10 @@ func (m *awsAwsjson10_deserializeOpChangeMessageVisibility) HandleDeserialize(ct
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -379,6 +392,10 @@ func (m *awsAwsjson10_deserializeOpChangeMessageVisibilityBatch) HandleDeseriali
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -514,6 +531,10 @@ func (m *awsAwsjson10_deserializeOpCreateQueue) HandleDeserialize(ctx context.Co
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -646,6 +667,10 @@ func (m *awsAwsjson10_deserializeOpDeleteMessage) HandleDeserialize(ctx context.
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -753,6 +778,10 @@ func (m *awsAwsjson10_deserializeOpDeleteMessageBatch) HandleDeserialize(ctx con
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -888,6 +917,10 @@ func (m *awsAwsjson10_deserializeOpDeleteQueue) HandleDeserialize(ctx context.Co
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -989,6 +1022,10 @@ func (m *awsAwsjson10_deserializeOpGetQueueAttributes) HandleDeserialize(ctx con
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -1115,6 +1152,10 @@ func (m *awsAwsjson10_deserializeOpGetQueueUrl) HandleDeserialize(ctx context.Co
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -1238,6 +1279,10 @@ func (m *awsAwsjson10_deserializeOpListDeadLetterSourceQueues) HandleDeserialize
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -1361,6 +1406,10 @@ func (m *awsAwsjson10_deserializeOpListMessageMoveTasks) HandleDeserialize(ctx c
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -1484,6 +1533,10 @@ func (m *awsAwsjson10_deserializeOpListQueues) HandleDeserialize(ctx context.Con
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -1604,6 +1657,10 @@ func (m *awsAwsjson10_deserializeOpListQueueTags) HandleDeserialize(ctx context.
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -1727,6 +1784,10 @@ func (m *awsAwsjson10_deserializeOpPurgeQueue) HandleDeserialize(ctx context.Con
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -1831,6 +1892,10 @@ func (m *awsAwsjson10_deserializeOpReceiveMessage) HandleDeserialize(ctx context
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -1978,6 +2043,10 @@ func (m *awsAwsjson10_deserializeOpRemovePermission) HandleDeserialize(ctx conte
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -2079,6 +2148,10 @@ func (m *awsAwsjson10_deserializeOpSendMessage) HandleDeserialize(ctx context.Co
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -2226,6 +2299,10 @@ func (m *awsAwsjson10_deserializeOpSendMessageBatch) HandleDeserialize(ctx conte
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -2385,6 +2462,10 @@ func (m *awsAwsjson10_deserializeOpSetQueueAttributes) HandleDeserialize(ctx con
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -2495,6 +2576,10 @@ func (m *awsAwsjson10_deserializeOpStartMessageMoveTask) HandleDeserialize(ctx c
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -2618,6 +2703,10 @@ func (m *awsAwsjson10_deserializeOpTagQueue) HandleDeserialize(ctx context.Conte
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -2719,6 +2808,10 @@ func (m *awsAwsjson10_deserializeOpUntagQueue) HandleDeserialize(ctx context.Con
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -3919,7 +4012,7 @@ func awsAwsjson10_deserializeDocumentBatchEntryIdsNotDistinct(v **types.BatchEnt
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -3959,7 +4052,7 @@ func awsAwsjson10_deserializeDocumentBatchRequestTooLong(v **types.BatchRequestT
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -4288,7 +4381,7 @@ func awsAwsjson10_deserializeDocumentEmptyBatchRequest(v **types.EmptyBatchReque
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -4328,7 +4421,7 @@ func awsAwsjson10_deserializeDocumentInvalidAddress(v **types.InvalidAddress, va
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -4368,7 +4461,7 @@ func awsAwsjson10_deserializeDocumentInvalidAttributeName(v **types.InvalidAttri
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -4408,7 +4501,7 @@ func awsAwsjson10_deserializeDocumentInvalidAttributeValue(v **types.InvalidAttr
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -4448,7 +4541,7 @@ func awsAwsjson10_deserializeDocumentInvalidBatchEntryId(v **types.InvalidBatchE
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -4519,7 +4612,7 @@ func awsAwsjson10_deserializeDocumentInvalidMessageContents(v **types.InvalidMes
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -4559,7 +4652,7 @@ func awsAwsjson10_deserializeDocumentInvalidSecurity(v **types.InvalidSecurity, 
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -4599,7 +4692,7 @@ func awsAwsjson10_deserializeDocumentKmsAccessDenied(v **types.KmsAccessDenied, 
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -4639,7 +4732,7 @@ func awsAwsjson10_deserializeDocumentKmsDisabled(v **types.KmsDisabled, value in
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -4679,7 +4772,7 @@ func awsAwsjson10_deserializeDocumentKmsInvalidKeyUsage(v **types.KmsInvalidKeyU
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -4719,7 +4812,7 @@ func awsAwsjson10_deserializeDocumentKmsInvalidState(v **types.KmsInvalidState, 
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -4759,7 +4852,7 @@ func awsAwsjson10_deserializeDocumentKmsNotFound(v **types.KmsNotFound, value in
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -4799,7 +4892,7 @@ func awsAwsjson10_deserializeDocumentKmsOptInRequired(v **types.KmsOptInRequired
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -4839,7 +4932,7 @@ func awsAwsjson10_deserializeDocumentKmsThrottled(v **types.KmsThrottled, value 
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -5335,7 +5428,7 @@ func awsAwsjson10_deserializeDocumentOverLimit(v **types.OverLimit, value interf
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -5375,7 +5468,7 @@ func awsAwsjson10_deserializeDocumentPurgeQueueInProgress(v **types.PurgeQueueIn
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -5451,7 +5544,7 @@ func awsAwsjson10_deserializeDocumentQueueDeletedRecently(v **types.QueueDeleted
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -5491,7 +5584,7 @@ func awsAwsjson10_deserializeDocumentQueueDoesNotExist(v **types.QueueDoesNotExi
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -5531,7 +5624,7 @@ func awsAwsjson10_deserializeDocumentQueueNameExists(v **types.QueueNameExists, 
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -5607,7 +5700,7 @@ func awsAwsjson10_deserializeDocumentReceiptHandleIsInvalid(v **types.ReceiptHan
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -5647,7 +5740,7 @@ func awsAwsjson10_deserializeDocumentRequestThrottled(v **types.RequestThrottled
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -5687,7 +5780,7 @@ func awsAwsjson10_deserializeDocumentResourceNotFoundException(v **types.Resourc
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -5918,7 +6011,7 @@ func awsAwsjson10_deserializeDocumentTooManyEntriesInBatchRequest(v **types.TooM
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -5958,7 +6051,7 @@ func awsAwsjson10_deserializeDocumentUnsupportedOperation(v **types.UnsupportedO
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {

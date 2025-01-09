@@ -48,7 +48,7 @@ func NewEventHubsClient(subscriptionID string, credential azcore.TokenCredential
 // CreateOrUpdate - Creates or updates a new Event Hub as a nested resource within a Namespace.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - namespaceName - The Namespace name
 //   - eventHubName - The Event Hub name
@@ -101,7 +101,7 @@ func (client *EventHubsClient) createOrUpdateCreateRequest(ctx context.Context, 
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, parameters); err != nil {
@@ -123,7 +123,7 @@ func (client *EventHubsClient) createOrUpdateHandleResponse(resp *http.Response)
 // of the AuthorizationRule will take a few seconds to take effect.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - namespaceName - The Namespace name
 //   - eventHubName - The Event Hub name
@@ -181,7 +181,7 @@ func (client *EventHubsClient) createOrUpdateAuthorizationRuleCreateRequest(ctx 
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, parameters); err != nil {
@@ -202,7 +202,7 @@ func (client *EventHubsClient) createOrUpdateAuthorizationRuleHandleResponse(res
 // Delete - Deletes an Event Hub from the specified Namespace and resource group.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - namespaceName - The Namespace name
 //   - eventHubName - The Event Hub name
@@ -252,7 +252,7 @@ func (client *EventHubsClient) deleteCreateRequest(ctx context.Context, resource
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -261,7 +261,7 @@ func (client *EventHubsClient) deleteCreateRequest(ctx context.Context, resource
 // DeleteAuthorizationRule - Deletes an Event Hub AuthorizationRule.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - namespaceName - The Namespace name
 //   - eventHubName - The Event Hub name
@@ -317,7 +317,7 @@ func (client *EventHubsClient) deleteAuthorizationRuleCreateRequest(ctx context.
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -326,7 +326,7 @@ func (client *EventHubsClient) deleteAuthorizationRuleCreateRequest(ctx context.
 // Get - Gets an Event Hubs description for the specified Event Hub.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - namespaceName - The Namespace name
 //   - eventHubName - The Event Hub name
@@ -377,7 +377,7 @@ func (client *EventHubsClient) getCreateRequest(ctx context.Context, resourceGro
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -395,7 +395,7 @@ func (client *EventHubsClient) getHandleResponse(resp *http.Response) (EventHubs
 // GetAuthorizationRule - Gets an AuthorizationRule for an Event Hub by rule name.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - namespaceName - The Namespace name
 //   - eventHubName - The Event Hub name
@@ -452,7 +452,7 @@ func (client *EventHubsClient) getAuthorizationRuleCreateRequest(ctx context.Con
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -469,7 +469,7 @@ func (client *EventHubsClient) getAuthorizationRuleHandleResponse(resp *http.Res
 
 // NewListAuthorizationRulesPager - Gets the authorization rules for an Event Hub.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - namespaceName - The Namespace name
 //   - eventHubName - The Event Hub name
@@ -522,7 +522,7 @@ func (client *EventHubsClient) listAuthorizationRulesCreateRequest(ctx context.C
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -539,7 +539,7 @@ func (client *EventHubsClient) listAuthorizationRulesHandleResponse(resp *http.R
 
 // NewListByNamespacePager - Gets all the Event Hubs in a Namespace.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - namespaceName - The Namespace name
 //   - options - EventHubsClientListByNamespaceOptions contains the optional parameters for the EventHubsClient.NewListByNamespacePager
@@ -587,13 +587,13 @@ func (client *EventHubsClient) listByNamespaceCreateRequest(ctx context.Context,
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
 	if options != nil && options.Skip != nil {
 		reqQP.Set("$skip", strconv.FormatInt(int64(*options.Skip), 10))
 	}
 	if options != nil && options.Top != nil {
 		reqQP.Set("$top", strconv.FormatInt(int64(*options.Top), 10))
 	}
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -611,7 +611,7 @@ func (client *EventHubsClient) listByNamespaceHandleResponse(resp *http.Response
 // ListKeys - Gets the ACS and SAS connection strings for the Event Hub.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - namespaceName - The Namespace name
 //   - eventHubName - The Event Hub name
@@ -667,7 +667,7 @@ func (client *EventHubsClient) listKeysCreateRequest(ctx context.Context, resour
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -685,7 +685,7 @@ func (client *EventHubsClient) listKeysHandleResponse(resp *http.Response) (Even
 // RegenerateKeys - Regenerates the ACS and SAS connection strings for the Event Hub.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - namespaceName - The Namespace name
 //   - eventHubName - The Event Hub name
@@ -743,7 +743,7 @@ func (client *EventHubsClient) regenerateKeysCreateRequest(ctx context.Context, 
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, parameters); err != nil {

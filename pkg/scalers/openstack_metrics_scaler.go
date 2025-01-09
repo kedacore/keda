@@ -329,7 +329,7 @@ func (s *openstackMetricScaler) readOpenstackMetrics(ctx context.Context) (float
 			return defaultValueWhenError, readError
 		}
 
-		return defaultValueWhenError, fmt.Errorf(string(bodyError))
+		return defaultValueWhenError, fmt.Errorf("%s", string(bodyError))
 	}
 
 	m := measureResult{}

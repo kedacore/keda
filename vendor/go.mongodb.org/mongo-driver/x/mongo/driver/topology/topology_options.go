@@ -7,10 +7,10 @@
 package topology
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/event"
@@ -71,9 +71,80 @@ func newLogger(opts *options.LoggerOptions) (*logger.Logger, error) {
 	return log, nil
 }
 
-// NewConfig will translate data from client options into a topology config for building non-default deployments.
-// Server and topology options are not honored if a custom deployment is used.
+// convertOIDCArgs converts the internal *driver.OIDCArgs into the equivalent
+// public type *options.OIDCArgs.
+func convertOIDCArgs(args *driver.OIDCArgs) *options.OIDCArgs {
+	if args == nil {
+		return nil
+	}
+	return &options.OIDCArgs{
+		Version:      args.Version,
+		IDPInfo:      (*options.IDPInfo)(args.IDPInfo),
+		RefreshToken: args.RefreshToken,
+	}
+}
+
+// ConvertCreds takes an [options.Credential] and returns the equivalent
+// [driver.Cred].
+func ConvertCreds(cred *options.Credential) *driver.Cred {
+	if cred == nil {
+		return nil
+	}
+
+	var oidcMachineCallback auth.OIDCCallback
+	if cred.OIDCMachineCallback != nil {
+		oidcMachineCallback = func(ctx context.Context, args *driver.OIDCArgs) (*driver.OIDCCredential, error) {
+			cred, err := cred.OIDCMachineCallback(ctx, convertOIDCArgs(args))
+			return (*driver.OIDCCredential)(cred), err
+		}
+	}
+
+	var oidcHumanCallback auth.OIDCCallback
+	if cred.OIDCHumanCallback != nil {
+		oidcHumanCallback = func(ctx context.Context, args *driver.OIDCArgs) (*driver.OIDCCredential, error) {
+			cred, err := cred.OIDCHumanCallback(ctx, convertOIDCArgs(args))
+			return (*driver.OIDCCredential)(cred), err
+		}
+	}
+
+	return &auth.Cred{
+		Source:              cred.AuthSource,
+		Username:            cred.Username,
+		Password:            cred.Password,
+		PasswordSet:         cred.PasswordSet,
+		Props:               cred.AuthMechanismProperties,
+		OIDCMachineCallback: oidcMachineCallback,
+		OIDCHumanCallback:   oidcHumanCallback,
+	}
+}
+
+// NewConfig will translate data from client options into a topology config for
+// building non-default deployments.
 func NewConfig(co *options.ClientOptions, clock *session.ClusterClock) (*Config, error) {
+	var authenticator driver.Authenticator
+	var err error
+	if co.Auth != nil {
+		authenticator, err = auth.CreateAuthenticator(
+			co.Auth.AuthMechanism,
+			ConvertCreds(co.Auth),
+			co.HTTPClient,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error creating authenticator: %w", err)
+		}
+	}
+	return NewConfigWithAuthenticator(co, clock, authenticator)
+}
+
+// NewConfigWithAuthenticator will translate data from client options into a
+// topology config for building non-default deployments. Server and topology
+// options are not honored if a custom deployment is used. It uses a passed in
+// authenticator to authenticate the connection.
+func NewConfigWithAuthenticator(
+	co *options.ClientOptions,
+	clock *session.ClusterClock,
+	authenticator driver.Authenticator,
+) (*Config, error) {
 	var serverAPI *driver.ServerAPIOptions
 
 	if err := co.Validate(); err != nil {
@@ -135,11 +206,11 @@ func NewConfig(co *options.ClientOptions, clock *session.ClusterClock) (*Config,
 		for _, comp := range comps {
 			switch comp {
 			case "zlib":
-				connOpts = append(connOpts, WithZlibLevel(func(level *int) *int {
+				connOpts = append(connOpts, WithZlibLevel(func(*int) *int {
 					return co.ZlibLevel
 				}))
 			case "zstd":
-				connOpts = append(connOpts, WithZstdLevel(func(level *int) *int {
+				connOpts = append(connOpts, WithZstdLevel(func(*int) *int {
 					return co.ZstdLevel
 				}))
 			}
@@ -156,35 +227,8 @@ func NewConfig(co *options.ClientOptions, clock *session.ClusterClock) (*Config,
 	}
 
 	// Handshaker
-	var handshaker = func(driver.Handshaker) driver.Handshaker {
-		return operation.NewHello().AppName(appName).Compressors(comps).ClusterClock(clock).
-			ServerAPI(serverAPI).LoadBalanced(loadBalanced)
-	}
-	// Auth & Database & Password & Username
-	if co.Auth != nil {
-		cred := &auth.Cred{
-			Username:    co.Auth.Username,
-			Password:    co.Auth.Password,
-			PasswordSet: co.Auth.PasswordSet,
-			Props:       co.Auth.AuthMechanismProperties,
-			Source:      co.Auth.AuthSource,
-		}
-		mechanism := co.Auth.AuthMechanism
-
-		if len(cred.Source) == 0 {
-			switch strings.ToUpper(mechanism) {
-			case auth.MongoDBX509, auth.GSSAPI, auth.PLAIN:
-				cred.Source = "$external"
-			default:
-				cred.Source = "admin"
-			}
-		}
-
-		authenticator, err := auth.CreateAuthenticator(mechanism, cred)
-		if err != nil {
-			return nil, err
-		}
-
+	var handshaker func(driver.Handshaker) driver.Handshaker
+	if authenticator != nil {
 		handshakeOpts := &auth.HandshakeOptions{
 			AppName:       appName,
 			Authenticator: authenticator,
@@ -192,16 +236,15 @@ func NewConfig(co *options.ClientOptions, clock *session.ClusterClock) (*Config,
 			ServerAPI:     serverAPI,
 			LoadBalanced:  loadBalanced,
 			ClusterClock:  clock,
-			HTTPClient:    co.HTTPClient,
 		}
 
-		if mechanism == "" {
+		if co.Auth.AuthMechanism == "" {
 			// Required for SASL mechanism negotiation during handshake
-			handshakeOpts.DBUser = cred.Source + "." + cred.Username
+			handshakeOpts.DBUser = co.Auth.AuthSource + "." + co.Auth.Username
 		}
 		if co.AuthenticateToAnything != nil && *co.AuthenticateToAnything {
 			// Authenticate arbiters
-			handshakeOpts.PerformAuthentication = func(serv description.Server) bool {
+			handshakeOpts.PerformAuthentication = func(description.Server) bool {
 				return true
 			}
 		}
@@ -209,7 +252,17 @@ func NewConfig(co *options.ClientOptions, clock *session.ClusterClock) (*Config,
 		handshaker = func(driver.Handshaker) driver.Handshaker {
 			return auth.Handshaker(nil, handshakeOpts)
 		}
+	} else {
+		handshaker = func(driver.Handshaker) driver.Handshaker {
+			return operation.NewHello().
+				AppName(appName).
+				Compressors(comps).
+				ClusterClock(clock).
+				ServerAPI(serverAPI).
+				LoadBalanced(loadBalanced)
+		}
 	}
+
 	connOpts = append(connOpts, WithHandshaker(handshaker))
 	// ConnectTimeout
 	if co.ConnectTimeout != nil {

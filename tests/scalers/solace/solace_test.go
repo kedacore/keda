@@ -207,16 +207,18 @@ spec:
 func TestStanScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+
+	// Create kubernetes resources
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+	installSolace(t)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
 	t.Cleanup(func() {
 		KubectlDeleteWithTemplate(t, data, "scaledObjectTemplateRate", scaledObjectTemplateRate)
 		uninstallSolace(t)
 		DeleteKubernetesResources(t, testNamespace, data, templates)
 	})
 
-	// Create kubernetes resources
-	CreateKubernetesResources(t, kc, testNamespace, data, templates)
-	installSolace(t)
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be 0 after 1 minute")
 
@@ -236,10 +238,8 @@ func installSolace(t *testing.T) {
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set solace.usernameAdminPassword=KedaLabAdminPwd1 --set storage.persistent=false,solace.size=dev,nameOverride=pubsubplus-dev,service.type=ClusterIP --namespace %s kedalab solacecharts/pubsubplus`,
+	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set solace.usernameAdminPassword=KedaLabAdminPwd1 --set storage.persistent=false,solace.size=dev,nameOverride=pubsubplus-dev,service.type=ClusterIP --wait --namespace %s kedalab solacecharts/pubsubplus`,
 		testNamespace))
-	require.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand("sleep 60") // there is a bug in the solace helm chart where it is looking for the wrong number of replicas on --wait
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	// Create the pubsub broker
 	_, _, err = ExecCommandOnSpecificPod(t, helperName, testNamespace, "./config/config_solace.sh")

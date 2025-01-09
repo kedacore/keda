@@ -15,6 +15,7 @@ import (
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithytime "github.com/aws/smithy-go/time"
+	"github.com/aws/smithy-go/tracing"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"io"
 	"strings"
@@ -44,6 +45,10 @@ func (m *awsAwsjson10_deserializeOpDescribeStream) HandleDeserialize(ctx context
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -154,6 +159,10 @@ func (m *awsAwsjson10_deserializeOpGetRecords) HandleDeserialize(ctx context.Con
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -273,6 +282,10 @@ func (m *awsAwsjson10_deserializeOpGetShardIterator) HandleDeserialize(ctx conte
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -386,6 +399,10 @@ func (m *awsAwsjson10_deserializeOpListStreams) HandleDeserialize(ctx context.Co
 		return out, metadata, err
 	}
 
+	_, span := tracing.StartSpan(ctx, "OperationDeserializer")
+	endTimer := startMetricTimer(ctx, "client.call.deserialization_duration")
+	defer endTimer()
+	defer span.End()
 	response, ok := out.RawResponse.(*smithyhttp.Response)
 	if !ok {
 		return out, metadata, &smithy.DeserializationError{Err: fmt.Errorf("unknown transport type %T", out.RawResponse)}
@@ -886,7 +903,7 @@ func awsAwsjson10_deserializeDocumentExpiredIteratorException(v **types.ExpiredI
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -975,7 +992,7 @@ func awsAwsjson10_deserializeDocumentInternalServerError(v **types.InternalServe
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -1098,7 +1115,7 @@ func awsAwsjson10_deserializeDocumentLimitExceededException(v **types.LimitExcee
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -1360,7 +1377,7 @@ func awsAwsjson10_deserializeDocumentResourceNotFoundException(v **types.Resourc
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {
@@ -1869,7 +1886,7 @@ func awsAwsjson10_deserializeDocumentTrimmedDataAccessException(v **types.Trimme
 
 	for key, value := range shape {
 		switch key {
-		case "message":
+		case "message", "Message":
 			if value != nil {
 				jtv, ok := value.(string)
 				if !ok {

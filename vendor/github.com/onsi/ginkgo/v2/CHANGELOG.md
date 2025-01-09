@@ -1,3 +1,62 @@
+## 2.22.1
+
+### Fixes
+Fix CSV encoding
+- Update tests [aab3da6]
+- Properly encode CSV rows [c09df39]
+- Add test case for proper csv escaping [96a80fc]
+- Add meta-test [43dad69]
+
+### Maintenance
+- ensure *.test files are gitignored so we don't accidentally commit compiled tests again [c88c634]
+- remove golang.org/x/net/context in favour of stdlib context [4df44bf]
+
+## 2.22.0
+
+### Features
+- Add label to serial nodes [0fcaa08]
+
+This allows serial tests to be filtered using the `label-filter`
+
+### Maintenance
+Various doc fixes
+
+## 2.21.0
+
+
+  ### Features
+  - add support for GINKGO_TIME_FORMAT [a69eb39]
+  - add GINKGO_NO_COLOR to disable colors via environment variables [bcab9c8]
+
+  ### Fixes
+  - increase threshold in timeline matcher [e548367]
+  - Fix the document by replacing `SpecsThatWillBeRun` with `SpecsThatWillRun`
+  [c2c4d3c]
+
+  ### Maintenance
+  - bump various dependencies [7e65a00]
+
+## 2.20.2
+
+Require Go 1.22+
+
+### Maintenance
+- bump go to v1.22 [a671816]
+
+## 2.20.1
+
+### Fixes
+- make BeSpecEvent duration matcher more forgiving [d6f9640]
+
+## 2.20.0
+
+### Features
+- Add buildvcs flag [be5ab95]
+
+### Maintenance
+- Add update-deps to makefile [d303d14]
+- bump all dependencies [7a50221]
+
 ## 2.19.1
 
 ### Fixes

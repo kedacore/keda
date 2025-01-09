@@ -245,15 +245,19 @@ func (e *scaleExecutor) doFallbackScaling(ctx context.Context, scaledObject *ked
 // An object will be scaled down to 0 only if it's passed its cooldown period
 // or if LastActiveTime is nil
 func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) {
-	var cooldownPeriod time.Duration
+	var initialCooldownPeriod, cooldownPeriod time.Duration
+
+	if scaledObject.Spec.InitialCooldownPeriod != nil {
+		initialCooldownPeriod = time.Second * time.Duration(*scaledObject.Spec.InitialCooldownPeriod)
+	} else {
+		initialCooldownPeriod = time.Second * time.Duration(defaultInitialCooldownPeriod)
+	}
 
 	if scaledObject.Spec.CooldownPeriod != nil {
 		cooldownPeriod = time.Second * time.Duration(*scaledObject.Spec.CooldownPeriod)
 	} else {
 		cooldownPeriod = time.Second * time.Duration(defaultCooldownPeriod)
 	}
-
-	initialCooldownPeriod := time.Second * time.Duration(scaledObject.Spec.InitialCooldownPeriod)
 
 	// If the ScaledObject was just created,CreationTimestamp is zero, set the CreationTimestamp to now
 	if scaledObject.ObjectMeta.CreationTimestamp.IsZero() {

@@ -69,11 +69,11 @@ func newSharedConfigsCache() sharedConfigCache {
 // getCacheKey returns a unique key based on given AuthorizationMetadata.
 // As it can contain sensitive data, the key is hashed to not expose secrets
 func (a *sharedConfigCache) getCacheKey(awsAuthorization AuthorizationMetadata) string {
-	key := "keda"
+	key := "keda-" + awsAuthorization.AwsRegion
 	if awsAuthorization.AwsAccessKeyID != "" {
-		key = fmt.Sprintf("%s-%s-%s", awsAuthorization.AwsAccessKeyID, awsAuthorization.AwsSecretAccessKey, awsAuthorization.AwsSessionToken)
+		key = fmt.Sprintf("%s-%s-%s-%s", awsAuthorization.AwsAccessKeyID, awsAuthorization.AwsSecretAccessKey, awsAuthorization.AwsSessionToken, awsAuthorization.AwsRegion)
 	} else if awsAuthorization.AwsRoleArn != "" {
-		key = awsAuthorization.AwsRoleArn
+		key = fmt.Sprintf("%s-%s", awsAuthorization.AwsRoleArn, awsAuthorization.AwsRegion)
 	}
 	// to avoid sensitive data as key and to use a constant key size,
 	// we hash the key with sha3
@@ -86,7 +86,7 @@ func (a *sharedConfigCache) getCacheKey(awsAuthorization AuthorizationMetadata) 
 // sharing it between all the requests. To track if the *aws.Config is used by whom,
 // every time when an scaler requests *aws.Config we register it inside
 // the cached item.
-func (a *sharedConfigCache) GetCredentials(ctx context.Context, awsRegion string, awsAuthorization AuthorizationMetadata) (*aws.Config, error) {
+func (a *sharedConfigCache) GetCredentials(ctx context.Context, awsAuthorization AuthorizationMetadata) (*aws.Config, error) {
 	a.Lock()
 	defer a.Unlock()
 	key := a.getCacheKey(awsAuthorization)
@@ -97,7 +97,7 @@ func (a *sharedConfigCache) GetCredentials(ctx context.Context, awsRegion string
 	}
 
 	configOptions := make([]func(*config.LoadOptions) error, 0)
-	configOptions = append(configOptions, config.WithRegion(awsRegion))
+	configOptions = append(configOptions, config.WithRegion(awsAuthorization.AwsRegion))
 	cfg, err := config.LoadDefaultConfig(ctx, configOptions...)
 	if err != nil {
 		return nil, err

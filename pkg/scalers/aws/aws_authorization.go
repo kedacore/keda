@@ -23,6 +23,8 @@ type AuthorizationMetadata struct {
 	AwsSecretAccessKey string
 	AwsSessionToken    string
 
+	AwsRegion string
+
 	// Deprecated
 	PodIdentityOwner bool
 	// Pod identity owner is confusing and it'll be removed when we get

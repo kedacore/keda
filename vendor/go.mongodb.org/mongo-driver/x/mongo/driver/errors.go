@@ -140,7 +140,7 @@ func (wce WriteCommandError) Retryable(wireVersion *description.VersionRange) bo
 	if wce.WriteConcernError == nil {
 		return false
 	}
-	return (*wce.WriteConcernError).Retryable()
+	return wce.WriteConcernError.Retryable()
 }
 
 // HasErrorLabel returns true if the error contains the specified label.

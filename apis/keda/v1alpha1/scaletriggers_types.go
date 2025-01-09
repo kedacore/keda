@@ -18,6 +18,8 @@ package v1alpha1
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 )
@@ -79,4 +81,19 @@ func ValidateTriggers(triggers []ScaleTriggers) error {
 	}
 
 	return nil
+}
+
+// CombinedTriggersAndAuthenticationsTypes returns a comma separated string of all trigger types and authentication types
+func CombinedTriggersAndAuthenticationsTypes(triggers []ScaleTriggers) (string, string) {
+	var triggersTypes []string
+	var authTypes []string
+	for _, trigger := range triggers {
+		if !slices.Contains(triggersTypes, trigger.Type) {
+			triggersTypes = append(triggersTypes, trigger.Type)
+		}
+		if trigger.AuthenticationRef != nil && !slices.Contains(authTypes, trigger.AuthenticationRef.Name) {
+			authTypes = append(authTypes, trigger.AuthenticationRef.Name)
+		}
+	}
+	return strings.Join(triggersTypes, ","), strings.Join(authTypes, ",")
 }

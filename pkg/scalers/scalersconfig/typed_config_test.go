@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // TestBasicTypedConfig tests the basic types for typed config
@@ -128,7 +129,7 @@ func TestMissing(t *testing.T) {
 	sc := &ScalerConfig{}
 
 	type testStruct struct {
-		StringVal string `keda:"name=stringVal, order=triggerMetadata"`
+		StringVal string `keda:"name=stringVal,  order=triggerMetadata"`
 	}
 
 	ts := testStruct{}
@@ -216,14 +217,16 @@ func TestSlice(t *testing.T) {
 
 	sc := &ScalerConfig{
 		TriggerMetadata: map[string]string{
-			"sliceVal":           "1,2,3",
-			"sliceValWithSpaces": "1, 2, 3",
+			"sliceVal":                   "1,2,3",
+			"sliceValWithSpaces":         "1, 2, 3",
+			"sliceValWithOtherSeparator": "1;2;3",
 		},
 	}
 
 	type testStruct struct {
-		SliceVal           []int `keda:"name=sliceVal, order=triggerMetadata"`
-		SliceValWithSpaces []int `keda:"name=sliceValWithSpaces, order=triggerMetadata"`
+		SliceVal                   []int `keda:"name=sliceVal, order=triggerMetadata"`
+		SliceValWithSpaces         []int `keda:"name=sliceValWithSpaces, order=triggerMetadata"`
+		SliceValWithOtherSeparator []int `keda:"name=sliceValWithOtherSeparator, order=triggerMetadata, separator=;"`
 	}
 
 	ts := testStruct{}
@@ -237,6 +240,10 @@ func TestSlice(t *testing.T) {
 	Expect(ts.SliceValWithSpaces[0]).To(Equal(1))
 	Expect(ts.SliceValWithSpaces[1]).To(Equal(2))
 	Expect(ts.SliceValWithSpaces[2]).To(Equal(3))
+	Expect(ts.SliceValWithOtherSeparator).To(HaveLen(3))
+	Expect(ts.SliceValWithOtherSeparator[0]).To(Equal(1))
+	Expect(ts.SliceValWithOtherSeparator[1]).To(Equal(2))
+	Expect(ts.SliceValWithOtherSeparator[2]).To(Equal(3))
 }
 
 // TestEnum tests the enum type
@@ -497,7 +504,7 @@ func TestNoParsingOrder(t *testing.T) {
 	}
 	tsm := testStructMissing{}
 	err := sc.TypedConfig(&tsm)
-	Expect(err).To(MatchError(`missing required parameter "strVal", no 'order' tag, provide any from [authParams resolvedEnv triggerMetadata]`))
+	Expect(err).To(MatchError(ContainSubstring(`missing required parameter "strVal", no 'order' tag, provide any from [authParams resolvedEnv triggerMetadata]`)))
 
 	type testStructDefault struct {
 		DefaultVal string `keda:"name=defaultVal, default=dv"`
@@ -546,4 +553,81 @@ func TestRange(t *testing.T) {
 	Expect(ts.DottedRange).To(HaveLen(6))
 	Expect(ts.DottedRange).To(ConsistOf(2, 3, 4, 5, 6, 7))
 	Expect(ts.WrongRange).To(HaveLen(0))
+}
+
+// TestMultiName tests the multi name param
+func TestMultiName(t *testing.T) {
+	RegisterTestingT(t)
+
+	sc := &ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"property1": "aaa",
+		},
+	}
+
+	sc2 := &ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"property2": "bbb",
+		},
+	}
+
+	type testStruct struct {
+		Property string `keda:"name=property1;property2, order=triggerMetadata"`
+	}
+
+	ts := testStruct{}
+	err := sc.TypedConfig(&ts)
+	Expect(err).To(BeNil())
+	Expect(ts.Property).To(Equal("aaa"))
+
+	err = sc2.TypedConfig(&ts)
+	Expect(err).To(BeNil())
+	Expect(ts.Property).To(Equal("bbb"))
+}
+
+// TestDeprecatedAnnounce tests the deprecatedAnnounce tag
+func TestDeprecatedAnnounce(t *testing.T) {
+	RegisterTestingT(t)
+
+	// Create a mock recorder to capture the event
+	mockRecorder := &MockEventRecorder{}
+
+	sc := &ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"oldParam": "value1",
+		},
+		Recorder: mockRecorder,
+	}
+
+	type testStruct struct {
+		OldParam string `keda:"name=oldParam, order=triggerMetadata, deprecatedAnnounce=This parameter is deprecated. Use newParam instead"`
+	}
+
+	ts := testStruct{}
+	err := sc.TypedConfig(&ts)
+	Expect(err).To(BeNil())
+	Expect(ts.OldParam).To(Equal("value1"))
+
+	// Verify that the deprecation event was recorded
+	Expect(mockRecorder.EventCalled).To(BeTrue())
+	Expect(mockRecorder.Message).To(Equal("Scaler  info: This parameter is deprecated. Use newParam instead"))
+}
+
+// MockEventRecorder is a mock implementation of record.EventRecorder
+type MockEventRecorder struct {
+	EventCalled bool
+	Message     string
+}
+
+func (m *MockEventRecorder) Event(object runtime.Object, eventtype, reason, message string) {
+	m.EventCalled = true
+	m.Message = message
+}
+
+func (m *MockEventRecorder) Eventf(object runtime.Object, eventtype, reason, messageFmt string, args ...interface{}) {
+	// Not needed
+}
+
+func (m *MockEventRecorder) AnnotatedEventf(object runtime.Object, annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{}) {
+	// Not needed
 }

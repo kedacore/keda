@@ -38,6 +38,10 @@ func NewClient(vaultURL string, credential azcore.TokenCredential, options *Clie
 		},
 	)
 	azcoreClient, err := azcore.NewClient(moduleName, version, runtime.PipelineOptions{
+		APIVersion: runtime.APIVersionOptions{
+			Location: runtime.APIVersionLocationQueryParam,
+			Name:     "api-version",
+		},
 		PerRetry: []policy.Policy{authPolicy},
 		Tracing: runtime.TracingOptions{
 			Namespace: "Microsoft.KeyVault",

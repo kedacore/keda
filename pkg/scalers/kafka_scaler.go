@@ -49,8 +49,9 @@ type kafkaScaler struct {
 }
 
 const (
-	stringEnable  = "enable"
-	stringDisable = "disable"
+	stringEnable     = "enable"
+	stringDisable    = "disable"
+	defaultUnsafeSsl = false
 )
 
 type kafkaMetadata struct {
@@ -80,6 +81,7 @@ type kafkaMetadata struct {
 	realm               string
 	kerberosConfigPath  string
 	kerberosServiceName string
+	kerberosDisableFAST bool
 
 	// OAUTHBEARER
 	tokenProvider         kafkaSaslOAuthTokenProvider
@@ -330,7 +332,7 @@ func parseSaslOAuthAWSMSKIAMParams(config *scalersconfig.ScalerConfig, meta *kaf
 
 	meta.awsRegion = config.TriggerMetadata["awsRegion"]
 
-	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.awsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return fmt.Errorf("error getting AWS authorization: %w", err)
 	}
@@ -406,6 +408,15 @@ func parseKerberosParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadata
 
 	if config.AuthParams["kerberosServiceName"] != "" {
 		meta.kerberosServiceName = strings.TrimSpace(config.AuthParams["kerberosServiceName"])
+	}
+
+	meta.kerberosDisableFAST = false
+	if val, ok := config.AuthParams["kerberosDisableFAST"]; ok {
+		t, err := strconv.ParseBool(val)
+		if err != nil {
+			return fmt.Errorf("error parsing kerberosDisableFAST: %w", err)
+		}
+		meta.kerberosDisableFAST = t
 	}
 
 	meta.saslType = mode
@@ -658,7 +669,7 @@ func getKafkaClientConfig(ctx context.Context, metadata kafkaMetadata) (*sarama.
 		case KafkaSASLOAuthTokenProviderBearer:
 			config.Net.SASL.TokenProvider = kafka.OAuthBearerTokenProvider(metadata.username, metadata.password, metadata.oauthTokenEndpointURI, metadata.scopes, metadata.oauthExtensions)
 		case KafkaSASLOAuthTokenProviderAWSMSKIAM:
-			awsAuth, err := awsutils.GetAwsConfig(ctx, metadata.awsRegion, metadata.awsAuthorization)
+			awsAuth, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 			if err != nil {
 				return nil, fmt.Errorf("error getting AWS config: %w", err)
 			}
@@ -687,7 +698,12 @@ func getKafkaClientConfig(ctx context.Context, metadata kafkaMetadata) (*sarama.
 			config.Net.SASL.GSSAPI.AuthType = sarama.KRB5_USER_AUTH
 			config.Net.SASL.GSSAPI.Password = metadata.password
 		}
+
+		if metadata.kerberosDisableFAST {
+			config.Net.SASL.GSSAPI.DisablePAFXFAST = true
+		}
 	}
+
 	return config, nil
 }
 

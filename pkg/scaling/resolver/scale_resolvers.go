@@ -134,7 +134,7 @@ func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, sc
 			podTemplateSpec.Spec = withPods.Spec.Template.Spec
 		}
 
-		if podTemplateSpec.Spec.Containers == nil || len(podTemplateSpec.Spec.Containers) == 0 {
+		if len(podTemplateSpec.Spec.Containers) == 0 {
 			logger.V(1).Info("There aren't any containers found in the ScaleTarget, therefore it is no possible to inject environment properties", "scaleTargetRef.Name", obj.Spec.ScaleTargetRef.Name)
 			return nil, "", nil
 		}

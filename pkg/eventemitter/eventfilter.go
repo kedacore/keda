@@ -17,7 +17,7 @@ limitations under the License.
 package eventemitter
 
 import (
-	"golang.org/x/exp/slices"
+	"slices"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 )

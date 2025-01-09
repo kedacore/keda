@@ -37,7 +37,7 @@ func (c *JSONCodec) PlanEncode(m *Map, oid uint32, format int16, value any) Enco
 	//
 	// https://github.com/jackc/pgx/issues/1430
 	//
-	// Check for driver.Valuer must come before json.Marshaler so that it is guaranteed to beused
+	// Check for driver.Valuer must come before json.Marshaler so that it is guaranteed to be used
 	// when both are implemented https://github.com/jackc/pgx/issues/1805
 	case driver.Valuer:
 		return &encodePlanDriverValuer{m: m, oid: oid, formatCode: format}
@@ -130,7 +130,7 @@ func (c *JSONCodec) PlanScan(m *Map, oid uint32, format int16, target any) ScanP
 		// https://github.com/jackc/pgx/issues/1691 -- ** anything else
 
 		if wrapperPlan, nextDst, ok := TryPointerPointerScanPlan(target); ok {
-			if nextPlan := m.planScan(oid, format, nextDst); nextPlan != nil {
+			if nextPlan := m.planScan(oid, format, nextDst, 0); nextPlan != nil {
 				if _, failed := nextPlan.(*scanPlanFail); !failed {
 					wrapperPlan.SetNext(nextPlan)
 					return wrapperPlan
@@ -143,16 +143,32 @@ func (c *JSONCodec) PlanScan(m *Map, oid uint32, format int16, target any) ScanP
 	case BytesScanner:
 		return scanPlanBinaryBytesToBytesScanner{}
 
+	}
+
 	// Cannot rely on sql.Scanner being handled later because scanPlanJSONToJSONUnmarshal will take precedence.
 	//
 	// https://github.com/jackc/pgx/issues/1418
-	case sql.Scanner:
+	if isSQLScanner(target) {
 		return &scanPlanSQLScanner{formatCode: format}
 	}
 
 	return &scanPlanJSONToJSONUnmarshal{
 		unmarshal: c.Unmarshal,
 	}
+}
+
+// we need to check if the target is a pointer to a sql.Scanner (or any of the pointer ref tree implements a sql.Scanner).
+//
+// https://github.com/jackc/pgx/issues/2146
+func isSQLScanner(v any) bool {
+	val := reflect.ValueOf(v)
+	for val.Kind() == reflect.Ptr {
+		if _, ok := val.Interface().(sql.Scanner); ok {
+			return true
+		}
+		val = val.Elem()
+	}
+	return false
 }
 
 type scanPlanAnyToString struct{}
@@ -175,13 +191,6 @@ func (scanPlanJSONToByteSlice) Scan(src []byte, dst any) error {
 	*dstBuf = make([]byte, len(src))
 	copy(*dstBuf, src)
 	return nil
-}
-
-type scanPlanJSONToBytesScanner struct{}
-
-func (scanPlanJSONToBytesScanner) Scan(src []byte, dst any) error {
-	scanner := (dst).(BytesScanner)
-	return scanner.ScanBytes(src)
 }
 
 type scanPlanJSONToJSONUnmarshal struct {

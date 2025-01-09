@@ -1,5 +1,17 @@
 # Release History
 
+## 1.3.0 (2024-11-06)
+
+### Features Added
+* Added API Version support. Users can now change the default API Version by setting ClientOptions.APIVersion
+
+## 1.2.0 (2024-10-21)
+
+### Features Added
+* Added CAE support
+* Client requests tokens from the Vault's tenant, overriding any credential default
+  (thanks @francescomari)
+
 ## 1.1.0 (2024-02-13)
 
 ### Other Changes

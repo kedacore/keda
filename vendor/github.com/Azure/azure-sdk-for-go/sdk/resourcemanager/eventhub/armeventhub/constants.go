@@ -10,7 +10,7 @@ package armeventhub
 
 const (
 	moduleName    = "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub"
-	moduleVersion = "v1.2.0"
+	moduleVersion = "v1.3.0"
 )
 
 type AccessRights string
@@ -27,6 +27,52 @@ func PossibleAccessRightsValues() []AccessRights {
 		AccessRightsListen,
 		AccessRightsManage,
 		AccessRightsSend,
+	}
+}
+
+// ApplicationGroupPolicyType - Application Group Policy types
+type ApplicationGroupPolicyType string
+
+const (
+	ApplicationGroupPolicyTypeThrottlingPolicy ApplicationGroupPolicyType = "ThrottlingPolicy"
+)
+
+// PossibleApplicationGroupPolicyTypeValues returns the possible values for the ApplicationGroupPolicyType const type.
+func PossibleApplicationGroupPolicyTypeValues() []ApplicationGroupPolicyType {
+	return []ApplicationGroupPolicyType{
+		ApplicationGroupPolicyTypeThrottlingPolicy,
+	}
+}
+
+// CaptureIdentityType - Type of Azure Active Directory Managed Identity.
+type CaptureIdentityType string
+
+const (
+	CaptureIdentityTypeSystemAssigned CaptureIdentityType = "SystemAssigned"
+	CaptureIdentityTypeUserAssigned   CaptureIdentityType = "UserAssigned"
+)
+
+// PossibleCaptureIdentityTypeValues returns the possible values for the CaptureIdentityType const type.
+func PossibleCaptureIdentityTypeValues() []CaptureIdentityType {
+	return []CaptureIdentityType{
+		CaptureIdentityTypeSystemAssigned,
+		CaptureIdentityTypeUserAssigned,
+	}
+}
+
+// CleanupPolicyRetentionDescription - Enumerates the possible values for cleanup policy
+type CleanupPolicyRetentionDescription string
+
+const (
+	CleanupPolicyRetentionDescriptionCompact CleanupPolicyRetentionDescription = "Compact"
+	CleanupPolicyRetentionDescriptionDelete  CleanupPolicyRetentionDescription = "Delete"
+)
+
+// PossibleCleanupPolicyRetentionDescriptionValues returns the possible values for the CleanupPolicyRetentionDescription const type.
+func PossibleCleanupPolicyRetentionDescriptionValues() []CleanupPolicyRetentionDescription {
+	return []CleanupPolicyRetentionDescription{
+		CleanupPolicyRetentionDescriptionCompact,
+		CleanupPolicyRetentionDescriptionDelete,
 	}
 }
 
@@ -187,6 +233,27 @@ func PossibleManagedServiceIdentityTypeValues() []ManagedServiceIdentityType {
 	}
 }
 
+// MetricID - Metric Id on which the throttle limit should be set, MetricId can be discovered by hovering over Metric in the
+// Metrics section of Event Hub Namespace inside Azure Portal
+type MetricID string
+
+const (
+	MetricIDIncomingBytes    MetricID = "IncomingBytes"
+	MetricIDIncomingMessages MetricID = "IncomingMessages"
+	MetricIDOutgoingBytes    MetricID = "OutgoingBytes"
+	MetricIDOutgoingMessages MetricID = "OutgoingMessages"
+)
+
+// PossibleMetricIDValues returns the possible values for the MetricID const type.
+func PossibleMetricIDValues() []MetricID {
+	return []MetricID{
+		MetricIDIncomingBytes,
+		MetricIDIncomingMessages,
+		MetricIDOutgoingBytes,
+		MetricIDOutgoingMessages,
+	}
+}
+
 // NetworkRuleIPAction - The IP Filter Action
 type NetworkRuleIPAction string
 
@@ -198,6 +265,56 @@ const (
 func PossibleNetworkRuleIPActionValues() []NetworkRuleIPAction {
 	return []NetworkRuleIPAction{
 		NetworkRuleIPActionAllow,
+	}
+}
+
+// NetworkSecurityPerimeterConfigurationProvisioningState - Provisioning state of NetworkSecurityPerimeter configuration propagation
+type NetworkSecurityPerimeterConfigurationProvisioningState string
+
+const (
+	NetworkSecurityPerimeterConfigurationProvisioningStateAccepted            NetworkSecurityPerimeterConfigurationProvisioningState = "Accepted"
+	NetworkSecurityPerimeterConfigurationProvisioningStateCanceled            NetworkSecurityPerimeterConfigurationProvisioningState = "Canceled"
+	NetworkSecurityPerimeterConfigurationProvisioningStateCreating            NetworkSecurityPerimeterConfigurationProvisioningState = "Creating"
+	NetworkSecurityPerimeterConfigurationProvisioningStateDeleted             NetworkSecurityPerimeterConfigurationProvisioningState = "Deleted"
+	NetworkSecurityPerimeterConfigurationProvisioningStateDeleting            NetworkSecurityPerimeterConfigurationProvisioningState = "Deleting"
+	NetworkSecurityPerimeterConfigurationProvisioningStateFailed              NetworkSecurityPerimeterConfigurationProvisioningState = "Failed"
+	NetworkSecurityPerimeterConfigurationProvisioningStateInvalidResponse     NetworkSecurityPerimeterConfigurationProvisioningState = "InvalidResponse"
+	NetworkSecurityPerimeterConfigurationProvisioningStateSucceeded           NetworkSecurityPerimeterConfigurationProvisioningState = "Succeeded"
+	NetworkSecurityPerimeterConfigurationProvisioningStateSucceededWithIssues NetworkSecurityPerimeterConfigurationProvisioningState = "SucceededWithIssues"
+	NetworkSecurityPerimeterConfigurationProvisioningStateUnknown             NetworkSecurityPerimeterConfigurationProvisioningState = "Unknown"
+	NetworkSecurityPerimeterConfigurationProvisioningStateUpdating            NetworkSecurityPerimeterConfigurationProvisioningState = "Updating"
+)
+
+// PossibleNetworkSecurityPerimeterConfigurationProvisioningStateValues returns the possible values for the NetworkSecurityPerimeterConfigurationProvisioningState const type.
+func PossibleNetworkSecurityPerimeterConfigurationProvisioningStateValues() []NetworkSecurityPerimeterConfigurationProvisioningState {
+	return []NetworkSecurityPerimeterConfigurationProvisioningState{
+		NetworkSecurityPerimeterConfigurationProvisioningStateAccepted,
+		NetworkSecurityPerimeterConfigurationProvisioningStateCanceled,
+		NetworkSecurityPerimeterConfigurationProvisioningStateCreating,
+		NetworkSecurityPerimeterConfigurationProvisioningStateDeleted,
+		NetworkSecurityPerimeterConfigurationProvisioningStateDeleting,
+		NetworkSecurityPerimeterConfigurationProvisioningStateFailed,
+		NetworkSecurityPerimeterConfigurationProvisioningStateInvalidResponse,
+		NetworkSecurityPerimeterConfigurationProvisioningStateSucceeded,
+		NetworkSecurityPerimeterConfigurationProvisioningStateSucceededWithIssues,
+		NetworkSecurityPerimeterConfigurationProvisioningStateUnknown,
+		NetworkSecurityPerimeterConfigurationProvisioningStateUpdating,
+	}
+}
+
+// NspAccessRuleDirection - Direction of Access Rule
+type NspAccessRuleDirection string
+
+const (
+	NspAccessRuleDirectionInbound  NspAccessRuleDirection = "Inbound"
+	NspAccessRuleDirectionOutbound NspAccessRuleDirection = "Outbound"
+)
+
+// PossibleNspAccessRuleDirectionValues returns the possible values for the NspAccessRuleDirection const type.
+func PossibleNspAccessRuleDirectionValues() []NspAccessRuleDirection {
+	return []NspAccessRuleDirection{
+		NspAccessRuleDirectionInbound,
+		NspAccessRuleDirectionOutbound,
 	}
 }
 
@@ -221,6 +338,34 @@ func PossiblePrivateLinkConnectionStatusValues() []PrivateLinkConnectionStatus {
 	}
 }
 
+// ProvisioningState - Provisioning state of the Cluster.
+type ProvisioningState string
+
+const (
+	ProvisioningStateActive    ProvisioningState = "Active"
+	ProvisioningStateCanceled  ProvisioningState = "Canceled"
+	ProvisioningStateCreating  ProvisioningState = "Creating"
+	ProvisioningStateDeleting  ProvisioningState = "Deleting"
+	ProvisioningStateFailed    ProvisioningState = "Failed"
+	ProvisioningStateScaling   ProvisioningState = "Scaling"
+	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
+	ProvisioningStateUnknown   ProvisioningState = "Unknown"
+)
+
+// PossibleProvisioningStateValues returns the possible values for the ProvisioningState const type.
+func PossibleProvisioningStateValues() []ProvisioningState {
+	return []ProvisioningState{
+		ProvisioningStateActive,
+		ProvisioningStateCanceled,
+		ProvisioningStateCreating,
+		ProvisioningStateDeleting,
+		ProvisioningStateFailed,
+		ProvisioningStateScaling,
+		ProvisioningStateSucceeded,
+		ProvisioningStateUnknown,
+	}
+}
+
 // ProvisioningStateDR - Provisioning state of the Alias(Disaster Recovery configuration) - possible values 'Accepted' or
 // 'Succeeded' or 'Failed'
 type ProvisioningStateDR string
@@ -240,12 +385,33 @@ func PossibleProvisioningStateDRValues() []ProvisioningStateDR {
 	}
 }
 
-// PublicNetworkAccessFlag - This determines if traffic is allowed over public network. By default it is enabled.
+// PublicNetworkAccess - This determines if traffic is allowed over public network. By default it is enabled.
+type PublicNetworkAccess string
+
+const (
+	PublicNetworkAccessDisabled           PublicNetworkAccess = "Disabled"
+	PublicNetworkAccessEnabled            PublicNetworkAccess = "Enabled"
+	PublicNetworkAccessSecuredByPerimeter PublicNetworkAccess = "SecuredByPerimeter"
+)
+
+// PossiblePublicNetworkAccessValues returns the possible values for the PublicNetworkAccess const type.
+func PossiblePublicNetworkAccessValues() []PublicNetworkAccess {
+	return []PublicNetworkAccess{
+		PublicNetworkAccessDisabled,
+		PublicNetworkAccessEnabled,
+		PublicNetworkAccessSecuredByPerimeter,
+	}
+}
+
+// PublicNetworkAccessFlag - This determines if traffic is allowed over public network. By default it is enabled. If value
+// is SecuredByPerimeter then Inbound and Outbound communication is controlled by the network security
+// perimeter and profile's access rules.
 type PublicNetworkAccessFlag string
 
 const (
-	PublicNetworkAccessFlagDisabled PublicNetworkAccessFlag = "Disabled"
-	PublicNetworkAccessFlagEnabled  PublicNetworkAccessFlag = "Enabled"
+	PublicNetworkAccessFlagDisabled           PublicNetworkAccessFlag = "Disabled"
+	PublicNetworkAccessFlagEnabled            PublicNetworkAccessFlag = "Enabled"
+	PublicNetworkAccessFlagSecuredByPerimeter PublicNetworkAccessFlag = "SecuredByPerimeter"
 )
 
 // PossiblePublicNetworkAccessFlagValues returns the possible values for the PublicNetworkAccessFlag const type.
@@ -253,6 +419,29 @@ func PossiblePublicNetworkAccessFlagValues() []PublicNetworkAccessFlag {
 	return []PublicNetworkAccessFlag{
 		PublicNetworkAccessFlagDisabled,
 		PublicNetworkAccessFlagEnabled,
+		PublicNetworkAccessFlagSecuredByPerimeter,
+	}
+}
+
+// ResourceAssociationAccessMode - Access Mode of the resource association
+type ResourceAssociationAccessMode string
+
+const (
+	ResourceAssociationAccessModeAuditMode         ResourceAssociationAccessMode = "AuditMode"
+	ResourceAssociationAccessModeEnforcedMode      ResourceAssociationAccessMode = "EnforcedMode"
+	ResourceAssociationAccessModeLearningMode      ResourceAssociationAccessMode = "LearningMode"
+	ResourceAssociationAccessModeNoAssociationMode ResourceAssociationAccessMode = "NoAssociationMode"
+	ResourceAssociationAccessModeUnspecifiedMode   ResourceAssociationAccessMode = "UnspecifiedMode"
+)
+
+// PossibleResourceAssociationAccessModeValues returns the possible values for the ResourceAssociationAccessMode const type.
+func PossibleResourceAssociationAccessModeValues() []ResourceAssociationAccessMode {
+	return []ResourceAssociationAccessMode{
+		ResourceAssociationAccessModeAuditMode,
+		ResourceAssociationAccessModeEnforcedMode,
+		ResourceAssociationAccessModeLearningMode,
+		ResourceAssociationAccessModeNoAssociationMode,
+		ResourceAssociationAccessModeUnspecifiedMode,
 	}
 }
 
@@ -339,6 +528,24 @@ func PossibleSchemaTypeValues() []SchemaType {
 	return []SchemaType{
 		SchemaTypeAvro,
 		SchemaTypeUnknown,
+	}
+}
+
+// TLSVersion - The minimum TLS version for the cluster to support, e.g. '1.2'
+type TLSVersion string
+
+const (
+	TLSVersionOne0 TLSVersion = "1.0"
+	TLSVersionOne1 TLSVersion = "1.1"
+	TLSVersionOne2 TLSVersion = "1.2"
+)
+
+// PossibleTLSVersionValues returns the possible values for the TLSVersion const type.
+func PossibleTLSVersionValues() []TLSVersion {
+	return []TLSVersion{
+		TLSVersionOne0,
+		TLSVersionOne1,
+		TLSVersionOne2,
 	}
 }
 

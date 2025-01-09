@@ -14,15 +14,17 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 
+	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/auth/internal/gssapi"
 )
 
 // GSSAPI is the mechanism name for GSSAPI.
 const GSSAPI = "GSSAPI"
 
-func newGSSAPIAuthenticator(cred *Cred) (Authenticator, error) {
-	if cred.Source != "" && cred.Source != "$external" {
+func newGSSAPIAuthenticator(cred *Cred, _ *http.Client) (Authenticator, error) {
+	if cred.Source != "" && cred.Source != sourceExternal {
 		return nil, newAuthError("GSSAPI source must be empty or $external", nil)
 	}
 
@@ -55,5 +57,10 @@ func (a *GSSAPIAuthenticator) Auth(ctx context.Context, cfg *Config) error {
 	if err != nil {
 		return newAuthError("error creating gssapi", err)
 	}
-	return ConductSaslConversation(ctx, cfg, "$external", client)
+	return ConductSaslConversation(ctx, cfg, sourceExternal, client)
+}
+
+// Reauth reauthenticates the connection.
+func (a *GSSAPIAuthenticator) Reauth(_ context.Context, _ *driver.AuthConfig) error {
+	return newAuthError("GSSAPI does not support reauthentication", nil)
 }

@@ -3,12 +3,10 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"log"
-	"strconv"
 
 	"github.com/go-logr/logr"
-	"github.com/newrelic/newrelic-client-go/newrelic"
-	"github.com/newrelic/newrelic-client-go/pkg/nrdb"
+	"github.com/newrelic/newrelic-client-go/v2/newrelic"
+	"github.com/newrelic/newrelic-client-go/v2/pkg/nrdb"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -17,31 +15,25 @@ import (
 )
 
 const (
-	account           = "account"
-	queryKeyParamater = "queryKey"
-	regionParameter   = "region"
-	nrql              = "nrql"
-	threshold         = "threshold"
-	noDataError       = "noDataError"
-	scalerName        = "new-relic"
+	scalerName = "new-relic"
 )
 
 type newrelicScaler struct {
 	metricType v2.MetricTargetType
-	metadata   *newrelicMetadata
+	metadata   newrelicMetadata
 	nrClient   *newrelic.NewRelic
 	logger     logr.Logger
 }
 
 type newrelicMetadata struct {
-	account             int
-	region              string
-	queryKey            string
-	noDataError         bool
-	nrql                string
-	threshold           float64
-	activationThreshold float64
-	triggerIndex        int
+	Account             int     `keda:"name=account,             order=authParams;triggerMetadata"`
+	Region              string  `keda:"name=region,              order=authParams;triggerMetadata, default=US"`
+	QueryKey            string  `keda:"name=queryKey,            order=authParams;triggerMetadata"`
+	NoDataError         bool    `keda:"name=noDataError,         order=triggerMetadata, default=false"`
+	NRQL                string  `keda:"name=nrql,                order=triggerMetadata"`
+	Threshold           float64 `keda:"name=threshold,           order=triggerMetadata"`
+	ActivationThreshold float64 `keda:"name=activationThreshold, order=triggerMetadata, default=0"`
+	TriggerIndex        int
 }
 
 func NewNewRelicScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
@@ -52,100 +44,41 @@ func NewNewRelicScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	logger := InitializeLogger(config, fmt.Sprintf("%s_scaler", scalerName))
 
-	meta, err := parseNewRelicMetadata(config, logger)
+	meta, err := parseNewRelicMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing %s metadata: %w", scalerName, err)
 	}
 
 	nrClient, err := newrelic.New(
-		newrelic.ConfigPersonalAPIKey(meta.queryKey),
-		newrelic.ConfigRegion(meta.region))
-
+		newrelic.ConfigPersonalAPIKey(meta.QueryKey),
+		newrelic.ConfigRegion(meta.Region))
 	if err != nil {
-		log.Fatal("error initializing client:", err)
+		return nil, fmt.Errorf("error initializing client: %w", err)
 	}
 
-	logMsg := fmt.Sprintf("Initializing New Relic Scaler (account %d in region %s)", meta.account, meta.region)
-
-	logger.Info(logMsg)
+	logger.Info(fmt.Sprintf("Initializing New Relic Scaler (account %d in region %s)", meta.Account, meta.Region))
 
 	return &newrelicScaler{
 		metricType: metricType,
 		metadata:   meta,
 		nrClient:   nrClient,
-		logger:     logger}, nil
+		logger:     logger,
+	}, nil
 }
 
-func parseNewRelicMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*newrelicMetadata, error) {
+func parseNewRelicMetadata(config *scalersconfig.ScalerConfig) (newrelicMetadata, error) {
 	meta := newrelicMetadata{}
-	var err error
-
-	val, err := GetFromAuthOrMeta(config, account)
+	err := config.TypedConfig(&meta)
 	if err != nil {
-		return nil, err
+		return meta, fmt.Errorf("error parsing newrelic metadata: %w", err)
 	}
 
-	t, err := strconv.Atoi(val)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing %s: %w", account, err)
-	}
-	meta.account = t
-
-	if val, ok := config.TriggerMetadata[nrql]; ok && val != "" {
-		meta.nrql = val
-	} else {
-		return nil, fmt.Errorf("no %s given", nrql)
+	if config.AsMetricSource {
+		meta.Threshold = 0
 	}
 
-	queryKey, err := GetFromAuthOrMeta(config, queryKeyParamater)
-	if err != nil {
-		return nil, err
-	}
-	meta.queryKey = queryKey
-
-	region, err := GetFromAuthOrMeta(config, regionParameter)
-	if err != nil {
-		region = "US"
-		logger.Info("Using default 'US' region")
-	}
-	meta.region = region
-
-	if val, ok := config.TriggerMetadata[threshold]; ok && val != "" {
-		t, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing %s", threshold)
-		}
-		meta.threshold = t
-	} else {
-		if config.AsMetricSource {
-			meta.threshold = 0
-		} else {
-			return nil, fmt.Errorf("missing %s value", threshold)
-		}
-	}
-
-	meta.activationThreshold = 0
-	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
-		activationThreshold, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %w", err)
-		}
-		meta.activationThreshold = activationThreshold
-	}
-
-	// If Query Return an Empty Data , shall we treat it as an error or not
-	// default is NO error is returned when query result is empty/no data
-	if val, ok := config.TriggerMetadata[noDataError]; ok {
-		noDataError, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("noDataError has invalid value")
-		}
-		meta.noDataError = noDataError
-	} else {
-		meta.noDataError = false
-	}
-	meta.triggerIndex = config.TriggerIndex
-	return &meta, nil
+	meta.TriggerIndex = config.TriggerIndex
+	return meta, nil
 }
 
 func (s *newrelicScaler) Close(context.Context) error {
@@ -153,27 +86,27 @@ func (s *newrelicScaler) Close(context.Context) error {
 }
 
 func (s *newrelicScaler) executeNewRelicQuery(ctx context.Context) (float64, error) {
-	nrdbQuery := nrdb.NRQL(s.metadata.nrql)
-	resp, err := s.nrClient.Nrdb.QueryWithContext(ctx, s.metadata.account, nrdbQuery)
+	nrdbQuery := nrdb.NRQL(s.metadata.NRQL)
+	resp, err := s.nrClient.Nrdb.QueryWithContext(ctx, s.metadata.Account, nrdbQuery)
 	if err != nil {
-		return 0, fmt.Errorf("error running NRQL %s (%s)", s.metadata.nrql, err.Error())
+		return 0, fmt.Errorf("error running NRQL %s: %w", s.metadata.NRQL, err)
 	}
-	// Check for empty results set, as New Relic lib does not report these as errors
+
 	if len(resp.Results) == 0 {
-		if s.metadata.noDataError {
-			return 0, fmt.Errorf("query return no results %s", s.metadata.nrql)
+		if s.metadata.NoDataError {
+			return 0, fmt.Errorf("query returned no results: %s", s.metadata.NRQL)
 		}
 		return 0, nil
 	}
 	// Only use the first result from the query, as the query should not be multi row
 	for _, v := range resp.Results[0] {
-		val, ok := v.(float64)
-		if ok {
+		if val, ok := v.(float64); ok {
 			return val, nil
 		}
 	}
-	if s.metadata.noDataError {
-		return 0, fmt.Errorf("query return no results %s", s.metadata.nrql)
+
+	if s.metadata.NoDataError {
+		return 0, fmt.Errorf("query returned no numeric results: %s", s.metadata.NRQL)
 	}
 	return 0, nil
 }
@@ -186,21 +119,17 @@ func (s *newrelicScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	}
 
 	metric := GenerateMetricInMili(metricName, val)
-
-	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationThreshold, nil
+	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.ActivationThreshold, nil
 }
 
 func (s *newrelicScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	metricName := kedautil.NormalizeString(scalerName)
-
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
+			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, metricName),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.Threshold),
 	}
-	metricSpec := v2.MetricSpec{
-		External: externalMetric, Type: externalMetricType,
-	}
+	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
 }

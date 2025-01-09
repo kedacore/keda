@@ -41,22 +41,24 @@ var scaledobjectsKind = v1alpha1.SchemeGroupVersion.WithKind("ScaledObject")
 
 // Get takes name of the scaledObject, and returns the corresponding scaledObject object, and an error if there is any.
 func (c *FakeScaledObjects) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ScaledObject, err error) {
+	emptyResult := &v1alpha1.ScaledObject{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(scaledobjectsResource, c.ns, name), &v1alpha1.ScaledObject{})
+		Invokes(testing.NewGetActionWithOptions(scaledobjectsResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScaledObject), err
 }
 
 // List takes label and field selectors, and returns the list of ScaledObjects that match those selectors.
 func (c *FakeScaledObjects) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ScaledObjectList, err error) {
+	emptyResult := &v1alpha1.ScaledObjectList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(scaledobjectsResource, scaledobjectsKind, c.ns, opts), &v1alpha1.ScaledObjectList{})
+		Invokes(testing.NewListActionWithOptions(scaledobjectsResource, scaledobjectsKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -75,40 +77,43 @@ func (c *FakeScaledObjects) List(ctx context.Context, opts v1.ListOptions) (resu
 // Watch returns a watch.Interface that watches the requested scaledObjects.
 func (c *FakeScaledObjects) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(scaledobjectsResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(scaledobjectsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a scaledObject and creates it.  Returns the server's representation of the scaledObject, and an error, if there is any.
 func (c *FakeScaledObjects) Create(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.CreateOptions) (result *v1alpha1.ScaledObject, err error) {
+	emptyResult := &v1alpha1.ScaledObject{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(scaledobjectsResource, c.ns, scaledObject), &v1alpha1.ScaledObject{})
+		Invokes(testing.NewCreateActionWithOptions(scaledobjectsResource, c.ns, scaledObject, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScaledObject), err
 }
 
 // Update takes the representation of a scaledObject and updates it. Returns the server's representation of the scaledObject, and an error, if there is any.
 func (c *FakeScaledObjects) Update(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.UpdateOptions) (result *v1alpha1.ScaledObject, err error) {
+	emptyResult := &v1alpha1.ScaledObject{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(scaledobjectsResource, c.ns, scaledObject), &v1alpha1.ScaledObject{})
+		Invokes(testing.NewUpdateActionWithOptions(scaledobjectsResource, c.ns, scaledObject, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScaledObject), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeScaledObjects) UpdateStatus(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.UpdateOptions) (*v1alpha1.ScaledObject, error) {
+func (c *FakeScaledObjects) UpdateStatus(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.UpdateOptions) (result *v1alpha1.ScaledObject, err error) {
+	emptyResult := &v1alpha1.ScaledObject{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(scaledobjectsResource, "status", c.ns, scaledObject), &v1alpha1.ScaledObject{})
+		Invokes(testing.NewUpdateSubresourceActionWithOptions(scaledobjectsResource, "status", c.ns, scaledObject, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScaledObject), err
 }
@@ -123,7 +128,7 @@ func (c *FakeScaledObjects) Delete(ctx context.Context, name string, opts v1.Del
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeScaledObjects) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(scaledobjectsResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(scaledobjectsResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.ScaledObjectList{})
 	return err
@@ -131,11 +136,12 @@ func (c *FakeScaledObjects) DeleteCollection(ctx context.Context, opts v1.Delete
 
 // Patch applies the patch and returns the patched scaledObject.
 func (c *FakeScaledObjects) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScaledObject, err error) {
+	emptyResult := &v1alpha1.ScaledObject{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(scaledobjectsResource, c.ns, name, pt, data, subresources...), &v1alpha1.ScaledObject{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(scaledobjectsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.ScaledObject), err
 }

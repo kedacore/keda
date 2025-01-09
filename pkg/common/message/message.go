@@ -17,7 +17,7 @@ limitations under the License.
 package message
 
 const (
-	ScalerIsBuiltMsg = "Scaler %s is built."
+	ScalerIsBuiltMsg = "Scaler %s is built"
 
 	ScalerStartMsg = "Started scalers watch"
 
@@ -34,4 +34,12 @@ const (
 	ScaledJobReadyMsg = "ScaledJob is ready for scaling"
 
 	ScaledJobRemoved = "ScaledJob was deleted"
+
+	TriggerAuthenticationCreatedMsg = "New TriggerAuthentication configured"
+
+	TriggerAuthenticationUpdatedMsg = "ClusterTriggerAuthentication %s is updated"
+
+	ClusterTriggerAuthenticationCreatedMsg = "New ClusterTriggerAuthentication configured"
+
+	ClusterTriggerAuthenticationUpdatedMsg = "ClusterTriggerAuthentication %s is updated"
 )

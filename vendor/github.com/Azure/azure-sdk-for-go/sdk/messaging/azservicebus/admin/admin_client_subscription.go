@@ -12,7 +12,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/atom"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/auth"
 )
 
 // SubscriptionProperties represents the static properties of the subscription.
@@ -379,8 +378,7 @@ func (ac *Client) createOrUpdateSubscriptionImpl(ctx context.Context, topicName 
 		props = &SubscriptionProperties{}
 	}
 
-	env, err := newSubscriptionEnvelope(props, ac.em.TokenProvider())
-
+	env, err := newSubscriptionEnvelope(props)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -412,7 +410,7 @@ func (ac *Client) createOrUpdateSubscriptionImpl(ctx context.Context, topicName 
 	return &item.SubscriptionProperties, resp, nil
 }
 
-func newSubscriptionEnvelope(props *SubscriptionProperties, tokenProvider auth.TokenProvider) (*atom.SubscriptionEnvelope, error) {
+func newSubscriptionEnvelope(props *SubscriptionProperties) (*atom.SubscriptionEnvelope, error) {
 	defaultRuleDescription, err := newDefaultRuleDescription(props.DefaultRule)
 
 	if err != nil {

@@ -6,10 +6,11 @@ import (
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
 
@@ -19,7 +20,7 @@ const (
 
 type authenticationReconciler interface {
 	client.Client
-	record.EventRecorder
+	eventemitter.EventHandler
 	UpdatePromMetricsOnDelete(string)
 }
 
@@ -48,13 +49,16 @@ func EnsureAuthenticationResourceFinalizer(ctx context.Context, logger logr.Logg
 
 func FinalizeAuthenticationResource(ctx context.Context, logger logr.Logger, reconciler authenticationReconciler, authResource client.Object, namespacedName string) error {
 	var authResourceType, reason string
+	var cloudEventType eventingv1alpha1.CloudEventType
 	switch authResource.(type) {
 	case *kedav1alpha1.TriggerAuthentication:
 		authResourceType = "TriggerAuthentication"
 		reason = eventreason.TriggerAuthenticationDeleted
+		cloudEventType = eventingv1alpha1.TriggerAuthenticationRemovedType
 	case *kedav1alpha1.ClusterTriggerAuthentication:
 		authResourceType = "ClusterTriggerAuthentication"
 		reason = eventreason.ClusterTriggerAuthenticationDeleted
+		cloudEventType = eventingv1alpha1.ClusterTriggerAuthenticationRemovedType
 	}
 
 	if Contains(authResource.GetFinalizers(), authenticationFinalizer) {
@@ -68,6 +72,6 @@ func FinalizeAuthenticationResource(ctx context.Context, logger logr.Logger, rec
 	}
 
 	logger.Info(fmt.Sprintf("Successfully finalized %s", authResourceType))
-	reconciler.Event(authResource, corev1.EventTypeNormal, reason, fmt.Sprintf("%s was deleted", authResourceType))
+	reconciler.Emit(authResource, namespacedName, corev1.EventTypeNormal, cloudEventType, reason, fmt.Sprintf("%s was deleted", authResourceType))
 	return nil
 }

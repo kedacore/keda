@@ -294,7 +294,7 @@ func (keystone *KeystoneAuthRequest) getToken(ctx context.Context) (string, erro
 		return "", err
 	}
 
-	return "", fmt.Errorf(string(errBody))
+	return "", fmt.Errorf("%s", string(errBody))
 }
 
 // getCatalog retrives the OpenStack catalog according to the current authorization
@@ -343,7 +343,7 @@ func (keystone *KeystoneAuthRequest) getCatalog(ctx context.Context, token strin
 		return nil, err
 	}
 
-	return nil, fmt.Errorf(string(errBody))
+	return nil, fmt.Errorf("%s", string(errBody))
 }
 
 // getServiceURL retrieves a public URL for an OpenStack project from the OpenStack catalog

@@ -100,8 +100,11 @@ func TestScalingStrategy(t *testing.T) {
 	})
 
 	RMQInstall(t, kc, rmqNamespace, user, password, vhost, WithoutOAuth())
-	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+	// Publish 0 messges but create the queue
+	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, 0)
+	WaitForAllJobsSuccess(t, kc, rmqNamespace, 60, 1)
 
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 	testEagerScaling(t, kc)
 }
 
@@ -121,14 +124,17 @@ func getTemplateData() (templateData, []Template) {
 func testEagerScaling(t *testing.T, kc *kubernetes.Clientset) {
 	iterationCount := 20
 	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, 4)
+	WaitForAllJobsSuccess(t, kc, rmqNamespace, 60, 1)
 	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 4, iterationCount, 1),
 		"job count should be %d after %d iterations", 4, iterationCount)
 
 	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, 4)
+	WaitForAllJobsSuccess(t, kc, rmqNamespace, 60, 1)
 	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 8, iterationCount, 1),
 		"job count should be %d after %d iterations", 8, iterationCount)
 
-	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, 4)
+	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, 8)
+	WaitForAllJobsSuccess(t, kc, rmqNamespace, 60, 1)
 	assert.True(t, WaitForScaledJobCount(t, kc, scaledJobName, testNamespace, 10, iterationCount, 1),
 		"job count should be %d after %d iterations", 10, iterationCount)
 }

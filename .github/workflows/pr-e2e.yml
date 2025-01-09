@@ -10,15 +10,16 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     name: Comment evaluate
+    container: ghcr.io/kedacore/keda-tools:1.23.3
     outputs:
       run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
       pr_num: ${{ steps.parser.outputs.pr_num }}
       image_tag: "pr-${{ steps.parser.outputs.pr_num }}-${{ steps.parser.outputs.commit_sha }}"
       commit_sha: ${{ steps.parser.outputs.commit_sha }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
-      - uses: tspascoal/get-user-teams-membership@v2
+      - uses: tspascoal/get-user-teams-membership@57e9f42acd78f4d0f496b3be4368fc5f62696662 # v3.0.0
         id: checkUserMember
         with:
           username: ${{ github.actor }}
@@ -68,7 +69,7 @@ jobs:
     needs: triage
     runs-on: ubuntu-latest
     name: Build images
-    container: ghcr.io/kedacore/keda-tools:1.22.5
+    container: ghcr.io/kedacore/keda-tools:1.23.3
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -80,7 +81,7 @@ jobs:
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -108,7 +109,7 @@ jobs:
           make e2e-regex-check
 
       - name: React to comment with failure
-        uses: dkershner6/reaction-action@v2
+        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
         if: steps.regex-validation.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -130,12 +131,12 @@ jobs:
         run: exit 1
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
           # Password or personal access token used to log in to a Docker registry. If not set then no login will occur
-          password: ${{ secrets.GHCR_AUTH_PAT }}
+          password: ${{ secrets.GH_AUTOMATION_PAT }}
           # Server address of Docker registry. If not set then will default to Docker Hub
           registry: ghcr.io
 
@@ -146,9 +147,9 @@ jobs:
 
   run-test:
     needs: [triage, build-test-images]
-    runs-on: equinix-keda-runner
+    runs-on: e2e
     name: Execute e2e tests
-    container: ghcr.io/kedacore/keda-tools:1.22.5
+    container: ghcr.io/kedacore/keda-tools:1.23.3
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -160,7 +161,7 @@ jobs:
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -173,14 +174,14 @@ jobs:
           gh pr checkout ${{ needs.triage.outputs.pr_num }}
           git checkout ${{ needs.triage.outputs.commit_sha }}
 
-      - uses: oNaiPs/secrets-to-env-action@v1
+      - uses: oNaiPs/secrets-to-env-action@ec46a22bfc9b37e014b627b3208b07eb8909ea0f # v1.5
         with:
           secrets: ${{ toJSON(secrets) }}
 
       - name: Scale cluster
         run: make scale-node-pool
         env:
-          NODE_POOL_SIZE: 2
+          NODE_POOL_SIZE: 3
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
 
       - name: Run end to end tests
@@ -218,7 +219,7 @@ jobs:
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
 
       - name: React to comment with success
-        uses: dkershner6/reaction-action@v2
+        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
         if: steps.test.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -236,7 +237,7 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
       - name: React to comment with failure
-        uses: dkershner6/reaction-action@v2
+        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
         if: steps.test.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -254,7 +255,7 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
       - name: Upload test logs
-        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4
         with:
           name: e2e-test-logs
           path: "${{ github.workspace }}/**/*.log"

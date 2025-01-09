@@ -102,7 +102,7 @@ func NewRPCLink(ctx context.Context, args RPCLinkArgs) (amqpwrap.RPCLink, error)
 
 	link := &rpcLink{
 		session:       session,
-		clientAddress: strings.Replace("$", "", args.Address, -1) + replyPostfix + id,
+		clientAddress: strings.ReplaceAll("$", "", args.Address) + replyPostfix + id,
 		id:            id,
 
 		uuidNewV4:            uuid.New,
@@ -125,6 +125,10 @@ func NewRPCLink(ctx context.Context, args RPCLinkArgs) (amqpwrap.RPCLink, error)
 	receiverOpts := &amqp.ReceiverOptions{
 		TargetAddress: link.clientAddress,
 		Credit:        defaultReceiverCredits,
+
+		// set our receiver link into the "receive and delete" mode - messages arrive pre-settled.
+		SettlementMode:            amqp.ReceiverSettleModeFirst.Ptr(),
+		RequestedSenderSettleMode: amqp.SenderSettleModeSettled.Ptr(),
 	}
 
 	if link.sessionID != nil {
@@ -304,10 +308,6 @@ func (l *rpcLink) internalRPC(ctx context.Context, msg *amqp.Message) (*amqpwrap
 		Code:        int(statusCode),
 		Description: description,
 		Message:     res,
-	}
-
-	if err := l.receiver.AcceptMessage(ctx, res); err != nil {
-		return response, fmt.Errorf("failed accepting message on rpc link: %w", err)
 	}
 
 	var rpcErr RPCError

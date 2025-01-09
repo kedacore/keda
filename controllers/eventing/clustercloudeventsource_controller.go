@@ -54,7 +54,7 @@ func NewClusterCloudEventSourceReconciler(c client.Client, e eventemitter.EventH
 	}
 }
 
-// +kubebuilder:rbac:groups=eventing.keda.sh,resources=clustercloudeventsources;clustercloudeventsources/status,verbs="*"
+// +kubebuilder:rbac:groups=eventing.keda.sh,resources=clustercloudeventsources;clustercloudeventsources/status,verbs=get;list;watch;update;patch
 
 // Reconcile performs reconciliation on the identified EventSource resource based on the request information passed, returns the result and an error (if any).
 func (r *ClusterCloudEventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

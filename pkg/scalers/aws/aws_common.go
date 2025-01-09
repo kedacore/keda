@@ -39,43 +39,33 @@ import (
 // ErrAwsNoAccessKey is returned when awsAccessKeyID is missing.
 var ErrAwsNoAccessKey = errors.New("awsAccessKeyID not found")
 
-type awsConfigMetadata struct {
-	awsRegion        string
-	awsAuthorization AuthorizationMetadata
-}
-
 var awsSharedCredentialsCache = newSharedConfigsCache()
 
 // GetAwsConfig returns an *aws.Config for a given AuthorizationMetadata
 // If AuthorizationMetadata uses static credentials or `aws` auth,
 // we recover the *aws.Config from the shared cache. If not, we generate
 // a new entry on each request
-func GetAwsConfig(ctx context.Context, awsRegion string, awsAuthorization AuthorizationMetadata) (*aws.Config, error) {
-	metadata := &awsConfigMetadata{
-		awsRegion:        awsRegion,
-		awsAuthorization: awsAuthorization,
-	}
-
-	if metadata.awsAuthorization.UsingPodIdentity ||
-		(metadata.awsAuthorization.AwsAccessKeyID != "" && metadata.awsAuthorization.AwsSecretAccessKey != "") {
-		return awsSharedCredentialsCache.GetCredentials(ctx, metadata.awsRegion, metadata.awsAuthorization)
+func GetAwsConfig(ctx context.Context, awsAuthorization AuthorizationMetadata) (*aws.Config, error) {
+	if awsAuthorization.UsingPodIdentity ||
+		(awsAuthorization.AwsAccessKeyID != "" && awsAuthorization.AwsSecretAccessKey != "") {
+		return awsSharedCredentialsCache.GetCredentials(ctx, awsAuthorization)
 	}
 
 	// TODO, remove when aws-eks are removed
 	configOptions := make([]func(*config.LoadOptions) error, 0)
-	configOptions = append(configOptions, config.WithRegion(metadata.awsRegion))
+	configOptions = append(configOptions, config.WithRegion(awsAuthorization.AwsRegion))
 	cfg, err := config.LoadDefaultConfig(ctx, configOptions...)
 	if err != nil {
 		return nil, err
 	}
 
-	if !metadata.awsAuthorization.PodIdentityOwner {
+	if !awsAuthorization.PodIdentityOwner {
 		return &cfg, nil
 	}
 
-	if metadata.awsAuthorization.AwsRoleArn != "" {
+	if awsAuthorization.AwsRoleArn != "" {
 		stsSvc := sts.NewFromConfig(cfg)
-		stsCredentialProvider := stscreds.NewAssumeRoleProvider(stsSvc, metadata.awsAuthorization.AwsRoleArn, func(_ *stscreds.AssumeRoleOptions) {})
+		stsCredentialProvider := stscreds.NewAssumeRoleProvider(stsSvc, awsAuthorization.AwsRoleArn, func(_ *stscreds.AssumeRoleOptions) {})
 		cfg.Credentials = aws.NewCredentialsCache(stsCredentialProvider)
 	}
 	return &cfg, err
@@ -83,9 +73,10 @@ func GetAwsConfig(ctx context.Context, awsRegion string, awsAuthorization Author
 }
 
 // GetAwsAuthorization returns an AuthorizationMetadata based on trigger information
-func GetAwsAuthorization(uniqueKey string, podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata, authParams, resolvedEnv map[string]string) (AuthorizationMetadata, error) {
+func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.AuthPodIdentity, triggerMetadata, authParams, resolvedEnv map[string]string) (AuthorizationMetadata, error) {
 	meta := AuthorizationMetadata{
 		TriggerUniqueKey: uniqueKey,
+		AwsRegion:        awsRegion,
 	}
 
 	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAws {
@@ -95,6 +86,7 @@ func GetAwsAuthorization(uniqueKey string, podIdentity kedav1alpha1.AuthPodIdent
 		}
 		return meta, nil
 	}
+
 	// TODO, remove all the logic below and just keep the logic for
 	// parsing awsAccessKeyID, awsSecretAccessKey and awsSessionToken
 	// when aws-eks are removed

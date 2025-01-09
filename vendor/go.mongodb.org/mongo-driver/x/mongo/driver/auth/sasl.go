@@ -19,7 +19,7 @@ import (
 // SaslClient is the client piece of a sasl conversation.
 type SaslClient interface {
 	Start() (string, []byte, error)
-	Next(challenge []byte) ([]byte, error)
+	Next(ctx context.Context, challenge []byte) ([]byte, error)
 	Completed() bool
 }
 
@@ -118,7 +118,7 @@ func (sc *saslConversation) Finish(ctx context.Context, cfg *Config, firstRespon
 			return nil
 		}
 
-		payload, err = sc.client.Next(saslResp.Payload)
+		payload, err = sc.client.Next(ctx, saslResp.Payload)
 		if err != nil {
 			return newError(err, sc.mechanism)
 		}
@@ -156,7 +156,6 @@ func (sc *saslConversation) Finish(ctx context.Context, cfg *Config, firstRespon
 func ConductSaslConversation(ctx context.Context, cfg *Config, authSource string, client SaslClient) error {
 	// Create a non-speculative SASL conversation.
 	conversation := newSaslConversation(client, authSource, false)
-
 	saslStartDoc, err := conversation.FirstMessage()
 	if err != nil {
 		return newError(err, conversation.mechanism)

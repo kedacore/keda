@@ -381,16 +381,9 @@ func ReadMsgSectionSingleDocument(src []byte) (doc bsoncore.Document, rem []byte
 // ReadMsgSectionDocumentSequence reads an identifier and document sequence from src and returns the document sequence
 // data parsed into a slice of BSON documents.
 func ReadMsgSectionDocumentSequence(src []byte) (identifier string, docs []bsoncore.Document, rem []byte, ok bool) {
-	length, rem, ok := readi32(src)
-	if !ok || int(length) > len(src) {
-		return "", nil, rem, false
-	}
-
-	rem, ret := rem[:length-4], rem[length-4:] // reslice so we can just iterate a loop later
-
-	identifier, rem, ok = readcstring(rem)
+	identifier, rem, ret, ok := ReadMsgSectionRawDocumentSequence(src)
 	if !ok {
-		return "", nil, rem, false
+		return "", nil, src, false
 	}
 
 	docs = make([]bsoncore.Document, 0)
@@ -403,7 +396,7 @@ func ReadMsgSectionDocumentSequence(src []byte) (identifier string, docs []bsonc
 		docs = append(docs, doc)
 	}
 	if len(rem) > 0 {
-		return "", nil, append(rem, ret...), false
+		return "", nil, src, false
 	}
 
 	return identifier, docs, ret, true
@@ -413,8 +406,8 @@ func ReadMsgSectionDocumentSequence(src []byte) (identifier string, docs []bsonc
 // sequence data.
 func ReadMsgSectionRawDocumentSequence(src []byte) (identifier string, data []byte, rem []byte, ok bool) {
 	length, rem, ok := readi32(src)
-	if !ok || int(length) > len(src) {
-		return "", nil, rem, false
+	if !ok || int(length) > len(src) || length-4 < 0 {
+		return "", nil, src, false
 	}
 
 	// After these assignments, rem will be the data containing the identifier string + the document sequence bytes and
@@ -423,7 +416,7 @@ func ReadMsgSectionRawDocumentSequence(src []byte) (identifier string, data []by
 
 	identifier, rem, ok = readcstring(rem)
 	if !ok {
-		return "", nil, rem, false
+		return "", nil, src, false
 	}
 
 	return identifier, rem, rest, true
@@ -544,14 +537,6 @@ func ReadCompressedCompressorID(src []byte) (id CompressorID, rem []byte, ok boo
 		return 0, src, false
 	}
 	return CompressorID(src[0]), src[1:], true
-}
-
-// ReadCompressedCompressedMessage reads the compressed wiremessage to dst.
-func ReadCompressedCompressedMessage(src []byte, length int32) (msg []byte, rem []byte, ok bool) {
-	if len(src) < int(length) {
-		return nil, src, false
-	}
-	return src[:length], src[length:], true
 }
 
 // ReadKillCursorsZero reads the zero field from src.

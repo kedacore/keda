@@ -1,16 +1,16 @@
-gocql
+Apache Cassandra GoCQL Driver
 =====
 
-[![Join the chat at https://gitter.im/gocql/gocql](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/gocql/gocql?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-![go build](https://github.com/gocql/gocql/actions/workflows/main.yml/badge.svg)
+[!Join the chat at https://the-asf.slack.com/archives/C05LPRVNZV1](https://the-asf.slack.com/archives/C05LPRVNZV1)
+![go build](https://github.com/apache/cassandra-gocql-driver/actions/workflows/main.yml/badge.svg)
 [![GoDoc](https://godoc.org/github.com/gocql/gocql?status.svg)](https://godoc.org/github.com/gocql/gocql)
 
 Package gocql implements a fast and robust Cassandra client for the
 Go programming language.
 
-Project Website: https://gocql.github.io/<br>
+Project Website: https://cassandra.apache.org<br>
 API documentation: https://godoc.org/github.com/gocql/gocql<br>
-Discussions: https://groups.google.com/forum/#!forum/gocql
+Discussions: https://cassandra.apache.org/_/community.html#discussions
 
 Supported Versions
 ------------------
@@ -19,8 +19,8 @@ The following matrix shows the versions of Go and Cassandra that are tested with
 
 | Go/Cassandra | 4.0.x | 4.1.x | 
 |--------------|-------|-------|
-| 1.19         | yes   | yes   |
-| 1.20         | yes   | yes   |   
+| 1.22         | yes   | yes   |
+| 1.23         | yes   | yes   |
 
 Gocql has been tested in production against many versions of Cassandra. Due to limits in our CI setup we only
 test against the latest 2 GA releases.
@@ -28,7 +28,7 @@ test against the latest 2 GA releases.
 Sunsetting Model
 ----------------
 
-In general, the gocql team will focus on supporting the current and previous versions of Go. gocql may still work with older versions of Go, but official support for these versions will have been sunset.
+In general, the Cassandra community will focus on supporting the current and previous versions of Go. gocql may still work with older versions of Go, but official support for these versions will have been sunset.
 
 Installation
 ------------
@@ -157,10 +157,3 @@ SEO
 ---
 
 For some reason, when you Google `golang cassandra`, this project doesn't feature very highly in the result list. But if you Google `go cassandra`, then we're a bit higher up the list. So this is note to try to convince Google that golang is an alias for Go.
-
-License
--------
-
-> Copyright (c) 2012-2016 The gocql Authors. All rights reserved.
-> Use of this source code is governed by a BSD-style
-> license that can be found in the LICENSE file.

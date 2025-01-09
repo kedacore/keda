@@ -33,8 +33,9 @@ import (
 )
 
 const (
-	// Default cooldown period for a ScaleTarget if no cooldownPeriod is defined on the scaledObject
-	defaultCooldownPeriod = 5 * 60 // 5 minutes
+	// Default (initial) cooldown period for a ScaleTarget if no cooldownPeriod is defined on the scaledObject
+	defaultInitialCooldownPeriod = 0      // 0 seconds
+	defaultCooldownPeriod        = 5 * 60 // 5 minutes
 )
 
 // ScaleExecutor contains methods RequestJobScale and RequestScale

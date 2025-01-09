@@ -14,8 +14,13 @@ import (
 )
 
 type LinkRetrier[LinkT AMQPLink] struct {
-	GetLink   func(ctx context.Context, partitionID string) (LinkWithID[LinkT], error)
+	// GetLink is set to [Links.GetLink]
+	GetLink func(ctx context.Context, partitionID string) (LinkWithID[LinkT], error)
+
+	// CloseLink is set to [Links.closePartitionLinkIfMatch]
 	CloseLink func(ctx context.Context, partitionID string, linkName string) error
+
+	// NSRecover is set to [Namespace.Recover]
 	NSRecover func(ctx context.Context, connID uint64) error
 }
 
@@ -30,7 +35,6 @@ func (l LinkRetrier[LinkT]) Retry(ctx context.Context,
 	partitionID string,
 	retryOptions exported.RetryOptions,
 	fn RetryCallback[LinkT]) error {
-	didQuickRetry := false
 
 	isFatalErrorFunc := func(err error) bool {
 		return GetRecoveryKind(err) == RecoveryKindFatal
@@ -43,10 +47,6 @@ func (l LinkRetrier[LinkT]) Retry(ctx context.Context,
 	}
 
 	return utils.Retry(ctx, eventName, prefix, retryOptions, func(ctx context.Context, args *utils.RetryFnArgs) error {
-		if err := l.RecoverIfNeeded(ctx, args.LastErr); err != nil {
-			return err
-		}
-
 		linkWithID, err := l.GetLink(ctx, partitionID)
 
 		if err != nil {
@@ -56,30 +56,15 @@ func (l LinkRetrier[LinkT]) Retry(ctx context.Context,
 		currentPrefix = linkWithID.String()
 
 		if err := fn(ctx, linkWithID); err != nil {
-			if args.I == 0 && !didQuickRetry && IsQuickRecoveryError(err) {
-				// go-amqp will asynchronously handle detaches. This means errors that you get
-				// back from Send(), for instance, can actually be from much earlier in time
-				// depending on the last time you called into Send().
-				//
-				// This means we'll sometimes do an unneeded sleep after a failed retry when
-				// it would have just immediately worked. To counteract that we'll do a one-time
-				// quick attempt to recreate link immediately if we see a detach error. This might
-				// waste a bit of time attempting to do the creation, but since it's just link creation
-				// it should be fairly fast.
-				//
-				// So when we've received a detach is:
-				//   0th attempt
-				//   extra immediate 0th attempt (if last error was detach)
-				//   (actual retries)
-				//
-				// Whereas normally you'd do (for non-detach errors):
-				//   0th attempt
-				//   (actual retries)
-				azlog.Writef(exported.EventConn, "(%s, %s) Link was previously detached. Attempting quick reconnect to recover from error: %s", linkWithID.String(), operation, err.Error())
-				didQuickRetry = true
-				args.ResetAttempts()
+			if recoveryErr := l.RecoverIfNeeded(ctx, err); recoveryErr != nil {
+				// it's okay to return this error, and we're still in an okay state. The next loop through will end
+				// up reopening all the closed links and will either get the same error again (ie, network is _still_
+				// down) or will work and then things proceed as normal.
+				return recoveryErr
 			}
 
+			// it's critical that we still return the original error here (that came from fn()) and NOT nil,
+			// otherwise we'll end up terminating the retry loop.
 			return err
 		}
 
@@ -87,6 +72,8 @@ func (l LinkRetrier[LinkT]) Retry(ctx context.Context,
 	}, isFatalErrorFunc)
 }
 
+// RecoverIfNeeded will check the error and pick the correct minimal recovery pattern (none, link only, connection and link, etc..)
+// NOTE: if 'ctx' is cancelled this function will still close out all the connections/links involved.
 func (l LinkRetrier[LinkT]) RecoverIfNeeded(ctx context.Context, err error) error {
 	rk := GetRecoveryKind(err)
 

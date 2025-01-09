@@ -47,7 +47,7 @@ func NewClustersClient(subscriptionID string, credential azcore.TokenCredential,
 // BeginCreateOrUpdate - Creates or updates an instance of an Event Hubs Cluster.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - clusterName - The name of the Event Hubs Cluster.
 //   - parameters - Parameters for creating a eventhub cluster resource.
@@ -73,7 +73,7 @@ func (client *ClustersClient) BeginCreateOrUpdate(ctx context.Context, resourceG
 // CreateOrUpdate - Creates or updates an instance of an Event Hubs Cluster.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 func (client *ClustersClient) createOrUpdate(ctx context.Context, resourceGroupName string, clusterName string, parameters Cluster, options *ClustersClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
 	const operationName = "ClustersClient.BeginCreateOrUpdate"
@@ -115,7 +115,7 @@ func (client *ClustersClient) createOrUpdateCreateRequest(ctx context.Context, r
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, parameters); err != nil {
@@ -127,7 +127,7 @@ func (client *ClustersClient) createOrUpdateCreateRequest(ctx context.Context, r
 // BeginDelete - Deletes an existing Event Hubs Cluster. This operation is idempotent.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - clusterName - The name of the Event Hubs Cluster.
 //   - options - ClustersClientBeginDeleteOptions contains the optional parameters for the ClustersClient.BeginDelete method.
@@ -151,7 +151,7 @@ func (client *ClustersClient) BeginDelete(ctx context.Context, resourceGroupName
 // Delete - Deletes an existing Event Hubs Cluster. This operation is idempotent.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 func (client *ClustersClient) deleteOperation(ctx context.Context, resourceGroupName string, clusterName string, options *ClustersClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	const operationName = "ClustersClient.BeginDelete"
@@ -193,7 +193,7 @@ func (client *ClustersClient) deleteCreateRequest(ctx context.Context, resourceG
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -202,7 +202,7 @@ func (client *ClustersClient) deleteCreateRequest(ctx context.Context, resourceG
 // Get - Gets the resource description of the specified Event Hubs Cluster.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - clusterName - The name of the Event Hubs Cluster.
 //   - options - ClustersClientGetOptions contains the optional parameters for the ClustersClient.Get method.
@@ -248,7 +248,7 @@ func (client *ClustersClient) getCreateRequest(ctx context.Context, resourceGrou
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -266,7 +266,7 @@ func (client *ClustersClient) getHandleResponse(resp *http.Response) (ClustersCl
 // ListAvailableClusterRegion - List the quantity of available pre-provisioned Event Hubs Clusters, indexed by Azure region.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - options - ClustersClientListAvailableClusterRegionOptions contains the optional parameters for the ClustersClient.ListAvailableClusterRegion
 //     method.
 func (client *ClustersClient) ListAvailableClusterRegion(ctx context.Context, options *ClustersClientListAvailableClusterRegionOptions) (ClustersClientListAvailableClusterRegionResponse, error) {
@@ -303,7 +303,7 @@ func (client *ClustersClient) listAvailableClusterRegionCreateRequest(ctx contex
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -320,7 +320,7 @@ func (client *ClustersClient) listAvailableClusterRegionHandleResponse(resp *htt
 
 // NewListByResourceGroupPager - Lists the available Event Hubs Clusters within an ARM resource group
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - options - ClustersClientListByResourceGroupOptions contains the optional parameters for the ClustersClient.NewListByResourceGroupPager
 //     method.
@@ -363,7 +363,7 @@ func (client *ClustersClient) listByResourceGroupCreateRequest(ctx context.Conte
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -380,7 +380,7 @@ func (client *ClustersClient) listByResourceGroupHandleResponse(resp *http.Respo
 
 // NewListBySubscriptionPager - Lists the available Event Hubs Clusters within an ARM resource group
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - options - ClustersClientListBySubscriptionOptions contains the optional parameters for the ClustersClient.NewListBySubscriptionPager
 //     method.
 func (client *ClustersClient) NewListBySubscriptionPager(options *ClustersClientListBySubscriptionOptions) *runtime.Pager[ClustersClientListBySubscriptionResponse] {
@@ -418,7 +418,7 @@ func (client *ClustersClient) listBySubscriptionCreateRequest(ctx context.Contex
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -436,7 +436,7 @@ func (client *ClustersClient) listBySubscriptionHandleResponse(resp *http.Respon
 // ListNamespaces - List all Event Hubs Namespace IDs in an Event Hubs Dedicated Cluster.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - clusterName - The name of the Event Hubs Cluster.
 //   - options - ClustersClientListNamespacesOptions contains the optional parameters for the ClustersClient.ListNamespaces method.
@@ -482,7 +482,7 @@ func (client *ClustersClient) listNamespacesCreateRequest(ctx context.Context, r
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -500,7 +500,7 @@ func (client *ClustersClient) listNamespacesHandleResponse(resp *http.Response) 
 // BeginUpdate - Modifies mutable properties on the Event Hubs Cluster. This operation is idempotent.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 //   - resourceGroupName - Name of the resource group within the azure subscription.
 //   - clusterName - The name of the Event Hubs Cluster.
 //   - parameters - The properties of the Event Hubs Cluster which should be updated.
@@ -525,7 +525,7 @@ func (client *ClustersClient) BeginUpdate(ctx context.Context, resourceGroupName
 // Update - Modifies mutable properties on the Event Hubs Cluster. This operation is idempotent.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
-// Generated from API version 2021-11-01
+// Generated from API version 2024-01-01
 func (client *ClustersClient) update(ctx context.Context, resourceGroupName string, clusterName string, parameters Cluster, options *ClustersClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
 	const operationName = "ClustersClient.BeginUpdate"
@@ -567,7 +567,7 @@ func (client *ClustersClient) updateCreateRequest(ctx context.Context, resourceG
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2021-11-01")
+	reqQP.Set("api-version", "2024-01-01")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, parameters); err != nil {

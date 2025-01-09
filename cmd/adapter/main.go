@@ -26,7 +26,6 @@ import (
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
-	_ "go.uber.org/automaxprocs"
 	appsv1 "k8s.io/api/apps/v1"
 	apimetrics "k8s.io/apiserver/pkg/endpoints/metrics"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -70,20 +69,20 @@ var (
 	metricsServiceGRPCAuthority string
 )
 
-func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsProvider, <-chan struct{}, error) {
+func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsProvider, error) {
 	scheme := scheme.Scheme
 	if err := appsv1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add apps/v1 scheme to runtime scheme")
-		return nil, nil, fmt.Errorf("failed to add apps/v1 scheme to runtime scheme (%s)", err)
+		return nil, fmt.Errorf("failed to add apps/v1 scheme to runtime scheme (%s)", err)
 	}
 	if err := kedav1alpha1.SchemeBuilder.AddToScheme(scheme); err != nil {
 		logger.Error(err, "failed to add keda scheme to runtime scheme")
-		return nil, nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
+		return nil, fmt.Errorf("failed to add keda scheme to runtime scheme (%s)", err)
 	}
 	namespaces, err := kedautil.GetWatchNamespaces()
 	if err != nil {
 		logger.Error(err, "failed to get watch namespace")
-		return nil, nil, fmt.Errorf("failed to get watch namespace (%s)", err)
+		return nil, fmt.Errorf("failed to get watch namespace (%s)", err)
 	}
 
 	// Get a config to talk to the apiserver
@@ -106,24 +105,22 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 	})
 	if err != nil {
 		logger.Error(err, "failed to setup manager")
-		return nil, nil, err
+		return nil, err
 	}
 
 	logger.Info("Connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
 	grpcClient, err := metricsservice.NewGrpcClient(metricsServiceAddr, a.SecureServing.ServerCert.CertDirectory, metricsServiceGRPCAuthority, clientMetrics)
 	if err != nil {
 		logger.Error(err, "error connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
-		return nil, nil, err
+		return nil, err
 	}
-	stopCh := make(chan struct{})
 	go func() {
 		if err := mgr.Start(ctx); err != nil {
 			logger.Error(err, "controller-runtime encountered an error")
-			stopCh <- struct{}{}
-			close(stopCh)
+			os.Exit(1)
 		}
 	}()
-	return kedaprovider.NewProvider(ctx, logger, mgr.GetClient(), *grpcClient), stopCh, nil
+	return kedaprovider.NewProvider(ctx, logger, mgr.GetClient(), *grpcClient), nil
 }
 
 // getMetricHandler returns a http handler that exposes metrics from controller-runtime and apiserver
@@ -172,7 +169,7 @@ func getMetricInterceptor() *grpcprom.ClientMetrics {
 // this is needed to consolidate apiserver and controller-runtime metrics
 // we have to use a separate http server & can't rely on the controller-runtime implementation
 // because apiserver doesn't provide a way to register metrics to other prometheus registries
-func RunMetricsServer(ctx context.Context, stopCh <-chan struct{}) {
+func RunMetricsServer(ctx context.Context) {
 	h := getMetricHandler()
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", h)
@@ -193,9 +190,7 @@ func RunMetricsServer(ctx context.Context, stopCh <-chan struct{}) {
 	}()
 
 	go func() {
-		<-stopCh
-		logger.Info("Shutting down the /metrics server gracefully...")
-
+		<-ctx.Done()
 		if err := server.Shutdown(ctx); err != nil {
 			logger.Error(err, "http server shutdown error")
 		}
@@ -261,7 +256,13 @@ func main() {
 		return
 	}
 
-	kedaProvider, stopCh, err := cmd.makeProvider(ctx)
+	err = kedautil.ConfigureMaxProcs(logger)
+	if err != nil {
+		logger.Error(err, "failed to set max procs")
+		return
+	}
+
+	kedaProvider, err := cmd.makeProvider(ctx)
 	if err != nil {
 		logger.Error(err, "making provider")
 		return
@@ -270,9 +271,9 @@ func main() {
 
 	logger.Info(cmd.Message)
 
-	RunMetricsServer(ctx, stopCh)
+	RunMetricsServer(ctx)
 
-	if err = cmd.Run(stopCh); err != nil {
+	if err = cmd.Run(ctx); err != nil {
 		return
 	}
 }

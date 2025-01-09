@@ -22,6 +22,7 @@ import (
 type MockScaleHandler struct {
 	ctrl     *gomock.Controller
 	recorder *MockScaleHandlerMockRecorder
+	isgomock struct{}
 }
 
 // MockScaleHandlerMockRecorder is the mock recorder for MockScaleHandler.

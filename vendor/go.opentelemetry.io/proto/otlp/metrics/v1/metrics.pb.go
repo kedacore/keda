@@ -210,6 +210,24 @@ func (DataPointFlags) EnumDescriptor() ([]byte, []int) {
 // storage, OR can be embedded by other protocols that transfer OTLP metrics
 // data but do not implement the OTLP protocol.
 //
+// MetricsData
+// └─── ResourceMetrics
+//   ├── Resource
+//   ├── SchemaURL
+//   └── ScopeMetrics
+//      ├── Scope
+//      ├── SchemaURL
+//      └── Metric
+//         ├── Name
+//         ├── Description
+//         ├── Unit
+//         └── data
+//            ├── Gauge
+//            ├── Sum
+//            ├── Histogram
+//            ├── ExponentialHistogram
+//            └── Summary
+//
 // The main difference between this message and collector protocol is that
 // in this message there will not be any "control" or "metadata" specific to
 // OTLP protocol.
@@ -417,7 +435,6 @@ func (x *ScopeMetrics) GetSchemaUrl() string {
 //
 //   https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/data-model.md
 //
-//
 // The data model and relation between entities is shown in the
 // diagram below. Here, "DataPoint" is the term used to refer to any
 // one of the specific data point value types, and "points" is the term used
@@ -429,7 +446,7 @@ func (x *ScopeMetrics) GetSchemaUrl() string {
 // - DataPoint contains timestamps, attributes, and one of the possible value type
 //   fields.
 //
-//     Metric
+//    Metric
 //  +------------+
 //  |name        |
 //  |description |
@@ -914,6 +931,9 @@ func (x *ExponentialHistogram) GetAggregationTemporality() AggregationTemporalit
 // data type. These data points cannot always be merged in a meaningful way.
 // While they can be useful in some applications, histogram data points are
 // recommended for new applications.
+// Summary metrics do not have an aggregation temporality field. This is
+// because the count and sum fields of a SummaryDataPoint are assumed to be
+// cumulative values.
 type Summary struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1508,7 +1528,8 @@ func (x *ExponentialHistogramDataPoint) GetZeroThreshold() float64 {
 }
 
 // SummaryDataPoint is a single data point in a timeseries that describes the
-// time-varying values of a Summary metric.
+// time-varying values of a Summary metric. The count and sum fields represent
+// cumulative values.
 type SummaryDataPoint struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
