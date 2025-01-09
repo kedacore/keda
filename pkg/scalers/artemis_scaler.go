@@ -182,10 +182,10 @@ func getAPIParameters(meta artemisMetadata) (artemisMetadata, error) {
 }
 
 func (s *artemisScaler) getMonitoringEndpoint() string {
-	scheme := "http"
+	scheme := natsStreamingHTTPProtocol
 
 	if s.metadata.TLS {
-		scheme = "https"
+		scheme = natsStreamingHTTPSProtocol
 	}
 	replacer := strings.NewReplacer(
 		"<<managementEndpoint>>", fmt.Sprintf("%s://%s", scheme, s.metadata.ManagementEndpoint),
