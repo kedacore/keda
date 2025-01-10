@@ -17,7 +17,7 @@ limitations under the License.
 package message
 
 const (
-	ScalerIsBuiltMsg = "Scaler %s is built."
+	ScalerIsBuiltMsg = "Scaler %s is built"
 
 	ScalerStartMsg = "Started scalers watch"
 
