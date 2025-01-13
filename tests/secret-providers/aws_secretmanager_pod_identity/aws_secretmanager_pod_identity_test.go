@@ -296,7 +296,7 @@ func getTestNameForFlag(flag bool) string {
 	}
 	return "WithFlagFalse"
 }
-func AwsSecretManager(t *testing.T, , useJSONSecretFormat bool) error {
+func AwsSecretManager(t *testing.T, useJSONSecretFormat bool) error {
 	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
 	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
 
