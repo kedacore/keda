@@ -101,7 +101,6 @@ func (a *artemisMetadata) Validate() error {
 
 // NewArtemisQueueScaler creates a new artemis queue Scaler
 func NewArtemisQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
-
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
