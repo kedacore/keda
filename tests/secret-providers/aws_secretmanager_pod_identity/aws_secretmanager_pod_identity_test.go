@@ -21,9 +21,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
-
-	// Local imports
-	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 // Load environment variables from .env file
@@ -74,6 +71,7 @@ type templateData struct {
 	SecretManagerSecretName          string
 	AwsAccessKeyID                   string
 	AwsSecretAccessKey               string
+	useJSONSecretFormat              bool
 }
 
 const (
@@ -276,49 +274,29 @@ spec:
 )
 
 func TestAwsSecretManager(t *testing.T) {
-	var useJSONSecretFormat = false
-	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
-	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
+	// Run the test twice with two different flag values
+	flags := []bool{true, false}
 
-	// Create the secret in AWS
-	err := createAWSSecret(t, useJSONSecretFormat)
-	assert.NoErrorf(t, err, "cannot create AWS Secret Manager secret - %s", err)
+	for _, useJSONSecretFormat := range flags {
+		// Define a subtest for each flag value
 
-	// Create kubernetes resources for PostgreSQL server
-	kc := GetKubernetesClient(t)
-	data, postgreSQLtemplates := getPostgreSQLTemplateData()
-
-	CreateKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
-
-	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
-		"replica count should be %d after 3 minutes", 1)
-
-	createTableSQL := "CREATE TABLE task_instance (id serial PRIMARY KEY,state VARCHAR(10));"
-	psqlCreateTableCmd := fmt.Sprintf("psql -U %s -d %s -c \"%s\"", postgreSQLUsername, postgreSQLDatabase, createTableSQL)
-
-	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace, psqlCreateTableCmd, 60, 3)
-	assert.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
-
-	// Create kubernetes resources for testing
-	data, templates := getTemplateData(useJSONSecretFormat)
-
-	KubectlApplyMultipleWithTemplate(t, data, templates)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
-
-	testScaleOut(t, kc, data)
-
-	// cleanup
-	KubectlDeleteMultipleWithTemplate(t, data, templates)
-	DeleteKubernetesResources(t, testNamespace, data, postgreSQLtemplates)
-
-	// Delete the secret in AWS
-	err = deleteAWSSecret(t)
-	assert.NoErrorf(t, err, "cannot delete AWS Secret Manager secret - %s", err)
+		t.Run(getTestNameForFlag(useJSONSecretFormat), func(t *testing.T) {
+			err := AwsSecretManager(t, useJSONSecretFormat)
+			if err != nil {
+				t.Errorf("AwsSecretManager(%v) failed: %v", getTestNameForFlag(useJSONSecretFormat), err)
+			}
+		})
+	}
 }
 
-func TestAwsSecretManagerJSONFormat(t *testing.T) {
-	var useJSONSecretFormat = true
+// Helper to get dynamic test names based on the flag
+func getTestNameForFlag(flag bool) string {
+	if flag {
+		return "WithFlagTrue"
+	}
+	return "WithFlagFalse"
+}
+func AwsSecretManager(t *testing.T, , useJSONSecretFormat bool) error {
 	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
 	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
 
@@ -357,6 +335,7 @@ func TestAwsSecretManagerJSONFormat(t *testing.T) {
 	// Delete the secret in AWS
 	err = deleteAWSSecret(t)
 	assert.NoErrorf(t, err, "cannot delete AWS Secret Manager secret - %s", err)
+	return nil
 }
 
 var data = templateData{
@@ -377,6 +356,7 @@ var data = templateData{
 	AwsSecretAccessKey:               base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
 	AwsRegion:                        awsRegion,
 	AwsCredentialsSecretName:         awsCredentialsSecretName,
+	useJSONSecretFormat:              false,
 }
 
 func getPostgreSQLTemplateData() (templateData, []Template) {

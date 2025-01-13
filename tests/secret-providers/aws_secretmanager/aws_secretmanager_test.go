@@ -21,9 +21,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
-
-	// local
-	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 // Load environment variables from .env file
@@ -353,48 +350,6 @@ func AwsSecretManager(t *testing.T, useJSONSecretFormat bool) error {
 	err = deleteAWSSecret(t)
 	assert.NoErrorf(t, err, "cannot delete AWS Secret Manager secret - %s", err)
 	return nil
-}
-
-// before I remove this I want to make sure I refactored code as expected.
-func REMOVETestAwsSecretManagerJSONFormat(t *testing.T, useJSONSecretFormat bool) {
-	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
-	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
-
-	// Create the secret in AWS
-	err := createAWSSecret(t, useJSONSecretFormat) // Create JSON formatted Secret
-	assert.NoErrorf(t, err, "cannot create AWS Secret Manager secret - %s", err)
-
-	// Create kubernetes resources for PostgreSQL server
-	kc := GetKubernetesClient(t)
-	data, postgreSQLtemplates := getPostgreSQLTemplateData()
-
-	CreateKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
-
-	assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
-		"replica count should be %d after 3 minutes", 1)
-
-	createTableSQL := "CREATE TABLE task_instance (id serial PRIMARY KEY,state VARCHAR(10));"
-	psqlCreateTableCmd := fmt.Sprintf("psql -U %s -d %s -c \"%s\"", postgreSQLUsername, postgreSQLDatabase, createTableSQL)
-
-	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace, psqlCreateTableCmd, 60, 3)
-	assert.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
-
-	// Create kubernetes resources for testing
-	data, templates := getTemplateData(useJSONSecretFormat)
-
-	KubectlApplyMultipleWithTemplate(t, data, templates)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
-
-	testScaleOut(t, kc, data)
-
-	// cleanup
-	KubectlDeleteMultipleWithTemplate(t, data, templates)
-	DeleteKubernetesResources(t, testNamespace, data, postgreSQLtemplates)
-
-	// Delete the secret in AWS
-	err = deleteAWSSecret(t)
-	assert.NoErrorf(t, err, "cannot delete AWS Secret Manager secret - %s", err)
 }
 
 var data = templateData{
