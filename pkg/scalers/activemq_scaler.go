@@ -42,8 +42,8 @@ type activeMQMetadata struct {
 	CorsHeader string `keda:"name=corsHeader, order=triggerMetadata, optional"`
 
 	RestAPITemplate           string `keda:"name=restAPITemplate,           order=triggerMetadata, optional"`
-	TargetQueueSize           int64  `keda:"name=targetQueueSize,           order=triggerMetadata, optional, default=10"`
-	ActivationTargetQueueSize int64  `keda:"name=activationTargetQueueSize, order=triggerMetadata, optional, default=0"`
+	TargetQueueSize           int64  `keda:"name=targetQueueSize,           order=triggerMetadata, default=10"`
+	ActivationTargetQueueSize int64  `keda:"name=activationTargetQueueSize, order=triggerMetadata, default=0"`
 }
 
 func (a *activeMQMetadata) Validate() error {
