@@ -40,5 +40,9 @@ message GetMetricsResponse {
 
 message MetricValue {
     string metricName = 1;
+
+    // deprecated, use metricValueFloat instead
     int64 metricValue = 2;
+
+    double metricValueFloat = 3;
 }

@@ -222,7 +222,11 @@ func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	}
 
 	for _, metricResult := range metricsResponse.MetricValues {
-		metric := GenerateMetricInMili(metricName, float64(metricResult.MetricValue))
+		value := float64(metricResult.MetricValueFloat)
+		if metricResult.MetricValueFloat > 0 {
+			value = metricResult.MetricValueFloat
+		}
+		metric := GenerateMetricInMili(metricName, value)
 		metrics = append(metrics, metric)
 	}
 
