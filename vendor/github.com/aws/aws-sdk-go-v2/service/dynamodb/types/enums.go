@@ -524,6 +524,25 @@ func (KeyType) Values() []KeyType {
 	}
 }
 
+type MultiRegionConsistency string
+
+// Enum values for MultiRegionConsistency
+const (
+	MultiRegionConsistencyEventual MultiRegionConsistency = "EVENTUAL"
+	MultiRegionConsistencyStrong   MultiRegionConsistency = "STRONG"
+)
+
+// Values returns all known values for MultiRegionConsistency. Note that this can
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (MultiRegionConsistency) Values() []MultiRegionConsistency {
+	return []MultiRegionConsistency{
+		"EVENTUAL",
+		"STRONG",
+	}
+}
+
 type PointInTimeRecoveryStatus string
 
 // Enum values for PointInTimeRecoveryStatus
