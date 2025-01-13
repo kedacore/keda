@@ -608,21 +608,21 @@ func testScalerErrors(t *testing.T, data templateData) {
 	KubectlApplyWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
 
 	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-	valDetail, okDetail := family["keda_scaler_detail_errors_total"]
-	assert.True(t, okDetail, "keda_scaler_detail_errors_total not available")
-	if okDetail {
-		errCounterValDetail1 := getErrorMetricsValue(valDetail)
+	val, ok := family["keda_scaler_detail_errors_total"]
+	assert.True(t, ok, "keda_scaler_detail_errors_total not available")
+	if ok {
+		errCounterVal1 := getErrorMetricsValue(val)
 
 		// wait for 20 seconds to correctly fetch metrics.
 		time.Sleep(20 * time.Second)
 
 		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-		valDetail, okDetail := family["keda_scaler_detail_errors_total"]
-		assert.True(t, okDetail, "keda_scaler_detail_errors_total not available")
-		if okDetail {
-			errCounterValDetail2 := getErrorMetricsValue(valDetail)
-			assert.NotEqual(t, errCounterValDetail2, float64(0))
-			assert.GreaterOrEqual(t, errCounterValDetail2, errCounterValDetail1)
+		val, ok := family["keda_scaler_detail_errors_total"]
+		assert.True(t, ok, "keda_scaler_detail_errors_total not available")
+		if ok {
+			errCounterVal2 := getErrorMetricsValue(val)
+			assert.NotEqual(t, errCounterVal2, float64(0))
+			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
 		}
 	}
 
