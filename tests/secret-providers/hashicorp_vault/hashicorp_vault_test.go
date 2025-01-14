@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes"
 
-	. "github.com/kedacore/keda/v2/tests/helper"
+	. "github.com/kedacore/keda/v2/tests/helper" // import helper
 	"github.com/kedacore/keda/v2/tests/scalers/prometheus"
 )
 
@@ -30,6 +30,7 @@ var (
 	testNamespace              = fmt.Sprintf("%s-ns", testName)
 	vaultNamespace             = "hashicorp-ns"
 	vaultPromDomain            = "e2e.vault.keda.sh"
+	vaultSecretKey             = "VaultSecretKey"
 	deploymentName             = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName           = fmt.Sprintf("%s-so", testName)
 	publishDeploymentName      = fmt.Sprintf("%s-publish", testName)
@@ -70,6 +71,7 @@ type templateData struct {
 	MonitoredAppName                 string
 	PrometheusServerName             string
 	VaultPkiCommonName               string
+	VaultSecretKey                   string
 }
 
 const (
@@ -117,6 +119,7 @@ metadata:
 type: Opaque
 data:
   postgresql_conn_str: {{.PostgreSQLConnectionStringBase64}}
+  {{.VaultSecretKey}}: {{.HashiCorpToken}}
 `
 
 	triggerAuthenticationTemplate = `
@@ -131,6 +134,27 @@ spec:
     authentication: token
     credential:
       token: {{.HashiCorpToken}}
+    secrets:
+    - parameter: connection
+      key: connectionString
+      path: {{.VaultSecretPath}}
+`
+	triggerAuthenticationTemplateTokenSecret = `
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TriggerAuthenticationName}}
+  namespace: {{.TestNamespace}}
+spec:
+  hashiCorpVault:
+    address: http://vault.{{.VaultNamespace}}:8200
+    authentication: token
+	tokenSecret:
+      valueFrom:
+        secretKeyRef:
+		  name: {{.SecretName}}
+		  key: {{.VaultSecretKey}}
+
     secrets:
     - parameter: connection
       key: connectionString
@@ -460,16 +484,31 @@ func TestSecretsEngine(t *testing.T) {
 		name               string
 		vaultEngineVersion uint
 		vaultSecretPath    string
+		useSecretRef       bool
 	}{
 		{
-			name:               "vault kv engine v1",
+			name:               "vault kv engine v1 with secretRef",
 			vaultEngineVersion: 1,
 			vaultSecretPath:    "secret/keda",
+			useSecretRef:       true,
 		},
 		{
-			name:               "vault kv engine v2",
+			name:               "vault kv engine v2 with secretRef",
 			vaultEngineVersion: 2,
 			vaultSecretPath:    "secret/data/keda",
+			useSecretRef:       true,
+		},
+		{
+			name:               "vault kv engine v1 without secretRef",
+			vaultEngineVersion: 1,
+			vaultSecretPath:    "secret/keda",
+			useSecretRef:       false,
+		},
+		{
+			name:               "vault kv engine v2 without secretRef",
+			vaultEngineVersion: 2,
+			vaultSecretPath:    "secret/data/keda",
+			useSecretRef:       false,
 		},
 	}
 
@@ -492,7 +531,7 @@ func TestSecretsEngine(t *testing.T) {
 			assert.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
 
 			// Create kubernetes resources for testing
-			data, templates := getTemplateData()
+			data, templates := getTemplateData(test.useSecretRef)
 			data.HashiCorpToken = RemoveANSI(hashiCorpToken)
 			data.VaultSecretPath = test.vaultSecretPath
 
@@ -651,6 +690,7 @@ var data = templateData{
 	VaultNamespace:                   vaultNamespace,
 	VaultPromDomain:                  vaultPromDomain,
 	VaultPkiCommonName:               fmt.Sprintf("keda.%s.svc", testNamespace),
+	VaultSecretKey:                   vaultSecretKey,
 }
 
 func getPostgreSQLTemplateData() (templateData, []Template) {
@@ -670,11 +710,20 @@ func getPrometheusTemplateData() (templateData, []Template) {
 	}
 }
 
-func getTemplateData() (templateData, []Template) {
-	return data, []Template{
-		{Name: "secretTemplate", Config: secretTemplate},
-		{Name: "deploymentTemplate", Config: deploymentTemplate},
-		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
-		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+func getTemplateData(useSecretRef bool) (templateData, []Template) {
+	if useSecretRef {
+		return data, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplateTokenSecret},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
+	} else {
+		return data, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		}
 	}
 }

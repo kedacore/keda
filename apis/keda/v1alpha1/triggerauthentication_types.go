@@ -235,7 +235,12 @@ type Credential struct {
 	Token string `json:"token,omitempty"`
 
 	// +optional
-	ServiceAccount string `json:"serviceAccount,omitempty"`
+	ServiceAccount string                     `json:"serviceAccount,omitempty"`
+	TokenSecret    *HashicorpVaultTokenSecret `json:"tokenSecret,omitempty"`
+}
+
+type HashicorpVaultTokenSecret struct {
+	ValueFrom ValueFromSecret `json:"valueFrom"`
 }
 
 // VaultAuthentication contains the list of Hashicorp Vault authentication methods

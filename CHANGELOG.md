@@ -71,7 +71,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Hashicorp Vault**:  Allow using secretRef for hashicorpVault auth ([#6026](https://github.com/kedacore/keda/issues/6026))
 
 ### Fixes
 
