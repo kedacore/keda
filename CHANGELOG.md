@@ -76,6 +76,7 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **General**: Fix event text when deactivation fails ([#6469](https://github.com/kedacore/keda/issues/6469))
 - **AWS Scalers**: Add AWS region to the AWS Config Cache key ([#6128](https://github.com/kedacore/keda/issues/6128))
 
 ### Deprecations
