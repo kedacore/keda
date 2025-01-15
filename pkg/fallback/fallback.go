@@ -110,14 +110,25 @@ func HasValidFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
 }
 
 func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, currentReplicas int32, suppressedError error) []external_metrics.ExternalMetricValue {
-	replicas := int64(scaledObject.Spec.Fallback.Replicas)
+	fallbackBehavior := scaledObject.Spec.Fallback.Behavior
 
-	// Check if we should use current replicas as minimum
-	if scaledObject.Spec.Fallback.UseCurrentReplicasAsMinimum != nil &&
-		*scaledObject.Spec.Fallback.UseCurrentReplicasAsMinimum {
+	// Check if behavior is empty
+	if fallbackBehavior == "" {
+		fallbackBehavior = kedav1alpha1.FallbackBehaviorStatic
+	}
+
+	fallbackReplicas := int64(scaledObject.Spec.Fallback.Replicas)
+	var replicas int64
+
+	switch fallbackBehavior {
+	case kedav1alpha1.FallbackBehaviorStatic:
+		replicas = fallbackReplicas
+	case kedav1alpha1.FallbackBehaviorUseCurrentReplicasAsMin:
 		currentReplicasCount := int64(currentReplicas)
-		if currentReplicasCount > replicas {
+		if currentReplicasCount > fallbackReplicas {
 			replicas = currentReplicasCount
+		} else {
+			replicas = fallbackReplicas
 		}
 	}
 
@@ -141,7 +152,9 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpe
 		"scaledObject.Namespace", scaledObject.Namespace,
 		"scaledObject.Name", scaledObject.Name,
 		"suppressedError", suppressedError,
-		"fallback.replicas", replicas)
+		"fallback.behavior", fallbackBehavior,
+		"fallback.replicas", fallbackReplicas,
+		"workload.currentReplicas", currentReplicas)
 	return fallbackMetrics
 }
 

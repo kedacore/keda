@@ -56,6 +56,8 @@ const ScaledObjectTransferHpaOwnershipAnnotation = "scaledobject.keda.sh/transfe
 const ValidationsHpaOwnershipAnnotation = "validations.keda.sh/hpa-ownership"
 const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
 const PausedAnnotation = "autoscaling.keda.sh/paused"
+const FallbackBehaviorStatic = "static"
+const FallbackBehaviorUseCurrentReplicasAsMin = "useCurrentReplicasAsMinimum"
 
 // HealthStatus is the status for a ScaledObject's health
 type HealthStatus struct {
@@ -110,7 +112,7 @@ type Fallback struct {
 	FailureThreshold int32 `json:"failureThreshold"`
 	Replicas         int32 `json:"replicas"`
 	// +optional
-	UseCurrentReplicasAsMinimum *bool `json:"useCurrentReplicasAsMinimum,omitempty"`
+	Behavior string `json:"behavior,omitempty"`
 }
 
 // AdvancedConfig specifies advance scaling options
@@ -286,6 +288,16 @@ func CheckFallbackValid(scaledObject *ScaledObject) error {
 	if scaledObject.Spec.Fallback.FailureThreshold < 0 || scaledObject.Spec.Fallback.Replicas < 0 {
 		return fmt.Errorf("FailureThreshold=%d & Replicas=%d must both be greater than or equal to 0",
 			scaledObject.Spec.Fallback.FailureThreshold, scaledObject.Spec.Fallback.Replicas)
+	}
+
+	// Check if behavior is valid when specified
+	if scaledObject.Spec.Fallback.Behavior != "" &&
+		scaledObject.Spec.Fallback.Behavior != FallbackBehaviorStatic &&
+		scaledObject.Spec.Fallback.Behavior != FallbackBehaviorUseCurrentReplicasAsMin {
+		return fmt.Errorf("behavior=%s must be either '%s' or '%s'",
+			scaledObject.Spec.Fallback.Behavior,
+			FallbackBehaviorStatic,
+			FallbackBehaviorUseCurrentReplicasAsMin)
 	}
 
 	for _, trigger := range scaledObject.Spec.Triggers {

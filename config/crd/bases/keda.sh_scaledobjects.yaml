@@ -225,14 +225,14 @@ spec:
               fallback:
                 description: Fallback is the spec for fallback options
                 properties:
+                  behavior:
+                    type: string
                   failureThreshold:
                     format: int32
                     type: integer
                   replicas:
                     format: int32
                     type: integer
-                  useCurrentReplicasAsMinimum:
-                    type: boolean
                 required:
                 - failureThreshold
                 - replicas

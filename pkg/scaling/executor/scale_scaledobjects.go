@@ -206,16 +206,27 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 }
 
 func (e *scaleExecutor) doFallbackScaling(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, currentScale *autoscalingv1.Scale, logger logr.Logger, currentReplicas int32) {
-	targetReplicas := scaledObject.Spec.Fallback.Replicas
+	fallbackBehavior := scaledObject.Spec.Fallback.Behavior
 
-	// Check if we should use current replicas as minimum
-	if scaledObject.Spec.Fallback.UseCurrentReplicasAsMinimum != nil && *scaledObject.Spec.Fallback.UseCurrentReplicasAsMinimum && currentReplicas > targetReplicas {
-		targetReplicas = currentReplicas
+	// Check if behavior is empty
+	if fallbackBehavior == "" {
+		fallbackBehavior = kedav1alpha1.FallbackBehaviorStatic
 	}
 
-	_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, targetReplicas)
+	fallbackReplicas := scaledObject.Spec.Fallback.Replicas
+
+	switch fallbackBehavior {
+	case kedav1alpha1.FallbackBehaviorStatic:
+		// no specifc action needed
+	case kedav1alpha1.FallbackBehaviorUseCurrentReplicasAsMin:
+		if currentReplicas > fallbackReplicas {
+			fallbackReplicas = currentReplicas
+		}
+	}
+
+	_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, fallbackReplicas)
 	if err == nil {
-		logger.Info("Successfully set ScaleTarget replicas count to calculated fallback replicas", "Original Replicas Count", currentReplicas, "New Replicas Count", targetReplicas)
+		logger.Info("Successfully set ScaleTarget replicas count to calculated fallback replicas", "Original Replicas Count", currentReplicas, "New Replicas Count", fallbackReplicas, "Behavior", fallbackBehavior)
 	}
 	if e := e.setFallbackCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "FallbackExists", "At least one trigger is falling back on this scaled object"); e != nil {
 		logger.Error(e, "Error setting fallback condition")

@@ -523,7 +523,7 @@ func TestEventWitTriggerInfo(t *testing.T) {
 	assert.Equal(t, "Normal KEDAScaleTargetActivated Scaled  namespace/name from 2 to 5, triggered by testTrigger", eventstring)
 }
 
-// UseCurrentReplicasAsMinimum is true and current replicas is higher than fallback replicas
+// Behavior is UseCurrentReplicasAsMinimum and current replicas is higher than fallback replicas
 func TestScaleToFallbackWithCurrentReplicasAsMinimum(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
@@ -534,7 +534,7 @@ func TestScaleToFallbackWithCurrentReplicasAsMinimum(t *testing.T) {
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
-	useCurrentAsMin := true
+	behavior := "useCurrentReplicasAsMinimum"
 	scaledObject := v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "name",
@@ -545,9 +545,9 @@ func TestScaleToFallbackWithCurrentReplicasAsMinimum(t *testing.T) {
 				Name: "name",
 			},
 			Fallback: &v1alpha1.Fallback{
-				FailureThreshold:            3,
-				Replicas:                    5,
-				UseCurrentReplicasAsMinimum: &useCurrentAsMin,
+				FailureThreshold: 3,
+				Replicas:         5,
+				Behavior:         behavior,
 			},
 		},
 		Status: v1alpha1.ScaledObjectStatus{
@@ -590,7 +590,7 @@ func TestScaleToFallbackWithCurrentReplicasAsMinimum(t *testing.T) {
 	assert.Equal(t, true, condition.IsTrue())
 }
 
-// UseCurrentReplicasAsMinimum is true and current replicas is lower than fallback replicas
+// Behavior is UseCurrentReplicasAsMinimum and is true and current replicas is lower than fallback replicas
 func TestScaleToFallbackIgnoringLowerCurrentReplicas(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
@@ -601,7 +601,7 @@ func TestScaleToFallbackIgnoringLowerCurrentReplicas(t *testing.T) {
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
-	useCurrentAsMin := true
+	behavior := "useCurrentReplicasAsMinimum"
 	scaledObject := v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "name",
@@ -612,9 +612,9 @@ func TestScaleToFallbackIgnoringLowerCurrentReplicas(t *testing.T) {
 				Name: "name",
 			},
 			Fallback: &v1alpha1.Fallback{
-				FailureThreshold:            3,
-				Replicas:                    5,
-				UseCurrentReplicasAsMinimum: &useCurrentAsMin,
+				FailureThreshold: 3,
+				Replicas:         5,
+				Behavior:         behavior,
 			},
 		},
 		Status: v1alpha1.ScaledObjectStatus{
@@ -657,7 +657,7 @@ func TestScaleToFallbackIgnoringLowerCurrentReplicas(t *testing.T) {
 	assert.Equal(t, true, condition.IsTrue())
 }
 
-// UseCurrentReplicasAsMinimum is false and current replicas is higher than fallback replicas
+// Behavior is Static and current replicas is higher than fallback replicas
 func TestScaleToFallbackWithoutCurrentReplicasAsMinimum(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
@@ -668,7 +668,7 @@ func TestScaleToFallbackWithoutCurrentReplicasAsMinimum(t *testing.T) {
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
-	useCurrentAsMin := false
+	behavior := "static"
 	scaledObject := v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "name",
@@ -679,9 +679,9 @@ func TestScaleToFallbackWithoutCurrentReplicasAsMinimum(t *testing.T) {
 				Name: "name",
 			},
 			Fallback: &v1alpha1.Fallback{
-				FailureThreshold:            3,
-				Replicas:                    5,
-				UseCurrentReplicasAsMinimum: &useCurrentAsMin,
+				FailureThreshold: 3,
+				Replicas:         5,
+				Behavior:         behavior,
 			},
 		},
 		Status: v1alpha1.ScaledObjectStatus{
