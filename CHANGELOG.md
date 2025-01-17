@@ -75,8 +75,10 @@ Here is an overview of all new **experimental** features:
 
 ### Fixes
 
+- **General**: Fix event text when deactivation fails ([#6469](https://github.com/kedacore/keda/issues/6469))
 - **AWS Scalers**: Add AWS region to the AWS Config Cache key ([#6128](https://github.com/kedacore/keda/issues/6128))
 - **Redis Streams**: Allow default value of 0 for activationLagCount ([#6478](https://github.com/kedacore/keda/issues/6478))
+- **Selenium Grid**: Scaler logic on platformName is set empty or `any` ([#6477](https://github.com/kedacore/keda/issues/6477))
 
 ### Deprecations
 
@@ -88,7 +90,9 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- Change `InitialCooldownPeriod` from `int32` to `*int32` ([#6423](https://github.com/kedacore/keda/issues/6423))
+- **General**: Change `InitialCooldownPeriod` from `int32` to `*int32` ([#6423](https://github.com/kedacore/keda/issues/6423))
+- **General**: Remove Prometheus metric deprecations ([#6339](https://github.com/kedacore/keda/pull/6339))
+- **External Scaler**: Remove deprecated tlsCertFile from External scaler ([#4549](https://github.com/kedacore/keda/issues/4549))
 
 ### Other
 
