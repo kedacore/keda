@@ -41,18 +41,18 @@ type postgreSQLScaler struct {
 }
 
 type postgreSQLMetadata struct {
-	TargetQueryValue           float64 `keda:"name=targetQueryValue, order=triggerMetadata, optional"`
+	TargetQueryValue           float64 `keda:"name=targetQueryValue,           order=triggerMetadata, optional"`
 	ActivationTargetQueryValue float64 `keda:"name=activationTargetQueryValue, order=triggerMetadata, optional"`
-	Connection                 string  `keda:"name=connection, order=authParams;resolvedEnv, optional"`
-	Query                      string  `keda:"name=query, order=triggerMetadata"`
+	Connection                 string  `keda:"name=connection,                 order=authParams;resolvedEnv, optional"`
+	Query                      string  `keda:"name=query,                      order=triggerMetadata"`
 	triggerIndex               int
 	azureAuthContext           azureAuthContext
 
-	Host     string `keda:"name=host, order=authParams;triggerMetadata, optional"`
-	Port     string `keda:"name=port, order=authParams;triggerMetadata, optional"`
+	Host     string `keda:"name=host,     order=authParams;triggerMetadata, optional"`
+	Port     string `keda:"name=port,     order=authParams;triggerMetadata, optional"`
 	UserName string `keda:"name=userName, order=authParams;triggerMetadata, optional"`
-	DBName   string `keda:"name=dbName, order=authParams;triggerMetadata, optional"`
-	SslMode  string `keda:"name=sslmode, order=authParams;triggerMetadata, optional"`
+	DBName   string `keda:"name=dbName,   order=authParams;triggerMetadata, optional"`
+	SslMode  string `keda:"name=sslmode,  order=authParams;triggerMetadata, optional"`
 
 	Password string `keda:"name=password, order=authParams;resolvedEnv, optional"`
 }
