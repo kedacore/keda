@@ -88,8 +88,9 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- Change `InitialCooldownPeriod` from `int32` to `*int32` ([#6423](https://github.com/kedacore/keda/issues/6423))
+- **General**: Change `InitialCooldownPeriod` from `int32` to `*int32` ([#6423](https://github.com/kedacore/keda/issues/6423))
 - **General**: Remove Prometheus metric deprecations ([#6339](https://github.com/kedacore/keda/pull/6339))
+- **External Scaler**: Remove deprecated tlsCertFile from External scaler ([#4549](https://github.com/kedacore/keda/issues/4549))
 
 ### Other
 
