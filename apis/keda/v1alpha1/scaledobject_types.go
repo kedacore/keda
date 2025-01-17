@@ -290,16 +290,6 @@ func CheckFallbackValid(scaledObject *ScaledObject) error {
 			scaledObject.Spec.Fallback.FailureThreshold, scaledObject.Spec.Fallback.Replicas)
 	}
 
-	// Check if behavior is valid when specified
-	if scaledObject.Spec.Fallback.Behavior != "" &&
-		scaledObject.Spec.Fallback.Behavior != FallbackBehaviorStatic &&
-		scaledObject.Spec.Fallback.Behavior != FallbackBehaviorUseCurrentReplicasAsMin {
-		return fmt.Errorf("behavior=%s must be either '%s' or '%s'",
-			scaledObject.Spec.Fallback.Behavior,
-			FallbackBehaviorStatic,
-			FallbackBehaviorUseCurrentReplicasAsMin)
-	}
-
 	for _, trigger := range scaledObject.Spec.Triggers {
 		if trigger.Type == cpuString || trigger.Type == memoryString {
 			return fmt.Errorf("type is %s , but fallback it is not supported by the CPU & memory scalers", trigger.Type)
