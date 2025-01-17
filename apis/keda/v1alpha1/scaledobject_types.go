@@ -112,6 +112,7 @@ type Fallback struct {
 	FailureThreshold int32 `json:"failureThreshold"`
 	Replicas         int32 `json:"replicas"`
 	// +optional
+	// +kubebuilder:default=static
 	// +kubebuilder:validation:Enum=static;useCurrentReplicasAsMinimum
 	Behavior string `json:"behavior,omitempty"`
 }

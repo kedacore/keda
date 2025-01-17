@@ -207,12 +207,6 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 
 func (e *scaleExecutor) doFallbackScaling(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, currentScale *autoscalingv1.Scale, logger logr.Logger, currentReplicas int32) {
 	fallbackBehavior := scaledObject.Spec.Fallback.Behavior
-
-	// Check if behavior is empty
-	if fallbackBehavior == "" {
-		fallbackBehavior = kedav1alpha1.FallbackBehaviorStatic
-	}
-
 	fallbackReplicas := scaledObject.Spec.Fallback.Replicas
 
 	switch fallbackBehavior {

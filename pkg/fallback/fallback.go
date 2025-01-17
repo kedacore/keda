@@ -111,12 +111,6 @@ func HasValidFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
 
 func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, currentReplicas int32, suppressedError error) []external_metrics.ExternalMetricValue {
 	fallbackBehavior := scaledObject.Spec.Fallback.Behavior
-
-	// Check if behavior is empty
-	if fallbackBehavior == "" {
-		fallbackBehavior = kedav1alpha1.FallbackBehaviorStatic
-	}
-
 	fallbackReplicas := int64(scaledObject.Spec.Fallback.Replicas)
 	var replicas int64
 
@@ -130,6 +124,8 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpe
 		} else {
 			replicas = fallbackReplicas
 		}
+	default:
+		replicas = fallbackReplicas
 	}
 
 	var normalisationValue int64
