@@ -251,17 +251,16 @@ func countMatchingSessions(sessions Sessions, browserName string, browserVersion
 // This function checks if the request capabilities match the scaler metadata
 func checkRequestCapabilitiesMatch(request Capability, browserName string, browserVersion string, _ string, platformName string) bool {
 	// Check if browserName matches
-	browserNameMatch := request.BrowserName == "" && browserName == "" ||
+	browserNameMatch := (request.BrowserName == "" && browserName == "") ||
 		strings.EqualFold(browserName, request.BrowserName)
 
 	// Check if browserVersion matches
 	browserVersionMatch := (request.BrowserVersion == "" && browserVersion == "") ||
-		(request.BrowserVersion == "stable" && browserVersion == "") ||
-		(strings.HasPrefix(browserVersion, request.BrowserVersion) && request.BrowserVersion != "" && browserVersion != "")
+		(request.BrowserVersion != "" && strings.HasPrefix(browserVersion, request.BrowserVersion))
 
 	// Check if platformName matches
-	platformNameMatch := request.PlatformName == "" && platformName == "" ||
-		strings.EqualFold(platformName, request.PlatformName)
+	platformNameMatch := (request.PlatformName == "" || strings.EqualFold("any", request.PlatformName) || strings.EqualFold(platformName, request.PlatformName)) &&
+		(platformName == "" || platformName == "any" || strings.EqualFold(platformName, request.PlatformName))
 
 	return browserNameMatch && browserVersionMatch && platformNameMatch
 }
@@ -269,17 +268,17 @@ func checkRequestCapabilitiesMatch(request Capability, browserName string, brows
 // This function checks if Node stereotypes or ongoing sessions match the scaler metadata
 func checkStereotypeCapabilitiesMatch(capability Capability, browserName string, browserVersion string, sessionBrowserName string, platformName string) bool {
 	// Check if browserName matches
-	browserNameMatch := capability.BrowserName == "" && browserName == "" ||
+	browserNameMatch := (capability.BrowserName == "" && browserName == "") ||
 		strings.EqualFold(browserName, capability.BrowserName) ||
 		strings.EqualFold(sessionBrowserName, capability.BrowserName)
 
 	// Check if browserVersion matches
-	browserVersionMatch := capability.BrowserVersion == "" && browserVersion == "" ||
-		(strings.HasPrefix(browserVersion, capability.BrowserVersion) && capability.BrowserVersion != "" && browserVersion != "")
+	browserVersionMatch := (capability.BrowserVersion == "" && browserVersion == "") ||
+		(capability.BrowserVersion != "" && strings.HasPrefix(browserVersion, capability.BrowserVersion))
 
 	// Check if platformName matches
-	platformNameMatch := capability.PlatformName == "" && platformName == "" ||
-		strings.EqualFold(platformName, capability.PlatformName)
+	platformNameMatch := (capability.PlatformName == "" || strings.EqualFold("any", capability.PlatformName) || strings.EqualFold(platformName, capability.PlatformName)) &&
+		(platformName == "" || platformName == "any" || strings.EqualFold(platformName, capability.PlatformName))
 
 	return browserNameMatch && browserVersionMatch && platformNameMatch
 }
