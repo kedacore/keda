@@ -470,7 +470,7 @@ func deleteAWSSecret(t *testing.T) error {
 	}
 
 	// Wait for the delete of the secret to really take effect
-	err = wait.PollImmediate(2*time.Second, 120*time.Second, func() (bool, error) {
+	err = wait.PollImmediate(2*time.Second, 300*time.Second, func() (bool, error) {
 		_, err := client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{
 			SecretId: &secretManagerSecretName,
 		})
