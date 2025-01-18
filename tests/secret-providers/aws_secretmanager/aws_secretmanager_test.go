@@ -486,7 +486,7 @@ func deleteAWSSecret(t *testing.T) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
-	err = wait.PollUntilContextTimeout(ctx, 2*time.Second,  300*time.Second, true, func(ctx context.Context) (done bool, err error) {
+	err = wait.PollUntilContextTimeout(ctx, 2*time.Second, 300*time.Second, true, func(ctx context.Context) (done bool, err error) {
 		_, err = client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{
 			SecretId: &secretManagerSecretName,
 		})
