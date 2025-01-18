@@ -474,8 +474,16 @@ func deleteAWSSecret(t *testing.T) error {
 	}
 
 	// Wait for the delete of the secret to really take effect
-	err = wait.PollImmediate(2*time.Second, 300*time.Second, func() (bool, error) {
-		_, err := client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{
+
+	if err != nil {
+		return fmt.Errorf("failed to verify AWS Secret Manager secret deletion: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	err = wait.PollUntilContextTimeout(ctx, 2*time.Second, 300*time.Second, true, func(ctx context.Context) (done bool, err error) {
+		_, err = client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{
 			SecretId: &secretManagerSecretName,
 		})
 		if err != nil {
@@ -490,11 +498,11 @@ func deleteAWSSecret(t *testing.T) error {
 		// If the secret still exists
 		return false, nil
 	})
+
 	if err != nil {
 		return fmt.Errorf("failed to verify AWS Secret Manager secret deletion: %w", err)
 	}
 
-	t.Log("Verified secret deletion from AWS Secret Manager.")
 	t.Log("Deleted secret from AWS Secret Manager.")
 
 	return nil
