@@ -20,8 +20,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
@@ -480,7 +480,6 @@ func deleteAWSSecret(t *testing.T) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete AWS Secret Manager secret: %w", err)
 	}
-
 
 	// Wait for the delete of the secret to really take effect
 	err = wait.PollImmediate(2*time.Second, 300*time.Second, func() (bool, error) {
