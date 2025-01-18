@@ -28,6 +28,9 @@ import (
 // Load environment variables from .env file
 var _ = godotenv.Load("../../.env")
 
+// makes sure helper is not removed
+var _ = GetRandomNumber()
+
 const (
 	testName = "aws-secret-manage-pod-identity-test"
 )
@@ -466,6 +469,28 @@ func deleteAWSSecret(t *testing.T) error {
 		return fmt.Errorf("failed to delete AWS Secret Manager secret: %w", err)
 	}
 
+	// Wait for the delete of the secret to really take effect
+	err = wait.PollImmediate(2*time.Second, 120*time.Second, func() (bool, error) {
+		_, err := client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{
+			SecretId: &secretManagerSecretName,
+		})
+		if err != nil {
+			var notFoundErr *types.ResourceNotFoundException
+			if errors.As(err, &notFoundErr) {
+				// Secret successfully deleted
+				return true, nil
+			}
+			// Unexpected error
+			return false, err
+		}
+		// If the secret still exists
+		return false, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to verify AWS Secret Manager secret deletion: %w", err)
+	}
+
+	t.Log("Verified secret deletion from AWS Secret Manager.")
 	t.Log("Deleted secret from AWS Secret Manager.")
 
 	return nil
