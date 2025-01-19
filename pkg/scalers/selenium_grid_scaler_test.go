@@ -1043,6 +1043,74 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			wantErr:             false,
 		},
 		{
+			name: "1 queue request without platformName and scaler metadata without platfromName should return 1 new node and 1 ongoing session",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 2,
+							"maxSession": 2,
+							"totalSlots": 2
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-1",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"platformName\": \"any\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"platformName\": \"any\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"platformName\": \"any\"}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-2",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"platformName\": \"linux\"}}]",
+									"sessions": [
+										{
+											"id": "session-2",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"91.0\", \"platformName\": \"linux\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"platformName\": \"linux\"}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\"browserName\": \"chrome\", \"platformName\": \"linux\"}",
+								"{\"browserName\": \"chrome\"}",
+								"{\"browserName\": \"chrome\", \"platformName\": \"any\"}"
+							]
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "",
+				platformName:       "",
+			},
+			wantNewRequestNodes: 2,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
+		},
+		{
 			name: "1 active session with matching browsername and version should return count as 2",
 			args: args{
 				b: []byte(`{

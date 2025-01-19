@@ -290,6 +290,30 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name: "zero activation lag count with lag count is allowed",
+			metadata: map[string]string{
+				"stream":             "my-stream",
+				"lagCount":           "7",
+				"activationLagCount": "0",
+				"consumerGroup":      "consumer1",
+			},
+			authParams: map[string]string{
+				"addresses": ":7001, :7002",
+			},
+			wantMeta: &redisStreamsMetadata{
+				StreamName:                "my-stream",
+				TargetPendingEntriesCount: 0,
+				TargetLag:                 7,
+				ActivationLagCount:        0,
+				ConsumerGroupName:         "consumer1",
+				ConnectionInfo: redisConnectionInfo{
+					Addresses: []string{":7001", ":7002"},
+				},
+				scaleFactor: lagFactor,
+			},
+			wantErr: nil,
+		},
+		{
 			name: "address is defined in auth params",
 			metadata: map[string]string{
 				"stream":              "my-stream",
