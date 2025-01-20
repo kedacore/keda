@@ -146,7 +146,7 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 		return err
 	}
 
-	fileName := outputFilePath + "triggerMetadata.yaml"
+	fileName := outputFilePath + "scaler-metadata-schemas.yaml"
 	err = os.WriteFile(fileName, yamlData, 0644)
 	if err != nil {
 		return err
