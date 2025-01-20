@@ -56,7 +56,7 @@ type redisStreamsMetadata struct {
 	ConsumerGroupName         string              `keda:"name=consumerGroup,       order=triggerMetadata, optional"`
 	DatabaseIndex             int                 `keda:"name=databaseIndex,       order=triggerMetadata, optional"`
 	ConnectionInfo            redisConnectionInfo `keda:"optional"`
-	ActivationLagCount        int64               `keda:"name=activationLagCount,  order=triggerMetadata, optional"`
+	ActivationLagCount        int64               `keda:"name=activationLagCount,  order=triggerMetadata, default=0"`
 	MetadataEnableTLS         string              `keda:"name=enableTLS,           order=triggerMetadata, optional"`
 	AuthParamEnableTLS        string              `keda:"name=tls,                 order=authParams, optional"`
 }
@@ -82,11 +82,6 @@ func (r *redisStreamsMetadata) Validate() error {
 		if r.TargetLag != 0 {
 			r.scaleFactor = lagFactor
 			r.TargetPendingEntriesCount = 0
-
-			if r.ActivationLagCount == 0 {
-				err := errors.New("activationLagCount required for Redis lag")
-				return err
-			}
 		} else {
 			r.scaleFactor = xPendingFactor
 		}
