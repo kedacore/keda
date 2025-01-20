@@ -24,6 +24,7 @@ import (
 	"go/token"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -46,7 +47,7 @@ const (
 	creatorSymbol = "New"
 )
 
-// Metadata is a struct that represents each field of the trigger metadata
+// Metadata is a struct that represents each field of the scaler metadata
 type Metadata struct {
 	// Name is the name of the field
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
@@ -85,16 +86,16 @@ type Metadata struct {
 	CanReadFromAuth bool `json:"canReadFromTAuthe,omitempty" yaml:"canReadFromAuth,omitempty"`
 }
 
-// TriggerMetadataSchema is a struct that represents the metadata of a trigger
-type TriggerMetadataSchema struct {
-	// Type is the name of the trigger
+// ScalerMetadataSchema is a struct that represents the metadata of a scler
+type ScalerMetadataSchema struct {
+	// Type is the name of the scaler
 	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 
-	// Metadata is a list of fields of the trigger
+	// Metadata is a list of fields of the scaler
 	Metadata []Metadata `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 }
 
-// FullMetadataSchema is a complete schema of the trigger metadata
+// FullMetadataSchema is a complete schema of the scaler metadata
 type FullMetadataSchema struct {
 	// KedaVersion is the version of the current KEDA
 	KedaVersion string `json:"kedaVersion,omitempty" yaml:"kedaVersion,omitempty"`
@@ -102,8 +103,8 @@ type FullMetadataSchema struct {
 	// SchemaVersion is the version of the schema
 	SchemaVersion float64 `json:"schemaVersion,omitempty" yaml:"schemaVersion,omitempty"`
 
-	// Triggers is a list of triggers
-	Triggers []TriggerMetadataSchema `json:"triggers,omitempty" yaml:"triggers,omitempty"`
+	// Scalers is a list of scalers
+	Scalers []ScalerMetadataSchema `json:"scalers,omitempty" yaml:"scalers,omitempty"`
 }
 
 // aggregateSchemaStruct is a function that aggregates the info from different scaler structs and generates a schema
@@ -111,23 +112,28 @@ type FullMetadataSchema struct {
 // kedaScalerStructs is the structs of the scalers that are tagged with `keda`
 // kedaReferenceKedaTagStructs is the sub structs that are referenced by the keda tagged structs
 func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs map[string]*ast.StructType, otherReferenceKedaTagStructs map[string]*ast.StructType, outputFilePath string) (err error) {
-	triggerMetadataSchemas := []TriggerMetadataSchema{}
+	scalerMetadataSchemas := []ScalerMetadataSchema{}
+	sortedScalerCreatorNames := []string{}
+	for k := range kedaScalerStructs {
+		sortedScalerCreatorNames = append(sortedScalerCreatorNames, k)
+	}
+	sort.Strings(sortedScalerCreatorNames)
 
-	for creatorName, scalerStructs := range kedaScalerStructs {
-		metadataFields := generateMetadataFields(scalerStructs, otherReferenceKedaTagStructs)
+	for _, creatorName := range sortedScalerCreatorNames {
+		metadataFields := generateMetadataFields(kedaScalerStructs[creatorName], otherReferenceKedaTagStructs)
 		if len(metadataFields) == 0 {
 			fmt.Printf("Error generating metadata fields with creator %s: %s\n", creatorName, err)
 			continue
 		}
 
-		// Find which trigger names the creator is called by and construct the metadata schema
-		for triggerName, selectorName := range scalerSelectors {
+		// Find which scaler names the creator is called by and construct the metadata schema
+		for scalerName, selectorName := range scalerSelectors {
 			if selectorName == creatorName {
-				triggerMetadataSchema := TriggerMetadataSchema{}
-				triggerMetadataSchema.Type = triggerName
-				triggerMetadataSchema.Metadata = metadataFields
-				triggerMetadataSchemas = append(triggerMetadataSchemas, triggerMetadataSchema)
-				fmt.Printf("Scaler Metadata Schema Added: %s\n", triggerName)
+				scalerMetadataSchema := ScalerMetadataSchema{}
+				scalerMetadataSchema.Type = scalerName
+				scalerMetadataSchema.Metadata = metadataFields
+				scalerMetadataSchemas = append(scalerMetadataSchemas, scalerMetadataSchema)
+				fmt.Printf("Scaler Metadata Schema Added: %s\n", scalerName)
 			}
 		}
 	}
@@ -136,7 +142,7 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 	fullMetadataSchema := FullMetadataSchema{
 		KedaVersion:   kedaVersion,
 		SchemaVersion: schemaVersion,
-		Triggers:      triggerMetadataSchemas,
+		Scalers:       scalerMetadataSchemas,
 	}
 
 	yamlData, err := yaml.Marshal(fullMetadataSchema)
@@ -152,7 +158,7 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 // generateMetadataFields is a function that generates the metadata fields of a scaler struct
 func generateMetadataFields(structType *ast.StructType, otherReferenceKedaTagStructs map[string]*ast.StructType) []Metadata {
 
-	triggerMetadata := []Metadata{}
+	scalerMetadata := []Metadata{}
 
 	// get the tag of each field and generate the metadata
 	for _, commentGroup := range structType.Fields.List {
@@ -167,7 +173,7 @@ func generateMetadataFields(structType *ast.StructType, otherReferenceKedaTagStr
 		}
 
 		if !hasSubstruct {
-			triggerMetadata = append(triggerMetadata, metadataList...)
+			scalerMetadata = append(scalerMetadata, metadataList...)
 			continue
 		}
 
@@ -179,12 +185,12 @@ func generateMetadataFields(structType *ast.StructType, otherReferenceKedaTagStr
 		if otherReferenceKedaTagStructs[s.Name] != nil {
 			subStructMetadataField := generateMetadataFields(otherReferenceKedaTagStructs[s.Name], otherReferenceKedaTagStructs)
 			if len(subStructMetadataField) > 0 {
-				triggerMetadata = append(triggerMetadata, subStructMetadataField...)
+				scalerMetadata = append(scalerMetadata, subStructMetadataField...)
 			}
 		}
 	}
 
-	return triggerMetadata
+	return scalerMetadata
 }
 
 // generateMetadatas is a function that generates the metadata field from tag
@@ -288,7 +294,7 @@ func generateMetadatas(tag string) ([]Metadata, bool, error) {
 	return metadatas, false, nil
 }
 
-// getBuildScalerCalls is a function that gets the map of trigger names and the creator function names from the scalers_builder file
+// getBuildScalerCalls is a function that gets the map of scaler names and the creator function names from the scalers_builder file
 func getBuildScalerCalls(fileName string) (map[string]string, error) {
 	scalerCallers := map[string]string{}
 	data, err := os.ReadFile(fileName)
@@ -438,7 +444,7 @@ func main() {
 	pflag.StringVar(&builderFilePath, "scalers-builder-file", "../pkg/scaling/scalers_builder.go", "The file that exists `buildScaler` func.")
 	pflag.StringVar(&scalersFilesDirPath, "scalers-files-dir", "../pkg/scalers", "The directory that exists all scalers' files.")
 	pflag.StringVar(&specifyScaler, "specify-scaler", "", "Specify scaler name.")
-	pflag.StringVar(&outputFilePath, "output-file-path", "./", "triggerMetadata.yaml output file path.")
+	pflag.StringVar(&outputFilePath, "output-file-path", "./", "scaler-metadata-schemas.yaml output file path.")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 
