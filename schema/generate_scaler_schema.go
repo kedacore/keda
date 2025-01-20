@@ -157,7 +157,6 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 
 // generateMetadataFields is a function that generates the metadata fields of a scaler struct
 func generateMetadataFields(structType *ast.StructType, otherReferenceKedaTagStructs map[string]*ast.StructType) []Metadata {
-
 	scalerMetadata := []Metadata{}
 
 	// get the tag of each field and generate the metadata
