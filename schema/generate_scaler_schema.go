@@ -148,10 +148,7 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 
 	fileName := outputFilePath + "scaler-metadata-schemas.yaml"
 	err = os.WriteFile(fileName, yamlData, 0644)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // generateMetadataFields is a function that generates the metadata fields of a scaler struct
@@ -451,7 +448,7 @@ func main() {
 
 	scalerSelectors, err := getBuildScalerCalls(builderFilePath)
 	if err != nil {
-		fmt.Print("error")
+		fmt.Printf("get build scaler calls error: %s\n", err)
 	}
 
 	if specifyScaler != "" {
@@ -466,6 +463,6 @@ func main() {
 	kedaTagStructs, otherReferenceStructs := getAllKedaTagedStructs(scalersFilesDirPath)
 	err = aggregateSchemaStruct(scalerSelectors, kedaTagStructs, otherReferenceStructs, outputFilePath)
 	if err != nil {
-		fmt.Print("error")
+		fmt.Print("Error aggregating schema struct: %s\n", err)
 	}
 }
