@@ -393,3 +393,7 @@ docker-build-dev-containers: ## Build dev-containers image
 .PHONY: validate-changelog
 validate-changelog: ## Validate changelog
 	./hack/validate-changelog.sh
+
+.PHONY: generate-trigger-schemas
+generate-trigger-schemas: ## Generate trigger shcemas
+	GOBIN=$(LOCALBIN) go run ./schema/trigger_schema.go --keda-version $(VERSION) --scalers-builder-file "pkg/scaling/scalers_builder.go" --scalers-files-dir "pkg/scalers" --output-file-path "schema/"
