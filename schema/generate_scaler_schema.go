@@ -27,12 +27,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/spf13/pflag"
-
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 var (
@@ -111,12 +111,11 @@ type FullMetadataSchema struct {
 // kedaScalerStructs is the structs of the scalers that are tagged with `keda`
 // kedaReferenceKedaTagStructs is the sub structs that are referenced by the keda tagged structs
 func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs map[string]*ast.StructType, otherReferenceKedaTagStructs map[string]*ast.StructType, outputFilePath string) (err error) {
-
 	triggerMetadataSchemas := []TriggerMetadataSchema{}
 
 	for creatorName, scalerStructs := range kedaScalerStructs {
-		metadataFields, err := generateMetadataFields(scalerStructs, otherReferenceKedaTagStructs)
-		if err != nil {
+		metadataFields := generateMetadataFields(scalerStructs, otherReferenceKedaTagStructs)
+		if len(metadataFields) == 0 {
 			fmt.Printf("Error generating metadata fields with creator %s: %s\n", creatorName, err)
 			continue
 		}
@@ -130,7 +129,6 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 				triggerMetadataSchemas = append(triggerMetadataSchemas, triggerMetadataSchema)
 				fmt.Printf("Scaler Metadata Schema Added: %s\n", triggerName)
 			}
-
 		}
 	}
 
@@ -152,7 +150,7 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 }
 
 // generateMetadataFields is a function that generates the metadata fields of a scaler struct
-func generateMetadataFields(structType *ast.StructType, otherReferenceKedaTagStructs map[string]*ast.StructType) ([]Metadata, error) {
+func generateMetadataFields(structType *ast.StructType, otherReferenceKedaTagStructs map[string]*ast.StructType) []Metadata {
 
 	triggerMetadata := []Metadata{}
 
@@ -161,7 +159,7 @@ func generateMetadataFields(structType *ast.StructType, otherReferenceKedaTagStr
 		if commentGroup.Tag == nil || commentGroup.Tag.Value == "" {
 			continue
 		}
-		metadataList, hasSubstruct, err := generateMetadatasFromTag(commentGroup.Tag.Value)
+		metadataList, hasSubstruct, err := generateMetadatas(commentGroup.Tag.Value)
 
 		if err != nil {
 			fmt.Printf("Error generating metadata fields from tag value: %s, err: %s\n", commentGroup.Tag.Value, err)
@@ -179,18 +177,18 @@ func generateMetadataFields(structType *ast.StructType, otherReferenceKedaTagStr
 			continue
 		}
 		if otherReferenceKedaTagStructs[s.Name] != nil {
-			subStructMetadataField, err := generateMetadataFields(otherReferenceKedaTagStructs[s.Name], otherReferenceKedaTagStructs)
-			if err == nil {
+			subStructMetadataField := generateMetadataFields(otherReferenceKedaTagStructs[s.Name], otherReferenceKedaTagStructs)
+			if len(subStructMetadataField) > 0 {
 				triggerMetadata = append(triggerMetadata, subStructMetadataField...)
 			}
 		}
 	}
 
-	return triggerMetadata, nil
+	return triggerMetadata
 }
 
-// generateMetadatasFromTag is a function that generates the metadata field from tag
-func generateMetadatasFromTag(tag string) ([]Metadata, bool, error) {
+// generateMetadatas is a function that generates the metadata field from tag
+func generateMetadatas(tag string) ([]Metadata, bool, error) {
 	var fieldNames []string
 	metadata := Metadata{Type: "string"}
 	tagSplit := strings.Split(strings.Trim(strings.Split(strings.Trim(tag, "`"), ":")[1], "\""), scalersconfig.TagSeparator)
@@ -278,7 +276,7 @@ func generateMetadatasFromTag(tag string) ([]Metadata, bool, error) {
 	}
 
 	if len(fieldNames) == 0 {
-		return nil, false, fmt.Errorf("Fieldname doesn't exist in tag value")
+		return nil, false, fmt.Errorf("fieldname doesn't exist in tag value")
 	}
 
 	metadatas := []Metadata{}
@@ -312,7 +310,7 @@ func getBuildScalerCalls(fileName string) (map[string]string, error) {
 			if !ok || s.Name != "triggerType" {
 				break
 			}
-			// retrieve the creator function name from each case statment
+			// retrieve the creator function name from each case statement
 			for _, casesAst := range t.Body.List {
 				c, ok := casesAst.(*ast.CaseClause)
 
@@ -345,7 +343,6 @@ func getBuildScalerCalls(fileName string) (map[string]string, error) {
 
 				scalerCallers[strings.Trim(basic.Value, "\"")] = expr.Sel.Name
 			}
-
 		}
 		return true
 	})
@@ -383,7 +380,6 @@ func getAllKedaTagedStructs(dir string) (map[string]*ast.StructType, map[string]
 		var scalerStructs *ast.StructType
 
 		for _, decl := range f.Decls {
-
 			switch v := decl.(type) {
 			case *ast.GenDecl:
 				for _, spec := range v.Specs {
