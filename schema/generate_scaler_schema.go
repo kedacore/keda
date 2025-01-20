@@ -221,19 +221,12 @@ func generateMetadatas(tag string) ([]Metadata, bool, error) {
 		case scalersconfig.OrderTag:
 			if len(tsplit) > 1 {
 				order := strings.Split(tsplit[1], scalersconfig.TagValueSeparator)
-				for _, po := range order {
-					poTyped := scalersconfig.ParsingOrder(strings.TrimSpace(po))
-					if !scalersconfig.AllowedParsingOrderMap[poTyped] {
-						apo := maps.Keys(scalersconfig.AllowedParsingOrderMap)
-						slices.Sort(apo)
-						return nil, false, fmt.Errorf("unknown parsing order value %s, has to be one of %s", po, apo)
-					}
-					if poTyped == scalersconfig.ResolvedEnv {
-						metadata.CanReadFromEnv = true
-					} else if poTyped == scalersconfig.AuthParams {
-						metadata.CanReadFromAuth = true
-					}
+				canReadFromEnv, canReadFromAuth, err := retrieveDataFromOrder(order)
+				if err != nil {
+					return nil, false, err
 				}
+				metadata.CanReadFromEnv = canReadFromEnv
+				metadata.CanReadFromAuth = canReadFromAuth
 			}
 		case scalersconfig.NameTag:
 			if len(tsplit) > 1 {
@@ -285,13 +278,37 @@ func generateMetadatas(tag string) ([]Metadata, bool, error) {
 		return nil, false, fmt.Errorf("fieldname doesn't exist in tag value")
 	}
 
+	metadatas := createMetadatas(metadata, fieldNames)
+	return metadatas, false, nil
+}
+
+// retrieveDataFromOrder is a function that retrieves the data from the order tag
+func retrieveDataFromOrder(orders []string) (bool, bool, error) {
+	var canReadFromEnv, canReadFromAuth = false, false
+	for _, po := range orders {
+		poTyped := scalersconfig.ParsingOrder(strings.TrimSpace(po))
+		if !scalersconfig.AllowedParsingOrderMap[poTyped] {
+			apo := maps.Keys(scalersconfig.AllowedParsingOrderMap)
+			slices.Sort(apo)
+			return false, false, fmt.Errorf("unknown parsing order value %s, has to be one of %s", po, apo)
+		}
+		if poTyped == scalersconfig.ResolvedEnv {
+			canReadFromEnv = true
+		} else if poTyped == scalersconfig.AuthParams {
+			canReadFromAuth = true
+		}
+	}
+	return canReadFromEnv, canReadFromAuth, nil
+}
+
+// createMetadatas is a function that creates the metadata with the field names
+func createMetadatas(metadata Metadata, fieldNames []string) []Metadata {
 	metadatas := []Metadata{}
 	for _, fieldName := range fieldNames {
 		metadata.Name = fieldName
 		metadatas = append(metadatas, metadata)
 	}
-
-	return metadatas, false, nil
+	return metadatas
 }
 
 // getBuildScalerCalls is a function that gets the map of scaler names and the creator function names from the scalers_builder file
