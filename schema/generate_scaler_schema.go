@@ -463,6 +463,6 @@ func main() {
 	kedaTagStructs, otherReferenceStructs := getAllKedaTagedStructs(scalersFilesDirPath)
 	err = aggregateSchemaStruct(scalerSelectors, kedaTagStructs, otherReferenceStructs, outputFilePath)
 	if err != nil {
-		fmt.Print("Error aggregating schema struct: %s\n", err)
+		fmt.Printf("Error aggregating schema struct: %s\n", err)
 	}
 }
