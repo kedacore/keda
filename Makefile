@@ -391,3 +391,4 @@ validate-changelog: ## Validate changelog
 .PHONY: generate-scaler-schemas
 generate-scaler-schemas: ## Generate scaler shcemas
 	GOBIN=$(LOCALBIN) go run ./schema/generate_scaler_schema.go --keda-version $(VERSION) --scalers-builder-file $(SCALERS_BUILDER_FILE) --scalers-files-dir $(SCALERS_FILES_DIR) --output-file-path $(OUTPUT_FILE_PATH)
+	
