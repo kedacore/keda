@@ -64,6 +64,11 @@ GOLANGCI_VERSION:=1.63.4
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+# Scaler schema generation parameters
+ SCALERS_BUILDER_FILE ?= "pkg/scaling/scalers_builder.go" 
+ SCALERS_FILES_DIR ?= "pkg/scalers" 
+ OUTPUT_FILE_PATH ?= "schema/"
+
 ##################################################
 # All                                            #
 ##################################################
@@ -396,4 +401,4 @@ validate-changelog: ## Validate changelog
 
 .PHONY: generate-scaler-schemas
 generate-scaler-schemas: ## Generate scaler shcemas
-	GOBIN=$(LOCALBIN) go run ./schema/generate_scaler_schema.go --keda-version $(VERSION) --scalers-builder-file "pkg/scaling/scalers_builder.go" --scalers-files-dir "pkg/scalers" --output-file-path "schema/"
+	GOBIN=$(LOCALBIN) go run ./schema/generate_scaler_schema.go --keda-version $(VERSION) --scalers-builder-file $(SCALERS_BUILDER_FILE) --scalers-files-dir $(SCALERS_FILES_DIR) --output-file-path $(OUTPUT_FILE_PATH)
