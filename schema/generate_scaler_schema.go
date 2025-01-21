@@ -119,6 +119,12 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 	}
 	sort.Strings(sortedScalerCreatorNames)
 
+	sortedScalerNames := []string{}
+	for k := range scalerSelectors {
+		sortedScalerNames = append(sortedScalerNames, k)
+	}
+	sort.Strings(sortedScalerNames)
+
 	for _, creatorName := range sortedScalerCreatorNames {
 		metadataFields := generateMetadataFields(kedaScalerStructs[creatorName], otherReferenceKedaTagStructs)
 		if len(metadataFields) == 0 {
@@ -127,8 +133,8 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 		}
 
 		// Find which scaler names the creator is called by and construct the metadata schema
-		for scalerName, selectorName := range scalerSelectors {
-			if selectorName == creatorName {
+		for _, scalerName := range sortedScalerNames {
+			if scalerSelectors[scalerName] == creatorName {
 				scalerMetadataSchema := ScalerMetadataSchema{}
 				scalerMetadataSchema.Type = scalerName
 				scalerMetadataSchema.Metadata = metadataFields
