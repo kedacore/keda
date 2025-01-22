@@ -17,12 +17,16 @@ limitations under the License.
 package util
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"time"
+
+	"k8s.io/utils/ptr"
 )
 
 const RestrictSecretAccessEnvVar = "KEDA_RESTRICT_SECRET_ACCESS"
+const BoundServiceAccountTokenExpiryEnvVar = "KEDA_BOUND_SERVICE_ACCOUNT_TOKEN_EXPIRY"
 
 var clusterObjectNamespaceCache *string
 
@@ -89,4 +93,19 @@ func GetPodNamespace() string {
 // GetRestrictSecretAccess retrieves the value of the environment variable of KEDA_RESTRICT_SECRET_ACCESS
 func GetRestrictSecretAccess() string {
 	return os.Getenv(RestrictSecretAccessEnvVar)
+}
+
+// GetBoundServiceAccountTokenExpiry retrieves the value of the environment variable of KEDA_BOUND_SERVICE_ACCOUNT_TOKEN_EXPIRY
+func GetBoundServiceAccountTokenExpiry() (*time.Duration, error) {
+	expiry, err := ResolveOsEnvDuration(BoundServiceAccountTokenExpiryEnvVar)
+	if err != nil {
+		return nil, err
+	}
+	if expiry == nil {
+		return ptr.To[time.Duration](time.Hour), nil // if blank, default to 1 hour
+	}
+	if *expiry < time.Hour || *expiry > 6*time.Hour {
+		return nil, fmt.Errorf("invalid value for %s: %s, must be between 1h and 6h", BoundServiceAccountTokenExpiryEnvVar, expiry.String()) // Must be between 1 hour and 6 hours
+	}
+	return expiry, nil
 }
