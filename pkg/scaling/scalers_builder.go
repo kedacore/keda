@@ -95,10 +95,10 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			logger.Error(err, "error resolving auth params", "triggerIndex", triggerIndex)
 			if scaler != nil {
-				scaler.Close(ctx)
+				_ = scaler.Close(ctx)
 			}
 			for _, builder := range result {
-				builder.Scaler.Close(ctx)
+				_ = builder.Scaler.Close(ctx)
 			}
 			return nil, err
 		}
@@ -190,6 +190,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewGcsScaler(config)
 	case "github-runner":
 		return scalers.NewGitHubRunnerScaler(config)
+	case "forgejo-runner":
+		return scalers.NewForgejoRunnerScaler(config)
 	case "graphite":
 		return scalers.NewGraphiteScaler(config)
 	case "huawei-cloudeye":
