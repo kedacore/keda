@@ -161,6 +161,10 @@ var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
 	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"username": "user"}, true, rmqTLSDisable, false},
 	// failure, password but no username
 	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"password": "PASSWORD"}, true, rmqTLSDisable, false},
+	// success, vhostName
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"vhostName": "myVhost"}, false, rmqTLSDisable, false},
+	// success, vhostName but empty
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"vhostName": ""}, false, rmqTLSDisable, false},
 	// success, username and password from env
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "usernameFromEnv": rabbitMQUsername, "passwordFromEnv": rabbitMQPassword}, v1alpha1.AuthPodIdentity{}, map[string]string{}, false, rmqTLSDisable, false},
 	// failure, username from env but not password

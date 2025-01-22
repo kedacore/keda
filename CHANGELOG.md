@@ -72,6 +72,7 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **IBMMQ Scaler**: Handling StatusNotFound in IBMMQ scaler ([#6472](https://github.com/kedacore/keda/pull/6472))
+- **RabbitMQ Scaler**: Support use of the ‘vhostName’ parameter in the ‘TriggerAuthentication’ resource ([#6369](https://github.com/kedacore/keda/issues/6369))
 
 ### Fixes
 
