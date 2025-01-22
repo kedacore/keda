@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // TestBasicTypedConfig tests the basic types for typed config
@@ -582,4 +583,51 @@ func TestMultiName(t *testing.T) {
 	err = sc2.TypedConfig(&ts)
 	Expect(err).To(BeNil())
 	Expect(ts.Property).To(Equal("bbb"))
+}
+
+// TestDeprecatedAnnounce tests the deprecatedAnnounce tag
+func TestDeprecatedAnnounce(t *testing.T) {
+	RegisterTestingT(t)
+
+	// Create a mock recorder to capture the event
+	mockRecorder := &MockEventRecorder{}
+
+	sc := &ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"oldParam": "value1",
+		},
+		Recorder: mockRecorder,
+	}
+
+	type testStruct struct {
+		OldParam string `keda:"name=oldParam, order=triggerMetadata, deprecatedAnnounce=This parameter is deprecated. Use newParam instead"`
+	}
+
+	ts := testStruct{}
+	err := sc.TypedConfig(&ts)
+	Expect(err).To(BeNil())
+	Expect(ts.OldParam).To(Equal("value1"))
+
+	// Verify that the deprecation event was recorded
+	Expect(mockRecorder.EventCalled).To(BeTrue())
+	Expect(mockRecorder.Message).To(Equal("Scaler  info: This parameter is deprecated. Use newParam instead"))
+}
+
+// MockEventRecorder is a mock implementation of record.EventRecorder
+type MockEventRecorder struct {
+	EventCalled bool
+	Message     string
+}
+
+func (m *MockEventRecorder) Event(object runtime.Object, eventtype, reason, message string) {
+	m.EventCalled = true
+	m.Message = message
+}
+
+func (m *MockEventRecorder) Eventf(object runtime.Object, eventtype, reason, messageFmt string, args ...interface{}) {
+	// Not needed
+}
+
+func (m *MockEventRecorder) AnnotatedEventf(object runtime.Object, annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{}) {
+	// Not needed
 }

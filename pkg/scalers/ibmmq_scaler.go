@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -34,7 +33,7 @@ type ibmmqMetadata struct {
 	Username             string   `keda:"name=username,             order=authParams;resolvedEnv;triggerMetadata"`
 	Password             string   `keda:"name=password,             order=authParams;resolvedEnv;triggerMetadata"`
 	UnsafeSsl            bool     `keda:"name=unsafeSsl,            order=triggerMetadata, default=false"`
-	TLS                  bool     `keda:"name=tls,                  order=triggerMetadata, default=false"` // , deprecated=use unsafeSsl instead
+	TLS                  bool     `keda:"name=tls,                  order=triggerMetadata, default=false, deprecatedAnnounce=The 'tls' setting is DEPRECATED and will be removed in v2.18 - Use 'unsafeSsl' instead"`
 	CA                   string   `keda:"name=ca,                   order=authParams, optional"`
 	Cert                 string   `keda:"name=cert,                 order=authParams, optional"`
 	Key                  string   `keda:"name=key,                  order=authParams, optional"`
@@ -52,6 +51,13 @@ type CommandResponse struct {
 type Response struct {
 	Parameters *Parameters `json:"parameters"`
 	Message    []string    `json:"message"`
+}
+
+// ErrorResponse Structure for error messages from IBM MQ
+type ErrorResponse struct {
+	Error []struct {
+		Message string `json:"message"`
+	} `json:"error"`
 }
 
 // Parameters Contains the current depth of the IBM MQ Queue
@@ -92,7 +98,6 @@ func NewIBMMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	// TODO: DEPRECATED to be removed in v2.18
 	if meta.TLS {
-		logger.Info("The 'tls' setting is DEPRECATED and will be removed in v2.18 - Use 'unsafeSsl' instead")
 		meta.UnsafeSsl = meta.TLS
 	}
 
@@ -106,12 +111,14 @@ func NewIBMMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
 	}
 
-	return &ibmmqScaler{
+	scaler := &ibmmqScaler{
 		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
 		logger:     logger,
-	}, nil
+	}
+
+	return scaler, nil
 }
 
 func (s *ibmmqScaler) Close(context.Context) error {
@@ -131,18 +138,18 @@ func parseIBMMQMetadata(config *scalersconfig.ScalerConfig) (ibmmqMetadata, erro
 
 func (s *ibmmqScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 	depths := make([]int64, 0, len(s.metadata.QueueName))
-	url := s.metadata.Host
 
-	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "POST", s.metadata.Host, nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
+
 	req.Header.Set("ibm-mq-rest-csrf-token", "value")
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(s.metadata.Username, s.metadata.Password)
 
 	for _, queueName := range s.metadata.QueueName {
-		requestJSON := []byte(`{"type": "runCommandJSON", "command": "display", "qualifier": "qlocal", "name": "` + queueName + `", "responseParameters" : ["CURDEPTH"]}`)
+		requestJSON := []byte(fmt.Sprintf(`{"type": "runCommandJSON", "command": "display", "qualifier": "qlocal", "name": "%s", "responseParameters": ["CURDEPTH"]}`, queueName))
 		req.Body = io.NopCloser(bytes.NewBuffer(requestJSON))
 
 		resp, err := s.httpClient.Do(req)
@@ -151,47 +158,62 @@ func (s *ibmmqScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode == http.StatusUnauthorized {
-			return 0, fmt.Errorf("authentication failed: incorrect username or password")
-		}
-
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return 0, fmt.Errorf("failed to read body of request for queue %s: %w", queueName, err)
 		}
 
-		var response CommandResponse
-		err = json.Unmarshal(body, &response)
-		if err != nil {
-			return 0, fmt.Errorf("failed to parse JSON for queue %s: %w", queueName, err)
-		}
-
-		if len(response.CommandResponse) == 0 {
-			return 0, fmt.Errorf("failed to parse response from REST call for queue %s", queueName)
-		}
-
-		if response.CommandResponse[0].Parameters == nil {
-			var reason string
-			message := strings.Join(response.CommandResponse[0].Message, " ")
-			if message != "" {
-				reason = fmt.Sprintf(", reason: %s", message)
+		switch resp.StatusCode {
+		case http.StatusUnauthorized:
+			return 0, fmt.Errorf("authentication failed: incorrect username or password")
+		case http.StatusNotFound:
+			var errorResponse ErrorResponse
+			if err := json.Unmarshal(body, &errorResponse); err != nil {
+				return 0, fmt.Errorf("failed to parse error response JSON for queue %s: %w", queueName, err)
 			}
-			return 0, fmt.Errorf("failed to get the current queue depth parameter for queue %s%s", queueName, reason)
-		}
+			if len(errorResponse.Error) > 0 && errorResponse.Error[0].Message != "" {
+				return 0, fmt.Errorf("%s", errorResponse.Error[0].Message)
+			}
+			return 0, fmt.Errorf("failed to get the current queue depth parameter for queue %s", queueName)
+		case http.StatusOK:
+			var response CommandResponse
+			if err := json.Unmarshal(body, &response); err != nil {
+				return 0, fmt.Errorf("failed to parse JSON for queue %s: %w", queueName, err)
+			}
 
-		depth := int64(response.CommandResponse[0].Parameters.Curdepth)
-		depths = append(depths, depth)
+			// Check for valid response with message
+			if len(response.CommandResponse) > 0 && len(response.CommandResponse[0].Message) > 0 {
+				return 0, fmt.Errorf("%s", response.CommandResponse[0].Message[0])
+			}
+
+			// Check for valid response with parameters
+			if len(response.CommandResponse) == 0 || response.CommandResponse[0].Parameters == nil {
+				return 0, fmt.Errorf("failed to get the current queue depth parameter for queue %s", queueName)
+			}
+
+			depths = append(depths, int64(response.CommandResponse[0].Parameters.Curdepth))
+		default:
+			return 0, fmt.Errorf("unexpected status code %d for queue %s", resp.StatusCode, queueName)
+		}
 	}
 
-	switch s.metadata.Operation {
+	return calculateDepth(depths, s.metadata.Operation), nil
+}
+
+func calculateDepth(depths []int64, operation string) int64 {
+	if len(depths) == 0 {
+		return 0
+	}
+
+	switch operation {
 	case sumOperation:
-		return sumDepths(depths), nil
+		return sumDepths(depths)
 	case avgOperation:
-		return avgDepths(depths), nil
+		return avgDepths(depths)
 	case maxOperation:
-		return maxDepth(depths), nil
+		return maxDepths(depths)
 	default:
-		return 0, nil
+		return 0
 	}
 }
 
@@ -210,7 +232,7 @@ func avgDepths(depths []int64) int64 {
 	return sumDepths(depths) / int64(len(depths))
 }
 
-func maxDepth(depths []int64) int64 {
+func maxDepths(depths []int64) int64 {
 	if len(depths) == 0 {
 		return 0
 	}

@@ -28,24 +28,24 @@ type awsCloudwatchMetadata struct {
 	awsAuthorization awsutils.AuthorizationMetadata
 
 	triggerIndex   int
-	Namespace      string   `keda:"name=namespace, order=triggerMetadata, optional"`
-	MetricsName    string   `keda:"name=metricName, order=triggerMetadata, optional"`
-	DimensionName  []string `keda:"name=dimensionName, order=triggerMetadata, optional, separator=;"`
+	Namespace      string   `keda:"name=namespace,      order=triggerMetadata, optional"`
+	MetricsName    string   `keda:"name=metricName,     order=triggerMetadata, optional"`
+	DimensionName  []string `keda:"name=dimensionName,  order=triggerMetadata, optional, separator=;"`
 	DimensionValue []string `keda:"name=dimensionValue, order=triggerMetadata, optional, separator=;"`
-	Expression     string   `keda:"name=expression, order=triggerMetadata, optional"`
+	Expression     string   `keda:"name=expression,     order=triggerMetadata, optional"`
 
-	TargetMetricValue           float64 `keda:"name=targetMetricValue, order=triggerMetadata"`
+	TargetMetricValue           float64 `keda:"name=targetMetricValue,           order=triggerMetadata"`
 	ActivationTargetMetricValue float64 `keda:"name=activationTargetMetricValue, order=triggerMetadata, optional"`
-	MinMetricValue              float64 `keda:"name=minMetricValue, order=triggerMetadata"`
-	IgnoreNullValues            bool    `keda:"name=ignoreNullValues, order=triggerMetadata, optional, default=true"`
+	MinMetricValue              float64 `keda:"name=minMetricValue,              order=triggerMetadata"`
+	IgnoreNullValues            bool    `keda:"name=ignoreNullValues,            order=triggerMetadata, default=true"`
 
-	MetricCollectionTime int64  `keda:"name=metricCollectionTime, order=triggerMetadata, optional, default=300"`
-	MetricStat           string `keda:"name=metricStat, order=triggerMetadata, optional, default=Average"`
-	MetricUnit           string `keda:"name=metricUnit, order=triggerMetadata, optional"` // Need to check the metric unit
-	MetricStatPeriod     int64  `keda:"name=metricStatPeriod, order=triggerMetadata, optional, default=300"`
-	MetricEndTimeOffset  int64  `keda:"name=metricEndTimeOffset, order=triggerMetadata, optional, default=0"`
+	MetricCollectionTime int64  `keda:"name=metricCollectionTime, order=triggerMetadata, default=300"`
+	MetricStat           string `keda:"name=metricStat,           order=triggerMetadata, default=Average"`
+	MetricUnit           string `keda:"name=metricUnit,           order=triggerMetadata, optional"` // Need to check the metric unit
+	MetricStatPeriod     int64  `keda:"name=metricStatPeriod,     order=triggerMetadata, default=300"`
+	MetricEndTimeOffset  int64  `keda:"name=metricEndTimeOffset,  order=triggerMetadata, default=0"`
 
-	AwsRegion   string `keda:"name=awsRegion, order=triggerMetadata"`
+	AwsRegion   string `keda:"name=awsRegion,   order=triggerMetadata;authParams"`
 	AwsEndpoint string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
 }
 
@@ -115,7 +115,7 @@ func NewAwsCloudwatchScaler(ctx context.Context, config *scalersconfig.ScalerCon
 }
 
 func createCloudwatchClient(ctx context.Context, metadata *awsCloudwatchMetadata) (*cloudwatch.Client, error) {
-	cfg, err := awsutils.GetAwsConfig(ctx, metadata.AwsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 
 	if err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func parseAwsCloudwatchMetadata(config *scalersconfig.ScalerConfig) (*awsCloudwa
 		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
 	}
 
-	awsAuthorization, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	awsAuthorization, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AwsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}

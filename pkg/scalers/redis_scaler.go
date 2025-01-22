@@ -46,29 +46,29 @@ type redisScaler struct {
 }
 
 type redisConnectionInfo struct {
-	Addresses        []string `keda:"name=address;addresses,       order=triggerMetadata;authParams;resolvedEnv"`
-	Username         string   `keda:"name=username,       order=triggerMetadata;resolvedEnv;authParams"`
-	Password         string   `keda:"name=password,       order=triggerMetadata;resolvedEnv;authParams"`
-	SentinelUsername string   `keda:"name=sentinelUsername,       order=triggerMetadata;authParams;resolvedEnv"`
-	SentinelPassword string   `keda:"name=sentinelPassword,       order=triggerMetadata;authParams;resolvedEnv"`
-	SentinelMaster   string   `keda:"name=sentinelMaster,       order=triggerMetadata;authParams;resolvedEnv"`
-	Hosts            []string `keda:"name=host;hosts,       order=triggerMetadata;resolvedEnv;authParams"`
-	Ports            []string `keda:"name=port;ports,       order=triggerMetadata;resolvedEnv;authParams"`
+	Addresses        []string `keda:"name=address;addresses, order=triggerMetadata;authParams;resolvedEnv"`
+	Username         string   `keda:"name=username,          order=triggerMetadata;resolvedEnv;authParams"`
+	Password         string   `keda:"name=password,          order=triggerMetadata;resolvedEnv;authParams"`
+	SentinelUsername string   `keda:"name=sentinelUsername,  order=triggerMetadata;authParams;resolvedEnv"`
+	SentinelPassword string   `keda:"name=sentinelPassword,  order=triggerMetadata;authParams;resolvedEnv"`
+	SentinelMaster   string   `keda:"name=sentinelMaster,    order=triggerMetadata;authParams;resolvedEnv"`
+	Hosts            []string `keda:"name=host;hosts,        order=triggerMetadata;resolvedEnv;authParams"`
+	Ports            []string `keda:"name=port;ports,        order=triggerMetadata;resolvedEnv;authParams"`
 	EnableTLS        bool
-	UnsafeSsl        bool   `keda:"name=unsafeSsl,       order=triggerMetadata, optional, default=false"`
-	Cert             string `keda:"name=Cert;cert,       order=authParams"`
-	Key              string `keda:"name=key,       order=authParams"`
-	KeyPassword      string `keda:"name=keyPassword,       order=authParams"`
-	Ca               string `keda:"name=ca,       order=authParams"`
+	UnsafeSsl        bool   `keda:"name=unsafeSsl,   order=triggerMetadata, default=false"`
+	Cert             string `keda:"name=Cert;cert,   order=authParams"`
+	Key              string `keda:"name=key,         order=authParams"`
+	KeyPassword      string `keda:"name=keyPassword, order=authParams"`
+	Ca               string `keda:"name=ca,          order=authParams"`
 }
 
 type redisMetadata struct {
-	ListLength           int64               `keda:"name=listLength,       order=triggerMetadata, optional, default=5"`
-	ActivationListLength int64               `keda:"name=activationListLength,       order=triggerMetadata, optional"`
-	ListName             string              `keda:"name=listName,       order=triggerMetadata"`
-	DatabaseIndex        int                 `keda:"name=databaseIndex,       order=triggerMetadata, optional"`
-	MetadataEnableTLS    string              `keda:"name=enableTLS,       order=triggerMetadata, optional"`
-	AuthParamEnableTLS   string              `keda:"name=tls,       order=authParams, optional"`
+	ListLength           int64               `keda:"name=listLength,           order=triggerMetadata, default=5"`
+	ActivationListLength int64               `keda:"name=activationListLength, order=triggerMetadata, optional"`
+	ListName             string              `keda:"name=listName,             order=triggerMetadata"`
+	DatabaseIndex        int                 `keda:"name=databaseIndex,        order=triggerMetadata, optional"`
+	MetadataEnableTLS    string              `keda:"name=enableTLS,            order=triggerMetadata, optional"`
+	AuthParamEnableTLS   string              `keda:"name=tls,                  order=authParams, optional"`
 	ConnectionInfo       redisConnectionInfo `keda:"optional"`
 	triggerIndex         int
 }

@@ -31,7 +31,7 @@ type awsSqsQueueMetadata struct {
 	ActivationTargetQueueLength int64  `keda:"name=activationQueueLength, order=triggerMetadata, default=0"`
 	QueueURL                    string `keda:"name=queueURL;queueURLFromEnv, order=triggerMetadata;resolvedEnv"`
 	queueName                   string
-	AwsRegion                   string `keda:"name=awsRegion, order=triggerMetadata"`
+	AwsRegion                   string `keda:"name=awsRegion, order=triggerMetadata;authParams"`
 	AwsEndpoint                 string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
 	awsAuthorization            awsutils.AuthorizationMetadata
 	triggerIndex                int
@@ -109,7 +109,7 @@ func parseAwsSqsQueueMetadata(config *scalersconfig.ScalerConfig) (*awsSqsQueueM
 		meta.queueName = queueURLPathParts[2]
 	}
 
-	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+	auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AwsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func parseAwsSqsQueueMetadata(config *scalersconfig.ScalerConfig) (*awsSqsQueueM
 }
 
 func createSqsClient(ctx context.Context, metadata *awsSqsQueueMetadata) (*sqs.Client, error) {
-	cfg, err := awsutils.GetAwsConfig(ctx, metadata.AwsRegion, metadata.awsAuthorization)
+	cfg, err := awsutils.GetAwsConfig(ctx, metadata.awsAuthorization)
 	if err != nil {
 		return nil, err
 	}

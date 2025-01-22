@@ -164,7 +164,7 @@ func parseApacheKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *apache
 		return errors.New("unable to set `tls` in both ScaledObject and TriggerAuthentication together")
 	}
 	if meta.SASLType == KafkaSASLTypeMskIam {
-		auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
+		auth, err := awsutils.GetAwsAuthorization(config.TriggerUniqueKey, meta.AWSRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 		if err != nil {
 			return err
 		}
@@ -220,7 +220,7 @@ func getApacheKafkaClient(ctx context.Context, metadata apacheKafkaMetadata, log
 	case KafkaSASLTypeOAuthbearer:
 		return nil, errors.New("SASL/OAUTHBEARER is not implemented yet")
 	case KafkaSASLTypeMskIam:
-		cfg, err := awsutils.GetAwsConfig(ctx, metadata.AWSRegion, metadata.AWSAuthorization)
+		cfg, err := awsutils.GetAwsConfig(ctx, metadata.AWSAuthorization)
 		if err != nil {
 			return nil, err
 		}

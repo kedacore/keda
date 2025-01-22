@@ -19,7 +19,7 @@ jobs:
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: oNaiPs/secrets-to-env-action@v1
+      - uses: oNaiPs/secrets-to-env-action@ec46a22bfc9b37e014b627b3208b07eb8909ea0f # v1.5
         with:
           secrets: ${{ toJSON(secrets) }}
 
@@ -47,7 +47,7 @@ jobs:
           NODE_POOL_SIZE: 1
 
       - name: Upload test logs
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
         if: ${{ always() }}
         with:
           name: e2e-test-logs
