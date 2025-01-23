@@ -184,7 +184,7 @@ func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
 		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-replicas")
 	}
-	return nil
+	return err
 }
 
 func verifyFallback(incomingSo *ScaledObject, action string, _ bool) error {

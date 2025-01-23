@@ -239,7 +239,7 @@ func (so *ScaledObject) IsUsingModifiers() bool {
 
 // getHPAMinReplicas returns MinReplicas based on definition in ScaledObject or default value if not defined
 func (so *ScaledObject) GetHPAMinReplicas() *int32 {
-	if so.Spec.MinReplicaCount != nil && *so.Spec.MinReplicaCount > 0 {
+	if so.Spec.MinReplicaCount != nil {
 		return so.Spec.MinReplicaCount
 	}
 	tmp := defaultHPAMinReplicas
@@ -254,21 +254,39 @@ func (so *ScaledObject) GetHPAMaxReplicas() int32 {
 	return defaultHPAMaxReplicas
 }
 
+// GetDefaultHPAMinReplicas returns defaultHPAMinReplicas
+func GetDefaultHPAMinReplicas() *int32 {
+	tmp := defaultHPAMinReplicas
+	return &tmp
+}
+
+// GetDefaultHPAMaxReplicas returns defaultHPAMaxReplicas
+func GetDefaultHPAMaxReplicas() int32 {
+	return defaultHPAMaxReplicas
+}
+
 // checkReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified
 // i.e. that Min is not greater than Max or Idle greater or equal to Min
 func CheckReplicaCountBoundsAreValid(scaledObject *ScaledObject) error {
-	min := int32(0)
-	if scaledObject.Spec.MinReplicaCount != nil {
-		min = *scaledObject.GetHPAMinReplicas()
-	}
-	max := scaledObject.GetHPAMaxReplicas()
+	var idleReplicas *int32
+	minReplicas := *scaledObject.GetHPAMinReplicas()
+	maxReplicas := scaledObject.GetHPAMaxReplicas()
+	idleReplicas = scaledObject.Spec.IdleReplicaCount
 
-	if min > max {
-		return fmt.Errorf("MinReplicaCount=%d must be less than MaxReplicaCount=%d", min, max)
+	if scaledObject.Spec.IdleReplicaCount != nil && *idleReplicas < 0 {
+		return fmt.Errorf("IdleReplicaCount=%d must not be negative", *idleReplicas)
 	}
 
-	if scaledObject.Spec.IdleReplicaCount != nil && *scaledObject.Spec.IdleReplicaCount >= min {
-		return fmt.Errorf("IdleReplicaCount=%d must be less than MinReplicaCount=%d", *scaledObject.Spec.IdleReplicaCount, min)
+	if minReplicas < 0 {
+		return fmt.Errorf("MinReplicaCount=%d must not be negative", minReplicas)
+	}
+
+	if minReplicas > maxReplicas {
+		return fmt.Errorf("MinReplicaCount=%d must not be greater than MaxReplicaCount=%d", minReplicas, maxReplicas)
+	}
+
+	if scaledObject.Spec.IdleReplicaCount != nil && *idleReplicas >= minReplicas {
+		return fmt.Errorf("IdleReplicaCount=%d must be less than MinReplicaCount=%d", *scaledObject.Spec.IdleReplicaCount, minReplicas)
 	}
 
 	return nil

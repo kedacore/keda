@@ -1048,6 +1048,92 @@ var _ = It("should validate the so creation with ScalingModifiers.Formula - doub
 	}).ShouldNot(HaveOccurred())
 })
 
+var _ = It("shouldn't validate negative minreplicacount", func() {
+
+	namespaceName := "negative-minreplicas"
+	namespace := createNamespace(namespaceName)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	workload := createDeployment(namespaceName, false, false)
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	so.Spec.MinReplicaCount = ptr.To[int32](-5)
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("shouldn't validate minreplicacount greater than maxreplicacount", func() {
+
+	namespaceName := "minreplicas-greater-than-maxreplicas"
+	namespace := createNamespace(namespaceName)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	workload := createDeployment(namespaceName, false, false)
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	so.Spec.MinReplicaCount = ptr.To[int32](11)
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("should validate minreplicacount and maxreplicacount are all equal to zero", func() {
+
+	namespaceName := "minreplicas-maxreplicas-zero"
+	namespace := createNamespace(namespaceName)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	workload := createDeployment(namespaceName, false, false)
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	so.Spec.MinReplicaCount = ptr.To[int32](0)
+	so.Spec.MaxReplicaCount = ptr.To[int32](0)
+	so.Spec.IdleReplicaCount = nil
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldn't validate negative idlereplicacount", func() {
+
+	namespaceName := "negative-idlereplicas"
+	namespace := createNamespace(namespaceName)
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	workload := createDeployment(namespaceName, false, false)
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	so.Spec.IdleReplicaCount = ptr.To[int32](-1)
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
 var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
