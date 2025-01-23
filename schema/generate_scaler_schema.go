@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"go/ast"
@@ -111,7 +112,7 @@ type FullMetadataSchema struct {
 // scalersSelectors is a map that contains the name of the scaler and the name of the scaler creator function from the scalers_builder file
 // kedaScalerStructs is the structs of the scalers that are tagged with `keda`
 // kedaReferenceKedaTagStructs is the sub structs that are referenced by the keda tagged structs
-func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs map[string]*ast.StructType, otherReferenceKedaTagStructs map[string]*ast.StructType, outputFilePath string) (err error) {
+func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs map[string]*ast.StructType, otherReferenceKedaTagStructs map[string]*ast.StructType, outputFileName string, outputFilePath string, outputFileFormat string) (err error) {
 	scalerMetadataSchemas := []ScalerMetadataSchema{}
 	sortedScalerCreatorNames := []string{}
 	for k := range kedaScalerStructs {
@@ -151,13 +152,23 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 		Scalers:       scalerMetadataSchemas,
 	}
 
-	yamlData, err := yaml.Marshal(fullMetadataSchema)
-	if err != nil {
-		return err
+	filedata := []byte{}
+	if outputFileFormat == "yaml" {
+		filedata, err = yaml.Marshal(fullMetadataSchema)
+		if err != nil {
+			return err
+		}
+	} else if outputFileFormat == "json" {
+		filedata, err = json.MarshalIndent(fullMetadataSchema, "", "    ")
+		if err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("output file format %s is not supported", outputFileFormat)
 	}
 
-	fileName := outputFilePath + "scaler-metadata-schemas.yaml"
-	err = os.WriteFile(fileName, yamlData, 0644)
+	fileName := outputFilePath + outputFileName + "." + outputFileFormat
+	err = os.WriteFile(fileName, filedata, 0644)
 	return err
 }
 
@@ -461,12 +472,16 @@ func main() {
 	var builderFilePath string
 	var scalersFilesDirPath string
 	var specifyScaler string
+	var outputFileName string
 	var outputFilePath string
+	var outputFormat string
 	pflag.StringVar(&kedaVersion, "keda-version", "1.0", "Set the version of current KEDA in schema.")
 	pflag.StringVar(&builderFilePath, "scalers-builder-file", "../pkg/scaling/scalers_builder.go", "The file that exists `buildScaler` func.")
 	pflag.StringVar(&scalersFilesDirPath, "scalers-files-dir", "../pkg/scalers", "The directory that exists all scalers' files.")
 	pflag.StringVar(&specifyScaler, "specify-scaler", "", "Specify scaler name.")
-	pflag.StringVar(&outputFilePath, "output-file-path", "./", "scaler-metadata-schemas.yaml output file path.")
+	pflag.StringVar(&outputFileName, "output-file-name", "scaler-metadata-schemas", "Output file name.")
+	pflag.StringVar(&outputFilePath, "output-file-path", "./", "Output file path.")
+	pflag.StringVar(&outputFormat, "output-file-format", "json", "Output file format. support json and yaml.")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 
@@ -485,7 +500,7 @@ func main() {
 	}
 
 	kedaTagStructs, otherReferenceStructs := getAllKedaTagedStructs(scalersFilesDirPath)
-	err = aggregateSchemaStruct(scalerSelectors, kedaTagStructs, otherReferenceStructs, outputFilePath)
+	err = aggregateSchemaStruct(scalerSelectors, kedaTagStructs, otherReferenceStructs, outputFileName, outputFilePath, outputFormat)
 	if err != nil {
 		fmt.Printf("Error aggregating schema struct: %s\n", err)
 	}
