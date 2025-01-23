@@ -154,11 +154,7 @@ func (s *forgejoRunnerScaler) getJobsList(ctx context.Context) (forgejo.JobsList
 	}
 
 	err = json.Unmarshal(b, &jobList)
-	if err != nil {
-		return jobList, err
-	}
-
-	return jobList, nil
+	return jobList, err
 }
 
 func (s *forgejoRunnerScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {

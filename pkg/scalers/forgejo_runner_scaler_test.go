@@ -256,7 +256,7 @@ func Test_forgejoRunnerScaler_getJobsList(t *testing.T) {
 				client:     tt.fields.client,
 				logger:     tt.fields.logger,
 			}
-			got, err := s.getJobsList(context.TODO())
+			got, err := s.getJobsList(context.Background())
 			if !tt.wantErr(t, err, "getJobsList()") {
 				return
 			}
