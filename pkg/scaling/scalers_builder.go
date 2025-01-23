@@ -180,6 +180,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewExternalMockScaler(config)
 	case "external-push":
 		return scalers.NewExternalPushScaler(config)
+	case "forgejo-runner":
+		return scalers.NewForgejoRunnerScaler(config)
 	case "gcp-cloudtasks":
 		return scalers.NewGcpCloudTasksScaler(config)
 	case "gcp-pubsub":
@@ -190,8 +192,6 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewGcsScaler(config)
 	case "github-runner":
 		return scalers.NewGitHubRunnerScaler(config)
-	case "forgejo-runner":
-		return scalers.NewForgejoRunnerScaler(config)
 	case "graphite":
 		return scalers.NewGraphiteScaler(config)
 	case "huawei-cloudeye":
