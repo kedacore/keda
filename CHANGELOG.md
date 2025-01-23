@@ -97,6 +97,7 @@ New deprecation(s):
 ### Other
 
 - **General**: New eventreason KEDAScalersInfo to display important information ([#6328](https://github.com/kedacore/keda/issues/6328))
+- **External Scalers**: Allow `float64` values in externalmetrics' `MetricValue`. The old field is still there because of backward compatibility. ([#5159](https://github.com/kedacore/keda/issues/5159))
 
 ## v2.16.1
 
