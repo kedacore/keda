@@ -9,9 +9,15 @@ resources:
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 patches:
-- path: patch_operator.yml
+- path: patch_operator.yaml
   target:
     group: apps
     kind: Deployment
+    name: keda-operator
+    version: v1
+- path: patch_rbac.yaml
+  target:
+    group: rbac.authorization.k8s.io
+    kind: ClusterRole
     name: keda-operator
     version: v1

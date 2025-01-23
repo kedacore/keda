@@ -70,6 +70,8 @@ type templateData struct {
 	MonitoredAppName                 string
 	PrometheusServerName             string
 	VaultPkiCommonName               string
+	VaultRole                        string
+	VaultServiceAccountName          string
 }
 
 const (
@@ -128,9 +130,12 @@ metadata:
 spec:
   hashiCorpVault:
     address: http://vault.{{.VaultNamespace}}:8200
-    authentication: token
+    authentication: {{.HashiCorpAuthentication}}
+    role: {{.VaultRole}}
+    mount: kubernetes
     credential:
       token: {{.HashiCorpToken}}
+      serviceAccountName: {{.VaultServiceAccountName}}
     secrets:
     - parameter: connection
       key: connectionString
@@ -413,6 +418,13 @@ spec:
 	pkiPolicyTemplate = `path "pki*" {
   capabilities = [ "create", "read", "update", "delete", "list", "sudo" ]
 }`
+
+	secretReadPolicyTemplate = `path "secret/data/keda" {
+    capabilities = ["read"]
+}
+path "secret/metadata/keda" {
+    capabilities = ["read", "list"]
+}`
 )
 
 func TestPkiSecretsEngine(t *testing.T) {
@@ -432,7 +444,7 @@ func TestPkiSecretsEngine(t *testing.T) {
 			// Create kubernetes resources
 			kc := GetKubernetesClient(t)
 			useKubernetesAuth := test.authentication == "kubernetes"
-			hashiCorpToken, promPkiData := setupHashiCorpVault(t, kc, 2, useKubernetesAuth, true)
+			hashiCorpToken, promPkiData := setupHashiCorpVault(t, kc, 2, useKubernetesAuth, true, false)
 			prometheus.Install(t, kc, prometheusServerName, testNamespace, promPkiData)
 
 			// Create kubernetes resources for testing
@@ -460,16 +472,29 @@ func TestSecretsEngine(t *testing.T) {
 		name               string
 		vaultEngineVersion uint
 		vaultSecretPath    string
+		useKubernetesAuth  bool
+		useDelegatesSAAuth bool
 	}{
 		{
 			name:               "vault kv engine v1",
 			vaultEngineVersion: 1,
 			vaultSecretPath:    "secret/keda",
+			useKubernetesAuth:  false,
+			useDelegatesSAAuth: false,
 		},
 		{
 			name:               "vault kv engine v2",
 			vaultEngineVersion: 2,
 			vaultSecretPath:    "secret/data/keda",
+			useKubernetesAuth:  false,
+			useDelegatesSAAuth: false,
+		},
+		{
+			name:               "vault kv engine v2",
+			vaultEngineVersion: 2,
+			vaultSecretPath:    "secret/data/keda",
+			useKubernetesAuth:  true,
+			useDelegatesSAAuth: true,
 		},
 	}
 
@@ -480,7 +505,7 @@ func TestSecretsEngine(t *testing.T) {
 			data, postgreSQLtemplates := getPostgreSQLTemplateData()
 
 			CreateKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
-			hashiCorpToken, _ := setupHashiCorpVault(t, kc, test.vaultEngineVersion, false, false)
+			hashiCorpToken, _ := setupHashiCorpVault(t, kc, test.vaultEngineVersion, test.useKubernetesAuth, false, test.useDelegatesSAAuth)
 
 			assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
 				"replica count should be %d after 3 minutes", 1)
@@ -493,8 +518,19 @@ func TestSecretsEngine(t *testing.T) {
 
 			// Create kubernetes resources for testing
 			data, templates := getTemplateData()
-			data.HashiCorpToken = RemoveANSI(hashiCorpToken)
 			data.VaultSecretPath = test.vaultSecretPath
+			data.VaultRole = "keda"
+			if test.useKubernetesAuth {
+				data.HashiCorpAuthentication = "kubernetes"
+			} else {
+				data.HashiCorpAuthentication = "token"
+				data.HashiCorpToken = RemoveANSI(hashiCorpToken)
+			}
+
+			if test.useDelegatesSAAuth {
+				data.VaultRole = "vault-delegated-sa"
+				data.VaultServiceAccountName = "default"
+			}
 
 			KubectlApplyMultipleWithTemplate(t, data, templates)
 			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
@@ -548,7 +584,7 @@ func setupHashiCorpVaultPki(t *testing.T, podName string, nameSpace string) *pro
 	return &pkiData
 }
 
-func setupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset, kvVersion uint, useKubernetesAuth, pki bool) (string, *prometheus.VaultPkiData) {
+func setupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset, kvVersion uint, useKubernetesAuth, pki, delegatedAuth bool) (string, *prometheus.VaultPkiData) {
 	CreateNamespace(t, kc, vaultNamespace)
 
 	_, err := ExecuteCommand("helm repo add hashicorp https://helm.releases.hashicorp.com")
@@ -572,7 +608,7 @@ func setupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset, kvVersion uint,
 	// Enable Kubernetes auth
 	if useKubernetesAuth {
 		if pki {
-			remoteFile := "/tmp/policy.hcl"
+			remoteFile := "/tmp/pki_policy.hcl"
 			KubectlCopyToPod(t, pkiPolicyTemplate, remoteFile, podName, vaultNamespace)
 			assert.NoErrorf(t, err, "cannot create policy file in hashicorp vault - %s", err)
 			_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, fmt.Sprintf("vault policy write pkiPolicy %s", remoteFile))
@@ -584,7 +620,18 @@ func setupHashiCorpVault(t *testing.T, kc *kubernetes.Clientset, kvVersion uint,
 		assert.NoErrorf(t, err, "cannot set kubernetes host in hashicorp vault - %s", err)
 		_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, "vault write auth/kubernetes/role/keda bound_service_account_names=keda-operator bound_service_account_namespaces=keda policies=pkiPolicy ttl=1h")
 		assert.NoErrorf(t, err, "cannot cerate keda role in hashicorp vault - %s", err)
+		if delegatedAuth {
+			remoteFile := "/tmp/secret_read_policy.hcl"
+			KubectlCopyToPod(t, secretReadPolicyTemplate, remoteFile, podName, vaultNamespace)
+			assert.NoErrorf(t, err, "cannot create policy file in hashicorp vault - %s", err)
+			_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, fmt.Sprintf("vault policy write secretReadPolicy %s", remoteFile))
+			assert.NoErrorf(t, err, "cannot create policy in hashicorp vault - %s", err)
+
+			_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, fmt.Sprintf("vault write auth/kubernetes/role/vault-delegated-sa bound_service_account_names=default bound_service_account_namespaces=%s policies=secretReadPolicy ttl=1h", testNamespace))
+			assert.NoErrorf(t, err, "cannot cerate keda role in hashicorp vault - %s", err)
+		}
 	}
+
 	// Create kv secret
 	if !pki {
 		_, _, err = ExecCommandOnSpecificPod(t, podName, vaultNamespace, fmt.Sprintf("vault kv put secret/keda connectionString=%s", postgreSQLConnectionString))
