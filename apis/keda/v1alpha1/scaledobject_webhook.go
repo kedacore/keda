@@ -21,6 +21,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -31,7 +33,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
+	kruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -81,7 +83,7 @@ func (so *ScaledObject) SetupWebhookWithManager(mgr ctrl.Manager, cacheMissFallb
 // ScaledObjectCustomValidator is a custom validator for ScaledObject objects
 type ScaledObjectCustomValidator struct{}
 
-func (socv ScaledObjectCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+func (socv ScaledObjectCustomValidator) ValidateCreate(ctx context.Context, obj kruntime.Object) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -90,7 +92,7 @@ func (socv ScaledObjectCustomValidator) ValidateCreate(ctx context.Context, obj 
 	return so.ValidateCreate(request.DryRun)
 }
 
-func (socv ScaledObjectCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) {
+func (socv ScaledObjectCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj kruntime.Object) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -100,7 +102,7 @@ func (socv ScaledObjectCustomValidator) ValidateUpdate(ctx context.Context, oldO
 	return so.ValidateUpdate(old, request.DryRun)
 }
 
-func (socv ScaledObjectCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+func (socv ScaledObjectCustomValidator) ValidateDelete(ctx context.Context, obj kruntime.Object) (warnings admission.Warnings, err error) {
 	request, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -118,7 +120,7 @@ func (so *ScaledObject) ValidateCreate(dryRun *bool) (admission.Warnings, error)
 	return validateWorkload(so, "create", *dryRun)
 }
 
-func (so *ScaledObject) ValidateUpdate(old runtime.Object, dryRun *bool) (admission.Warnings, error) {
+func (so *ScaledObject) ValidateUpdate(old kruntime.Object, dryRun *bool) (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(so, "", "  ")
 	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledobject update for %s", string(val)))
 
@@ -134,7 +136,7 @@ func (so *ScaledObject) ValidateDelete(_ *bool) (admission.Warnings, error) {
 	return nil, nil
 }
 
-func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
+func isRemovingFinalizer(so *ScaledObject, old kruntime.Object) bool {
 	oldSo := old.(*ScaledObject)
 
 	soSpec, _ := json.MarshalIndent(so.Spec, "", "  ")
@@ -157,6 +159,8 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	}
 
 	for i := range verifyFunctions {
+		functionName := getFunctionName(verifyFunctions[i])
+		scaledobjectlog.V(1).Info(fmt.Sprintf("calling %s to validate %s", functionName, so.Name))
 		err := verifyFunctions[i](so, action, dryRun)
 		if err != nil {
 			return nil, err
@@ -168,6 +172,8 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	}
 
 	for i := range verifyCommonFunctions {
+		functionName := getFunctionName(verifyFunctions[i])
+		scaledobjectlog.V(1).Info(fmt.Sprintf("calling %s to validate %s", functionName, so.Name))
 		err := verifyCommonFunctions[i](so, action, dryRun)
 		if err != nil {
 			return nil, err
@@ -587,4 +593,8 @@ func getHpaName(so ScaledObject) string {
 	}
 
 	return so.Spec.Advanced.HorizontalPodAutoscalerConfig.Name
+}
+
+func getFunctionName(i interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
 }
