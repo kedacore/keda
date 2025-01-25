@@ -375,10 +375,10 @@ var _ = Describe("fallback", func() {
 		Expect(condition.IsTrue()).Should(BeFalse())
 	})
 
-	It("should use fallback replicas when current replicas is lower", func() {
+	It("should use fallback replicas when current replicas is lower when behavior is 'CurrentReplicasIfHigher'", func() {
 		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
 		startingNumberOfFailures := int32(3)
-		behavior := "useCurrentReplicasAsMinimum"
+		behavior := "CurrentReplicasIfHigher"
 
 		so := buildScaledObject(
 			&kedav1alpha1.Fallback{
@@ -409,10 +409,10 @@ var _ = Describe("fallback", func() {
 		Expect(value).Should(Equal(expectedValue))
 	})
 
-	It("should ignore current replicas when behavior is 'static'", func() {
+	It("should ignore current replicas when behavior is 'Static'", func() {
 		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
 		startingNumberOfFailures := int32(3)
-		behavior := "static"
+		behavior := "Static"
 
 		so := buildScaledObject(
 			&kedav1alpha1.Fallback{

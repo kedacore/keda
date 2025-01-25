@@ -117,9 +117,16 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpe
 	switch fallbackBehavior {
 	case kedav1alpha1.FallbackBehaviorStatic:
 		replicas = fallbackReplicas
-	case kedav1alpha1.FallbackBehaviorUseCurrentReplicasAsMin:
+	case kedav1alpha1.FallbackBehaviorCurrentReplicasIfHigher:
 		currentReplicasCount := int64(currentReplicas)
 		if currentReplicasCount > fallbackReplicas {
+			replicas = currentReplicasCount
+		} else {
+			replicas = fallbackReplicas
+		}
+	case kedav1alpha1.FallbackBehaviorCurrentReplicasIfLower:
+		currentReplicasCount := int64(currentReplicas)
+		if currentReplicasCount < fallbackReplicas {
 			replicas = currentReplicasCount
 		} else {
 			replicas = fallbackReplicas

@@ -212,8 +212,12 @@ func (e *scaleExecutor) doFallbackScaling(ctx context.Context, scaledObject *ked
 	switch fallbackBehavior {
 	case kedav1alpha1.FallbackBehaviorStatic:
 		// no specifc action needed
-	case kedav1alpha1.FallbackBehaviorUseCurrentReplicasAsMin:
+	case kedav1alpha1.FallbackBehaviorCurrentReplicasIfHigher:
 		if currentReplicas > fallbackReplicas {
+			fallbackReplicas = currentReplicas
+		}
+	case kedav1alpha1.FallbackBehaviorCurrentReplicasIfLower:
+		if currentReplicas < fallbackReplicas {
 			fallbackReplicas = currentReplicas
 		}
 	}

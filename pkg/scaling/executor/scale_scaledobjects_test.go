@@ -523,8 +523,8 @@ func TestEventWitTriggerInfo(t *testing.T) {
 	assert.Equal(t, "Normal KEDAScaleTargetActivated Scaled  namespace/name from 2 to 5, triggered by testTrigger", eventstring)
 }
 
-// Behavior is UseCurrentReplicasAsMinimum and current replicas is higher than fallback replicas
-func TestScaleToFallbackWithCurrentReplicasAsMinimum(t *testing.T) {
+// Behavior is 'CurrentReplicasIfHigher' and current replicas is higher than fallback replicas
+func TestBehaviorCurrentReplicasIfHigherWithCurrentReplicasIsHigher(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
 	recorder := record.NewFakeRecorder(1)
@@ -534,7 +534,7 @@ func TestScaleToFallbackWithCurrentReplicasAsMinimum(t *testing.T) {
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
-	behavior := "useCurrentReplicasAsMinimum"
+	behavior := "CurrentReplicasIfHigher"
 	scaledObject := v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "name",
@@ -590,8 +590,8 @@ func TestScaleToFallbackWithCurrentReplicasAsMinimum(t *testing.T) {
 	assert.Equal(t, true, condition.IsTrue())
 }
 
-// Behavior is UseCurrentReplicasAsMinimum and is true and current replicas is lower than fallback replicas
-func TestScaleToFallbackIgnoringLowerCurrentReplicas(t *testing.T) {
+// Behavior is 'CurrentReplicasIfLower' and current replicas is higher than fallback replicas
+func TestBehaviorCurrentReplicasIfLowerWithCurrentReplicasIsHigher(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
 	recorder := record.NewFakeRecorder(1)
@@ -601,7 +601,74 @@ func TestScaleToFallbackIgnoringLowerCurrentReplicas(t *testing.T) {
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
-	behavior := "useCurrentReplicasAsMinimum"
+	behavior := "CurrentReplicasIfLower"
+	scaledObject := v1alpha1.ScaledObject{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: v1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &v1alpha1.ScaleTarget{
+				Name: "name",
+			},
+			Fallback: &v1alpha1.Fallback{
+				FailureThreshold: 3,
+				Replicas:         5,
+				Behavior:         behavior,
+			},
+		},
+		Status: v1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+		},
+	}
+
+	scaledObject.Status.Conditions = *v1alpha1.GetInitializedConditions()
+
+	// Current replicas is higher than fallback replicas
+	currentReplicas := int32(8)
+
+	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &currentReplicas,
+		},
+	})
+
+	scale := &autoscalingv1.Scale{
+		Spec: autoscalingv1.ScaleSpec{
+			Replicas: currentReplicas,
+		},
+	}
+
+	mockScaleClient.EXPECT().Scales(gomock.Any()).Return(mockScaleInterface).Times(2)
+	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
+	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
+
+	client.EXPECT().Status().Times(2).Return(statusWriter)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+
+	scaleExecutor.RequestScale(context.Background(), &scaledObject, false, true, &ScaleExecutorOptions{})
+
+	// Should use fallback replicas as it's higher than current replicas
+	assert.Equal(t, int32(5), scale.Spec.Replicas)
+	condition := scaledObject.Status.Conditions.GetFallbackCondition()
+	assert.Equal(t, true, condition.IsTrue())
+}
+
+// Behavior is 'CurrentReplicasIfHigher' and current replicas is lower than fallback replicas
+func TestBehaviorCurrentReplicasIfHigherWithCurrentReplicasisLower(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+
+	behavior := "CurrentReplicasIfHigher"
 	scaledObject := v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "name",
@@ -658,7 +725,7 @@ func TestScaleToFallbackIgnoringLowerCurrentReplicas(t *testing.T) {
 }
 
 // Behavior is Static and current replicas is higher than fallback replicas
-func TestScaleToFallbackWithoutCurrentReplicasAsMinimum(t *testing.T) {
+func TestBehaviorStaticWithCurrentReplicasisHigher(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
 	recorder := record.NewFakeRecorder(1)
@@ -668,7 +735,7 @@ func TestScaleToFallbackWithoutCurrentReplicasAsMinimum(t *testing.T) {
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
-	behavior := "static"
+	behavior := "Static"
 	scaledObject := v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "name",
