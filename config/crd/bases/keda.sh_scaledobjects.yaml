@@ -225,6 +225,13 @@ spec:
               fallback:
                 description: Fallback is the spec for fallback options
                 properties:
+                  behavior:
+                    default: Static
+                    enum:
+                    - Static
+                    - CurrentReplicasIfHigher
+                    - CurrentReplicasIfLower
+                    type: string
                   failureThreshold:
                     format: int32
                     type: integer
