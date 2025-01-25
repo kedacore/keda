@@ -295,6 +295,22 @@ func setConfigValueURLParams(params Params, valFromConfig string, field reflect.
 	return nil
 }
 
+// setConfigValueURL is a function that sets the value of the url.URL field
+func setConfigValueURL(valFromConfig string, field reflect.Value) error {
+	u, err := url.Parse(valFromConfig)
+	if err != nil {
+		return fmt.Errorf("expected url.URL or *url.URL, unable to parse %q: %w", valFromConfig, err)
+	}
+
+	// If the field type is a pointer to url.URL (`*url.URL`), set the value directly
+	if field.Kind() == reflect.Ptr && field.Type().Elem() == reflect.TypeOf(url.URL{}) {
+		field.Set(reflect.ValueOf(u))
+		return nil
+	}
+
+	return nil
+}
+
 // setConfigValueMap is a function that sets the value of the map field
 func setConfigValueMap(params Params, valFromConfig string, field reflect.Value) error {
 	field.Set(reflect.MakeMap(reflect.MapOf(field.Type().Key(), field.Type().Elem())))
@@ -403,6 +419,9 @@ func setConfigValueHelper(params Params, valFromConfig string, field reflect.Val
 	}
 	if field.Type() == reflect.TypeOf(url.Values{}) {
 		return setConfigValueURLParams(params, valFromConfig, field)
+	}
+	if field.Type() == reflect.TypeOf(&url.URL{}) {
+		return setConfigValueURL(valFromConfig, field)
 	}
 	if field.Kind() == reflect.Map {
 		return setConfigValueMap(params, valFromConfig, field)

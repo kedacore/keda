@@ -333,6 +333,29 @@ func TestURLValues(t *testing.T) {
 	Expect(ts.EndpointParams["key2"]).To(ConsistOf("value2"))
 }
 
+func TestSetConfigValueURL(t *testing.T) {
+	RegisterTestingT(t)
+
+	sc := &ScalerConfig{
+		AuthParams: map[string]string{
+			"endpoint": "https://example.com/path?query=1",
+		},
+	}
+
+	type testStruct struct {
+		Endpoint *url.URL `keda:"name=endpoint, order=authParams"`
+	}
+
+	ts := testStruct{}
+	err := sc.TypedConfig(&ts)
+	Expect(err).To(BeNil())
+	Expect(ts.Endpoint).ToNot(BeNil())
+	Expect(ts.Endpoint.Scheme).To(Equal("https"))
+	Expect(ts.Endpoint.Host).To(Equal("example.com"))
+	Expect(ts.Endpoint.Path).To(Equal("/path"))
+	Expect(ts.Endpoint.RawQuery).To(Equal("query=1"))
+}
+
 // TestGenericMap tests the generic map type that is structurally similar to url.Values
 func TestGenericMap(t *testing.T) {
 	RegisterTestingT(t)
