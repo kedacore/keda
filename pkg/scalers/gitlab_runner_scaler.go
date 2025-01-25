@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/go-logr/logr"
+	"golang.org/x/sync/errgroup"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -15,9 +16,15 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
+type pipelineStatus string
+
 const (
+	// pipelinePendingStatus is the status of the pending pipelines.
+	pipelinePendingStatus pipelineStatus = "pending"
 	// pipelineWaitingForResourceStatus is the status of the pipelines that are waiting for resources.
-	pipelineWaitingForResourceStatus = "waiting_for_resource"
+	pipelineWaitingForResourceStatus pipelineStatus = "waiting_for_resource"
+	// pipelineRunningStatus is the status of the running pipelines.
+	pipelineRunningStatus pipelineStatus = "running"
 
 	// maxGitlabAPIPageCount is the maximum number of pages to query for pipelines.
 	maxGitlabAPIPageCount = 50
@@ -71,20 +78,35 @@ func parseGitLabRunnerMetadata(config *scalersconfig.ScalerConfig) (*gitlabRunne
 		return nil, fmt.Errorf("error parsing gitlabRunner metadata: %w", err)
 	}
 
-	uri := constructGitlabAPIPipelinesURL(*meta.GitLabAPIURL, meta.ProjectID, pipelineWaitingForResourceStatus)
-
-	meta.GitLabAPIURL = &uri
-
 	return &meta, nil
 }
 
 func (s *gitlabRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	queueLen, err := s.getPipelineQueueLength(ctx)
+	// Get the number of pending, waiting, and running for resource pipelines
+	eg, ctx := errgroup.WithContext(ctx)
 
+	getLen := func(status pipelineStatus, length *int64) func() error {
+		return func() error {
+			uri := constructGitlabAPIPipelinesURL(*s.metadata.GitLabAPIURL, s.metadata.ProjectID, status)
+			var err error
+			*length, err = s.getPipelineQueueLength(ctx, uri)
+			return err
+		}
+	}
+
+	var pendingLen, waitingForResourceLen, runningLen int64
+
+	eg.Go(getLen(pipelinePendingStatus, &pendingLen))
+	eg.Go(getLen(pipelineWaitingForResourceStatus, &waitingForResourceLen))
+	eg.Go(getLen(pipelineRunningStatus, &runningLen))
+
+	err := eg.Wait()
 	if err != nil {
-		s.logger.Error(err, "error getting workflow queue length")
+		s.logger.Error(err, "error getting pipeline queue length")
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
+
+	queueLen := pendingLen + waitingForResourceLen + runningLen
 
 	metric := GenerateMetricInMili(metricName, float64(queueLen))
 
@@ -108,11 +130,12 @@ func (s *gitlabRunnerScaler) Close(_ context.Context) error {
 	}
 	return nil
 }
-func constructGitlabAPIPipelinesURL(baseURL url.URL, projectID string, status string) url.URL {
+
+func constructGitlabAPIPipelinesURL(baseURL url.URL, projectID string, status pipelineStatus) url.URL {
 	baseURL.Path = "/api/v4/projects/" + projectID + "/pipelines"
 
 	qParams := baseURL.Query()
-	qParams.Set("status", status)
+	qParams.Set("status", string(status))
 	qParams.Set("per_page", gitlabAPIPerPage)
 
 	baseURL.RawQuery = qParams.Encode()
@@ -151,12 +174,12 @@ func (s *gitlabRunnerScaler) getPipelineCount(ctx context.Context, uri string) (
 
 // getPipelineQueueLength returns the number of pipelines in the
 // GitLab project that are waiting for resources.
-func (s *gitlabRunnerScaler) getPipelineQueueLength(ctx context.Context) (int64, error) {
+func (s *gitlabRunnerScaler) getPipelineQueueLength(ctx context.Context, baseURL url.URL) (int64, error) {
 	var count int64
 
 	page := 1
 	for ; page < maxGitlabAPIPageCount; page++ {
-		pagedURL := pagedURL(*s.metadata.GitLabAPIURL, fmt.Sprint(page))
+		pagedURL := pagedURL(baseURL, fmt.Sprint(page))
 
 		gitlabPipelinesLen, err := s.getPipelineCount(ctx, pagedURL.String())
 		if err != nil {

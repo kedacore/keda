@@ -182,8 +182,9 @@ func TestGitLabRunnerScaler_GetPipelineQueueLength(t *testing.T) {
 	}))
 	defer server.Close()
 
+	uri := mustParseURL(server.URL)
 	meta := &gitlabRunnerMetadata{
-		GitLabAPIURL:        mustParseURL(server.URL),
+		GitLabAPIURL:        uri,
 		PersonalAccessToken: "test-token",
 	}
 
@@ -193,47 +194,79 @@ func TestGitLabRunnerScaler_GetPipelineQueueLength(t *testing.T) {
 		logger:     logr.Discard(),
 	}
 
-	count, err := scaler.getPipelineQueueLength(context.Background())
+	count, err := scaler.getPipelineQueueLength(context.Background(), *uri)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(totalPipelines), count)
 }
 
 func TestGitLabRunnerScaler_GetMetricsAndActivity(t *testing.T) {
 	testCases := []struct {
-		name                      string
-		pipelineQueueLength       int64
+		name string
+
+		pipelinePendingQueueLength            int64
+		pipelineWaitingForResourceQueueLength int64
+		pipelineRunningQueueLength            int64
+
 		targetPipelineQueueLength int64
 		expectedMetricValue       int64
 		expectedActive            bool
 		expectError               bool
 	}{
 		{
-			name:                      "Queue length below target",
-			pipelineQueueLength:       2,
+			name: "Queue length below target",
+
+			pipelinePendingQueueLength:            2,
+			pipelineWaitingForResourceQueueLength: 0,
+			pipelineRunningQueueLength:            0,
+
 			targetPipelineQueueLength: 5,
 			expectedMetricValue:       2,
 			expectedActive:            false,
 			expectError:               false,
 		},
 		{
-			name:                      "Queue length equal to target",
-			pipelineQueueLength:       5,
+			name: "Queue length equal to target",
+
+			pipelinePendingQueueLength:            5,
+			pipelineWaitingForResourceQueueLength: 0,
+			pipelineRunningQueueLength:            0,
+
 			targetPipelineQueueLength: 5,
 			expectedMetricValue:       5,
 			expectedActive:            true,
 			expectError:               false,
 		},
 		{
-			name:                      "Queue length above target",
-			pipelineQueueLength:       10,
+			name: "Queue length above target",
+
+			pipelinePendingQueueLength:            10,
+			pipelineWaitingForResourceQueueLength: 0,
+			pipelineRunningQueueLength:            0,
+
 			targetPipelineQueueLength: 5,
 			expectedMetricValue:       10,
 			expectedActive:            true,
 			expectError:               false,
 		},
 		{
-			name:                      "Error retrieving queue length",
-			pipelineQueueLength:       0,
+			name: "Queue length is sum of statuses",
+
+			pipelinePendingQueueLength:            1,
+			pipelineWaitingForResourceQueueLength: 3,
+			pipelineRunningQueueLength:            5,
+
+			targetPipelineQueueLength: 5,
+			expectedMetricValue:       9,
+			expectedActive:            true,
+			expectError:               false,
+		},
+		{
+			name: "Error retrieving queue length",
+
+			pipelinePendingQueueLength:            0,
+			pipelineWaitingForResourceQueueLength: 0,
+			pipelineRunningQueueLength:            0,
+
 			targetPipelineQueueLength: 5,
 			expectedMetricValue:       0,
 			expectedActive:            false,
@@ -250,13 +283,35 @@ func TestGitLabRunnerScaler_GetMetricsAndActivity(t *testing.T) {
 					return
 				}
 
-				page := r.URL.Query().Get("page")
-
 				w.WriteHeader(http.StatusOK)
 
-				pipelines := make([]map[string]interface{}, 0, tc.pipelineQueueLength)
-				if page == "1" {
-					for i := int64(0); i < tc.pipelineQueueLength; i++ {
+				page := r.URL.Query().Get("page")
+
+				pipelines := make([]map[string]interface{}, 0)
+
+				// make only the first page return the length of pipelines, the rest should be empty for pagination to stop
+				if page != "1" {
+					_ = json.NewEncoder(w).Encode(pipelines)
+					return
+				}
+
+				// populate pipelines based on the status
+				status := r.URL.Query().Get("status")
+				switch status {
+				case string(pipelinePendingStatus):
+					for i := int64(0); i < tc.pipelinePendingQueueLength; i++ {
+						pipelines = append(pipelines, map[string]interface{}{
+							"id": i + 1,
+						})
+					}
+				case string(pipelineWaitingForResourceStatus):
+					for i := int64(0); i < tc.pipelineWaitingForResourceQueueLength; i++ {
+						pipelines = append(pipelines, map[string]interface{}{
+							"id": i + 1,
+						})
+					}
+				case string(pipelineRunningStatus):
+					for i := int64(0); i < tc.pipelineRunningQueueLength; i++ {
 						pipelines = append(pipelines, map[string]interface{}{
 							"id": i + 1,
 						})
@@ -330,7 +385,7 @@ func TestGitLabRunnerScaler_Close(t *testing.T) {
 func TestConstructGitlabAPIPipelinesURL(t *testing.T) {
 	baseURL := mustParseURL("https://gitlab.example.com")
 	projectID := "12345"
-	status := "waiting_for_resource"
+	status := pipelineWaitingForResourceStatus
 
 	expectedURL := "https://gitlab.example.com/api/v4/projects/12345/pipelines?per_page=200&status=waiting_for_resource"
 
@@ -375,8 +430,9 @@ func TestGetPipelineQueueLength_MaxPagesExceeded(t *testing.T) {
 	}))
 	defer server.Close()
 
+	uri := mustParseURL(server.URL)
 	meta := &gitlabRunnerMetadata{
-		GitLabAPIURL:        mustParseURL(server.URL),
+		GitLabAPIURL:        uri,
 		PersonalAccessToken: "test-token",
 	}
 
@@ -386,15 +442,16 @@ func TestGetPipelineQueueLength_MaxPagesExceeded(t *testing.T) {
 		logger:     logr.Discard(),
 	}
 
-	count, err := scaler.getPipelineQueueLength(context.Background())
+	count, err := scaler.getPipelineQueueLength(context.Background(), *uri)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(maxGitlabAPIPageCount), int64(serverCallCount))
 	assert.Equal(t, int64(maxGitlabAPIPageCount), count)
 }
 
 func TestGetPipelineQueueLength_RequestError(t *testing.T) {
+	uri := mustParseURL("http://invalid-url")
 	meta := &gitlabRunnerMetadata{
-		GitLabAPIURL:        mustParseURL("http://invalid-url"),
+		GitLabAPIURL:        uri,
 		PersonalAccessToken: "test-token",
 	}
 
@@ -404,7 +461,7 @@ func TestGetPipelineQueueLength_RequestError(t *testing.T) {
 		logger:     logr.Discard(),
 	}
 
-	_, err := scaler.getPipelineQueueLength(context.Background())
+	_, err := scaler.getPipelineQueueLength(context.Background(), *uri)
 	assert.Error(t, err)
 }
 

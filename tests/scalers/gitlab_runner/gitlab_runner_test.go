@@ -107,7 +107,8 @@ spec:
       terminationGracePeriodSeconds: 90
       containers:
       - name: gitlab-runner
-        image: hello-world
+        image: busybox
+        command: ["/bin/sh", "-c", "trap 'echo SIGTERM received; exit 0' SIGTERM; while true; do sleep 30; done"]
 `
 	scaledObjectTemplate = `
 apiVersion: keda.sh/v1alpha1
@@ -169,7 +170,7 @@ func TestScaler(t *testing.T) {
 	testSONotActivated(t, kc)
 
 	testSOScaleOut(t, kc, projectID)
-	testSOScaleIn(t, kc)
+	testSOScaleIn(t, kc, projectID)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -215,8 +216,9 @@ func testSOScaleOut(t *testing.T, kc *kubernetes.Clientset, projectID string) {
 		"replica count should be 2 after 1 minute")
 }
 
-func testSOScaleIn(t *testing.T, kc *kubernetes.Clientset) {
+func testSOScaleIn(t *testing.T, kc *kubernetes.Clientset, projectID string) {
 	t.Log("--- testing scale in ---")
+	deleteAllPipelines(t, gitlabBaseURL, projectID)
 
 	assert.True(t, WaitForPodCountInNamespace(t, kc, testNamespace, minReplicaCount, 60, 5),
 		"pod count should be 0 after 5 minutes")
@@ -429,4 +431,73 @@ func deleteAllUserProjects(gitlabBaseURL string) error {
 	}
 
 	return nil
+}
+
+type pipeline struct {
+	ID int `json:"id"`
+}
+
+func getPipelines(gitlabBaseURL, projectID string) ([]pipeline, error) {
+	// Define the URL and request body
+	uri := gitlabBaseURL + "/api/v4/projects/" + projectID + "/pipelines"
+
+	req, err := http.NewRequest(http.MethodGet, uri, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+
+	for header, value := range defaultHeaders {
+		req.Header.Set(header, value)
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("doing request: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+	}
+
+	gitlabPipelines := make([]pipeline, 0)
+	if err := json.NewDecoder(res.Body).Decode(&gitlabPipelines); err != nil {
+		return nil, fmt.Errorf("decoding response: %w", err)
+	}
+
+	return gitlabPipelines, nil
+}
+
+func deletePipeline(gitlabBaseURL, projectID, pipelineID string) error {
+	uri := gitlabBaseURL + "/api/v4/projects/" + projectID + "/pipelines/" + pipelineID
+	req, err := http.NewRequest(http.MethodDelete, uri, nil)
+	if err != nil {
+		return fmt.Errorf("creating request: %w", err)
+	}
+
+	for header, value := range defaultHeaders {
+		req.Header.Set(header, value)
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("doing request: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("unexpected status code: %d", res.StatusCode)
+	}
+
+	return nil
+}
+
+func deleteAllPipelines(t *testing.T, gitlabBaseURL, projectID string) {
+	pipelines, err := getPipelines(gitlabBaseURL, projectID)
+	require.NoError(t, err)
+
+	for _, pipeline := range pipelines {
+		err := deletePipeline(gitlabBaseURL, projectID, strconv.Itoa(pipeline.ID))
+		require.NoError(t, err)
+	}
 }
