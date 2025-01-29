@@ -93,7 +93,7 @@ func TestForgejoRunnerParseMetadata(t *testing.T) {
 	}
 }
 
-func Test_forgejoRunnerScaler_getGlobalRunnerJobsUrl(t *testing.T) {
+func TestForgejoRunnerScalerGetGlobalRunnerJobsUrl(t *testing.T) {
 	type fields struct {
 		metadata *forgejoRunnerMetadata
 	}
@@ -167,7 +167,7 @@ func Test_forgejoRunnerScaler_getGlobalRunnerJobsUrl(t *testing.T) {
 	}
 }
 
-func Test_forgejoRunnerScaler_getJobsList(t *testing.T) {
+func TestForgejoRunnerScalerGetJobsList(t *testing.T) {
 	jobsList := JobsListResponse{
 		Jobs: []ForgejoJob{
 			{ID: 1},
