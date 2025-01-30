@@ -497,7 +497,7 @@ spec:
   containers:
   - name: sqlcmd
     image: mcr.microsoft.com/mssql-tools
-    command: 
+    command:
       - /bin/bash
       - -c
       - "sleep 5 && %s"
