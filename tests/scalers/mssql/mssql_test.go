@@ -494,11 +494,11 @@ spec:
       containers:
       - name: sqlcmd
         image: mcr.microsoft.com/mssql-tools
-        command: 
+        command:
           - /opt/mssql-tools/bin/sqlcmd
           - -S %s -d %s -U %s -P %s -Q "IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[tasks]') AND type in (N'U')) BEGIN CREATE TABLE tasks ([id] int identity primary key, [status] varchar(10)) END ELSE BEGIN TRUNCATE TABLE tasks END"
 
-      restartPolicy: Never`, 
+      restartPolicy: Never`,
 		wiTestNamespace,
 		azureSQLServerFQDN,
 		azureSQLDBName,
@@ -552,6 +552,7 @@ spec:
 	testWIScaleOut(t, kc, wiData)
 	testWIScaleIn(t, kc, wiData)
 }
+
 // Original test helper functions
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
