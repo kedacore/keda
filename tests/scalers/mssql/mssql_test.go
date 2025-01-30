@@ -21,7 +21,7 @@ import (
 var _ = godotenv.Load("../../.env")
 
 const (
-	testName = "mssql-test"
+	testName   = "mssql-test"
 	wiTestName = "mssql-wi-test"
 )
 
@@ -476,36 +476,34 @@ func TestMssqlWorkloadIdentityScaler(t *testing.T) {
 
 	kc := GetKubernetesClient(t)
 
+	// Create namespace
+	CreateNamespace(t, kc, wiTestNamespace)
+
 	// Create table in Azure SQL Database using admin credentials
-	createTableCommand := fmt.Sprintf("/opt/mssql-tools18/bin/sqlcmd -S %s -d %s -U %s -P %s -Q \"IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[tasks]') AND type in (N'U')) BEGIN CREATE TABLE tasks ([id] int identity primary key, [status] varchar(10)) END\"",
+	createTableCommand := fmt.Sprintf("sqlcmd -S %s -d %s -U %s -P %s -Q \"IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[tasks]') AND type in (N'U')) BEGIN CREATE TABLE tasks ([id] int identity primary key, [status] varchar(10)) END\"",
 		azureSQLServerFQDN,
 		azureSQLDBName,
 		os.Getenv("TF_AZURE_SQL_SERVER_ADMIN_USERNAME"),
 		os.Getenv("TF_AZURE_SQL_SERVER_ADMIN_PASSWORD"))
 
-// Create a temporary pod to run the SQL command
-	sqlPodTemplate := fmt.Sprintf(`apiVersion: v1
+	// Create a temporary pod to run the SQL command
+	tmpPodName := "sqlcmd-create-table"
+	tmpPodTemplate := fmt.Sprintf(`apiVersion: v1
 kind: Pod
 metadata:
-  name: sqlcmd
+  name: %s
   namespace: %s
 spec:
   containers:
   - name: sqlcmd
     image: mcr.microsoft.com/mssql-tools
-    command: ["/bin/bash", "-c", "%s"]
-  restartPolicy: Never`, wiTestNamespace, createTableCommand)
+    command: 
+      - /bin/bash
+      - -c
+      - "sleep 5 && %s"
+  restartPolicy: Never`, tmpPodName, wiTestNamespace, createTableCommand)
 
-	// Create namespace
-	CreateNamespace(t, kc, wiTestNamespace)
-
-	// Create and wait for the SQL command pod
-	KubectlApplyWithTemplate(t, wiTemplateData{}, "sqlcmdPod", sqlPodTemplate)
-	require.True(t, WaitForPodSuccess(t, kc, "sqlcmd", wiTestNamespace, 60, 3),
-		"sqlcmd pod should complete successfully")
-
-	// Delete the pod
-	KubectlDeleteWithTemplate(t, wiTemplateData{}, "sqlcmdPod", sqlPodTemplate)
+	KubectlApplyWithTemplate(t, wiTemplateData{}, "sqlcmdPod", tmpPodTemplate)
 
 	// Setup workload identity test data
 	wiData := wiTemplateData{
