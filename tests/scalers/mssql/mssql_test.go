@@ -480,30 +480,32 @@ func TestMssqlWorkloadIdentityScaler(t *testing.T) {
 	CreateNamespace(t, kc, wiTestNamespace)
 
 	// Create table in Azure SQL Database using admin credentials
-	createTableCommand := fmt.Sprintf("sqlcmd -S %s -d %s -U %s -P %s -Q \"IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[tasks]') AND type in (N'U')) BEGIN CREATE TABLE tasks ([id] int identity primary key, [status] varchar(10)) END\"",
+	createTableJobTemplate := fmt.Sprintf(`apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-table-job
+  namespace: %s
+spec:
+  template:
+    metadata:
+      labels:
+        app: create-table-job
+    spec:
+      containers:
+      - name: sqlcmd
+        image: mcr.microsoft.com/mssql-tools
+        command: 
+          - /opt/mssql-tools/bin/sqlcmd
+          - -S %s -d %s -U %s -P %s -Q "IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[tasks]') AND type in (N'U')) BEGIN CREATE TABLE tasks ([id] int identity primary key, [status] varchar(10)) END ELSE BEGIN TRUNCATE TABLE tasks END"
+
+      restartPolicy: Never`, 
+		wiTestNamespace,
 		azureSQLServerFQDN,
 		azureSQLDBName,
 		os.Getenv("TF_AZURE_SQL_SERVER_ADMIN_USERNAME"),
 		os.Getenv("TF_AZURE_SQL_SERVER_ADMIN_PASSWORD"))
 
-	// Create a temporary pod to run the SQL command
-	tmpPodName := "sqlcmd-create-table"
-	tmpPodTemplate := fmt.Sprintf(`apiVersion: v1
-kind: Pod
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  containers:
-  - name: sqlcmd
-    image: mcr.microsoft.com/mssql-tools
-    command:
-      - /bin/bash
-      - -c
-      - "sleep 5 && %s"
-  restartPolicy: Never`, tmpPodName, wiTestNamespace, createTableCommand)
-
-	KubectlApplyWithTemplate(t, wiTemplateData{}, "sqlcmdPod", tmpPodTemplate)
+	KubectlApplyWithTemplate(t, wiTemplateData{}, "createTableJob", createTableJobTemplate)
 
 	// Setup workload identity test data
 	wiData := wiTemplateData{
@@ -550,7 +552,6 @@ spec:
 	testWIScaleOut(t, kc, wiData)
 	testWIScaleIn(t, kc, wiData)
 }
-
 // Original test helper functions
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing activation ---")
