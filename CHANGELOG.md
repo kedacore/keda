@@ -1,4 +1,4 @@
-    # Changelog
+# Changelog
 
 <!--
     New changelog entries must be inline with our changelog guidelines.
