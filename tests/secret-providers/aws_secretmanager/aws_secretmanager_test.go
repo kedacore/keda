@@ -8,22 +8,18 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	// Third-party imports
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
-	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -320,6 +316,10 @@ func AwsSecretManager(t *testing.T, useJSONSecretFormat bool) error {
 	require.NotEmpty(t, awsAccessKeyID, "TF_AWS_ACCESS_KEY env variable is required for AWS Secret Manager test")
 	require.NotEmpty(t, awsSecretAccessKey, "TF_AWS_SECRET_KEY env variable is required for AWS Secret Manager test")
 
+	// Resetting here since we need a unique value before each time this test function is called
+	secretManagerSecretName = fmt.Sprintf("connectionString-%d", GetRandomNumber())
+	data.SecretManagerSecretName = secretManagerSecretName
+
 	// Create the secret in AWS
 	err := createAWSSecret(t, useJSONSecretFormat)
 	assert.NoErrorf(t, err, "cannot create AWS Secret Manager secret - %s", err)
@@ -483,29 +483,7 @@ func deleteAWSSecret(t *testing.T) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete AWS Secret Manager secret: %w", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	defer cancel()
 
-	err = wait.PollUntilContextTimeout(ctx, 2*time.Second, 300*time.Second, true, func(ctx context.Context) (done bool, err error) {
-		_, err = client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{
-			SecretId: &secretManagerSecretName,
-		})
-		if err != nil {
-			var notFoundErr *types.ResourceNotFoundException
-			if errors.As(err, &notFoundErr) {
-				// Secret successfully deleted
-				return true, nil
-			}
-			// Unexpected error
-			return false, err
-		}
-		// If the secret still exists
-		return false, nil
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to verify AWS Secret Manager secret deletion: %w", err)
-	}
 	t.Log("Deleted secret from AWS Secret Manager.")
 
 	return nil
