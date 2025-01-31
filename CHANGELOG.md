@@ -1,4 +1,4 @@
-# Changelog
+    # Changelog
 
 <!--
     New changelog entries must be inline with our changelog guidelines.
@@ -71,6 +71,7 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
+- **GitHub Scaler**: Add support to use ETag for conditional requests against the Github API ([#6503](https://github.com/kedacore/keda/issues/6503))
 - **IBMMQ Scaler**: Handling StatusNotFound in IBMMQ scaler ([#6472](https://github.com/kedacore/keda/pull/6472))
 
 ### Fixes
