@@ -588,18 +588,6 @@ func getGithubRequest(ctx context.Context, url string, metadata *githubRunnerMet
 	return b, r.StatusCode, nil
 }
 
-func stripDeadRuns(allWfrs []WorkflowRuns) []WorkflowRun {
-	var filtered []WorkflowRun
-	for _, wfrs := range allWfrs {
-		for _, wfr := range wfrs.WorkflowRuns {
-			if wfr.Status == "queued" || wfr.Status == "in_progress" {
-				filtered = append(filtered, wfr)
-			}
-		}
-	}
-	return filtered
-}
-
 // getWorkflowRunJobs returns a list of jobs for a given workflow run
 func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs", s.metadata.githubAPIURL, s.metadata.owner, repoName, workflowRunID)
@@ -618,8 +606,8 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 }
 
 // getWorkflowRuns returns a list of workflow runs for a given repository
-func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName string) (*WorkflowRuns, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs", s.metadata.githubAPIURL, s.metadata.owner, repoName)
+func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName string, status string) (*WorkflowRuns, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs?status=%s", s.metadata.githubAPIURL, s.metadata.owner, repoName, status)
 	body, statusCode, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil && statusCode == 404 {
 		return nil, nil
@@ -669,21 +657,27 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 		return -1, err
 	}
 
-	var allWfrs []WorkflowRuns
+	var wfrs []WorkflowRuns
 
 	for _, repo := range repos {
-		wfrs, err := s.getWorkflowRuns(ctx, repo)
+		wfrsQueued, err := s.getWorkflowRuns(ctx, repo, "queued")
 		if err != nil {
 			return -1, err
 		}
-		if wfrs != nil {
-			allWfrs = append(allWfrs, *wfrs)
+		if wfrsQueued != nil {
+			wfrs = append(wfrs, *wfrsQueued)
+		}
+		wfrsInProgress, err := s.getWorkflowRuns(ctx, repo, "in_progress")
+		if err != nil {
+			return -1, err
+		}
+		if wfrsInProgress != nil {
+			wfrs = append(wfrs, *wfrsInProgress)
 		}
 	}
 
 	var queueCount int64
 
-	wfrs := stripDeadRuns(allWfrs)
 	for _, wfr := range wfrs {
 		jobs, err := s.getWorkflowRunJobs(ctx, wfr.ID, wfr.Repository.Name)
 		if err != nil {
