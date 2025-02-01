@@ -93,7 +93,9 @@ func opaqueGenMessageField(g *protogen.GeneratedFile, f *fileInfo, message *mess
 	}
 	tags := structTags{
 		{"protobuf", protobufTagValue},
-		{"json", jsonTagValue},
+	}
+	if !message.isOpaque() {
+		tags = append(tags, structTags{{"json", jsonTagValue}}...)
 	}
 	if field.Desc.IsMap() {
 		keyTagValue := fieldProtobufTagValue(field.Message.Fields[0])
