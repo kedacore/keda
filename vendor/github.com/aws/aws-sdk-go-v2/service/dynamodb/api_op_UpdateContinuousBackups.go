@@ -23,7 +23,8 @@ import (
 // LatestRestorableDateTime .
 //
 // LatestRestorableDateTime is typically 5 minutes before the current time. You
-// can restore your table to any point in time during the last 35 days.
+// can restore your table to any point in time in the last 35 days. You can set the
+// recovery period to any value between 1 and 35 days.
 func (c *Client) UpdateContinuousBackups(ctx context.Context, params *UpdateContinuousBackupsInput, optFns ...func(*Options)) (*UpdateContinuousBackupsOutput, error) {
 	if params == nil {
 		params = &UpdateContinuousBackupsInput{}
