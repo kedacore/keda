@@ -72,6 +72,7 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **IBMMQ Scaler**: Handling StatusNotFound in IBMMQ scaler ([#6472](https://github.com/kedacore/keda/pull/6472))
+- **GitHub Scaler**: Filter workflows via query parameter for improved queue count accuracy ([#6519](https://github.com/kedacore/keda/pull/6519))
 
 ### Fixes
 
