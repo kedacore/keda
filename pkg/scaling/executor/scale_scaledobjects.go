@@ -160,13 +160,6 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	} else {
 		// isActive == false
 		switch {
-		case isError && scaledObject.Spec.Fallback != nil && scaledObject.Spec.Fallback.Replicas != 0:
-			// there are no active triggers, but a scaler responded with an error
-			// AND
-			// there is a fallback replicas count defined
-
-			// Scale to the fallback replicas count
-			e.doFallbackScaling(ctx, scaledObject, currentScale, logger, currentReplicas)
 		case isError && scaledObject.Spec.Fallback == nil:
 			// there are no active triggers, but a scaler responded with an error
 			// AND
@@ -227,18 +220,6 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 				return
 			}
 		}
-	}
-}
-
-func (e *scaleExecutor) doFallbackScaling(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, currentScale *autoscalingv1.Scale, logger logr.Logger, currentReplicas int32) {
-	_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, scaledObject.Spec.Fallback.Replicas)
-	if err == nil {
-		logger.Info("Successfully set ScaleTarget replicas count to ScaledObject fallback.replicas",
-			"Original Replicas Count", currentReplicas,
-			"New Replicas Count", scaledObject.Spec.Fallback.Replicas)
-	}
-	if e := e.setFallbackCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "FallbackExists", "At least one trigger is falling back on this scaled object"); e != nil {
-		logger.Error(e, "Error setting fallback condition")
 	}
 }
 
