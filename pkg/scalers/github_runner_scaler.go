@@ -618,8 +618,8 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 }
 
 // getWorkflowRuns returns a list of workflow runs for a given repository
-func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName string) (*WorkflowRuns, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs", s.metadata.githubAPIURL, s.metadata.owner, repoName)
+func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName string, status string) (*WorkflowRuns, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs?status=%s", s.metadata.githubAPIURL, s.metadata.owner, repoName, status)
 	body, statusCode, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil && statusCode == 404 {
 		return nil, nil
@@ -672,12 +672,19 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	var allWfrs []WorkflowRuns
 
 	for _, repo := range repos {
-		wfrs, err := s.getWorkflowRuns(ctx, repo)
+		wfrsQueued, err := s.getWorkflowRuns(ctx, repo, "queued")
 		if err != nil {
 			return -1, err
 		}
-		if wfrs != nil {
-			allWfrs = append(allWfrs, *wfrs)
+		if wfrsQueued != nil {
+			allWfrs = append(allWfrs, *wfrsQueued)
+		}
+		wfrsInProgress, err := s.getWorkflowRuns(ctx, repo, "in_progress")
+		if err != nil {
+			return -1, err
+		}
+		if wfrsInProgress != nil {
+			allWfrs = append(allWfrs, *wfrsInProgress)
 		}
 	}
 
