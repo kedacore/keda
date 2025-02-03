@@ -235,6 +235,13 @@ func apiStubHandler404() *httptest.Server {
 	}))
 }
 
+func apiStubHandler304() *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotModified)
+		_, _ = w.Write([]byte{})
+	}))
+}
+
 func TestNewGitHubRunnerScaler_QueueLength_NoRateLeft(t *testing.T) {
 	var apiStub = apiStubHandler(false, false)
 
@@ -422,6 +429,50 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithoutScalerDefaultLabels
 	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.Background())
 
 	if err != nil {
+		t.Fail()
+	}
+
+	if queueLen != 1 {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithNotModified(t *testing.T) {
+	var apiStub = apiStubHandler304()
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	var wfrs WorkflowRuns
+	if err := json.Unmarshal([]byte(testGhWorkflowResponse), &wfrs); err != nil {
+		t.Fail()
+	}
+	previousWfrs := map[string]*WorkflowRuns{
+		"test": &wfrs,
+	}
+
+	var jobs Jobs
+	if err := json.Unmarshal([]byte(testGhWFJobResponse), &jobs); err != nil {
+		t.Fail()
+	}
+	previousJobs := map[string][]Job{
+		"Hello-World": jobs.Jobs,
+	}
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.enableEtags = true
+	mockGitHubRunnerScaler.metadata.repos = []string{"test"}
+	mockGitHubRunnerScaler.metadata.labels = []string{"foo", "bar"}
+	mockGitHubRunnerScaler.previousJobs = previousJobs
+	mockGitHubRunnerScaler.previousWfrs = previousWfrs
+
+	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.Background())
+
+	if err != nil {
+		fmt.Println(err)
 		t.Fail()
 	}
 
