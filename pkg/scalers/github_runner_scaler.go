@@ -610,7 +610,6 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 	_ = r.Body.Close()
 
 	if r.StatusCode != 200 {
-
 		if r.StatusCode == 304 && s.metadata.enableEtags {
 			s.logger.V(1).Info(fmt.Sprintf("The github rest api for the url: %s returned status %d %s", url, r.StatusCode, http.StatusText(r.StatusCode)))
 			return []byte{}, r.StatusCode, nil
