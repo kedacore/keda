@@ -76,7 +76,6 @@ type templateData struct {
 	SecretManagerSecretName          string
 	AwsAccessKeyID                   string
 	AwsSecretAccessKey               string
-	useJSONSecretFormat              bool
 }
 
 const (
