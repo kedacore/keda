@@ -545,12 +545,12 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 		if err != nil {
 			return nil, err
 		}
-		if statusCode == 304 {
+		if statusCode == 304 && s.metadata.enableEtags {
 			if s.previousRepos != nil {
 				return s.previousRepos, nil
-			} else {
-				return nil, fmt.Errorf("request for repositories returned status: %d %s but previous repositories is not set", statusCode, http.StatusText(statusCode))
 			}
+
+			return nil, fmt.Errorf("request for repositories returned status: %d %s but previous repositories is not set", statusCode, http.StatusText(statusCode))
 		}
 
 		var repos []Repo
@@ -572,7 +572,9 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 		page++
 	}
 
-	s.previousRepos = repoList
+	if s.metadata.enableEtags {
+		s.previousRepos = repoList
+	}
 
 	return repoList, nil
 }
@@ -609,7 +611,7 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 
 	if r.StatusCode != 200 {
 
-		if r.StatusCode == 304 {
+		if r.StatusCode == 304 && s.metadata.enableEtags {
 			s.logger.V(1).Info(fmt.Sprintf("The github rest api for the url: %s returned status %d %s", url, r.StatusCode, http.StatusText(r.StatusCode)))
 			return []byte{}, r.StatusCode, nil
 		}
@@ -654,12 +656,12 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 	if err != nil {
 		return nil, err
 	}
-	if statusCode == 304 {
+	if statusCode == 304 && s.metadata.enableEtags {
 		if s.previousJobs[repoName] != nil {
 			return s.previousJobs[repoName], nil
-		} else {
-			return nil, fmt.Errorf("request for jobs returned status: %d %s but previous jobs is not set", statusCode, http.StatusText(statusCode))
 		}
+
+		return nil, fmt.Errorf("request for jobs returned status: %d %s but previous jobs is not set", statusCode, http.StatusText(statusCode))
 	}
 
 	var jobs Jobs
@@ -668,7 +670,9 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 		return nil, err
 	}
 
-	s.previousJobs[repoName] = jobs.Jobs
+	if s.metadata.enableEtags {
+		s.previousJobs[repoName] = jobs.Jobs
+	}
 
 	return jobs.Jobs, nil
 }
@@ -682,12 +686,12 @@ func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName strin
 	} else if err != nil {
 		return nil, err
 	}
-	if statusCode == 304 {
+	if statusCode == 304 && s.metadata.enableEtags {
 		if s.previousWfrs[repoName] != nil {
 			return s.previousWfrs[repoName], nil
-		} else {
-			return nil, fmt.Errorf("request for workflow runs returned status: %d %s but previous workflow runs is not set", statusCode, http.StatusText(statusCode))
 		}
+
+		return nil, fmt.Errorf("request for workflow runs returned status: %d %s but previous workflow runs is not set", statusCode, http.StatusText(statusCode))
 	}
 
 	var wfrs WorkflowRuns
@@ -696,7 +700,9 @@ func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName strin
 		return nil, err
 	}
 
-	s.previousWfrs[repoName] = &wfrs
+	if s.metadata.enableEtags {
+		s.previousWfrs[repoName] = &wfrs
+	}
 
 	return &wfrs, nil
 }
