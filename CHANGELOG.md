@@ -97,6 +97,7 @@ New deprecation(s):
 
 ### Other
 
+- **General**: Add debug logs tracking validation of ScaledObjects on webhook ([#6498](https://github.com/kedacore/keda/pull/6498))
 - **General**: New eventreason KEDAScalersInfo to display important information ([#6328](https://github.com/kedacore/keda/issues/6328))
 
 ## v2.16.1
