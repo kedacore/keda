@@ -5,9 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -47,53 +47,71 @@ type SolaceDMScalerConfiguration struct {
 	triggerIndex int
 
 	//Host
-	host string `keda:"name=host,  order=triggerMetadata"`
+	Host string `keda:"name=host, order=triggerMetadata"`
 	// Basic Auth Username
-	username string `keda:"name=username, order=authParams;triggerMetadata;resolvedEnv"`
+	Username string `keda:"name=username, order=authParams;triggerMetadata;resolvedEnv"`
 	// Basic Auth Password
-	password string `keda:"name=password, order=authParams;triggerMetadata;resolvedEnv"`
+	Password string `keda:"name=password, order=authParams;triggerMetadata;resolvedEnv"`
 
 	// Message VPN
-	messageVpn string `keda:"name=messageVpn,   order=triggerMetadata"`
+	MessageVpn string `keda:"name=messageVpn, order=triggerMetadata"`
 	// Client Name Prefix
-	clientNamePrefix string `keda:"name=clientNamePrefix,   order=triggerMetadata"`
+	ClientNamePrefix string `keda:"name=clientNamePrefix, order=triggerMetadata"`
 
 	// Target Client TxByteRate
-	aggregateClientTxByteRateTarget int64 `keda:"name=aggregateClientTxByteRateTarget,       order=triggerMetadata, optional"`
+	AggregateClientTxByteRateTarget int64 `keda:"name=aggregateClientTxByteRateTarget, order=triggerMetadata, optional=true, default=0"`
 	// Target Client AverageTxByteRate
-	aggregateClientAverageTxByteRateTarget int64 `keda:"name=aggregateClientAverageTxByteRateTarget,       order=triggerMetadata, optional"`
+	AggregateClientAverageTxByteRateTarget int64 `keda:"name=aggregateClientAverageTxByteRateTarget, order=triggerMetadata, optional=true, default=0"`
 	// Target Client TxMsgRate
-	aggregateClientTxMsgRateTarget int64 `keda:"name=aggregateClientTxMsgRateTarget,       order=triggerMetadata, optional"`
+	AggregateClientTxMsgRateTarget int64 `keda:"name=aggregateClientTxMsgRateTarget, order=triggerMetadata, optional=true, default=0"`
 	// Target Client AverageTxMsgRate
-	aggregateClientAverageTxMsgRateTarget int64 `keda:"name=aggregateClientAverageTxMsgRateTarget,       order=triggerMetadata, optional"`
+	AggregateClientAverageTxMsgRateTarget int64 `keda:"name=aggregateClientAverageTxMsgRateTarget, order=triggerMetadata, optional=true, default=0"`
 
 	// Activation Client TxByteRate
-	activationAggregateClientTxByteRateTarget int `keda:"name=activationAggregateClientTxByteRateTarget,       order=triggerMetadata, default=0"`
+	ActivationAggregateClientTxByteRateTarget int `keda:"name=activationAggregateClientTxByteRateTarget, order=triggerMetadata, optional=true, default=0"`
 	// Activation Target Average TxByteRate
-	activationAggregateClientAverageTxByteRateTarget int `keda:"name=activationAggregateClientAverageTxByteRateTarget,       order=triggerMetadata, default=0"`
+	ActivationAggregateClientAverageTxByteRateTarget int `keda:"name=activationAggregateClientAverageTxByteRateTarget, order=triggerMetadata=true, optional, default=0"`
 	// Activation Client TxMsgRate
-	activationAggregateClientTxMsgRateTarget int `keda:"name=activationAggregateClientTxMsgRateTarget,       order=triggerMetadata, default=0"`
+	ActivationAggregateClientTxMsgRateTarget int `keda:"name=activationAggregateClientTxMsgRateTarget, order=triggerMetadata, optional=true, default=0"`
 	// Activation Target Average TxMsgRate
-	activationAggregateClientAverageTxMsgRateTarget int `keda:"name=activationAggregateClientAverageTxMsgRateTarget,       order=triggerMetadata, default=0"`
+	ActivationAggregateClientAverageTxMsgRateTarget int `keda:"name=activationAggregateClientAverageTxMsgRateTarget, order=triggerMetadata, optional=true, default=0"`
 
 	// Full SEMP URLs to get stats
 	sempUrl string
 }
 
+func (s *SolaceDMScalerConfiguration) Validate() error {
+	//	Check that we have at least one positive target value for the scaler
+	if s.AggregateClientTxByteRateTarget < 1 && s.AggregateClientAverageTxByteRateTarget < 1 && s.AggregateClientTxMsgRateTarget < 1 && s.AggregateClientAverageTxMsgRateTarget < 1 {
+		return errors.New("no target value found in the scaler configuration")
+	}
+
+	return nil
+}
+
 // SolaceMetricValues is the struct for Observed Metric Values
 type SolaceDMScalerMetricValues struct {
 	//	Observed clientTxByteRate
-	aggregateClientTxByteRate int64
+	AggregateClientTxByteRate int64
 	//	Observed clientAverageTxByteRate
-	aggregateClientAverageTxByteRate int64
+	AggregateClientAverageTxByteRate int64
 	//	Observed clientTxMsgRate
-	aggregateClientTxMsgRate int64
+	AggregateClientTxMsgRate int64
 	//	Observed clientAverageTxMsgRate
-	aggregateClientAverageTxMsgRate int64
+	AggregateClientAverageTxMsgRate int64
 	//	Observed Client queued messages count
-	aggregateClientD1QueueMsgCount int64
+	AggregateClientD1QueueMsgCount int64
 	//	Observed Client queue message count
-	aggregateClientD1QueueUnitsOfWorkRatio int64
+	AggregateClientD1QueueUnitsOfWorkRatio int64
+}
+
+func (c SolaceDMScalerMetricValues) String() string {
+	out, err := json.Marshal(c)
+	if err != nil {
+		return "error"
+	}
+
+	return fmt.Sprint(string(out))
 }
 
 type SolaceDMScaler struct {
@@ -251,7 +269,7 @@ func parseSolaceDMConfiguration(scalerConfig *scalersconfig.ScalerConfig) (*Sola
 		return nil, fmt.Errorf("error parsing metadata: %w", err)
 	}
 	meta.triggerIndex = scalerConfig.TriggerIndex
-	meta.sempUrl = fmt.Sprintf(sempUrl, meta.host)
+	meta.sempUrl = fmt.Sprintf(sempUrl, meta.Host)
 	return meta, nil
 }
 
@@ -261,55 +279,55 @@ func parseSolaceDMConfiguration(scalerConfig *scalersconfig.ScalerConfig) (*Sola
 func (s *SolaceDMScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
 	var metricSpecList []v2.MetricSpec
 	var triggerIndex = s.configuration.triggerIndex
-	var clientNamePattern = s.configuration.clientNamePrefix
+	var clientNamePattern = s.configuration.ClientNamePrefix
 
 	// Target Client TxByteRate
-	if s.configuration.aggregateClientTxByteRateTarget > 0 {
+	if s.configuration.AggregateClientTxByteRateTarget > 0 {
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-dm-%s-%s", clientNamePattern, aggregateClientTxByteRateTargetMetricName))
 		externalMetric := &v2.ExternalMetricSource{
 			Metric: v2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(triggerIndex, metricName),
 			},
-			Target: GetMetricTarget(s.metricType, s.configuration.aggregateClientTxByteRateTarget),
+			Target: GetMetricTarget(s.metricType, s.configuration.AggregateClientTxByteRateTarget),
 		}
 		metricSpec := v2.MetricSpec{External: externalMetric, Type: solaceDMExternalMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
 	}
 	//
 	// Target Client AverageTxByteRate
-	if s.configuration.aggregateClientAverageTxByteRateTarget > 0 {
+	if s.configuration.AggregateClientAverageTxByteRateTarget > 0 {
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-dm-%s-%s", clientNamePattern, aggregateClientAverageTxByteRateTargetMetricName))
 		externalMetric := &v2.ExternalMetricSource{
 			Metric: v2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(triggerIndex, metricName),
 			},
-			Target: GetMetricTarget(s.metricType, s.configuration.aggregateClientAverageTxByteRateTarget),
+			Target: GetMetricTarget(s.metricType, s.configuration.AggregateClientAverageTxByteRateTarget),
 		}
 		metricSpec := v2.MetricSpec{External: externalMetric, Type: solaceDMExternalMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
 	}
 	//
 	// Target Client TxMsgRate
-	if s.configuration.aggregateClientTxMsgRateTarget > 0 {
+	if s.configuration.AggregateClientTxMsgRateTarget > 0 {
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-dm-%s-%s", clientNamePattern, aggregateClientTxMsgRateTargetMetricName))
 		externalMetric := &v2.ExternalMetricSource{
 			Metric: v2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(triggerIndex, metricName),
 			},
-			Target: GetMetricTarget(s.metricType, s.configuration.aggregateClientTxMsgRateTarget),
+			Target: GetMetricTarget(s.metricType, s.configuration.AggregateClientTxMsgRateTarget),
 		}
 		metricSpec := v2.MetricSpec{External: externalMetric, Type: solaceDMExternalMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
 	}
 	//
 	// Target Client AverageTxMsgRate
-	if s.configuration.aggregateClientAverageTxMsgRateTarget > 0 {
+	if s.configuration.AggregateClientAverageTxMsgRateTarget > 0 {
 		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-dm-%s-%s", clientNamePattern, aggregateClientAverageTxMsgRateTargetMetricName))
 		externalMetric := &v2.ExternalMetricSource{
 			Metric: v2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(triggerIndex, metricName),
 			},
-			Target: GetMetricTarget(s.metricType, s.configuration.aggregateClientAverageTxMsgRateTarget),
+			Target: GetMetricTarget(s.metricType, s.configuration.AggregateClientAverageTxMsgRateTarget),
 		}
 		metricSpec := v2.MetricSpec{External: externalMetric, Type: solaceDMExternalMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
@@ -340,33 +358,44 @@ func (s *SolaceDMScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metri
 func (s *SolaceDMScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricValues, err := &SolaceDMScalerMetricValues{}, error(nil)
 
-	err = s.getClientStats(ctx, metricValues)
+	s.logger.Info(fmt.Sprintf("* MetricName: '%s'", metricName))
 
-	if err != nil {
-		log.Fatal(err, "-", "Error getting semp metrics")
-	}
-	//
-	err = s.getClientStatQueues(ctx, metricValues)
+	if strings.HasSuffix(metricName, aggregateClientTxByteRateTargetMetricName) ||
+		strings.HasSuffix(metricName, aggregateClientAverageTxByteRateTargetMetricName) ||
+		strings.HasSuffix(metricName, aggregateClientTxMsgRateTargetMetricName) ||
+		strings.HasSuffix(metricName, aggregateClientAverageTxMsgRateTargetMetricName) {
 
-	if err != nil {
-		log.Fatal(err, "-", "Error getting semp metrics")
+		err = s.getClientStats(ctx, metricValues)
+
+		if err != nil {
+			s.logger.Error(err, "call to semp endpoint (client stats) failed")
+			return []external_metrics.ExternalMetricValue{}, false, err
+		}
+	} else if strings.HasSuffix(metricName, aggregateClientD1QueueBacklogTargetMetricName) {
+		//
+		err = s.getClientStatQueues(ctx, metricValues)
+
+		if err != nil {
+			s.logger.Error(err, "call to semp endpoint (client queues stats) failed")
+			return []external_metrics.ExternalMetricValue{}, false, err
+		}
 	}
 
 	var metric external_metrics.ExternalMetricValue
 	switch {
 	//
 	case strings.HasSuffix(metricName, aggregateClientTxByteRateTargetMetricName):
-		metric = GenerateMetricInMili(metricName, float64(metricValues.aggregateClientTxByteRate))
+		metric = GenerateMetricInMili(metricName, float64(metricValues.AggregateClientTxByteRate))
 	case strings.HasSuffix(metricName, aggregateClientAverageTxByteRateTargetMetricName):
-		metric = GenerateMetricInMili(metricName, float64(metricValues.aggregateClientAverageTxByteRate))
+		metric = GenerateMetricInMili(metricName, float64(metricValues.AggregateClientAverageTxByteRate))
 	//
 	case strings.HasSuffix(metricName, aggregateClientTxMsgRateTargetMetricName):
-		metric = GenerateMetricInMili(metricName, float64(metricValues.aggregateClientTxMsgRate))
+		metric = GenerateMetricInMili(metricName, float64(metricValues.AggregateClientTxMsgRate))
 	case strings.HasSuffix(metricName, aggregateClientAverageTxMsgRateTargetMetricName):
-		metric = GenerateMetricInMili(metricName, float64(metricValues.aggregateClientAverageTxMsgRate))
+		metric = GenerateMetricInMili(metricName, float64(metricValues.AggregateClientAverageTxMsgRate))
 	//
 	case strings.HasSuffix(metricName, aggregateClientD1QueueBacklogTargetMetricName):
-		metric = GenerateMetricInMili(metricName, float64(metricValues.aggregateClientD1QueueUnitsOfWorkRatio))
+		metric = GenerateMetricInMili(metricName, float64(metricValues.AggregateClientD1QueueUnitsOfWorkRatio))
 
 	default:
 		// Should never end up here
@@ -374,6 +403,8 @@ func (s *SolaceDMScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		s.logger.Error(err, "returning error to calling app")
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
+
+	s.logger.Info(fmt.Sprintf("Metrics: '%s'", metricValues))
 	//always return true for activation unless its not needed this needs at least one instace
 	return []external_metrics.ExternalMetricValue{metric}, true, nil
 }
@@ -392,7 +423,7 @@ func (s *SolaceDMScaler) Close(ctx context.Context) error {
 /************************************************************************************************************/
 func (s *SolaceDMScaler) getClientStats(ctx context.Context, metricValues *SolaceDMScalerMetricValues) error {
 	//get client stats for the clients that have the prefix
-	clientStatsReqBody := "<rpc><show><client><name>" + s.configuration.clientNamePrefix + "*</name><stats/></client></show></rpc>"
+	clientStatsReqBody := "<rpc><show><client><name>" + s.configuration.ClientNamePrefix + "*</name><stats/></client></show></rpc>"
 
 	bodyBytes, err := s.getSEMPMetrics(ctx, clientStatsReqBody)
 	if err != nil {
@@ -409,33 +440,43 @@ func (s *SolaceDMScaler) getClientStats(ctx context.Context, metricValues *Solac
 	clients := clientStatsReply.RPC.Show.Client.PrimaryVirtualRouter.Clients
 
 	//make sure they are clean before the agg
-	metricValues.aggregateClientTxByteRate = 0
-	metricValues.aggregateClientAverageTxByteRate = 0
-	metricValues.aggregateClientTxMsgRate = 0
-	metricValues.aggregateClientAverageTxMsgRate = 0
+	metricValues.AggregateClientTxByteRate = 0
+	metricValues.AggregateClientAverageTxByteRate = 0
+	metricValues.AggregateClientTxMsgRate = 0
+	metricValues.AggregateClientAverageTxMsgRate = 0
+	var numClients int64 = 0
 
 	for i := 0; i < len(clients); i++ {
 		client := clients[i]
 
 		//only consider the configured vpn
-		if client.MessageVpn == s.configuration.messageVpn {
-			metricValues.aggregateClientTxByteRate += client.Stats.ByteRatePerSecond
-			metricValues.aggregateClientAverageTxByteRate += client.Stats.AvgByteRatePerMinute
-			metricValues.aggregateClientTxMsgRate += client.Stats.MsgRatePerSecond
-			metricValues.aggregateClientAverageTxMsgRate += client.Stats.AvgMsgRatePerMinute
+		if client.MessageVpn == s.configuration.MessageVpn {
+			numClients++
+			s.logger.Info(fmt.Sprintf("    Client[%d] - ByteRatePerSecond: '%d', AvgByteRatePerMinute: '%d', MsgRatePerSecond: '%d', AvgMsgRatePerMinute: '%d'", i, client.Stats.ByteRatePerSecond, client.Stats.AvgByteRatePerMinute, client.Stats.MsgRatePerSecond, client.Stats.AvgMsgRatePerMinute))
+			metricValues.AggregateClientTxByteRate += client.Stats.ByteRatePerSecond
+			metricValues.AggregateClientAverageTxByteRate += client.Stats.AvgByteRatePerMinute
+			metricValues.AggregateClientTxMsgRate += client.Stats.MsgRatePerSecond
+			metricValues.AggregateClientAverageTxMsgRate += client.Stats.AvgMsgRatePerMinute
 		}
 	}
+
+	metricValues.AggregateClientTxByteRate = int64(float64(metricValues.AggregateClientTxByteRate) / float64(numClients))
+	metricValues.AggregateClientAverageTxByteRate = int64(float64(metricValues.AggregateClientAverageTxByteRate) / float64(numClients))
+	metricValues.AggregateClientTxMsgRate = int64(float64(metricValues.AggregateClientTxMsgRate) / float64(numClients))
+	metricValues.AggregateClientAverageTxMsgRate = int64(float64(metricValues.AggregateClientAverageTxMsgRate) / float64(numClients))
+
+	s.logger.Info(fmt.Sprintf("   MetricValues AvgPerClient - ByteRatePerSecond: '%d', AvgByteRatePerMinute: '%d', MsgRatePerSecond: '%d', AvgMsgRatePerMinute: '%d'", metricValues.AggregateClientTxByteRate, metricValues.AggregateClientAverageTxByteRate, metricValues.AggregateClientTxMsgRate, metricValues.AggregateClientAverageTxMsgRate))
 	//no error
 	return nil
 }
 
 func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *SolaceDMScalerMetricValues) error {
 	//get client stats for the clients that have the prefix
-	clientStatQueuesReqBody := fmt.Sprintf("<rpc><show><client><name>%s*</name><stats></stats><queues></queues></client></show></rpc>", s.configuration.clientNamePrefix)
+	clientStatQueuesReqBody := fmt.Sprintf("<rpc><show><client><name>%s*</name><stats></stats><queues></queues></client></show></rpc>", s.configuration.ClientNamePrefix)
 
 	bodyBytes, err := s.getSEMPMetrics(ctx, clientStatQueuesReqBody)
 	if err != nil {
-		return fmt.Errorf("reading client stats failed: %w", err)
+		return fmt.Errorf("reading client stats queue failed: %w", err)
 	}
 
 	var clientStatsReply CSQRpcReply
@@ -448,32 +489,45 @@ func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *
 	clients := clientStatsReply.RPC.Show.Client.PrimaryVirtualRouter.Clients
 
 	//make sure they are clean before the agg
-	metricValues.aggregateClientD1QueueMsgCount = 0
+	metricValues.AggregateClientD1QueueMsgCount = 0
+	metricValues.AggregateClientD1QueueUnitsOfWorkRatio = 0
 
 	var aggregatedMaxUnitOfWork int64 = 0
 	var aggregatedUsedUnitsOfWork int64 = 0
+	var numClients int32 = 0
 
 	for i := 0; i < len(clients); i++ {
 		client := clients[i]
 
 		//only consider the configured vpn
-		if client.MessageVpn == s.configuration.messageVpn {
+		if client.MessageVpn == s.configuration.MessageVpn {
 			clientQueues := client.ClientQueues
 
 			for j := 0; j < len(clientQueues); j++ {
 				clientQueue := clientQueues[j]
 
 				if clientQueue.QueuePriority == d1PriorityQueue {
-					metricValues.aggregateClientD1QueueMsgCount += clientQueue.LengthMsgs
+					s.logger.Info(fmt.Sprintf("    Client[%d]Q[%s] - LengthMsgs: '%d', MaxWork: '%d', LengthWork: '%d'", i, clientQueue.QueuePriority, clientQueue.LengthMsgs, clientQueue.MaxWork, clientQueue.LengthWork))
+
+					numClients++
+					metricValues.AggregateClientD1QueueMsgCount += clientQueue.LengthMsgs
 					aggregatedMaxUnitOfWork += clientQueue.MaxWork
 					aggregatedUsedUnitsOfWork += clientQueue.LengthWork
 				}
 			}
 		}
-
-		calculatedV := d1QueueBacklogMetricBaseValue + ((aggregatedUsedUnitsOfWork / aggregatedMaxUnitOfWork) * 100)
-		metricValues.aggregateClientD1QueueUnitsOfWorkRatio = int64(calculatedV)
 	}
+
+	if aggregatedMaxUnitOfWork == 0 {
+		metricValues.AggregateClientD1QueueUnitsOfWorkRatio = int64(d1QueueBacklogMetricBaseValue)
+	} else {
+		var ratio float64 = (float64(aggregatedUsedUnitsOfWork) / float64(aggregatedMaxUnitOfWork))
+		var calculatedValue float64 = (float64(1.0) + ratio) * float64(d1QueueBacklogMetricBaseValue)
+
+		metricValues.AggregateClientD1QueueUnitsOfWorkRatio = int64(calculatedValue)
+	}
+
+	s.logger.Info(fmt.Sprintf("   MetricValues - d1QueueBacklogMetricBaseValue: '%d', aggregatedUsedUnitsOfWork: '%d', aggregatedMaxUnitOfWork: '%d', AggregateClientD1QueueUnitsOfWorkRatio: '%d'", d1QueueBacklogMetricBaseValue, aggregatedUsedUnitsOfWork, aggregatedMaxUnitOfWork, metricValues.AggregateClientD1QueueUnitsOfWorkRatio))
 	//no error
 	return nil
 }
@@ -490,7 +544,7 @@ func (s *SolaceDMScaler) getSEMPMetrics(ctx context.Context, requestBody string)
 	}
 
 	//	Add HTTP Auth and Headers
-	request.SetBasicAuth(s.configuration.username, s.configuration.password)
+	request.SetBasicAuth(s.configuration.Username, s.configuration.Password)
 	request.Header.Set("Content-Type", "application/xml")
 
 	//	Call Solace SEMP API
@@ -501,7 +555,6 @@ func (s *SolaceDMScaler) getSEMPMetrics(ctx context.Context, requestBody string)
 	// close the response body  reader when the func returns
 	defer response.Body.Close()
 
-	s.logger.Info("Response", "Header", response)
 	// Check HTTP Status Code
 	if response.StatusCode < 200 || response.StatusCode > 299 {
 		sempError := fmt.Errorf("semp request http status code: %s - %s", strconv.Itoa(response.StatusCode), response.Status)
@@ -514,7 +567,7 @@ func (s *SolaceDMScaler) getSEMPMetrics(ctx context.Context, requestBody string)
 		return []byte{}, fmt.Errorf("reading response body failed: %w", err)
 	}
 
-	s.logger.Info("Response", "Body", string(responseBodyValue))
+	//s.logger.V(1).Info("Response", "Body", string(responseBodyValue))
 
 	return responseBodyValue, nil
 }
