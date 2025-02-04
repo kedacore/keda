@@ -364,7 +364,6 @@ var data = templateData{
 	AwsSecretAccessKey:               base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
 	AwsRegion:                        awsRegion,
 	AwsCredentialsSecretName:         awsCredentialsSecretName,
-	useJSONSecretFormat:              false,
 }
 
 func getPostgreSQLTemplateData() (templateData, []Template) {
