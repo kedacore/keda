@@ -257,18 +257,18 @@ func (so *ScaledObject) GetHPAMaxReplicas() int32 {
 // checkReplicaCountBoundsAreValid checks that Idle/Min/Max ReplicaCount defined in ScaledObject are correctly specified
 // i.e. that Min is not greater than Max or Idle greater or equal to Min
 func CheckReplicaCountBoundsAreValid(scaledObject *ScaledObject) error {
-	min := int32(0)
+	minReplicas := int32(0)
 	if scaledObject.Spec.MinReplicaCount != nil {
-		min = *scaledObject.GetHPAMinReplicas()
+		minReplicas = *scaledObject.GetHPAMinReplicas()
 	}
-	max := scaledObject.GetHPAMaxReplicas()
+	maxReplicas := scaledObject.GetHPAMaxReplicas()
 
-	if min > max {
-		return fmt.Errorf("MinReplicaCount=%d must be less than MaxReplicaCount=%d", min, max)
+	if minReplicas > maxReplicas {
+		return fmt.Errorf("MinReplicaCount=%d must be less than MaxReplicaCount=%d", minReplicas, maxReplicas)
 	}
 
-	if scaledObject.Spec.IdleReplicaCount != nil && *scaledObject.Spec.IdleReplicaCount >= min {
-		return fmt.Errorf("IdleReplicaCount=%d must be less than MinReplicaCount=%d", *scaledObject.Spec.IdleReplicaCount, min)
+	if scaledObject.Spec.IdleReplicaCount != nil && *scaledObject.Spec.IdleReplicaCount >= minReplicas {
+		return fmt.Errorf("IdleReplicaCount=%d must be less than MinReplicaCount=%d", *scaledObject.Spec.IdleReplicaCount, minReplicas)
 	}
 
 	return nil

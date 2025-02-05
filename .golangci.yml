@@ -27,7 +27,7 @@ linters:
     - unconvert
     - ineffassign
     - staticcheck
-    - exportloopref
+    - copyloopvar
     - depguard
     - dogsled
     - errcheck
