@@ -174,6 +174,7 @@ func TestScaler(t *testing.T) {
 	require.NotEmpty(t, buildID, "AZURE_DEVOPS_AAD_WI_BUILD_DEFINITION_ID env variable is required for azure pipelines test")
 	require.NotEmpty(t, poolName, "AZURE_DEVOPS_AAD_WI_POOL_NAME env variable is required for azure pipelines test")
 	connection := azuredevops.NewPatConnection(organizationURL, personalAccessToken)
+	require.NotNil(t, connection, "unable to create azure devops connection")
 	clearAllBuilds(t, connection)
 	// Get pool ID
 	poolID = fmt.Sprintf("%d", getAzDoPoolID(t, connection))
