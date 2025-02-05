@@ -40,6 +40,8 @@ const (
 	sempUrl = "http://%s/SEMP"
 	//D-1 Queue
 	d1PriorityQueue = "D-1"
+	//Unit of Work Byte Size
+	unitOfWorkByteSize = 2048
 )
 
 type SolaceDMScalerConfiguration struct {
@@ -92,17 +94,19 @@ func (s *SolaceDMScalerConfiguration) Validate() error {
 // SolaceMetricValues is the struct for Observed Metric Values
 type SolaceDMScalerMetricValues struct {
 	//	Observed clientTxByteRate
-	AggregateClientTxByteRate int64
+	AggregatedClientTxByteRate int64
 	//	Observed clientAverageTxByteRate
-	AggregateClientAverageTxByteRate int64
+	AggregatedClientAverageTxByteRate int64
 	//	Observed clientTxMsgRate
-	AggregateClientTxMsgRate int64
+	AggregatedClientTxMsgRate int64
 	//	Observed clientAverageTxMsgRate
-	AggregateClientAverageTxMsgRate int64
+	AggregatedClientAverageTxMsgRate int64
 	//	Observed Client queued messages count
-	AggregateClientD1QueueMsgCount int64
-	//	Observed Client queue message count
-	AggregateClientD1QueueUnitsOfWorkRatio int64
+	AggregatedClientD1QueueMsgCount int64
+	//	Observed Client queue units of work
+	AggregatedClientD1QueueUnitsOfWork int64
+	//	Observed Client queue units of work ratio
+	AggregatedClientD1QueueUnitsOfWorkRatio int64
 }
 
 func (c SolaceDMScalerMetricValues) String() string {
@@ -332,23 +336,25 @@ func (s *SolaceDMScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metri
 		metricSpec := v2.MetricSpec{External: externalMetric, Type: solaceDMExternalMetricType}
 		metricSpecList = append(metricSpecList, metricSpec)
 	}
-	//
-	// D-1 Queue Backlog
-	//this metric will always report!
-	// if the TxRate is >= TxRateTarget this metric will report the same value as the target value - '100' meaning the consumers are on track
-	// if the TxRate is <  TxRateTarget could be because of slow consumer or issues, so
-	// metric value = base value + ((length-work/max-work)*100) of D-1 queue
-	// HPA always takes the higher metric for the scaling so this metric will be relevant only in that scenario
-	metricName := kedautil.NormalizeString(fmt.Sprintf("solace-dm-%s-%s", clientNamePattern, aggregateClientD1QueueBacklogTargetMetricName))
-	externalMetric := &v2.ExternalMetricSource{
-		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(triggerIndex, metricName),
-		},
-		Target: GetMetricTarget(s.metricType, d1QueueBacklogMetricBaseValue),
-	}
-	metricSpec := v2.MetricSpec{External: externalMetric, Type: solaceDMExternalMetricType}
-	metricSpecList = append(metricSpecList, metricSpec)
 
+	/*
+		// TODO: remove this block
+		// D-1 Queue Backlog
+		//this metric will always report!
+		// if the TxRate is >= TxRateTarget this metric will report the same value as the target value - '100' meaning the consumers are on track
+		// if the TxRate is <  TxRateTarget could be because of slow consumer or issues, so
+		// metric value = base value + ((length-work/max-work)*100) of D-1 queue
+		// HPA always takes the higher metric for the scaling so this metric will be relevant only in that scenario
+		metricName := kedautil.NormalizeString(fmt.Sprintf("solace-dm-%s-%s", clientNamePattern, aggregateClientD1QueueBacklogTargetMetricName))
+		externalMetric := &v2.ExternalMetricSource{
+			Metric: v2.MetricIdentifier{
+				Name: GenerateMetricNameWithIndex(triggerIndex, metricName),
+			},
+			Target: GetMetricTarget(s.metricType, d1QueueBacklogMetricBaseValue),
+		}
+		metricSpec := v2.MetricSpec{External: externalMetric, Type: solaceDMExternalMetricType}
+		metricSpecList = append(metricSpecList, metricSpec)
+	*/
 	return metricSpecList
 
 }
@@ -360,42 +366,68 @@ func (s *SolaceDMScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 
 	s.logger.Info(fmt.Sprintf("* MetricName: '%s'", metricName))
 
-	if strings.HasSuffix(metricName, aggregateClientTxByteRateTargetMetricName) ||
-		strings.HasSuffix(metricName, aggregateClientAverageTxByteRateTargetMetricName) ||
-		strings.HasSuffix(metricName, aggregateClientTxMsgRateTargetMetricName) ||
-		strings.HasSuffix(metricName, aggregateClientAverageTxMsgRateTargetMetricName) {
+	/*
+		//TODO: remove this section
+		if strings.HasSuffix(metricName, aggregateClientTxByteRateTargetMetricName) ||
+			strings.HasSuffix(metricName, aggregateClientAverageTxByteRateTargetMetricName) ||
+			strings.HasSuffix(metricName, aggregateClientTxMsgRateTargetMetricName) ||
+			strings.HasSuffix(metricName, aggregateClientAverageTxMsgRateTargetMetricName) {
 
-		err = s.getClientStats(ctx, metricValues)
+			err = s.getClientStats(ctx, metricValues)
 
-		if err != nil {
-			s.logger.Error(err, "call to semp endpoint (client stats) failed")
-			return []external_metrics.ExternalMetricValue{}, false, err
+			if err != nil {
+				s.logger.Error(err, "call to semp endpoint (client stats) failed")
+				return []external_metrics.ExternalMetricValue{}, false, err
+			}
+		} else if strings.HasSuffix(metricName, aggregateClientD1QueueBacklogTargetMetricName) {
+			//
+			err = s.getClientStatQueues(ctx, metricValues)
+
+			if err != nil {
+				s.logger.Error(err, "call to semp endpoint (client queues stats) failed")
+				return []external_metrics.ExternalMetricValue{}, false, err
+			}
 		}
-	} else if strings.HasSuffix(metricName, aggregateClientD1QueueBacklogTargetMetricName) {
-		//
-		err = s.getClientStatQueues(ctx, metricValues)
+	*/
 
-		if err != nil {
-			s.logger.Error(err, "call to semp endpoint (client queues stats) failed")
-			return []external_metrics.ExternalMetricValue{}, false, err
-		}
+	err = s.getClientStats(ctx, metricValues)
+
+	if err != nil {
+		s.logger.Error(err, "call to semp endpoint (client stats) failed")
+		return []external_metrics.ExternalMetricValue{}, false, err
 	}
+	//
+	err = s.getClientStatQueues(ctx, metricValues)
+
+	if err != nil {
+		s.logger.Error(err, "call to semp endpoint (client queues stats) failed")
+		return []external_metrics.ExternalMetricValue{}, false, err
+	}
+
+	//Use the queued messages in D-1 queue to add them to the other metrics!
+	metricValues.AggregatedClientTxMsgRate += metricValues.AggregatedClientD1QueueMsgCount
+	metricValues.AggregatedClientAverageTxMsgRate += metricValues.AggregatedClientD1QueueMsgCount
+	metricValues.AggregatedClientTxByteRate += (metricValues.AggregatedClientD1QueueUnitsOfWork * unitOfWorkByteSize)
+	metricValues.AggregatedClientAverageTxByteRate += (metricValues.AggregatedClientD1QueueUnitsOfWork * unitOfWorkByteSize)
 
 	var metric external_metrics.ExternalMetricValue
 	switch {
 	//
 	case strings.HasSuffix(metricName, aggregateClientTxByteRateTargetMetricName):
-		metric = GenerateMetricInMili(metricName, float64(metricValues.AggregateClientTxByteRate))
+		metric = GenerateMetricInMili(metricName, float64(metricValues.AggregatedClientTxByteRate))
 	case strings.HasSuffix(metricName, aggregateClientAverageTxByteRateTargetMetricName):
-		metric = GenerateMetricInMili(metricName, float64(metricValues.AggregateClientAverageTxByteRate))
+		metric = GenerateMetricInMili(metricName, float64(metricValues.AggregatedClientAverageTxByteRate))
 	//
 	case strings.HasSuffix(metricName, aggregateClientTxMsgRateTargetMetricName):
-		metric = GenerateMetricInMili(metricName, float64(metricValues.AggregateClientTxMsgRate))
+		metric = GenerateMetricInMili(metricName, float64(metricValues.AggregatedClientTxMsgRate))
 	case strings.HasSuffix(metricName, aggregateClientAverageTxMsgRateTargetMetricName):
-		metric = GenerateMetricInMili(metricName, float64(metricValues.AggregateClientAverageTxMsgRate))
+		metric = GenerateMetricInMili(metricName, float64(metricValues.AggregatedClientAverageTxMsgRate))
 	//
-	case strings.HasSuffix(metricName, aggregateClientD1QueueBacklogTargetMetricName):
-		metric = GenerateMetricInMili(metricName, float64(metricValues.AggregateClientD1QueueUnitsOfWorkRatio))
+	/*
+		//TODO: this?
+		case strings.HasSuffix(metricName, aggregateClientD1QueueBacklogTargetMetricName):
+			metric = GenerateMetricInMili(metricName, float64(metricValues.AggregatedClientD1QueueUnitsOfWorkRatio))
+	*/
 
 	default:
 		// Should never end up here
@@ -440,10 +472,10 @@ func (s *SolaceDMScaler) getClientStats(ctx context.Context, metricValues *Solac
 	clients := clientStatsReply.RPC.Show.Client.PrimaryVirtualRouter.Clients
 
 	//make sure they are clean before the agg
-	metricValues.AggregateClientTxByteRate = 0
-	metricValues.AggregateClientAverageTxByteRate = 0
-	metricValues.AggregateClientTxMsgRate = 0
-	metricValues.AggregateClientAverageTxMsgRate = 0
+	metricValues.AggregatedClientTxByteRate = 0
+	metricValues.AggregatedClientAverageTxByteRate = 0
+	metricValues.AggregatedClientTxMsgRate = 0
+	metricValues.AggregatedClientAverageTxMsgRate = 0
 	var numClients int64 = 0
 
 	for i := 0; i < len(clients); i++ {
@@ -453,20 +485,21 @@ func (s *SolaceDMScaler) getClientStats(ctx context.Context, metricValues *Solac
 		if client.MessageVpn == s.configuration.MessageVpn {
 			numClients++
 			s.logger.Info(fmt.Sprintf("    Client[%d] - ByteRatePerSecond: '%d', AvgByteRatePerMinute: '%d', MsgRatePerSecond: '%d', AvgMsgRatePerMinute: '%d'", i, client.Stats.ByteRatePerSecond, client.Stats.AvgByteRatePerMinute, client.Stats.MsgRatePerSecond, client.Stats.AvgMsgRatePerMinute))
-			metricValues.AggregateClientTxByteRate += client.Stats.ByteRatePerSecond
-			metricValues.AggregateClientAverageTxByteRate += client.Stats.AvgByteRatePerMinute
-			metricValues.AggregateClientTxMsgRate += client.Stats.MsgRatePerSecond
-			metricValues.AggregateClientAverageTxMsgRate += client.Stats.AvgMsgRatePerMinute
+			metricValues.AggregatedClientTxByteRate += client.Stats.ByteRatePerSecond
+			metricValues.AggregatedClientAverageTxByteRate += client.Stats.AvgByteRatePerMinute
+			metricValues.AggregatedClientTxMsgRate += client.Stats.MsgRatePerSecond
+			metricValues.AggregatedClientAverageTxMsgRate += client.Stats.AvgMsgRatePerMinute
 		}
 	}
 	/*
+		//TODO: remove this section
 		metricValues.AggregateClientTxByteRate = int64(float64(metricValues.AggregateClientTxByteRate) / float64(numClients))
 		metricValues.AggregateClientAverageTxByteRate = int64(float64(metricValues.AggregateClientAverageTxByteRate) / float64(numClients))
 		metricValues.AggregateClientTxMsgRate = int64(float64(metricValues.AggregateClientTxMsgRate) / float64(numClients))
 		metricValues.AggregateClientAverageTxMsgRate = int64(float64(metricValues.AggregateClientAverageTxMsgRate) / float64(numClients))
 	*/
 
-	s.logger.Info(fmt.Sprintf("   MetricValues - ByteRatePerSecond: '%d', AvgByteRatePerMinute: '%d', MsgRatePerSecond: '%d', AvgMsgRatePerMinute: '%d'", metricValues.AggregateClientTxByteRate, metricValues.AggregateClientAverageTxByteRate, metricValues.AggregateClientTxMsgRate, metricValues.AggregateClientAverageTxMsgRate))
+	s.logger.Info(fmt.Sprintf("   MetricValues - ByteRatePerSecond: '%d', AvgByteRatePerMinute: '%d', MsgRatePerSecond: '%d', AvgMsgRatePerMinute: '%d'", metricValues.AggregatedClientTxByteRate, metricValues.AggregatedClientAverageTxByteRate, metricValues.AggregatedClientTxMsgRate, metricValues.AggregatedClientAverageTxMsgRate))
 	//no error
 	return nil
 }
@@ -490,8 +523,9 @@ func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *
 	clients := clientStatsReply.RPC.Show.Client.PrimaryVirtualRouter.Clients
 
 	//make sure they are clean before the agg
-	metricValues.AggregateClientD1QueueMsgCount = 0
-	metricValues.AggregateClientD1QueueUnitsOfWorkRatio = 0
+	metricValues.AggregatedClientD1QueueMsgCount = 0
+	metricValues.AggregatedClientD1QueueUnitsOfWork = 0
+	metricValues.AggregatedClientD1QueueUnitsOfWorkRatio = 0
 
 	var aggregatedMaxUnitOfWork int64 = 0
 	var aggregatedUsedUnitsOfWork int64 = 0
@@ -511,7 +545,8 @@ func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *
 					s.logger.Info(fmt.Sprintf("    Client[%d]Q[%s] - LengthMsgs: '%d', MaxWork: '%d', LengthWork: '%d'", i, clientQueue.QueuePriority, clientQueue.LengthMsgs, clientQueue.MaxWork, clientQueue.LengthWork))
 
 					numClients++
-					metricValues.AggregateClientD1QueueMsgCount += clientQueue.LengthMsgs
+					metricValues.AggregatedClientD1QueueMsgCount += clientQueue.LengthMsgs
+					metricValues.AggregatedClientD1QueueUnitsOfWork += clientQueue.LengthWork
 					aggregatedMaxUnitOfWork += clientQueue.MaxWork
 					aggregatedUsedUnitsOfWork += clientQueue.LengthWork
 				}
@@ -520,15 +555,17 @@ func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *
 	}
 
 	if aggregatedMaxUnitOfWork == 0 {
-		metricValues.AggregateClientD1QueueUnitsOfWorkRatio = int64(d1QueueBacklogMetricBaseValue)
+		metricValues.AggregatedClientD1QueueUnitsOfWorkRatio = int64(d1QueueBacklogMetricBaseValue)
 	} else {
 		var ratio float64 = (float64(aggregatedUsedUnitsOfWork) / float64(aggregatedMaxUnitOfWork))
 		var calculatedValue float64 = (float64(1.0) + ratio) * float64(d1QueueBacklogMetricBaseValue)
 
-		metricValues.AggregateClientD1QueueUnitsOfWorkRatio = int64(calculatedValue)
+		metricValues.AggregatedClientD1QueueUnitsOfWorkRatio = int64(calculatedValue)
 	}
 
-	s.logger.Info(fmt.Sprintf("   MetricValues - d1QueueBacklogMetricBaseValue: '%d', aggregatedUsedUnitsOfWork: '%d', aggregatedMaxUnitOfWork: '%d', AggregateClientD1QueueUnitsOfWorkRatio: '%d'", d1QueueBacklogMetricBaseValue, aggregatedUsedUnitsOfWork, aggregatedMaxUnitOfWork, metricValues.AggregateClientD1QueueUnitsOfWorkRatio))
+	s.logger.Info(fmt.Sprintf("   MetricValues - AggregatedClientD1QueueMsgCount: '%d'", metricValues.AggregatedClientD1QueueMsgCount))
+	s.logger.Info(fmt.Sprintf("   MetricValues - AggregatedClientD1QueueUnitsOfWork: '%d'", metricValues.AggregatedClientD1QueueUnitsOfWork))
+	s.logger.Info(fmt.Sprintf("   MetricValues - AggregateClientD1QueueUnitsOfWorkRatio: '%d'", metricValues.AggregatedClientD1QueueUnitsOfWorkRatio))
 	//no error
 	return nil
 }
