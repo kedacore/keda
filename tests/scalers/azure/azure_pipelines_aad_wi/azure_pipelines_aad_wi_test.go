@@ -248,7 +248,7 @@ func clearAllBuilds(t *testing.T, connection *azuredevops.Connection) {
 	defer cancel()
 	buildClient, err := build.NewClient(ctx, connection)
 	if err != nil {
-		t.Errorf("unable to create build client")
+		t.Errorf("unable to create build client: %v", err)
 	}
 	var top = 20
 	args := build.GetBuildsArgs{
