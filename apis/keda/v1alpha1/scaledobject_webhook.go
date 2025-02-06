@@ -180,6 +180,7 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	return nil, nil
 }
 
+//nolint:unparam
 func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
 	err := CheckReplicaCountBoundsAreValid(incomingSo)
 	if err != nil {
@@ -189,6 +190,7 @@ func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
 	return nil
 }
 
+//nolint:unparam
 func verifyFallback(incomingSo *ScaledObject, action string, _ bool) error {
 	err := CheckFallbackValid(incomingSo)
 	if err != nil {
