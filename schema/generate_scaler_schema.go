@@ -153,17 +153,19 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 	}
 
 	filedata := []byte{}
-	if outputFileFormat == "yaml" {
+
+	switch outputFileFormat {
+	case "yaml":
 		filedata, err = yaml.Marshal(fullMetadataSchema)
 		if err != nil {
 			return err
 		}
-	} else if outputFileFormat == "json" {
+	case "json":
 		filedata, err = json.MarshalIndent(fullMetadataSchema, "", "    ")
 		if err != nil {
 			return err
 		}
-	} else {
+	default:
 		return fmt.Errorf("output file format %s is not supported", outputFileFormat)
 	}
 
