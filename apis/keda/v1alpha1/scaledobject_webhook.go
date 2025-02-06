@@ -197,7 +197,7 @@ func verifyFallback(incomingSo *ScaledObject, action string, _ bool) error {
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
 		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-fallback")
 	}
-	return nil
+	return err
 }
 
 func verifyTriggers(incomingObject interface{}, action string, _ bool) error {
