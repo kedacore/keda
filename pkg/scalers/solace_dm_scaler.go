@@ -60,6 +60,9 @@ type SolaceDMScalerConfiguration struct {
 	// Client Name Prefix
 	ClientNamePrefix string `keda:"name=clientNamePrefix, order=triggerMetadata"`
 
+	//UnsafeSSL
+	UnsafeSSL bool `keda:"name=unsafeSSL, order=triggerMetadata, default=false"`
+
 	// Target Client TxByteRate
 	AggregatedClientTxByteRateTarget int64 `keda:"name=aggregatedClientTxByteRateTarget, order=triggerMetadata, optional=true, default=0"`
 	// Target Client AverageTxByteRate
@@ -242,8 +245,6 @@ func (c CSQClientD) String() string {
 
 // Constructor for SolaceDMScaler
 func NewSolaceDMScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
-	// Create HTTP Client
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
@@ -258,6 +259,9 @@ func NewSolaceDMScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		logger.Error(err, "Error parsing Solace Trigger Metadata or missing values")
 		return nil, err
 	}
+
+	// Create HTTP Client
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, scalerConfig.UnsafeSSL)
 
 	return &SolaceDMScaler{
 		metricType:    metricType,
