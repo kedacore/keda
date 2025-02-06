@@ -37,7 +37,7 @@ const (
 	//
 	d1QueueBacklogMetricBaseValue int64 = 100
 	//SEMP v1 URL Pattern
-	sempUrl = "http://%s/SEMP"
+	sempUrl = "%s/SEMP"
 	//D-1 Queue
 	d1PriorityQueue = "D-1"
 	//Unit of Work Byte Size
@@ -48,8 +48,8 @@ type SolaceDMScalerConfiguration struct {
 	// Scaler index
 	triggerIndex int
 
-	//Host
-	Host string `keda:"name=host, order=triggerMetadata"`
+	//HostUrl
+	HostUrl string `keda:"name=hostUrl, order=triggerMetadata"`
 	// Basic Auth Username
 	Username string `keda:"name=username, order=authParams;triggerMetadata;resolvedEnv"`
 	// Basic Auth Password
@@ -273,7 +273,7 @@ func parseSolaceDMConfiguration(scalerConfig *scalersconfig.ScalerConfig) (*Sola
 		return nil, fmt.Errorf("error parsing metadata: %w", err)
 	}
 	meta.triggerIndex = scalerConfig.TriggerIndex
-	meta.sempUrl = fmt.Sprintf(sempUrl, meta.Host)
+	meta.sempUrl = fmt.Sprintf(sempUrl, meta.HostUrl)
 	return meta, nil
 }
 
