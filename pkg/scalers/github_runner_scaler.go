@@ -602,7 +602,7 @@ func stripDeadRuns(allWfrs []WorkflowRuns) []WorkflowRun {
 
 // getWorkflowRunJobs returns a list of jobs for a given workflow run
 func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs", s.metadata.githubAPIURL, s.metadata.owner, repoName, workflowRunID)
+	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=100", s.metadata.githubAPIURL, s.metadata.owner, repoName, workflowRunID)
 	body, _, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil {
 		return nil, err

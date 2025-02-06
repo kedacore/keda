@@ -195,7 +195,7 @@ func apiStubHandlerCustomJob(hasRateLeft bool, exceeds30Repos bool, jobResponse 
 			w.Header().Set("X-RateLimit-Remaining", "0")
 			w.WriteHeader(http.StatusForbidden)
 		}
-		if strings.HasSuffix(r.URL.String(), "jobs") {
+		if strings.HasSuffix(r.URL.String(), "jobs?per_page=100") {
 			_, _ = w.Write([]byte(jobResponse))
 			w.WriteHeader(http.StatusOK)
 		}
