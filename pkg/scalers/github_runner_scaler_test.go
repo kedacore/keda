@@ -195,6 +195,7 @@ func apiStubHandlerCustomJob(hasRateLeft bool, exceeds30Repos bool, jobResponse 
 			w.WriteHeader(http.StatusForbidden)
 		}
 		if strings.HasSuffix(r.URL.String(), "jobs") {
+			// nosemgrep: no-direct-write-to-responsewriter
 			_, _ = w.Write([]byte(jobResponse))
 			w.WriteHeader(http.StatusOK)
 		}
@@ -202,6 +203,7 @@ func apiStubHandlerCustomJob(hasRateLeft bool, exceeds30Repos bool, jobResponse 
 			if strings.Contains(r.URL.String(), "BadRepo") {
 				w.WriteHeader(http.StatusNotFound)
 			} else {
+				// nosemgrep: no-direct-write-to-responsewriter
 				_, _ = w.Write(buildQueueJSON())
 				w.WriteHeader(http.StatusOK)
 			}
@@ -221,6 +223,7 @@ func apiStubHandlerCustomJob(hasRateLeft bool, exceeds30Repos bool, jobResponse 
 				}
 				w.WriteHeader(http.StatusOK)
 			} else {
+				// nosemgrep: no-direct-write-to-responsewriter
 				_, _ = w.Write([]byte(testGhUserReposResponse))
 				w.WriteHeader(http.StatusOK)
 			}
@@ -231,6 +234,7 @@ func apiStubHandlerCustomJob(hasRateLeft bool, exceeds30Repos bool, jobResponse 
 func apiStubHandler404() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
+		// nosemgrep: no-direct-write-to-responsewriter
 		_, _ = w.Write([]byte("not found"))
 	}))
 }
@@ -238,6 +242,7 @@ func apiStubHandler404() *httptest.Server {
 func apiStubHandler304() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
+		// nosemgrep: no-direct-write-to-responsewriter
 		_, _ = w.Write([]byte{})
 	}))
 }
