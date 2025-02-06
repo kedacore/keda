@@ -534,7 +534,7 @@ func TestBehaviorCurrentReplicasIfHigherWithCurrentReplicasIsHigher(t *testing.T
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
-	behavior := "CurrentReplicasIfHigher"
+	behavior := "currentReplicasIfHigher"
 	scaledObject := v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "name",
@@ -601,7 +601,7 @@ func TestBehaviorCurrentReplicasIfLowerWithCurrentReplicasIsHigher(t *testing.T)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
-	behavior := "CurrentReplicasIfLower"
+	behavior := "currentReplicasIfLower"
 	scaledObject := v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "name",
@@ -668,7 +668,7 @@ func TestBehaviorCurrentReplicasIfHigherWithCurrentReplicasisLower(t *testing.T)
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
-	behavior := "CurrentReplicasIfHigher"
+	behavior := "currentReplicasIfHigher"
 	scaledObject := v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "name",
@@ -735,7 +735,7 @@ func TestBehaviorStaticWithCurrentReplicasisHigher(t *testing.T) {
 
 	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
 
-	behavior := "Static"
+	behavior := "static"
 	scaledObject := v1alpha1.ScaledObject{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "name",

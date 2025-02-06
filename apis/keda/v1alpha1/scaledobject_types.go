@@ -56,9 +56,10 @@ const ScaledObjectTransferHpaOwnershipAnnotation = "scaledobject.keda.sh/transfe
 const ValidationsHpaOwnershipAnnotation = "validations.keda.sh/hpa-ownership"
 const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
 const PausedAnnotation = "autoscaling.keda.sh/paused"
-const FallbackBehaviorStatic = "Static"
-const FallbackBehaviorCurrentReplicasIfHigher = "CurrentReplicasIfHigher"
-const FallbackBehaviorCurrentReplicasIfLower = "CurrentReplicasIfLower"
+const FallbackBehaviorStatic = "static"
+const FallbackBehaviorCurrentReplicas = "currentReplicas"
+const FallbackBehaviorCurrentReplicasIfHigher = "currentReplicasIfHigher"
+const FallbackBehaviorCurrentReplicasIfLower = "currentReplicasIfLower"
 
 // HealthStatus is the status for a ScaledObject's health
 type HealthStatus struct {
@@ -113,8 +114,8 @@ type Fallback struct {
 	FailureThreshold int32 `json:"failureThreshold"`
 	Replicas         int32 `json:"replicas"`
 	// +optional
-	// +kubebuilder:default=Static
-	// +kubebuilder:validation:Enum=Static;CurrentReplicasIfHigher;CurrentReplicasIfLower
+	// +kubebuilder:default=static
+	// +kubebuilder:validation:Enum=static;currentReplicas;currentReplicasIfHigher;currentReplicasIfLower
 	Behavior string `json:"behavior,omitempty"`
 }
 

@@ -375,10 +375,10 @@ var _ = Describe("fallback", func() {
 		Expect(condition.IsTrue()).Should(BeFalse())
 	})
 
-	It("should use fallback replicas when current replicas is lower when behavior is 'CurrentReplicasIfHigher'", func() {
+	It("should use fallback replicas when current replicas is lower when behavior is 'currentReplicasIfHigher'", func() {
 		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
 		startingNumberOfFailures := int32(3)
-		behavior := "CurrentReplicasIfHigher"
+		behavior := "currentReplicasIfHigher"
 
 		so := buildScaledObject(
 			&kedav1alpha1.Fallback{
@@ -398,7 +398,7 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(10)
 		expectStatusPatch(ctrl, client)
 
-		mockScaleAndDeployment(ctrl, client, scaleClient, 5)
+		mockScaleAndDeployment(ctrl, client, scaleClient, 4)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
 		metrics, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
@@ -409,10 +409,10 @@ var _ = Describe("fallback", func() {
 		Expect(value).Should(Equal(expectedValue))
 	})
 
-	It("should ignore current replicas when behavior is 'Static'", func() {
+	It("should use current replicas when behavior is 'currentReplicas'", func() {
 		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
 		startingNumberOfFailures := int32(3)
-		behavior := "Static"
+		behavior := "currentReplicas"
 
 		so := buildScaledObject(
 			&kedav1alpha1.Fallback{
@@ -432,7 +432,39 @@ var _ = Describe("fallback", func() {
 		metricSpec := createMetricSpec(10)
 		expectStatusPatch(ctrl, client)
 
-		mockScaleAndDeployment(ctrl, client, scaleClient, 15)
+		mockScaleAndDeployment(ctrl, client, scaleClient, 6)
+
+		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		metrics, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)
+
+		Expect(err).ToNot(HaveOccurred())
+		value := metrics[0].Value.AsApproximateFloat64()
+		expectedValue := float64(60) // 6 replicas * 10 target value
+		Expect(value).Should(Equal(expectedValue))
+	})
+
+	It("should ignore current replicas when behavior is 'static'", func() {
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
+		startingNumberOfFailures := int32(3)
+		behavior := "static"
+
+		so := buildScaledObject(
+			&kedav1alpha1.Fallback{
+				FailureThreshold: int32(3),
+				Replicas:         int32(10),
+				Behavior:         behavior,
+			},
+			&kedav1alpha1.ScaledObjectStatus{
+				Health: map[string]kedav1alpha1.HealthStatus{
+					metricName: {
+						NumberOfFailures: &startingNumberOfFailures,
+						Status:           kedav1alpha1.HealthStatusHappy,
+					},
+				},
+			},
+		)
+		metricSpec := createMetricSpec(10)
+		expectStatusPatch(ctrl, client)
 
 		metrics, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
 		metrics, _, err = GetMetricsWithFallback(context.Background(), client, scaleClient, metrics, err, metricName, so, metricSpec)

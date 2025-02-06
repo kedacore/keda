@@ -78,9 +78,14 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, sc
 		log.Info("Failed to validate ScaledObject Spec. Please check that parameters are positive integers", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 		return nil, false, suppressedError
 	case *healthStatus.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold:
-		currentReplicas, err := resolver.GetCurrentReplicas(ctx, client, scaleClient, scaledObject)
-		if err != nil {
-			return nil, false, suppressedError
+		var currentReplicas int32
+		var err error
+
+		if scaledObject.Spec.Fallback.Behavior != kedav1alpha1.FallbackBehaviorStatic {
+			currentReplicas, err = resolver.GetCurrentReplicas(ctx, client, scaleClient, scaledObject)
+			if err != nil {
+				return nil, false, suppressedError
+			}
 		}
 		return doFallback(scaledObject, metricSpec, metricName, currentReplicas, suppressedError), true, nil
 	default:
@@ -117,6 +122,8 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpe
 	switch fallbackBehavior {
 	case kedav1alpha1.FallbackBehaviorStatic:
 		replicas = fallbackReplicas
+	case kedav1alpha1.FallbackBehaviorCurrentReplicas:
+		replicas = int64(currentReplicas)
 	case kedav1alpha1.FallbackBehaviorCurrentReplicasIfHigher:
 		currentReplicasCount := int64(currentReplicas)
 		if currentReplicasCount > fallbackReplicas {
