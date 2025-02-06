@@ -148,27 +148,29 @@ func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
 func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.Warnings, error) {
 	metricscollector.RecordScaledObjectValidatingTotal(so.Namespace, action)
 
-	verifyFunctions := []func(*ScaledObject, string, bool) error{
-		verifyCPUMemoryScalers,
-		verifyScaledObjects,
-		verifyHpas,
-		verifyReplicaCount,
-		verifyFallback,
+	verifyFunctions := map[string]func(*ScaledObject, string, bool) error{
+		"verifyCPUMemoryScalers": verifyCPUMemoryScalers,
+		"verifyScaledObjects":    verifyScaledObjects,
+		"verifyHpas":             verifyHpas,
+		"verifyReplicaCount":     verifyReplicaCount,
+		"verifyFallback":         verifyFallback,
 	}
 
-	for i := range verifyFunctions {
-		err := verifyFunctions[i](so, action, dryRun)
+	for functionName, function := range verifyFunctions {
+		scaledobjectlog.V(1).Info(fmt.Sprintf("calling %s to validate %s", functionName, so.Name))
+		err := function(so, action, dryRun)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	verifyCommonFunctions := []func(interface{}, string, bool) error{
-		verifyTriggers,
+	verifyCommonFunctions := map[string]func(interface{}, string, bool) error{
+		"verifyTriggers": verifyTriggers,
 	}
 
-	for i := range verifyCommonFunctions {
-		err := verifyCommonFunctions[i](so, action, dryRun)
+	for functionName, function := range verifyCommonFunctions {
+		scaledobjectlog.V(1).Info(fmt.Sprintf("calling %s to validate %s", functionName, so.Name))
+		err := function(so, action, dryRun)
 		if err != nil {
 			return nil, err
 		}
@@ -178,6 +180,7 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	return nil, nil
 }
 
+//nolint:unparam
 func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
 	err := CheckReplicaCountBoundsAreValid(incomingSo)
 	if err != nil {
@@ -187,6 +190,7 @@ func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
 	return nil
 }
 
+//nolint:unparam
 func verifyFallback(incomingSo *ScaledObject, action string, _ bool) error {
 	err := CheckFallbackValid(incomingSo)
 	if err != nil {
