@@ -104,7 +104,6 @@ func TestOpenstackSwiftGetMetricSpecForScaling(t *testing.T) {
 	}
 
 	for _, testData := range testCases {
-		testData := testData
 		meta, err := parseOpenstackSwiftMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, TriggerIndex: testData.scaledIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
@@ -135,7 +134,6 @@ func TestParseOpenstackSwiftMetadataForInvalidCases(t *testing.T) {
 	}
 
 	for _, testData := range testCases {
-		testData := testData
 		t.Run(testData.name, func(pt *testing.T) {
 			_, err := parseOpenstackSwiftMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, TriggerIndex: testData.scaledIndex})
 			assert.NotNil(t, err)
@@ -155,7 +153,6 @@ func TestParseOpenstackSwiftAuthenticationMetadataForInvalidCases(t *testing.T) 
 	}
 
 	for _, testData := range testCases {
-		testData := testData
 		t.Run(testData.name, func(pt *testing.T) {
 			_, err := parseOpenstackSwiftAuthenticationMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, TriggerIndex: testData.scaledIndex})
 			assert.NotNil(t, err)

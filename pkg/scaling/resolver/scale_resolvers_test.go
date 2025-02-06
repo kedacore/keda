@@ -611,7 +611,6 @@ func TestResolveAuthRef(t *testing.T) {
 	}
 	var secretsLister corev1listers.SecretLister
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
 			os.Setenv("KEDA_CLUSTER_OBJECT_NAMESPACE", clusterNamespace) // Inject test cluster namespace.
@@ -747,7 +746,6 @@ func TestResolveDependentEnv(t *testing.T) {
 	}
 	var secretsLister corev1listers.SecretLister
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
 			envMap, _ := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), test.container, namespace, secretsLister)
@@ -797,7 +795,6 @@ func TestEnvWithRestrictSecretAccess(t *testing.T) {
 	}
 	var secretsLister corev1listers.SecretLister
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			restrictSecretAccess = "true"
 			ctx := context.Background()
@@ -859,7 +856,6 @@ func TestEnvWithRestrictedNamespace(t *testing.T) {
 	mockSecretLister := mock_v1.NewMockSecretLister(ctrl)
 	mockSecretLister.EXPECT().Secrets(clusterNamespace).Return(mockSecretNamespaceLister).AnyTimes()
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			restrictSecretAccess = "true"
 			kedaNamespace = "keda"
