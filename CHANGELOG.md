@@ -57,6 +57,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
+- ** General**: Introduce new Temporal scaler ([#4724](https://github.com/kedacore/keda/issues/4724))
+
 ### New
 
 - **General**: Enable OpenSSF Scorecard to enhance security practices across the project ([#5913](https://github.com/kedacore/keda/issues/5913))
