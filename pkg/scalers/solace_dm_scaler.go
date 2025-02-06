@@ -63,6 +63,9 @@ type SolaceDMScalerConfiguration struct {
 	//UnsafeSSL
 	UnsafeSSL bool `keda:"name=unsafeSSL, order=triggerMetadata, default=false"`
 
+	// factor to multiply queued messages length
+	// to increase weight on queued messages and scale faster
+	QueuedMessagesFactor int64 `keda:"name=queuedMessagesFactor, order=triggerMetadata, default=3"`
 	// Target Client TxByteRate
 	AggregatedClientTxByteRateTarget int64 `keda:"name=aggregatedClientTxByteRateTarget, order=triggerMetadata, optional=true, default=0"`
 	// Target Client AverageTxByteRate
@@ -409,10 +412,10 @@ func (s *SolaceDMScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	}
 
 	//Use the queued messages in D-1 queue to add them to the other metrics!
-	metricValues.AggregatedClientTxMsgRate += metricValues.AggregatedClientD1QueueMsgCount
-	metricValues.AggregatedClientAverageTxMsgRate += metricValues.AggregatedClientD1QueueMsgCount
-	metricValues.AggregatedClientTxByteRate += (metricValues.AggregatedClientD1QueueUnitsOfWork * unitOfWorkByteSize)
-	metricValues.AggregatedClientAverageTxByteRate += (metricValues.AggregatedClientD1QueueUnitsOfWork * unitOfWorkByteSize)
+	metricValues.AggregatedClientTxMsgRate += (metricValues.AggregatedClientD1QueueMsgCount * s.configuration.QueuedMessagesFactor)
+	metricValues.AggregatedClientAverageTxMsgRate += (metricValues.AggregatedClientD1QueueMsgCount * s.configuration.QueuedMessagesFactor)
+	metricValues.AggregatedClientTxByteRate += (metricValues.AggregatedClientD1QueueUnitsOfWork * s.configuration.QueuedMessagesFactor * unitOfWorkByteSize)
+	metricValues.AggregatedClientAverageTxByteRate += (metricValues.AggregatedClientD1QueueUnitsOfWork * s.configuration.QueuedMessagesFactor * unitOfWorkByteSize)
 
 	var metric external_metrics.ExternalMetricValue
 	switch {
