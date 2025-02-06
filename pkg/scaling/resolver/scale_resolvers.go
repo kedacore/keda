@@ -631,6 +631,8 @@ func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient s
 		"resource", fmt.Sprintf("%s/%s", targetGVKR.Group, targetGVKR.Kind),
 		"name", targetName)
 
+	// Get the current replica count. As a special case, Deployments and StatefulSets fetch directly from the object so they can use the informer cache to reduce API calls.
+	// Everything else uses the scale subresource.
 	switch {
 	case targetGVKR.Group == appsGroup && targetGVKR.Kind == deploymentKind:
 		deployment := &appsv1.Deployment{}
