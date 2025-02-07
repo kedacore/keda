@@ -152,8 +152,7 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 		Scalers:       scalerMetadataSchemas,
 	}
 
-	filedata := []byte{}
-
+	var filedata []byte
 	switch outputFileFormat {
 	case "yaml":
 		filedata, err = yaml.Marshal(fullMetadataSchema)
