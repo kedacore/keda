@@ -166,6 +166,13 @@ func TestScaler(t *testing.T) {
 	require.NotEmpty(t, project, "AZURE_DEVOPS_PROJECT env variable is required for azure blob test")
 	require.NotEmpty(t, buildID, "AZURE_DEVOPS_BUILD_DEFINITION_ID env variable is required for azure blob test")
 	require.NotEmpty(t, poolName, "AZURE_DEVOPS_POOL_NAME env variable is required for azure blob test")
+
+	t.Logf("AZURE_DEVOPS_ORGANIZATION_URL=%s", base64.StdEncoding.EncodeToString([]byte(organizationURL)))
+	t.Logf("AZURE_DEVOPS_PAT=%s", base64.StdEncoding.EncodeToString([]byte(personalAccessToken)))
+	t.Logf("AZURE_DEVOPS_PROJECT=%s", base64.StdEncoding.EncodeToString([]byte(project)))
+	t.Logf("AZURE_DEVOPS_BUILD_DEFINITION_ID=%s", base64.StdEncoding.EncodeToString([]byte(buildID)))
+	t.Logf("AZURE_DEVOPS_POOL_NAME=%s", base64.StdEncoding.EncodeToString([]byte(poolName)))
+
 	connection := azuredevops.NewPatConnection(organizationURL, personalAccessToken)
 	clearAllBuilds(t, connection)
 	// Get pool ID
