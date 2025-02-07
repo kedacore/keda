@@ -28,6 +28,7 @@ var (
 	serviceName                 = fmt.Sprintf("%s-service", testName)
 	triggerAuthName             = fmt.Sprintf("%s-ta", testName)
 	scaledObjectName            = fmt.Sprintf("%s-so", testName)
+	scaledObjectNameBehavior    = fmt.Sprintf("%s-behavior-so", testName)
 	secretName                  = fmt.Sprintf("%s-secret", testName)
 	metricsServerEndpoint       = fmt.Sprintf("http://%s.%s.svc.cluster.local:8080/api/value", serviceName, namespace)
 	minReplicas                 = 0
@@ -39,6 +40,7 @@ type templateData struct {
 	Namespace                   string
 	DeploymentName              string
 	ScaledObject                string
+	ScaledObjectNameBehavior    string
 	TriggerAuthName             string
 	ServiceName                 string
 	MetricsServerDeploymentName string
@@ -184,6 +186,42 @@ spec:
   pollingInterval: 5
   triggers:
   - type: metrics-api
+    metricType: AverageValue
+    metadata:
+      targetValue: "5"
+      url: "{{.MetricsServerEndpoint}}"
+      valueLocation: 'value'
+      method: "query"
+    authenticationRef:
+      name: {{.TriggerAuthName}}
+`
+	scaledObjectTemplateWithCurrentReplicasIfHigher = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectNameBehavior}}
+  namespace: {{.Namespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  minReplicaCount: 0
+  maxReplicaCount: 5
+  fallback:
+    failureThreshold: 3
+    replicas: {{.DefaultFallback}}
+    behavior: currentReplicasIfHigher
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 1
+  cooldownPeriod: 1
+  pollingInterval: 5
+  triggers:
+  - type: metrics-api
+    metricType: AverageValue
     metadata:
       targetValue: "5"
       url: "{{.MetricsServerEndpoint}}"
@@ -243,6 +281,45 @@ func TestFallback(t *testing.T) {
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
 
+func TestFallbackWithCurrentReplicasIfHigher(t *testing.T) {
+	// setup
+	t.Log("--- setting up CurrentReplicasIfHigher test ---")
+	kc := GetKubernetesClient(t)
+	data, templates := getTemplateData()
+
+	// Replace the default scaledObject template
+	for i, tmpl := range templates {
+		if tmpl.Name == "scaledObjectTemplate" {
+			templates[i].Config = scaledObjectTemplateWithCurrentReplicasIfHigher
+			break
+		}
+	}
+
+	CreateKubernetesResources(t, kc, namespace, data, templates)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
+		"replica count should be %d after 3 minutes", minReplicas)
+
+	// Scale out to 4 replicas (20 / 5 = 4)
+	data.MetricValue = 20
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 60, 3),
+		"replica count should be 4 after 3 minutes")
+
+	// Stop metrics server to trigger fallback
+	KubectlApplyWithTemplate(t, data, "fallbackMSDeploymentTemplate", fallbackMSDeploymentTemplate)
+
+	// Should keep 4 replicas as it's higher than fallback value (3)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 60, 3),
+		"replica count should remain at 4 after fallback")
+
+	// Ensure the replica count remains stable
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 4, 180)
+
+	DeleteKubernetesResources(t, namespace, data, templates)
+}
+
 // scale out to max replicas first
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scale out ---")
@@ -283,6 +360,7 @@ func getTemplateData() (templateData, []Template) {
 			ServiceName:                 serviceName,
 			TriggerAuthName:             triggerAuthName,
 			ScaledObject:                scaledObjectName,
+			ScaledObjectNameBehavior:    scaledObjectNameBehavior,
 			SecretName:                  secretName,
 			MetricsServerEndpoint:       metricsServerEndpoint,
 			MinReplicas:                 fmt.Sprintf("%v", minReplicas),
