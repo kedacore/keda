@@ -63,7 +63,7 @@ SHELL = /usr/bin/env bash -o pipefail
 # Scaler schema generation parameters
  SCALERS_BUILDER_FILE ?= "pkg/scaling/scalers_builder.go"
  SCALERS_FILES_DIR ?= "pkg/scalers"
- OUTPUT_FILE_PATH ?= "schema/"
+ OUTPUT_FILE_PATH ?= "schema/generated/"
 
 ##################################################
 # All                                            #
@@ -388,7 +388,6 @@ docker-build-dev-containers: ## Build dev-containers image
 validate-changelog: ## Validate changelog
 	./hack/validate-changelog.sh
 
-.PHONY: generate-scaler-schemas
-generate-scaler-schemas: ## Generate scaler shcemas
+.PHONY: generate-scalers-schema
+generate-scalers-schema: ## Generate scalers shcema
 	GOBIN=$(LOCALBIN) go run ./schema/generate_scaler_schema.go --keda-version $(VERSION) --scalers-builder-file $(SCALERS_BUILDER_FILE) --scalers-files-dir $(SCALERS_FILES_DIR) --output-file-path $(OUTPUT_FILE_PATH)
-	

@@ -1,4 +1,4 @@
-kedaVersion: "1.0"
+kedaVersion: main
 schemaVersion: 1
 scalers:
     - type: activemq

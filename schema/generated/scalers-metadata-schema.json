@@ -1,5 +1,5 @@
 {
-    "kedaVersion": "1.0",
+    "kedaVersion": "main",
     "schemaVersion": 1,
     "scalers": [
         {
@@ -24,13 +24,13 @@
                     "name": "username",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "corsHeader",
@@ -132,19 +132,19 @@
                         "gssapi",
                         "aws_msk_iam"
                     ],
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "username",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "awsRegion",
@@ -164,31 +164,31 @@
                         "enable",
                         "disable"
                     ],
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "key",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 }
             ]
         },
@@ -198,7 +198,7 @@
                 {
                     "name": "endpoints",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "collection",
@@ -311,7 +311,7 @@
                 {
                     "name": "awsRegion",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "awsEndpoint",
@@ -330,7 +330,7 @@
                 {
                     "name": "awsRegion",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "awsEndpoint",
@@ -379,7 +379,7 @@
                 {
                     "name": "awsRegion",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "awsEndpoint",
@@ -408,7 +408,7 @@
                 {
                     "name": "awsRegion",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "awsEndpoint",
@@ -443,7 +443,7 @@
                 {
                     "name": "awsRegion",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "awsEndpoint",
@@ -494,45 +494,45 @@
                     "type": "string",
                     "optional": true,
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "optional": true,
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "tls",
                     "type": "string",
                     "optional": true,
                     "default": "disable",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "key",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 }
             ]
         },
@@ -605,13 +605,13 @@
                     "name": "username",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -628,25 +628,25 @@
                     "name": "ca",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "key",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 }
             ]
         },
@@ -657,13 +657,13 @@
                     "name": "authToken",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "organizationName",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "query",
@@ -672,7 +672,7 @@
                 {
                     "name": "serverURL",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -772,7 +772,7 @@
                     "type": "string",
                     "optional": true,
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "query",
@@ -782,38 +782,38 @@
                     "name": "host",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "port",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "userName",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "dbName",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sslmode",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "optional": true,
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 }
             ]
         },
@@ -843,7 +843,7 @@
                 {
                     "name": "apiKey",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "threshold",
@@ -907,7 +907,7 @@
                     "name": "awsRegion",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 }
             ]
         },
@@ -943,14 +943,14 @@
                     "name": "host",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "protocol",
                     "type": "string",
                     "optional": true,
                     "default": "auto",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "vhostName",
@@ -989,45 +989,45 @@
                     "type": "string",
                     "optional": true,
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "optional": true,
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "key",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "tls",
                     "type": "string",
                     "optional": true,
                     "default": "disable",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -1038,7 +1038,7 @@
                     "name": "workloadIdentityResource",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 }
             ]
         },
@@ -1074,73 +1074,73 @@
                     "name": "tls",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "address",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "addresses",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "username",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelUsername",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelPassword",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelMaster",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "host",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "hosts",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "port",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ports",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -1151,27 +1151,27 @@
                 {
                     "name": "Cert",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "key",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 }
             ]
         },
@@ -1207,73 +1207,73 @@
                     "name": "tls",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "address",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "addresses",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "username",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelUsername",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelPassword",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelMaster",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "host",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "hosts",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "port",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ports",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -1284,27 +1284,27 @@
                 {
                     "name": "Cert",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "key",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 }
             ]
         },
@@ -1340,73 +1340,73 @@
                     "name": "tls",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "address",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "addresses",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "username",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelUsername",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelPassword",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelMaster",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "host",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "hosts",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "port",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ports",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -1417,27 +1417,27 @@
                 {
                     "name": "Cert",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "key",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 }
             ]
         },
@@ -1479,67 +1479,67 @@
                     "name": "address",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "addresses",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "username",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelUsername",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelPassword",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelMaster",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "host",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "hosts",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "port",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ports",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -1550,27 +1550,27 @@
                 {
                     "name": "Cert",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "key",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "activationLagCount",
@@ -1586,7 +1586,7 @@
                     "name": "tls",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 }
             ]
         },
@@ -1628,67 +1628,67 @@
                     "name": "address",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "addresses",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "username",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelUsername",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelPassword",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelMaster",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "host",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "hosts",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "port",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ports",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -1699,27 +1699,27 @@
                 {
                     "name": "Cert",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "key",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "activationLagCount",
@@ -1735,7 +1735,7 @@
                     "name": "tls",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 }
             ]
         },
@@ -1777,67 +1777,67 @@
                     "name": "address",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "addresses",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "username",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelUsername",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelPassword",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "sentinelMaster",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "host",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "hosts",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "port",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ports",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -1848,27 +1848,27 @@
                 {
                     "name": "Cert",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "key",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "activationLagCount",
@@ -1884,7 +1884,7 @@
                     "name": "tls",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 }
             ]
         },
@@ -1894,35 +1894,35 @@
                 {
                     "name": "url",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "authType",
                     "type": "string",
                     "optional": true,
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "username",
                     "type": "string",
                     "optional": true,
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "optional": true,
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "accessToken",
                     "type": "string",
                     "optional": true,
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "browserName",
@@ -1980,13 +1980,13 @@
                     "name": "username",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "canReadFromEnv": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "messageCountTarget",
@@ -2052,12 +2052,12 @@
                 {
                     "name": "username",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 }
             ]
         },
@@ -2068,18 +2068,18 @@
                     "name": "apiToken",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "optional": true,
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "username",
                     "type": "string",
-                    "canReadFromTAuthe": true
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "host",
