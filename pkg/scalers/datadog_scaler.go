@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -564,7 +565,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		return AvgFloatFromSlice(results), nil
 	default:
 		// Aggregate Results - default Max value:
-		return MaxFloatFromSlice(results), nil
+		return slices.Max(results), nil
 	}
 }
 
@@ -672,17 +673,6 @@ func (s *datadogScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 
 	metric = GenerateMetricInMili(metricName, num)
 	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationQueryValue, nil
-}
-
-// MaxFloatFromSlice finds the largest value in a slice of floats
-func MaxFloatFromSlice(results []float64) float64 {
-	max := results[0]
-	for _, result := range results {
-		if result > max {
-			max = result
-		}
-	}
-	return max
 }
 
 // AvgFloatFromSlice finds the average value in a slice of floats
