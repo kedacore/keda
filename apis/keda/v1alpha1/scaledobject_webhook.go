@@ -190,7 +190,6 @@ func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
 	return nil
 }
 
-//nolint:unparam
 func verifyFallback(incomingSo *ScaledObject, action string, _ bool) error {
 	err := CheckFallbackValid(incomingSo)
 	if err != nil {
