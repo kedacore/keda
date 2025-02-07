@@ -18,6 +18,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"go/ast"
@@ -84,7 +85,7 @@ type Metadata struct {
 	CanReadFromEnv bool `json:"canReadFromEnv,omitempty" yaml:"canReadFromEnv,omitempty"`
 
 	// CanReadFromAuth is a boolean that indicates if the field can be read from the TriggerAuthentication
-	CanReadFromAuth bool `json:"canReadFromTAuthe,omitempty" yaml:"canReadFromAuth,omitempty"`
+	CanReadFromAuth bool `json:"canReadFromAuth,omitempty" yaml:"canReadFromAuth,omitempty"`
 }
 
 // ScalerMetadataSchema is a struct that represents the metadata of a scler
@@ -168,7 +169,14 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 		return fmt.Errorf("output file format %s is not supported", outputFileFormat)
 	}
 
-	fileName := outputFilePath + outputFileName + "." + outputFileFormat
+	if _, err := os.Stat(outputFilePath); errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir(outputFilePath, os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
+
+	fileName := outputFilePath + "/" + outputFileName + "." + outputFileFormat
 	err = os.WriteFile(fileName, filedata, 0644)
 	return err
 }
@@ -480,7 +488,7 @@ func main() {
 	pflag.StringVar(&builderFilePath, "scalers-builder-file", "../pkg/scaling/scalers_builder.go", "The file that exists `buildScaler` func.")
 	pflag.StringVar(&scalersFilesDirPath, "scalers-files-dir", "../pkg/scalers", "The directory that exists all scalers' files.")
 	pflag.StringVar(&specifyScaler, "specify-scaler", "", "Specify scaler name.")
-	pflag.StringVar(&outputFileName, "output-file-name", "scaler-metadata-schemas", "Output file name.")
+	pflag.StringVar(&outputFileName, "output-file-name", "scalers-metadata-schema", "Output file name.")
 	pflag.StringVar(&outputFilePath, "output-file-path", "./", "Output file path.")
 	pflag.StringVar(&outputFormat, "output-file-format", "json", "Output file format. support json and yaml.")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
