@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"math"
 	"os"
 	"strconv"
 	"testing"
@@ -159,17 +158,6 @@ spec:
 `
 )
 
-func inject(src string) string {
-	l := len(src)
-	if l == 1 {
-		return src
-	}
-	mid := l / 2
-	left := int(math.Round(float64(mid)))
-	right := l - left
-	return src[:left] + "__" + src[right:]
-}
-
 func TestScaler(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
@@ -178,13 +166,6 @@ func TestScaler(t *testing.T) {
 	require.NotEmpty(t, project, "AZURE_DEVOPS_PROJECT env variable is required for azure blob test")
 	require.NotEmpty(t, buildID, "AZURE_DEVOPS_BUILD_DEFINITION_ID env variable is required for azure blob test")
 	require.NotEmpty(t, poolName, "AZURE_DEVOPS_POOL_NAME env variable is required for azure blob test")
-
-	t.Logf("AZURE_DEVOPS_ORGANIZATION_URL=%s", inject(organizationURL))
-	t.Logf("AZURE_DEVOPS_PAT=%s", inject(personalAccessToken))
-	t.Logf("AZURE_DEVOPS_PROJECT=%s", inject(project))
-	t.Logf("AZURE_DEVOPS_BUILD_DEFINITION_ID=%s", inject(buildID))
-	t.Logf("AZURE_DEVOPS_POOL_NAME=%s", inject(poolName))
-
 	connection := azuredevops.NewPatConnection(organizationURL, personalAccessToken)
 	clearAllBuilds(t, connection)
 	// Get pool ID
