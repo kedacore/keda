@@ -24,11 +24,13 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/scale"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 )
 
 var log = logf.Log.WithName("fallback")
@@ -51,7 +53,7 @@ func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.Me
 	return true
 }
 
-func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) ([]external_metrics.ExternalMetricValue, bool, error) {
+func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, scaleClient scale.ScalesGetter, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) ([]external_metrics.ExternalMetricValue, bool, error) {
 	status := scaledObject.Status.DeepCopy()
 
 	initHealthStatus(status)
@@ -81,7 +83,16 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, me
 		log.Info("Failed to validate ScaledObject Spec. Please check that parameters are positive integers", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 		return nil, false, suppressedError
 	case *healthStatus.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold:
-		return doFallback(scaledObject, metricSpec, metricName, suppressedError), true, nil
+		var currentReplicas int32
+		var err error
+
+		if scaledObject.Spec.Fallback.Behavior != kedav1alpha1.FallbackBehaviorStatic {
+			currentReplicas, err = resolver.GetCurrentReplicas(ctx, client, scaleClient, scaledObject)
+			if err != nil {
+				return nil, false, suppressedError
+			}
+		}
+		return doFallback(scaledObject, metricSpec, metricName, currentReplicas, suppressedError), true, nil
 	default:
 		return nil, false, suppressedError
 	}
@@ -108,8 +119,34 @@ func HasValidFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
 		modifierChecking
 }
 
-func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, suppressedError error) []external_metrics.ExternalMetricValue {
-	replicas := int64(scaledObject.Spec.Fallback.Replicas)
+func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, currentReplicas int32, suppressedError error) []external_metrics.ExternalMetricValue {
+	fallbackBehavior := scaledObject.Spec.Fallback.Behavior
+	fallbackReplicas := int64(scaledObject.Spec.Fallback.Replicas)
+	var replicas int64
+
+	switch fallbackBehavior {
+	case kedav1alpha1.FallbackBehaviorStatic:
+		replicas = fallbackReplicas
+	case kedav1alpha1.FallbackBehaviorCurrentReplicas:
+		replicas = int64(currentReplicas)
+	case kedav1alpha1.FallbackBehaviorCurrentReplicasIfHigher:
+		currentReplicasCount := int64(currentReplicas)
+		if currentReplicasCount > fallbackReplicas {
+			replicas = currentReplicasCount
+		} else {
+			replicas = fallbackReplicas
+		}
+	case kedav1alpha1.FallbackBehaviorCurrentReplicasIfLower:
+		currentReplicasCount := int64(currentReplicas)
+		if currentReplicasCount < fallbackReplicas {
+			replicas = currentReplicasCount
+		} else {
+			replicas = fallbackReplicas
+		}
+	default:
+		replicas = fallbackReplicas
+	}
+
 	var normalisationValue int64
 	if !scaledObject.IsUsingModifiers() {
 		normalisationValue = int64(metricSpec.External.Target.AverageValue.AsApproximateFloat64())
@@ -126,7 +163,13 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpe
 	}
 	fallbackMetrics := []external_metrics.ExternalMetricValue{metric}
 
-	log.Info("Suppressing error, falling back to fallback.replicas", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "suppressedError", suppressedError, "fallback.replicas", replicas)
+	log.Info("Suppressing error, using fallback metrics",
+		"scaledObject.Namespace", scaledObject.Namespace,
+		"scaledObject.Name", scaledObject.Name,
+		"suppressedError", suppressedError,
+		"fallback.behavior", fallbackBehavior,
+		"fallback.replicas", fallbackReplicas,
+		"workload.currentReplicas", currentReplicas)
 	return fallbackMetrics
 }
 
