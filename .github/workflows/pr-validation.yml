@@ -10,7 +10,7 @@ jobs:
   validate:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.23.3
+    container: ghcr.io/kedacore/keda-tools:1.23.6
     strategy:
       matrix:
         include:
@@ -80,7 +80,7 @@ jobs:
       pull-requests: read  # for dorny/paths-filter to read pull requests
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.23.3
+    container: ghcr.io/kedacore/keda-tools:1.23.6
     strategy:
       matrix:
         include:
@@ -114,7 +114,7 @@ jobs:
       pull-requests: read  # for dorny/paths-filter to read pull requests
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.23.3
+    container: ghcr.io/kedacore/keda-tools:1.23.6
     strategy:
       matrix:
         include:
@@ -144,14 +144,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
         with:
           python-version: 3.x
       - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5
         with:
           go-version: "1.23"
-      - name: Get golangci
-        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.61.0
       - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
 
   trivy-scan:
