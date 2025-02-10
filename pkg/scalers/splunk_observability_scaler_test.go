@@ -54,8 +54,8 @@ var testSplunkObservabilityMetadata = []parseSplunkObservabilityMetadataTestData
 }
 
 var SplunkObservabilityMetricIdentifiers = []SplunkObservabilityMetricIdentifier{
-	{&testSplunkObservabilityMetadata[0], 0, "demo-trans-latency"},
-	{&testSplunkObservabilityMetadata[0], 1, "demo-trans-latency"},
+	{&testSplunkObservabilityMetadata[0], 0, "s0-signalfx"},
+	{&testSplunkObservabilityMetadata[0], 1, "s1-signalfx"},
 }
 
 func TestSplunkObservabilityParseMetadata(t *testing.T) {
