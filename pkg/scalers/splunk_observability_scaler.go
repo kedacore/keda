@@ -99,8 +99,8 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 
 	s.logger.V(1).Info("Closed MTS stream.")
 
-	max := math.Inf(-1)
-	min := math.Inf(1)
+	maxValue := math.Inf(-1)
+	minValue := math.Inf(1)
 	valueSum := 0.0
 	valueCount := 0
 	s.logger.V(1).Info("Now iterating over results.")
@@ -115,8 +115,8 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 				return -1, fmt.Errorf("could not convert Splunk Observability metric value to float64")
 			}
 			s.logger.V(1).Info(fmt.Sprintf("Encountering value %.4f\n", value))
-			max = math.Max(max, value)
-			min = math.Min(min, value)
+			maxValue = math.Max(maxValue, value)
+			minValue = math.Min(minValue, value)
 			valueSum += value
 			valueCount++
 		}
@@ -128,17 +128,17 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 
 	switch s.metadata.QueryAggregator {
 	case "max":
-		s.logger.V(1).Info(fmt.Sprintf("Returning max value: %.4f\n", max))
-		return max, nil
+		s.logger.V(1).Info(fmt.Sprintf("Returning max value: %.4f\n", maxValue))
+		return maxValue, nil
 	case "min":
-		s.logger.V(1).Info(fmt.Sprintf("Returning min value: %.4f\n", min))
-		return min, nil
+		s.logger.V(1).Info(fmt.Sprintf("Returning min value: %.4f\n", minValue))
+		return minValue, nil
 	case "avg":
 		avg := valueSum / float64(valueCount)
 		s.logger.V(1).Info(fmt.Sprintf("Returning avg value: %.4f\n", avg))
 		return avg, nil
 	default:
-		return max, nil
+		return maxValue, nil
 	}
 }
 
