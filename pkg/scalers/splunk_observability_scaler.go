@@ -18,12 +18,12 @@ import (
 type splunkObservabilityMetadata struct {
 	TriggerIndex int
 
-	AccessToken           string  `keda:"name=accessToken,          order=authParams"`
-	Realm                 string  `keda:"name=realm,                order=authParams"`
-	Query                 string  `keda:"name=query,                order=triggerMetadata"`
-	Duration              int     `keda:"name=duration,             order=triggerMetadata"`
-	TargetValue           float64 `keda:"name=targetValue,   	   order=triggerMetadata"`
-	QueryAggregator       string  `keda:"name=queryAggregator,      order=triggerMetadata"`
+	AccessToken           string  `keda:"name=accessToken,           order=authParams"`
+	Realm                 string  `keda:"name=realm,                 order=authParams"`
+	Query                 string  `keda:"name=query,                 order=triggerMetadata"`
+	Duration              int     `keda:"name=duration,              order=triggerMetadata"`
+	TargetValue           float64 `keda:"name=targetValue,   	     order=triggerMetadata"`
+	QueryAggregator       string  `keda:"name=queryAggregator,       order=triggerMetadata"`
 	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata"`
 }
 
@@ -82,8 +82,8 @@ func NewSplunkObservabilityScaler(config *scalersconfig.ScalerConfig) (Scaler, e
 	}, nil
 }
 
-func (s *splunkObservabilityScaler) getQueryResult() (float64, error) {
-	comp, err := s.apiClient.Execute(context.Background(), &signalflow.ExecuteRequest{
+func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64, error) {
+	comp, err := s.apiClient.Execute(ctx, &signalflow.ExecuteRequest{
 		Program: s.metadata.Query,
 	})
 	if err != nil {
@@ -93,7 +93,7 @@ func (s *splunkObservabilityScaler) getQueryResult() (float64, error) {
 	s.logger.V(1).Info("Started MTS stream.")
 
 	time.Sleep(time.Duration(s.metadata.Duration * int(time.Second)))
-	if err := comp.Stop(context.Background()); err != nil {
+	if err := comp.Stop(ctx); err != nil {
 		return -1, fmt.Errorf("error creating SignalFlow client: %w", err)
 	}
 
@@ -142,8 +142,8 @@ func (s *splunkObservabilityScaler) getQueryResult() (float64, error) {
 	}
 }
 
-func (s *splunkObservabilityScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	num, err := s.getQueryResult()
+func (s *splunkObservabilityScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	num, err := s.getQueryResult(ctx)
 
 	if err != nil {
 		s.logger.Error(err, "error getting metrics from Splunk Observability Cloud.")
@@ -171,4 +171,3 @@ func (s *splunkObservabilityScaler) GetMetricSpecForScaling(context.Context) []v
 func (s *splunkObservabilityScaler) Close(context.Context) error {
 	return nil
 }
-
