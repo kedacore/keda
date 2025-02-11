@@ -619,7 +619,7 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 
 // getWorkflowRuns returns a list of workflow runs for a given repository
 func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName string, status string) (*WorkflowRuns, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs?status=%s", s.metadata.githubAPIURL, s.metadata.owner, repoName, status)
+	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs?status=%s&per_page=100", s.metadata.githubAPIURL, s.metadata.owner, repoName, status)
 	body, statusCode, err := getGithubRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil && statusCode == 404 {
 		return nil, nil
