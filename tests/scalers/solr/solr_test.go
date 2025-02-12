@@ -122,7 +122,7 @@ spec:
     spec:
       containers:
         - name: solr
-          image: solr:latest
+          image: solr:8
           ports:
             - containerPort: 8983
           volumeMounts:
@@ -229,12 +229,11 @@ func setupSolr(t *testing.T, kc *kubernetes.Clientset) {
 func checkIfSolrStatusIsReady(t *testing.T, name string) error {
 	t.Log("--- checking solr status ---")
 
-	time.Sleep(time.Second * 10)
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 12; i++ {
 		out, errOut, _ := ExecCommandOnSpecificPod(t, name, testNamespace, fmt.Sprintf("%s status", solrPath))
 		t.Logf("Output: %s, Error: %s", out, errOut)
 		if !strings.Contains(out, "running on port") {
-			time.Sleep(time.Second * 10)
+			time.Sleep(time.Second * 5)
 			continue
 		}
 		return nil
