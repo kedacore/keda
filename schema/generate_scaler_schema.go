@@ -153,22 +153,6 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 		Scalers:       scalerMetadataSchemas,
 	}
 
-	var filedata []byte
-	switch outputFileFormat {
-	case "yaml":
-		filedata, err = yaml.Marshal(fullMetadataSchema)
-		if err != nil {
-			return err
-		}
-	case "json":
-		filedata, err = json.MarshalIndent(fullMetadataSchema, "", "    ")
-		if err != nil {
-			return err
-		}
-	default:
-		return fmt.Errorf("output file format %s is not supported", outputFileFormat)
-	}
-
 	if _, err := os.Stat(outputFilePath); errors.Is(err, os.ErrNotExist) {
 		err := os.Mkdir(outputFilePath, os.ModePerm)
 		if err != nil {
@@ -176,8 +160,42 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 		}
 	}
 
-	fileName := outputFilePath + "/" + outputFileName + "." + outputFileFormat
-	err = os.WriteFile(fileName, filedata, 0644)
+	switch outputFileFormat {
+	case "yaml":
+		filedata, err := yaml.Marshal(fullMetadataSchema)
+		if err != nil {
+			return err
+		}
+		fileName := outputFilePath + "/" + outputFileName + ".yaml"
+		err = os.WriteFile(fileName, filedata, 0644)
+	case "json":
+		filedata, err := json.MarshalIndent(fullMetadataSchema, "", "    ")
+		if err != nil {
+			return err
+		}
+		filedata = append(filedata, '\n')
+		fileName := outputFilePath + "/" + outputFileName + ".json"
+		err = os.WriteFile(fileName, filedata, 0644)
+	case "both":
+
+		filedata, err := yaml.Marshal(fullMetadataSchema)
+		if err != nil {
+			return err
+		}
+		fileName := outputFilePath + "/" + outputFileName + ".yaml"
+		err = os.WriteFile(fileName, filedata, 0644)
+
+		filedata, err = json.MarshalIndent(fullMetadataSchema, "", "    ")
+		if err != nil {
+			return err
+		}
+		filedata = append(filedata, '\n')
+		fileName = outputFilePath + "/" + outputFileName + ".json"
+		err = os.WriteFile(fileName, filedata, 0644)
+	default:
+		return fmt.Errorf("output file format %s is not supported", outputFileFormat)
+	}
+
 	return err
 }
 
@@ -490,7 +508,7 @@ func main() {
 	pflag.StringVar(&specifyScaler, "specify-scaler", "", "Specify scaler name.")
 	pflag.StringVar(&outputFileName, "output-file-name", "scalers-metadata-schema", "Output file name.")
 	pflag.StringVar(&outputFilePath, "output-file-path", "./", "Output file path.")
-	pflag.StringVar(&outputFormat, "output-file-format", "json", "Output file format. support json and yaml.")
+	pflag.StringVar(&outputFormat, "output-file-format", "both", "Output file format. support json and yaml.")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 

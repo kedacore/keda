@@ -61,9 +61,15 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 # Scaler schema generation parameters
- SCALERS_BUILDER_FILE ?= "pkg/scaling/scalers_builder.go"
- SCALERS_FILES_DIR ?= "pkg/scalers"
- OUTPUT_FILE_PATH ?= "schema/generated/"
+SCALERS_BUILDER_FILE ?= "pkg/scaling/scalers_builder.go"
+SCALERS_FILES_DIR ?= "pkg/scalers"
+OUTPUT_FILE_PATH ?= "schema/generated/"
+OUTPUT_FILE_NAME ?= "scalers-metadata-schema"
+  
+ifneq '${VERSION}' 'main' 
+  OUTPUT_FILE_NAME :="${OUTPUT_FILE_NAME}_v${VERSION}"  
+endif 
+  
 
 ##################################################
 # All                                            #
@@ -262,6 +268,14 @@ set-version:
 	@sed -i".out" -e 's@Version[ ]*=.*@Version = "$(VERSION)"@g' ./version/version.go;
 	rm -rf ./version/version.go.out
 
+.PHONY: generate-scalers-schema
+generate-scalers-schema: ## Generate scalers shcema
+	GOBIN=$(LOCALBIN) go run ./schema/generate_scaler_schema.go --keda-version $(VERSION) --scalers-builder-file $(SCALERS_BUILDER_FILE) --scalers-files-dir $(SCALERS_FILES_DIR) --output-file-path $(OUTPUT_FILE_PATH) --output-file-name $(OUTPUT_FILE_NAME) --output-file-format both
+
+.PHONY: verify-scalers-schema
+verify-scalers-schema: ## Verify scalers shcema
+	./hack/verify-schema.sh
+
 ##################################################
 # Deployment                                     #
 ##################################################
@@ -387,7 +401,3 @@ docker-build-dev-containers: ## Build dev-containers image
 .PHONY: validate-changelog
 validate-changelog: ## Validate changelog
 	./hack/validate-changelog.sh
-
-.PHONY: generate-scalers-schema
-generate-scalers-schema: ## Generate scalers shcema
-	GOBIN=$(LOCALBIN) go run ./schema/generate_scaler_schema.go --keda-version $(VERSION) --scalers-builder-file $(SCALERS_BUILDER_FILE) --scalers-files-dir $(SCALERS_FILES_DIR) --output-file-path $(OUTPUT_FILE_PATH)
