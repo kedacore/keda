@@ -70,6 +70,7 @@ Here is an overview of all new **experimental** features:
 - **GCP Stackdriver Scaler**: Add missing parameters 'rate' and 'count' for GCP Stackdriver Scaler alignment ([#5633](https://github.com/kedacore/keda/issues/5633))
 - **Metrics API Scaler**: Add support for various formats: json, xml, yaml, prometheus ([#2633](https://github.com/kedacore/keda/issues/2633))
 - **MongoDB Scaler**: Add scheme field support srv record ([#5544](https://github.com/kedacore/keda/issues/5544))
+- **Solace Scaler**: Add hostlist support for Solace brokers ([#5617](https://github.com/kedacore/keda/pull/5617))
 
 ### Fixes
 
