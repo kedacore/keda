@@ -534,7 +534,7 @@ var testSolaceExpectedMetricNames = map[string]string{
 func TestSolaceParseSolaceMetadata(t *testing.T) {
 	for _, testData := range testParseSolaceMetadata {
 		fmt.Print(testData.testID)
-		meta, err := parseSolaceMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.metadata, AuthParams: nil, TriggerIndex: testData.triggerIndex})
+		_, err := parseSolaceMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.metadata, AuthParams: nil, TriggerIndex: testData.triggerIndex})
 		switch {
 		case err != nil && !testData.isError:
 			t.Error("expected success but got error: ", err)
