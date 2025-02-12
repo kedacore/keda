@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
@@ -16,18 +15,20 @@ import (
 // receive when you send the message). Amazon SQS can delete a message from a queue
 // even if a visibility timeout setting causes the message to be locked by another
 // consumer. Amazon SQS automatically deletes messages left in a queue longer than
-// the retention period configured for the queue. The ReceiptHandle is associated
-// with a specific instance of receiving a message. If you receive a message more
-// than once, the ReceiptHandle is different each time you receive a message. When
-// you use the DeleteMessage action, you must provide the most recently received
-// ReceiptHandle for the message (otherwise, the request succeeds, but the message
-// will not be deleted). For standard queues, it is possible to receive a message
-// even after you delete it. This might happen on rare occasions if one of the
-// servers which stores a copy of the message is unavailable when you send the
-// request to delete the message. The copy remains on the server and might be
-// returned to you during a subsequent receive request. You should ensure that your
-// application is idempotent, so that receiving a message more than once does not
-// cause issues.
+// the retention period configured for the queue.
+//
+// The ReceiptHandle is associated with a specific instance of receiving a
+// message. If you receive a message more than once, the ReceiptHandle is
+// different each time you receive a message. When you use the DeleteMessage
+// action, you must provide the most recently received ReceiptHandle for the
+// message (otherwise, the request succeeds, but the message will not be deleted).
+//
+// For standard queues, it is possible to receive a message even after you delete
+// it. This might happen on rare occasions if one of the servers which stores a
+// copy of the message is unavailable when you send the request to delete the
+// message. The copy remains on the server and might be returned to you during a
+// subsequent receive request. You should ensure that your application is
+// idempotent, so that receiving a message more than once does not cause issues.
 func (c *Client) DeleteMessage(ctx context.Context, params *DeleteMessageInput, optFns ...func(*Options)) (*DeleteMessageOutput, error) {
 	if params == nil {
 		params = &DeleteMessageInput{}
@@ -45,8 +46,9 @@ func (c *Client) DeleteMessage(ctx context.Context, params *DeleteMessageInput, 
 
 type DeleteMessageInput struct {
 
-	// The URL of the Amazon SQS queue from which messages are deleted. Queue URLs and
-	// names are case-sensitive.
+	// The URL of the Amazon SQS queue from which messages are deleted.
+	//
+	// Queue URLs and names are case-sensitive.
 	//
 	// This member is required.
 	QueueUrl *string
@@ -88,25 +90,28 @@ func (c *Client) addOperationDeleteMessageMiddlewares(stack *middleware.Stack, o
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -121,13 +126,19 @@ func (c *Client) addOperationDeleteMessageMiddlewares(stack *middleware.Stack, o
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDeleteMessageValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteMessage(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -140,6 +151,18 @@ func (c *Client) addOperationDeleteMessageMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

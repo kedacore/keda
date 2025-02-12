@@ -21,7 +21,6 @@ import (
 	"strconv"
 
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/common/types/traits"
 
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	structpb "google.golang.org/protobuf/types/known/structpb"
@@ -32,15 +31,6 @@ import (
 type Uint uint64
 
 var (
-	// UintType singleton.
-	UintType = NewTypeValue("uint",
-		traits.AdderType,
-		traits.ComparerType,
-		traits.DividerType,
-		traits.ModderType,
-		traits.MultiplierType,
-		traits.SubtractorType)
-
 	uint32WrapperType = reflect.TypeOf(&wrapperspb.UInt32Value{})
 
 	uint64WrapperType = reflect.TypeOf(&wrapperspb.UInt64Value{})
@@ -86,6 +76,18 @@ func (i Uint) ConvertToNative(typeDesc reflect.Type) (any, error) {
 	switch typeDesc.Kind() {
 	case reflect.Uint, reflect.Uint32:
 		v, err := uint64ToUint32Checked(uint64(i))
+		if err != nil {
+			return 0, err
+		}
+		return reflect.ValueOf(v).Convert(typeDesc).Interface(), nil
+	case reflect.Uint8:
+		v, err := uint64ToUint8Checked(uint64(i))
+		if err != nil {
+			return 0, err
+		}
+		return reflect.ValueOf(v).Convert(typeDesc).Interface(), nil
+	case reflect.Uint16:
+		v, err := uint64ToUint16Checked(uint64(i))
 		if err != nil {
 			return 0, err
 		}

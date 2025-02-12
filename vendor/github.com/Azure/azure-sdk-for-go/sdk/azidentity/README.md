@@ -1,9 +1,9 @@
 # Azure Identity Client Module for Go
 
-The Azure Identity module provides Microsoft Entra ID ([formerly Azure Active Directory](https://learn.microsoft.com/azure/active-directory/fundamentals/new-name)) token authentication support across the Azure SDK. It includes a set of `TokenCredential` implementations, which can be used with Azure SDK clients supporting token authentication.
+The Azure Identity module provides Microsoft Entra ID ([formerly Azure Active Directory](https://learn.microsoft.com/entra/fundamentals/new-name)) token authentication support across the Azure SDK. It includes a set of `TokenCredential` implementations, which can be used with Azure SDK clients supporting token authentication.
 
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/Azure/azure-sdk-for-go/sdk/azidentity)](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity)
-| [Microsoft Entra ID documentation](https://learn.microsoft.com/azure/active-directory/)
+| [Microsoft Entra ID documentation](https://learn.microsoft.com/entra/identity/)
 | [Source code](https://github.com/Azure/azure-sdk-for-go/tree/main/sdk/azidentity)
 
 # Getting started
@@ -30,7 +30,7 @@ When debugging and executing code locally, developers typically use their own ac
 #### Authenticating via the Azure CLI
 
 `DefaultAzureCredential` and `AzureCLICredential` can authenticate as the user
-signed in to the [Azure CLI](https://docs.microsoft.com/cli/azure). To sign in to the Azure CLI, run `az login`. On a system with a default web browser, the Azure CLI will launch the browser to authenticate a user.
+signed in to the [Azure CLI](https://learn.microsoft.com/cli/azure). To sign in to the Azure CLI, run `az login`. On a system with a default web browser, the Azure CLI will launch the browser to authenticate a user.
 
 When no default browser is available, `az login` will use the device code
 authentication flow. This can also be selected manually by running `az login --use-device-code`.
@@ -54,7 +54,7 @@ The `azidentity` module focuses on OAuth authentication with Microsoft Entra ID.
 
 ### DefaultAzureCredential
 
-`DefaultAzureCredential` is appropriate for most apps that will be deployed to Azure. It combines common production credentials with development credentials. It attempts to authenticate via the following mechanisms in this order, stopping when one succeeds:
+`DefaultAzureCredential` simplifies authentication while developing applications that deploy to Azure by combining credentials used in Azure hosting environments and credentials used in local development. In production, it's better to use a specific credential type so authentication is more predictable and easier to debug. `DefaultAzureCredential` attempts to authenticate via the following mechanisms in this order, stopping when one succeeds:
 
 ![DefaultAzureCredential authentication flow](img/mermaidjs/DefaultAzureCredentialAuthFlow.svg)
 
@@ -69,14 +69,14 @@ The `azidentity` module focuses on OAuth authentication with Microsoft Entra ID.
 ## Managed Identity
 
 `DefaultAzureCredential` and `ManagedIdentityCredential` support
-[managed identity authentication](https://docs.microsoft.com/azure/active-directory/managed-identities-azure-resources/overview)
+[managed identity authentication](https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/overview)
 in any hosting environment which supports managed identities, such as (this list is not exhaustive):
-* [Azure App Service](https://docs.microsoft.com/azure/app-service/overview-managed-identity)
-* [Azure Arc](https://docs.microsoft.com/azure/azure-arc/servers/managed-identity-authentication)
-* [Azure Cloud Shell](https://docs.microsoft.com/azure/cloud-shell/msi-authorization)
-* [Azure Kubernetes Service](https://docs.microsoft.com/azure/aks/use-managed-identity)
-* [Azure Service Fabric](https://docs.microsoft.com/azure/service-fabric/concepts-managed-identity)
-* [Azure Virtual Machines](https://docs.microsoft.com/azure/active-directory/managed-identities-azure-resources/how-to-use-vm-token)
+* [Azure App Service](https://learn.microsoft.com/azure/app-service/overview-managed-identity)
+* [Azure Arc](https://learn.microsoft.com/azure/azure-arc/servers/managed-identity-authentication)
+* [Azure Cloud Shell](https://learn.microsoft.com/azure/cloud-shell/msi-authorization)
+* [Azure Kubernetes Service](https://learn.microsoft.com/azure/aks/use-managed-identity)
+* [Azure Service Fabric](https://learn.microsoft.com/azure/service-fabric/concepts-managed-identity)
+* [Azure Virtual Machines](https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/how-to-use-vm-token)
 
 ## Examples
 
@@ -126,12 +126,17 @@ client := armresources.NewResourceGroupsClient("subscription ID", chain, nil)
 
 ## Credential Types
 
-### Authenticating Azure Hosted Applications
+### Credential chains
 
 |Credential|Usage
 |-|-
 |[DefaultAzureCredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#DefaultAzureCredential)|Simplified authentication experience for getting started developing Azure apps
 |[ChainedTokenCredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#ChainedTokenCredential)|Define custom authentication flows, composing multiple credentials
+
+### Authenticating Azure-Hosted Applications
+
+|Credential|Usage
+|-|-
 |[EnvironmentCredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#EnvironmentCredential)|Authenticate a service principal or user configured by environment variables
 |[ManagedIdentityCredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#ManagedIdentityCredential)|Authenticate the managed identity of an Azure resource
 |[WorkloadIdentityCredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#WorkloadIdentityCredential)|Authenticate a workload identity on Kubernetes
@@ -140,6 +145,7 @@ client := armresources.NewResourceGroupsClient("subscription ID", chain, nil)
 
 |Credential|Usage
 |-|-
+|[AzurePipelinesCredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#AzurePipelinesCredential)|Authenticate an Azure Pipelines [service connection](https://learn.microsoft.com/azure/devops/pipelines/library/service-endpoints?view=azure-devops&tabs=yaml)
 |[ClientAssertionCredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#ClientAssertionCredential)|Authenticate a service principal with a signed client assertion
 |[ClientCertificateCredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#ClientCertificateCredential)|Authenticate a service principal with a certificate
 |[ClientSecretCredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#ClientSecretCredential)|Authenticate a service principal with a secret
@@ -157,7 +163,7 @@ client := armresources.NewResourceGroupsClient("subscription ID", chain, nil)
 |Credential|Usage
 |-|-
 |[AzureCLICredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#AzureCLICredential)|Authenticate as the user signed in to the Azure CLI
-|[`AzureDeveloperCLICredential`](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#AzureDeveloperCLICredential)|Authenticates as the user signed in to the Azure Developer CLI
+|[AzureDeveloperCLICredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#AzureDeveloperCLICredential)|Authenticates as the user signed in to the Azure Developer CLI
 
 ## Environment Variables
 
@@ -207,7 +213,7 @@ For more details, see the [token caching documentation](https://aka.ms/azsdk/go/
 
 Credentials return an `error` when they fail to authenticate or lack data they require to authenticate. For guidance on resolving errors from specific credential types, see the [troubleshooting guide](https://aka.ms/azsdk/go/identity/troubleshoot).
 
-For more details on handling specific Microsoft Entra errors, see the Microsoft Entra [error code documentation](https://learn.microsoft.com/azure/active-directory/develop/reference-error-codes).
+For more details on handling specific Microsoft Entra errors, see the Microsoft Entra [error code documentation](https://learn.microsoft.com/entra/identity-platform/reference-error-codes).
 
 ### Logging
 

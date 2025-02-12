@@ -6,17 +6,18 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deletes up to ten messages from the specified queue. This is a batch version of
-// DeleteMessage . The result of the action on each message is reported
-// individually in the response. Because the batch request can result in a
-// combination of successful and unsuccessful actions, you should check for batch
-// errors even when the call returns an HTTP status code of 200 .
+// Deletes up to ten messages from the specified queue. This is a batch version of DeleteMessage
+// . The result of the action on each message is reported individually in the
+// response.
+//
+// Because the batch request can result in a combination of successful and
+// unsuccessful actions, you should check for batch errors even when the call
+// returns an HTTP status code of 200 .
 func (c *Client) DeleteMessageBatch(ctx context.Context, params *DeleteMessageBatchInput, optFns ...func(*Options)) (*DeleteMessageBatchOutput, error) {
 	if params == nil {
 		params = &DeleteMessageBatchInput{}
@@ -39,8 +40,9 @@ type DeleteMessageBatchInput struct {
 	// This member is required.
 	Entries []types.DeleteMessageBatchRequestEntry
 
-	// The URL of the Amazon SQS queue from which messages are deleted. Queue URLs and
-	// names are case-sensitive.
+	// The URL of the Amazon SQS queue from which messages are deleted.
+	//
+	// Queue URLs and names are case-sensitive.
 	//
 	// This member is required.
 	QueueUrl *string
@@ -48,9 +50,8 @@ type DeleteMessageBatchInput struct {
 	noSmithyDocumentSerde
 }
 
-// For each message in the batch, the response contains a
-// DeleteMessageBatchResultEntry tag if the message is deleted or a
-// BatchResultErrorEntry tag if the message can't be deleted.
+// For each message in the batch, the response contains a DeleteMessageBatchResultEntry tag if the message is
+// deleted or a BatchResultErrorEntrytag if the message can't be deleted.
 type DeleteMessageBatchOutput struct {
 
 	// A list of BatchResultErrorEntry items.
@@ -91,25 +92,28 @@ func (c *Client) addOperationDeleteMessageBatchMiddlewares(stack *middleware.Sta
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -124,13 +128,19 @@ func (c *Client) addOperationDeleteMessageBatchMiddlewares(stack *middleware.Sta
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDeleteMessageBatchValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteMessageBatch(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -143,6 +153,18 @@ func (c *Client) addOperationDeleteMessageBatchMiddlewares(stack *middleware.Sta
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

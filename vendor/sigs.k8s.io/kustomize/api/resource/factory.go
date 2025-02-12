@@ -41,28 +41,26 @@ func (rf *Factory) Hasher() ifc.KustHasher {
 }
 
 // FromMap returns a new instance of Resource.
-func (rf *Factory) FromMap(m map[string]interface{}) *Resource {
+func (rf *Factory) FromMap(m map[string]interface{}) (*Resource, error) {
 	res, err := rf.FromMapAndOption(m, nil)
 	if err != nil {
-		// TODO: return err instead of log.
-		log.Fatalf("failed to create resource from map: %v", err)
+		return nil, fmt.Errorf("failed to create resource from map: %w", err)
 	}
-	return res
+	return res, nil
 }
 
 // FromMapWithName returns a new instance with the given "original" name.
-func (rf *Factory) FromMapWithName(n string, m map[string]interface{}) *Resource {
+func (rf *Factory) FromMapWithName(n string, m map[string]interface{}) (*Resource, error) {
 	return rf.FromMapWithNamespaceAndName(resid.DefaultNamespace, n, m)
 }
 
 // FromMapWithNamespaceAndName returns a new instance with the given "original" namespace.
-func (rf *Factory) FromMapWithNamespaceAndName(ns string, n string, m map[string]interface{}) *Resource {
+func (rf *Factory) FromMapWithNamespaceAndName(ns string, n string, m map[string]interface{}) (*Resource, error) {
 	r, err := rf.FromMapAndOption(m, nil)
 	if err != nil {
-		// TODO: return err instead of log.
-		log.Fatalf("failed to create resource from map: %v", err)
+		return nil, fmt.Errorf("failed to create resource from map: %w", err)
 	}
-	return r.setPreviousId(ns, n, r.GetKind())
+	return r.setPreviousId(ns, n, r.GetKind()), nil
 }
 
 // FromMapAndOption returns a new instance of Resource with given options.
@@ -204,7 +202,10 @@ func (rf *Factory) inlineAnyEmbeddedLists(
 		}
 		items, ok := m["items"]
 		if !ok {
-			// treat as an empty list
+			// Items field is not present.
+			// This is not a collections resource.
+			// read more https://kubernetes.io/docs/reference/using-api/api-concepts/#collections
+			result = append(result, n0)
 			continue
 		}
 		slice, ok := items.([]interface{})

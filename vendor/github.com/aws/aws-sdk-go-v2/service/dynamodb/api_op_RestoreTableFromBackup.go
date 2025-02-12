@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	internalEndpointDiscovery "github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery"
 	"github.com/aws/smithy-go/middleware"
@@ -14,14 +13,22 @@ import (
 )
 
 // Creates a new table from an existing backup. Any number of users can execute up
-// to 50 concurrent restores (any type of restore) in a given account. You can call
-// RestoreTableFromBackup at a maximum rate of 10 times per second. You must
-// manually set up the following on the restored table:
+// to 50 concurrent restores (any type of restore) in a given account.
+//
+// You can call RestoreTableFromBackup at a maximum rate of 10 times per second.
+//
+// You must manually set up the following on the restored table:
+//
 //   - Auto scaling policies
+//
 //   - IAM policies
+//
 //   - Amazon CloudWatch metrics and alarms
+//
 //   - Tags
+//
 //   - Stream settings
+//
 //   - Time to Live (TTL) settings
 func (c *Client) RestoreTableFromBackup(ctx context.Context, params *RestoreTableFromBackupInput, optFns ...func(*Options)) (*RestoreTableFromBackupOutput, error) {
 	if params == nil {
@@ -62,6 +69,11 @@ type RestoreTableFromBackupInput struct {
 	// should match existing secondary indexes. You can choose to exclude some or all
 	// of the indexes at the time of restore.
 	LocalSecondaryIndexOverride []types.LocalSecondaryIndex
+
+	// Sets the maximum number of read and write units for the specified on-demand
+	// table. If you use this parameter, you must specify MaxReadRequestUnits ,
+	// MaxWriteRequestUnits , or both.
+	OnDemandThroughputOverride *types.OnDemandThroughput
 
 	// Provisioned throughput settings for the restored table.
 	ProvisionedThroughputOverride *types.ProvisionedThroughput
@@ -105,25 +117,28 @@ func (c *Client) addOperationRestoreTableFromBackupMiddlewares(stack *middleware
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -141,13 +156,19 @@ func (c *Client) addOperationRestoreTableFromBackupMiddlewares(stack *middleware
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpRestoreTableFromBackupValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opRestoreTableFromBackup(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -166,6 +187,18 @@ func (c *Client) addOperationRestoreTableFromBackupMiddlewares(stack *middleware
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

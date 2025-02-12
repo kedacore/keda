@@ -101,7 +101,7 @@ func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, e
 	// Running workload identity outside GKE, we can't use the metadata api and we need to use the env that it's provided from the hook
 	project, found := os.LookupEnv("CLOUDSDK_CORE_PROJECT")
 	if !found {
-		project, err = c.ProjectID()
+		project, err = c.ProjectIDWithContext(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -224,9 +224,13 @@ func (s StackDriverClient) GetMetrics(
 	filter string,
 	projectID string,
 	aggregation *monitoringpb.Aggregation,
-	valueIfNull *float64) (float64, error) {
-	// Set the start time to 1 minute ago
-	startTime := time.Now().UTC().Add(time.Minute * -2)
+	valueIfNull *float64,
+	filterDuration int64) (float64, error) {
+	// Set the start time (default 2 minute ago)
+	if filterDuration <= 0 {
+		filterDuration = 2
+	}
+	startTime := time.Now().UTC().Add(time.Minute * -time.Duration(filterDuration))
 
 	// Set the end time to now
 	endTime := time.Now().UTC()
@@ -284,7 +288,7 @@ func (s StackDriverClient) GetMetrics(
 //
 // MQL provides a more expressive query language than
 // the current filtering options of GetMetrics
-func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query string) (float64, error) {
+func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query string, valueIfNull *float64) (float64, error) {
 	req := &monitoringpb.QueryTimeSeriesRequest{
 		Query:    query,
 		PageSize: 1,
@@ -299,7 +303,10 @@ func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query st
 	resp, err := it.Next()
 
 	if err == iterator.Done {
-		return value, fmt.Errorf("could not find stackdriver metric with query %s", req.Query)
+		if valueIfNull == nil {
+			return value, fmt.Errorf("could not find stackdriver metric with query %s", req.Query)
+		}
+		return *valueIfNull, nil
 	}
 
 	if err != nil {
@@ -339,10 +346,13 @@ func getActualProjectID(s *StackDriverClient, projectID string) string {
 // | align delta(3m)
 // | every 3m
 // | group_by [], count(value)
-func (s StackDriverClient) BuildMQLQuery(projectID, resourceType, metric, resourceName, aggregation string) (string, error) {
-	th := defaultTimeHorizon
-	if aggregation != "" {
-		th = aggregationTimeHorizon
+func (s StackDriverClient) BuildMQLQuery(projectID, resourceType, metric, resourceName, aggregation, timeHorizon string) (string, error) {
+	th := timeHorizon
+	if th == "" {
+		th = defaultTimeHorizon
+		if aggregation != "" {
+			th = aggregationTimeHorizon
+		}
 	}
 
 	pid := getActualProjectID(&s, projectID)

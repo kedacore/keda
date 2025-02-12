@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/expr-lang/expr/ast"
 	"github.com/expr-lang/expr/builtin"
@@ -12,7 +13,6 @@ import (
 	"github.com/expr-lang/expr/conf"
 	"github.com/expr-lang/expr/file"
 	"github.com/expr-lang/expr/optimizer"
-	"github.com/expr-lang/expr/parser"
 	"github.com/expr-lang/expr/patcher"
 	"github.com/expr-lang/expr/vm"
 )
@@ -42,7 +42,13 @@ func AllowUndefinedVariables() Option {
 // Operator allows to replace a binary operator with a function.
 func Operator(operator string, fn ...string) Option {
 	return func(c *conf.Config) {
-		c.Operator(operator, fn...)
+		p := &patcher.OperatorOverloading{
+			Operator:  operator,
+			Overloads: fn,
+			Types:     c.Types,
+			Functions: c.Functions,
+		}
+		c.Visitors = append(c.Visitors, p)
 	}
 }
 
@@ -177,6 +183,17 @@ func WithContext(name string) Option {
 	})
 }
 
+// Timezone sets default timezone for date() and now() builtin functions.
+func Timezone(name string) Option {
+	tz, err := time.LoadLocation(name)
+	if err != nil {
+		panic(err)
+	}
+	return Patch(patcher.WithTimezone{
+		Location: tz,
+	})
+}
+
 // Compile parses and compiles given input expression to bytecode program.
 func Compile(input string, ops ...Option) (*vm.Program, error) {
 	config := conf.CreateNew()
@@ -188,27 +205,7 @@ func Compile(input string, ops ...Option) (*vm.Program, error) {
 	}
 	config.Check()
 
-	if len(config.Operators) > 0 {
-		config.Visitors = append(config.Visitors, &conf.OperatorPatcher{
-			Operators: config.Operators,
-			Types:     config.Types,
-		})
-	}
-
-	tree, err := parser.ParseWithConfig(input, config)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(config.Visitors) > 0 {
-		for _, v := range config.Visitors {
-			// We need to perform types check, because some visitors may rely on
-			// types information available in the tree.
-			_, _ = checker.Check(tree, config)
-			ast.Walk(&tree.Node, v)
-		}
-	}
-	_, err = checker.Check(tree, config)
+	tree, err := checker.ParseCheck(input, config)
 	if err != nil {
 		return nil, err
 	}

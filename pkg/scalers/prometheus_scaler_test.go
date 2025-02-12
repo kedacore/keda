@@ -60,8 +60,6 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "customHeaders": "key1=value1,key2=value2"}, false},
 	// customHeaders with wrong format
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "customHeaders": "key1=value1,key2"}, true},
-	// deprecated cortexOrgID
-	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "cortexOrgID": "my-org"}, true},
 	// queryParameters
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "queryParameters": "key1=value1,key2=value2"}, false},
 	// queryParameters with wrong format
@@ -162,11 +160,11 @@ func TestPrometheusScalerAuthParams(t *testing.T) {
 		}
 
 		if err == nil {
-			if meta.prometheusAuth != nil {
-				if (meta.prometheusAuth.EnableBearerAuth && !strings.Contains(testData.metadata["authModes"], "bearer")) ||
-					(meta.prometheusAuth.EnableBasicAuth && !strings.Contains(testData.metadata["authModes"], "basic")) ||
-					(meta.prometheusAuth.EnableTLS && !strings.Contains(testData.metadata["authModes"], "tls")) ||
-					(meta.prometheusAuth.EnableCustomAuth && !strings.Contains(testData.metadata["authModes"], "custom")) {
+			if !meta.PrometheusAuth.Disabled() {
+				if (meta.PrometheusAuth.EnabledBearerAuth() && !strings.Contains(testData.metadata["authModes"], "bearer")) ||
+					(meta.PrometheusAuth.EnabledBasicAuth() && !strings.Contains(testData.metadata["authModes"], "basic")) ||
+					(meta.PrometheusAuth.EnabledTLS() && !strings.Contains(testData.metadata["authModes"], "tls")) ||
+					(meta.PrometheusAuth.EnabledCustomAuth() && !strings.Contains(testData.metadata["authModes"], "custom")) {
 					t.Error("wrong auth mode detected")
 				}
 			}
@@ -174,7 +172,7 @@ func TestPrometheusScalerAuthParams(t *testing.T) {
 	}
 }
 
-type prometheusQromQueryResultTestData struct {
+type prometheusPromQueryResultTestData struct {
 	name             string
 	bodyStr          string
 	responseStatus   int
@@ -184,7 +182,7 @@ type prometheusQromQueryResultTestData struct {
 	unsafeSsl        bool
 }
 
-var testPromQueryResult = []prometheusQromQueryResultTestData{
+var testPromQueryResult = []prometheusPromQueryResultTestData{
 	{
 		name:             "no results",
 		bodyStr:          `{}`,
@@ -317,9 +315,9 @@ func TestPrometheusScalerExecutePromQuery(t *testing.T) {
 
 			scaler := prometheusScaler{
 				metadata: &prometheusMetadata{
-					serverAddress:    server.URL,
-					ignoreNullValues: testData.ignoreNullValues,
-					unsafeSsl:        testData.unsafeSsl,
+					ServerAddress:    server.URL,
+					IgnoreNullValues: testData.ignoreNullValues,
+					UnsafeSSL:        testData.unsafeSsl,
 				},
 				httpClient: http.DefaultClient,
 				logger:     logr.Discard(),
@@ -339,7 +337,7 @@ func TestPrometheusScalerExecutePromQuery(t *testing.T) {
 }
 
 func TestPrometheusScalerCustomHeaders(t *testing.T) {
-	testData := prometheusQromQueryResultTestData{
+	testData := prometheusPromQueryResultTestData{
 		name:             "no values",
 		bodyStr:          `{"data":{"result":[]}}`,
 		responseStatus:   http.StatusOK,
@@ -366,9 +364,9 @@ func TestPrometheusScalerCustomHeaders(t *testing.T) {
 
 	scaler := prometheusScaler{
 		metadata: &prometheusMetadata{
-			serverAddress:    server.URL,
-			customHeaders:    customHeadersValue,
-			ignoreNullValues: testData.ignoreNullValues,
+			ServerAddress:    server.URL,
+			CustomHeaders:    customHeadersValue,
+			IgnoreNullValues: testData.ignoreNullValues,
 		},
 		httpClient: http.DefaultClient,
 	}
@@ -379,7 +377,7 @@ func TestPrometheusScalerCustomHeaders(t *testing.T) {
 }
 
 func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
-	testData := prometheusQromQueryResultTestData{
+	testData := prometheusPromQueryResultTestData{
 		name:             "no values",
 		bodyStr:          `{"data":{"result":[]}}`,
 		responseStatus:   http.StatusOK,
@@ -410,9 +408,9 @@ func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
 	}))
 	scaler := prometheusScaler{
 		metadata: &prometheusMetadata{
-			serverAddress:    server.URL,
-			queryParameters:  queryParametersValue,
-			ignoreNullValues: testData.ignoreNullValues,
+			ServerAddress:    server.URL,
+			QueryParameters:  queryParametersValue,
+			IgnoreNullValues: testData.ignoreNullValues,
 		},
 		httpClient: http.DefaultClient,
 	}

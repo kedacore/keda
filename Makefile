@@ -46,13 +46,17 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+GOPATH:=$(shell go env GOPATH)
+
 GO_BUILD_VARS= GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH)
 GO_LDFLAGS="-X=github.com/kedacore/keda/v2/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/v2/version.Version=$(VERSION)"
 
 COSIGN_FLAGS ?= -y -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_DATE=${DATE}
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.28
+ENVTEST_K8S_VERSION = 1.32
+
+GOLANGCI_VERSION:=1.63.4
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -73,11 +77,11 @@ all: build
 ##@ Test
 .PHONY: install-test-deps
 install-test-deps:
-	go install github.com/jstemmer/go-junit-report/v2@latest
+	go install gotest.tools/gotestsum@latest
 
 .PHONY: test
 test: manifests generate fmt vet envtest install-test-deps ## Run tests and export the result to junit format.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -v 2>&1 ./... -coverprofile cover.out | go-junit-report -iocopy -set-exit-code -out report.xml
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" gotestsum --format standard-quiet --rerun-fails --junitfile report.xml
 
 .PHONY:
 az-login:
@@ -97,6 +101,10 @@ scale-node-pool: az-login ## Scale nodepool.
 		--subscription $(TF_AZURE_SUBSCRIPTION) \
 		--resource-group $(TF_AZURE_RESOURCE_GROUP) \
 		--node-count $(NODE_POOL_SIZE)
+
+.PHONY: e2e-regex-check
+e2e-regex-check:
+	go run -tags e2e ./tests/run-all.go regex-check
 
 .PHONY: e2e-test
 e2e-test: get-cluster-context ## Run e2e tests against Azure cluster.
@@ -127,7 +135,7 @@ smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/co
 ##@ Development
 
 manifests: controller-gen ## Generate ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=keda-operator paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true rbac:roleName=keda-operator paths="./..." output:crd:artifacts:config=config/crd/bases
 	# withTriggers is only used for duck typing so we only need the deepcopy methods
 	# However operator-sdk generate doesn't appear to have an option for that
 	# until this issue is fixed: https://github.com/kubernetes-sigs/controller-tools/issues/398
@@ -142,7 +150,12 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
+HAS_GOLANGCI_VERSION:=$(shell $(GOPATH)/bin/golangci-lint version --format=short)
+.PHONY: golangci
 golangci: ## Run golangci against code.
+ifneq ($(HAS_GOLANGCI_VERSION), $(GOLANGCI_VERSION))
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin v$(GOLANGCI_VERSION)
+endif
 	golangci-lint run
 
 verify-manifests: ## Verify manifests are up to date.
@@ -268,17 +281,12 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER} && \
-	if [ "$(AZURE_RUN_AAD_POD_IDENTITY_TESTS)" = true ]; then \
-		$(KUSTOMIZE) edit add label --force aadpodidbinding:keda; \
-	fi && \
 	if [ "$(AZURE_RUN_WORKLOAD_IDENTITY_TESTS)" = true ]; then \
 		$(KUSTOMIZE) edit add label --force azure.workload.identity/use:true; \
 	fi
 	cd config/metrics-server && \
-    $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER} && \
-	if [ "$(AZURE_RUN_AAD_POD_IDENTITY_TESTS)" = true ]; then \
-		$(KUSTOMIZE) edit add label --force aadpodidbinding:keda; \
-	fi
+    $(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-metrics-apiserver=${IMAGE_ADAPTER}
+
 	if [ "$(AZURE_RUN_WORKLOAD_IDENTITY_TESTS)" = true ]; then \
 		cd config/service_account && \
 		$(KUSTOMIZE) edit add label --force azure.workload.identity/use:true; \
@@ -322,6 +330,7 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 MOCKGEN ?= $(LOCALBIN)/mockgen
 PROTOCGEN ?= $(LOCALBIN)/protoc-gen-go
 PROTOCGEN_GRPC ?= $(LOCALBIN)/protoc-gen-go-grpc
+GO_JUNIT_REPORT ?= $(LOCALBIN)/go-junit-report
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Install controller-gen from vendor dir if necessary.
@@ -350,6 +359,10 @@ $(PROTOCGEN): $(LOCALBIN)
 $(PROTOCGEN_GRPC): $(LOCALBIN)
 	GOBIN=$(LOCALBIN) go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
+.PHONY: go-junit-report
+go-junit-report: $(GO_JUNIT_REPORT) ## Install go-junit-report from vendor dir if necessary.
+$(GO_JUNIT_REPORT): $(LOCALBIN)
+	test -s $(LOCALBIN)/go-junit-report || GOBIN=$(LOCALBIN) go install github.com/jstemmer/go-junit-report/v2
 
 ##################################################
 # General                                        #

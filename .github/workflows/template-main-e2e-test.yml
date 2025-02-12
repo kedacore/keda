@@ -8,33 +8,32 @@ jobs:
     name: Run e2e test
     runs-on: ARM64
     # keda-tools is built from github.com/test-tools/tools/Dockerfile
-    container: ghcr.io/kedacore/keda-tools:1.21.6
+    container: ghcr.io/kedacore/keda-tools:1.23.6
     concurrency: e2e-tests
     steps:
       - name: Check out code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           fetch-depth: 1
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: oNaiPs/secrets-to-env-action@v1
+      - uses: oNaiPs/secrets-to-env-action@ec46a22bfc9b37e014b627b3208b07eb8909ea0f # v1.5
         with:
           secrets: ${{ toJSON(secrets) }}
 
       - name: Scale cluster
         run: make scale-node-pool
         env:
-          NODE_POOL_SIZE: 2
+          NODE_POOL_SIZE: 3
 
       - name: Run end to end tests
         env:
           AWS_RUN_IDENTITY_TESTS: true
-          AZURE_RUN_AAD_POD_IDENTITY_TESTS: true
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           GCP_RUN_IDENTITY_TESTS: true
-          ENABLE_OPENTELEMETRY : true
+          ENABLE_OPENTELEMETRY: true
         run: make e2e-test
 
       - name: Delete all e2e related namespaces
@@ -48,7 +47,7 @@ jobs:
           NODE_POOL_SIZE: 1
 
       - name: Upload test logs
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
         if: ${{ always() }}
         with:
           name: e2e-test-logs

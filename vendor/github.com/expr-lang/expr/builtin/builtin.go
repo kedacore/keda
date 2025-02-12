@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/expr-lang/expr/internal/deref"
 	"github.com/expr-lang/expr/vm/runtime"
 )
 
@@ -83,9 +84,19 @@ var Builtins = []*Function{
 		Types:     types(new(func([]any, func(any) bool) int)),
 	},
 	{
+		Name:      "sum",
+		Predicate: true,
+		Types:     types(new(func([]any, func(any) bool) int)),
+	},
+	{
 		Name:      "groupBy",
 		Predicate: true,
 		Types:     types(new(func([]any, func(any) any) map[any][]any)),
+	},
+	{
+		Name:      "sortBy",
+		Predicate: true,
+		Types:     types(new(func([]any, func(any) bool, string) []any)),
 	},
 	{
 		Name:      "reduce",
@@ -129,42 +140,21 @@ var Builtins = []*Function{
 		Name: "ceil",
 		Fast: Ceil,
 		Validate: func(args []reflect.Type) (reflect.Type, error) {
-			if len(args) != 1 {
-				return anyType, fmt.Errorf("invalid number of arguments (expected 1, got %d)", len(args))
-			}
-			switch kind(args[0]) {
-			case reflect.Float32, reflect.Float64, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Interface:
-				return floatType, nil
-			}
-			return anyType, fmt.Errorf("invalid argument for ceil (type %s)", args[0])
+			return validateRoundFunc("ceil", args)
 		},
 	},
 	{
 		Name: "floor",
 		Fast: Floor,
 		Validate: func(args []reflect.Type) (reflect.Type, error) {
-			if len(args) != 1 {
-				return anyType, fmt.Errorf("invalid number of arguments (expected 1, got %d)", len(args))
-			}
-			switch kind(args[0]) {
-			case reflect.Float32, reflect.Float64, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Interface:
-				return floatType, nil
-			}
-			return anyType, fmt.Errorf("invalid argument for floor (type %s)", args[0])
+			return validateRoundFunc("floor", args)
 		},
 	},
 	{
 		Name: "round",
 		Fast: Round,
 		Validate: func(args []reflect.Type) (reflect.Type, error) {
-			if len(args) != 1 {
-				return anyType, fmt.Errorf("invalid number of arguments (expected 1, got %d)", len(args))
-			}
-			switch kind(args[0]) {
-			case reflect.Float32, reflect.Float64, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Interface:
-				return floatType, nil
-			}
-			return anyType, fmt.Errorf("invalid argument for floor (type %s)", args[0])
+			return validateRoundFunc("round", args)
 		},
 	},
 	{
@@ -316,15 +306,16 @@ var Builtins = []*Function{
 	},
 	{
 		Name: "repeat",
-		ValidateArgs: func(args ...any) (any, error) {
+		Safe: func(args ...any) (any, uint, error) {
+			s := args[0].(string)
 			n := runtime.ToInt(args[1])
 			if n < 0 {
-				panic(fmt.Errorf("invalid argument for repeat (expected positive integer, got %d)", n))
+				return nil, 0, fmt.Errorf("invalid argument for repeat (expected positive integer, got %d)", n)
 			}
-			return uint(n), nil
-		},
-		Func: func(args ...any) (any, error) {
-			return strings.Repeat(args[0].(string), runtime.ToInt(args[1])), nil
+			if n > 1e6 {
+				return nil, 0, fmt.Errorf("memory budget exceeded")
+			}
+			return strings.Repeat(s, n), uint(len(s) * n), nil
 		},
 		Types: types(strings.Repeat),
 	},
@@ -385,170 +376,56 @@ var Builtins = []*Function{
 	},
 	{
 		Name: "max",
-		Func: Max,
+		Func: func(args ...any) (any, error) {
+			return minMax("max", runtime.Less, args...)
+		},
 		Validate: func(args []reflect.Type) (reflect.Type, error) {
-			if len(args) == 0 {
-				return anyType, fmt.Errorf("not enough arguments to call max")
-			}
-			for _, arg := range args {
-				switch kind(arg) {
-				case reflect.Interface:
-					return anyType, nil
-				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64:
-				default:
-					return anyType, fmt.Errorf("invalid argument for max (type %s)", arg)
-				}
-			}
-			return args[0], nil
+			return validateAggregateFunc("max", args)
 		},
 	},
 	{
 		Name: "min",
-		Func: Min,
-		Validate: func(args []reflect.Type) (reflect.Type, error) {
-			if len(args) == 0 {
-				return anyType, fmt.Errorf("not enough arguments to call min")
-			}
-			for _, arg := range args {
-				switch kind(arg) {
-				case reflect.Interface:
-					return anyType, nil
-				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64:
-				default:
-					return anyType, fmt.Errorf("invalid argument for min (type %s)", arg)
-				}
-			}
-			return args[0], nil
-		},
-	},
-	{
-		Name: "sum",
 		Func: func(args ...any) (any, error) {
-			if len(args) != 1 {
-				return nil, fmt.Errorf("invalid number of arguments (expected 1, got %d)", len(args))
-			}
-			v := reflect.ValueOf(args[0])
-			if v.Kind() != reflect.Slice && v.Kind() != reflect.Array {
-				return nil, fmt.Errorf("cannot sum %s", v.Kind())
-			}
-			sum := int64(0)
-			i := 0
-			for ; i < v.Len(); i++ {
-				it := deref(v.Index(i))
-				if it.CanInt() {
-					sum += it.Int()
-				} else if it.CanFloat() {
-					goto float
-				} else {
-					return nil, fmt.Errorf("cannot sum %s", it.Kind())
-				}
-			}
-			return int(sum), nil
-		float:
-			fSum := float64(sum)
-			for ; i < v.Len(); i++ {
-				it := deref(v.Index(i))
-				if it.CanInt() {
-					fSum += float64(it.Int())
-				} else if it.CanFloat() {
-					fSum += it.Float()
-				} else {
-					return nil, fmt.Errorf("cannot sum %s", it.Kind())
-				}
-			}
-			return fSum, nil
+			return minMax("min", runtime.More, args...)
 		},
 		Validate: func(args []reflect.Type) (reflect.Type, error) {
-			if len(args) != 1 {
-				return anyType, fmt.Errorf("invalid number of arguments (expected 1, got %d)", len(args))
-			}
-			switch kind(args[0]) {
-			case reflect.Interface, reflect.Slice, reflect.Array:
-			default:
-				return anyType, fmt.Errorf("cannot sum %s", args[0])
-			}
-			return anyType, nil
+			return validateAggregateFunc("min", args)
 		},
 	},
 	{
 		Name: "mean",
 		Func: func(args ...any) (any, error) {
-			if len(args) != 1 {
-				return nil, fmt.Errorf("invalid number of arguments (expected 1, got %d)", len(args))
+			count, sum, err := mean(args...)
+			if err != nil {
+				return nil, err
 			}
-			v := reflect.ValueOf(args[0])
-			if v.Kind() != reflect.Slice && v.Kind() != reflect.Array {
-				return nil, fmt.Errorf("cannot mean %s", v.Kind())
-			}
-			if v.Len() == 0 {
+			if count == 0 {
 				return 0.0, nil
 			}
-			sum := float64(0)
-			i := 0
-			for ; i < v.Len(); i++ {
-				it := deref(v.Index(i))
-				if it.CanInt() {
-					sum += float64(it.Int())
-				} else if it.CanFloat() {
-					sum += it.Float()
-				} else {
-					return nil, fmt.Errorf("cannot mean %s", it.Kind())
-				}
-			}
-			return sum / float64(i), nil
+			return sum / float64(count), nil
 		},
 		Validate: func(args []reflect.Type) (reflect.Type, error) {
-			if len(args) != 1 {
-				return anyType, fmt.Errorf("invalid number of arguments (expected 1, got %d)", len(args))
-			}
-			switch kind(args[0]) {
-			case reflect.Interface, reflect.Slice, reflect.Array:
-			default:
-				return anyType, fmt.Errorf("cannot avg %s", args[0])
-			}
-			return floatType, nil
+			return validateAggregateFunc("mean", args)
 		},
 	},
 	{
 		Name: "median",
 		Func: func(args ...any) (any, error) {
-			if len(args) != 1 {
-				return nil, fmt.Errorf("invalid number of arguments (expected 1, got %d)", len(args))
+			values, err := median(args...)
+			if err != nil {
+				return nil, err
 			}
-			v := reflect.ValueOf(args[0])
-			if v.Kind() != reflect.Slice && v.Kind() != reflect.Array {
-				return nil, fmt.Errorf("cannot median %s", v.Kind())
-			}
-			if v.Len() == 0 {
-				return 0.0, nil
-			}
-			s := make([]float64, v.Len())
-			for i := 0; i < v.Len(); i++ {
-				it := deref(v.Index(i))
-				if it.CanInt() {
-					s[i] = float64(it.Int())
-				} else if it.CanFloat() {
-					s[i] = it.Float()
-				} else {
-					return nil, fmt.Errorf("cannot median %s", it.Kind())
+			if n := len(values); n > 0 {
+				sort.Float64s(values)
+				if n%2 == 1 {
+					return values[n/2], nil
 				}
+				return (values[n/2-1] + values[n/2]) / 2, nil
 			}
-			sort.Float64s(s)
-			if len(s)%2 == 0 {
-				return (s[len(s)/2-1] + s[len(s)/2]) / 2, nil
-			}
-			return s[len(s)/2], nil
+			return 0.0, nil
 		},
 		Validate: func(args []reflect.Type) (reflect.Type, error) {
-			if len(args) != 1 {
-				return anyType, fmt.Errorf("invalid number of arguments (expected 1, got %d)", len(args))
-			}
-			switch kind(args[0]) {
-			case reflect.Interface, reflect.Slice, reflect.Array:
-			default:
-				return anyType, fmt.Errorf("cannot median %s", args[0])
-			}
-			return floatType, nil
+			return validateAggregateFunc("median", args)
 		},
 	},
 	{
@@ -595,9 +472,27 @@ var Builtins = []*Function{
 	{
 		Name: "now",
 		Func: func(args ...any) (any, error) {
-			return time.Now(), nil
+			if len(args) == 0 {
+				return time.Now(), nil
+			}
+			if len(args) == 1 {
+				if tz, ok := args[0].(*time.Location); ok {
+					return time.Now().In(tz), nil
+				}
+			}
+			return nil, fmt.Errorf("invalid number of arguments (expected 0, got %d)", len(args))
 		},
-		Types: types(new(func() time.Time)),
+		Validate: func(args []reflect.Type) (reflect.Type, error) {
+			if len(args) == 0 {
+				return timeType, nil
+			}
+			if len(args) == 1 {
+				if args[0] != nil && args[0].AssignableTo(locationType) {
+					return timeType, nil
+				}
+			}
+			return anyType, fmt.Errorf("invalid number of arguments (expected 0, got %d)", len(args))
+		},
 	},
 	{
 		Name: "duration",
@@ -609,9 +504,17 @@ var Builtins = []*Function{
 	{
 		Name: "date",
 		Func: func(args ...any) (any, error) {
+			tz, ok := args[0].(*time.Location)
+			if ok {
+				args = args[1:]
+			}
+
 			date := args[0].(string)
 			if len(args) == 2 {
 				layout := args[1].(string)
+				if tz != nil {
+					return time.ParseInLocation(layout, date, tz)
+				}
 				return time.Parse(layout, date)
 			}
 			if len(args) == 3 {
@@ -638,18 +541,43 @@ var Builtins = []*Function{
 				time.RFC1123,
 			}
 			for _, layout := range layouts {
-				t, err := time.Parse(layout, date)
-				if err == nil {
-					return t, nil
+				if tz == nil {
+					t, err := time.Parse(layout, date)
+					if err == nil {
+						return t, nil
+					}
+				} else {
+					t, err := time.ParseInLocation(layout, date, tz)
+					if err == nil {
+						return t, nil
+					}
 				}
 			}
 			return nil, fmt.Errorf("invalid date %s", date)
 		},
-		Types: types(
-			new(func(string) time.Time),
-			new(func(string, string) time.Time),
-			new(func(string, string, string) time.Time),
-		),
+		Validate: func(args []reflect.Type) (reflect.Type, error) {
+			if len(args) < 1 {
+				return anyType, fmt.Errorf("invalid number of arguments (expected at least 1, got %d)", len(args))
+			}
+			if args[0] != nil && args[0].AssignableTo(locationType) {
+				args = args[1:]
+			}
+			if len(args) > 3 {
+				return anyType, fmt.Errorf("invalid number of arguments (expected at most 3, got %d)", len(args))
+			}
+			return timeType, nil
+		},
+	},
+	{
+		Name: "timezone",
+		Func: func(args ...any) (any, error) {
+			tz, err := time.LoadLocation(args[0].(string))
+			if err != nil {
+				return nil, err
+			}
+			return tz, nil
+		},
+		Types: types(time.LoadLocation),
 	},
 	{
 		Name: "first",
@@ -844,7 +772,7 @@ var Builtins = []*Function{
 			}
 			out := reflect.MakeMap(mapType)
 			for i := 0; i < v.Len(); i++ {
-				pair := deref(v.Index(i))
+				pair := deref.Value(v.Index(i))
 				if pair.Kind() != reflect.Array && pair.Kind() != reflect.Slice {
 					return nil, fmt.Errorf("invalid pair %v", pair)
 				}
@@ -869,110 +797,143 @@ var Builtins = []*Function{
 		},
 	},
 	{
-		Name: "sort",
+		Name: "reverse",
 		Func: func(args ...any) (any, error) {
-			if len(args) != 1 && len(args) != 2 {
-				return nil, fmt.Errorf("invalid number of arguments (expected 1 or 2, got %d)", len(args))
+			if len(args) != 1 {
+				return nil, fmt.Errorf("invalid number of arguments (expected 1, got %d)", len(args))
 			}
 
 			v := reflect.ValueOf(args[0])
 			if v.Kind() != reflect.Slice && v.Kind() != reflect.Array {
-				return nil, fmt.Errorf("cannot sort %s", v.Kind())
+				return nil, fmt.Errorf("cannot reverse %s", v.Kind())
 			}
 
-			orderBy := OrderBy{}
-			if len(args) == 2 {
-				dir, err := ascOrDesc(args[1])
-				if err != nil {
-					return nil, err
-				}
-				orderBy.Desc = dir
+			size := v.Len()
+			arr := make([]any, size)
+
+			for i := 0; i < size; i++ {
+				arr[i] = v.Index(size - i - 1).Interface()
 			}
 
-			sortable, err := copyArray(v, orderBy)
-			if err != nil {
-				return nil, err
-			}
-			sort.Sort(sortable)
-			return sortable.Array, nil
+			return arr, nil
+
 		},
 		Validate: func(args []reflect.Type) (reflect.Type, error) {
-			if len(args) != 1 && len(args) != 2 {
-				return anyType, fmt.Errorf("invalid number of arguments (expected 1 or 2, got %d)", len(args))
+			if len(args) != 1 {
+				return anyType, fmt.Errorf("invalid number of arguments (expected 1, got %d)", len(args))
 			}
 			switch kind(args[0]) {
 			case reflect.Interface, reflect.Slice, reflect.Array:
+				return arrayType, nil
 			default:
-				return anyType, fmt.Errorf("cannot sort %s", args[0])
+				return anyType, fmt.Errorf("cannot reverse %s", args[0])
 			}
-			if len(args) == 2 {
-				switch kind(args[1]) {
-				case reflect.String, reflect.Interface:
-				default:
-					return anyType, fmt.Errorf("invalid argument for sort (expected string, got %s)", args[1])
+		},
+	},
+	{
+		Name: "concat",
+		Safe: func(args ...any) (any, uint, error) {
+			if len(args) == 0 {
+				return nil, 0, fmt.Errorf("invalid number of arguments (expected at least 1, got 0)")
+			}
+
+			var size uint
+			var arr []any
+
+			for _, arg := range args {
+				v := reflect.ValueOf(deref.Deref(arg))
+
+				if v.Kind() != reflect.Slice && v.Kind() != reflect.Array {
+					return nil, 0, fmt.Errorf("cannot concat %s", v.Kind())
+				}
+
+				size += uint(v.Len())
+
+				for i := 0; i < v.Len(); i++ {
+					item := v.Index(i)
+					arr = append(arr, item.Interface())
 				}
 			}
+
+			return arr, size, nil
+		},
+		Validate: func(args []reflect.Type) (reflect.Type, error) {
+			if len(args) == 0 {
+				return anyType, fmt.Errorf("invalid number of arguments (expected at least 1, got 0)")
+			}
+
+			for _, arg := range args {
+				switch kind(deref.Type(arg)) {
+				case reflect.Interface, reflect.Slice, reflect.Array:
+				default:
+					return anyType, fmt.Errorf("cannot concat %s", arg)
+				}
+			}
+
 			return arrayType, nil
 		},
 	},
 	{
-		Name: "sortBy",
-		Func: func(args ...any) (any, error) {
-			if len(args) != 2 && len(args) != 3 {
-				return nil, fmt.Errorf("invalid number of arguments (expected 2 or 3, got %d)", len(args))
+		Name: "sort",
+		Safe: func(args ...any) (any, uint, error) {
+			if len(args) != 1 && len(args) != 2 {
+				return nil, 0, fmt.Errorf("invalid number of arguments (expected 1 or 2, got %d)", len(args))
 			}
 
-			v := reflect.ValueOf(args[0])
-			if v.Kind() != reflect.Slice && v.Kind() != reflect.Array {
-				return nil, fmt.Errorf("cannot sort %s", v.Kind())
-			}
+			var array []any
 
-			orderBy := OrderBy{}
-
-			field, ok := args[1].(string)
-			if !ok {
-				return nil, fmt.Errorf("invalid argument for sort (expected string, got %s)", reflect.TypeOf(args[1]))
-			}
-			orderBy.Field = field
-
-			if len(args) == 3 {
-				dir, err := ascOrDesc(args[2])
-				if err != nil {
-					return nil, err
+			switch in := args[0].(type) {
+			case []any:
+				array = make([]any, len(in))
+				copy(array, in)
+			case []int:
+				array = make([]any, len(in))
+				for i, v := range in {
+					array[i] = v
 				}
-				orderBy.Desc = dir
+			case []float64:
+				array = make([]any, len(in))
+				for i, v := range in {
+					array[i] = v
+				}
+			case []string:
+				array = make([]any, len(in))
+				for i, v := range in {
+					array[i] = v
+				}
 			}
 
-			sortable, err := copyArray(v, orderBy)
-			if err != nil {
-				return nil, err
+			var desc bool
+			if len(args) == 2 {
+				switch args[1].(string) {
+				case "asc":
+					desc = false
+				case "desc":
+					desc = true
+				default:
+					return nil, 0, fmt.Errorf("invalid order %s, expected asc or desc", args[1])
+				}
+			}
+
+			sortable := &runtime.Sort{
+				Desc:  desc,
+				Array: array,
 			}
 			sort.Sort(sortable)
-			return sortable.Array, nil
+
+			return sortable.Array, uint(len(array)), nil
 		},
-		Validate: func(args []reflect.Type) (reflect.Type, error) {
-			if len(args) != 2 && len(args) != 3 {
-				return anyType, fmt.Errorf("invalid number of arguments (expected 2 or 3, got %d)", len(args))
-			}
-			switch kind(args[0]) {
-			case reflect.Interface, reflect.Slice, reflect.Array:
-			default:
-				return anyType, fmt.Errorf("cannot sort %s", args[0])
-			}
-			switch kind(args[1]) {
-			case reflect.String, reflect.Interface:
-			default:
-				return anyType, fmt.Errorf("invalid argument for sort (expected string, got %s)", args[1])
-			}
-			if len(args) == 3 {
-				switch kind(args[2]) {
-				case reflect.String, reflect.Interface:
-				default:
-					return anyType, fmt.Errorf("invalid argument for sort (expected string, got %s)", args[1])
-				}
-			}
-			return arrayType, nil
-		},
+		Types: types(
+			new(func([]any, string) []any),
+			new(func([]int, string) []any),
+			new(func([]float64, string) []any),
+			new(func([]string, string) []any),
+
+			new(func([]any) []any),
+			new(func([]float64) []any),
+			new(func([]string) []any),
+			new(func([]int) []any),
+		),
 	},
 	bitFunc("bitand", func(x, y int) (any, error) {
 		return x & y, nil

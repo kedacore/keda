@@ -6,24 +6,27 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Lists your Kinesis data streams. The number of streams may be too large to
-// return from a single call to ListStreams . You can limit the number of returned
-// streams using the Limit parameter. If you do not specify a value for the Limit
-// parameter, Kinesis Data Streams uses the default limit, which is currently 100.
+// Lists your Kinesis data streams.
+//
+// The number of streams may be too large to return from a single call to
+// ListStreams . You can limit the number of returned streams using the Limit
+// parameter. If you do not specify a value for the Limit parameter, Kinesis Data
+// Streams uses the default limit, which is currently 100.
+//
 // You can detect if there are more streams available to list by using the
 // HasMoreStreams flag from the returned output. If there are more streams
 // available, you can request more streams by using the name of the last stream
 // returned by the ListStreams request in the ExclusiveStartStreamName parameter
 // in a subsequent request to ListStreams . The group of stream names returned by
 // the subsequent request is then added to the list. You can continue this process
-// until all the stream names have been collected in the list. ListStreams has a
-// limit of five transactions per second per account.
+// until all the stream names have been collected in the list.
+//
+// ListStreamshas a limit of five transactions per second per account.
 func (c *Client) ListStreams(ctx context.Context, params *ListStreamsInput, optFns ...func(*Options)) (*ListStreamsOutput, error) {
 	if params == nil {
 		params = &ListStreamsInput{}
@@ -103,25 +106,28 @@ func (c *Client) addOperationListStreamsMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -136,10 +142,16 @@ func (c *Client) addOperationListStreamsMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListStreams(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -154,15 +166,20 @@ func (c *Client) addOperationListStreamsMiddlewares(stack *middleware.Stack, opt
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListStreamsAPIClient is a client that implements the ListStreams operation.
-type ListStreamsAPIClient interface {
-	ListStreams(context.Context, *ListStreamsInput, ...func(*Options)) (*ListStreamsOutput, error)
-}
-
-var _ ListStreamsAPIClient = (*Client)(nil)
 
 // ListStreamsPaginatorOptions is the paginator options for ListStreams
 type ListStreamsPaginatorOptions struct {
@@ -228,6 +245,9 @@ func (p *ListStreamsPaginator) NextPage(ctx context.Context, optFns ...func(*Opt
 	}
 	params.Limit = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListStreams(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -246,6 +266,13 @@ func (p *ListStreamsPaginator) NextPage(ctx context.Context, optFns ...func(*Opt
 
 	return result, nil
 }
+
+// ListStreamsAPIClient is a client that implements the ListStreams operation.
+type ListStreamsAPIClient interface {
+	ListStreams(context.Context, *ListStreamsInput, ...func(*Options)) (*ListStreamsOutput, error)
+}
+
+var _ ListStreamsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListStreams(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

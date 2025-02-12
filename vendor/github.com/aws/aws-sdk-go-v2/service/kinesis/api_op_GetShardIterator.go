@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
@@ -15,37 +14,45 @@ import (
 )
 
 // Gets an Amazon Kinesis shard iterator. A shard iterator expires 5 minutes after
-// it is returned to the requester. When invoking this API, you must use either the
-// StreamARN or the StreamName parameter, or both. It is recommended that you use
-// the StreamARN input parameter when you invoke this API. A shard iterator
-// specifies the shard position from which to start reading data records
-// sequentially. The position is specified using the sequence number of a data
-// record in a shard. A sequence number is the identifier associated with every
-// record ingested in the stream, and is assigned when a record is put into the
-// stream. Each stream has one or more shards. You must specify the shard iterator
-// type. For example, you can set the ShardIteratorType parameter to read exactly
-// from the position denoted by a specific sequence number by using the
-// AT_SEQUENCE_NUMBER shard iterator type. Alternatively, the parameter can read
-// right after the sequence number by using the AFTER_SEQUENCE_NUMBER shard
-// iterator type, using sequence numbers returned by earlier calls to PutRecord ,
-// PutRecords , GetRecords , or DescribeStream . In the request, you can specify
-// the shard iterator type AT_TIMESTAMP to read records from an arbitrary point in
-// time, TRIM_HORIZON to cause ShardIterator to point to the last untrimmed record
-// in the shard in the system (the oldest data record in the shard), or LATEST so
-// that you always read the most recent data in the shard. When you read repeatedly
-// from a stream, use a GetShardIterator request to get the first shard iterator
-// for use in your first GetRecords request and for subsequent reads use the shard
-// iterator returned by the GetRecords request in NextShardIterator . A new shard
-// iterator is returned by every GetRecords request in NextShardIterator , which
-// you use in the ShardIterator parameter of the next GetRecords request. If a
-// GetShardIterator request is made too often, you receive a
+// it is returned to the requester.
+//
+// When invoking this API, you must use either the StreamARN or the StreamName
+// parameter, or both. It is recommended that you use the StreamARN input
+// parameter when you invoke this API.
+//
+// A shard iterator specifies the shard position from which to start reading data
+// records sequentially. The position is specified using the sequence number of a
+// data record in a shard. A sequence number is the identifier associated with
+// every record ingested in the stream, and is assigned when a record is put into
+// the stream. Each stream has one or more shards.
+//
+// You must specify the shard iterator type. For example, you can set the
+// ShardIteratorType parameter to read exactly from the position denoted by a
+// specific sequence number by using the AT_SEQUENCE_NUMBER shard iterator type.
+// Alternatively, the parameter can read right after the sequence number by using
+// the AFTER_SEQUENCE_NUMBER shard iterator type, using sequence numbers returned
+// by earlier calls to PutRecord, PutRecords, GetRecords, or DescribeStream. In the request, you can specify the shard
+// iterator type AT_TIMESTAMP to read records from an arbitrary point in time,
+// TRIM_HORIZON to cause ShardIterator to point to the last untrimmed record in
+// the shard in the system (the oldest data record in the shard), or LATEST so
+// that you always read the most recent data in the shard.
+//
+// When you read repeatedly from a stream, use a GetShardIterator request to get the first shard
+// iterator for use in your first GetRecordsrequest and for subsequent reads use the shard
+// iterator returned by the GetRecordsrequest in NextShardIterator . A new shard iterator is
+// returned by every GetRecordsrequest in NextShardIterator , which you use in the
+// ShardIterator parameter of the next GetRecords request.
+//
+// If a GetShardIterator request is made too often, you receive a
 // ProvisionedThroughputExceededException . For more information about throughput
-// limits, see GetRecords , and Streams Limits (https://docs.aws.amazon.com/kinesis/latest/dev/service-sizes-and-limits.html)
-// in the Amazon Kinesis Data Streams Developer Guide. If the shard is closed,
-// GetShardIterator returns a valid iterator for the last sequence number of the
-// shard. A shard can be closed as a result of using SplitShard or MergeShards .
-// GetShardIterator has a limit of five transactions per second per account per
-// open shard.
+// limits, see GetRecords, and [Streams Limits] in the Amazon Kinesis Data Streams Developer Guide.
+//
+// If the shard is closed, GetShardIterator returns a valid iterator for the last sequence number
+// of the shard. A shard can be closed as a result of using SplitShardor MergeShards.
+//
+// GetShardIteratorhas a limit of five transactions per second per account per open shard.
+//
+// [Streams Limits]: https://docs.aws.amazon.com/kinesis/latest/dev/service-sizes-and-limits.html
 func (c *Client) GetShardIterator(ctx context.Context, params *GetShardIteratorInput, optFns ...func(*Options)) (*GetShardIteratorOutput, error) {
 	if params == nil {
 		params = &GetShardIteratorInput{}
@@ -70,15 +77,22 @@ type GetShardIteratorInput struct {
 	ShardId *string
 
 	// Determines how the shard iterator is used to start reading data records from
-	// the shard. The following are the valid Amazon Kinesis shard iterator types:
+	// the shard.
+	//
+	// The following are the valid Amazon Kinesis shard iterator types:
+	//
 	//   - AT_SEQUENCE_NUMBER - Start reading from the position denoted by a specific
 	//   sequence number, provided in the value StartingSequenceNumber .
+	//
 	//   - AFTER_SEQUENCE_NUMBER - Start reading right after the position denoted by a
 	//   specific sequence number, provided in the value StartingSequenceNumber .
+	//
 	//   - AT_TIMESTAMP - Start reading from the position denoted by a specific time
 	//   stamp, provided in the value Timestamp .
+	//
 	//   - TRIM_HORIZON - Start reading at the last untrimmed record in the shard in
 	//   the system, which is the oldest data record in the shard.
+	//
 	//   - LATEST - Start reading just after the most recent record in the shard, so
 	//   that you always read the most recent data in the shard.
 	//
@@ -109,6 +123,7 @@ type GetShardIteratorInput struct {
 }
 
 func (in *GetShardIteratorInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.StreamARN = in.StreamARN
 	p.OperationType = ptr.String("data")
 }
@@ -149,25 +164,28 @@ func (c *Client) addOperationGetShardIteratorMiddlewares(stack *middleware.Stack
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -182,13 +200,19 @@ func (c *Client) addOperationGetShardIteratorMiddlewares(stack *middleware.Stack
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpGetShardIteratorValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGetShardIterator(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -201,6 +225,18 @@ func (c *Client) addOperationGetShardIteratorMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

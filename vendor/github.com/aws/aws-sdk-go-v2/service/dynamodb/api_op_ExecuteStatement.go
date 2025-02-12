@@ -6,19 +6,21 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // This operation allows you to perform reads and singleton writes on data stored
-// in DynamoDB, using PartiQL. For PartiQL reads ( SELECT statement), if the total
-// number of processed items exceeds the maximum dataset size limit of 1 MB, the
-// read stops and results are returned to the user as a LastEvaluatedKey value to
-// continue the read in a subsequent operation. If the filter criteria in WHERE
-// clause does not match any data, the read will return an empty result set. A
-// single SELECT statement response can return up to the maximum number of items
+// in DynamoDB, using PartiQL.
+//
+// For PartiQL reads ( SELECT statement), if the total number of processed items
+// exceeds the maximum dataset size limit of 1 MB, the read stops and results are
+// returned to the user as a LastEvaluatedKey value to continue the read in a
+// subsequent operation. If the filter criteria in WHERE clause does not match any
+// data, the read will return an empty result set.
+//
+// A single SELECT statement response can return up to the maximum number of items
 // (if using the Limit parameter) or a maximum of 1 MB of data (and then apply any
 // filtering to the results using WHERE clause). If LastEvaluatedKey is present in
 // the response, you need to paginate the result set. If NextToken is present, you
@@ -68,20 +70,27 @@ type ExecuteStatementInput struct {
 
 	// Determines the level of detail about either provisioned or on-demand throughput
 	// consumption that is returned in the response:
+	//
 	//   - INDEXES - The response includes the aggregate ConsumedCapacity for the
 	//   operation, together with ConsumedCapacity for each table and secondary index
-	//   that was accessed. Note that some operations, such as GetItem and BatchGetItem
-	//   , do not access any indexes at all. In these cases, specifying INDEXES will
-	//   only return ConsumedCapacity information for table(s).
+	//   that was accessed.
+	//
+	// Note that some operations, such as GetItem and BatchGetItem , do not access any
+	//   indexes at all. In these cases, specifying INDEXES will only return
+	//   ConsumedCapacity information for table(s).
+	//
 	//   - TOTAL - The response includes only the aggregate ConsumedCapacity for the
 	//   operation.
+	//
 	//   - NONE - No ConsumedCapacity details are included in the response.
 	ReturnConsumedCapacity types.ReturnConsumedCapacity
 
 	// An optional parameter that returns the item attributes for an ExecuteStatement
-	// operation that failed a condition check. There is no additional cost associated
-	// with requesting a return value aside from the small network and processing
-	// overhead of receiving a larger response. No read capacity units are consumed.
+	// operation that failed a condition check.
+	//
+	// There is no additional cost associated with requesting a return value aside
+	// from the small network and processing overhead of receiving a larger response.
+	// No read capacity units are consumed.
 	ReturnValuesOnConditionCheckFailure types.ReturnValuesOnConditionCheckFailure
 
 	noSmithyDocumentSerde
@@ -92,8 +101,10 @@ type ExecuteStatementOutput struct {
 	// The capacity units consumed by an operation. The data returned includes the
 	// total provisioned throughput consumed, along with statistics for the table and
 	// any indexes involved in the operation. ConsumedCapacity is only returned if the
-	// request asked for it. For more information, see Provisioned Throughput (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ProvisionedThroughputIntro.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// request asked for it. For more information, see [Provisioned capacity mode]in the Amazon DynamoDB
+	// Developer Guide.
+	//
+	// [Provisioned capacity mode]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/provisioned-capacity-mode.html
 	ConsumedCapacity *types.ConsumedCapacity
 
 	// If a read operation was used, this property will contain the result of the read
@@ -143,25 +154,28 @@ func (c *Client) addOperationExecuteStatementMiddlewares(stack *middleware.Stack
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -176,13 +190,19 @@ func (c *Client) addOperationExecuteStatementMiddlewares(stack *middleware.Stack
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpExecuteStatementValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opExecuteStatement(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -201,6 +221,18 @@ func (c *Client) addOperationExecuteStatementMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

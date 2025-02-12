@@ -57,8 +57,6 @@ type AMQPAnnotatedMessage struct {
 	// Properties corresponds to the properties section of an AMQP message.
 	Properties *AMQPAnnotatedMessageProperties
 
-	linkName string
-
 	// inner is the AMQP message we originally received, which contains some hidden
 	// data that's needed to settle with go-amqp. We strip out most of the underlying
 	// data so it's fairly minimal.
@@ -222,7 +220,7 @@ func copyAnnotations(src map[any]any) amqp.Annotations {
 	return dest
 }
 
-func newAMQPAnnotatedMessage(goAMQPMessage *amqp.Message, receivingLinkName string) *AMQPAnnotatedMessage {
+func newAMQPAnnotatedMessage(goAMQPMessage *amqp.Message) *AMQPAnnotatedMessage {
 	var header *AMQPAnnotatedMessageHeader
 
 	if goAMQPMessage.Header != nil {
@@ -273,7 +271,6 @@ func newAMQPAnnotatedMessage(goAMQPMessage *amqp.Message, receivingLinkName stri
 		DeliveryTag:         goAMQPMessage.DeliveryTag,
 		Footer:              footer,
 		Header:              header,
-		linkName:            receivingLinkName,
 		Properties:          properties,
 		inner:               goAMQPMessage,
 	}

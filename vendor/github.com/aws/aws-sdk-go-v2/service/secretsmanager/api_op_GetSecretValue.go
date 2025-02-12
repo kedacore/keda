@@ -6,30 +6,37 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"time"
 )
 
 // Retrieves the contents of the encrypted fields SecretString or SecretBinary
-// from the specified version of a secret, whichever contains content. To retrieve
-// the values for a group of secrets, call BatchGetSecretValue . We recommend that
-// you cache your secret values by using client-side caching. Caching secrets
-// improves speed and reduces your costs. For more information, see Cache secrets
-// for your applications (https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieving-secrets.html)
-// . To retrieve the previous version of a secret, use VersionStage and specify
-// AWSPREVIOUS. To revert to the previous version of a secret, call
-// UpdateSecretVersionStage (https://docs.aws.amazon.com/cli/latest/reference/secretsmanager/update-secret-version-stage.html)
-// . Secrets Manager generates a CloudTrail log entry when you call this action. Do
+// from the specified version of a secret, whichever contains content.
+//
+// To retrieve the values for a group of secrets, call BatchGetSecretValue.
+//
+// We recommend that you cache your secret values by using client-side caching.
+// Caching secrets improves speed and reduces your costs. For more information, see
+// [Cache secrets for your applications].
+//
+// To retrieve the previous version of a secret, use VersionStage and specify
+// AWSPREVIOUS. To revert to the previous version of a secret, call [UpdateSecretVersionStage].
+//
+// Secrets Manager generates a CloudTrail log entry when you call this action. Do
 // not include sensitive information in request parameters because it might be
-// logged. For more information, see Logging Secrets Manager events with CloudTrail (https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieve-ct-entries.html)
-// . Required permissions: secretsmanager:GetSecretValue . If the secret is
-// encrypted using a customer-managed key instead of the Amazon Web Services
-// managed key aws/secretsmanager , then you also need kms:Decrypt permissions for
-// that key. For more information, see IAM policy actions for Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_iam-permissions.html#reference_iam-permissions_actions)
-// and Authentication and access control in Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html)
-// .
+// logged. For more information, see [Logging Secrets Manager events with CloudTrail].
+//
+// Required permissions: secretsmanager:GetSecretValue . If the secret is encrypted
+// using a customer-managed key instead of the Amazon Web Services managed key
+// aws/secretsmanager , then you also need kms:Decrypt permissions for that key.
+// For more information, see [IAM policy actions for Secrets Manager]and [Authentication and access control in Secrets Manager].
+//
+// [Authentication and access control in Secrets Manager]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html
+// [Logging Secrets Manager events with CloudTrail]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieve-ct-entries.html
+// [UpdateSecretVersionStage]: https://docs.aws.amazon.com/cli/latest/reference/secretsmanager/update-secret-version-stage.html
+// [IAM policy actions for Secrets Manager]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_iam-permissions.html#reference_iam-permissions_actions
+// [Cache secrets for your applications]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieving-secrets.html
 func (c *Client) GetSecretValue(ctx context.Context, params *GetSecretValueInput, optFns ...func(*Options)) (*GetSecretValueOutput, error) {
 	if params == nil {
 		params = &GetSecretValueInput{}
@@ -47,10 +54,13 @@ func (c *Client) GetSecretValue(ctx context.Context, params *GetSecretValueInput
 
 type GetSecretValueInput struct {
 
-	// The ARN or name of the secret to retrieve. For an ARN, we recommend that you
-	// specify a complete ARN rather than a partial ARN. See Finding a secret from a
-	// partial ARN (https://docs.aws.amazon.com/secretsmanager/latest/userguide/troubleshoot.html#ARN_secretnamehyphen)
-	// .
+	// The ARN or name of the secret to retrieve. To retrieve a secret from another
+	// account, you must use an ARN.
+	//
+	// For an ARN, we recommend that you specify a complete ARN rather than a partial
+	// ARN. See [Finding a secret from a partial ARN].
+	//
+	// [Finding a secret from a partial ARN]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/troubleshoot.html#ARN_secretnamehyphen
 	//
 	// This member is required.
 	SecretId *string
@@ -58,15 +68,18 @@ type GetSecretValueInput struct {
 	// The unique identifier of the version of the secret to retrieve. If you include
 	// both this parameter and VersionStage , the two parameters must refer to the same
 	// secret version. If you don't specify either a VersionStage or VersionId , then
-	// Secrets Manager returns the AWSCURRENT version. This value is typically a
-	// UUID-type (https://wikipedia.org/wiki/Universally_unique_identifier) value with
-	// 32 hexadecimal digits.
+	// Secrets Manager returns the AWSCURRENT version.
+	//
+	// This value is typically a [UUID-type] value with 32 hexadecimal digits.
+	//
+	// [UUID-type]: https://wikipedia.org/wiki/Universally_unique_identifier
 	VersionId *string
 
-	// The staging label of the version of the secret to retrieve. Secrets Manager
-	// uses staging labels to keep track of different versions during the rotation
-	// process. If you include both this parameter and VersionId , the two parameters
-	// must refer to the same secret version. If you don't specify either a
+	// The staging label of the version of the secret to retrieve.
+	//
+	// Secrets Manager uses staging labels to keep track of different versions during
+	// the rotation process. If you include both this parameter and VersionId , the two
+	// parameters must refer to the same secret version. If you don't specify either a
 	// VersionStage or VersionId , Secrets Manager returns the AWSCURRENT version.
 	VersionStage *string
 
@@ -89,16 +102,26 @@ type GetSecretValueOutput struct {
 	// The decrypted secret value, if the secret value was originally provided as
 	// binary data in the form of a byte array. When you retrieve a SecretBinary using
 	// the HTTP API, the Python SDK, or the Amazon Web Services CLI, the value is
-	// Base64-encoded. Otherwise, it is not encoded. If the secret was created by using
-	// the Secrets Manager console, or if the secret value was originally provided as a
-	// string, then this field is omitted. The secret value appears in SecretString
-	// instead.
+	// Base64-encoded. Otherwise, it is not encoded.
+	//
+	// If the secret was created by using the Secrets Manager console, or if the
+	// secret value was originally provided as a string, then this field is omitted.
+	// The secret value appears in SecretString instead.
+	//
+	// Sensitive: This field contains sensitive information, so the service does not
+	// include it in CloudTrail log entries. If you create your own log entries, you
+	// must also avoid logging the information in this field.
 	SecretBinary []byte
 
 	// The decrypted secret value, if the secret value was originally provided as a
-	// string or through the Secrets Manager console. If this secret was created by
-	// using the console, then Secrets Manager stores the information as a JSON
-	// structure of key/value pairs.
+	// string or through the Secrets Manager console.
+	//
+	// If this secret was created by using the console, then Secrets Manager stores
+	// the information as a JSON structure of key/value pairs.
+	//
+	// Sensitive: This field contains sensitive information, so the service does not
+	// include it in CloudTrail log entries. If you create your own log entries, you
+	// must also avoid logging the information in this field.
 	SecretString *string
 
 	// The unique identifier of this version of the secret.
@@ -136,25 +159,28 @@ func (c *Client) addOperationGetSecretValueMiddlewares(stack *middleware.Stack, 
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -169,13 +195,19 @@ func (c *Client) addOperationGetSecretValueMiddlewares(stack *middleware.Stack, 
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpGetSecretValueValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGetSecretValue(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -188,6 +220,18 @@ func (c *Client) addOperationGetSecretValueMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

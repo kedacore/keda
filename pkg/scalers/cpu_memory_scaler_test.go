@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	v2 "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/api/core/v1"
@@ -18,7 +17,6 @@ type parseCPUMemoryMetadataTestData struct {
 	isError    bool
 }
 
-// A complete valid metadata example for reference
 var validCPUMemoryMetadata = map[string]string{
 	"type":  "Utilization",
 	"value": "50",
@@ -44,17 +42,17 @@ var testCPUMemoryMetadata = []parseCPUMemoryMetadataTestData{
 }
 
 func TestCPUMemoryParseMetadata(t *testing.T) {
-	for _, testData := range testCPUMemoryMetadata {
+	for i, testData := range testCPUMemoryMetadata {
 		config := &scalersconfig.ScalerConfig{
 			TriggerMetadata: testData.metadata,
 			MetricType:      testData.metricType,
 		}
-		_, err := parseResourceMetadata(config, logr.Discard())
+		_, err := parseResourceMetadata(config)
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+			t.Errorf("Test case %d: Expected success but got error: %v", i, err)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Errorf("Test case %d: Expected error but got success", i)
 		}
 	}
 }

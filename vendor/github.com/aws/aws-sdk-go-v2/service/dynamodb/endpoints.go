@@ -15,8 +15,10 @@ import (
 	smithy "github.com/aws/smithy-go"
 	smithyauth "github.com/aws/smithy-go/auth"
 	smithyendpoints "github.com/aws/smithy-go/endpoints"
+	"github.com/aws/smithy-go/endpoints/private/rulesfn"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
+	"github.com/aws/smithy-go/tracing"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"net/http"
 	"net/url"
@@ -217,6 +219,13 @@ func resolveBaseEndpoint(cfg aws.Config, o *Options) {
 	}
 }
 
+func bindRegion(region string) *string {
+	if region == "" {
+		return nil
+	}
+	return aws.String(endpoints.MapFIPSRegion(region))
+}
+
 // EndpointParameters provides the parameters that influence how endpoints are
 // resolved.
 type EndpointParameters struct {
@@ -254,6 +263,22 @@ type EndpointParameters struct {
 	//
 	// SDK::Endpoint
 	Endpoint *string
+
+	// The AWS AccountId used for the request.
+	//
+	// Parameter is
+	// required.
+	//
+	// AWS::Auth::AccountId
+	AccountId *string
+
+	// The AccountId Endpoint Mode.
+	//
+	// Parameter is
+	// required.
+	//
+	// AWS::Auth::AccountIdEndpointMode
+	AccountIdEndpointMode *string
 }
 
 // ValidateRequired validates required parameters are set.
@@ -280,6 +305,17 @@ func (p EndpointParameters) WithDefaults() EndpointParameters {
 		p.UseFIPS = ptr.Bool(false)
 	}
 	return p
+}
+
+type stringSlice []string
+
+func (s stringSlice) Get(i int) *string {
+	if i < 0 || i >= len(s) {
+		return nil
+	}
+
+	v := s[i]
+	return &v
 }
 
 // EndpointResolverV2 provides the interface for resolving service endpoints.
@@ -339,10 +375,92 @@ func (r *resolver) ResolveEndpoint(
 		if exprVal := awsrulesfn.GetPartition(_Region); exprVal != nil {
 			_PartitionResult := *exprVal
 			_ = _PartitionResult
+			if _Region == "local" {
+				if _UseFIPS == true {
+					return endpoint, fmt.Errorf("endpoint rule error, %s", "Invalid Configuration: FIPS and local endpoint are not supported")
+				}
+				if _UseDualStack == true {
+					return endpoint, fmt.Errorf("endpoint rule error, %s", "Invalid Configuration: Dualstack and local endpoint are not supported")
+				}
+				uriString := "http://localhost:8000"
+
+				uri, err := url.Parse(uriString)
+				if err != nil {
+					return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+				}
+
+				return smithyendpoints.Endpoint{
+					URI:     *uri,
+					Headers: http.Header{},
+					Properties: func() smithy.Properties {
+						var out smithy.Properties
+						smithyauth.SetAuthOptions(&out, []*smithyauth.Option{
+							{
+								SchemeID: "aws.auth#sigv4",
+								SignerProperties: func() smithy.Properties {
+									var sp smithy.Properties
+									smithyhttp.SetSigV4SigningRegion(&sp, "us-east-1")
+
+									smithyhttp.SetSigV4SigningName(&sp, "dynamodb")
+									smithyhttp.SetSigV4ASigningName(&sp, "dynamodb")
+									return sp
+								}(),
+							},
+						})
+						return out
+					}(),
+				}, nil
+			}
+			if exprVal := params.AccountIdEndpointMode; exprVal != nil {
+				_AccountIdEndpointMode := *exprVal
+				_ = _AccountIdEndpointMode
+				if _AccountIdEndpointMode == "required" {
+					if !(params.AccountId != nil) {
+						return endpoint, fmt.Errorf("endpoint rule error, %s", "AccountIdEndpointMode is required but no AccountID was provided or able to be loaded.")
+					}
+				}
+			}
+			if exprVal := params.AccountId; exprVal != nil {
+				_AccountId := *exprVal
+				_ = _AccountId
+				if _PartitionResult.Name == "aws" {
+					if !(_UseFIPS == true) {
+						if !(_UseDualStack == true) {
+							if !(rulesfn.IsValidHostLabel(_AccountId, false)) {
+								return endpoint, fmt.Errorf("endpoint rule error, %s", "Credentials-sourced account ID parameter is invalid")
+							}
+						}
+					}
+				}
+			}
 			if _UseFIPS == true {
 				if _UseDualStack == true {
-					if true == _PartitionResult.SupportsFIPS {
-						if true == _PartitionResult.SupportsDualStack {
+					if _PartitionResult.SupportsFIPS == true {
+						if _PartitionResult.SupportsDualStack == true {
+							if exprVal := params.AccountIdEndpointMode; exprVal != nil {
+								_AccountIdEndpointMode := *exprVal
+								_ = _AccountIdEndpointMode
+								if _AccountIdEndpointMode == "disabled" {
+									uriString := func() string {
+										var out strings.Builder
+										out.WriteString("https://dynamodb-fips.")
+										out.WriteString(_Region)
+										out.WriteString(".")
+										out.WriteString(_PartitionResult.DualStackDnsSuffix)
+										return out.String()
+									}()
+
+									uri, err := url.Parse(uriString)
+									if err != nil {
+										return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+									}
+
+									return smithyendpoints.Endpoint{
+										URI:     *uri,
+										Headers: http.Header{},
+									}, nil
+								}
+							}
 							uriString := func() string {
 								var out strings.Builder
 								out.WriteString("https://dynamodb-fips.")
@@ -369,11 +487,36 @@ func (r *resolver) ResolveEndpoint(
 			if _UseFIPS == true {
 				if _PartitionResult.SupportsFIPS == true {
 					if _PartitionResult.Name == "aws-us-gov" {
+						if exprVal := params.AccountIdEndpointMode; exprVal != nil {
+							_AccountIdEndpointMode := *exprVal
+							_ = _AccountIdEndpointMode
+							if _AccountIdEndpointMode == "disabled" {
+								uriString := func() string {
+									var out strings.Builder
+									out.WriteString("https://dynamodb.")
+									out.WriteString(_Region)
+									out.WriteString(".")
+									out.WriteString(_PartitionResult.DnsSuffix)
+									return out.String()
+								}()
+
+								uri, err := url.Parse(uriString)
+								if err != nil {
+									return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+								}
+
+								return smithyendpoints.Endpoint{
+									URI:     *uri,
+									Headers: http.Header{},
+								}, nil
+							}
+						}
 						uriString := func() string {
 							var out strings.Builder
 							out.WriteString("https://dynamodb.")
 							out.WriteString(_Region)
-							out.WriteString(".amazonaws.com")
+							out.WriteString(".")
+							out.WriteString(_PartitionResult.DnsSuffix)
 							return out.String()
 						}()
 
@@ -386,6 +529,30 @@ func (r *resolver) ResolveEndpoint(
 							URI:     *uri,
 							Headers: http.Header{},
 						}, nil
+					}
+					if exprVal := params.AccountIdEndpointMode; exprVal != nil {
+						_AccountIdEndpointMode := *exprVal
+						_ = _AccountIdEndpointMode
+						if _AccountIdEndpointMode == "disabled" {
+							uriString := func() string {
+								var out strings.Builder
+								out.WriteString("https://dynamodb-fips.")
+								out.WriteString(_Region)
+								out.WriteString(".")
+								out.WriteString(_PartitionResult.DnsSuffix)
+								return out.String()
+							}()
+
+							uri, err := url.Parse(uriString)
+							if err != nil {
+								return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+							}
+
+							return smithyendpoints.Endpoint{
+								URI:     *uri,
+								Headers: http.Header{},
+							}, nil
+						}
 					}
 					uriString := func() string {
 						var out strings.Builder
@@ -409,7 +576,31 @@ func (r *resolver) ResolveEndpoint(
 				return endpoint, fmt.Errorf("endpoint rule error, %s", "FIPS is enabled but this partition does not support FIPS")
 			}
 			if _UseDualStack == true {
-				if true == _PartitionResult.SupportsDualStack {
+				if _PartitionResult.SupportsDualStack == true {
+					if exprVal := params.AccountIdEndpointMode; exprVal != nil {
+						_AccountIdEndpointMode := *exprVal
+						_ = _AccountIdEndpointMode
+						if _AccountIdEndpointMode == "disabled" {
+							uriString := func() string {
+								var out strings.Builder
+								out.WriteString("https://dynamodb.")
+								out.WriteString(_Region)
+								out.WriteString(".")
+								out.WriteString(_PartitionResult.DualStackDnsSuffix)
+								return out.String()
+							}()
+
+							uri, err := url.Parse(uriString)
+							if err != nil {
+								return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+							}
+
+							return smithyendpoints.Endpoint{
+								URI:     *uri,
+								Headers: http.Header{},
+							}, nil
+						}
+					}
 					uriString := func() string {
 						var out strings.Builder
 						out.WriteString("https://dynamodb.")
@@ -431,35 +622,59 @@ func (r *resolver) ResolveEndpoint(
 				}
 				return endpoint, fmt.Errorf("endpoint rule error, %s", "DualStack is enabled but this partition does not support DualStack")
 			}
-			if _Region == "local" {
-				uriString := "http://localhost:8000"
+			if exprVal := params.AccountIdEndpointMode; exprVal != nil {
+				_AccountIdEndpointMode := *exprVal
+				_ = _AccountIdEndpointMode
+				if _AccountIdEndpointMode == "disabled" {
+					uriString := func() string {
+						var out strings.Builder
+						out.WriteString("https://dynamodb.")
+						out.WriteString(_Region)
+						out.WriteString(".")
+						out.WriteString(_PartitionResult.DnsSuffix)
+						return out.String()
+					}()
 
-				uri, err := url.Parse(uriString)
-				if err != nil {
-					return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+					uri, err := url.Parse(uriString)
+					if err != nil {
+						return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+					}
+
+					return smithyendpoints.Endpoint{
+						URI:     *uri,
+						Headers: http.Header{},
+					}, nil
 				}
+			}
+			if exprVal := params.AccountId; exprVal != nil {
+				_AccountId := *exprVal
+				_ = _AccountId
+				if _PartitionResult.Name == "aws" {
+					if !(_UseFIPS == true) {
+						if !(_UseDualStack == true) {
+							uriString := func() string {
+								var out strings.Builder
+								out.WriteString("https://")
+								out.WriteString(_AccountId)
+								out.WriteString(".ddb.")
+								out.WriteString(_Region)
+								out.WriteString(".")
+								out.WriteString(_PartitionResult.DnsSuffix)
+								return out.String()
+							}()
 
-				return smithyendpoints.Endpoint{
-					URI:     *uri,
-					Headers: http.Header{},
-					Properties: func() smithy.Properties {
-						var out smithy.Properties
-						smithyauth.SetAuthOptions(&out, []*smithyauth.Option{
-							{
-								SchemeID: "aws.auth#sigv4",
-								SignerProperties: func() smithy.Properties {
-									var sp smithy.Properties
-									smithyhttp.SetSigV4SigningName(&sp, "dynamodb")
-									smithyhttp.SetSigV4ASigningName(&sp, "dynamodb")
+							uri, err := url.Parse(uriString)
+							if err != nil {
+								return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+							}
 
-									smithyhttp.SetSigV4SigningRegion(&sp, "us-east-1")
-									return sp
-								}(),
-							},
-						})
-						return out
-					}(),
-				}, nil
+							return smithyendpoints.Endpoint{
+								URI:     *uri,
+								Headers: http.Header{},
+							}, nil
+						}
+					}
+				}
 			}
 			uriString := func() string {
 				var out strings.Builder
@@ -489,13 +704,14 @@ type endpointParamsBinder interface {
 	bindEndpointParams(*EndpointParameters)
 }
 
-func bindEndpointParams(input interface{}, options Options) *EndpointParameters {
+func bindEndpointParams(ctx context.Context, input interface{}, options Options) *EndpointParameters {
 	params := &EndpointParameters{}
 
-	params.Region = aws.String(endpoints.MapFIPSRegion(options.Region))
+	params.Region = bindRegion(options.Region)
 	params.UseDualStack = aws.Bool(options.EndpointOptions.UseDualStackEndpoint == aws.DualStackEndpointStateEnabled)
 	params.UseFIPS = aws.Bool(options.EndpointOptions.UseFIPSEndpoint == aws.FIPSEndpointStateEnabled)
 	params.Endpoint = options.BaseEndpoint
+	params.AccountId = resolveAccountID(getIdentity(ctx), options.AccountIDEndpointMode)
 
 	if b, ok := input.(endpointParamsBinder); ok {
 		b.bindEndpointParams(params)
@@ -515,8 +731,15 @@ func (*resolveEndpointV2Middleware) ID() string {
 func (m *resolveEndpointV2Middleware) HandleFinalize(ctx context.Context, in middleware.FinalizeInput, next middleware.FinalizeHandler) (
 	out middleware.FinalizeOutput, metadata middleware.Metadata, err error,
 ) {
+	_, span := tracing.StartSpan(ctx, "ResolveEndpoint")
+	defer span.End()
+
 	if awsmiddleware.GetRequiresLegacyEndpoints(ctx) {
 		return next.HandleFinalize(ctx, in)
+	}
+
+	if err := checkAccountID(getIdentity(ctx), m.options.AccountIDEndpointMode); err != nil {
+		return out, metadata, fmt.Errorf("invalid accountID set: %w", err)
 	}
 
 	req, ok := in.Request.(*smithyhttp.Request)
@@ -528,11 +751,16 @@ func (m *resolveEndpointV2Middleware) HandleFinalize(ctx context.Context, in mid
 		return out, metadata, fmt.Errorf("expected endpoint resolver to not be nil")
 	}
 
-	params := bindEndpointParams(getOperationInput(ctx), m.options)
-	endpt, err := m.options.EndpointResolverV2.ResolveEndpoint(ctx, *params)
+	params := bindEndpointParams(ctx, getOperationInput(ctx), m.options)
+	endpt, err := timeOperationMetric(ctx, "client.call.resolve_endpoint_duration",
+		func() (smithyendpoints.Endpoint, error) {
+			return m.options.EndpointResolverV2.ResolveEndpoint(ctx, *params)
+		})
 	if err != nil {
 		return out, metadata, fmt.Errorf("failed to resolve service endpoint, %w", err)
 	}
+
+	span.SetProperty("client.call.resolved_endpoint", endpt.URI.String())
 
 	if endpt.URI.RawPath == "" && req.URL.RawPath != "" {
 		endpt.URI.RawPath = endpt.URI.Path
@@ -555,5 +783,6 @@ func (m *resolveEndpointV2Middleware) HandleFinalize(ctx context.Context, in mid
 		rscheme.SignerProperties.SetAll(&o.SignerProperties)
 	}
 
+	span.End()
 	return next.HandleFinalize(ctx, in)
 }

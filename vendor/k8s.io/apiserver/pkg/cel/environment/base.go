@@ -20,31 +20,45 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	"github.com/google/cel-go/cel"
+	"github.com/google/cel-go/checker"
 	"github.com/google/cel-go/ext"
+	"github.com/google/cel-go/interpreter"
 	"golang.org/x/sync/singleflight"
 
 	"k8s.io/apimachinery/pkg/util/version"
 	celconfig "k8s.io/apiserver/pkg/apis/cel"
 	"k8s.io/apiserver/pkg/cel/library"
+	genericfeatures "k8s.io/apiserver/pkg/features"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	utilversion "k8s.io/apiserver/pkg/util/version"
 )
 
 // DefaultCompatibilityVersion returns a default compatibility version for use with EnvSet
 // that guarantees compatibility with CEL features/libraries/parameters understood by
-// an n-1 version
+// the api server min compatibility version
 //
-// This default will be set to no more than n-1 the current Kubernetes major.minor version.
+// This default will be set to no more than the current Kubernetes major.minor version.
 //
-// Note that a default version number less than n-1 indicates a wider range of version
-// compatibility than strictly required for rollback. A wide range of compatibility is
-// desirable because it means that CEL expressions are portable across a wider range
-// of Kubernetes versions.
+// Note that a default version number less than n-1 the current Kubernetes major.minor version
+// indicates a wider range of version compatibility than strictly required for rollback.
+// A wide range of compatibility is desirable because it means that CEL expressions are portable
+// across a wider range of Kubernetes versions.
+// A default version number equal to the current Kubernetes major.minor version
+// indicates fast forward CEL features that can be used when rollback is no longer needed.
 func DefaultCompatibilityVersion() *version.Version {
-	return version.MajorMinor(1, 27)
+	effectiveVer := utilversion.DefaultComponentGlobalsRegistry.EffectiveVersionFor(utilversion.DefaultKubeComponent)
+	if effectiveVer == nil {
+		effectiveVer = utilversion.DefaultKubeEffectiveVersion()
+	}
+	return effectiveVer.MinCompatibilityVersion()
 }
 
-var baseOpts = []VersionedOptions{
+var baseOpts = append(baseOptsWithoutStrictCost, StrictCostOpt)
+
+var baseOptsWithoutStrictCost = []VersionedOptions{
 	{
 		// CEL epoch was actually 1.23, but we artificially set it to 1.0 because these
 		// options should always be present.
@@ -57,14 +71,21 @@ var baseOpts = []VersionedOptions{
 			cel.EagerlyValidateDeclarations(true),
 			cel.DefaultUTCTimeZone(true),
 
-			ext.Strings(ext.StringsVersion(0)),
 			library.URLs(),
 			library.Regex(),
 			library.Lists(),
+
+			// cel-go v0.17.7 change the cost of has() from 0 to 1, but also provided the CostEstimatorOptions option to preserve the old behavior, so we enabled it at the same time we bumped our cel version to v0.17.7.
+			// Since it is a regression fix, we apply it uniformly to all code use v0.17.7.
+			cel.CostEstimatorOptions(checker.PresenceTestHasCost(false)),
 		},
 		ProgramOptions: []cel.ProgramOption{
 			cel.EvalOptions(cel.OptOptimize, cel.OptTrackCost),
 			cel.CostLimit(celconfig.PerCallLimit),
+
+			// cel-go v0.17.7 change the cost of has() from 0 to 1, but also provided the CostEstimatorOptions option to preserve the old behavior, so we enabled it at the same time we bumped our cel version to v0.17.7.
+			// Since it is a regression fix, we apply it uniformly to all code use v0.17.7.
+			cel.CostTrackerOptions(interpreter.PresenceTestHasCost(false)),
 		},
 	},
 	{
@@ -81,7 +102,93 @@ var baseOpts = []VersionedOptions{
 			library.Quantity(),
 		},
 	},
-	// TODO: switch to ext.Strings version 2 once format() is fixed to work with HomogeneousAggregateLiterals.
+	// add the new validator in 1.29
+	{
+		IntroducedVersion: version.MajorMinor(1, 29),
+		EnvOptions: []cel.EnvOption{
+			cel.ASTValidators(
+				cel.ValidateDurationLiterals(),
+				cel.ValidateTimestampLiterals(),
+				cel.ValidateRegexLiterals(),
+				cel.ValidateHomogeneousAggregateLiterals(),
+			),
+		},
+	},
+	// String library
+	{
+		IntroducedVersion: version.MajorMinor(1, 0),
+		RemovedVersion:    version.MajorMinor(1, 29),
+		EnvOptions: []cel.EnvOption{
+			ext.Strings(ext.StringsVersion(0)),
+		},
+	},
+	{
+		IntroducedVersion: version.MajorMinor(1, 29),
+		EnvOptions: []cel.EnvOption{
+			ext.Strings(ext.StringsVersion(2)),
+		},
+	},
+	// Set library
+	{
+		IntroducedVersion: version.MajorMinor(1, 29),
+		EnvOptions: []cel.EnvOption{
+			ext.Sets(),
+		},
+	},
+	{
+		IntroducedVersion: version.MajorMinor(1, 30),
+		EnvOptions: []cel.EnvOption{
+			library.IP(),
+			library.CIDR(),
+		},
+	},
+	// Format Library
+	{
+		IntroducedVersion: version.MajorMinor(1, 31),
+		EnvOptions: []cel.EnvOption{
+			library.Format(),
+		},
+	},
+	// Authz selectors
+	{
+		IntroducedVersion: version.MajorMinor(1, 31),
+		FeatureEnabled: func() bool {
+			enabled := utilfeature.DefaultFeatureGate.Enabled(genericfeatures.AuthorizeWithSelectors)
+			authzSelectorsLibraryInit.Do(func() {
+				// Record the first time feature enablement was checked for this library.
+				// This is checked from integration tests to ensure no cached cel envs
+				// are constructed before feature enablement is effectively set.
+				authzSelectorsLibraryEnabled.Store(enabled)
+				// Uncomment to debug where the first initialization is coming from if needed.
+				// debug.PrintStack()
+			})
+			return enabled
+		},
+		EnvOptions: []cel.EnvOption{
+			library.AuthzSelectors(),
+		},
+	},
+}
+
+var (
+	authzSelectorsLibraryInit    sync.Once
+	authzSelectorsLibraryEnabled atomic.Value
+)
+
+// AuthzSelectorsLibraryEnabled returns whether the AuthzSelectors library was enabled when it was constructed.
+// If it has not been contructed yet, this returns `false, false`.
+// This is solely for the benefit of the integration tests making sure feature gates get correctly parsed before AuthzSelector ever has to check for enablement.
+func AuthzSelectorsLibraryEnabled() (enabled, constructed bool) {
+	enabled, constructed = authzSelectorsLibraryEnabled.Load().(bool)
+	return
+}
+
+var StrictCostOpt = VersionedOptions{
+	// This is to configure the cost calculation for extended libraries
+	IntroducedVersion: version.MajorMinor(1, 0),
+	ProgramOptions: []cel.ProgramOption{
+		cel.CostTracking(&library.CostEstimator{}),
+	},
 }
 
 // MustBaseEnvSet returns the common CEL base environments for Kubernetes for Version, or panics
@@ -93,7 +200,8 @@ var baseOpts = []VersionedOptions{
 // The returned environment contains no CEL variable definitions or custom type declarations and
 // should be extended to construct environments with the appropriate variable definitions,
 // type declarations and any other needed configuration.
-func MustBaseEnvSet(ver *version.Version) *EnvSet {
+// strictCost is used to determine whether to enforce strict cost calculation for CEL expressions.
+func MustBaseEnvSet(ver *version.Version, strictCost bool) *EnvSet {
 	if ver == nil {
 		panic("version must be non-nil")
 	}
@@ -101,19 +209,33 @@ func MustBaseEnvSet(ver *version.Version) *EnvSet {
 		panic(fmt.Sprintf("version must contain an major and minor component, but got: %s", ver.String()))
 	}
 	key := strconv.FormatUint(uint64(ver.Major()), 10) + "." + strconv.FormatUint(uint64(ver.Minor()), 10)
-	if entry, ok := baseEnvs.Load(key); ok {
-		return entry.(*EnvSet)
+	var entry interface{}
+	if strictCost {
+		if entry, ok := baseEnvs.Load(key); ok {
+			return entry.(*EnvSet)
+		}
+		entry, _, _ = baseEnvsSingleflight.Do(key, func() (interface{}, error) {
+			entry := mustNewEnvSet(ver, baseOpts)
+			baseEnvs.Store(key, entry)
+			return entry, nil
+		})
+	} else {
+		if entry, ok := baseEnvsWithOption.Load(key); ok {
+			return entry.(*EnvSet)
+		}
+		entry, _, _ = baseEnvsWithOptionSingleflight.Do(key, func() (interface{}, error) {
+			entry := mustNewEnvSet(ver, baseOptsWithoutStrictCost)
+			baseEnvsWithOption.Store(key, entry)
+			return entry, nil
+		})
 	}
 
-	entry, _, _ := baseEnvsSingleflight.Do(key, func() (interface{}, error) {
-		entry := mustNewEnvSet(ver, baseOpts)
-		baseEnvs.Store(key, entry)
-		return entry, nil
-	})
 	return entry.(*EnvSet)
 }
 
 var (
-	baseEnvs             = sync.Map{}
-	baseEnvsSingleflight = &singleflight.Group{}
+	baseEnvs                       = sync.Map{}
+	baseEnvsWithOption             = sync.Map{}
+	baseEnvsSingleflight           = &singleflight.Group{}
+	baseEnvsWithOptionSingleflight = &singleflight.Group{}
 )

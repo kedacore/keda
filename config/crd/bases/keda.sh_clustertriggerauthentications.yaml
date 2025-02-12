@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: clustertriggerauthentications.keda.sh
 spec:
   group: keda.sh
@@ -161,12 +161,10 @@ spec:
                       provider:
                         description: PodIdentityProvider contains the list of providers
                         enum:
-                        - azure
                         - azure-workload
                         - gcp
                         - aws
                         - aws-eks
-                        - aws-kiam
                         - none
                         type: string
                       roleArn:
@@ -184,6 +182,8 @@ spec:
                         name:
                           type: string
                         parameter:
+                          type: string
+                        secretKey:
                           type: string
                         versionId:
                           type: string
@@ -271,12 +271,10 @@ spec:
                       provider:
                         description: PodIdentityProvider contains the list of providers
                         enum:
-                        - azure
                         - azure-workload
                         - gcp
                         - aws
                         - aws-eks
-                        - aws-kiam
                         - none
                         type: string
                       roleArn:
@@ -395,12 +393,10 @@ spec:
                       provider:
                         description: PodIdentityProvider contains the list of providers
                         enum:
-                        - azure
                         - azure-workload
                         - gcp
                         - aws
                         - aws-eks
-                        - aws-kiam
                         - none
                         type: string
                       roleArn:
@@ -522,12 +518,10 @@ spec:
                   provider:
                     description: PodIdentityProvider contains the list of providers
                     enum:
-                    - azure
                     - azure-workload
                     - gcp
                     - aws
                     - aws-eks
-                    - aws-kiam
                     - none
                     type: string
                   roleArn:

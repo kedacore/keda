@@ -6,6 +6,7 @@ package scaling_modifiers_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -162,12 +163,14 @@ spec:
       url: "{{.MetricsServerEndpoint}}"
       valueLocation: 'value'
       method: "query"
+    metricType: "AverageValue"
     authenticationRef:
       name: {{.TriggerAuthName}}
   - type: kubernetes-workload
     name: kw_trig
     metadata:
       podSelector: pod=workload-test
+    metricType: "AverageValue"
 `
 
 	soComplexFormula = `
@@ -204,12 +207,14 @@ spec:
       url: "{{.MetricsServerEndpoint}}"
       valueLocation: 'value'
       method: "query"
+    metricType: "AverageValue"
     authenticationRef:
       name: {{.TriggerAuthName}}
   - type: kubernetes-workload
     name: kw_trig
     metadata:
       podSelector: pod=workload-test
+    metricType: "AverageValue"
 `
 
 	workloadDeploymentTemplate = `
@@ -312,6 +317,8 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 5, 12, 10),
 		"replica count should be %d after 2 minutes", 5)
+	time.Sleep(45 * time.Second) // waiting for passing failureThreshold
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 5, 60)
 
 	// ensure state returns to normal after error resolved and triggers are healthy
 	_, err = ExecuteCommand(fmt.Sprintf("kubectl scale deployment/%s --replicas=1 -n %s", metricsServerDeploymentName, namespace))

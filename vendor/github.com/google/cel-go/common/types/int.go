@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/common/types/traits"
 
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	structpb "google.golang.org/protobuf/types/known/structpb"
@@ -41,16 +40,6 @@ const (
 )
 
 var (
-	// IntType singleton.
-	IntType = NewTypeValue("int",
-		traits.AdderType,
-		traits.ComparerType,
-		traits.DividerType,
-		traits.ModderType,
-		traits.MultiplierType,
-		traits.NegatorType,
-		traits.SubtractorType)
-
 	// int32WrapperType reflected type for protobuf int32 wrapper type.
 	int32WrapperType = reflect.TypeOf(&wrapperspb.Int32Value{})
 
@@ -97,6 +86,18 @@ func (i Int) ConvertToNative(typeDesc reflect.Type) (any, error) {
 		// the net effect with respect to proto-assignment is handled correctly by the reflection
 		// Convert method.
 		v, err := int64ToInt32Checked(int64(i))
+		if err != nil {
+			return nil, err
+		}
+		return reflect.ValueOf(v).Convert(typeDesc).Interface(), nil
+	case reflect.Int8:
+		v, err := int64ToInt8Checked(int64(i))
+		if err != nil {
+			return nil, err
+		}
+		return reflect.ValueOf(v).Convert(typeDesc).Interface(), nil
+	case reflect.Int16:
+		v, err := int64ToInt16Checked(int64(i))
 		if err != nil {
 			return nil, err
 		}

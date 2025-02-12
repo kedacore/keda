@@ -6,13 +6,13 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/amp/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Describes an alert manager definition.
+// Retrieves the full information about the alert manager definition for a
+// workspace.
 func (c *Client) DescribeAlertManagerDefinition(ctx context.Context, params *DescribeAlertManagerDefinitionInput, optFns ...func(*Options)) (*DescribeAlertManagerDefinitionOutput, error) {
 	if params == nil {
 		params = &DescribeAlertManagerDefinitionInput{}
@@ -31,7 +31,7 @@ func (c *Client) DescribeAlertManagerDefinition(ctx context.Context, params *Des
 // Represents the input of a DescribeAlertManagerDefinition operation.
 type DescribeAlertManagerDefinitionInput struct {
 
-	// The ID of the workspace to describe.
+	// The ID of the workspace to retrieve the alert manager definition from.
 	//
 	// This member is required.
 	WorkspaceId *string
@@ -42,7 +42,7 @@ type DescribeAlertManagerDefinitionInput struct {
 // Represents the output of a DescribeAlertManagerDefinition operation.
 type DescribeAlertManagerDefinitionOutput struct {
 
-	// The properties of the selected workspace's alert manager definition.
+	// The alert manager definition.
 	//
 	// This member is required.
 	AlertManagerDefinition *types.AlertManagerDefinitionDescription
@@ -75,25 +75,28 @@ func (c *Client) addOperationDescribeAlertManagerDefinitionMiddlewares(stack *mi
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -108,13 +111,19 @@ func (c *Client) addOperationDescribeAlertManagerDefinitionMiddlewares(stack *mi
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDescribeAlertManagerDefinitionValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeAlertManagerDefinition(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -127,6 +136,18 @@ func (c *Client) addOperationDescribeAlertManagerDefinitionMiddlewares(stack *mi
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

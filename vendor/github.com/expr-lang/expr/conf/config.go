@@ -9,20 +9,22 @@ import (
 	"github.com/expr-lang/expr/vm/runtime"
 )
 
+type FunctionsTable map[string]*builtin.Function
+
 type Config struct {
 	Env         any
 	Types       TypesTable
 	MapEnv      bool
 	DefaultType reflect.Type
-	Operators   OperatorsTable
 	Expect      reflect.Kind
 	ExpectAny   bool
 	Optimize    bool
 	Strict      bool
+	Profile     bool
 	ConstFns    map[string]reflect.Value
 	Visitors    []ast.Visitor
-	Functions   map[string]*builtin.Function
-	Builtins    map[string]*builtin.Function
+	Functions   FunctionsTable
+	Builtins    FunctionsTable
 	Disabled    map[string]bool // disabled builtins
 }
 
@@ -30,7 +32,7 @@ type Config struct {
 func CreateNew() *Config {
 	c := &Config{
 		Optimize:  true,
-		Operators: make(map[string][]string),
+		Types:     make(TypesTable),
 		ConstFns:  make(map[string]reflect.Value),
 		Functions: make(map[string]*builtin.Function),
 		Builtins:  make(map[string]*builtin.Function),
@@ -61,14 +63,13 @@ func (c *Config) WithEnv(env any) {
 	}
 
 	c.Env = env
-	c.Types = CreateTypesTable(env)
+	types := CreateTypesTable(env)
+	for name, t := range types {
+		c.Types[name] = t
+	}
 	c.MapEnv = mapEnv
 	c.DefaultType = mapValueType
 	c.Strict = true
-}
-
-func (c *Config) Operator(operator string, fns ...string) {
-	c.Operators[operator] = append(c.Operators[operator], fns...)
 }
 
 func (c *Config) ConstExpr(name string) {
@@ -82,20 +83,14 @@ func (c *Config) ConstExpr(name string) {
 	c.ConstFns[name] = fn
 }
 
+type Checker interface {
+	Check()
+}
+
 func (c *Config) Check() {
-	for operator, fns := range c.Operators {
-		for _, fn := range fns {
-			fnType, ok := c.Types[fn]
-			if !ok || fnType.Type.Kind() != reflect.Func {
-				panic(fmt.Errorf("function %s for %s operator does not exist in the environment", fn, operator))
-			}
-			requiredNumIn := 2
-			if fnType.Method {
-				requiredNumIn = 3 // As first argument of method is receiver.
-			}
-			if fnType.Type.NumIn() != requiredNumIn || fnType.Type.NumOut() != 1 {
-				panic(fmt.Errorf("function %s for %s operator does not have a correct signature", fn, operator))
-			}
+	for _, v := range c.Visitors {
+		if c, ok := v.(Checker); ok {
+			c.Check()
 		}
 	}
 }

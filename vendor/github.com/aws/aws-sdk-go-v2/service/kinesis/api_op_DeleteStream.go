@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -15,18 +14,27 @@ import (
 // Deletes a Kinesis data stream and all its shards and data. You must shut down
 // any applications that are operating on the stream before you delete the stream.
 // If an application attempts to operate on a deleted stream, it receives the
-// exception ResourceNotFoundException . When invoking this API, you must use
-// either the StreamARN or the StreamName parameter, or both. It is recommended
-// that you use the StreamARN input parameter when you invoke this API. If the
-// stream is in the ACTIVE state, you can delete it. After a DeleteStream request,
-// the specified stream is in the DELETING state until Kinesis Data Streams
-// completes the deletion. Note: Kinesis Data Streams might continue to accept data
-// read and write operations, such as PutRecord , PutRecords , and GetRecords , on
-// a stream in the DELETING state until the stream deletion is complete. When you
-// delete a stream, any shards in that stream are also deleted, and any tags are
-// dissociated from the stream. You can use the DescribeStreamSummary operation to
-// check the state of the stream, which is returned in StreamStatus . DeleteStream
-// has a limit of five transactions per second per account.
+// exception ResourceNotFoundException .
+//
+// When invoking this API, you must use either the StreamARN or the StreamName
+// parameter, or both. It is recommended that you use the StreamARN input
+// parameter when you invoke this API.
+//
+// If the stream is in the ACTIVE state, you can delete it. After a DeleteStream
+// request, the specified stream is in the DELETING state until Kinesis Data
+// Streams completes the deletion.
+//
+// Note: Kinesis Data Streams might continue to accept data read and write
+// operations, such as PutRecord, PutRecords, and GetRecords, on a stream in the DELETING state until the
+// stream deletion is complete.
+//
+// When you delete a stream, any shards in that stream are also deleted, and any
+// tags are dissociated from the stream.
+//
+// You can use the DescribeStreamSummary operation to check the state of the stream, which is returned
+// in StreamStatus .
+//
+// DeleteStreamhas a limit of five transactions per second per account.
 func (c *Client) DeleteStream(ctx context.Context, params *DeleteStreamInput, optFns ...func(*Options)) (*DeleteStreamOutput, error) {
 	if params == nil {
 		params = &DeleteStreamInput{}
@@ -42,7 +50,7 @@ func (c *Client) DeleteStream(ctx context.Context, params *DeleteStreamInput, op
 	return out, nil
 }
 
-// Represents the input for DeleteStream .
+// Represents the input for DeleteStream.
 type DeleteStreamInput struct {
 
 	// If this parameter is unset ( null ) or if you set it to false , and the stream
@@ -60,6 +68,7 @@ type DeleteStreamInput struct {
 }
 
 func (in *DeleteStreamInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.StreamARN = in.StreamARN
 	p.OperationType = ptr.String("control")
 }
@@ -93,25 +102,28 @@ func (c *Client) addOperationDeleteStreamMiddlewares(stack *middleware.Stack, op
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -126,10 +138,16 @@ func (c *Client) addOperationDeleteStreamMiddlewares(stack *middleware.Stack, op
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteStream(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -142,6 +160,18 @@ func (c *Client) addOperationDeleteStreamMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

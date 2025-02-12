@@ -19,10 +19,16 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
 
-	az "github.com/Azure/go-autorest/autorest/azure"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	azcloud "github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -39,15 +45,44 @@ const (
 	activationTargetValueName = "activationTargetValue"
 )
 
+// monitorInfo to create metric request
+type monitorInfo struct {
+	ResourceURI         string
+	TenantID            string
+	SubscriptionID      string
+	ResourceGroupName   string
+	Name                *string
+	Namespace           *string
+	Filter              *string
+	AggregationInterval string
+	AggregationType     *azquery.AggregationType
+	ClientID            string
+	ClientPassword      string
+	Cloud               azcloud.Configuration
+}
+
+func (m monitorInfo) MetricResourceURI() string {
+	resourceInfo := strings.Split(m.ResourceURI, "/")
+	resourceProviderNamespace := resourceInfo[0]
+	resourceType := resourceInfo[1]
+	resourceName := resourceInfo[2]
+	return fmt.Sprintf("/subscriptions/%s/resourceGroups/%s/providers/%s/%s/%s",
+		m.SubscriptionID,
+		m.ResourceGroupName,
+		resourceProviderNamespace,
+		resourceType,
+		resourceName)
+}
+
 type azureMonitorScaler struct {
-	metricType  v2.MetricTargetType
-	metadata    *azureMonitorMetadata
-	podIdentity kedav1alpha1.AuthPodIdentity
-	logger      logr.Logger
+	metricType v2.MetricTargetType
+	metadata   *azureMonitorMetadata
+	logger     logr.Logger
+	client     *azquery.MetricsClient
 }
 
 type azureMonitorMetadata struct {
-	azureMonitorInfo      azure.MonitorInfo
+	azureMonitorInfo      monitorInfo
 	targetValue           float64
 	activationTargetValue float64
 	triggerIndex          int
@@ -67,17 +102,47 @@ func NewAzureMonitorScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing azure monitor metadata: %w", err)
 	}
 
+	client, err := CreateAzureMetricsClient(config, meta, logger)
+	if err != nil {
+		return nil, err
+	}
 	return &azureMonitorScaler{
-		metricType:  metricType,
-		metadata:    meta,
-		podIdentity: config.PodIdentity,
-		logger:      logger,
+		metricType: metricType,
+		metadata:   meta,
+		logger:     logger,
+		client:     client,
 	}, nil
+}
+
+func CreateAzureMetricsClient(config *scalersconfig.ScalerConfig, meta *azureMonitorMetadata, logger logr.Logger) (*azquery.MetricsClient, error) {
+	var creds azcore.TokenCredential
+	var err error
+	switch config.PodIdentity.Provider {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		creds, err = azidentity.NewClientSecretCredential(meta.azureMonitorInfo.TenantID, meta.azureMonitorInfo.ClientID, meta.azureMonitorInfo.ClientPassword, nil)
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		creds, err = azure.NewChainedCredential(logger, config.PodIdentity)
+	default:
+		return nil, fmt.Errorf("azure monitor does not support pod identity provider - %s", config.PodIdentity.Provider)
+	}
+	if err != nil {
+		return nil, err
+	}
+	client, err := azquery.NewMetricsClient(creds, &azquery.MetricsClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false),
+			Cloud:     meta.azureMonitorInfo.Cloud,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }
 
 func parseAzureMonitorMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azureMonitorMetadata, error) {
 	meta := azureMonitorMetadata{
-		azureMonitorInfo: azure.MonitorInfo{},
+		azureMonitorInfo: monitorInfo{},
 	}
 
 	if val, ok := config.TriggerMetadata[targetValueName]; ok && val != "" {
@@ -123,19 +188,24 @@ func parseAzureMonitorMetadata(config *scalersconfig.ScalerConfig, logger logr.L
 	}
 
 	if val, ok := config.TriggerMetadata[azureMonitorMetricName]; ok && val != "" {
-		meta.azureMonitorInfo.Name = val
+		meta.azureMonitorInfo.Name = &val
 	} else {
 		return nil, fmt.Errorf("no metricName given")
 	}
 
 	if val, ok := config.TriggerMetadata["metricAggregationType"]; ok && val != "" {
-		meta.azureMonitorInfo.AggregationType = val
+		aggregationType := azquery.AggregationType(val)
+		allowedTypes := azquery.PossibleAggregationTypeValues()
+		if !slices.Contains(allowedTypes, aggregationType) {
+			return nil, fmt.Errorf("invalid metricAggregationType given")
+		}
+		meta.azureMonitorInfo.AggregationType = &aggregationType
 	} else {
 		return nil, fmt.Errorf("no metricAggregationType given")
 	}
 
 	if val, ok := config.TriggerMetadata["metricFilter"]; ok && val != "" {
-		meta.azureMonitorInfo.Filter = val
+		meta.azureMonitorInfo.Filter = &val
 	}
 
 	if val, ok := config.TriggerMetadata["metricAggregationInterval"]; ok && val != "" {
@@ -161,7 +231,7 @@ func parseAzureMonitorMetadata(config *scalersconfig.ScalerConfig, logger logr.L
 	}
 
 	if val, ok := config.TriggerMetadata["metricNamespace"]; ok {
-		meta.azureMonitorInfo.Namespace = val
+		meta.azureMonitorInfo.Namespace = &val
 	}
 
 	clientID, clientPassword, err := parseAzurePodIdentityParams(config)
@@ -171,24 +241,35 @@ func parseAzureMonitorMetadata(config *scalersconfig.ScalerConfig, logger logr.L
 	meta.azureMonitorInfo.ClientID = clientID
 	meta.azureMonitorInfo.ClientPassword = clientPassword
 
+	cloud, err := parseCloud(config.TriggerMetadata)
+	if err != nil {
+		return nil, err
+	}
+	meta.azureMonitorInfo.Cloud = cloud
+
 	meta.triggerIndex = config.TriggerIndex
-
-	azureResourceManagerEndpointProvider := func(env az.Environment) (string, error) {
-		return env.ResourceManagerEndpoint, nil
-	}
-	azureResourceManagerEndpoint, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, "azureResourceManagerEndpoint", azureResourceManagerEndpointProvider)
-	if err != nil {
-		return nil, err
-	}
-	meta.azureMonitorInfo.AzureResourceManagerEndpoint = azureResourceManagerEndpoint
-
-	activeDirectoryEndpoint, err := azure.ParseActiveDirectoryEndpoint(config.TriggerMetadata)
-	if err != nil {
-		return nil, err
-	}
-	meta.azureMonitorInfo.ActiveDirectoryEndpoint = activeDirectoryEndpoint
-
 	return &meta, nil
+}
+
+func parseCloud(metadata map[string]string) (azcloud.Configuration, error) {
+	foundCloud := azcloud.AzurePublic
+	if cloud, ok := metadata["cloud"]; ok {
+		if strings.EqualFold(cloud, azure.PrivateCloud) {
+			if resource, ok := metadata["azureResourceManagerEndpoint"]; ok && resource != "" {
+				foundCloud.Services[azquery.ServiceNameLogs] = azcloud.ServiceConfiguration{
+					Endpoint: resource,
+					Audience: resource,
+				}
+			} else {
+				return azcloud.Configuration{}, fmt.Errorf("logAnalyticsResourceURL must be provided for %s cloud type", azure.PrivateCloud)
+			}
+		} else if resource, ok := azure.AzureClouds[strings.ToUpper(cloud)]; ok {
+			foundCloud = resource
+		} else {
+			return azcloud.Configuration{}, fmt.Errorf("there is no cloud environment matching the name %s", cloud)
+		}
+	}
+	return foundCloud, nil
 }
 
 // parseAzurePodIdentityParams gets the activeDirectory clientID and password
@@ -209,7 +290,7 @@ func parseAzurePodIdentityParams(config *scalersconfig.ScalerConfig) (clientID s
 		if len(clientPassword) == 0 {
 			return "", "", fmt.Errorf("no activeDirectoryClientPassword given")
 		}
-	case kedav1alpha1.PodIdentityProviderAzure, kedav1alpha1.PodIdentityProviderAzureWorkload:
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		// no params required to be parsed
 	default:
 		return "", "", fmt.Errorf("azure Monitor doesn't support pod identity %s", config.PodIdentity.Provider)
@@ -225,7 +306,7 @@ func (s *azureMonitorScaler) Close(context.Context) error {
 func (s *azureMonitorScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-monitor-%s", s.metadata.azureMonitorInfo.Name))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-monitor-%s", *s.metadata.azureMonitorInfo.Name))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
 	}
@@ -235,13 +316,102 @@ func (s *azureMonitorScaler) GetMetricSpecForScaling(context.Context) []v2.Metri
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureMonitorScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	val, err := azure.GetAzureMetricValue(ctx, s.metadata.azureMonitorInfo, s.podIdentity)
+	val, err := s.requestMetric(ctx)
 	if err != nil {
-		s.logger.Error(err, "error getting azure monitor metric")
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, val)
 
 	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationTargetValue, nil
+}
+func (s *azureMonitorScaler) requestMetric(ctx context.Context) (float64, error) {
+	timespan, err := formatTimeSpan(s.metadata.azureMonitorInfo.AggregationInterval)
+	if err != nil {
+		return -1, err
+	}
+	opts := &azquery.MetricsClientQueryResourceOptions{
+		MetricNames:     s.metadata.azureMonitorInfo.Name,
+		MetricNamespace: s.metadata.azureMonitorInfo.Namespace,
+		Filter:          s.metadata.azureMonitorInfo.Filter,
+		Interval:        nil,
+		Top:             nil,
+		ResultType:      nil,
+		OrderBy:         nil,
+	}
+
+	opts.Timespan = timespan
+	opts.Aggregation = append(opts.Aggregation, s.metadata.azureMonitorInfo.AggregationType)
+	response, err := s.client.QueryResource(ctx, s.metadata.azureMonitorInfo.MetricResourceURI(), opts)
+	if err != nil || len(response.Value) != 1 {
+		s.logger.Error(err, "error getting azure monitor metric")
+		return -1, err
+	}
+
+	if len(response.Value) == 0 {
+		err := fmt.Errorf("got an empty response for metric %s/%s and aggregate type %s", "azMetricRequest.ResourceProviderNamespace", "azMetricRequest.MetricName", "azMetricRequest.Aggregation")
+		return -1, err
+	}
+
+	timeseriesPtr := response.Value[0].TimeSeries
+	if len(timeseriesPtr) == 0 {
+		err := fmt.Errorf("got metric result for %s/%s and aggregate type %s without timeseries", "azMetricRequest.ResourceProviderNamespace", "azMetricRequest.MetricName", "azMetricRequest.Aggregation")
+		return -1, err
+	}
+
+	dataPtr := response.Value[0].TimeSeries[0].Data
+	if len(dataPtr) == 0 {
+		err := fmt.Errorf("got metric result for %s/%s and aggregate type %s without any metric values", "azMetricRequest.ResourceProviderNamespace", "azMetricRequest.MetricName", "azMetricRequest.Aggregation")
+		return -1, err
+	}
+
+	val, err := verifyAggregationTypeIsSupported(*s.metadata.azureMonitorInfo.AggregationType, dataPtr)
+	if err != nil {
+		return -1, err
+	}
+	return val, nil
+}
+
+// formatTimeSpan defaults to a 5 minute timespan if the user does not provide one
+func formatTimeSpan(timeSpan string) (*azquery.TimeInterval, error) {
+	endtime := time.Now().UTC()
+	starttime := time.Now().Add(-(5 * time.Minute)).UTC()
+	if timeSpan != "" {
+		aggregationInterval := strings.Split(timeSpan, ":")
+		hours, herr := strconv.Atoi(aggregationInterval[0])
+		minutes, merr := strconv.Atoi(aggregationInterval[1])
+		seconds, serr := strconv.Atoi(aggregationInterval[2])
+
+		if herr != nil || merr != nil || serr != nil {
+			return nil, fmt.Errorf("errors parsing metricAggregationInterval: %v, %v, %w", herr, merr, serr)
+		}
+
+		starttime = time.Now().Add(-(time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second)).UTC()
+	}
+	interval := azquery.NewTimeInterval(starttime, endtime)
+	return &interval, nil
+}
+
+func verifyAggregationTypeIsSupported(aggregationType azquery.AggregationType, data []*azquery.MetricValue) (float64, error) {
+	if data == nil {
+		err := fmt.Errorf("invalid response")
+		return -1, err
+	}
+	var valuePtr *float64
+	switch {
+	case strings.EqualFold(string(azquery.AggregationTypeAverage), string(aggregationType)) && data[len(data)-1].Average != nil:
+		valuePtr = data[len(data)-1].Average
+	case strings.EqualFold(string(azquery.AggregationTypeTotal), string(aggregationType)) && data[len(data)-1].Total != nil:
+		valuePtr = data[len(data)-1].Total
+	case strings.EqualFold(string(azquery.AggregationTypeMaximum), string(aggregationType)) && data[len(data)-1].Maximum != nil:
+		valuePtr = data[len(data)-1].Maximum
+	case strings.EqualFold(string(azquery.AggregationTypeMinimum), string(aggregationType)) && data[len(data)-1].Minimum != nil:
+		valuePtr = data[len(data)-1].Minimum
+	case strings.EqualFold(string(azquery.AggregationTypeCount), string(aggregationType)) && data[len(data)-1].Count != nil:
+		valuePtr = data[len(data)-1].Count
+	default:
+		err := fmt.Errorf("unsupported aggregation type %s", aggregationType)
+		return -1, err
+	}
+	return *valuePtr, nil
 }

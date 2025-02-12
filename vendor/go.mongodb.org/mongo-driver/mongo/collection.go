@@ -256,7 +256,7 @@ func (coll *Collection) insert(ctx context.Context, documents []interface{},
 		if err != nil {
 			return nil, err
 		}
-		bsoncoreDoc, id, err := ensureID(bsoncoreDoc, primitive.NewObjectID(), coll.bsonOpts, coll.registry)
+		bsoncoreDoc, id, err := ensureID(bsoncoreDoc, primitive.NilObjectID, coll.bsonOpts, coll.registry)
 		if err != nil {
 			return nil, err
 		}
@@ -291,7 +291,8 @@ func (coll *Collection) insert(ctx context.Context, documents []interface{},
 		ServerSelector(selector).ClusterClock(coll.client.clock).
 		Database(coll.db.name).Collection(coll.name).
 		Deployment(coll.client.deployment).Crypt(coll.client.cryptFLE).Ordered(true).
-		ServerAPI(coll.client.serverAPI).Timeout(coll.client.timeout).Logger(coll.client.logger)
+		ServerAPI(coll.client.serverAPI).Timeout(coll.client.timeout).Logger(coll.client.logger).
+		Authenticator(coll.client.authenticator)
 	imo := options.MergeInsertManyOptions(opts...)
 	if imo.BypassDocumentValidation != nil && *imo.BypassDocumentValidation {
 		op = op.BypassDocumentValidation(*imo.BypassDocumentValidation)
@@ -313,8 +314,8 @@ func (coll *Collection) insert(ctx context.Context, documents []interface{},
 	op = op.Retry(retry)
 
 	err = op.Execute(ctx)
-	wce, ok := err.(driver.WriteCommandError)
-	if !ok {
+	var wce driver.WriteCommandError
+	if !errors.As(err, &wce) {
 		return result, err
 	}
 
@@ -388,8 +389,8 @@ func (coll *Collection) InsertMany(ctx context.Context, documents []interface{},
 	}
 
 	imResult := &InsertManyResult{InsertedIDs: result}
-	writeException, ok := err.(WriteException)
-	if !ok {
+	var writeException WriteException
+	if !errors.As(err, &writeException) {
 		return imResult, err
 	}
 
@@ -471,7 +472,8 @@ func (coll *Collection) delete(ctx context.Context, filter interface{}, deleteOn
 		ServerSelector(selector).ClusterClock(coll.client.clock).
 		Database(coll.db.name).Collection(coll.name).
 		Deployment(coll.client.deployment).Crypt(coll.client.cryptFLE).Ordered(true).
-		ServerAPI(coll.client.serverAPI).Timeout(coll.client.timeout).Logger(coll.client.logger)
+		ServerAPI(coll.client.serverAPI).Timeout(coll.client.timeout).Logger(coll.client.logger).
+		Authenticator(coll.client.authenticator)
 	if do.Comment != nil {
 		comment, err := marshalValue(do.Comment, coll.bsonOpts, coll.registry)
 		if err != nil {
@@ -588,7 +590,7 @@ func (coll *Collection) updateOrReplace(ctx context.Context, filter bsoncore.Doc
 		Database(coll.db.name).Collection(coll.name).
 		Deployment(coll.client.deployment).Crypt(coll.client.cryptFLE).Hint(uo.Hint != nil).
 		ArrayFilters(uo.ArrayFilters != nil).Ordered(true).ServerAPI(coll.client.serverAPI).
-		Timeout(coll.client.timeout).Logger(coll.client.logger)
+		Timeout(coll.client.timeout).Logger(coll.client.logger).Authenticator(coll.client.authenticator)
 	if uo.Let != nil {
 		let, err := marshal(uo.Let, coll.bsonOpts, coll.registry)
 		if err != nil {
@@ -861,7 +863,17 @@ func aggregate(a aggregateParams) (cur *Cursor, err error) {
 		ServerAPI(a.client.serverAPI).
 		HasOutputStage(hasOutputStage).
 		Timeout(a.client.timeout).
-		MaxTime(ao.MaxTime)
+		MaxTime(ao.MaxTime).
+		Authenticator(a.client.authenticator)
+
+	// Omit "maxTimeMS" from operations that return a user-managed cursor to
+	// prevent confusing "cursor not found" errors. To maintain existing
+	// behavior for users who set "timeoutMS" with no context deadline, only
+	// omit "maxTimeMS" when a context deadline is set.
+	//
+	// See DRIVERS-2722 for more detail.
+	_, deadlineSet := a.ctx.Deadline()
+	op.OmitCSOTMaxTimeMS(deadlineSet)
 
 	if ao.AllowDiskUse != nil {
 		op.AllowDiskUse(*ao.AllowDiskUse)
@@ -983,7 +995,7 @@ func (coll *Collection) CountDocuments(ctx context.Context, filter interface{},
 	op := operation.NewAggregate(pipelineArr).Session(sess).ReadConcern(rc).ReadPreference(coll.readPreference).
 		CommandMonitor(coll.client.monitor).ServerSelector(selector).ClusterClock(coll.client.clock).Database(coll.db.name).
 		Collection(coll.name).Deployment(coll.client.deployment).Crypt(coll.client.cryptFLE).ServerAPI(coll.client.serverAPI).
-		Timeout(coll.client.timeout).MaxTime(countOpts.MaxTime)
+		Timeout(coll.client.timeout).MaxTime(countOpts.MaxTime).Authenticator(coll.client.authenticator)
 	if countOpts.Collation != nil {
 		op.Collation(bsoncore.Document(countOpts.Collation.ToDocument()))
 	}
@@ -1068,7 +1080,7 @@ func (coll *Collection) EstimatedDocumentCount(ctx context.Context,
 		Database(coll.db.name).Collection(coll.name).CommandMonitor(coll.client.monitor).
 		Deployment(coll.client.deployment).ReadConcern(rc).ReadPreference(coll.readPreference).
 		ServerSelector(selector).Crypt(coll.client.cryptFLE).ServerAPI(coll.client.serverAPI).
-		Timeout(coll.client.timeout).MaxTime(co.MaxTime)
+		Timeout(coll.client.timeout).MaxTime(co.MaxTime).Authenticator(coll.client.authenticator)
 
 	if co.Comment != nil {
 		comment, err := marshalValue(co.Comment, coll.bsonOpts, coll.registry)
@@ -1135,7 +1147,7 @@ func (coll *Collection) Distinct(ctx context.Context, fieldName string, filter i
 		Database(coll.db.name).Collection(coll.name).CommandMonitor(coll.client.monitor).
 		Deployment(coll.client.deployment).ReadConcern(rc).ReadPreference(coll.readPreference).
 		ServerSelector(selector).Crypt(coll.client.cryptFLE).ServerAPI(coll.client.serverAPI).
-		Timeout(coll.client.timeout).MaxTime(option.MaxTime)
+		Timeout(coll.client.timeout).MaxTime(option.MaxTime).Authenticator(coll.client.authenticator)
 
 	if option.Collation != nil {
 		op.Collation(bsoncore.Document(option.Collation.ToDocument()))
@@ -1196,6 +1208,23 @@ func (coll *Collection) Find(ctx context.Context, filter interface{},
 		ctx = context.Background()
 	}
 
+	// Omit "maxTimeMS" from operations that return a user-managed cursor to
+	// prevent confusing "cursor not found" errors. To maintain existing
+	// behavior for users who set "timeoutMS" with no context deadline, only
+	// omit "maxTimeMS" when a context deadline is set.
+	//
+	// See DRIVERS-2722 for more detail.
+	_, deadlineSet := ctx.Deadline()
+	return coll.find(ctx, filter, deadlineSet, opts...)
+}
+
+func (coll *Collection) find(
+	ctx context.Context,
+	filter interface{},
+	omitCSOTMaxTimeMS bool,
+	opts ...*options.FindOptions,
+) (cur *Cursor, err error) {
+
 	f, err := marshal(filter, coll.bsonOpts, coll.registry)
 	if err != nil {
 		return nil, err
@@ -1230,7 +1259,8 @@ func (coll *Collection) Find(ctx context.Context, filter interface{},
 		CommandMonitor(coll.client.monitor).ServerSelector(selector).
 		ClusterClock(coll.client.clock).Database(coll.db.name).Collection(coll.name).
 		Deployment(coll.client.deployment).Crypt(coll.client.cryptFLE).ServerAPI(coll.client.serverAPI).
-		Timeout(coll.client.timeout).MaxTime(fo.MaxTime).Logger(coll.client.logger)
+		Timeout(coll.client.timeout).MaxTime(fo.MaxTime).Logger(coll.client.logger).
+		OmitCSOTMaxTimeMS(omitCSOTMaxTimeMS).Authenticator(coll.client.authenticator)
 
 	cursorOpts := coll.client.createBaseCursorOptions()
 
@@ -1408,7 +1438,7 @@ func (coll *Collection) FindOne(ctx context.Context, filter interface{},
 	// by the server.
 	findOpts = append(findOpts, options.Find().SetLimit(-1))
 
-	cursor, err := coll.Find(ctx, filter, findOpts...)
+	cursor, err := coll.find(ctx, filter, false, findOpts...)
 	return &SingleResult{
 		ctx:      ctx,
 		cur:      cursor,
@@ -1494,7 +1524,7 @@ func (coll *Collection) FindOneAndDelete(ctx context.Context, filter interface{}
 	}
 	fod := options.MergeFindOneAndDeleteOptions(opts...)
 	op := operation.NewFindAndModify(f).Remove(true).ServerAPI(coll.client.serverAPI).Timeout(coll.client.timeout).
-		MaxTime(fod.MaxTime)
+		MaxTime(fod.MaxTime).Authenticator(coll.client.authenticator)
 	if fod.Collation != nil {
 		op = op.Collation(bsoncore.Document(fod.Collation.ToDocument()))
 	}
@@ -1574,7 +1604,8 @@ func (coll *Collection) FindOneAndReplace(ctx context.Context, filter interface{
 
 	fo := options.MergeFindOneAndReplaceOptions(opts...)
 	op := operation.NewFindAndModify(f).Update(bsoncore.Value{Type: bsontype.EmbeddedDocument, Data: r}).
-		ServerAPI(coll.client.serverAPI).Timeout(coll.client.timeout).MaxTime(fo.MaxTime)
+		ServerAPI(coll.client.serverAPI).Timeout(coll.client.timeout).MaxTime(fo.MaxTime).Authenticator(coll.client.authenticator)
+
 	if fo.BypassDocumentValidation != nil && *fo.BypassDocumentValidation {
 		op = op.BypassDocumentValidation(*fo.BypassDocumentValidation)
 	}
@@ -1661,7 +1692,7 @@ func (coll *Collection) FindOneAndUpdate(ctx context.Context, filter interface{}
 
 	fo := options.MergeFindOneAndUpdateOptions(opts...)
 	op := operation.NewFindAndModify(f).ServerAPI(coll.client.serverAPI).Timeout(coll.client.timeout).
-		MaxTime(fo.MaxTime)
+		MaxTime(fo.MaxTime).Authenticator(coll.client.authenticator)
 
 	u, err := marshalUpdateValue(update, coll.bsonOpts, coll.registry, true)
 	if err != nil {
@@ -1775,8 +1806,11 @@ func (coll *Collection) Indexes() IndexView {
 
 // SearchIndexes returns a SearchIndexView instance that can be used to perform operations on the search indexes for the collection.
 func (coll *Collection) SearchIndexes() SearchIndexView {
+	c, _ := coll.Clone() // Clone() always return a nil error.
+	c.readConcern = nil
+	c.writeConcern = nil
 	return SearchIndexView{
-		coll: coll,
+		coll: c,
 	}
 }
 
@@ -1806,7 +1840,7 @@ func (coll *Collection) Drop(ctx context.Context) error {
 func (coll *Collection) dropEncryptedCollection(ctx context.Context, ef interface{}) error {
 	efBSON, err := marshal(ef, coll.bsonOpts, coll.registry)
 	if err != nil {
-		return fmt.Errorf("error transforming document: %v", err)
+		return fmt.Errorf("error transforming document: %w", err)
 	}
 
 	// Drop the two encryption-related, associated collections: `escCollection` and `ecocCollection`.
@@ -1864,7 +1898,8 @@ func (coll *Collection) drop(ctx context.Context) error {
 		ServerSelector(selector).ClusterClock(coll.client.clock).
 		Database(coll.db.name).Collection(coll.name).
 		Deployment(coll.client.deployment).Crypt(coll.client.cryptFLE).
-		ServerAPI(coll.client.serverAPI).Timeout(coll.client.timeout)
+		ServerAPI(coll.client.serverAPI).Timeout(coll.client.timeout).
+		Authenticator(coll.client.authenticator)
 	err = op.Execute(ctx)
 
 	// ignore namespace not found errors

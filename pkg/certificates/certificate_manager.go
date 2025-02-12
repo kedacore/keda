@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -49,19 +50,27 @@ type CertManager struct {
 	APIServiceName        string
 	Logger                logr.Logger
 	Ready                 chan struct{}
+	EnableWebhookPatching bool
 }
 
 // AddCertificateRotation registers all needed services to generate the certificates and patches needed resources with the caBundle
 func (cm CertManager) AddCertificateRotation(ctx context.Context, mgr manager.Manager) error {
-	var rotatorHooks = []rotator.WebhookInfo{
-		{
-			Name: cm.ValidatingWebhookName,
-			Type: rotator.Validating,
-		},
+	rotatorHooks := []rotator.WebhookInfo{
 		{
 			Name: cm.APIServiceName,
 			Type: rotator.APIService,
 		},
+	}
+
+	if cm.EnableWebhookPatching {
+		rotatorHooks = append(rotatorHooks,
+			rotator.WebhookInfo{
+				Name: cm.ValidatingWebhookName,
+				Type: rotator.Validating,
+			},
+		)
+	} else {
+		cm.Logger.V(1).Info("Webhook patching is disabled, skipping webhook certificates")
 	}
 
 	err := cm.ensureSecret(ctx, mgr, cm.SecretName)
@@ -109,26 +118,24 @@ func getDNSNames(service, k8sClusterDomain string) []string {
 
 // ensureSecret ensures that the secret used for storing TLS certificates exists
 func (cm CertManager) ensureSecret(ctx context.Context, mgr manager.Manager, secretName string) error {
-	secrets := &corev1.SecretList{}
+	secret := &corev1.Secret{}
 	kedaNamespace := kedautil.GetPodNamespace()
-	opt := &client.ListOptions{
+	objKey := client.ObjectKey{
 		Namespace: kedaNamespace,
+		Name:      secretName,
 	}
-
-	err := mgr.GetAPIReader().List(ctx, secrets, opt)
+	create := false
+	err := mgr.GetAPIReader().Get(ctx, objKey, secret)
 	if err != nil {
-		cm.Logger.Error(err, "unable to check secrets")
-		return err
-	}
-
-	exists := false
-	for _, secret := range secrets.Items {
-		if secret.Name == secretName {
-			exists = true
-			break
+		if errors.IsNotFound(err) {
+			create = true
+		} else {
+			cm.Logger.Error(err, "unable to check secret")
+			return err
 		}
 	}
-	if !exists {
+
+	if create {
 		secret := &corev1.Secret{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      secretName,

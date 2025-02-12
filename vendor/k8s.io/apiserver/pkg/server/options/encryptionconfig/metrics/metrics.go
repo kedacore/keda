@@ -17,6 +17,9 @@ limitations under the License.
 package metrics
 
 import (
+	"crypto/sha256"
+	"fmt"
+	"hash"
 	"sync"
 
 	"k8s.io/component-base/metrics"
@@ -29,24 +32,43 @@ const (
 )
 
 var (
-	encryptionConfigAutomaticReloadFailureTotal = metrics.NewCounter(
+	encryptionConfigAutomaticReloadsTotal = metrics.NewCounterVec(
 		&metrics.CounterOpts{
 			Namespace:      namespace,
 			Subsystem:      subsystem,
-			Name:           "automatic_reload_failures_total",
-			Help:           "Total number of failed automatic reloads of encryption configuration.",
+			Name:           "automatic_reloads_total",
+			Help:           "Total number of reload successes and failures of encryption configuration split by apiserver identity.",
 			StabilityLevel: metrics.ALPHA,
 		},
+		[]string{"status", "apiserver_id_hash"},
 	)
 
-	encryptionConfigAutomaticReloadSuccessTotal = metrics.NewCounter(
+	// deprecatedEncryptionConfigAutomaticReloadFailureTotal has been deprecated in 1.30.0
+	// use encryptionConfigAutomaticReloadsTotal instead
+	deprecatedEncryptionConfigAutomaticReloadFailureTotal = metrics.NewCounterVec(
 		&metrics.CounterOpts{
-			Namespace:      namespace,
-			Subsystem:      subsystem,
-			Name:           "automatic_reload_success_total",
-			Help:           "Total number of successful automatic reloads of encryption configuration.",
-			StabilityLevel: metrics.ALPHA,
+			Namespace:         namespace,
+			Subsystem:         subsystem,
+			Name:              "automatic_reload_failures_total",
+			Help:              "Total number of failed automatic reloads of encryption configuration split by apiserver identity.",
+			StabilityLevel:    metrics.ALPHA,
+			DeprecatedVersion: "1.30.0",
 		},
+		[]string{"apiserver_id_hash"},
+	)
+
+	// deprecatedEncryptionConfigAutomaticReloadSuccessTotal has been deprecated in 1.30.0
+	// use encryptionConfigAutomaticReloadsTotal instead
+	deprecatedEncryptionConfigAutomaticReloadSuccessTotal = metrics.NewCounterVec(
+		&metrics.CounterOpts{
+			Namespace:         namespace,
+			Subsystem:         subsystem,
+			Name:              "automatic_reload_success_total",
+			Help:              "Total number of successful automatic reloads of encryption configuration split by apiserver identity.",
+			StabilityLevel:    metrics.ALPHA,
+			DeprecatedVersion: "1.30.0",
+		},
+		[]string{"apiserver_id_hash"},
 	)
 
 	encryptionConfigAutomaticReloadLastTimestampSeconds = metrics.NewGaugeVec(
@@ -54,33 +76,56 @@ var (
 			Namespace:      namespace,
 			Subsystem:      subsystem,
 			Name:           "automatic_reload_last_timestamp_seconds",
-			Help:           "Timestamp of the last successful or failed automatic reload of encryption configuration.",
+			Help:           "Timestamp of the last successful or failed automatic reload of encryption configuration split by apiserver identity.",
 			StabilityLevel: metrics.ALPHA,
 		},
-		[]string{"status"},
+		[]string{"status", "apiserver_id_hash"},
 	)
 )
 
 var registerMetrics sync.Once
+var hashPool *sync.Pool
 
 func RegisterMetrics() {
 	registerMetrics.Do(func() {
-		legacyregistry.MustRegister(encryptionConfigAutomaticReloadFailureTotal)
-		legacyregistry.MustRegister(encryptionConfigAutomaticReloadSuccessTotal)
+		hashPool = &sync.Pool{
+			New: func() interface{} {
+				return sha256.New()
+			},
+		}
+		legacyregistry.MustRegister(encryptionConfigAutomaticReloadsTotal)
+		legacyregistry.MustRegister(deprecatedEncryptionConfigAutomaticReloadFailureTotal)
+		legacyregistry.MustRegister(deprecatedEncryptionConfigAutomaticReloadSuccessTotal)
 		legacyregistry.MustRegister(encryptionConfigAutomaticReloadLastTimestampSeconds)
 	})
 }
 
-func RecordEncryptionConfigAutomaticReloadFailure() {
-	encryptionConfigAutomaticReloadFailureTotal.Inc()
-	recordEncryptionConfigAutomaticReloadTimestamp("failure")
+func RecordEncryptionConfigAutomaticReloadFailure(apiServerID string) {
+	apiServerIDHash := getHash(apiServerID)
+	encryptionConfigAutomaticReloadsTotal.WithLabelValues("failure", apiServerIDHash).Inc()
+	deprecatedEncryptionConfigAutomaticReloadFailureTotal.WithLabelValues(apiServerIDHash).Inc()
+	recordEncryptionConfigAutomaticReloadTimestamp("failure", apiServerIDHash)
 }
 
-func RecordEncryptionConfigAutomaticReloadSuccess() {
-	encryptionConfigAutomaticReloadSuccessTotal.Inc()
-	recordEncryptionConfigAutomaticReloadTimestamp("success")
+func RecordEncryptionConfigAutomaticReloadSuccess(apiServerID string) {
+	apiServerIDHash := getHash(apiServerID)
+	encryptionConfigAutomaticReloadsTotal.WithLabelValues("success", apiServerIDHash).Inc()
+	deprecatedEncryptionConfigAutomaticReloadSuccessTotal.WithLabelValues(apiServerIDHash).Inc()
+	recordEncryptionConfigAutomaticReloadTimestamp("success", apiServerIDHash)
 }
 
-func recordEncryptionConfigAutomaticReloadTimestamp(result string) {
-	encryptionConfigAutomaticReloadLastTimestampSeconds.WithLabelValues(result).SetToCurrentTime()
+func recordEncryptionConfigAutomaticReloadTimestamp(result, apiServerIDHash string) {
+	encryptionConfigAutomaticReloadLastTimestampSeconds.WithLabelValues(result, apiServerIDHash).SetToCurrentTime()
+}
+
+func getHash(data string) string {
+	if len(data) == 0 {
+		return ""
+	}
+	h := hashPool.Get().(hash.Hash)
+	h.Reset()
+	h.Write([]byte(data))
+	dataHash := fmt.Sprintf("sha256:%x", h.Sum(nil))
+	hashPool.Put(h)
+	return dataHash
 }

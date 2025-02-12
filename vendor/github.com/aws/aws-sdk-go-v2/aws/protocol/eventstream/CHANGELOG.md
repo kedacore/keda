@@ -1,3 +1,35 @@
+# v1.6.7 (2024-11-18)
+
+* **Dependency Update**: Update to smithy-go v1.22.1.
+
+# v1.6.6 (2024-10-04)
+
+* No change notes available for this release.
+
+# v1.6.5 (2024-09-20)
+
+* No change notes available for this release.
+
+# v1.6.4 (2024-08-15)
+
+* **Dependency Update**: Bump minimum Go version to 1.21.
+
+# v1.6.3 (2024-06-28)
+
+* No change notes available for this release.
+
+# v1.6.2 (2024-03-29)
+
+* No change notes available for this release.
+
+# v1.6.1 (2024-02-21)
+
+* No change notes available for this release.
+
+# v1.6.0 (2024-02-13)
+
+* **Feature**: Bump minimum Go version to 1.20 per our language support policy.
+
 # v1.5.4 (2023-12-07)
 
 * No change notes available for this release.

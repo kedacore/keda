@@ -22,11 +22,18 @@ func (w WithContext) Visit(node *ast.Node) {
 		if fn.Kind() != reflect.Func {
 			return
 		}
-		if fn.NumIn() == 0 {
+		switch fn.NumIn() {
+		case 0:
 			return
-		}
-		if fn.In(0).String() != "context.Context" {
-			return
+		case 1:
+			if fn.In(0).String() != "context.Context" {
+				return
+			}
+		default:
+			if fn.In(0).String() != "context.Context" &&
+				fn.In(1).String() != "context.Context" {
+				return
+			}
 		}
 		ast.Patch(node, &ast.CallNode{
 			Callee: call.Callee,

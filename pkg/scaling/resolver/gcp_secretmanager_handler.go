@@ -105,7 +105,7 @@ func (vh *GCPSecretManagerHandler) Initialize(ctx context.Context, client client
 		// and we need to use the env that it's provided from the hook
 		project, found := os.LookupEnv("CLOUDSDK_CORE_PROJECT")
 		if !found {
-			if project, err = metadata.NewClient(&http.Client{}).ProjectID(); err != nil {
+			if project, err = metadata.NewClient(&http.Client{}).ProjectIDWithContext(ctx); err != nil {
 				return fmt.Errorf("failed to fetch gcp project id: %w", err)
 			}
 		}

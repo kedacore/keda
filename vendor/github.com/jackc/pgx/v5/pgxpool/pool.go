@@ -95,6 +95,9 @@ type Pool struct {
 
 	healthCheckChan chan struct{}
 
+	acquireTracer AcquireTracer
+	releaseTracer ReleaseTracer
+
 	closeOnce sync.Once
 	closeChan chan struct{}
 }
@@ -195,6 +198,14 @@ func NewWithConfig(ctx context.Context, config *Config) (*Pool, error) {
 		closeChan:             make(chan struct{}),
 	}
 
+	if t, ok := config.ConnConfig.Tracer.(AcquireTracer); ok {
+		p.acquireTracer = t
+	}
+
+	if t, ok := config.ConnConfig.Tracer.(ReleaseTracer); ok {
+		p.releaseTracer = t
+	}
+
 	var err error
 	p.p, err = puddle.NewPool(
 		&puddle.Config[*connResource]{
@@ -270,20 +281,20 @@ func NewWithConfig(ctx context.Context, config *Config) (*Pool, error) {
 // ParseConfig builds a Config from connString. It parses connString with the same behavior as [pgx.ParseConfig] with the
 // addition of the following variables:
 //
-//   - pool_max_conns: integer greater than 0
-//   - pool_min_conns: integer 0 or greater
-//   - pool_max_conn_lifetime: duration string
-//   - pool_max_conn_idle_time: duration string
-//   - pool_health_check_period: duration string
-//   - pool_max_conn_lifetime_jitter: duration string
+//   - pool_max_conns: integer greater than 0 (default 4)
+//   - pool_min_conns: integer 0 or greater (default 0)
+//   - pool_max_conn_lifetime: duration string (default 1 hour)
+//   - pool_max_conn_idle_time: duration string (default 30 minutes)
+//   - pool_health_check_period: duration string (default 1 minute)
+//   - pool_max_conn_lifetime_jitter: duration string (default 0)
 //
 // See Config for definitions of these arguments.
 //
-//	# Example DSN
-//	user=jack password=secret host=pg.example.com port=5432 dbname=mydb sslmode=verify-ca pool_max_conns=10
+//	# Example Keyword/Value
+//	user=jack password=secret host=pg.example.com port=5432 dbname=mydb sslmode=verify-ca pool_max_conns=10 pool_max_conn_lifetime=1h30m
 //
 //	# Example URL
-//	postgres://jack:secret@pg.example.com:5432/mydb?sslmode=verify-ca&pool_max_conns=10
+//	postgres://jack:secret@pg.example.com:5432/mydb?sslmode=verify-ca&pool_max_conns=10&pool_max_conn_lifetime=1h30m
 func ParseConfig(connString string) (*Config, error) {
 	connConfig, err := pgx.ParseConfig(connString)
 	if err != nil {
@@ -498,7 +509,18 @@ func (p *Pool) createIdleResources(parentCtx context.Context, targetResources in
 }
 
 // Acquire returns a connection (*Conn) from the Pool
-func (p *Pool) Acquire(ctx context.Context) (*Conn, error) {
+func (p *Pool) Acquire(ctx context.Context) (c *Conn, err error) {
+	if p.acquireTracer != nil {
+		ctx = p.acquireTracer.TraceAcquireStart(ctx, p, TraceAcquireStartData{})
+		defer func() {
+			var conn *pgx.Conn
+			if c != nil {
+				conn = c.Conn()
+			}
+			p.acquireTracer.TraceAcquireEnd(ctx, p, TraceAcquireEndData{Conn: conn, Err: err})
+		}()
+	}
+
 	for {
 		res, err := p.p.Acquire(ctx)
 		if err != nil {

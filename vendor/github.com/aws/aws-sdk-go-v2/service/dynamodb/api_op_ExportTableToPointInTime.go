@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -45,12 +44,15 @@ type ExportTableToPointInTimeInput struct {
 
 	// Providing a ClientToken makes the call to ExportTableToPointInTimeInput
 	// idempotent, meaning that multiple identical calls have the same effect as one
-	// single call. A client token is valid for 8 hours after the first request that
-	// uses it is completed. After 8 hours, any request with the same client token is
-	// treated as a new request. Do not resubmit the same request with the same client
-	// token for more than 8 hours, or the result might not be idempotent. If you
-	// submit a request with the same client token but a change in other parameters
-	// within the 8-hour idempotency window, DynamoDB returns an
+	// single call.
+	//
+	// A client token is valid for 8 hours after the first request that uses it is
+	// completed. After 8 hours, any request with the same client token is treated as a
+	// new request. Do not resubmit the same request with the same client token for
+	// more than 8 hours, or the result might not be idempotent.
+	//
+	// If you submit a request with the same client token but a change in other
+	// parameters within the 8-hour idempotency window, DynamoDB returns an
 	// ImportConflictException .
 	ClientToken *string
 
@@ -74,6 +76,9 @@ type ExportTableToPointInTimeInput struct {
 
 	// The ID of the Amazon Web Services account that owns the bucket the export will
 	// be stored in.
+	//
+	// S3BucketOwner is a required parameter when exporting to a S3 bucket in another
+	// account.
 	S3BucketOwner *string
 
 	// The Amazon S3 bucket prefix to use as the file name and path of the exported
@@ -82,7 +87,9 @@ type ExportTableToPointInTimeInput struct {
 
 	// Type of encryption used on the bucket where export data will be stored. Valid
 	// values for S3SseAlgorithm are:
+	//
 	//   - AES256 - server-side encryption with Amazon S3 managed keys
+	//
 	//   - KMS - server-side encryption with KMS managed keys
 	S3SseAlgorithm types.S3SseAlgorithm
 
@@ -126,25 +133,28 @@ func (c *Client) addOperationExportTableToPointInTimeMiddlewares(stack *middlewa
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -159,6 +169,12 @@ func (c *Client) addOperationExportTableToPointInTimeMiddlewares(stack *middlewa
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addIdempotencyToken_opExportTableToPointInTimeMiddleware(stack, options); err != nil {
 		return err
 	}
@@ -168,7 +184,7 @@ func (c *Client) addOperationExportTableToPointInTimeMiddlewares(stack *middlewa
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opExportTableToPointInTime(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -187,6 +203,18 @@ func (c *Client) addOperationExportTableToPointInTimeMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

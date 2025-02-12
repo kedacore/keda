@@ -46,7 +46,7 @@ func NewClientEncryption(keyVaultClient *Client, opts ...*options.ClientEncrypti
 
 	kmsProviders, err := marshal(ceo.KmsProviders, nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error creating KMS providers map: %v", err)
+		return nil, fmt.Errorf("error creating KMS providers map: %w", err)
 	}
 
 	mc, err := mongocrypt.NewMongoCrypt(mcopts.MongoCrypt().
@@ -204,7 +204,12 @@ func transformExplicitEncryptionOptions(opts ...*options.EncryptOptions) *mcopts
 		if eo.RangeOptions.Precision != nil {
 			transformedRange.Precision = eo.RangeOptions.Precision
 		}
-		transformedRange.Sparsity = eo.RangeOptions.Sparsity
+		if eo.RangeOptions.Sparsity != nil {
+			transformedRange.Sparsity = eo.RangeOptions.Sparsity
+		}
+		if eo.RangeOptions.TrimFactor != nil {
+			transformedRange.TrimFactor = eo.RangeOptions.TrimFactor
+		}
 		transformed.SetRangeOptions(transformedRange)
 	}
 	return transformed
@@ -230,8 +235,7 @@ func (ce *ClientEncryption) Encrypt(ctx context.Context, val bson.RawValue,
 // 2. An Aggregate Expression of this form:
 // {$and: [{$gt: [<fieldpath>, <value1>]}, {$lt: [<fieldpath>, <value2>]}]
 // $gt may also be $gte. $lt may also be $lte.
-// Only supported for queryType "rangePreview"
-// Beta: The Range algorithm is experimental only. It is not intended for public use. It is subject to breaking changes.
+// Only supported for queryType "range"
 func (ce *ClientEncryption) EncryptExpression(ctx context.Context, expr interface{}, result interface{}, opts ...*options.EncryptOptions) error {
 	transformed := transformExplicitEncryptionOptions(opts...)
 

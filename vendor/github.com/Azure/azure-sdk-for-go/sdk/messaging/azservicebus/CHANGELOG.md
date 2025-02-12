@@ -1,5 +1,36 @@
 # Release History
 
+## 1.7.3 (2024-10-14)
+
+### Bugs Fixed
+
+- Apply fix from @bcho for overflows with retries. (PR#23562)
+
+## 1.7.2 (2024-09-11)
+
+### Bugs Fixed
+
+- Fixed a bug where cancelling RenewMessageLock() calls could cause hangs in future RenewMessageLock calls. (PR#23400)
+
+## 1.7.1 (2024-05-20)
+
+### Bugs Fixed
+
+- Emulator strings should allow for hosts other than localhost (PR#22898)
+
+## 1.7.0 (2024-04-02)
+
+### Features Added
+
+- Add in ability to handle emulator connection strings. (PR#22663)
+
+## 1.6.1 (2024-03-05)
+
+### Bugs Fixed
+
+- Fixed case where closing a Receiver/Sender after an idle period would take > 20 seconds. (PR#22509)
+- Fixed a potential memory leak when receiving a message on one receiver and attempting to settle with another. (PR#22431)
+
 ## 1.6.0 (2024-01-17)
 
 ### Features Added
@@ -8,7 +39,7 @@
 
 ### Bugs Fixed
 
-- Settling a message (using CompleteMessage, AbandonMessage, etc..) on a different Receiver instance than you received on no 
+- Settling a message (using CompleteMessage, AbandonMessage, etc..) on a different Receiver instance than you received on no
   longer leaks memory. (PR#22253)
 
 ## 1.5.0 (2023-10-10)
@@ -32,7 +63,7 @@
 
 ### Features Added
 
-- `admin.SubscriptionProperties` now allow for a `DefaultRule` to be set. This allows Subscriptions to be created with an immediate filter/action. 
+- `admin.SubscriptionProperties` now allow for a `DefaultRule` to be set. This allows Subscriptions to be created with an immediate filter/action.
   Contributed by @StrawbrryFlurry. (PR#20888)
 
 ## 1.3.0 (2023-05-09)

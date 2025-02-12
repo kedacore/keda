@@ -62,27 +62,42 @@ func (in *Int) Unmarshal(i interface{}) error {
 	return nil
 }
 
+var (
+	int32PtrType    = reflect.TypeOf((*int32)(nil))
+	int32Type       = int32PtrType.Elem()
+	kustoIntPtrType = reflect.TypeOf((*Int)(nil))
+	kustoIntType    = kustoIntPtrType.Elem()
+)
+
 // Convert Int into reflect value.
 func (in Int) Convert(v reflect.Value) error {
 	t := v.Type()
-	switch {
-	case t.Kind() == reflect.Int32:
+	switch t {
+	case int32Type:
 		if in.Valid {
-			v.Set(reflect.ValueOf(in.Value))
+			v.SetInt(int64(in.Value))
 		}
-		return nil
-	case t.ConvertibleTo(reflect.TypeOf(new(int32))):
-		if in.Valid {
-			i := &in.Value
-			v.Set(reflect.ValueOf(i))
-		}
-		return nil
-	case t.ConvertibleTo(reflect.TypeOf(Int{})):
+	case kustoIntType:
 		v.Set(reflect.ValueOf(in))
-		return nil
-	case t.ConvertibleTo(reflect.TypeOf(&Int{})):
+	case kustoIntPtrType:
 		v.Set(reflect.ValueOf(&in))
-		return nil
+	default:
+		switch {
+		case int32Type.ConvertibleTo(t):
+			if in.Valid {
+				v.Set(reflect.ValueOf(in.Value).Convert(t))
+			}
+		case int32PtrType.ConvertibleTo(t):
+			if in.Valid {
+				v.Set(reflect.ValueOf(&in.Value).Convert(t))
+			}
+		case kustoIntType.ConvertibleTo(t):
+			v.Set(reflect.ValueOf(in).Convert(t))
+		case kustoIntPtrType.ConvertibleTo(t):
+			v.Set(reflect.ValueOf(&in).Convert(t))
+		default:
+			return fmt.Errorf("Column was type Kusto.Int, receiver had base Kind %s ", t.Kind())
+		}
 	}
-	return fmt.Errorf("Column was type Kusto.Int, receiver had base Kind %s ", t.Kind())
+	return nil
 }

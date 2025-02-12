@@ -1,3 +1,100 @@
+## 1.36.1
+
+### Fixes
+- Fix https://github.com/onsi/gomega/issues/803 [1c6c112]
+- resolves onsi/gomega#696: make HaveField great on pointer receivers given only a non-addressable value [4feb9d7]
+
+## 1.36.0
+
+### Features
+- new: make collection-related matchers Go 1.23 iterator aware [4c964c6]
+
+### Maintenance
+- Replace min/max helpers with built-in min/max [ece6872]
+- Fix some typos in docs [8e924d7]
+
+## 1.35.1
+
+### Fixes
+- Export EnforceDefaultTimeoutsWhenUsingContexts and DisableDefaultTimeoutsWhenUsingContext [ca36da1]
+
+## 1.35.0
+
+### Features
+
+- You can now call `EnforceDefaultTimeoutsWhenUsingContexts()` to have `Eventually` honor the default timeout when passed a context.  (prior to this you had to expclility add a timeout) [e4c4265]
+- You can call `StopTrying(message).Successfully()` to abort a `Consistently` early without failure [eeca931]
+
+### Fixes
+
+- Stop memoizing the result of `HaveField` to avoid unexpected errors when used with async assertions. [3bdbc4e]
+
+### Maintenance
+
+- Bump all dependencies [a05a416]
+
+## 1.34.2
+
+Require Go 1.22+
+
+### Maintenance
+- bump ginkgo as well [c59c6dc]
+- bump to go 1.22 - remove x/exp dependency [8158b99]
+
+## 1.34.1
+
+### Maintenance
+- Use slices from exp/slices to keep golang 1.20 compat [5e71dcd]
+
+## 1.34.0
+
+### Features
+- Add RoundTripper method to ghttp.Server [c549e0d]
+
+### Fixes
+- fix incorrect handling of nil slices in HaveExactElements (fixes #771) [878940c]
+- issue_765 - fixed bug in Hopcroft-Karp algorithm [ebadb67]
+
+### Maintenance
+- bump ginkgo [8af2ece]
+- Fix typo in docs [123a071]
+- Bump github.com/onsi/ginkgo/v2 from 2.17.2 to 2.17.3 (#756) [0e69083]
+- Bump google.golang.org/protobuf from 1.33.0 to 1.34.1 (#755) [2675796]
+- Bump golang.org/x/net from 0.24.0 to 0.25.0 (#754) [4160c0f]
+- Bump github-pages from 230 to 231 in /docs (#748) [892c303]
+
+## 1.33.1
+
+### Fixes
+- fix confusing eventually docs [3a66379]
+
+### Maintenance
+- Bump github.com/onsi/ginkgo/v2 from 2.17.1 to 2.17.2 [e9bc35a]
+
+## 1.33.0
+
+### Features
+
+`Receive` not accepts `Receive(<POINTER>, MATCHER>)`, allowing you to pick out a specific value on the channel that satisfies the provided matcher and is stored in the provided pointer.
+
+### Maintenance
+- Bump github.com/onsi/ginkgo/v2 from 2.15.0 to 2.17.1 (#745) [9999deb]
+- Bump github-pages from 229 to 230 in /docs (#735) [cb5ff21]
+- Bump golang.org/x/net from 0.20.0 to 0.23.0 (#746) [bac6596]
+
+## 1.32.0
+
+### Maintenance
+- Migrate github.com/golang/protobuf to google.golang.org/protobuf [436a197]
+  
+  This release drops the deprecated github.com/golang/protobuf and adopts google.golang.org/protobuf.  Care was taken to ensure the release is backwards compatible (thanks @jbduncan !).  Please open an issue if you run into one.
+
+- chore: test with Go 1.22 (#733) [32ef35e]
+- Bump golang.org/x/net from 0.19.0 to 0.20.0 (#717) [a0d0387]
+- Bump github-pages and jekyll-feed in /docs (#732) [b71e477]
+- docs: fix typo and broken anchor link to gstruct [f460154]
+- docs: fix HaveEach matcher signature [a2862e4]
+
 ## 1.31.1
 
 ### Fixes

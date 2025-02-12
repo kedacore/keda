@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"regexp"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/internal/log"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/internal/shared"
 	"github.com/Azure/azure-sdk-for-go/sdk/internal/exported"
 )
@@ -20,36 +21,45 @@ import (
 // NewResponseError creates a new *ResponseError from the provided HTTP response.
 // Exported as runtime.NewResponseError().
 func NewResponseError(resp *http.Response) error {
-	respErr := &ResponseError{
-		StatusCode:  resp.StatusCode,
-		RawResponse: resp,
-	}
-
 	// prefer the error code in the response header
 	if ec := resp.Header.Get(shared.HeaderXMSErrorCode); ec != "" {
-		respErr.ErrorCode = ec
-		return respErr
+		return NewResponseErrorWithErrorCode(resp, ec)
 	}
 
 	// if we didn't get x-ms-error-code, check in the response body
 	body, err := exported.Payload(resp, nil)
 	if err != nil {
+		// since we're not returning the ResponseError in this
+		// case we also don't want to write it to the log.
 		return err
 	}
 
+	var errorCode string
 	if len(body) > 0 {
-		if code := extractErrorCodeJSON(body); code != "" {
-			respErr.ErrorCode = code
-		} else if code := extractErrorCodeXML(body); code != "" {
-			respErr.ErrorCode = code
+		if fromJSON := extractErrorCodeJSON(body); fromJSON != "" {
+			errorCode = fromJSON
+		} else if fromXML := extractErrorCodeXML(body); fromXML != "" {
+			errorCode = fromXML
 		}
 	}
 
+	return NewResponseErrorWithErrorCode(resp, errorCode)
+}
+
+// NewResponseErrorWithErrorCode creates an *azcore.ResponseError from the provided HTTP response and errorCode.
+// Exported as runtime.NewResponseErrorWithErrorCode().
+func NewResponseErrorWithErrorCode(resp *http.Response, errorCode string) error {
+	respErr := &ResponseError{
+		ErrorCode:   errorCode,
+		StatusCode:  resp.StatusCode,
+		RawResponse: resp,
+	}
+	log.Write(log.EventResponseError, respErr.Error())
 	return respErr
 }
 
 func extractErrorCodeJSON(body []byte) string {
-	var rawObj map[string]interface{}
+	var rawObj map[string]any
 	if err := json.Unmarshal(body, &rawObj); err != nil {
 		// not a JSON object
 		return ""
@@ -58,7 +68,7 @@ func extractErrorCodeJSON(body []byte) string {
 	// check if this is a wrapped error, i.e. { "error": { ... } }
 	// if so then unwrap it
 	if wrapped, ok := rawObj["error"]; ok {
-		unwrapped, ok := wrapped.(map[string]interface{})
+		unwrapped, ok := wrapped.(map[string]any)
 		if !ok {
 			return ""
 		}
@@ -107,12 +117,18 @@ type ResponseError struct {
 	StatusCode int
 
 	// RawResponse is the underlying HTTP response.
-	RawResponse *http.Response
+	RawResponse *http.Response `json:"-"`
+
+	errMsg string
 }
 
 // Error implements the error interface for type ResponseError.
 // Note that the message contents are not contractual and can change over time.
 func (e *ResponseError) Error() string {
+	if e.errMsg != "" {
+		return e.errMsg
+	}
+
 	const separator = "--------------------------------------------------------------------------------"
 	// write the request method and URL with response status code
 	msg := &bytes.Buffer{}
@@ -153,5 +169,33 @@ func (e *ResponseError) Error() string {
 	}
 	fmt.Fprintln(msg, separator)
 
-	return msg.String()
+	e.errMsg = msg.String()
+	return e.errMsg
+}
+
+// internal type used for marshaling/unmarshaling
+type responseError struct {
+	ErrorCode    string `json:"errorCode"`
+	StatusCode   int    `json:"statusCode"`
+	ErrorMessage string `json:"errorMessage"`
+}
+
+func (e ResponseError) MarshalJSON() ([]byte, error) {
+	return json.Marshal(responseError{
+		ErrorCode:    e.ErrorCode,
+		StatusCode:   e.StatusCode,
+		ErrorMessage: e.Error(),
+	})
+}
+
+func (e *ResponseError) UnmarshalJSON(data []byte) error {
+	re := responseError{}
+	if err := json.Unmarshal(data, &re); err != nil {
+		return err
+	}
+
+	e.ErrorCode = re.ErrorCode
+	e.StatusCode = re.StatusCode
+	e.errMsg = re.ErrorMessage
+	return nil
 }

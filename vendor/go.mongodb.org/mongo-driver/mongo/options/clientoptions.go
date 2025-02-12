@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net"
 	"net/http"
 	"strings"
@@ -29,6 +30,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/tag"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/auth"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage"
 )
@@ -88,9 +90,9 @@ type ContextDialer interface {
 // The SERVICE_HOST and CANONICALIZE_HOST_NAME properties must not be used at the same time on Linux and Darwin
 // systems.
 //
-// AuthSource: the name of the database to use for authentication. This defaults to "$external" for MONGODB-X509,
-// GSSAPI, and PLAIN and "admin" for all other mechanisms. This can also be set through the "authSource" URI option
-// (e.g. "authSource=otherDb").
+// AuthSource: the name of the database to use for authentication. This defaults to "$external" for MONGODB-AWS,
+// MONGODB-OIDC, MONGODB-X509, GSSAPI, and PLAIN. It defaults to  "admin" for all other auth mechanisms. This can
+// also be set through the "authSource" URI option (e.g. "authSource=otherDb").
 //
 // Username: the username for authentication. This can also be set through the URI as a username:password pair before
 // the first @ character. For example, a URI for user "user", password "pwd", and host "localhost:27017" would be
@@ -110,6 +112,34 @@ type Credential struct {
 	Username                string
 	Password                string
 	PasswordSet             bool
+	OIDCMachineCallback     OIDCCallback
+	OIDCHumanCallback       OIDCCallback
+}
+
+// OIDCCallback is the type for both Human and Machine Callback flows.
+// RefreshToken will always be nil in the OIDCArgs for the Machine flow.
+type OIDCCallback func(context.Context, *OIDCArgs) (*OIDCCredential, error)
+
+// OIDCArgs contains the arguments for the OIDC callback.
+type OIDCArgs struct {
+	Version      int
+	IDPInfo      *IDPInfo
+	RefreshToken *string
+}
+
+// OIDCCredential contains the access token and refresh token.
+type OIDCCredential struct {
+	AccessToken  string
+	ExpiresAt    *time.Time
+	RefreshToken *string
+}
+
+// IDPInfo contains the information needed to perform OIDC authentication with
+// an Identity Provider.
+type IDPInfo struct {
+	Issuer        string
+	ClientID      string
+	RequestScopes []string
 }
 
 // BSONOptions are optional BSON marshaling and unmarshaling behaviors.
@@ -237,7 +267,6 @@ type ClientOptions struct {
 	ZstdLevel                *int
 
 	err error
-	uri string
 	cs  *connstring.ConnString
 
 	// AuthenticateToAnything skips server type checks when deciding if authentication is possible.
@@ -332,13 +361,47 @@ func (c *ClientOptions) validate() error {
 		return fmt.Errorf("invalid server monitoring mode: %q", *mode)
 	}
 
+	// OIDC Validation
+	if c.Auth != nil && c.Auth.AuthMechanism == auth.MongoDBOIDC {
+		if c.Auth.Password != "" {
+			return fmt.Errorf("password must not be set for the %s auth mechanism", auth.MongoDBOIDC)
+		}
+		if c.Auth.OIDCMachineCallback != nil && c.Auth.OIDCHumanCallback != nil {
+			return fmt.Errorf("cannot set both OIDCMachineCallback and OIDCHumanCallback, only one may be specified")
+		}
+		if c.Auth.OIDCHumanCallback == nil && c.Auth.AuthMechanismProperties[auth.AllowedHostsProp] != "" {
+			return fmt.Errorf("Cannot specify ALLOWED_HOSTS without an OIDCHumanCallback")
+		}
+		if env, ok := c.Auth.AuthMechanismProperties[auth.EnvironmentProp]; ok {
+			switch env {
+			case auth.GCPEnvironmentValue, auth.AzureEnvironmentValue:
+				if c.Auth.OIDCMachineCallback != nil {
+					return fmt.Errorf("OIDCMachineCallback cannot be specified with the %s %q", env, auth.EnvironmentProp)
+				}
+				if c.Auth.OIDCHumanCallback != nil {
+					return fmt.Errorf("OIDCHumanCallback cannot be specified with the %s %q", env, auth.EnvironmentProp)
+				}
+				if c.Auth.AuthMechanismProperties[auth.ResourceProp] == "" {
+					return fmt.Errorf("%q must be set for the %s %q", auth.ResourceProp, env, auth.EnvironmentProp)
+				}
+			default:
+				if c.Auth.AuthMechanismProperties[auth.ResourceProp] != "" {
+					return fmt.Errorf("%q must not be set for the %s %q", auth.ResourceProp, env, auth.EnvironmentProp)
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
 // GetURI returns the original URI used to configure the ClientOptions instance. If ApplyURI was not called during
 // construction, this returns "".
 func (c *ClientOptions) GetURI() string {
-	return c.uri
+	if c.cs == nil {
+		return ""
+	}
+	return c.cs.Original
 }
 
 // ApplyURI parses the given URI and sets options accordingly. The URI can contain host names, IPv4/IPv6 literals, or
@@ -360,13 +423,12 @@ func (c *ClientOptions) ApplyURI(uri string) *ClientOptions {
 		return c
 	}
 
-	c.uri = uri
 	cs, err := connstring.ParseAndValidate(uri)
 	if err != nil {
 		c.err = err
 		return c
 	}
-	c.cs = &cs
+	c.cs = cs
 
 	if cs.AppName != "" {
 		c.AppName = &cs.AppName
@@ -1134,9 +1196,6 @@ func MergeClientOptions(opts ...*ClientOptions) *ClientOptions {
 		if opt.err != nil {
 			c.err = opt.err
 		}
-		if opt.uri != "" {
-			c.uri = opt.uri
-		}
 		if opt.cs != nil {
 			c.cs = opt.cs
 		}
@@ -1179,7 +1238,19 @@ func addClientCertFromSeparateFiles(cfg *tls.Config, keyFile, certFile, keyPassw
 		return "", err
 	}
 
-	data := make([]byte, 0, len(keyData)+len(certData)+1)
+	keySize := len(keyData)
+	if keySize > 64*1024*1024 {
+		return "", errors.New("X.509 key must be less than 64 MiB")
+	}
+	certSize := len(certData)
+	if certSize > 64*1024*1024 {
+		return "", errors.New("X.509 certificate must be less than 64 MiB")
+	}
+	dataSize := keySize + certSize + 1
+	if dataSize > math.MaxInt {
+		return "", errors.New("size overflow")
+	}
+	data := make([]byte, 0, dataSize)
 	data = append(data, keyData...)
 	data = append(data, '\n')
 	data = append(data, certData...)
@@ -1247,7 +1318,10 @@ func addClientCertFromBytes(cfg *tls.Config, data []byte, keyPasswd string) (str
 					}
 				}
 				var encoded bytes.Buffer
-				pem.Encode(&encoded, &pem.Block{Type: currentBlock.Type, Bytes: keyBytes})
+				err = pem.Encode(&encoded, &pem.Block{Type: currentBlock.Type, Bytes: keyBytes})
+				if err != nil {
+					return "", fmt.Errorf("error encoding private key as PEM: %w", err)
+				}
 				keyBlock := encoded.Bytes()
 				keyBlocks = append(keyBlocks, keyBlock)
 				start = len(data) - len(remaining)

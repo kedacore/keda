@@ -59,8 +59,10 @@ type storageClient interface {
 	// Object metadata methods.
 
 	DeleteObject(ctx context.Context, bucket, object string, gen int64, conds *Conditions, opts ...storageOption) error
-	GetObject(ctx context.Context, bucket, object string, gen int64, encryptionKey []byte, conds *Conditions, opts ...storageOption) (*ObjectAttrs, error)
+	GetObject(ctx context.Context, params *getObjectParams, opts ...storageOption) (*ObjectAttrs, error)
 	UpdateObject(ctx context.Context, params *updateObjectParams, opts ...storageOption) (*ObjectAttrs, error)
+	RestoreObject(ctx context.Context, params *restoreObjectParams, opts ...storageOption) (*ObjectAttrs, error)
+	MoveObject(ctx context.Context, params *moveObjectParams, opts ...storageOption) (*ObjectAttrs, error)
 
 	// Default Object ACL methods.
 
@@ -121,7 +123,7 @@ type settings struct {
 	gax []gax.CallOption
 
 	// idempotent indicates if the call is idempotent or not when considering
-	// if the call should be retired or not.
+	// if the call should be retried or not.
 	idempotent bool
 
 	// clientOption is a set of option.ClientOption to be used during client
@@ -131,6 +133,8 @@ type settings struct {
 
 	// userProject is the user project that should be billed for the request.
 	userProject string
+
+	metricsContext *metricsContext
 }
 
 func initSettings(opts ...storageOption) *settings {
@@ -181,16 +185,6 @@ func makeStorageOpts(isIdempotent bool, retry *retryConfig, userProject string) 
 type storageOption interface {
 	Apply(s *settings)
 }
-
-func withGAXOptions(opts ...gax.CallOption) storageOption {
-	return &gaxOption{opts}
-}
-
-type gaxOption struct {
-	opts []gax.CallOption
-}
-
-func (o *gaxOption) Apply(s *settings) { s.gax = o.opts }
 
 func withRetryConfig(rc *retryConfig) storageOption {
 	return &retryOption{rc}
@@ -244,7 +238,8 @@ type openWriterParams struct {
 	chunkSize int
 	// chunkRetryDeadline - see `Writer.ChunkRetryDeadline`.
 	// Optional.
-	chunkRetryDeadline time.Duration
+	chunkRetryDeadline   time.Duration
+	chunkTransferTimeout time.Duration
 
 	// Object/request properties
 
@@ -254,6 +249,9 @@ type openWriterParams struct {
 	// attrs - see `Writer.ObjectAttrs`.
 	// Required.
 	attrs *ObjectAttrs
+	// forceEmptyContentType - Disables auto-detect of Content-Type
+	// Optional.
+	forceEmptyContentType bool
 	// conds - see `Writer.o.conds`.
 	// Optional.
 	conds *Conditions
@@ -291,6 +289,14 @@ type newRangeReaderParams struct {
 	readCompressed bool // Use accept-encoding: gzip. Only works for HTTP currently.
 }
 
+type getObjectParams struct {
+	bucket, object string
+	gen            int64
+	encryptionKey  []byte
+	conds          *Conditions
+	softDeleted    bool
+}
+
 type updateObjectParams struct {
 	bucket, object    string
 	uattrs            *ObjectAttrsToUpdate
@@ -298,6 +304,21 @@ type updateObjectParams struct {
 	encryptionKey     []byte
 	conds             *Conditions
 	overrideRetention *bool
+}
+
+type restoreObjectParams struct {
+	bucket, object string
+	gen            int64
+	encryptionKey  []byte
+	conds          *Conditions
+	copySourceACL  bool
+}
+
+type moveObjectParams struct {
+	bucket, srcObject, dstObject string
+	srcConds                     *Conditions
+	dstConds                     *Conditions
+	encryptionKey                []byte
 }
 
 type composeObjectRequest struct {

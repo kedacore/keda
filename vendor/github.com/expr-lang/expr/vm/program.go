@@ -21,17 +21,18 @@ type Program struct {
 	Arguments []int
 	Constants []any
 
-	source    *file.Source
+	source    file.Source
 	node      ast.Node
 	locations []file.Location
 	variables int
 	functions []Function
 	debugInfo map[string]string
+	span      *Span
 }
 
 // NewProgram returns a new Program. It's used by the compiler.
 func NewProgram(
-	source *file.Source,
+	source file.Source,
 	node ast.Node,
 	locations []file.Location,
 	variables int,
@@ -40,6 +41,7 @@ func NewProgram(
 	arguments []int,
 	functions []Function,
 	debugInfo map[string]string,
+	span *Span,
 ) *Program {
 	return &Program{
 		source:    source,
@@ -51,17 +53,23 @@ func NewProgram(
 		Arguments: arguments,
 		functions: functions,
 		debugInfo: debugInfo,
+		span:      span,
 	}
 }
 
 // Source returns origin file.Source.
-func (program *Program) Source() *file.Source {
+func (program *Program) Source() file.Source {
 	return program.source
 }
 
 // Node returns origin ast.Node.
 func (program *Program) Node() ast.Node {
 	return program.node
+}
+
+// Locations returns a slice of bytecode's locations.
+func (program *Program) Locations() []file.Location {
+	return program.locations
 }
 
 // Disassemble returns opcodes as a string.
@@ -285,15 +293,15 @@ func (program *Program) DisassembleWriter(w io.Writer) {
 		case OpCallFast:
 			argument("OpCallFast")
 
+		case OpCallSafe:
+			argument("OpCallSafe")
+
 		case OpCallTyped:
 			signature := reflect.TypeOf(FuncTypes[arg]).Elem().String()
 			_, _ = fmt.Fprintf(w, "%v\t%v\t<%v>\t%v\n", pp, "OpCallTyped", arg, signature)
 
 		case OpCallBuiltin1:
 			builtinArg("OpCallBuiltin1")
-
-		case OpValidateArgs:
-			argument("OpValidateArgs")
 
 		case OpArray:
 			code("OpArray")
@@ -322,20 +330,20 @@ func (program *Program) DisassembleWriter(w io.Writer) {
 		case OpGetIndex:
 			code("OpGetIndex")
 
-		case OpSetIndex:
-			code("OpSetIndex")
-
 		case OpGetCount:
 			code("OpGetCount")
 
 		case OpGetLen:
 			code("OpGetLen")
 
-		case OpGetGroupBy:
-			code("OpGetGroupBy")
-
 		case OpGetAcc:
 			code("OpGetAcc")
+
+		case OpSetAcc:
+			code("OpSetAcc")
+
+		case OpSetIndex:
+			code("OpSetIndex")
 
 		case OpPointer:
 			code("OpPointer")
@@ -343,11 +351,23 @@ func (program *Program) DisassembleWriter(w io.Writer) {
 		case OpThrow:
 			code("OpThrow")
 
+		case OpCreate:
+			argument("OpCreate")
+
 		case OpGroupBy:
 			code("OpGroupBy")
 
-		case OpSetAcc:
-			code("OpSetAcc")
+		case OpSortBy:
+			code("OpSortBy")
+
+		case OpSort:
+			code("OpSort")
+
+		case OpProfileStart:
+			code("OpProfileStart")
+
+		case OpProfileEnd:
+			code("OpProfileEnd")
 
 		case OpBegin:
 			code("OpBegin")

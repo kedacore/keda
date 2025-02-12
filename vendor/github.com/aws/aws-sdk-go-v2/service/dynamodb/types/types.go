@@ -20,6 +20,7 @@ type ArchivalSummary struct {
 	ArchivalDateTime *time.Time
 
 	// The reason DynamoDB archived the table. Currently, the only possible value is:
+	//
 	//   - INACCESSIBLE_ENCRYPTION_CREDENTIALS - The table was archived due to the
 	//   table's KMS key being inaccessible for more than seven days. An On-Demand backup
 	//   was created at the archival time.
@@ -28,7 +29,7 @@ type ArchivalSummary struct {
 	noSmithyDocumentSerde
 }
 
-// Represents an attribute for describing the key schema for the table and indexes.
+// Represents an attribute for describing the schema for the table and indexes.
 type AttributeDefinition struct {
 
 	// A name for the attribute.
@@ -37,8 +38,11 @@ type AttributeDefinition struct {
 	AttributeName *string
 
 	// The data type for the attribute, where:
+	//
 	//   - S - the attribute is of type String
+	//
 	//   - N - the attribute is of type Number
+	//
 	//   - B - the attribute is of type Binary
 	//
 	// This member is required.
@@ -47,10 +51,12 @@ type AttributeDefinition struct {
 	noSmithyDocumentSerde
 }
 
-// Represents the data for an attribute. Each attribute value is described as a
-// name-value pair. The name is the data type, and the value is the data itself.
-// For more information, see Data Types (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes)
-// in the Amazon DynamoDB Developer Guide.
+// Represents the data for an attribute.
+//
+// Each attribute value is described as a name-value pair. The name is the data
+// type, and the value is the data itself.
+//
+// For more information, see [Data Types] in the Amazon DynamoDB Developer Guide.
 //
 // The following types satisfy this interface:
 //
@@ -64,12 +70,15 @@ type AttributeDefinition struct {
 //	AttributeValueMemberNULL
 //	AttributeValueMemberS
 //	AttributeValueMemberSS
+//
+// [Data Types]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes
 type AttributeValue interface {
 	isAttributeValue()
 }
 
-// An attribute of type Binary. For example: "B":
-// "dGhpcyB0ZXh0IGlzIGJhc2U2NC1lbmNvZGVk"
+// An attribute of type Binary. For example:
+//
+//	"B": "dGhpcyB0ZXh0IGlzIGJhc2U2NC1lbmNvZGVk"
 type AttributeValueMemberB struct {
 	Value []byte
 
@@ -78,7 +87,9 @@ type AttributeValueMemberB struct {
 
 func (*AttributeValueMemberB) isAttributeValue() {}
 
-// An attribute of type Boolean. For example: "BOOL": true
+// An attribute of type Boolean. For example:
+//
+//	"BOOL": true
 type AttributeValueMemberBOOL struct {
 	Value bool
 
@@ -87,8 +98,9 @@ type AttributeValueMemberBOOL struct {
 
 func (*AttributeValueMemberBOOL) isAttributeValue() {}
 
-// An attribute of type Binary Set. For example: "BS": ["U3Vubnk=", "UmFpbnk=",
-// "U25vd3k="]
+// An attribute of type Binary Set. For example:
+//
+//	"BS": ["U3Vubnk=", "UmFpbnk=", "U25vd3k="]
 type AttributeValueMemberBS struct {
 	Value [][]byte
 
@@ -97,8 +109,9 @@ type AttributeValueMemberBS struct {
 
 func (*AttributeValueMemberBS) isAttributeValue() {}
 
-// An attribute of type List. For example: "L": [ {"S": "Cookies"} , {"S":
-// "Coffee"}, {"N": "3.14159"}]
+// An attribute of type List. For example:
+//
+//	"L": [ {"S": "Cookies"} , {"S": "Coffee"}, {"N": "3.14159"}]
 type AttributeValueMemberL struct {
 	Value []AttributeValue
 
@@ -107,8 +120,9 @@ type AttributeValueMemberL struct {
 
 func (*AttributeValueMemberL) isAttributeValue() {}
 
-// An attribute of type Map. For example: "M": {"Name": {"S": "Joe"}, "Age": {"N":
-// "35"}}
+// An attribute of type Map. For example:
+//
+//	"M": {"Name": {"S": "Joe"}, "Age": {"N": "35"}}
 type AttributeValueMemberM struct {
 	Value map[string]AttributeValue
 
@@ -117,10 +131,13 @@ type AttributeValueMemberM struct {
 
 func (*AttributeValueMemberM) isAttributeValue() {}
 
-// An attribute of type Number. For example: "N": "123.45" Numbers are sent across
-// the network to DynamoDB as strings, to maximize compatibility across languages
-// and libraries. However, DynamoDB treats them as number type attributes for
-// mathematical operations.
+// An attribute of type Number. For example:
+//
+//	"N": "123.45"
+//
+// Numbers are sent across the network to DynamoDB as strings, to maximize
+// compatibility across languages and libraries. However, DynamoDB treats them as
+// number type attributes for mathematical operations.
 type AttributeValueMemberN struct {
 	Value string
 
@@ -129,8 +146,11 @@ type AttributeValueMemberN struct {
 
 func (*AttributeValueMemberN) isAttributeValue() {}
 
-// An attribute of type Number Set. For example: "NS": ["42.2", "-19", "7.5",
-// "3.14"] Numbers are sent across the network to DynamoDB as strings, to maximize
+// An attribute of type Number Set. For example:
+//
+//	"NS": ["42.2", "-19", "7.5", "3.14"]
+//
+// Numbers are sent across the network to DynamoDB as strings, to maximize
 // compatibility across languages and libraries. However, DynamoDB treats them as
 // number type attributes for mathematical operations.
 type AttributeValueMemberNS struct {
@@ -141,7 +161,9 @@ type AttributeValueMemberNS struct {
 
 func (*AttributeValueMemberNS) isAttributeValue() {}
 
-// An attribute of type Null. For example: "NULL": true
+// An attribute of type Null. For example:
+//
+//	"NULL": true
 type AttributeValueMemberNULL struct {
 	Value bool
 
@@ -150,7 +172,9 @@ type AttributeValueMemberNULL struct {
 
 func (*AttributeValueMemberNULL) isAttributeValue() {}
 
-// An attribute of type String. For example: "S": "Hello"
+// An attribute of type String. For example:
+//
+//	"S": "Hello"
 type AttributeValueMemberS struct {
 	Value string
 
@@ -159,8 +183,9 @@ type AttributeValueMemberS struct {
 
 func (*AttributeValueMemberS) isAttributeValue() {}
 
-// An attribute of type String Set. For example: "SS": ["Giraffe", "Hippo"
-// ,"Zebra"]
+// An attribute of type String Set. For example:
+//
+//	"SS": ["Giraffe", "Hippo" ,"Zebra"]
 type AttributeValueMemberSS struct {
 	Value []string
 
@@ -170,64 +195,89 @@ type AttributeValueMemberSS struct {
 func (*AttributeValueMemberSS) isAttributeValue() {}
 
 // For the UpdateItem operation, represents the attributes to be modified, the
-// action to perform on each, and the new value for each. You cannot use UpdateItem
-// to update any primary key attributes. Instead, you will need to delete the item,
-// and then use PutItem to create a new item with new attributes. Attribute values
-// cannot be null; string and binary type attributes must have lengths greater than
-// zero; and set type attributes must not be empty. Requests with empty values will
-// be rejected with a ValidationException exception.
+// action to perform on each, and the new value for each.
+//
+// You cannot use UpdateItem to update any primary key attributes. Instead, you
+// will need to delete the item, and then use PutItem to create a new item with
+// new attributes.
+//
+// Attribute values cannot be null; string and binary type attributes must have
+// lengths greater than zero; and set type attributes must not be empty. Requests
+// with empty values will be rejected with a ValidationException exception.
 type AttributeValueUpdate struct {
 
 	// Specifies how to perform the update. Valid values are PUT (default), DELETE ,
 	// and ADD . The behavior depends on whether the specified primary key already
-	// exists in the table. If an item with the specified Key is found in the table:
+	// exists in the table.
+	//
+	// If an item with the specified Key is found in the table:
+	//
 	//   - PUT - Adds the specified attribute to the item. If the attribute already
 	//   exists, it is replaced by the new value.
+	//
 	//   - DELETE - If no value is specified, the attribute and its value are removed
 	//   from the item. The data type of the specified value must match the existing
-	//   value's data type. If a set of values is specified, then those values are
-	//   subtracted from the old set. For example, if the attribute value was the set
-	//   [a,b,c] and the DELETE action specified [a,c] , then the final attribute value
-	//   would be [b] . Specifying an empty set is an error.
+	//   value's data type.
+	//
+	// If a set of values is specified, then those values are subtracted from the old
+	//   set. For example, if the attribute value was the set [a,b,c] and the DELETE
+	//   action specified [a,c] , then the final attribute value would be [b] .
+	//   Specifying an empty set is an error.
+	//
 	//   - ADD - If the attribute does not already exist, then the attribute and its
 	//   values are added to the item. If the attribute does exist, then the behavior of
 	//   ADD depends on the data type of the attribute:
+	//
 	//   - If the existing attribute is a number, and if Value is also a number, then
 	//   the Value is mathematically added to the existing attribute. If Value is a
-	//   negative number, then it is subtracted from the existing attribute. If you use
-	//   ADD to increment or decrement a number value for an item that doesn't exist
-	//   before the update, DynamoDB uses 0 as the initial value. In addition, if you use
-	//   ADD to update an existing item, and intend to increment or decrement an
-	//   attribute value which does not yet exist, DynamoDB uses 0 as the initial
-	//   value. For example, suppose that the item you want to update does not yet have
-	//   an attribute named itemcount, but you decide to ADD the number 3 to this
-	//   attribute anyway, even though it currently does not exist. DynamoDB will create
-	//   the itemcount attribute, set its initial value to 0 , and finally add 3 to it.
-	//   The result will be a new itemcount attribute in the item, with a value of 3 .
+	//   negative number, then it is subtracted from the existing attribute.
+	//
+	// If you use ADD to increment or decrement a number value for an item that doesn't
+	//   exist before the update, DynamoDB uses 0 as the initial value.
+	//
+	// In addition, if you use ADD to update an existing item, and intend to increment
+	//   or decrement an attribute value which does not yet exist, DynamoDB uses 0 as
+	//   the initial value. For example, suppose that the item you want to update does
+	//   not yet have an attribute named itemcount, but you decide to ADD the number 3
+	//   to this attribute anyway, even though it currently does not exist. DynamoDB will
+	//   create the itemcount attribute, set its initial value to 0 , and finally add 3
+	//   to it. The result will be a new itemcount attribute in the item, with a value of
+	//   3 .
+	//
 	//   - If the existing data type is a set, and if the Value is also a set, then the
 	//   Value is added to the existing set. (This is a set operation, not mathematical
 	//   addition.) For example, if the attribute value was the set [1,2] , and the ADD
 	//   action specified [3] , then the final attribute value would be [1,2,3] . An
 	//   error occurs if an Add action is specified for a set attribute and the attribute
-	//   type specified does not match the existing set type. Both sets must have the
-	//   same primitive data type. For example, if the existing data type is a set of
-	//   strings, the Value must also be a set of strings. The same holds true for
-	//   number sets and binary sets. This action is only valid for an existing
-	//   attribute whose data type is number or is a set. Do not use ADD for any other
-	//   data types.
+	//   type specified does not match the existing set type.
+	//
+	// Both sets must have the same primitive data type. For example, if the existing
+	//   data type is a set of strings, the Value must also be a set of strings. The
+	//   same holds true for number sets and binary sets.
+	//
+	// This action is only valid for an existing attribute whose data type is number
+	//   or is a set. Do not use ADD for any other data types.
+	//
 	// If no item with the specified Key is found:
+	//
 	//   - PUT - DynamoDB creates a new item with the specified primary key, and then
 	//   adds the attribute.
+	//
 	//   - DELETE - Nothing happens; there is no attribute to delete.
+	//
 	//   - ADD - DynamoDB creates a new item with the supplied primary key and number
 	//   (or set) for the attribute value. The only data types allowed are number, number
 	//   set, string set or binary set.
 	Action AttributeAction
 
-	// Represents the data for an attribute. Each attribute value is described as a
-	// name-value pair. The name is the data type, and the value is the data itself.
-	// For more information, see Data Types (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes)
-	// in the Amazon DynamoDB Developer Guide.
+	// Represents the data for an attribute.
+	//
+	// Each attribute value is described as a name-value pair. The name is the data
+	// type, and the value is the data itself.
+	//
+	// For more information, see [Data Types] in the Amazon DynamoDB Developer Guide.
+	//
+	// [Data Types]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes
 	Value AttributeValue
 
 	noSmithyDocumentSerde
@@ -417,11 +467,14 @@ type BackupDetails struct {
 	BackupStatus BackupStatus
 
 	// BackupType:
+	//
 	//   - USER - You create and manage these using the on-demand backup feature.
+	//
 	//   - SYSTEM - If you delete a table with point-in-time recovery enabled, a SYSTEM
 	//   backup is automatically created and is retained for 35 days (at no additional
 	//   cost). System backups allow you to restore the deleted table to the state it was
 	//   in just before the point of deletion.
+	//
 	//   - AWS_BACKUP - On-demand backup created by you from Backup service.
 	//
 	// This member is required.
@@ -461,11 +514,14 @@ type BackupSummary struct {
 	BackupStatus BackupStatus
 
 	// BackupType:
+	//
 	//   - USER - You create and manage these using the on-demand backup feature.
+	//
 	//   - SYSTEM - If you delete a table with point-in-time recovery enabled, a SYSTEM
 	//   backup is automatically created and is retained for 35 days (at no additional
 	//   cost). System backups allow you to restore the deleted table to the state it was
 	//   in just before the point of deletion.
+	//
 	//   - AWS_BACKUP - On-demand backup created by you from Backup service.
 	BackupType BackupType
 
@@ -484,14 +540,14 @@ type BackupSummary struct {
 // An error associated with a statement in a PartiQL batch that was run.
 type BatchStatementError struct {
 
-	// The error code associated with the failed PartiQL batch statement.
+	//  The error code associated with the failed PartiQL batch statement.
 	Code BatchStatementErrorCodeEnum
 
 	// The item which caused the condition check to fail. This will be set if
 	// ReturnValuesOnConditionCheckFailure is specified as ALL_OLD .
 	Item map[string]AttributeValue
 
-	// The error message associated with the PartiQL batch response.
+	//  The error message associated with the PartiQL batch response.
 	Message *string
 
 	noSmithyDocumentSerde
@@ -500,22 +556,23 @@ type BatchStatementError struct {
 // A PartiQL batch statement request.
 type BatchStatementRequest struct {
 
-	// A valid PartiQL statement.
+	//  A valid PartiQL statement.
 	//
 	// This member is required.
 	Statement *string
 
-	// The read consistency of the PartiQL batch request.
+	//  The read consistency of the PartiQL batch request.
 	ConsistentRead *bool
 
-	// The parameters associated with a PartiQL statement in the batch request.
+	//  The parameters associated with a PartiQL statement in the batch request.
 	Parameters []AttributeValue
 
 	// An optional parameter that returns the item attributes for a PartiQL batch
-	// request operation that failed a condition check. There is no additional cost
-	// associated with requesting a return value aside from the small network and
-	// processing overhead of receiving a larger response. No read capacity units are
-	// consumed.
+	// request operation that failed a condition check.
+	//
+	// There is no additional cost associated with requesting a return value aside
+	// from the small network and processing overhead of receiving a larger response.
+	// No read capacity units are consumed.
 	ReturnValuesOnConditionCheckFailure ReturnValuesOnConditionCheckFailure
 
 	noSmithyDocumentSerde
@@ -524,13 +581,13 @@ type BatchStatementRequest struct {
 // A PartiQL batch statement response..
 type BatchStatementResponse struct {
 
-	// The error associated with a failed PartiQL batch statement.
+	//  The error associated with a failed PartiQL batch statement.
 	Error *BatchStatementError
 
-	// A DynamoDB item associated with a BatchStatementResponse
+	//  A DynamoDB item associated with a BatchStatementResponse
 	Item map[string]AttributeValue
 
-	// The table name associated with a failed PartiQL batch statement.
+	//  The table name associated with a failed PartiQL batch statement.
 	TableName *string
 
 	noSmithyDocumentSerde
@@ -538,15 +595,20 @@ type BatchStatementResponse struct {
 
 // Contains the details for the read/write capacity mode. This page talks about
 // PROVISIONED and PAY_PER_REQUEST billing modes. For more information about these
-// modes, see Read/write capacity mode (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadWriteCapacityMode.html)
-// . You may need to switch to on-demand mode at least once in order to return a
+// modes, see [Read/write capacity mode].
+//
+// You may need to switch to on-demand mode at least once in order to return a
 // BillingModeSummary response.
+//
+// [Read/write capacity mode]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadWriteCapacityMode.html
 type BillingModeSummary struct {
 
 	// Controls how you are charged for read and write throughput and how you manage
 	// capacity. This setting can be changed later.
+	//
 	//   - PROVISIONED - Sets the read/write capacity mode to PROVISIONED . We
 	//   recommend using PROVISIONED for predictable workloads.
+	//
 	//   - PAY_PER_REQUEST - Sets the read/write capacity mode to PAY_PER_REQUEST . We
 	//   recommend using PAY_PER_REQUEST for unpredictable workloads.
 	BillingMode BillingMode
@@ -594,119 +656,168 @@ type Capacity struct {
 }
 
 // Represents the selection criteria for a Query or Scan operation:
+//
 //   - For a Query operation, Condition is used for specifying the KeyConditions to
 //     use when querying a table or an index. For KeyConditions , only the following
-//     comparison operators are supported: EQ | LE | LT | GE | GT | BEGINS_WITH |
-//     BETWEEN Condition is also used in a QueryFilter , which evaluates the query
-//     results and returns only the desired values.
-//   - For a Scan operation, Condition is used in a ScanFilter , which evaluates
-//     the scan results and returns only the desired values.
+//     comparison operators are supported:
+//
+// EQ | LE | LT | GE | GT | BEGINS_WITH | BETWEEN
+//
+// Condition is also used in a QueryFilter , which evaluates the query results and
+//
+//	returns only the desired values.
+//
+//	- For a Scan operation, Condition is used in a ScanFilter , which evaluates
+//	the scan results and returns only the desired values.
 type Condition struct {
 
 	// A comparator for evaluating attributes. For example, equals, greater than, less
-	// than, etc. The following comparison operators are available: EQ | NE | LE | LT
-	// | GE | GT | NOT_NULL | NULL | CONTAINS | NOT_CONTAINS | BEGINS_WITH | IN |
-	// BETWEEN The following are descriptions of each comparison operator.
+	// than, etc.
+	//
+	// The following comparison operators are available:
+	//
+	//     EQ | NE | LE | LT | GE | GT | NOT_NULL | NULL | CONTAINS | NOT_CONTAINS |
+	//     BEGINS_WITH | IN | BETWEEN
+	//
+	// The following are descriptions of each comparison operator.
+	//
 	//   - EQ : Equal. EQ is supported for all data types, including lists and maps.
-	//   AttributeValueList can contain only one AttributeValue element of type String,
+	//
+	// AttributeValueList can contain only one AttributeValue element of type String,
 	//   Number, Binary, String Set, Number Set, or Binary Set. If an item contains an
 	//   AttributeValue element of a different type than the one provided in the
 	//   request, the value does not match. For example, {"S":"6"} does not equal
 	//   {"N":"6"} . Also, {"N":"6"} does not equal {"NS":["6", "2", "1"]} .
-	//   - NE : Not equal. NE is supported for all data types, including lists and
-	//   maps. AttributeValueList can contain only one AttributeValue of type String,
-	//   Number, Binary, String Set, Number Set, or Binary Set. If an item contains an
+	//
+	//   - NE : Not equal. NE is supported for all data types, including lists and maps.
+	//
+	// AttributeValueList can contain only one AttributeValue of type String, Number,
+	//   Binary, String Set, Number Set, or Binary Set. If an item contains an
 	//   AttributeValue of a different type than the one provided in the request, the
 	//   value does not match. For example, {"S":"6"} does not equal {"N":"6"} . Also,
 	//   {"N":"6"} does not equal {"NS":["6", "2", "1"]} .
-	//   - LE : Less than or equal. AttributeValueList can contain only one
-	//   AttributeValue element of type String, Number, or Binary (not a set type). If
-	//   an item contains an AttributeValue element of a different type than the one
-	//   provided in the request, the value does not match. For example, {"S":"6"} does
-	//   not equal {"N":"6"} . Also, {"N":"6"} does not compare to {"NS":["6", "2",
-	//   "1"]} .
-	//   - LT : Less than. AttributeValueList can contain only one AttributeValue of
-	//   type String, Number, or Binary (not a set type). If an item contains an
-	//   AttributeValue element of a different type than the one provided in the
-	//   request, the value does not match. For example, {"S":"6"} does not equal
-	//   {"N":"6"} . Also, {"N":"6"} does not compare to {"NS":["6", "2", "1"]} .
-	//   - GE : Greater than or equal. AttributeValueList can contain only one
-	//   AttributeValue element of type String, Number, or Binary (not a set type). If
-	//   an item contains an AttributeValue element of a different type than the one
-	//   provided in the request, the value does not match. For example, {"S":"6"} does
-	//   not equal {"N":"6"} . Also, {"N":"6"} does not compare to {"NS":["6", "2",
-	//   "1"]} .
-	//   - GT : Greater than. AttributeValueList can contain only one AttributeValue
-	//   element of type String, Number, or Binary (not a set type). If an item contains
-	//   an AttributeValue element of a different type than the one provided in the
-	//   request, the value does not match. For example, {"S":"6"} does not equal
-	//   {"N":"6"} . Also, {"N":"6"} does not compare to {"NS":["6", "2", "1"]} .
+	//
+	//   - LE : Less than or equal.
+	//
+	// AttributeValueList can contain only one AttributeValue element of type String,
+	//   Number, or Binary (not a set type). If an item contains an AttributeValue
+	//   element of a different type than the one provided in the request, the value does
+	//   not match. For example, {"S":"6"} does not equal {"N":"6"} . Also, {"N":"6"}
+	//   does not compare to {"NS":["6", "2", "1"]} .
+	//
+	//   - LT : Less than.
+	//
+	// AttributeValueList can contain only one AttributeValue of type String, Number,
+	//   or Binary (not a set type). If an item contains an AttributeValue element of a
+	//   different type than the one provided in the request, the value does not match.
+	//   For example, {"S":"6"} does not equal {"N":"6"} . Also, {"N":"6"} does not
+	//   compare to {"NS":["6", "2", "1"]} .
+	//
+	//   - GE : Greater than or equal.
+	//
+	// AttributeValueList can contain only one AttributeValue element of type String,
+	//   Number, or Binary (not a set type). If an item contains an AttributeValue
+	//   element of a different type than the one provided in the request, the value does
+	//   not match. For example, {"S":"6"} does not equal {"N":"6"} . Also, {"N":"6"}
+	//   does not compare to {"NS":["6", "2", "1"]} .
+	//
+	//   - GT : Greater than.
+	//
+	// AttributeValueList can contain only one AttributeValue element of type String,
+	//   Number, or Binary (not a set type). If an item contains an AttributeValue
+	//   element of a different type than the one provided in the request, the value does
+	//   not match. For example, {"S":"6"} does not equal {"N":"6"} . Also, {"N":"6"}
+	//   does not compare to {"NS":["6", "2", "1"]} .
+	//
 	//   - NOT_NULL : The attribute exists. NOT_NULL is supported for all data types,
-	//   including lists and maps. This operator tests for the existence of an attribute,
-	//   not its data type. If the data type of attribute " a " is null, and you
-	//   evaluate it using NOT_NULL , the result is a Boolean true . This result is
-	//   because the attribute " a " exists; its data type is not relevant to the
-	//   NOT_NULL comparison operator.
+	//   including lists and maps.
+	//
+	// This operator tests for the existence of an attribute, not its data type. If
+	//   the data type of attribute " a " is null, and you evaluate it using NOT_NULL ,
+	//   the result is a Boolean true . This result is because the attribute " a "
+	//   exists; its data type is not relevant to the NOT_NULL comparison operator.
+	//
 	//   - NULL : The attribute does not exist. NULL is supported for all data types,
-	//   including lists and maps. This operator tests for the nonexistence of an
-	//   attribute, not its data type. If the data type of attribute " a " is null, and
-	//   you evaluate it using NULL , the result is a Boolean false . This is because
-	//   the attribute " a " exists; its data type is not relevant to the NULL
-	//   comparison operator.
-	//   - CONTAINS : Checks for a subsequence, or value in a set. AttributeValueList
-	//   can contain only one AttributeValue element of type String, Number, or Binary
-	//   (not a set type). If the target attribute of the comparison is of type String,
-	//   then the operator checks for a substring match. If the target attribute of the
-	//   comparison is of type Binary, then the operator looks for a subsequence of the
-	//   target that matches the input. If the target attribute of the comparison is a
-	//   set (" SS ", " NS ", or " BS "), then the operator evaluates to true if it
-	//   finds an exact match with any member of the set. CONTAINS is supported for
-	//   lists: When evaluating " a CONTAINS b ", " a " can be a list; however, " b "
-	//   cannot be a set, a map, or a list.
+	//   including lists and maps.
+	//
+	// This operator tests for the nonexistence of an attribute, not its data type. If
+	//   the data type of attribute " a " is null, and you evaluate it using NULL , the
+	//   result is a Boolean false . This is because the attribute " a " exists; its
+	//   data type is not relevant to the NULL comparison operator.
+	//
+	//   - CONTAINS : Checks for a subsequence, or value in a set.
+	//
+	// AttributeValueList can contain only one AttributeValue element of type String,
+	//   Number, or Binary (not a set type). If the target attribute of the comparison is
+	//   of type String, then the operator checks for a substring match. If the target
+	//   attribute of the comparison is of type Binary, then the operator looks for a
+	//   subsequence of the target that matches the input. If the target attribute of the
+	//   comparison is a set (" SS ", " NS ", or " BS "), then the operator evaluates
+	//   to true if it finds an exact match with any member of the set.
+	//
+	// CONTAINS is supported for lists: When evaluating " a CONTAINS b ", " a " can be
+	//   a list; however, " b " cannot be a set, a map, or a list.
+	//
 	//   - NOT_CONTAINS : Checks for absence of a subsequence, or absence of a value in
-	//   a set. AttributeValueList can contain only one AttributeValue element of type
-	//   String, Number, or Binary (not a set type). If the target attribute of the
-	//   comparison is a String, then the operator checks for the absence of a substring
-	//   match. If the target attribute of the comparison is Binary, then the operator
-	//   checks for the absence of a subsequence of the target that matches the input. If
-	//   the target attribute of the comparison is a set (" SS ", " NS ", or " BS "),
-	//   then the operator evaluates to true if it does not find an exact match with any
-	//   member of the set. NOT_CONTAINS is supported for lists: When evaluating " a
-	//   NOT CONTAINS b ", " a " can be a list; however, " b " cannot be a set, a map,
-	//   or a list.
-	//   - BEGINS_WITH : Checks for a prefix. AttributeValueList can contain only one
-	//   AttributeValue of type String or Binary (not a Number or a set type). The
-	//   target attribute of the comparison must be of type String or Binary (not a
-	//   Number or a set type).
-	//   - IN : Checks for matching elements in a list. AttributeValueList can contain
-	//   one or more AttributeValue elements of type String, Number, or Binary. These
-	//   attributes are compared against an existing attribute of an item. If any
-	//   elements of the input are equal to the item attribute, the expression evaluates
-	//   to true.
+	//   a set.
+	//
+	// AttributeValueList can contain only one AttributeValue element of type String,
+	//   Number, or Binary (not a set type). If the target attribute of the comparison is
+	//   a String, then the operator checks for the absence of a substring match. If the
+	//   target attribute of the comparison is Binary, then the operator checks for the
+	//   absence of a subsequence of the target that matches the input. If the target
+	//   attribute of the comparison is a set (" SS ", " NS ", or " BS "), then the
+	//   operator evaluates to true if it does not find an exact match with any member of
+	//   the set.
+	//
+	// NOT_CONTAINS is supported for lists: When evaluating " a NOT CONTAINS b ", " a "
+	//   can be a list; however, " b " cannot be a set, a map, or a list.
+	//
+	//   - BEGINS_WITH : Checks for a prefix.
+	//
+	// AttributeValueList can contain only one AttributeValue of type String or Binary
+	//   (not a Number or a set type). The target attribute of the comparison must be of
+	//   type String or Binary (not a Number or a set type).
+	//
+	//   - IN : Checks for matching elements in a list.
+	//
+	// AttributeValueList can contain one or more AttributeValue elements of type
+	//   String, Number, or Binary. These attributes are compared against an existing
+	//   attribute of an item. If any elements of the input are equal to the item
+	//   attribute, the expression evaluates to true.
+	//
 	//   - BETWEEN : Greater than or equal to the first value, and less than or equal
-	//   to the second value. AttributeValueList must contain two AttributeValue
-	//   elements of the same type, either String, Number, or Binary (not a set type). A
-	//   target attribute matches if the target value is greater than, or equal to, the
-	//   first element and less than, or equal to, the second element. If an item
-	//   contains an AttributeValue element of a different type than the one provided
-	//   in the request, the value does not match. For example, {"S":"6"} does not
-	//   compare to {"N":"6"} . Also, {"N":"6"} does not compare to {"NS":["6", "2",
-	//   "1"]}
-	// For usage examples of AttributeValueList and ComparisonOperator , see Legacy
-	// Conditional Parameters (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LegacyConditionalParameters.html)
-	// in the Amazon DynamoDB Developer Guide.
+	//   to the second value.
+	//
+	// AttributeValueList must contain two AttributeValue elements of the same type,
+	//   either String, Number, or Binary (not a set type). A target attribute matches if
+	//   the target value is greater than, or equal to, the first element and less than,
+	//   or equal to, the second element. If an item contains an AttributeValue element
+	//   of a different type than the one provided in the request, the value does not
+	//   match. For example, {"S":"6"} does not compare to {"N":"6"} . Also, {"N":"6"}
+	//   does not compare to {"NS":["6", "2", "1"]}
+	//
+	// For usage examples of AttributeValueList and ComparisonOperator , see [Legacy Conditional Parameters] in the
+	// Amazon DynamoDB Developer Guide.
+	//
+	// [Legacy Conditional Parameters]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LegacyConditionalParameters.html
 	//
 	// This member is required.
 	ComparisonOperator ComparisonOperator
 
 	// One or more values to evaluate against the supplied attribute. The number of
-	// values in the list depends on the ComparisonOperator being used. For type
-	// Number, value comparisons are numeric. String value comparisons for greater
-	// than, equals, or less than are based on ASCII character code values. For
-	// example, a is greater than A , and a is greater than B . For a list of code
-	// values, see http://en.wikipedia.org/wiki/ASCII#ASCII_printable_characters (http://en.wikipedia.org/wiki/ASCII#ASCII_printable_characters)
-	// . For Binary, DynamoDB treats each byte of the binary data as unsigned when it
+	// values in the list depends on the ComparisonOperator being used.
+	//
+	// For type Number, value comparisons are numeric.
+	//
+	// String value comparisons for greater than, equals, or less than are based on
+	// ASCII character code values. For example, a is greater than A , and a is
+	// greater than B . For a list of code values, see [http://en.wikipedia.org/wiki/ASCII#ASCII_printable_characters].
+	//
+	// For Binary, DynamoDB treats each byte of the binary data as unsigned when it
 	// compares binary values.
+	//
+	// [http://en.wikipedia.org/wiki/ASCII#ASCII_printable_characters]: http://en.wikipedia.org/wiki/ASCII#ASCII_printable_characters
 	AttributeValueList []AttributeValue
 
 	noSmithyDocumentSerde
@@ -717,8 +828,9 @@ type Condition struct {
 type ConditionCheck struct {
 
 	// A condition that must be satisfied in order for a conditional update to
-	// succeed. For more information, see Condition expressions (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ConditionExpressions.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// succeed. For more information, see [Condition expressions]in the Amazon DynamoDB Developer Guide.
+	//
+	// [Condition expressions]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ConditionExpressions.html
 	//
 	// This member is required.
 	ConditionExpression *string
@@ -729,19 +841,22 @@ type ConditionCheck struct {
 	// This member is required.
 	Key map[string]AttributeValue
 
-	// Name of the table for the check item request.
+	// Name of the table for the check item request. You can also provide the Amazon
+	// Resource Name (ARN) of the table in this parameter.
 	//
 	// This member is required.
 	TableName *string
 
 	// One or more substitution tokens for attribute names in an expression. For more
-	// information, see Expression attribute names (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ExpressionAttributeNames.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// information, see [Expression attribute names]in the Amazon DynamoDB Developer Guide.
+	//
+	// [Expression attribute names]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ExpressionAttributeNames.html
 	ExpressionAttributeNames map[string]string
 
 	// One or more values that can be substituted in an expression. For more
-	// information, see Condition expressions (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ConditionExpressions.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// information, see [Condition expressions]in the Amazon DynamoDB Developer Guide.
+	//
+	// [Condition expressions]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ConditionExpressions.html
 	ExpressionAttributeValues map[string]AttributeValue
 
 	// Use ReturnValuesOnConditionCheckFailure to get the item attributes if the
@@ -755,8 +870,10 @@ type ConditionCheck struct {
 // The capacity units consumed by an operation. The data returned includes the
 // total provisioned throughput consumed, along with statistics for the table and
 // any indexes involved in the operation. ConsumedCapacity is only returned if the
-// request asked for it. For more information, see Provisioned Throughput (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ProvisionedThroughputIntro.html)
-// in the Amazon DynamoDB Developer Guide.
+// request asked for it. For more information, see [Provisioned capacity mode]in the Amazon DynamoDB
+// Developer Guide.
+//
+// [Provisioned capacity mode]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/provisioned-capacity-mode.html
 type ConsumedCapacity struct {
 
 	// The total number of capacity units consumed by the operation.
@@ -775,7 +892,9 @@ type ConsumedCapacity struct {
 	// The amount of throughput consumed on the table affected by the operation.
 	Table *Capacity
 
-	// The name of the table that was affected by the operation.
+	// The name of the table that was affected by the operation. If you had specified
+	// the Amazon Resource Name (ARN) of a table in the input, you'll see the table ARN
+	// in the response.
 	TableName *string
 
 	// The total number of write capacity units consumed by the operation.
@@ -835,11 +954,23 @@ type CreateGlobalSecondaryIndexAction struct {
 	// This member is required.
 	Projection *Projection
 
+	// The maximum number of read and write units for the global secondary index being
+	// created. If you use this parameter, you must specify MaxReadRequestUnits ,
+	// MaxWriteRequestUnits , or both.
+	OnDemandThroughput *OnDemandThroughput
+
 	// Represents the provisioned throughput settings for the specified global
-	// secondary index. For current minimum and maximum provisioned throughput values,
-	// see Service, Account, and Table Quotas (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// secondary index.
+	//
+	// For current minimum and maximum provisioned throughput values, see [Service, Account, and Table Quotas] in the
+	// Amazon DynamoDB Developer Guide.
+	//
+	// [Service, Account, and Table Quotas]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html
 	ProvisionedThroughput *ProvisionedThroughput
+
+	// Represents the warm throughput value (in read units per second and write units
+	// per second) when creating a secondary index.
+	WarmThroughput *WarmThroughput
 
 	noSmithyDocumentSerde
 }
@@ -872,6 +1003,11 @@ type CreateReplicationGroupMemberAction struct {
 	// from the default DynamoDB KMS key alias/aws/dynamodb .
 	KMSMasterKeyId *string
 
+	// The maximum on-demand throughput settings for the specified replica table being
+	// created. You can only modify MaxReadRequestUnits , because you can't modify
+	// MaxWriteRequestUnits for individual replica tables.
+	OnDemandThroughputOverride *OnDemandThroughputOverride
+
 	// Replica-specific provisioned throughput. If not specified, uses the source
 	// table's provisioned throughput settings.
 	ProvisionedThroughputOverride *ProvisionedThroughputOverride
@@ -886,10 +1022,10 @@ type CreateReplicationGroupMemberAction struct {
 // Processing options for the CSV file being imported.
 type CsvOptions struct {
 
-	// The delimiter used for separating items in the CSV file being imported.
+	//  The delimiter used for separating items in the CSV file being imported.
 	Delimiter *string
 
-	// List of the headers used to specify a common header for all source CSV files
+	//  List of the headers used to specify a common header for all source CSV files
 	// being imported. If this field is specified then the first line of each CSV file
 	// is treated as data instead of the header. If this field is not specified the the
 	// first line of each CSV file is treated as the header.
@@ -907,7 +1043,8 @@ type Delete struct {
 	// This member is required.
 	Key map[string]AttributeValue
 
-	// Name of the table in which the item to be deleted resides.
+	// Name of the table in which the item to be deleted resides. You can also provide
+	// the Amazon Resource Name (ARN) of the table in this parameter.
 	//
 	// This member is required.
 	TableName *string
@@ -1005,10 +1142,12 @@ type Endpoint struct {
 // can be used with DeleteItem , PutItem , or UpdateItem operations; if the
 // comparison evaluates to true, the operation succeeds; if not, the operation
 // fails. You can use ExpectedAttributeValue in one of two different ways:
+//
 //   - Use AttributeValueList to specify one or more values to compare against an
 //     attribute. Use ComparisonOperator to specify how you want to perform the
 //     comparison. If the comparison evaluates to true, then the conditional operation
 //     succeeds.
+//
 //   - Use Value to specify a value that DynamoDB will compare against an
 //     attribute. If the values match, then ExpectedAttributeValue evaluates to true
 //     and the conditional operation succeeds. Optionally, you can also set Exists to
@@ -1022,132 +1161,184 @@ type Endpoint struct {
 type ExpectedAttributeValue struct {
 
 	// One or more values to evaluate against the supplied attribute. The number of
-	// values in the list depends on the ComparisonOperator being used. For type
-	// Number, value comparisons are numeric. String value comparisons for greater
-	// than, equals, or less than are based on ASCII character code values. For
-	// example, a is greater than A , and a is greater than B . For a list of code
-	// values, see http://en.wikipedia.org/wiki/ASCII#ASCII_printable_characters (http://en.wikipedia.org/wiki/ASCII#ASCII_printable_characters)
-	// . For Binary, DynamoDB treats each byte of the binary data as unsigned when it
-	// compares binary values. For information on specifying data types in JSON, see
-	// JSON Data Format (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataFormat.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// values in the list depends on the ComparisonOperator being used.
+	//
+	// For type Number, value comparisons are numeric.
+	//
+	// String value comparisons for greater than, equals, or less than are based on
+	// ASCII character code values. For example, a is greater than A , and a is
+	// greater than B . For a list of code values, see [http://en.wikipedia.org/wiki/ASCII#ASCII_printable_characters].
+	//
+	// For Binary, DynamoDB treats each byte of the binary data as unsigned when it
+	// compares binary values.
+	//
+	// For information on specifying data types in JSON, see [JSON Data Format] in the Amazon DynamoDB
+	// Developer Guide.
+	//
+	// [http://en.wikipedia.org/wiki/ASCII#ASCII_printable_characters]: http://en.wikipedia.org/wiki/ASCII#ASCII_printable_characters
+	// [JSON Data Format]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataFormat.html
 	AttributeValueList []AttributeValue
 
 	// A comparator for evaluating attributes in the AttributeValueList . For example,
-	// equals, greater than, less than, etc. The following comparison operators are
-	// available: EQ | NE | LE | LT | GE | GT | NOT_NULL | NULL | CONTAINS |
-	// NOT_CONTAINS | BEGINS_WITH | IN | BETWEEN The following are descriptions of each
-	// comparison operator.
+	// equals, greater than, less than, etc.
+	//
+	// The following comparison operators are available:
+	//
+	//     EQ | NE | LE | LT | GE | GT | NOT_NULL | NULL | CONTAINS | NOT_CONTAINS |
+	//     BEGINS_WITH | IN | BETWEEN
+	//
+	// The following are descriptions of each comparison operator.
+	//
 	//   - EQ : Equal. EQ is supported for all data types, including lists and maps.
-	//   AttributeValueList can contain only one AttributeValue element of type String,
+	//
+	// AttributeValueList can contain only one AttributeValue element of type String,
 	//   Number, Binary, String Set, Number Set, or Binary Set. If an item contains an
 	//   AttributeValue element of a different type than the one provided in the
 	//   request, the value does not match. For example, {"S":"6"} does not equal
 	//   {"N":"6"} . Also, {"N":"6"} does not equal {"NS":["6", "2", "1"]} .
-	//   - NE : Not equal. NE is supported for all data types, including lists and
-	//   maps. AttributeValueList can contain only one AttributeValue of type String,
-	//   Number, Binary, String Set, Number Set, or Binary Set. If an item contains an
+	//
+	//   - NE : Not equal. NE is supported for all data types, including lists and maps.
+	//
+	// AttributeValueList can contain only one AttributeValue of type String, Number,
+	//   Binary, String Set, Number Set, or Binary Set. If an item contains an
 	//   AttributeValue of a different type than the one provided in the request, the
 	//   value does not match. For example, {"S":"6"} does not equal {"N":"6"} . Also,
 	//   {"N":"6"} does not equal {"NS":["6", "2", "1"]} .
-	//   - LE : Less than or equal. AttributeValueList can contain only one
-	//   AttributeValue element of type String, Number, or Binary (not a set type). If
-	//   an item contains an AttributeValue element of a different type than the one
-	//   provided in the request, the value does not match. For example, {"S":"6"} does
-	//   not equal {"N":"6"} . Also, {"N":"6"} does not compare to {"NS":["6", "2",
-	//   "1"]} .
-	//   - LT : Less than. AttributeValueList can contain only one AttributeValue of
-	//   type String, Number, or Binary (not a set type). If an item contains an
-	//   AttributeValue element of a different type than the one provided in the
-	//   request, the value does not match. For example, {"S":"6"} does not equal
-	//   {"N":"6"} . Also, {"N":"6"} does not compare to {"NS":["6", "2", "1"]} .
-	//   - GE : Greater than or equal. AttributeValueList can contain only one
-	//   AttributeValue element of type String, Number, or Binary (not a set type). If
-	//   an item contains an AttributeValue element of a different type than the one
-	//   provided in the request, the value does not match. For example, {"S":"6"} does
-	//   not equal {"N":"6"} . Also, {"N":"6"} does not compare to {"NS":["6", "2",
-	//   "1"]} .
-	//   - GT : Greater than. AttributeValueList can contain only one AttributeValue
-	//   element of type String, Number, or Binary (not a set type). If an item contains
-	//   an AttributeValue element of a different type than the one provided in the
-	//   request, the value does not match. For example, {"S":"6"} does not equal
-	//   {"N":"6"} . Also, {"N":"6"} does not compare to {"NS":["6", "2", "1"]} .
+	//
+	//   - LE : Less than or equal.
+	//
+	// AttributeValueList can contain only one AttributeValue element of type String,
+	//   Number, or Binary (not a set type). If an item contains an AttributeValue
+	//   element of a different type than the one provided in the request, the value does
+	//   not match. For example, {"S":"6"} does not equal {"N":"6"} . Also, {"N":"6"}
+	//   does not compare to {"NS":["6", "2", "1"]} .
+	//
+	//   - LT : Less than.
+	//
+	// AttributeValueList can contain only one AttributeValue of type String, Number,
+	//   or Binary (not a set type). If an item contains an AttributeValue element of a
+	//   different type than the one provided in the request, the value does not match.
+	//   For example, {"S":"6"} does not equal {"N":"6"} . Also, {"N":"6"} does not
+	//   compare to {"NS":["6", "2", "1"]} .
+	//
+	//   - GE : Greater than or equal.
+	//
+	// AttributeValueList can contain only one AttributeValue element of type String,
+	//   Number, or Binary (not a set type). If an item contains an AttributeValue
+	//   element of a different type than the one provided in the request, the value does
+	//   not match. For example, {"S":"6"} does not equal {"N":"6"} . Also, {"N":"6"}
+	//   does not compare to {"NS":["6", "2", "1"]} .
+	//
+	//   - GT : Greater than.
+	//
+	// AttributeValueList can contain only one AttributeValue element of type String,
+	//   Number, or Binary (not a set type). If an item contains an AttributeValue
+	//   element of a different type than the one provided in the request, the value does
+	//   not match. For example, {"S":"6"} does not equal {"N":"6"} . Also, {"N":"6"}
+	//   does not compare to {"NS":["6", "2", "1"]} .
+	//
 	//   - NOT_NULL : The attribute exists. NOT_NULL is supported for all data types,
-	//   including lists and maps. This operator tests for the existence of an attribute,
-	//   not its data type. If the data type of attribute " a " is null, and you
-	//   evaluate it using NOT_NULL , the result is a Boolean true . This result is
-	//   because the attribute " a " exists; its data type is not relevant to the
-	//   NOT_NULL comparison operator.
+	//   including lists and maps.
+	//
+	// This operator tests for the existence of an attribute, not its data type. If
+	//   the data type of attribute " a " is null, and you evaluate it using NOT_NULL ,
+	//   the result is a Boolean true . This result is because the attribute " a "
+	//   exists; its data type is not relevant to the NOT_NULL comparison operator.
+	//
 	//   - NULL : The attribute does not exist. NULL is supported for all data types,
-	//   including lists and maps. This operator tests for the nonexistence of an
-	//   attribute, not its data type. If the data type of attribute " a " is null, and
-	//   you evaluate it using NULL , the result is a Boolean false . This is because
-	//   the attribute " a " exists; its data type is not relevant to the NULL
-	//   comparison operator.
-	//   - CONTAINS : Checks for a subsequence, or value in a set. AttributeValueList
-	//   can contain only one AttributeValue element of type String, Number, or Binary
-	//   (not a set type). If the target attribute of the comparison is of type String,
-	//   then the operator checks for a substring match. If the target attribute of the
-	//   comparison is of type Binary, then the operator looks for a subsequence of the
-	//   target that matches the input. If the target attribute of the comparison is a
-	//   set (" SS ", " NS ", or " BS "), then the operator evaluates to true if it
-	//   finds an exact match with any member of the set. CONTAINS is supported for
-	//   lists: When evaluating " a CONTAINS b ", " a " can be a list; however, " b "
-	//   cannot be a set, a map, or a list.
+	//   including lists and maps.
+	//
+	// This operator tests for the nonexistence of an attribute, not its data type. If
+	//   the data type of attribute " a " is null, and you evaluate it using NULL , the
+	//   result is a Boolean false . This is because the attribute " a " exists; its
+	//   data type is not relevant to the NULL comparison operator.
+	//
+	//   - CONTAINS : Checks for a subsequence, or value in a set.
+	//
+	// AttributeValueList can contain only one AttributeValue element of type String,
+	//   Number, or Binary (not a set type). If the target attribute of the comparison is
+	//   of type String, then the operator checks for a substring match. If the target
+	//   attribute of the comparison is of type Binary, then the operator looks for a
+	//   subsequence of the target that matches the input. If the target attribute of the
+	//   comparison is a set (" SS ", " NS ", or " BS "), then the operator evaluates
+	//   to true if it finds an exact match with any member of the set.
+	//
+	// CONTAINS is supported for lists: When evaluating " a CONTAINS b ", " a " can be
+	//   a list; however, " b " cannot be a set, a map, or a list.
+	//
 	//   - NOT_CONTAINS : Checks for absence of a subsequence, or absence of a value in
-	//   a set. AttributeValueList can contain only one AttributeValue element of type
-	//   String, Number, or Binary (not a set type). If the target attribute of the
-	//   comparison is a String, then the operator checks for the absence of a substring
-	//   match. If the target attribute of the comparison is Binary, then the operator
-	//   checks for the absence of a subsequence of the target that matches the input. If
-	//   the target attribute of the comparison is a set (" SS ", " NS ", or " BS "),
-	//   then the operator evaluates to true if it does not find an exact match with any
-	//   member of the set. NOT_CONTAINS is supported for lists: When evaluating " a
-	//   NOT CONTAINS b ", " a " can be a list; however, " b " cannot be a set, a map,
-	//   or a list.
-	//   - BEGINS_WITH : Checks for a prefix. AttributeValueList can contain only one
-	//   AttributeValue of type String or Binary (not a Number or a set type). The
-	//   target attribute of the comparison must be of type String or Binary (not a
-	//   Number or a set type).
-	//   - IN : Checks for matching elements in a list. AttributeValueList can contain
-	//   one or more AttributeValue elements of type String, Number, or Binary. These
-	//   attributes are compared against an existing attribute of an item. If any
-	//   elements of the input are equal to the item attribute, the expression evaluates
-	//   to true.
+	//   a set.
+	//
+	// AttributeValueList can contain only one AttributeValue element of type String,
+	//   Number, or Binary (not a set type). If the target attribute of the comparison is
+	//   a String, then the operator checks for the absence of a substring match. If the
+	//   target attribute of the comparison is Binary, then the operator checks for the
+	//   absence of a subsequence of the target that matches the input. If the target
+	//   attribute of the comparison is a set (" SS ", " NS ", or " BS "), then the
+	//   operator evaluates to true if it does not find an exact match with any member of
+	//   the set.
+	//
+	// NOT_CONTAINS is supported for lists: When evaluating " a NOT CONTAINS b ", " a "
+	//   can be a list; however, " b " cannot be a set, a map, or a list.
+	//
+	//   - BEGINS_WITH : Checks for a prefix.
+	//
+	// AttributeValueList can contain only one AttributeValue of type String or Binary
+	//   (not a Number or a set type). The target attribute of the comparison must be of
+	//   type String or Binary (not a Number or a set type).
+	//
+	//   - IN : Checks for matching elements in a list.
+	//
+	// AttributeValueList can contain one or more AttributeValue elements of type
+	//   String, Number, or Binary. These attributes are compared against an existing
+	//   attribute of an item. If any elements of the input are equal to the item
+	//   attribute, the expression evaluates to true.
+	//
 	//   - BETWEEN : Greater than or equal to the first value, and less than or equal
-	//   to the second value. AttributeValueList must contain two AttributeValue
-	//   elements of the same type, either String, Number, or Binary (not a set type). A
-	//   target attribute matches if the target value is greater than, or equal to, the
-	//   first element and less than, or equal to, the second element. If an item
-	//   contains an AttributeValue element of a different type than the one provided
-	//   in the request, the value does not match. For example, {"S":"6"} does not
-	//   compare to {"N":"6"} . Also, {"N":"6"} does not compare to {"NS":["6", "2",
-	//   "1"]}
+	//   to the second value.
+	//
+	// AttributeValueList must contain two AttributeValue elements of the same type,
+	//   either String, Number, or Binary (not a set type). A target attribute matches if
+	//   the target value is greater than, or equal to, the first element and less than,
+	//   or equal to, the second element. If an item contains an AttributeValue element
+	//   of a different type than the one provided in the request, the value does not
+	//   match. For example, {"S":"6"} does not compare to {"N":"6"} . Also, {"N":"6"}
+	//   does not compare to {"NS":["6", "2", "1"]}
 	ComparisonOperator ComparisonOperator
 
-	// Causes DynamoDB to evaluate the value before attempting a conditional
-	// operation:
+	// Causes DynamoDB to evaluate the value before attempting a conditional operation:
+	//
 	//   - If Exists is true , DynamoDB will check to see if that attribute value
 	//   already exists in the table. If it is found, then the operation succeeds. If it
 	//   is not found, the operation fails with a ConditionCheckFailedException .
+	//
 	//   - If Exists is false , DynamoDB assumes that the attribute value does not
 	//   exist in the table. If in fact the value does not exist, then the assumption is
 	//   valid and the operation succeeds. If the value is found, despite the assumption
 	//   that it does not exist, the operation fails with a
 	//   ConditionCheckFailedException .
+	//
 	// The default setting for Exists is true . If you supply a Value all by itself,
 	// DynamoDB assumes the attribute exists: You don't have to set Exists to true ,
-	// because it is implied. DynamoDB returns a ValidationException if:
+	// because it is implied.
+	//
+	// DynamoDB returns a ValidationException if:
+	//
 	//   - Exists is true but there is no Value to check. (You expect a value to exist,
 	//   but don't specify what that value is.)
+	//
 	//   - Exists is false but you also provide a Value . (You cannot expect an
 	//   attribute to have a value, while also expecting it not to exist.)
 	Exists *bool
 
-	// Represents the data for the expected attribute. Each attribute value is
-	// described as a name-value pair. The name is the data type, and the value is the
-	// data itself. For more information, see Data Types (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes)
-	// in the Amazon DynamoDB Developer Guide.
+	// Represents the data for the expected attribute.
+	//
+	// Each attribute value is described as a name-value pair. The name is the data
+	// type, and the value is the data itself.
+	//
+	// For more information, see [Data Types] in the Amazon DynamoDB Developer Guide.
+	//
+	// [Data Types]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes
 	Value AttributeValue
 
 	noSmithyDocumentSerde
@@ -1212,7 +1403,9 @@ type ExportDescription struct {
 
 	// Type of encryption used on the bucket where export data is stored. Valid values
 	// for S3SseAlgorithm are:
+	//
 	//   - AES256 - server-side encryption with Amazon S3 managed keys
+	//
 	//   - KMS - server-side encryption with KMS managed keys
 	S3SseAlgorithm S3SseAlgorithm
 
@@ -1270,7 +1463,8 @@ type Get struct {
 	// This member is required.
 	Key map[string]AttributeValue
 
-	// The name of the table from which to retrieve the specified item.
+	// The name of the table from which to retrieve the specified item. You can also
+	// provide the Amazon Resource Name (ARN) of the table in this parameter.
 	//
 	// This member is required.
 	TableName *string
@@ -1300,14 +1494,19 @@ type GlobalSecondaryIndex struct {
 
 	// The complete key schema for a global secondary index, which consists of one or
 	// more pairs of attribute names and key types:
+	//
 	//   - HASH - partition key
+	//
 	//   - RANGE - sort key
+	//
 	// The partition key of an item is also known as its hash attribute. The term
 	// "hash attribute" derives from DynamoDB's usage of an internal hash function to
 	// evenly distribute data items across partitions, based on their partition key
-	// values. The sort key of an item is also known as its range attribute. The term
-	// "range attribute" derives from the way DynamoDB stores items with the same
-	// partition key physically close together, in sorted order by the sort key value.
+	// values.
+	//
+	// The sort key of an item is also known as its range attribute. The term "range
+	// attribute" derives from the way DynamoDB stores items with the same partition
+	// key physically close together, in sorted order by the sort key value.
 	//
 	// This member is required.
 	KeySchema []KeySchemaElement
@@ -1319,11 +1518,24 @@ type GlobalSecondaryIndex struct {
 	// This member is required.
 	Projection *Projection
 
+	// The maximum number of read and write units for the specified global secondary
+	// index. If you use this parameter, you must specify MaxReadRequestUnits ,
+	// MaxWriteRequestUnits , or both.
+	OnDemandThroughput *OnDemandThroughput
+
 	// Represents the provisioned throughput settings for the specified global
-	// secondary index. For current minimum and maximum provisioned throughput values,
-	// see Service, Account, and Table Quotas (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// secondary index.
+	//
+	// For current minimum and maximum provisioned throughput values, see [Service, Account, and Table Quotas] in the
+	// Amazon DynamoDB Developer Guide.
+	//
+	// [Service, Account, and Table Quotas]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html
 	ProvisionedThroughput *ProvisionedThroughput
+
+	// Represents the warm throughput value (in read units per second and write units
+	// per second) for the specified secondary index. If you use this parameter, you
+	// must specify ReadUnitsPerSecond , WriteUnitsPerSecond , or both.
+	WarmThroughput *WarmThroughput
 
 	noSmithyDocumentSerde
 }
@@ -1350,12 +1562,15 @@ type GlobalSecondaryIndexDescription struct {
 	// added to the index. (Not all items will qualify: For example, a partition key
 	// cannot have any duplicate values.) If an item can be added to the index,
 	// DynamoDB will do so. After all items have been processed, the backfilling
-	// operation is complete and Backfilling is false. You can delete an index that is
-	// being created during the Backfilling phase when IndexStatus is set to CREATING
-	// and Backfilling is true. You can't delete the index that is being created when
-	// IndexStatus is set to CREATING and Backfilling is false. For indexes that were
-	// created during a CreateTable operation, the Backfilling attribute does not
-	// appear in the DescribeTable output.
+	// operation is complete and Backfilling is false.
+	//
+	// You can delete an index that is being created during the Backfilling phase when
+	// IndexStatus is set to CREATING and Backfilling is true. You can't delete the
+	// index that is being created when IndexStatus is set to CREATING and Backfilling
+	// is false.
+	//
+	// For indexes that were created during a CreateTable operation, the Backfilling
+	// attribute does not appear in the DescribeTable output.
 	Backfilling *bool
 
 	// The Amazon Resource Name (ARN) that uniquely identifies the index.
@@ -1370,9 +1585,13 @@ type GlobalSecondaryIndexDescription struct {
 	IndexSizeBytes *int64
 
 	// The current state of the global secondary index:
+	//
 	//   - CREATING - The index is being created.
+	//
 	//   - UPDATING - The index is being updated.
+	//
 	//   - DELETING - The index is being deleted.
+	//
 	//   - ACTIVE - The index is ready for use.
 	IndexStatus IndexStatus
 
@@ -1383,15 +1602,25 @@ type GlobalSecondaryIndexDescription struct {
 
 	// The complete key schema for a global secondary index, which consists of one or
 	// more pairs of attribute names and key types:
+	//
 	//   - HASH - partition key
+	//
 	//   - RANGE - sort key
+	//
 	// The partition key of an item is also known as its hash attribute. The term
 	// "hash attribute" derives from DynamoDB's usage of an internal hash function to
 	// evenly distribute data items across partitions, based on their partition key
-	// values. The sort key of an item is also known as its range attribute. The term
-	// "range attribute" derives from the way DynamoDB stores items with the same
-	// partition key physically close together, in sorted order by the sort key value.
+	// values.
+	//
+	// The sort key of an item is also known as its range attribute. The term "range
+	// attribute" derives from the way DynamoDB stores items with the same partition
+	// key physically close together, in sorted order by the sort key value.
 	KeySchema []KeySchemaElement
+
+	// The maximum number of read and write units for the specified global secondary
+	// index. If you use this parameter, you must specify MaxReadRequestUnits ,
+	// MaxWriteRequestUnits , or both.
+	OnDemandThroughput *OnDemandThroughput
 
 	// Represents attributes that are copied (projected) from the table into the
 	// global secondary index. These are in addition to the primary key attributes and
@@ -1399,10 +1628,17 @@ type GlobalSecondaryIndexDescription struct {
 	Projection *Projection
 
 	// Represents the provisioned throughput settings for the specified global
-	// secondary index. For current minimum and maximum provisioned throughput values,
-	// see Service, Account, and Table Quotas (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// secondary index.
+	//
+	// For current minimum and maximum provisioned throughput values, see [Service, Account, and Table Quotas] in the
+	// Amazon DynamoDB Developer Guide.
+	//
+	// [Service, Account, and Table Quotas]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html
 	ProvisionedThroughput *ProvisionedThroughputDescription
+
+	// Represents the warm throughput value (in read units per second and write units
+	// per second) for the specified secondary index.
+	WarmThroughput *GlobalSecondaryIndexWarmThroughputDescription
 
 	noSmithyDocumentSerde
 }
@@ -1416,15 +1652,25 @@ type GlobalSecondaryIndexInfo struct {
 
 	// The complete key schema for a global secondary index, which consists of one or
 	// more pairs of attribute names and key types:
+	//
 	//   - HASH - partition key
+	//
 	//   - RANGE - sort key
+	//
 	// The partition key of an item is also known as its hash attribute. The term
 	// "hash attribute" derives from DynamoDB's usage of an internal hash function to
 	// evenly distribute data items across partitions, based on their partition key
-	// values. The sort key of an item is also known as its range attribute. The term
-	// "range attribute" derives from the way DynamoDB stores items with the same
-	// partition key physically close together, in sorted order by the sort key value.
+	// values.
+	//
+	// The sort key of an item is also known as its range attribute. The term "range
+	// attribute" derives from the way DynamoDB stores items with the same partition
+	// key physically close together, in sorted order by the sort key value.
 	KeySchema []KeySchemaElement
+
+	// Sets the maximum number of read and write units for the specified on-demand
+	// table. If you use this parameter, you must specify MaxReadRequestUnits ,
+	// MaxWriteRequestUnits , or both.
+	OnDemandThroughput *OnDemandThroughput
 
 	// Represents attributes that are copied (projected) from the table into the
 	// global secondary index. These are in addition to the primary key attributes and
@@ -1439,18 +1685,26 @@ type GlobalSecondaryIndexInfo struct {
 }
 
 // Represents one of the following:
+//
 //   - A new global secondary index to be added to an existing table.
+//
 //   - New provisioned throughput parameters for an existing global secondary
 //     index.
+//
 //   - An existing global secondary index to be removed from an existing table.
 type GlobalSecondaryIndexUpdate struct {
 
 	// The parameters required for creating a global secondary index on an existing
 	// table:
+	//
 	//   - IndexName
+	//
 	//   - KeySchema
+	//
 	//   - AttributeDefinitions
+	//
 	//   - Projection
+	//
 	//   - ProvisionedThroughput
 	Create *CreateGlobalSecondaryIndexAction
 
@@ -1460,6 +1714,24 @@ type GlobalSecondaryIndexUpdate struct {
 	// The name of an existing global secondary index, along with new provisioned
 	// throughput settings to be applied to that index.
 	Update *UpdateGlobalSecondaryIndexAction
+
+	noSmithyDocumentSerde
+}
+
+// The description of the warm throughput value on a global secondary index.
+type GlobalSecondaryIndexWarmThroughputDescription struct {
+
+	// Represents warm throughput read units per second value for a global secondary
+	// index.
+	ReadUnitsPerSecond *int64
+
+	// Represents the warm throughput status being created or updated on a global
+	// secondary index. The status can only be UPDATING or ACTIVE .
+	Status IndexStatus
+
+	// Represents warm throughput write units per second value for a global secondary
+	// index.
+	WriteUnitsPerSecond *int64
 
 	noSmithyDocumentSerde
 }
@@ -1489,9 +1761,13 @@ type GlobalTableDescription struct {
 	GlobalTableName *string
 
 	// The current state of the global table:
+	//
 	//   - CREATING - The global table is being created.
+	//
 	//   - UPDATING - The global table is being updated.
+	//
 	//   - DELETING - The global table is being deleted.
+	//
 	//   - ACTIVE - The global table is ready for use.
 	GlobalTableStatus GlobalTableStatus
 
@@ -1525,32 +1801,32 @@ type GlobalTableGlobalSecondaryIndexSettingsUpdate struct {
 // Summary information about the source file for the import.
 type ImportSummary struct {
 
-	// The Amazon Resource Number (ARN) of the Cloudwatch Log Group associated with
+	//  The Amazon Resource Number (ARN) of the Cloudwatch Log Group associated with
 	// this import task.
 	CloudWatchLogGroupArn *string
 
-	// The time at which this import task ended. (Does this include the successful
+	//  The time at which this import task ended. (Does this include the successful
 	// complete creation of the table it was imported to?)
 	EndTime *time.Time
 
-	// The Amazon Resource Number (ARN) corresponding to the import request.
+	//  The Amazon Resource Number (ARN) corresponding to the import request.
 	ImportArn *string
 
-	// The status of the import operation.
+	//  The status of the import operation.
 	ImportStatus ImportStatus
 
-	// The format of the source data. Valid values are CSV , DYNAMODB_JSON or ION .
+	//  The format of the source data. Valid values are CSV , DYNAMODB_JSON or ION .
 	InputFormat InputFormat
 
-	// The path and S3 bucket of the source file that is being imported. This includes
-	// the S3Bucket (required), S3KeyPrefix (optional) and S3BucketOwner (optional if
-	// the bucket is owned by the requester).
+	//  The path and S3 bucket of the source file that is being imported. This
+	// includes the S3Bucket (required), S3KeyPrefix (optional) and S3BucketOwner
+	// (optional if the bucket is owned by the requester).
 	S3BucketSource *S3BucketSource
 
-	// The time at which this import task began.
+	//  The time at which this import task began.
 	StartTime *time.Time
 
-	// The Amazon Resource Number (ARN) of the table being imported into.
+	//  The Amazon Resource Number (ARN) of the table being imported into.
 	TableArn *string
 
 	noSmithyDocumentSerde
@@ -1559,70 +1835,70 @@ type ImportSummary struct {
 // Represents the properties of the table being imported into.
 type ImportTableDescription struct {
 
-	// The client token that was provided for the import task. Reusing the client
+	//  The client token that was provided for the import task. Reusing the client
 	// token on retry makes a call to ImportTable idempotent.
 	ClientToken *string
 
-	// The Amazon Resource Number (ARN) of the Cloudwatch Log Group associated with
+	//  The Amazon Resource Number (ARN) of the Cloudwatch Log Group associated with
 	// the target table.
 	CloudWatchLogGroupArn *string
 
-	// The time at which the creation of the table associated with this import task
+	//  The time at which the creation of the table associated with this import task
 	// completed.
 	EndTime *time.Time
 
-	// The number of errors occurred on importing the source file into the target
+	//  The number of errors occurred on importing the source file into the target
 	// table.
 	ErrorCount int64
 
-	// The error code corresponding to the failure that the import job ran into during
-	// execution.
+	//  The error code corresponding to the failure that the import job ran into
+	// during execution.
 	FailureCode *string
 
-	// The error message corresponding to the failure that the import job ran into
+	//  The error message corresponding to the failure that the import job ran into
 	// during execution.
 	FailureMessage *string
 
-	// The Amazon Resource Number (ARN) corresponding to the import request.
+	//  The Amazon Resource Number (ARN) corresponding to the import request.
 	ImportArn *string
 
-	// The status of the import.
+	//  The status of the import.
 	ImportStatus ImportStatus
 
-	// The number of items successfully imported into the new table.
+	//  The number of items successfully imported into the new table.
 	ImportedItemCount int64
 
-	// The compression options for the data that has been imported into the target
+	//  The compression options for the data that has been imported into the target
 	// table. The values are NONE, GZIP, or ZSTD.
 	InputCompressionType InputCompressionType
 
-	// The format of the source data going into the target table.
+	//  The format of the source data going into the target table.
 	InputFormat InputFormat
 
-	// The format options for the data that was imported into the target table. There
+	//  The format options for the data that was imported into the target table. There
 	// is one value, CsvOption.
 	InputFormatOptions *InputFormatOptions
 
-	// The total number of items processed from the source file.
+	//  The total number of items processed from the source file.
 	ProcessedItemCount int64
 
-	// The total size of data processed from the source file, in Bytes.
+	//  The total size of data processed from the source file, in Bytes.
 	ProcessedSizeBytes *int64
 
-	// Values for the S3 bucket the source file is imported from. Includes bucket name
-	// (required), key prefix (optional) and bucket account owner ID (optional).
+	//  Values for the S3 bucket the source file is imported from. Includes bucket
+	// name (required), key prefix (optional) and bucket account owner ID (optional).
 	S3BucketSource *S3BucketSource
 
-	// The time when this import task started.
+	//  The time when this import task started.
 	StartTime *time.Time
 
-	// The Amazon Resource Number (ARN) of the table being imported into.
+	//  The Amazon Resource Number (ARN) of the table being imported into.
 	TableArn *string
 
-	// The parameters for the new table that is being imported into.
+	//  The parameters for the new table that is being imported into.
 	TableCreationParameters *TableCreationParameters
 
-	// The table id corresponding to the table created by import table process.
+	//  The table id corresponding to the table created by import table process.
 	TableId *string
 
 	noSmithyDocumentSerde
@@ -1650,11 +1926,12 @@ type IncrementalExportSpecification struct {
 	noSmithyDocumentSerde
 }
 
-// The format options for the data that was imported into the target table. There
+//	The format options for the data that was imported into the target table. There
+//
 // is one value, CsvOption.
 type InputFormatOptions struct {
 
-	// The options for imported source files in CSV format. The values are Delimiter
+	//  The options for imported source files in CSV format. The values are Delimiter
 	// and HeaderList.
 	Csv *CsvOptions
 
@@ -1676,8 +1953,10 @@ type ItemCollectionMetrics struct {
 	// includes the size of all the items in the table, plus the size of all attributes
 	// projected into all of the local secondary indexes on that table. Use this
 	// estimate to measure whether a local secondary index is approaching its size
-	// limit. The estimate is subject to change over time; therefore, do not rely on
-	// the precision or accuracy of the estimate.
+	// limit.
+	//
+	// The estimate is subject to change over time; therefore, do not rely on the
+	// precision or accuracy of the estimate.
 	SizeEstimateRangeGB []float64
 
 	noSmithyDocumentSerde
@@ -1693,10 +1972,11 @@ type ItemResponse struct {
 }
 
 // Represents a set of primary keys and, for each key, the attributes to retrieve
-// from the table. For each primary key, you must provide all of the key
-// attributes. For example, with a simple primary key, you only need to provide the
-// partition key. For a composite primary key, you must provide both the partition
-// key and the sort key.
+// from the table.
+//
+// For each primary key, you must provide all of the key attributes. For example,
+// with a simple primary key, you only need to provide the partition key. For a
+// composite primary key, you must provide both the partition key and the sort key.
 type KeysAndAttributes struct {
 
 	// The primary key attribute values that define the items and the attributes
@@ -1706,8 +1986,9 @@ type KeysAndAttributes struct {
 	Keys []map[string]AttributeValue
 
 	// This is a legacy parameter. Use ProjectionExpression instead. For more
-	// information, see Legacy Conditional Parameters (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LegacyConditionalParameters.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// information, see [Legacy Conditional Parameters]in the Amazon DynamoDB Developer Guide.
+	//
+	// [Legacy Conditional Parameters]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LegacyConditionalParameters.html
 	AttributesToGet []string
 
 	// The consistency of a read operation. If set to true , then a strongly consistent
@@ -1716,35 +1997,52 @@ type KeysAndAttributes struct {
 
 	// One or more substitution tokens for attribute names in an expression. The
 	// following are some use cases for using ExpressionAttributeNames :
+	//
 	//   - To access an attribute whose name conflicts with a DynamoDB reserved word.
+	//
 	//   - To create a placeholder for repeating occurrences of an attribute name in
 	//   an expression.
+	//
 	//   - To prevent special characters in an attribute name from being
 	//   misinterpreted in an expression.
+	//
 	// Use the # character in an expression to dereference an attribute name. For
 	// example, consider the following attribute name:
+	//
 	//   - Percentile
+	//
 	// The name of this attribute conflicts with a reserved word, so it cannot be used
-	// directly in an expression. (For the complete list of reserved words, see
-	// Reserved Words (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ReservedWords.html)
-	// in the Amazon DynamoDB Developer Guide). To work around this, you could specify
-	// the following for ExpressionAttributeNames :
+	// directly in an expression. (For the complete list of reserved words, see [Reserved Words]in the
+	// Amazon DynamoDB Developer Guide). To work around this, you could specify the
+	// following for ExpressionAttributeNames :
+	//
 	//   - {"#P":"Percentile"}
+	//
 	// You could then use this substitution in an expression, as in this example:
+	//
 	//   - #P = :val
+	//
 	// Tokens that begin with the : character are expression attribute values, which
-	// are placeholders for the actual value at runtime. For more information on
-	// expression attribute names, see Accessing Item Attributes (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.AccessingItemAttributes.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// are placeholders for the actual value at runtime.
+	//
+	// For more information on expression attribute names, see [Accessing Item Attributes] in the Amazon DynamoDB
+	// Developer Guide.
+	//
+	// [Reserved Words]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ReservedWords.html
+	// [Accessing Item Attributes]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.AccessingItemAttributes.html
 	ExpressionAttributeNames map[string]string
 
 	// A string that identifies one or more attributes to retrieve from the table.
 	// These attributes can include scalars, sets, or elements of a JSON document. The
-	// attributes in the ProjectionExpression must be separated by commas. If no
-	// attribute names are specified, then all attributes will be returned. If any of
-	// the requested attributes are not found, they will not appear in the result. For
-	// more information, see Accessing Item Attributes (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.AccessingItemAttributes.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// attributes in the ProjectionExpression must be separated by commas.
+	//
+	// If no attribute names are specified, then all attributes will be returned. If
+	// any of the requested attributes are not found, they will not appear in the
+	// result.
+	//
+	// For more information, see [Accessing Item Attributes] in the Amazon DynamoDB Developer Guide.
+	//
+	// [Accessing Item Attributes]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.AccessingItemAttributes.html
 	ProjectionExpression *string
 
 	noSmithyDocumentSerde
@@ -1752,12 +2050,15 @@ type KeysAndAttributes struct {
 
 // Represents a single element of a key schema. A key schema specifies the
 // attributes that make up the primary key of a table, or the key attributes of an
-// index. A KeySchemaElement represents exactly one attribute of the primary key.
-// For example, a simple primary key would be represented by one KeySchemaElement
-// (for the partition key). A composite primary key would require one
-// KeySchemaElement for the partition key, and another KeySchemaElement for the
-// sort key. A KeySchemaElement must be a scalar, top-level attribute (not a
-// nested attribute). The data type must be one of String, Number, or Binary. The
+// index.
+//
+// A KeySchemaElement represents exactly one attribute of the primary key. For
+// example, a simple primary key would be represented by one KeySchemaElement (for
+// the partition key). A composite primary key would require one KeySchemaElement
+// for the partition key, and another KeySchemaElement for the sort key.
+//
+// A KeySchemaElement must be a scalar, top-level attribute (not a nested
+// attribute). The data type must be one of String, Number, or Binary. The
 // attribute cannot be nested within a List or a Map.
 type KeySchemaElement struct {
 
@@ -1767,14 +2068,19 @@ type KeySchemaElement struct {
 	AttributeName *string
 
 	// The role that this key attribute will assume:
+	//
 	//   - HASH - partition key
+	//
 	//   - RANGE - sort key
+	//
 	// The partition key of an item is also known as its hash attribute. The term
 	// "hash attribute" derives from DynamoDB's usage of an internal hash function to
 	// evenly distribute data items across partitions, based on their partition key
-	// values. The sort key of an item is also known as its range attribute. The term
-	// "range attribute" derives from the way DynamoDB stores items with the same
-	// partition key physically close together, in sorted order by the sort key value.
+	// values.
+	//
+	// The sort key of an item is also known as its range attribute. The term "range
+	// attribute" derives from the way DynamoDB stores items with the same partition
+	// key physically close together, in sorted order by the sort key value.
 	//
 	// This member is required.
 	KeyType KeyType
@@ -1812,14 +2118,19 @@ type LocalSecondaryIndex struct {
 
 	// The complete key schema for the local secondary index, consisting of one or
 	// more pairs of attribute names and key types:
+	//
 	//   - HASH - partition key
+	//
 	//   - RANGE - sort key
+	//
 	// The partition key of an item is also known as its hash attribute. The term
 	// "hash attribute" derives from DynamoDB's usage of an internal hash function to
 	// evenly distribute data items across partitions, based on their partition key
-	// values. The sort key of an item is also known as its range attribute. The term
-	// "range attribute" derives from the way DynamoDB stores items with the same
-	// partition key physically close together, in sorted order by the sort key value.
+	// values.
+	//
+	// The sort key of an item is also known as its range attribute. The term "range
+	// attribute" derives from the way DynamoDB stores items with the same partition
+	// key physically close together, in sorted order by the sort key value.
 	//
 	// This member is required.
 	KeySchema []KeySchemaElement
@@ -1855,14 +2166,19 @@ type LocalSecondaryIndexDescription struct {
 
 	// The complete key schema for the local secondary index, consisting of one or
 	// more pairs of attribute names and key types:
+	//
 	//   - HASH - partition key
+	//
 	//   - RANGE - sort key
+	//
 	// The partition key of an item is also known as its hash attribute. The term
 	// "hash attribute" derives from DynamoDB's usage of an internal hash function to
 	// evenly distribute data items across partitions, based on their partition key
-	// values. The sort key of an item is also known as its range attribute. The term
-	// "range attribute" derives from the way DynamoDB stores items with the same
-	// partition key physically close together, in sorted order by the sort key value.
+	// values.
+	//
+	// The sort key of an item is also known as its range attribute. The term "range
+	// attribute" derives from the way DynamoDB stores items with the same partition
+	// key physically close together, in sorted order by the sort key value.
 	KeySchema []KeySchemaElement
 
 	// Represents attributes that are copied (projected) from the table into the
@@ -1882,14 +2198,19 @@ type LocalSecondaryIndexInfo struct {
 
 	// The complete key schema for a local secondary index, which consists of one or
 	// more pairs of attribute names and key types:
+	//
 	//   - HASH - partition key
+	//
 	//   - RANGE - sort key
+	//
 	// The partition key of an item is also known as its hash attribute. The term
 	// "hash attribute" derives from DynamoDB's usage of an internal hash function to
 	// evenly distribute data items across partitions, based on their partition key
-	// values. The sort key of an item is also known as its range attribute. The term
-	// "range attribute" derives from the way DynamoDB stores items with the same
-	// partition key physically close together, in sorted order by the sort key value.
+	// values.
+	//
+	// The sort key of an item is also known as its range attribute. The term "range
+	// attribute" derives from the way DynamoDB stores items with the same partition
+	// key physically close together, in sorted order by the sort key value.
 	KeySchema []KeySchemaElement
 
 	// Represents attributes that are copied (projected) from the table into the
@@ -1900,22 +2221,58 @@ type LocalSecondaryIndexInfo struct {
 	noSmithyDocumentSerde
 }
 
+// Sets the maximum number of read and write units for the specified on-demand
+// table. If you use this parameter, you must specify MaxReadRequestUnits ,
+// MaxWriteRequestUnits , or both.
+type OnDemandThroughput struct {
+
+	// Maximum number of read request units for the specified table.
+	//
+	// To specify a maximum OnDemandThroughput on your table, set the value of
+	// MaxReadRequestUnits as greater than or equal to 1. To remove the maximum
+	// OnDemandThroughput that is currently set on your table, set the value of
+	// MaxReadRequestUnits to -1.
+	MaxReadRequestUnits *int64
+
+	// Maximum number of write request units for the specified table.
+	//
+	// To specify a maximum OnDemandThroughput on your table, set the value of
+	// MaxWriteRequestUnits as greater than or equal to 1. To remove the maximum
+	// OnDemandThroughput that is currently set on your table, set the value of
+	// MaxWriteRequestUnits to -1.
+	MaxWriteRequestUnits *int64
+
+	noSmithyDocumentSerde
+}
+
+// Overrides the on-demand throughput settings for this replica table. If you
+// don't specify a value for this parameter, it uses the source table's on-demand
+// throughput settings.
+type OnDemandThroughputOverride struct {
+
+	// Maximum number of read request units for the specified replica table.
+	MaxReadRequestUnits *int64
+
+	noSmithyDocumentSerde
+}
+
 // Represents a PartiQL statement that uses parameters.
 type ParameterizedStatement struct {
 
-	// A PartiQL statement that uses parameters.
+	//  A PartiQL statement that uses parameters.
 	//
 	// This member is required.
 	Statement *string
 
-	// The parameter values.
+	//  The parameter values.
 	Parameters []AttributeValue
 
 	// An optional parameter that returns the item attributes for a PartiQL
-	// ParameterizedStatement operation that failed a condition check. There is no
-	// additional cost associated with requesting a return value aside from the small
-	// network and processing overhead of receiving a larger response. No read capacity
-	// units are consumed.
+	// ParameterizedStatement operation that failed a condition check.
+	//
+	// There is no additional cost associated with requesting a return value aside
+	// from the small network and processing overhead of receiving a larger response.
+	// No read capacity units are consumed.
 	ReturnValuesOnConditionCheckFailure ReturnValuesOnConditionCheckFailure
 
 	noSmithyDocumentSerde
@@ -1932,7 +2289,9 @@ type PointInTimeRecoveryDescription struct {
 	LatestRestorableDateTime *time.Time
 
 	// The current state of point in time recovery:
+	//
 	//   - ENABLED - Point in time recovery is enabled.
+	//
 	//   - DISABLED - Point in time recovery is disabled.
 	PointInTimeRecoveryStatus PointInTimeRecoveryStatus
 
@@ -1957,6 +2316,7 @@ type PointInTimeRecoverySpecification struct {
 type Projection struct {
 
 	// Represents the non-key attribute names which will be projected into the index.
+	//
 	// For local secondary indexes, the total count of NonKeyAttributes summed across
 	// all of the local secondary indexes, must not exceed 100. If you project the same
 	// attribute into two different indexes, this counts as two distinct attributes
@@ -1964,36 +2324,47 @@ type Projection struct {
 	NonKeyAttributes []string
 
 	// The set of attributes that are projected into the index:
+	//
 	//   - KEYS_ONLY - Only the index and primary keys are projected into the index.
+	//
 	//   - INCLUDE - In addition to the attributes described in KEYS_ONLY , the
 	//   secondary index will include other non-key attributes that you specify.
+	//
 	//   - ALL - All of the table attributes are projected into the index.
+	//
+	// When using the DynamoDB console, ALL is selected by default.
 	ProjectionType ProjectionType
 
 	noSmithyDocumentSerde
 }
 
 // Represents the provisioned throughput settings for a specified table or index.
-// The settings can be modified using the UpdateTable operation. For current
-// minimum and maximum provisioned throughput values, see Service, Account, and
-// Table Quotas (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html)
-// in the Amazon DynamoDB Developer Guide.
+// The settings can be modified using the UpdateTable operation.
+//
+// For current minimum and maximum provisioned throughput values, see [Service, Account, and Table Quotas] in the
+// Amazon DynamoDB Developer Guide.
+//
+// [Service, Account, and Table Quotas]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html
 type ProvisionedThroughput struct {
 
 	// The maximum number of strongly consistent reads consumed per second before
-	// DynamoDB returns a ThrottlingException . For more information, see Specifying
-	// Read and Write Requirements (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ProvisionedThroughput.html)
-	// in the Amazon DynamoDB Developer Guide. If read/write capacity mode is
-	// PAY_PER_REQUEST the value is set to 0.
+	// DynamoDB returns a ThrottlingException . For more information, see [Specifying Read and Write Requirements] in the
+	// Amazon DynamoDB Developer Guide.
+	//
+	// If read/write capacity mode is PAY_PER_REQUEST the value is set to 0.
+	//
+	// [Specifying Read and Write Requirements]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ProvisionedThroughput.html
 	//
 	// This member is required.
 	ReadCapacityUnits *int64
 
 	// The maximum number of writes consumed per second before DynamoDB returns a
-	// ThrottlingException . For more information, see Specifying Read and Write
-	// Requirements (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ProvisionedThroughput.html)
-	// in the Amazon DynamoDB Developer Guide. If read/write capacity mode is
-	// PAY_PER_REQUEST the value is set to 0.
+	// ThrottlingException . For more information, see [Specifying Read and Write Requirements] in the Amazon DynamoDB
+	// Developer Guide.
+	//
+	// If read/write capacity mode is PAY_PER_REQUEST the value is set to 0.
+	//
+	// [Specifying Read and Write Requirements]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ProvisionedThroughput.html
 	//
 	// This member is required.
 	WriteCapacityUnits *int64
@@ -2012,9 +2383,10 @@ type ProvisionedThroughputDescription struct {
 	LastIncreaseDateTime *time.Time
 
 	// The number of provisioned throughput decreases for this table during this UTC
-	// calendar day. For current maximums on provisioned throughput decreases, see
-	// Service, Account, and Table Quotas (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// calendar day. For current maximums on provisioned throughput decreases, see [Service, Account, and Table Quotas]in
+	// the Amazon DynamoDB Developer Guide.
+	//
+	// [Service, Account, and Table Quotas]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html
 	NumberOfDecreasesToday *int64
 
 	// The maximum number of strongly consistent reads consumed per second before
@@ -2053,7 +2425,8 @@ type Put struct {
 	// This member is required.
 	Item map[string]AttributeValue
 
-	// Name of the table in which to write the item.
+	// Name of the table in which to write the item. You can also provide the Amazon
+	// Resource Name (ARN) of the table in this parameter.
 	//
 	// This member is required.
 	TableName *string
@@ -2117,9 +2490,13 @@ type ReplicaAutoScalingDescription struct {
 	ReplicaProvisionedWriteCapacityAutoScalingSettings *AutoScalingSettingsDescription
 
 	// The current state of the replica:
+	//
 	//   - CREATING - The replica is being created.
+	//
 	//   - UPDATING - The replica is being updated.
+	//
 	//   - DELETING - The replica is being deleted.
+	//
 	//   - ACTIVE - The replica is ready for use.
 	ReplicaStatus ReplicaStatus
 
@@ -2154,6 +2531,10 @@ type ReplicaDescription struct {
 	// The KMS key of the replica that will be used for KMS encryption.
 	KMSMasterKeyId *string
 
+	// Overrides the maximum on-demand throughput settings for the specified replica
+	// table.
+	OnDemandThroughputOverride *OnDemandThroughputOverride
+
 	// Replica-specific provisioned throughput. If not described, uses the source
 	// table's provisioned throughput settings.
 	ProvisionedThroughputOverride *ProvisionedThroughputOverride
@@ -2166,19 +2547,28 @@ type ReplicaDescription struct {
 	ReplicaInaccessibleDateTime *time.Time
 
 	// The current state of the replica:
+	//
 	//   - CREATING - The replica is being created.
+	//
 	//   - UPDATING - The replica is being updated.
+	//
 	//   - DELETING - The replica is being deleted.
+	//
 	//   - ACTIVE - The replica is ready for use.
+	//
 	//   - REGION_DISABLED - The replica is inaccessible because the Amazon Web
-	//   Services Region has been disabled. If the Amazon Web Services Region remains
-	//   inaccessible for more than 20 hours, DynamoDB will remove this replica from the
-	//   replication group. The replica will not be deleted and replication will stop
-	//   from and to this region.
-	//   - INACCESSIBLE_ENCRYPTION_CREDENTIALS - The KMS key used to encrypt the table
-	//   is inaccessible. If the KMS key remains inaccessible for more than 20 hours,
+	//   Services Region has been disabled.
+	//
+	// If the Amazon Web Services Region remains inaccessible for more than 20 hours,
 	//   DynamoDB will remove this replica from the replication group. The replica will
 	//   not be deleted and replication will stop from and to this region.
+	//
+	//   - INACCESSIBLE_ENCRYPTION_CREDENTIALS - The KMS key used to encrypt the table
+	//   is inaccessible.
+	//
+	// If the KMS key remains inaccessible for more than 20 hours, DynamoDB will
+	//   remove this replica from the replication group. The replica will not be deleted
+	//   and replication will stop from and to this region.
 	ReplicaStatus ReplicaStatus
 
 	// Detailed information about the replica status.
@@ -2191,6 +2581,9 @@ type ReplicaDescription struct {
 	// Contains details of the table class.
 	ReplicaTableClassSummary *TableClassSummary
 
+	// Represents the warm throughput value for this replica.
+	WarmThroughput *TableWarmThroughputDescription
+
 	noSmithyDocumentSerde
 }
 
@@ -2201,6 +2594,10 @@ type ReplicaGlobalSecondaryIndex struct {
 	//
 	// This member is required.
 	IndexName *string
+
+	// Overrides the maximum on-demand throughput settings for the specified global
+	// secondary index in the specified replica table.
+	OnDemandThroughputOverride *OnDemandThroughputOverride
 
 	// Replica table GSI-specific provisioned throughput. If not specified, uses the
 	// source table GSI's read capacity settings.
@@ -2216,10 +2613,14 @@ type ReplicaGlobalSecondaryIndexAutoScalingDescription struct {
 	IndexName *string
 
 	// The current state of the replica global secondary index:
+	//
 	//   - CREATING - The index is being created.
+	//
 	//   - UPDATING - The table/index configuration is being updated. The table/index
 	//   remains available for data operations when UPDATING
+	//
 	//   - DELETING - The index is being deleted.
+	//
 	//   - ACTIVE - The index is ready for use.
 	IndexStatus IndexStatus
 
@@ -2254,8 +2655,15 @@ type ReplicaGlobalSecondaryIndexDescription struct {
 	// The name of the global secondary index.
 	IndexName *string
 
+	// Overrides the maximum on-demand throughput for the specified global secondary
+	// index in the specified replica table.
+	OnDemandThroughputOverride *OnDemandThroughputOverride
+
 	// If not described, uses the source table GSI's read capacity settings.
 	ProvisionedThroughputOverride *ProvisionedThroughputOverride
+
+	// Represents the warm throughput of the global secondary index for this replica.
+	WarmThroughput *GlobalSecondaryIndexWarmThroughputDescription
 
 	noSmithyDocumentSerde
 }
@@ -2269,10 +2677,14 @@ type ReplicaGlobalSecondaryIndexSettingsDescription struct {
 	// This member is required.
 	IndexName *string
 
-	// The current status of the global secondary index:
+	//  The current status of the global secondary index:
+	//
 	//   - CREATING - The global secondary index is being created.
+	//
 	//   - UPDATING - The global secondary index is being updated.
+	//
 	//   - DELETING - The global secondary index is being deleted.
+	//
 	//   - ACTIVE - The global secondary index is ready for use.
 	IndexStatus IndexStatus
 
@@ -2334,24 +2746,30 @@ type ReplicaSettingsDescription struct {
 	ReplicaProvisionedReadCapacityAutoScalingSettings *AutoScalingSettingsDescription
 
 	// The maximum number of strongly consistent reads consumed per second before
-	// DynamoDB returns a ThrottlingException . For more information, see Specifying
-	// Read and Write Requirements (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithTables.html#ProvisionedThroughput)
-	// in the Amazon DynamoDB Developer Guide.
+	// DynamoDB returns a ThrottlingException . For more information, see [Specifying Read and Write Requirements] in the
+	// Amazon DynamoDB Developer Guide.
+	//
+	// [Specifying Read and Write Requirements]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithTables.html#ProvisionedThroughput
 	ReplicaProvisionedReadCapacityUnits *int64
 
 	// Auto scaling settings for a global table replica's write capacity units.
 	ReplicaProvisionedWriteCapacityAutoScalingSettings *AutoScalingSettingsDescription
 
 	// The maximum number of writes consumed per second before DynamoDB returns a
-	// ThrottlingException . For more information, see Specifying Read and Write
-	// Requirements (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithTables.html#ProvisionedThroughput)
-	// in the Amazon DynamoDB Developer Guide.
+	// ThrottlingException . For more information, see [Specifying Read and Write Requirements] in the Amazon DynamoDB
+	// Developer Guide.
+	//
+	// [Specifying Read and Write Requirements]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithTables.html#ProvisionedThroughput
 	ReplicaProvisionedWriteCapacityUnits *int64
 
 	// The current state of the Region:
+	//
 	//   - CREATING - The Region is being created.
+	//
 	//   - UPDATING - The Region is being updated.
+	//
 	//   - DELETING - The Region is being deleted.
+	//
 	//   - ACTIVE - The Region is ready for use.
 	ReplicaStatus ReplicaStatus
 
@@ -2377,9 +2795,10 @@ type ReplicaSettingsUpdate struct {
 	ReplicaProvisionedReadCapacityAutoScalingSettingsUpdate *AutoScalingSettingsUpdate
 
 	// The maximum number of strongly consistent reads consumed per second before
-	// DynamoDB returns a ThrottlingException . For more information, see Specifying
-	// Read and Write Requirements (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithTables.html#ProvisionedThroughput)
-	// in the Amazon DynamoDB Developer Guide.
+	// DynamoDB returns a ThrottlingException . For more information, see [Specifying Read and Write Requirements] in the
+	// Amazon DynamoDB Developer Guide.
+	//
+	// [Specifying Read and Write Requirements]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithTables.html#ProvisionedThroughput
 	ReplicaProvisionedReadCapacityUnits *int64
 
 	// Replica-specific table class. If not specified, uses the source table's table
@@ -2390,10 +2809,13 @@ type ReplicaSettingsUpdate struct {
 }
 
 // Represents one of the following:
+//
 //   - A new replica to be added to an existing regional table or global table.
 //     This request invokes the CreateTableReplica action in the destination Region.
+//
 //   - New parameters for an existing replica. This request invokes the UpdateTable
 //     action in the destination Region.
+//
 //   - An existing replica to be deleted. The request invokes the
 //     DeleteTableReplica action in the destination Region, deleting the replica and
 //     all if its items in the destination Region.
@@ -2416,8 +2838,11 @@ type ReplicationGroupUpdate struct {
 }
 
 // Represents one of the following:
+//
 //   - A new replica to be added to an existing global table.
+//
 //   - New parameters for an existing replica.
+//
 //   - An existing replica to be removed from an existing global table.
 type ReplicaUpdate struct {
 
@@ -2455,16 +2880,16 @@ type RestoreSummary struct {
 // The S3 bucket that is being imported from.
 type S3BucketSource struct {
 
-	// The S3 bucket that is being imported from.
+	//  The S3 bucket that is being imported from.
 	//
 	// This member is required.
 	S3Bucket *string
 
-	// The account number of the S3 bucket that is being imported from. If the bucket
+	//  The account number of the S3 bucket that is being imported from. If the bucket
 	// is owned by the requester this is optional.
 	S3BucketOwner *string
 
-	// The key prefix shared by all S3 Objects that are being imported.
+	//  The key prefix shared by all S3 Objects that are being imported.
 	S3KeyPrefix *string
 
 	noSmithyDocumentSerde
@@ -2500,14 +2925,21 @@ type SourceTableDetails struct {
 
 	// Controls how you are charged for read and write throughput and how you manage
 	// capacity. This setting can be changed later.
+	//
 	//   - PROVISIONED - Sets the read/write capacity mode to PROVISIONED . We
 	//   recommend using PROVISIONED for predictable workloads.
+	//
 	//   - PAY_PER_REQUEST - Sets the read/write capacity mode to PAY_PER_REQUEST . We
 	//   recommend using PAY_PER_REQUEST for unpredictable workloads.
 	BillingMode BillingMode
 
 	// Number of items in the table. Note that this is an approximate value.
 	ItemCount *int64
+
+	// Sets the maximum number of read and write units for the specified on-demand
+	// table. If you use this parameter, you must specify MaxReadRequestUnits ,
+	// MaxWriteRequestUnits , or both.
+	OnDemandThroughput *OnDemandThroughput
 
 	// ARN of the table for which backup was created.
 	TableArn *string
@@ -2559,13 +2991,16 @@ type SSEDescription struct {
 	KMSMasterKeyArn *string
 
 	// Server-side encryption type. The only supported value is:
+	//
 	//   - KMS - Server-side encryption that uses Key Management Service. The key is
 	//   stored in your account and is managed by KMS (KMS charges apply).
 	SSEType SSEType
 
 	// Represents the current state of server-side encryption. The only supported
 	// values are:
+	//
 	//   - ENABLED - Server-side encryption is enabled.
+	//
 	//   - UPDATING - Server-side encryption is being updated.
 	Status SSEStatus
 
@@ -2589,6 +3024,7 @@ type SSESpecification struct {
 	KMSMasterKeyId *string
 
 	// Server-side encryption type. The only supported value is:
+	//
 	//   - KMS - Server-side encryption that uses Key Management Service. The key is
 	//   stored in your account and is managed by KMS (KMS charges apply).
 	SSEType SSEType
@@ -2605,15 +3041,19 @@ type StreamSpecification struct {
 	// This member is required.
 	StreamEnabled *bool
 
-	// When an item in the table is modified, StreamViewType determines what
+	//  When an item in the table is modified, StreamViewType determines what
 	// information is written to the stream for this table. Valid values for
 	// StreamViewType are:
+	//
 	//   - KEYS_ONLY - Only the key attributes of the modified item are written to the
 	//   stream.
+	//
 	//   - NEW_IMAGE - The entire item, as it appears after it was modified, is written
 	//   to the stream.
+	//
 	//   - OLD_IMAGE - The entire item, as it appeared before it was modified, is
 	//   written to the stream.
+	//
 	//   - NEW_AND_OLD_IMAGES - Both the new and the old item images of the item are
 	//   written to the stream.
 	StreamViewType StreamViewType
@@ -2631,9 +3071,13 @@ type TableAutoScalingDescription struct {
 	TableName *string
 
 	// The current state of the table:
+	//
 	//   - CREATING - The table is being created.
+	//
 	//   - UPDATING - The table is being updated.
+	//
 	//   - DELETING - The table is being deleted.
+	//
 	//   - ACTIVE - The table is ready for use.
 	TableStatus TableStatus
 
@@ -2656,35 +3100,42 @@ type TableClassSummary struct {
 // The parameters for the table created as part of the import operation.
 type TableCreationParameters struct {
 
-	// The attributes of the table created as part of the import operation.
+	//  The attributes of the table created as part of the import operation.
 	//
 	// This member is required.
 	AttributeDefinitions []AttributeDefinition
 
-	// The primary key and option sort key of the table created as part of the import
+	//  The primary key and option sort key of the table created as part of the import
 	// operation.
 	//
 	// This member is required.
 	KeySchema []KeySchemaElement
 
-	// The name of the table created as part of the import operation.
+	//  The name of the table created as part of the import operation.
 	//
 	// This member is required.
 	TableName *string
 
-	// The billing mode for provisioning the table created as part of the import
+	//  The billing mode for provisioning the table created as part of the import
 	// operation.
 	BillingMode BillingMode
 
-	// The Global Secondary Indexes (GSI) of the table to be created as part of the
+	//  The Global Secondary Indexes (GSI) of the table to be created as part of the
 	// import operation.
 	GlobalSecondaryIndexes []GlobalSecondaryIndex
 
+	// Sets the maximum number of read and write units for the specified on-demand
+	// table. If you use this parameter, you must specify MaxReadRequestUnits ,
+	// MaxWriteRequestUnits , or both.
+	OnDemandThroughput *OnDemandThroughput
+
 	// Represents the provisioned throughput settings for a specified table or index.
-	// The settings can be modified using the UpdateTable operation. For current
-	// minimum and maximum provisioned throughput values, see Service, Account, and
-	// Table Quotas (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// The settings can be modified using the UpdateTable operation.
+	//
+	// For current minimum and maximum provisioned throughput values, see [Service, Account, and Table Quotas] in the
+	// Amazon DynamoDB Developer Guide.
+	//
+	// [Service, Account, and Table Quotas]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html
 	ProvisionedThroughput *ProvisionedThroughput
 
 	// Represents the settings used to enable server-side encryption.
@@ -2700,17 +3151,21 @@ type TableDescription struct {
 	ArchivalSummary *ArchivalSummary
 
 	// An array of AttributeDefinition objects. Each of these objects describes one
-	// attribute in the table and index key schema. Each AttributeDefinition object in
-	// this array is composed of:
+	// attribute in the table and index key schema.
+	//
+	// Each AttributeDefinition object in this array is composed of:
+	//
 	//   - AttributeName - The name of the attribute.
+	//
 	//   - AttributeType - The data type for the attribute.
 	AttributeDefinitions []AttributeDefinition
 
 	// Contains the details for the read/write capacity mode.
 	BillingModeSummary *BillingModeSummary
 
-	// The date and time when the table was created, in UNIX epoch time (http://www.epochconverter.com/)
-	// format.
+	// The date and time when the table was created, in [UNIX epoch time] format.
+	//
+	// [UNIX epoch time]: http://www.epochconverter.com/
 	CreationDateTime *time.Time
 
 	// Indicates whether deletion protection is enabled (true) or disabled (false) on
@@ -2719,53 +3174,75 @@ type TableDescription struct {
 
 	// The global secondary indexes, if any, on the table. Each index is scoped to a
 	// given partition key value. Each element is composed of:
+	//
 	//   - Backfilling - If true, then the index is currently in the backfilling phase.
 	//   Backfilling occurs only when a new global secondary index is added to the table.
 	//   It is the process by which DynamoDB populates the new index with data from the
 	//   table. (This attribute does not appear for indexes that were created during a
-	//   CreateTable operation.) You can delete an index that is being created during
-	//   the Backfilling phase when IndexStatus is set to CREATING and Backfilling is
-	//   true. You can't delete the index that is being created when IndexStatus is set
-	//   to CREATING and Backfilling is false. (This attribute does not appear for
-	//   indexes that were created during a CreateTable operation.)
+	//   CreateTable operation.)
+	//
+	// You can delete an index that is being created during the Backfilling phase when
+	//   IndexStatus is set to CREATING and Backfilling is true. You can't delete the
+	//   index that is being created when IndexStatus is set to CREATING and
+	//   Backfilling is false. (This attribute does not appear for indexes that were
+	//   created during a CreateTable operation.)
+	//
 	//   - IndexName - The name of the global secondary index.
+	//
 	//   - IndexSizeBytes - The total size of the global secondary index, in bytes.
 	//   DynamoDB updates this value approximately every six hours. Recent changes might
 	//   not be reflected in this value.
+	//
 	//   - IndexStatus - The current status of the global secondary index:
+	//
 	//   - CREATING - The index is being created.
+	//
 	//   - UPDATING - The index is being updated.
+	//
 	//   - DELETING - The index is being deleted.
+	//
 	//   - ACTIVE - The index is ready for use.
+	//
 	//   - ItemCount - The number of items in the global secondary index. DynamoDB
 	//   updates this value approximately every six hours. Recent changes might not be
 	//   reflected in this value.
+	//
 	//   - KeySchema - Specifies the complete index key schema. The attribute names in
 	//   the key schema must be between 1 and 255 characters (inclusive). The key schema
 	//   must begin with the same partition key as the table.
+	//
 	//   - Projection - Specifies attributes that are copied (projected) from the table
 	//   into the index. These are in addition to the primary key attributes and index
 	//   key attributes, which are automatically projected. Each attribute specification
 	//   is composed of:
+	//
 	//   - ProjectionType - One of the following:
+	//
 	//   - KEYS_ONLY - Only the index and primary keys are projected into the index.
+	//
 	//   - INCLUDE - In addition to the attributes described in KEYS_ONLY , the
 	//   secondary index will include other non-key attributes that you specify.
+	//
 	//   - ALL - All of the table attributes are projected into the index.
+	//
 	//   - NonKeyAttributes - A list of one or more non-key attribute names that are
 	//   projected into the secondary index. The total count of attributes provided in
 	//   NonKeyAttributes , summed across all of the secondary indexes, must not exceed
 	//   100. If you project the same attribute into two different indexes, this counts
 	//   as two distinct attributes when determining the total.
+	//
 	//   - ProvisionedThroughput - The provisioned throughput settings for the global
 	//   secondary index, consisting of read and write capacity units, along with data
 	//   about increases and decreases.
+	//
 	// If the table is in the DELETING state, no information about indexes will be
 	// returned.
 	GlobalSecondaryIndexes []GlobalSecondaryIndexDescription
 
-	// Represents the version of global tables (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html)
-	// in use, if the table is replicated across Amazon Web Services Regions.
+	// Represents the version of [global tables] in use, if the table is replicated across Amazon Web
+	// Services Regions.
+	//
+	// [global tables]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html
 	GlobalTableVersion *string
 
 	// The number of items in the specified table. DynamoDB updates this value
@@ -2774,30 +3251,45 @@ type TableDescription struct {
 	ItemCount *int64
 
 	// The primary key structure for the table. Each KeySchemaElement consists of:
+	//
 	//   - AttributeName - The name of the attribute.
+	//
 	//   - KeyType - The role of the attribute:
+	//
 	//   - HASH - partition key
-	//   - RANGE - sort key The partition key of an item is also known as its hash
-	//   attribute. The term "hash attribute" derives from DynamoDB's usage of an
-	//   internal hash function to evenly distribute data items across partitions, based
-	//   on their partition key values. The sort key of an item is also known as its
-	//   range attribute. The term "range attribute" derives from the way DynamoDB stores
-	//   items with the same partition key physically close together, in sorted order by
-	//   the sort key value.
-	// For more information about primary keys, see Primary Key (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataModel.html#DataModelPrimaryKey)
-	// in the Amazon DynamoDB Developer Guide.
+	//
+	//   - RANGE - sort key
+	//
+	// The partition key of an item is also known as its hash attribute. The term
+	//   "hash attribute" derives from DynamoDB's usage of an internal hash function to
+	//   evenly distribute data items across partitions, based on their partition key
+	//   values.
+	//
+	// The sort key of an item is also known as its range attribute. The term "range
+	//   attribute" derives from the way DynamoDB stores items with the same partition
+	//   key physically close together, in sorted order by the sort key value.
+	//
+	// For more information about primary keys, see [Primary Key] in the Amazon DynamoDB Developer
+	// Guide.
+	//
+	// [Primary Key]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataModel.html#DataModelPrimaryKey
 	KeySchema []KeySchemaElement
 
 	// The Amazon Resource Name (ARN) that uniquely identifies the latest stream for
 	// this table.
 	LatestStreamArn *string
 
-	// A timestamp, in ISO 8601 format, for this stream. Note that LatestStreamLabel
-	// is not a unique identifier for the stream, because it is possible that a stream
-	// from another table might have the same timestamp. However, the combination of
-	// the following three elements is guaranteed to be unique:
+	// A timestamp, in ISO 8601 format, for this stream.
+	//
+	// Note that LatestStreamLabel is not a unique identifier for the stream, because
+	// it is possible that a stream from another table might have the same timestamp.
+	// However, the combination of the following three elements is guaranteed to be
+	// unique:
+	//
 	//   - Amazon Web Services customer ID
+	//
 	//   - Table name
+	//
 	//   - StreamLabel
 	LatestStreamLabel *string
 
@@ -2807,32 +3299,64 @@ type TableDescription struct {
 	// within a given item collection cannot exceed 10 GB. Each element is composed of:
 	//
 	//   - IndexName - The name of the local secondary index.
+	//
 	//   - KeySchema - Specifies the complete index key schema. The attribute names in
 	//   the key schema must be between 1 and 255 characters (inclusive). The key schema
 	//   must begin with the same partition key as the table.
+	//
 	//   - Projection - Specifies attributes that are copied (projected) from the table
 	//   into the index. These are in addition to the primary key attributes and index
 	//   key attributes, which are automatically projected. Each attribute specification
 	//   is composed of:
+	//
 	//   - ProjectionType - One of the following:
+	//
 	//   - KEYS_ONLY - Only the index and primary keys are projected into the index.
+	//
 	//   - INCLUDE - Only the specified table attributes are projected into the index.
 	//   The list of projected attributes is in NonKeyAttributes .
+	//
 	//   - ALL - All of the table attributes are projected into the index.
+	//
 	//   - NonKeyAttributes - A list of one or more non-key attribute names that are
 	//   projected into the secondary index. The total count of attributes provided in
 	//   NonKeyAttributes , summed across all of the secondary indexes, must not exceed
 	//   100. If you project the same attribute into two different indexes, this counts
 	//   as two distinct attributes when determining the total.
+	//
 	//   - IndexSizeBytes - Represents the total size of the index, in bytes. DynamoDB
 	//   updates this value approximately every six hours. Recent changes might not be
 	//   reflected in this value.
+	//
 	//   - ItemCount - Represents the number of items in the index. DynamoDB updates
 	//   this value approximately every six hours. Recent changes might not be reflected
 	//   in this value.
+	//
 	// If the table is in the DELETING state, no information about indexes will be
 	// returned.
 	LocalSecondaryIndexes []LocalSecondaryIndexDescription
+
+	// Indicates one of the following consistency modes for a global table:
+	//
+	//   - EVENTUAL : Indicates that the global table is configured for multi-Region
+	//   eventual consistency.
+	//
+	//   - STRONG : Indicates that the global table is configured for multi-Region
+	//   strong consistency (preview).
+	//
+	// Multi-Region strong consistency (MRSC) is a new DynamoDB global tables
+	//   capability currently available in preview mode. For more information, see [Global tables multi-Region strong consistency].
+	//
+	// If you don't specify this field, the global table consistency mode defaults to
+	// EVENTUAL .
+	//
+	// [Global tables multi-Region strong consistency]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/PreviewFeatures.html#multi-region-strong-consistency-gt
+	MultiRegionConsistency MultiRegionConsistency
+
+	// The maximum number of read and write units for the specified on-demand table.
+	// If you use this parameter, you must specify MaxReadRequestUnits ,
+	// MaxWriteRequestUnits , or both.
+	OnDemandThroughput *OnDemandThroughput
 
 	// The provisioned throughput settings for the table, consisting of read and write
 	// capacity units, along with data about increases and decreases.
@@ -2868,32 +3392,63 @@ type TableDescription struct {
 	TableSizeBytes *int64
 
 	// The current state of the table:
+	//
 	//   - CREATING - The table is being created.
+	//
 	//   - UPDATING - The table/index configuration is being updated. The table/index
 	//   remains available for data operations when UPDATING .
+	//
 	//   - DELETING - The table is being deleted.
+	//
 	//   - ACTIVE - The table is ready for use.
+	//
 	//   - INACCESSIBLE_ENCRYPTION_CREDENTIALS - The KMS key used to encrypt the table
 	//   in inaccessible. Table operations may fail due to failure to use the KMS key.
 	//   DynamoDB will initiate the table archival process when a table's KMS key remains
 	//   inaccessible for more than seven days.
+	//
 	//   - ARCHIVING - The table is being archived. Operations are not allowed until
 	//   archival is complete.
+	//
 	//   - ARCHIVED - The table has been archived. See the ArchivalReason for more
 	//   information.
 	TableStatus TableStatus
+
+	// Describes the warm throughput value of the base table.
+	WarmThroughput *TableWarmThroughputDescription
+
+	noSmithyDocumentSerde
+}
+
+// Represents the warm throughput value (in read units per second and write units
+// per second) of the base table.
+type TableWarmThroughputDescription struct {
+
+	// Represents the base table's warm throughput value in read units per second.
+	ReadUnitsPerSecond *int64
+
+	// Represents warm throughput value of the base table..
+	Status TableStatus
+
+	// Represents the base table's warm throughput value in write units per second.
+	WriteUnitsPerSecond *int64
 
 	noSmithyDocumentSerde
 }
 
 // Describes a tag. A tag is a key-value pair. You can add up to 50 tags to a
-// single DynamoDB table. Amazon Web Services-assigned tag names and values are
-// automatically assigned the aws: prefix, which the user cannot assign. Amazon
-// Web Services-assigned tag names do not count towards the tag limit of 50.
-// User-assigned tag names have the prefix user: in the Cost Allocation Report.
-// You cannot backdate the application of a tag. For an overview on tagging
-// DynamoDB resources, see Tagging for DynamoDB (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Tagging.html)
-// in the Amazon DynamoDB Developer Guide.
+// single DynamoDB table.
+//
+// Amazon Web Services-assigned tag names and values are automatically assigned
+// the aws: prefix, which the user cannot assign. Amazon Web Services-assigned tag
+// names do not count towards the tag limit of 50. User-assigned tag names have the
+// prefix user: in the Cost Allocation Report. You cannot backdate the application
+// of a tag.
+//
+// For an overview on tagging DynamoDB resources, see [Tagging for DynamoDB] in the Amazon DynamoDB
+// Developer Guide.
+//
+// [Tagging for DynamoDB]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Tagging.html
 type Tag struct {
 
 	// The key of the tag. Tag keys are case sensitive. Each DynamoDB table can only
@@ -2914,10 +3469,10 @@ type Tag struct {
 // The description of the Time to Live (TTL) status on the specified table.
 type TimeToLiveDescription struct {
 
-	// The name of the TTL attribute for items in the table.
+	//  The name of the TTL attribute for items in the table.
 	AttributeName *string
 
-	// The TTL status for the table.
+	//  The TTL status for the table.
 	TimeToLiveStatus TimeToLiveStatus
 
 	noSmithyDocumentSerde
@@ -2982,7 +3537,8 @@ type Update struct {
 	// This member is required.
 	Key map[string]AttributeValue
 
-	// Name of the table for the UpdateItem request.
+	// Name of the table for the UpdateItem request. You can also provide the Amazon
+	// Resource Name (ARN) of the table in this parameter.
 	//
 	// This member is required.
 	TableName *string
@@ -3019,13 +3575,23 @@ type UpdateGlobalSecondaryIndexAction struct {
 	// This member is required.
 	IndexName *string
 
+	// Updates the maximum number of read and write units for the specified global
+	// secondary index. If you use this parameter, you must specify MaxReadRequestUnits
+	// , MaxWriteRequestUnits , or both.
+	OnDemandThroughput *OnDemandThroughput
+
 	// Represents the provisioned throughput settings for the specified global
-	// secondary index. For current minimum and maximum provisioned throughput values,
-	// see Service, Account, and Table Quotas (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// secondary index.
 	//
-	// This member is required.
+	// For current minimum and maximum provisioned throughput values, see [Service, Account, and Table Quotas] in the
+	// Amazon DynamoDB Developer Guide.
+	//
+	// [Service, Account, and Table Quotas]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html
 	ProvisionedThroughput *ProvisionedThroughput
+
+	// Represents the warm throughput value of the new provisioned throughput settings
+	// to be applied to a global secondary index.
+	WarmThroughput *WarmThroughput
 
 	noSmithyDocumentSerde
 }
@@ -3056,6 +3622,9 @@ type UpdateReplicationGroupMemberAction struct {
 	// default DynamoDB KMS key alias/aws/dynamodb .
 	KMSMasterKeyId *string
 
+	// Overrides the maximum on-demand throughput for the replica table.
+	OnDemandThroughputOverride *OnDemandThroughputOverride
+
 	// Replica-specific provisioned throughput. If not specified, uses the source
 	// table's provisioned throughput settings.
 	ProvisionedThroughputOverride *ProvisionedThroughputOverride
@@ -3063,6 +3632,23 @@ type UpdateReplicationGroupMemberAction struct {
 	// Replica-specific table class. If not specified, uses the source table's table
 	// class.
 	TableClassOverride TableClass
+
+	noSmithyDocumentSerde
+}
+
+// Provides visibility into the number of read and write operations your table or
+// secondary index can instantaneously support. The settings can be modified using
+// the UpdateTable operation to meet the throughput requirements of an upcoming
+// peak event.
+type WarmThroughput struct {
+
+	// Represents the number of read operations your base table can instantaneously
+	// support.
+	ReadUnitsPerSecond *int64
+
+	// Represents the number of write operations your base table can instantaneously
+	// support.
+	WriteUnitsPerSecond *int64
 
 	noSmithyDocumentSerde
 }

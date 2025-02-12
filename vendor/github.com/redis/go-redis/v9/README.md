@@ -3,6 +3,7 @@
 [![build workflow](https://github.com/redis/go-redis/actions/workflows/build.yml/badge.svg)](https://github.com/redis/go-redis/actions)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/redis/go-redis/v9)](https://pkg.go.dev/github.com/redis/go-redis/v9?tab=doc)
 [![Documentation](https://img.shields.io/badge/redis-documentation-informational)](https://redis.uptrace.dev/)
+[![codecov](https://codecov.io/github/redis/go-redis/graph/badge.svg?token=tsrCZKuSSw)](https://codecov.io/github/redis/go-redis)
 [![Chat](https://discordapp.com/api/guilds/752070105847955518/widget.png)](https://discord.gg/rWtp5Aj)
 
 > go-redis is brought to you by :star: [**uptrace/uptrace**](https://github.com/uptrace/uptrace).
@@ -51,8 +52,8 @@ key value NoSQL database that uses RocksDB as storage engine and is compatible w
 
 ## Features
 
-- Redis 3 commands except QUIT, MONITOR, and SYNC.
-- Automatic connection pooling with
+- Redis commands except QUIT and SYNC.
+- Automatic connection pooling.
 - [Pub/Sub](https://redis.uptrace.dev/guide/go-redis-pubsub.html).
 - [Pipelines and transactions](https://redis.uptrace.dev/guide/go-redis-pipelines.html).
 - [Scripting](https://redis.uptrace.dev/guide/lua-scripting.html).
@@ -143,9 +144,6 @@ to this specification.
 
 ```go
 import (
-    "context"
-    "fmt"
-
     "github.com/redis/go-redis/v9"
 )
 
@@ -160,6 +158,33 @@ func ExampleClient() *redis.Client {
 }
 
 ```
+
+
+### Advanced Configuration
+
+go-redis supports extending the client identification phase to allow projects to send their own custom client identification.
+
+#### Default Client Identification
+
+By default, go-redis automatically sends the client library name and version during the connection process. This feature is available in redis-server as of version 7.2. As a result, the command is "fire and forget", meaning it should fail silently, in the case that the redis server does not support this feature.
+
+#### Disabling Identity Verification
+
+When connection identity verification is not required or needs to be explicitly disabled, a `DisableIndentity` configuration option exists. In V10 of this library, `DisableIndentity` will become `DisableIdentity` in order to fix the associated typo.
+
+To disable verification, set the `DisableIndentity` option to `true` in the Redis client options:
+
+```go
+rdb := redis.NewClient(&redis.Options{
+    Addr:            "localhost:6379",
+    Password:        "",
+    DB:              0,
+    DisableIndentity: true, // Disable set-info on connect
+})
+```
+
+#### Unstable RESP3 Structures for RediSearch Commands
+When integrating Redis with application functionalities using RESP3, it's important to note that some response structures aren't final yet. This is especially true for more complex structures like search and query results. We recommend using RESP2 when using the search and query capabilities, but we plan to stabilize the RESP3-based API-s in the coming versions. You can find more guidance in the upcoming release notes.
 
 ## Contributing
 

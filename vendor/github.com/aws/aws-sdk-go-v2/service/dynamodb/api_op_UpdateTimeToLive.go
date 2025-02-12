@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	internalEndpointDiscovery "github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery"
 	"github.com/aws/smithy-go/middleware"
@@ -17,20 +16,31 @@ import (
 // specified table. A successful UpdateTimeToLive call returns the current
 // TimeToLiveSpecification . It can take up to one hour for the change to fully
 // process. Any additional UpdateTimeToLive calls for the same table during this
-// one hour duration result in a ValidationException . TTL compares the current
-// time in epoch time format to the time stored in the TTL attribute of an item. If
-// the epoch time value stored in the attribute is less than the current time, the
-// item is marked as expired and subsequently deleted. The epoch time format is the
-// number of seconds elapsed since 12:00:00 AM January 1, 1970 UTC. DynamoDB
-// deletes expired items on a best-effort basis to ensure availability of
-// throughput for other data operations. DynamoDB typically deletes expired items
-// within two days of expiration. The exact duration within which an item gets
-// deleted after expiration is specific to the nature of the workload. Items that
-// have expired and not been deleted will still show up in reads, queries, and
-// scans. As items are deleted, they are removed from any local secondary index and
+// one hour duration result in a ValidationException .
+//
+// TTL compares the current time in epoch time format to the time stored in the
+// TTL attribute of an item. If the epoch time value stored in the attribute is
+// less than the current time, the item is marked as expired and subsequently
+// deleted.
+//
+// The epoch time format is the number of seconds elapsed since 12:00:00 AM
+// January 1, 1970 UTC.
+//
+// DynamoDB deletes expired items on a best-effort basis to ensure availability of
+// throughput for other data operations.
+//
+// DynamoDB typically deletes expired items within two days of expiration. The
+// exact duration within which an item gets deleted after expiration is specific to
+// the nature of the workload. Items that have expired and not been deleted will
+// still show up in reads, queries, and scans.
+//
+// As items are deleted, they are removed from any local secondary index and
 // global secondary index immediately in the same eventually consistent way as a
-// standard delete operation. For more information, see Time To Live (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/TTL.html)
-// in the Amazon DynamoDB Developer Guide.
+// standard delete operation.
+//
+// For more information, see [Time To Live] in the Amazon DynamoDB Developer Guide.
+//
+// [Time To Live]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/TTL.html
 func (c *Client) UpdateTimeToLive(ctx context.Context, params *UpdateTimeToLiveInput, optFns ...func(*Options)) (*UpdateTimeToLiveOutput, error) {
 	if params == nil {
 		params = &UpdateTimeToLiveInput{}
@@ -49,7 +59,8 @@ func (c *Client) UpdateTimeToLive(ctx context.Context, params *UpdateTimeToLiveI
 // Represents the input of an UpdateTimeToLive operation.
 type UpdateTimeToLiveInput struct {
 
-	// The name of the table to be configured.
+	// The name of the table to be configured. You can also provide the Amazon
+	// Resource Name (ARN) of the table in this parameter.
 	//
 	// This member is required.
 	TableName *string
@@ -96,25 +107,28 @@ func (c *Client) addOperationUpdateTimeToLiveMiddlewares(stack *middleware.Stack
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -132,13 +146,19 @@ func (c *Client) addOperationUpdateTimeToLiveMiddlewares(stack *middleware.Stack
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpUpdateTimeToLiveValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUpdateTimeToLive(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -157,6 +177,18 @@ func (c *Client) addOperationUpdateTimeToLiveMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

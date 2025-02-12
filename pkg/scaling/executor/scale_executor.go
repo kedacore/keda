@@ -33,14 +33,20 @@ import (
 )
 
 const (
-	// Default cooldown period for a ScaleTarget if no cooldownPeriod is defined on the scaledObject
-	defaultCooldownPeriod = 5 * 60 // 5 minutes
+	// Default (initial) cooldown period for a ScaleTarget if no cooldownPeriod is defined on the scaledObject
+	defaultInitialCooldownPeriod = 0      // 0 seconds
+	defaultCooldownPeriod        = 5 * 60 // 5 minutes
 )
 
 // ScaleExecutor contains methods RequestJobScale and RequestScale
 type ScaleExecutor interface {
-	RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, scaleTo int64, maxScale int64)
-	RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool)
+	RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, isError bool, scaleTo int64, maxScale int64)
+	RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool, options *ScaleExecutorOptions)
+}
+
+// ScaleExecutorOptions contains the optional parameters for the RequestScale method.
+type ScaleExecutorOptions struct {
+	ActiveTriggers []string
 }
 
 type scaleExecutor struct {
@@ -118,11 +124,4 @@ func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logg
 		conditions.SetActiveCondition(status, reason, message)
 	}
 	return e.setCondition(ctx, logger, object, status, reason, message, active)
-}
-
-func (e *scaleExecutor) setFallbackCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
-	fallback := func(conditions kedav1alpha1.Conditions, status metav1.ConditionStatus, reason string, message string) {
-		conditions.SetFallbackCondition(status, reason, message)
-	}
-	return e.setCondition(ctx, logger, object, status, reason, message, fallback)
 }

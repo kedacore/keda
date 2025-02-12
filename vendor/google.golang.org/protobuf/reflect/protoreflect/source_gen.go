@@ -160,8 +160,6 @@ func (p *SourcePath) appendFileOptions(b []byte) []byte {
 		b = p.appendSingularField(b, "java_generic_services", nil)
 	case 18:
 		b = p.appendSingularField(b, "py_generic_services", nil)
-	case 42:
-		b = p.appendSingularField(b, "php_generic_services", nil)
 	case 23:
 		b = p.appendSingularField(b, "deprecated", nil)
 	case 31:
@@ -375,6 +373,8 @@ func (p *SourcePath) appendFieldOptions(b []byte) []byte {
 		b = p.appendRepeatedField(b, "edition_defaults", (*SourcePath).appendFieldOptions_EditionDefault)
 	case 21:
 		b = p.appendSingularField(b, "features", (*SourcePath).appendFeatureSet)
+	case 22:
+		b = p.appendSingularField(b, "feature_support", (*SourcePath).appendFieldOptions_FeatureSupport)
 	case 999:
 		b = p.appendRepeatedField(b, "uninterpreted_option", (*SourcePath).appendUninterpretedOption)
 	}
@@ -485,6 +485,8 @@ func (p *SourcePath) appendEnumValueOptions(b []byte) []byte {
 		b = p.appendSingularField(b, "features", (*SourcePath).appendFeatureSet)
 	case 3:
 		b = p.appendSingularField(b, "debug_redact", nil)
+	case 4:
+		b = p.appendSingularField(b, "feature_support", (*SourcePath).appendFieldOptions_FeatureSupport)
 	case 999:
 		b = p.appendRepeatedField(b, "uninterpreted_option", (*SourcePath).appendUninterpretedOption)
 	}
@@ -517,6 +519,23 @@ func (p *SourcePath) appendFieldOptions_EditionDefault(b []byte) []byte {
 		b = p.appendSingularField(b, "edition", nil)
 	case 2:
 		b = p.appendSingularField(b, "value", nil)
+	}
+	return b
+}
+
+func (p *SourcePath) appendFieldOptions_FeatureSupport(b []byte) []byte {
+	if len(*p) == 0 {
+		return b
+	}
+	switch (*p)[0] {
+	case 1:
+		b = p.appendSingularField(b, "edition_introduced", nil)
+	case 2:
+		b = p.appendSingularField(b, "edition_deprecated", nil)
+	case 3:
+		b = p.appendSingularField(b, "deprecation_warning", nil)
+	case 4:
+		b = p.appendSingularField(b, "edition_removed", nil)
 	}
 	return b
 }

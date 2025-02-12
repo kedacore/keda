@@ -15,7 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/mongo/description"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
@@ -23,19 +22,19 @@ import (
 
 // CreateSearchIndexes performs a createSearchIndexes operation.
 type CreateSearchIndexes struct {
-	indexes      bsoncore.Document
-	session      *session.Client
-	clock        *session.ClusterClock
-	collection   string
-	monitor      *event.CommandMonitor
-	crypt        driver.Crypt
-	database     string
-	deployment   driver.Deployment
-	selector     description.ServerSelector
-	writeConcern *writeconcern.WriteConcern
-	result       CreateSearchIndexesResult
-	serverAPI    *driver.ServerAPIOptions
-	timeout      *time.Duration
+	authenticator driver.Authenticator
+	indexes       bsoncore.Document
+	session       *session.Client
+	clock         *session.ClusterClock
+	collection    string
+	monitor       *event.CommandMonitor
+	crypt         driver.Crypt
+	database      string
+	deployment    driver.Deployment
+	selector      description.ServerSelector
+	result        CreateSearchIndexesResult
+	serverAPI     *driver.ServerAPIOptions
+	timeout       *time.Duration
 }
 
 // CreateSearchIndexResult represents a single search index result in CreateSearchIndexesResult.
@@ -109,9 +108,16 @@ func (csi *CreateSearchIndexes) Execute(ctx context.Context) error {
 	return driver.Operation{
 		CommandFn:         csi.command,
 		ProcessResponseFn: csi.processResponse,
+		Client:            csi.session,
+		Clock:             csi.clock,
 		CommandMonitor:    csi.monitor,
+		Crypt:             csi.crypt,
 		Database:          csi.database,
 		Deployment:        csi.deployment,
+		Selector:          csi.selector,
+		ServerAPI:         csi.serverAPI,
+		Timeout:           csi.timeout,
+		Authenticator:     csi.authenticator,
 	}.Execute(ctx)
 
 }
@@ -214,16 +220,6 @@ func (csi *CreateSearchIndexes) ServerSelector(selector description.ServerSelect
 	return csi
 }
 
-// WriteConcern sets the write concern for this operation.
-func (csi *CreateSearchIndexes) WriteConcern(writeConcern *writeconcern.WriteConcern) *CreateSearchIndexes {
-	if csi == nil {
-		csi = new(CreateSearchIndexes)
-	}
-
-	csi.writeConcern = writeConcern
-	return csi
-}
-
 // ServerAPI sets the server API version for this operation.
 func (csi *CreateSearchIndexes) ServerAPI(serverAPI *driver.ServerAPIOptions) *CreateSearchIndexes {
 	if csi == nil {
@@ -241,5 +237,15 @@ func (csi *CreateSearchIndexes) Timeout(timeout *time.Duration) *CreateSearchInd
 	}
 
 	csi.timeout = timeout
+	return csi
+}
+
+// Authenticator sets the authenticator to use for this operation.
+func (csi *CreateSearchIndexes) Authenticator(authenticator driver.Authenticator) *CreateSearchIndexes {
+	if csi == nil {
+		csi = new(CreateSearchIndexes)
+	}
+
+	csi.authenticator = authenticator
 	return csi
 }

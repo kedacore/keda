@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodbstreams/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -14,8 +13,9 @@ import (
 
 // Returns a shard iterator. A shard iterator provides information about how to
 // retrieve the stream records from within a shard. Use the shard iterator in a
-// subsequent GetRecords request to read the stream records from the shard. A
-// shard iterator expires 15 minutes after it is returned to the requester.
+// subsequent GetRecords request to read the stream records from the shard.
+//
+// A shard iterator expires 15 minutes after it is returned to the requester.
 func (c *Client) GetShardIterator(ctx context.Context, params *GetShardIteratorInput, optFns ...func(*Options)) (*GetShardIteratorOutput, error) {
 	if params == nil {
 		params = &GetShardIteratorInput{}
@@ -41,14 +41,18 @@ type GetShardIteratorInput struct {
 
 	// Determines how the shard iterator is used to start reading stream records from
 	// the shard:
+	//
 	//   - AT_SEQUENCE_NUMBER - Start reading exactly from the position denoted by a
 	//   specific sequence number.
+	//
 	//   - AFTER_SEQUENCE_NUMBER - Start reading right after the position denoted by a
 	//   specific sequence number.
+	//
 	//   - TRIM_HORIZON - Start reading at the last (untrimmed) stream record, which is
 	//   the oldest record in the shard. In DynamoDB Streams, there is a 24 hour limit on
 	//   data retention. Stream records whose age exceeds this limit are subject to
 	//   removal (trimming) from the stream.
+	//
 	//   - LATEST - Start reading just after the most recent stream record in the
 	//   shard, so that you always read the most recent data in the shard.
 	//
@@ -102,25 +106,28 @@ func (c *Client) addOperationGetShardIteratorMiddlewares(stack *middleware.Stack
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -135,13 +142,19 @@ func (c *Client) addOperationGetShardIteratorMiddlewares(stack *middleware.Stack
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpGetShardIteratorValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGetShardIterator(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -154,6 +167,18 @@ func (c *Client) addOperationGetShardIteratorMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

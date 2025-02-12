@@ -18,22 +18,17 @@
 package interpreter
 
 import (
+	"github.com/google/cel-go/common/ast"
 	"github.com/google/cel-go/common/containers"
+	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/interpreter/functions"
-
-	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // Interpreter generates a new Interpretable from a checked or unchecked expression.
 type Interpreter interface {
 	// NewInterpretable creates an Interpretable from a checked expression and an
 	// optional list of InterpretableDecorator values.
-	NewInterpretable(checked *exprpb.CheckedExpr, decorators ...InterpretableDecorator) (Interpretable, error)
-
-	// NewUncheckedInterpretable returns an Interpretable from a parsed expression
-	// and an optional list of InterpretableDecorator values.
-	NewUncheckedInterpretable(expr *exprpb.Expr, decorators ...InterpretableDecorator) (Interpretable, error)
+	NewInterpretable(exprAST *ast.AST, decorators ...InterpretableDecorator) (Interpretable, error)
 }
 
 // EvalObserver is a functional interface that accepts an expression id and an observed value.
@@ -154,8 +149,8 @@ func CompileRegexConstants(regexOptimizations ...*RegexOptimization) Interpretab
 type exprInterpreter struct {
 	dispatcher  Dispatcher
 	container   *containers.Container
-	provider    ref.TypeProvider
-	adapter     ref.TypeAdapter
+	provider    types.Provider
+	adapter     types.Adapter
 	attrFactory AttributeFactory
 }
 
@@ -163,8 +158,8 @@ type exprInterpreter struct {
 // throughout the Eval of all Interpretable instances generated from it.
 func NewInterpreter(dispatcher Dispatcher,
 	container *containers.Container,
-	provider ref.TypeProvider,
-	adapter ref.TypeAdapter,
+	provider types.Provider,
+	adapter types.Adapter,
 	attrFactory AttributeFactory) Interpreter {
 	return &exprInterpreter{
 		dispatcher:  dispatcher,
@@ -174,20 +169,9 @@ func NewInterpreter(dispatcher Dispatcher,
 		attrFactory: attrFactory}
 }
 
-// NewStandardInterpreter builds a Dispatcher and TypeProvider with support for all of the CEL
-// builtins defined in the language definition.
-func NewStandardInterpreter(container *containers.Container,
-	provider ref.TypeProvider,
-	adapter ref.TypeAdapter,
-	resolver AttributeFactory) Interpreter {
-	dispatcher := NewDispatcher()
-	dispatcher.Add(functions.StandardOverloads()...)
-	return NewInterpreter(dispatcher, container, provider, adapter, resolver)
-}
-
 // NewIntepretable implements the Interpreter interface method.
 func (i *exprInterpreter) NewInterpretable(
-	checked *exprpb.CheckedExpr,
+	checked *ast.AST,
 	decorators ...InterpretableDecorator) (Interpretable, error) {
 	p := newPlanner(
 		i.dispatcher,
@@ -197,19 +181,5 @@ func (i *exprInterpreter) NewInterpretable(
 		i.container,
 		checked,
 		decorators...)
-	return p.Plan(checked.GetExpr())
-}
-
-// NewUncheckedIntepretable implements the Interpreter interface method.
-func (i *exprInterpreter) NewUncheckedInterpretable(
-	expr *exprpb.Expr,
-	decorators ...InterpretableDecorator) (Interpretable, error) {
-	p := newUncheckedPlanner(
-		i.dispatcher,
-		i.provider,
-		i.adapter,
-		i.attrFactory,
-		i.container,
-		decorators...)
-	return p.Plan(expr)
+	return p.Plan(checked.Expr())
 }

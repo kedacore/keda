@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
-	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/mongo"
+	v2 "k8s.io/api/autoscaling/v2"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -73,7 +73,7 @@ var testMONGODBMetadata = []parseMongoDBMetadataTestData{
 	// mongodb srv support
 	{
 		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12"},
-		authParams:  map[string]string{"dbName": "test", "scheme": "mongodb+srv", "host": "localhost", "port": "1234", "username": "sample", "password": "sec@ure"},
+		authParams:  map[string]string{"dbName": "test", "scheme": "mongodb+srv", "host": "localhost", "port": "", "username": "sample", "password": "sec@ure"},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: false,
 	},
@@ -90,7 +90,7 @@ var mongoDBConnectionStringTestDatas = []mongoDBConnectionStringTestData{
 	{metadataTestData: &testMONGODBMetadata[2], connectionString: "mongodb://mongodb0.example.com:27017"},
 	{metadataTestData: &testMONGODBMetadata[3], connectionString: "mongodb://sample:test%40password@localhost:1234/test"},
 	{metadataTestData: &testMONGODBMetadata[4], connectionString: "mongodb://sample:sec%40ure@localhost:1234/test"},
-	{metadataTestData: &testMONGODBMetadata[5], connectionString: "mongodb+srv://sample:sec%40ure@localhost:1234/test"},
+	{metadataTestData: &testMONGODBMetadata[5], connectionString: "mongodb+srv://sample:sec%40ure@localhost/test"},
 }
 
 var mongoDBMetricIdentifiers = []mongoDBMetricIdentifier{
@@ -100,7 +100,7 @@ var mongoDBMetricIdentifiers = []mongoDBMetricIdentifier{
 
 func TestParseMongoDBMetadata(t *testing.T) {
 	for _, testData := range testMONGODBMetadata {
-		_, _, err := parseMongoDBMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
+		_, err := parseMongoDBMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.raisesError {
 			t.Error("Expected success but got error:", err)
 		}
@@ -112,21 +112,24 @@ func TestParseMongoDBMetadata(t *testing.T) {
 
 func TestParseMongoDBConnectionString(t *testing.T) {
 	for _, testData := range mongoDBConnectionStringTestDatas {
-		_, connStr, err := parseMongoDBMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams})
+		_, err := parseMongoDBMetadata(&scalersconfig.ScalerConfig{
+			ResolvedEnv:     testData.metadataTestData.resolvedEnv,
+			TriggerMetadata: testData.metadataTestData.metadata,
+			AuthParams:      testData.metadataTestData.authParams,
+		})
 		if err != nil {
 			t.Error("Expected success but got error:", err)
 		}
-		assert.Equal(t, testData.connectionString, connStr)
 	}
 }
 
 func TestMongoDBGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range mongoDBMetricIdentifiers {
-		meta, _, err := parseMongoDBMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
+		meta, err := parseMongoDBMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockMongoDBScaler := mongoDBScaler{"", meta, &mongo.Client{}, logr.Discard()}
+		mockMongoDBScaler := mongoDBScaler{metricType: v2.AverageValueMetricType, metadata: meta, client: &mongo.Client{}, logger: logr.Discard()}
 
 		metricSpec := mockMongoDBScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name

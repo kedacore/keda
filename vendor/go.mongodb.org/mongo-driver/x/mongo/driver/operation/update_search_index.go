@@ -14,7 +14,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/mongo/description"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
@@ -22,20 +21,20 @@ import (
 
 // UpdateSearchIndex performs a updateSearchIndex operation.
 type UpdateSearchIndex struct {
-	index        string
-	definition   bsoncore.Document
-	session      *session.Client
-	clock        *session.ClusterClock
-	collection   string
-	monitor      *event.CommandMonitor
-	crypt        driver.Crypt
-	database     string
-	deployment   driver.Deployment
-	selector     description.ServerSelector
-	writeConcern *writeconcern.WriteConcern
-	result       UpdateSearchIndexResult
-	serverAPI    *driver.ServerAPIOptions
-	timeout      *time.Duration
+	authenticator driver.Authenticator
+	index         string
+	definition    bsoncore.Document
+	session       *session.Client
+	clock         *session.ClusterClock
+	collection    string
+	monitor       *event.CommandMonitor
+	crypt         driver.Crypt
+	database      string
+	deployment    driver.Deployment
+	selector      description.ServerSelector
+	result        UpdateSearchIndexResult
+	serverAPI     *driver.ServerAPIOptions
+	timeout       *time.Duration
 }
 
 // UpdateSearchIndexResult represents a single index in the updateSearchIndexResult result.
@@ -50,8 +49,7 @@ func buildUpdateSearchIndexResult(response bsoncore.Document) (UpdateSearchIndex
 	}
 	usir := UpdateSearchIndexResult{}
 	for _, element := range elements {
-		switch element.Key() {
-		case "ok":
+		if element.Key() == "ok" {
 			var ok bool
 			usir.Ok, ok = element.Value().AsInt32OK()
 			if !ok {
@@ -95,9 +93,9 @@ func (usi *UpdateSearchIndex) Execute(ctx context.Context) error {
 		Database:          usi.database,
 		Deployment:        usi.deployment,
 		Selector:          usi.selector,
-		WriteConcern:      usi.writeConcern,
 		ServerAPI:         usi.serverAPI,
 		Timeout:           usi.timeout,
+		Authenticator:     usi.authenticator,
 	}.Execute(ctx)
 
 }
@@ -209,16 +207,6 @@ func (usi *UpdateSearchIndex) ServerSelector(selector description.ServerSelector
 	return usi
 }
 
-// WriteConcern sets the write concern for this operation.
-func (usi *UpdateSearchIndex) WriteConcern(writeConcern *writeconcern.WriteConcern) *UpdateSearchIndex {
-	if usi == nil {
-		usi = new(UpdateSearchIndex)
-	}
-
-	usi.writeConcern = writeConcern
-	return usi
-}
-
 // ServerAPI sets the server API version for this operation.
 func (usi *UpdateSearchIndex) ServerAPI(serverAPI *driver.ServerAPIOptions) *UpdateSearchIndex {
 	if usi == nil {
@@ -236,5 +224,15 @@ func (usi *UpdateSearchIndex) Timeout(timeout *time.Duration) *UpdateSearchIndex
 	}
 
 	usi.timeout = timeout
+	return usi
+}
+
+// Authenticator sets the authenticator to use for this operation.
+func (usi *UpdateSearchIndex) Authenticator(authenticator driver.Authenticator) *UpdateSearchIndex {
+	if usi == nil {
+		usi = new(UpdateSearchIndex)
+	}
+
+	usi.authenticator = authenticator
 	return usi
 }

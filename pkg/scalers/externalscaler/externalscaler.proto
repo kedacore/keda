@@ -26,7 +26,10 @@ message GetMetricSpecResponse {
 
 message MetricSpec {
     string metricName = 1;
+
+    // deprecated, use targetSizeFloat instead
     int64 targetSize = 2;
+    double targetSizeFloat = 3;
 }
 
 message GetMetricsRequest {
@@ -40,5 +43,9 @@ message GetMetricsResponse {
 
 message MetricValue {
     string metricName = 1;
+
+    // deprecated, use metricValueFloat instead
     int64 metricValue = 2;
+
+    double metricValueFloat = 3;
 }

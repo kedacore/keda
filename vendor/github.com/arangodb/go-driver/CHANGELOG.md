@@ -2,6 +2,23 @@
 
 ## [master](https://github.com/arangodb/go-driver/tree/master) (N/A)
 
+## [1.6.5(https://github.com/arangodb/go-driver/tree/v1.6.5) (2024-11-15)
+- Expose `NewType` method
+- Switch to Go 1.22.8
+
+## [1.6.4(https://github.com/arangodb/go-driver/tree/v1.6.4) (2024-09-27)
+- Switch to Go 1.22.5
+- Switch to Go 1.22.6
+
+## [1.6.2](https://github.com/arangodb/go-driver/tree/v1.6.2) (2024-04-02)
+- Switch to Go 1.20.11
+- Switch to Go 1.21.5
+- Disable AF mode in tests (not supported since 3.12)
+- Remove graph with all collections
+- Allow skipping validation for Database and Collection existence
+- Deprecate Pregel Job API
+- `MDI` and `MDI-Prefixed` indexes. Deprecate `ZKD` index
+
 ## [1.6.1](https://github.com/arangodb/go-driver/tree/v1.6.1) (2023-10-31)
 - Add support for getting license
 - Add support for Raw Authentication in VST (support external jwt token as raw element)
@@ -46,7 +63,7 @@
 
 ## [1.5.0](https://github.com/arangodb/go-driver/tree/v1.5.0) (2023-02-17)
 - Use Go 1.19.4
-- Add `IsExternalStorageError` to check for [external storage errors](https://www.arangodb.com/docs/stable/appendix-error-codes.html#external-arangodb-storage-errors)
+- Add `IsExternalStorageError` to check for [external storage errors](https://docs.arangodb.com/stable/develop/error-codes-and-meanings/#external-arangodb-storage-errors)
 - `nested` field in arangosearch type View
 - Fix: TTL index creation fails when expireAt is 0
 - [V2] Support for Collection Indexes

@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -30,15 +29,15 @@ func (c *Client) ListImports(ctx context.Context, params *ListImportsInput, optF
 
 type ListImportsInput struct {
 
-	// An optional string that, if supplied, must be copied from the output of a
+	//  An optional string that, if supplied, must be copied from the output of a
 	// previous call to ListImports . When provided in this manner, the API fetches the
 	// next page of results.
 	NextToken *string
 
-	// The number of ImportSummary objects returned in a single page.
+	//  The number of ImportSummary objects returned in a single page.
 	PageSize *int32
 
-	// The Amazon Resource Name (ARN) associated with the table that was imported to.
+	//  The Amazon Resource Name (ARN) associated with the table that was imported to.
 	TableArn *string
 
 	noSmithyDocumentSerde
@@ -46,10 +45,10 @@ type ListImportsInput struct {
 
 type ListImportsOutput struct {
 
-	// A list of ImportSummary objects.
+	//  A list of ImportSummary objects.
 	ImportSummaryList []types.ImportSummary
 
-	// If this value is returned, there are additional results to be displayed. To
+	//  If this value is returned, there are additional results to be displayed. To
 	// retrieve them, call ListImports again, with NextToken set to this value.
 	NextToken *string
 
@@ -81,25 +80,28 @@ func (c *Client) addOperationListImportsMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -114,10 +116,16 @@ func (c *Client) addOperationListImportsMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListImports(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -138,19 +146,24 @@ func (c *Client) addOperationListImportsMiddlewares(stack *middleware.Stack, opt
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
-// ListImportsAPIClient is a client that implements the ListImports operation.
-type ListImportsAPIClient interface {
-	ListImports(context.Context, *ListImportsInput, ...func(*Options)) (*ListImportsOutput, error)
-}
-
-var _ ListImportsAPIClient = (*Client)(nil)
-
 // ListImportsPaginatorOptions is the paginator options for ListImports
 type ListImportsPaginatorOptions struct {
-	// The number of ImportSummary objects returned in a single page.
+	//  The number of ImportSummary objects returned in a single page.
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token
@@ -211,6 +224,9 @@ func (p *ListImportsPaginator) NextPage(ctx context.Context, optFns ...func(*Opt
 	}
 	params.PageSize = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListImports(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -229,6 +245,13 @@ func (p *ListImportsPaginator) NextPage(ctx context.Context, optFns ...func(*Opt
 
 	return result, nil
 }
+
+// ListImportsAPIClient is a client that implements the ListImports operation.
+type ListImportsAPIClient interface {
+	ListImports(context.Context, *ListImportsInput, ...func(*Options)) (*ListImportsOutput, error)
+}
+
+var _ ListImportsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListImports(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
