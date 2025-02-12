@@ -6,30 +6,33 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Retrieves the contents of the encrypted fields SecretString or SecretBinary for
-// up to 20 secrets. To retrieve a single secret, call GetSecretValue . To choose
-// which secrets to retrieve, you can specify a list of secrets by name or ARN, or
-// you can use filters. If Secrets Manager encounters errors such as
+// up to 20 secrets. To retrieve a single secret, call GetSecretValue.
+//
+// To choose which secrets to retrieve, you can specify a list of secrets by name
+// or ARN, or you can use filters. If Secrets Manager encounters errors such as
 // AccessDeniedException while attempting to retrieve any of the secrets, you can
-// see the errors in Errors in the response. Secrets Manager generates CloudTrail
-// GetSecretValue log entries for each secret you request when you call this
-// action. Do not include sensitive information in request parameters because it
-// might be logged. For more information, see Logging Secrets Manager events with
-// CloudTrail (https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieve-ct-entries.html)
-// . Required permissions: secretsmanager:BatchGetSecretValue , and you must have
+// see the errors in Errors in the response.
+//
+// Secrets Manager generates CloudTrail GetSecretValue log entries for each secret
+// you request when you call this action. Do not include sensitive information in
+// request parameters because it might be logged. For more information, see [Logging Secrets Manager events with CloudTrail].
+//
+// Required permissions: secretsmanager:BatchGetSecretValue , and you must have
 // secretsmanager:GetSecretValue for each secret. If you use filters, you must also
 // have secretsmanager:ListSecrets . If the secrets are encrypted using
 // customer-managed keys instead of the Amazon Web Services managed key
 // aws/secretsmanager , then you also need kms:Decrypt permissions for the keys.
-// For more information, see IAM policy actions for Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_iam-permissions.html#reference_iam-permissions_actions)
-// and Authentication and access control in Secrets Manager (https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html)
-// .
+// For more information, see [IAM policy actions for Secrets Manager]and [Authentication and access control in Secrets Manager].
+//
+// [Authentication and access control in Secrets Manager]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access.html
+// [Logging Secrets Manager events with CloudTrail]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieve-ct-entries.html
+// [IAM policy actions for Secrets Manager]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/reference_iam-permissions.html#reference_iam-permissions_actions
 func (c *Client) BatchGetSecretValue(ctx context.Context, params *BatchGetSecretValueInput, optFns ...func(*Options)) (*BatchGetSecretValueOutput, error) {
 	if params == nil {
 		params = &BatchGetSecretValueInput{}
@@ -51,9 +54,12 @@ type BatchGetSecretValueInput struct {
 	// SecretIdList , but not both.
 	Filters []types.Filter
 
-	// The number of results to include in the response. If there are more results
-	// available, in the response, Secrets Manager includes NextToken . To get the next
-	// results, call BatchGetSecretValue again with the value from NextToken .
+	// The number of results to include in the response.
+	//
+	// If there are more results available, in the response, Secrets Manager includes
+	// NextToken . To get the next results, call BatchGetSecretValue again with the
+	// value from NextToken . To use this parameter, you must also use the Filters
+	// parameter.
 	MaxResults *int32
 
 	// A token that indicates where the output should continue from, if a previous
@@ -111,25 +117,28 @@ func (c *Client) addOperationBatchGetSecretValueMiddlewares(stack *middleware.St
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -144,10 +153,16 @@ func (c *Client) addOperationBatchGetSecretValueMiddlewares(stack *middleware.St
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opBatchGetSecretValue(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -162,23 +177,30 @@ func (c *Client) addOperationBatchGetSecretValueMiddlewares(stack *middleware.St
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// BatchGetSecretValueAPIClient is a client that implements the
-// BatchGetSecretValue operation.
-type BatchGetSecretValueAPIClient interface {
-	BatchGetSecretValue(context.Context, *BatchGetSecretValueInput, ...func(*Options)) (*BatchGetSecretValueOutput, error)
-}
-
-var _ BatchGetSecretValueAPIClient = (*Client)(nil)
 
 // BatchGetSecretValuePaginatorOptions is the paginator options for
 // BatchGetSecretValue
 type BatchGetSecretValuePaginatorOptions struct {
-	// The number of results to include in the response. If there are more results
-	// available, in the response, Secrets Manager includes NextToken . To get the next
-	// results, call BatchGetSecretValue again with the value from NextToken .
+	// The number of results to include in the response.
+	//
+	// If there are more results available, in the response, Secrets Manager includes
+	// NextToken . To get the next results, call BatchGetSecretValue again with the
+	// value from NextToken . To use this parameter, you must also use the Filters
+	// parameter.
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token
@@ -239,6 +261,9 @@ func (p *BatchGetSecretValuePaginator) NextPage(ctx context.Context, optFns ...f
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.BatchGetSecretValue(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -257,6 +282,14 @@ func (p *BatchGetSecretValuePaginator) NextPage(ctx context.Context, optFns ...f
 
 	return result, nil
 }
+
+// BatchGetSecretValueAPIClient is a client that implements the
+// BatchGetSecretValue operation.
+type BatchGetSecretValueAPIClient interface {
+	BatchGetSecretValue(context.Context, *BatchGetSecretValueInput, ...func(*Options)) (*BatchGetSecretValueOutput, error)
+}
+
+var _ BatchGetSecretValueAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opBatchGetSecretValue(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

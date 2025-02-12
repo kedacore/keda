@@ -18,7 +18,6 @@ package scalers
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -31,7 +30,6 @@ const (
 	clientSecret                = "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs"
 	workspaceID                 = "074dd9f8-c368-4220-9400-acb6e80fc325"
 	testLogAnalyticsResourceURL = "testLogAnalyticsResourceURL"
-	testActiveDirectoryEndpoint = "testActiveDirectoryEndpoint"
 )
 
 type parseLogAnalyticsMetadataTestData struct {
@@ -95,11 +93,9 @@ var testLogAnalyticsMetadata = []parseLogAnalyticsMetadataTestData{
 	// Known Azure Cloud
 	{map[string]string{"tenantIdFromEnv": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientIdFromEnv": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecretFromEnv": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceIdFromEnv": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000", "cloud": "azurePublicCloud"}, false},
 	// Private Cloud
-	{map[string]string{"tenantIdFromEnv": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientIdFromEnv": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecretFromEnv": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceIdFromEnv": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000", "cloud": "private", "logAnalyticsResourceURL": testLogAnalyticsResourceURL, "activeDirectoryEndpoint": testActiveDirectoryEndpoint}, false},
-	// Private Cloud missing log analytics resource url
-	{map[string]string{"tenantIdFromEnv": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientIdFromEnv": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecretFromEnv": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceIdFromEnv": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000", "cloud": "private", "activeDirectoryEndpoint": testActiveDirectoryEndpoint}, true},
+	{map[string]string{"tenantIdFromEnv": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientIdFromEnv": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecretFromEnv": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceIdFromEnv": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000", "cloud": "private", "logAnalyticsResourceURL": testLogAnalyticsResourceURL}, false},
 	// Private Cloud missing active directory endpoint
-	{map[string]string{"tenantIdFromEnv": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientIdFromEnv": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecretFromEnv": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceIdFromEnv": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000", "cloud": "private", "logAnalyticsResourceURL": testLogAnalyticsResourceURL}, true},
+	{map[string]string{"tenantIdFromEnv": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientIdFromEnv": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecretFromEnv": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceIdFromEnv": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000", "cloud": "private", "logAnalyticsResourceURL": testLogAnalyticsResourceURL}, false},
 	// Unsupported cloud
 	{map[string]string{"tenantIdFromEnv": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientIdFromEnv": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecretFromEnv": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceIdFromEnv": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000", "cloud": "azureGermanCloud"}, true},
 }
@@ -164,19 +160,6 @@ func TestLogAnalyticsParseMetadata(t *testing.T) {
 		}
 	}
 
-	// test with podIdentity params should not fail
-	for _, testData := range testLogAnalyticsMetadataWithPodIdentity {
-		_, err := parseAzureLogAnalyticsMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv,
-			TriggerMetadata: testData.metadata, AuthParams: LogAnalyticsAuthParams,
-			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzure}})
-		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
-		}
-		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
-		}
-	}
-
 	// test with workload identity params should not fail
 	for _, testData := range testLogAnalyticsMetadataWithPodIdentity {
 		_, err := parseAzureLogAnalyticsMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleLogAnalyticsResolvedEnv,
@@ -200,10 +183,10 @@ func TestLogAnalyticsGetMetricSpecForScaling(t *testing.T) {
 			t.Fatal("Could not parse metadata:", err)
 		}
 		mockLogAnalyticsScaler := azureLogAnalyticsScaler{
-			metadata:   meta,
-			name:       "test-so",
-			namespace:  "test-ns",
-			httpClient: http.DefaultClient,
+			metadata:  meta,
+			name:      "test-so",
+			namespace: "test-ns",
+			client:    nil,
 		}
 
 		metricSpec := mockLogAnalyticsScaler.GetMetricSpecForScaling(context.Background())

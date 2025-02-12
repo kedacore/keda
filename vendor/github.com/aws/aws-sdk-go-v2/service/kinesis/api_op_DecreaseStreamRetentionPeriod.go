@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -14,12 +13,15 @@ import (
 
 // Decreases the Kinesis data stream's retention period, which is the length of
 // time data records are accessible after they are added to the stream. The minimum
-// value of a stream's retention period is 24 hours. When invoking this API, you
-// must use either the StreamARN or the StreamName parameter, or both. It is
-// recommended that you use the StreamARN input parameter when you invoke this
-// API. This operation may result in lost data. For example, if the stream's
-// retention period is 48 hours and is decreased to 24 hours, any data already in
-// the stream that is older than 24 hours is inaccessible.
+// value of a stream's retention period is 24 hours.
+//
+// When invoking this API, you must use either the StreamARN or the StreamName
+// parameter, or both. It is recommended that you use the StreamARN input
+// parameter when you invoke this API.
+//
+// This operation may result in lost data. For example, if the stream's retention
+// period is 48 hours and is decreased to 24 hours, any data already in the stream
+// that is older than 24 hours is inaccessible.
 func (c *Client) DecreaseStreamRetentionPeriod(ctx context.Context, params *DecreaseStreamRetentionPeriodInput, optFns ...func(*Options)) (*DecreaseStreamRetentionPeriodOutput, error) {
 	if params == nil {
 		params = &DecreaseStreamRetentionPeriodInput{}
@@ -35,7 +37,7 @@ func (c *Client) DecreaseStreamRetentionPeriod(ctx context.Context, params *Decr
 	return out, nil
 }
 
-// Represents the input for DecreaseStreamRetentionPeriod .
+// Represents the input for DecreaseStreamRetentionPeriod.
 type DecreaseStreamRetentionPeriodInput struct {
 
 	// The new retention period of the stream, in hours. Must be less than the current
@@ -54,6 +56,7 @@ type DecreaseStreamRetentionPeriodInput struct {
 }
 
 func (in *DecreaseStreamRetentionPeriodInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.StreamARN = in.StreamARN
 	p.OperationType = ptr.String("control")
 }
@@ -87,25 +90,28 @@ func (c *Client) addOperationDecreaseStreamRetentionPeriodMiddlewares(stack *mid
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -120,13 +126,19 @@ func (c *Client) addOperationDecreaseStreamRetentionPeriodMiddlewares(stack *mid
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDecreaseStreamRetentionPeriodValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDecreaseStreamRetentionPeriod(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -139,6 +151,18 @@ func (c *Client) addOperationDecreaseStreamRetentionPeriodMiddlewares(stack *mid
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

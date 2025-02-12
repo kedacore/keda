@@ -52,13 +52,13 @@ type ConnOptions struct {
 	//
 	// Must be 512 or greater.
 	//
-	// Default: 512.
+	// Default: 65536.
 	MaxFrameSize uint32
 
 	// MaxSessions sets the maximum number of channels.
 	// The value must be greater than zero.
 	//
-	// Default: 65535.
+	// Default: 65536.
 	MaxSessions uint16
 
 	// Properties sets an entry in the connection properties map sent to the server.
@@ -663,13 +663,15 @@ func (c *Conn) readFrame() (frames.Frame, error) {
 			}
 		}
 
-		// read more if buf doesn't contain enough to parse the header
-		if c.rxBuf.Len() < frames.HeaderSize {
-			continue
-		}
-
 		// parse the header if a frame isn't in progress
 		if !frameInProgress {
+			// read more if buf doesn't contain enough to parse the header
+			// NOTE: we MUST do this ONLY if a frame isn't in progress else we can
+			// end up stalling when reading frames with bodies smaller than HeaderSize
+			if c.rxBuf.Len() < frames.HeaderSize {
+				continue
+			}
+
 			var err error
 			currentHeader, err = frames.ParseHeader(&c.rxBuf)
 			if err != nil {

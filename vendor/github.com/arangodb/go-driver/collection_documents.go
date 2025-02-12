@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 // limitations under the License.
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// Author Ewout Prangsma
 //
 
 package driver
@@ -67,6 +65,7 @@ type CollectionDocuments interface {
 	// To return the OLD document, prepare a context with `WithReturnOld`.
 	// To wait until document has been synced to disk, prepare a context with `WithWaitForSync`.
 	// If no document exists with given key, a NotFoundError is returned.
+	// If `_id` field is present in the document body, it is always ignored.
 	UpdateDocument(ctx context.Context, key string, update interface{}) (DocumentMeta, error)
 
 	// UpdateDocuments updates multiple document with given keys in the collection.
@@ -75,7 +74,8 @@ type CollectionDocuments interface {
 	// To return the OLD documents, prepare a context with `WithReturnOld` with a slice of documents.
 	// To wait until documents has been synced to disk, prepare a context with `WithWaitForSync`.
 	// If no document exists with a given key, a NotFoundError is returned at its errors index.
-	// If keys is nil, each element in the updates slice must contain a `_key` field.
+	// If keys are nil, each element in the update slice must contain a `_key` field.
+	// If `_id` field is present in the document body, it is always ignored.
 	UpdateDocuments(ctx context.Context, keys []string, updates interface{}) (DocumentMetaSlice, ErrorSlice, error)
 
 	// ReplaceDocument replaces a single document with given key in the collection with the document given in the document argument.
@@ -84,6 +84,7 @@ type CollectionDocuments interface {
 	// To return the OLD document, prepare a context with `WithReturnOld`.
 	// To wait until document has been synced to disk, prepare a context with `WithWaitForSync`.
 	// If no document exists with given key, a NotFoundError is returned.
+	// If `_id` field is present in the document body, it is always ignored.
 	ReplaceDocument(ctx context.Context, key string, document interface{}) (DocumentMeta, error)
 
 	// ReplaceDocuments replaces multiple documents with given keys in the collection with the documents given in the documents argument.
@@ -93,6 +94,7 @@ type CollectionDocuments interface {
 	// To wait until documents has been synced to disk, prepare a context with `WithWaitForSync`.
 	// If no document exists with a given key, a NotFoundError is returned at its errors index.
 	// If keys is nil, each element in the documents slice must contain a `_key` field.
+	// If `_id` field is present in the document body, it is always ignored.
 	ReplaceDocuments(ctx context.Context, keys []string, documents interface{}) (DocumentMetaSlice, ErrorSlice, error)
 
 	// RemoveDocument removes a single document with given key from the collection.

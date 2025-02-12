@@ -50,10 +50,10 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/utils/clock"
 
-	flowcontrol "k8s.io/api/flowcontrol/v1beta3"
-	flowcontrolapplyconfiguration "k8s.io/client-go/applyconfigurations/flowcontrol/v1beta3"
-	flowcontrolclient "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta3"
-	flowcontrollister "k8s.io/client-go/listers/flowcontrol/v1beta3"
+	flowcontrol "k8s.io/api/flowcontrol/v1"
+	flowcontrolapplyconfiguration "k8s.io/client-go/applyconfigurations/flowcontrol/v1"
+	flowcontrolclient "k8s.io/client-go/kubernetes/typed/flowcontrol/v1"
+	flowcontrollister "k8s.io/client-go/listers/flowcontrol/v1"
 )
 
 const timeFmt = "2006-01-02T15:04:05.999"
@@ -135,7 +135,7 @@ type configController struct {
 
 	// configQueue holds `(interface{})(0)` when the configuration
 	// objects need to be reprocessed.
-	configQueue workqueue.RateLimitingInterface
+	configQueue workqueue.TypedRateLimitingInterface[int]
 
 	plLister         flowcontrollister.PriorityLevelConfigurationLister
 	plInformerSynced cache.InformerSynced
@@ -143,7 +143,7 @@ type configController struct {
 	fsLister         flowcontrollister.FlowSchemaLister
 	fsInformerSynced cache.InformerSynced
 
-	flowcontrolClient flowcontrolclient.FlowcontrolV1beta3Interface
+	flowcontrolClient flowcontrolclient.FlowcontrolV1Interface
 
 	// serverConcurrencyLimit is the limit on the server's total
 	// number of non-exempt requests being served at once.  This comes
@@ -204,7 +204,7 @@ type priorityLevelState struct {
 	// reached through this pointer is mutable.
 	pl *flowcontrol.PriorityLevelConfiguration
 
-	// qsCompleter holds the QueueSetCompleter derived from `config`
+	// qsCompleter holds the QueueSetCompleter derived from `pl`
 	// and `queues`.
 	qsCompleter fq.QueueSetCompleter
 
@@ -255,14 +255,20 @@ type priorityLevelState struct {
 type seatDemandStats struct {
 	avg           float64
 	stdDev        float64
-	highWatermark float64
+	highWatermark int
 	smoothed      float64
 }
 
 func (stats *seatDemandStats) update(obs fq.IntegratorResults) {
+	stats.highWatermark = int(math.Round(obs.Max))
+	if obs.Duration <= 0 {
+		return
+	}
+	if math.IsNaN(obs.Deviation) {
+		obs.Deviation = 0
+	}
 	stats.avg = obs.Average
 	stats.stdDev = obs.Deviation
-	stats.highWatermark = obs.Max
 	envelope := obs.Average + obs.Deviation
 	stats.smoothed = math.Max(envelope, seatDemandSmoothingCoefficient*stats.smoothed+(1-seatDemandSmoothingCoefficient)*envelope)
 }
@@ -286,10 +292,13 @@ func newTestableController(config TestableConfig) *configController {
 	klog.V(2).Infof("NewTestableController %q with serverConcurrencyLimit=%d, name=%s, asFieldManager=%q", cfgCtlr.name, cfgCtlr.serverConcurrencyLimit, cfgCtlr.name, cfgCtlr.asFieldManager)
 	// Start with longish delay because conflicts will be between
 	// different processes, so take some time to go away.
-	cfgCtlr.configQueue = workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(200*time.Millisecond, 8*time.Hour), "priority_and_fairness_config_queue")
+	cfgCtlr.configQueue = workqueue.NewTypedRateLimitingQueueWithConfig(
+		workqueue.NewTypedItemExponentialFailureRateLimiter[int](200*time.Millisecond, 8*time.Hour),
+		workqueue.TypedRateLimitingQueueConfig[int]{Name: "priority_and_fairness_config_queue"},
+	)
 	// ensure the data structure reflects the mandatory config
 	cfgCtlr.lockAndDigestConfigObjects(nil, nil)
-	fci := config.InformerFactory.Flowcontrol().V1beta3()
+	fci := config.InformerFactory.Flowcontrol().V1()
 	pli := fci.PriorityLevelConfigurations()
 	fsi := fci.FlowSchemas()
 	cfgCtlr.plLister = pli.Lister()
@@ -389,38 +398,63 @@ func (cfgCtlr *configController) updateBorrowing() {
 
 func (cfgCtlr *configController) updateBorrowingLocked(setCompleters bool, plStates map[string]*priorityLevelState) {
 	items := make([]allocProblemItem, 0, len(plStates))
-	plNames := make([]string, 0, len(plStates))
+	nonExemptPLNames := make([]string, 0, len(plStates))
+	idxOfNonExempt := map[string]int{} // items index of non-exempt classes
+	cclOfExempt := map[string]int{}    // minCurrentCL of exempt classes
+	var minCLSum, minCurrentCLSum int  // sums over non-exempt classes
+	remainingServerCL := cfgCtlr.nominalCLSum
 	for plName, plState := range plStates {
 		obs := plState.seatDemandIntegrator.Reset()
 		plState.seatDemandStats.update(obs)
-		// Lower bound on this priority level's adjusted concurreny limit is the lesser of:
-		// - its seat demamd high watermark over the last adjustment period, and
-		// - its configured concurrency limit.
-		// BUT: we do not want this to be lower than the lower bound from configuration.
-		// See KEP-1040 for a more detailed explanation.
-		minCurrentCL := math.Max(float64(plState.minCL), math.Min(float64(plState.nominalCL), plState.seatDemandStats.highWatermark))
-		plNames = append(plNames, plName)
-		items = append(items, allocProblemItem{
-			lowerBound: minCurrentCL,
-			upperBound: float64(plState.maxCL),
-			target:     math.Max(minCurrentCL, plState.seatDemandStats.smoothed),
-		})
+		var minCurrentCL int
+		if plState.pl.Spec.Type == flowcontrol.PriorityLevelEnablementExempt {
+			minCurrentCL = max(plState.minCL, plState.seatDemandStats.highWatermark)
+			cclOfExempt[plName] = minCurrentCL
+			remainingServerCL -= minCurrentCL
+		} else {
+			// Lower bound on this priority level's adjusted concurreny limit is the lesser of:
+			// - its seat demamd high watermark over the last adjustment period, and
+			// - its configured concurrency limit.
+			// BUT: we do not want this to be lower than the lower bound from configuration.
+			// See KEP-1040 for a more detailed explanation.
+			minCurrentCL = max(plState.minCL, min(plState.nominalCL, plState.seatDemandStats.highWatermark))
+			idxOfNonExempt[plName] = len(items)
+			nonExemptPLNames = append(nonExemptPLNames, plName)
+			items = append(items, allocProblemItem{
+				lowerBound: float64(minCurrentCL),
+				upperBound: float64(plState.maxCL),
+				target:     math.Max(float64(minCurrentCL), plState.seatDemandStats.smoothed),
+			})
+			minCLSum += plState.minCL
+			minCurrentCLSum += minCurrentCL
+		}
 	}
 	if len(items) == 0 && cfgCtlr.nominalCLSum > 0 {
 		klog.ErrorS(nil, "Impossible: no priority levels", "plStates", cfgCtlr.priorityLevelStates)
 		return
 	}
-	allocs, fairFrac, err := computeConcurrencyAllocation(cfgCtlr.nominalCLSum, items)
-	if err != nil {
-		klog.ErrorS(err, "Unable to derive new concurrency limits", "plNames", plNames, "items", items)
-		allocs = make([]float64, len(items))
-		for idx, plName := range plNames {
-			plState := plStates[plName]
-			allocs[idx] = float64(plState.currentCL)
+	var allocs []float64
+	var shareFrac, fairFrac float64
+	var err error
+	if remainingServerCL <= minCLSum {
+		metrics.SetFairFrac(0)
+	} else if remainingServerCL <= minCurrentCLSum {
+		shareFrac = float64(remainingServerCL-minCLSum) / float64(minCurrentCLSum-minCLSum)
+		metrics.SetFairFrac(0)
+	} else {
+		allocs, fairFrac, err = computeConcurrencyAllocation(cfgCtlr.nominalCLSum, items)
+		if err != nil {
+			klog.ErrorS(err, "Unable to derive new concurrency limits", "plNames", nonExemptPLNames, "items", items)
+			allocs = make([]float64, len(items))
+			for idx, plName := range nonExemptPLNames {
+				plState := plStates[plName]
+				allocs[idx] = float64(plState.currentCL)
+			}
 		}
+		metrics.SetFairFrac(float64(fairFrac))
 	}
-	for idx, plName := range plNames {
-		plState := plStates[plName]
+	for plName, plState := range plStates {
+		idx, isNonExempt := idxOfNonExempt[plName]
 		if setCompleters {
 			qsCompleter, err := queueSetCompleterForPL(cfgCtlr.queueSetFactory, plState.queues,
 				plState.pl, plState.reqsGaugePair, plState.execSeatsObs,
@@ -431,10 +465,20 @@ func (cfgCtlr *configController) updateBorrowingLocked(setCompleters bool, plSta
 			}
 			plState.qsCompleter = qsCompleter
 		}
-		currentCL := int(math.Round(float64(allocs[idx])))
+		var currentCL int
+		if !isNonExempt {
+			currentCL = cclOfExempt[plName]
+		} else if remainingServerCL <= minCLSum {
+			currentCL = plState.minCL
+		} else if remainingServerCL <= minCurrentCLSum {
+			minCurrentCL := max(plState.minCL, min(plState.nominalCL, plState.seatDemandStats.highWatermark))
+			currentCL = plState.minCL + int(math.Round(float64(minCurrentCL-plState.minCL)*shareFrac))
+		} else {
+			currentCL = int(math.Round(float64(allocs[idx])))
+		}
 		relChange := relDiff(float64(currentCL), float64(plState.currentCL))
 		plState.currentCL = currentCL
-		metrics.NotePriorityLevelConcurrencyAdjustment(plState.pl.Name, plState.seatDemandStats.highWatermark, plState.seatDemandStats.avg, plState.seatDemandStats.stdDev, plState.seatDemandStats.smoothed, float64(items[idx].target), currentCL)
+		metrics.NotePriorityLevelConcurrencyAdjustment(plState.pl.Name, float64(plState.seatDemandStats.highWatermark), plState.seatDemandStats.avg, plState.seatDemandStats.stdDev, plState.seatDemandStats.smoothed, float64(items[idx].target), currentCL)
 		logLevel := klog.Level(4)
 		if relChange >= 0.05 {
 			logLevel = 2
@@ -449,7 +493,6 @@ func (cfgCtlr *configController) updateBorrowingLocked(setCompleters bool, plSta
 		klog.V(logLevel).InfoS("Update CurrentCL", "plName", plName, "seatDemandHighWatermark", plState.seatDemandStats.highWatermark, "seatDemandAvg", plState.seatDemandStats.avg, "seatDemandStdev", plState.seatDemandStats.stdDev, "seatDemandSmoothed", plState.seatDemandStats.smoothed, "fairFrac", fairFrac, "currentCL", currentCL, "concurrencyDenominator", concurrencyDenominator, "backstop", err != nil)
 		plState.queues = plState.qsCompleter.Complete(fq.DispatchingConfig{ConcurrencyLimit: currentCL, ConcurrencyDenominator: concurrencyDenominator})
 	}
-	metrics.SetFairFrac(float64(fairFrac))
 }
 
 // runWorker is the logic of the one and only worker goroutine.  We
@@ -468,7 +511,7 @@ func (cfgCtlr *configController) processNextWorkItem() bool {
 		return false
 	}
 
-	func(obj interface{}) {
+	func(obj int) {
 		defer cfgCtlr.configQueue.Done(obj)
 		specificDelay, err := cfgCtlr.syncOne()
 		switch {
@@ -696,7 +739,7 @@ func (meal *cfgMeal) digestNewPLsLocked(newPLs []*flowcontrol.PriorityLevelConfi
 			state.quiescing = false
 		}
 		nominalConcurrencyShares, _, _ := plSpecCommons(state.pl)
-		meal.shareSum += float64(nominalConcurrencyShares)
+		meal.shareSum += float64(*nominalConcurrencyShares)
 		meal.haveExemptPL = meal.haveExemptPL || pl.Name == flowcontrol.PriorityLevelConfigurationNameExempt
 		meal.haveCatchAllPL = meal.haveCatchAllPL || pl.Name == flowcontrol.PriorityLevelConfigurationNameCatchAll
 	}
@@ -801,7 +844,7 @@ func (meal *cfgMeal) processOldPLsLocked() {
 		// allocation determined by all the share values in the
 		// regular way.
 		nominalConcurrencyShares, _, _ := plSpecCommons(plState.pl)
-		meal.shareSum += float64(nominalConcurrencyShares)
+		meal.shareSum += float64(*nominalConcurrencyShares)
 		meal.haveExemptPL = meal.haveExemptPL || plName == flowcontrol.PriorityLevelConfigurationNameExempt
 		meal.haveCatchAllPL = meal.haveCatchAllPL || plName == flowcontrol.PriorityLevelConfigurationNameCatchAll
 		meal.newPLStates[plName] = plState
@@ -817,7 +860,7 @@ func (meal *cfgMeal) finishQueueSetReconfigsLocked() {
 		// The use of math.Ceil here means that the results might sum
 		// to a little more than serverConcurrencyLimit but the
 		// difference will be negligible.
-		concurrencyLimit := int(math.Ceil(float64(meal.cfgCtlr.serverConcurrencyLimit) * float64(nominalConcurrencyShares) / meal.shareSum))
+		concurrencyLimit := int(math.Ceil(float64(meal.cfgCtlr.serverConcurrencyLimit) * float64(*nominalConcurrencyShares) / meal.shareSum))
 		var lendableCL, borrowingCL int
 		if lendablePercent != nil {
 			lendableCL = int(math.Round(float64(concurrencyLimit) * float64(*lendablePercent) / 100))
@@ -968,7 +1011,7 @@ func (meal *cfgMeal) imaginePL(proto *flowcontrol.PriorityLevelConfiguration) {
 		seatDemandRatioedGauge: seatDemandRatioedGauge,
 	}
 	nominalConcurrencyShares, _, _ := plSpecCommons(proto)
-	meal.shareSum += float64(nominalConcurrencyShares)
+	meal.shareSum += float64(*nominalConcurrencyShares)
 }
 
 // startRequest classifies and, if appropriate, enqueues the request.
@@ -1106,7 +1149,7 @@ func relDiff(x, y float64) float64 {
 }
 
 // plSpecCommons returns the (NominalConcurrencyShares, LendablePercent, BorrowingLimitPercent) of the given priority level config
-func plSpecCommons(pl *flowcontrol.PriorityLevelConfiguration) (int32, *int32, *int32) {
+func plSpecCommons(pl *flowcontrol.PriorityLevelConfiguration) (*int32, *int32, *int32) {
 	if limiter := pl.Spec.Limited; limiter != nil {
 		return limiter.NominalConcurrencyShares, limiter.LendablePercent, limiter.BorrowingLimitPercent
 	}
@@ -1115,5 +1158,5 @@ func plSpecCommons(pl *flowcontrol.PriorityLevelConfiguration) (int32, *int32, *
 	if limiter.NominalConcurrencyShares != nil {
 		nominalConcurrencyShares = *limiter.NominalConcurrencyShares
 	}
-	return nominalConcurrencyShares, limiter.LendablePercent, nil
+	return &nominalConcurrencyShares, limiter.LendablePercent, nil
 }

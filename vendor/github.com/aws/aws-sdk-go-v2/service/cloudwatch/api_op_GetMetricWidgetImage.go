@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
@@ -15,11 +14,16 @@ import (
 // more Amazon CloudWatch metrics as a bitmap image. You can then embed this image
 // into your services and products, such as wiki pages, reports, and documents. You
 // could also retrieve images regularly, such as every minute, and create your own
-// custom live dashboard. The graph you retrieve can include all CloudWatch metric
-// graph features, including metric math and horizontal and vertical annotations.
+// custom live dashboard.
+//
+// The graph you retrieve can include all CloudWatch metric graph features,
+// including metric math and horizontal and vertical annotations.
+//
 // There is a limit of 20 transactions per second for this API. Each
 // GetMetricWidgetImage action has the following limits:
+//
 //   - As many as 100 metrics in the graph.
+//
 //   - Up to 100 KB uncompressed payload.
 func (c *Client) GetMetricWidgetImage(ctx context.Context, params *GetMetricWidgetImageInput, optFns ...func(*Options)) (*GetMetricWidgetImageOutput, error) {
 	if params == nil {
@@ -41,18 +45,25 @@ type GetMetricWidgetImageInput struct {
 	// A JSON string that defines the bitmap graph to be retrieved. The string
 	// includes the metrics to include in the graph, statistics, annotations, title,
 	// axis limits, and so on. You can include only one MetricWidget parameter in each
-	// GetMetricWidgetImage call. For more information about the syntax of MetricWidget
-	// see GetMetricWidgetImage: Metric Widget Structure and Syntax (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/CloudWatch-Metric-Widget-Structure.html)
-	// . If any metric on the graph could not load all the requested data points, an
+	// GetMetricWidgetImage call.
+	//
+	// For more information about the syntax of MetricWidget see [GetMetricWidgetImage: Metric Widget Structure and Syntax].
+	//
+	// If any metric on the graph could not load all the requested data points, an
 	// orange triangle with an exclamation point appears next to the graph legend.
+	//
+	// [GetMetricWidgetImage: Metric Widget Structure and Syntax]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/CloudWatch-Metric-Widget-Structure.html
 	//
 	// This member is required.
 	MetricWidget *string
 
-	// The format of the resulting image. Only PNG images are supported. The default
-	// is png . If you specify png , the API returns an HTTP response with the
-	// content-type set to text/xml . The image data is in a MetricWidgetImage field.
-	// For example: >
+	// The format of the resulting image. Only PNG images are supported.
+	//
+	// The default is png . If you specify png , the API returns an HTTP response with
+	// the content-type set to text/xml . The image data is in a MetricWidgetImage
+	// field. For example:
+	//
+	//     >
 	//
 	//     iVBORw0KGgoAAAANSUhEUgAAAlgAAAGQEAYAAAAip...
 	//
@@ -101,25 +112,28 @@ func (c *Client) addOperationGetMetricWidgetImageMiddlewares(stack *middleware.S
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -134,13 +148,19 @@ func (c *Client) addOperationGetMetricWidgetImageMiddlewares(stack *middleware.S
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpGetMetricWidgetImageValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGetMetricWidgetImage(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -153,6 +173,18 @@ func (c *Client) addOperationGetMetricWidgetImageMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

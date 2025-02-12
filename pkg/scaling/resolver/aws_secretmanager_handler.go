@@ -18,6 +18,7 @@ package resolver
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -43,9 +44,9 @@ func NewAwsSecretManagerHandler(a *kedav1alpha1.AwsSecretManager) *AwsSecretMana
 	}
 }
 
-// Read fetches the secret value from AWS Secret Manager using the provided secret name, version ID(optional), and version stage(optional).
+// Read fetches the secret value from AWS Secret Manager using the provided secret name, version ID(optional), version stage(optional), and secretKey(optional).
 // It returns the secret value as a string.
-func (ash *AwsSecretManagerHandler) Read(ctx context.Context, logger logr.Logger, secretName, versionID, versionStage string) (string, error) {
+func (ash *AwsSecretManagerHandler) Read(ctx context.Context, logger logr.Logger, secretName, versionID, versionStage string, secretKey string) (string, error) {
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(secretName),
 	}
@@ -60,6 +61,27 @@ func (ash *AwsSecretManagerHandler) Read(ctx context.Context, logger logr.Logger
 		logger.Error(err, "Error getting credentials")
 		return "", err
 	}
+	if secretKey != "" {
+		// Parse the secret string as JSON
+		var secretMap map[string]interface{}
+		err = json.Unmarshal([]byte(*result.SecretString), &secretMap)
+		if err != nil {
+			logger.Error(err, "Error parsing secret string as JSON")
+			return "", err
+		}
+
+		// Check if the specified secret key exists
+		if val, ok := secretMap[secretKey]; ok {
+			// Convert the value to a string and return it
+			if strVal, isString := val.(string); isString {
+				return strVal, nil
+			}
+			logger.Error(nil, "SecretKey value is not a string")
+			return "", fmt.Errorf("SecretKey value is not a string")
+		}
+		logger.Error(nil, "SecretKey Not Found")
+		return "", fmt.Errorf("SecretKey Not Found")
+	}
 	return *result.SecretString, nil
 }
 
@@ -73,6 +95,7 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 	if ash.secretManager.Region != "" {
 		awsRegion = ash.secretManager.Region
 	}
+	ash.awsMetadata.AwsRegion = awsRegion
 	podIdentity := ash.secretManager.PodIdentity
 	if podIdentity == nil {
 		podIdentity = &kedav1alpha1.AuthPodIdentity{}
@@ -86,6 +109,7 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 			return fmt.Errorf("AccessKeyID and AccessSecretKey are expected when not using a pod identity provider")
 		}
 	case kedav1alpha1.PodIdentityProviderAws:
+		ash.awsMetadata.UsingPodIdentity = true
 		if ash.secretManager.PodIdentity.IsWorkloadIdentityOwner() {
 			awsRoleArn, err := resolveServiceAccountAnnotation(ctx, client, podSpec.ServiceAccountName, triggerNamespace, kedav1alpha1.PodIdentityAnnotationEKS, true)
 			if err != nil {
@@ -99,7 +123,7 @@ func (ash *AwsSecretManagerHandler) Initialize(ctx context.Context, client clien
 		return fmt.Errorf("pod identity provider %s not supported", podIdentity.Provider)
 	}
 
-	config, err := awsutils.GetAwsConfig(ctx, awsRegion, ash.awsMetadata)
+	config, err := awsutils.GetAwsConfig(ctx, ash.awsMetadata)
 	if err != nil {
 		logger.Error(err, "Error getting credentials")
 		return err

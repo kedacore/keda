@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	internalEndpointDiscovery "github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery"
 	"github.com/aws/smithy-go/middleware"
@@ -19,12 +18,18 @@ import (
 // each of which contains a Get structure that specifies an item to retrieve from
 // a table in the account and Region. A call to TransactGetItems cannot retrieve
 // items from tables in more than one Amazon Web Services account or Region. The
-// aggregate size of the items in the transaction cannot exceed 4 MB. DynamoDB
-// rejects the entire TransactGetItems request if any of the following is true:
+// aggregate size of the items in the transaction cannot exceed 4 MB.
+//
+// DynamoDB rejects the entire TransactGetItems request if any of the following is
+// true:
+//
 //   - A conflicting operation is in the process of updating an item to be read.
+//
 //   - There is insufficient provisioned capacity for the transaction to be
 //     completed.
+//
 //   - There is a user error, such as an invalid data format.
+//
 //   - The aggregate size of the items in the transaction exceeded 4 MB.
 func (c *Client) TransactGetItems(ctx context.Context, params *TransactGetItemsInput, optFns ...func(*Options)) (*TransactGetItemsOutput, error) {
 	if params == nil {
@@ -68,10 +73,11 @@ type TransactGetItemsOutput struct {
 	// An ordered array of up to 100 ItemResponse objects, each of which corresponds
 	// to the TransactGetItem object in the same position in the TransactItems array.
 	// Each ItemResponse object contains a Map of the name-value pairs that are the
-	// projected attributes of the requested item. If a requested item could not be
-	// retrieved, the corresponding ItemResponse object is Null, or if the requested
-	// item has no projected attributes, the corresponding ItemResponse object is an
-	// empty Map.
+	// projected attributes of the requested item.
+	//
+	// If a requested item could not be retrieved, the corresponding ItemResponse
+	// object is Null, or if the requested item has no projected attributes, the
+	// corresponding ItemResponse object is an empty Map.
 	Responses []types.ItemResponse
 
 	// Metadata pertaining to the operation's result.
@@ -102,25 +108,28 @@ func (c *Client) addOperationTransactGetItemsMiddlewares(stack *middleware.Stack
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -138,13 +147,19 @@ func (c *Client) addOperationTransactGetItemsMiddlewares(stack *middleware.Stack
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpTransactGetItemsValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opTransactGetItems(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -163,6 +178,18 @@ func (c *Client) addOperationTransactGetItemsMiddlewares(stack *middleware.Stack
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

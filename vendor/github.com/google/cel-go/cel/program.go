@@ -22,8 +22,6 @@ import (
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter"
-
-	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 // Program is an evaluable view of an Ast.
@@ -61,6 +59,9 @@ func NoVars() interpreter.Activation {
 
 // PartialVars returns a PartialActivation which contains variables and a set of AttributePattern
 // values that indicate variables or parts of variables whose value are not yet known.
+//
+// This method relies on manually configured sets of missing attribute patterns. For a method which
+// infers the missing variables from the input and the configured environment, use Env.PartialVars().
 //
 // The `vars` value may either be an interpreter.Activation or any valid input to the
 // interpreter.NewActivation call.
@@ -104,7 +105,7 @@ func (ed *EvalDetails) State() interpreter.EvalState {
 // ActualCost returns the tracked cost through the course of execution when `CostTracking` is enabled.
 // Otherwise, returns nil if the cost was not enabled.
 func (ed *EvalDetails) ActualCost() *uint64 {
-	if ed.costTracker == nil {
+	if ed == nil || ed.costTracker == nil {
 		return nil
 	}
 	cost := ed.costTracker.ActualCost()
@@ -128,10 +129,14 @@ type prog struct {
 	// Interpretable configured from an Ast and aggregate decorator set based on program options.
 	interpretable     interpreter.Interpretable
 	callCostEstimator interpreter.ActualCostEstimator
+	costOptions       []interpreter.CostTrackerOption
 	costLimit         *uint64
 }
 
 func (p *prog) clone() *prog {
+	costOptsCopy := make([]interpreter.CostTrackerOption, len(p.costOptions))
+	copy(costOptsCopy, p.costOptions)
+
 	return &prog{
 		Env:                     p.Env,
 		evalOpts:                p.evalOpts,
@@ -146,16 +151,17 @@ func (p *prog) clone() *prog {
 // ProgramOption values.
 //
 // If the program cannot be configured the prog will be nil, with a non-nil error response.
-func newProgram(e *Env, ast *Ast, opts []ProgramOption) (Program, error) {
+func newProgram(e *Env, a *Ast, opts []ProgramOption) (Program, error) {
 	// Build the dispatcher, interpreter, and default program value.
 	disp := interpreter.NewDispatcher()
 
 	// Ensure the default attribute factory is set after the adapter and provider are
 	// configured.
 	p := &prog{
-		Env:        e,
-		decorators: []interpreter.InterpretableDecorator{},
-		dispatcher: disp,
+		Env:         e,
+		decorators:  []interpreter.InterpretableDecorator{},
+		dispatcher:  disp,
+		costOptions: []interpreter.CostTrackerOption{},
 	}
 
 	// Configure the program via the ProgramOption values.
@@ -169,7 +175,7 @@ func newProgram(e *Env, ast *Ast, opts []ProgramOption) (Program, error) {
 
 	// Add the function bindings created via Function() options.
 	for _, fn := range e.functions {
-		bindings, err := fn.bindings()
+		bindings, err := fn.Bindings()
 		if err != nil {
 			return nil, err
 		}
@@ -206,43 +212,18 @@ func newProgram(e *Env, ast *Ast, opts []ProgramOption) (Program, error) {
 	if len(p.regexOptimizations) > 0 {
 		decorators = append(decorators, interpreter.CompileRegexConstants(p.regexOptimizations...))
 	}
-	// Enable compile-time checking of syntax/cardinality for string.format calls.
-	if p.evalOpts&OptCheckStringFormat == OptCheckStringFormat {
-		var isValidType func(id int64, validTypes ...*types.TypeValue) (bool, error)
-		if ast.IsChecked() {
-			isValidType = func(id int64, validTypes ...*types.TypeValue) (bool, error) {
-				t, err := ExprTypeToType(ast.typeMap[id])
-				if err != nil {
-					return false, err
-				}
-				if t.kind == DynKind {
-					return true, nil
-				}
-				for _, vt := range validTypes {
-					k, err := typeValueToKind(vt)
-					if err != nil {
-						return false, err
-					}
-					if k == t.kind {
-						return true, nil
-					}
-				}
-				return false, nil
-			}
-		} else {
-			// if the AST isn't type-checked, short-circuit validation
-			isValidType = func(id int64, validTypes ...*types.TypeValue) (bool, error) {
-				return true, nil
-			}
-		}
-		decorators = append(decorators, interpreter.InterpolateFormattedString(isValidType))
-	}
 
 	// Enable exhaustive eval, state tracking and cost tracking last since they require a factory.
 	if p.evalOpts&(OptExhaustiveEval|OptTrackState|OptTrackCost) != 0 {
 		factory := func(state interpreter.EvalState, costTracker *interpreter.CostTracker) (Program, error) {
 			costTracker.Estimator = p.callCostEstimator
 			costTracker.Limit = p.costLimit
+			for _, costOpt := range p.costOptions {
+				err := costOpt(costTracker)
+				if err != nil {
+					return nil, err
+				}
+			}
 			// Limit capacity to guarantee a reallocation when calling 'append(decs, ...)' below. This
 			// prevents the underlying memory from being shared between factory function calls causing
 			// undesired mutations.
@@ -264,32 +245,16 @@ func newProgram(e *Env, ast *Ast, opts []ProgramOption) (Program, error) {
 				decs = append(decs, interpreter.Observe(observers...))
 			}
 
-			return p.clone().initInterpretable(ast, decs)
+			return p.clone().initInterpretable(a, decs)
 		}
 		return newProgGen(factory)
 	}
-	return p.initInterpretable(ast, decorators)
+	return p.initInterpretable(a, decorators)
 }
 
-func (p *prog) initInterpretable(ast *Ast, decs []interpreter.InterpretableDecorator) (*prog, error) {
-	// Unchecked programs do not contain type and reference information and may be slower to execute.
-	if !ast.IsChecked() {
-		interpretable, err :=
-			p.interpreter.NewUncheckedInterpretable(ast.Expr(), decs...)
-		if err != nil {
-			return nil, err
-		}
-		p.interpretable = interpretable
-		return p, nil
-	}
-
-	// When the AST has been checked it contains metadata that can be used to speed up program execution.
-	var checked *exprpb.CheckedExpr
-	checked, err := AstToCheckedExpr(ast)
-	if err != nil {
-		return nil, err
-	}
-	interpretable, err := p.interpreter.NewInterpretable(checked, decs...)
+func (p *prog) initInterpretable(a *Ast, decs []interpreter.InterpretableDecorator) (*prog, error) {
+	// When the AST has been exprAST it contains metadata that can be used to speed up program execution.
+	interpretable, err := p.interpreter.NewInterpretable(a.impl, decs...)
 	if err != nil {
 		return nil, err
 	}
@@ -371,7 +336,11 @@ type progGen struct {
 // the test is successful.
 func newProgGen(factory progFactory) (Program, error) {
 	// Test the factory to make sure that configuration errors are spotted at config
-	_, err := factory(interpreter.NewEvalState(), &interpreter.CostTracker{})
+	tracker, err := interpreter.NewCostTracker(nil)
+	if err != nil {
+		return nil, err
+	}
+	_, err = factory(interpreter.NewEvalState(), tracker)
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +353,10 @@ func (gen *progGen) Eval(input any) (ref.Val, *EvalDetails, error) {
 	// new EvalState instance for each call to ensure that unique evaluations yield unique stateful
 	// results.
 	state := interpreter.NewEvalState()
-	costTracker := &interpreter.CostTracker{}
+	costTracker, err := interpreter.NewCostTracker(nil)
+	if err != nil {
+		return nil, nil, err
+	}
 	det := &EvalDetails{state: state, costTracker: costTracker}
 
 	// Generate a new instance of the interpretable using the factory configured during the call to
@@ -412,7 +384,10 @@ func (gen *progGen) ContextEval(ctx context.Context, input any) (ref.Val, *EvalD
 	// new EvalState instance for each call to ensure that unique evaluations yield unique stateful
 	// results.
 	state := interpreter.NewEvalState()
-	costTracker := &interpreter.CostTracker{}
+	costTracker, err := interpreter.NewCostTracker(nil)
+	if err != nil {
+		return nil, nil, err
+	}
 	det := &EvalDetails{state: state, costTracker: costTracker}
 
 	// Generate a new instance of the interpretable using the factory configured during the call to
@@ -498,7 +473,7 @@ type evalActivation struct {
 // The lazy binding will only be invoked once per evaluation.
 //
 // Values which are not represented as ref.Val types on input may be adapted to a ref.Val using
-// the ref.TypeAdapter configured in the environment.
+// the types.Adapter configured in the environment.
 func (a *evalActivation) ResolveName(name string) (any, bool) {
 	v, found := a.vars[name]
 	if !found {
@@ -559,8 +534,6 @@ func (p *evalActivationPool) Put(value any) {
 }
 
 var (
-	emptyEvalState = interpreter.NewEvalState()
-
 	// activationPool is an internally managed pool of Activation values that wrap map[string]any inputs
 	activationPool = newEvalActivationPool()
 

@@ -3,7 +3,6 @@ package pgx
 import (
 	"errors"
 
-	"github.com/jackc/pgx/v5/internal/anynil"
 	"github.com/jackc/pgx/v5/internal/pgio"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -15,10 +14,6 @@ const (
 )
 
 func convertSimpleArgument(m *pgtype.Map, arg any) (any, error) {
-	if anynil.Is(arg) {
-		return nil, nil
-	}
-
 	buf, err := m.Encode(0, TextFormatCode, arg, []byte{})
 	if err != nil {
 		return nil, err
@@ -30,10 +25,6 @@ func convertSimpleArgument(m *pgtype.Map, arg any) (any, error) {
 }
 
 func encodeCopyValue(m *pgtype.Map, buf []byte, oid uint32, arg any) ([]byte, error) {
-	if anynil.Is(arg) {
-		return pgio.AppendInt32(buf, -1), nil
-	}
-
 	sp := len(buf)
 	buf = pgio.AppendInt32(buf, -1)
 	argBuf, err := m.Encode(oid, BinaryFormatCode, arg, buf)
@@ -55,7 +46,11 @@ func encodeCopyValue(m *pgtype.Map, buf []byte, oid uint32, arg any) ([]byte, er
 func tryScanStringCopyValueThenEncode(m *pgtype.Map, buf []byte, oid uint32, arg any) ([]byte, error) {
 	s, ok := arg.(string)
 	if !ok {
-		return nil, errors.New("not a string")
+		textBuf, err := m.Encode(oid, TextFormatCode, arg, nil)
+		if err != nil {
+			return nil, errors.New("not a string and cannot be encoded as text")
+		}
+		s = string(textBuf)
 	}
 
 	var v any

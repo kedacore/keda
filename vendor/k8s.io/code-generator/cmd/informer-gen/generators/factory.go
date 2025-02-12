@@ -21,9 +21,9 @@ import (
 	"path"
 
 	clientgentypes "k8s.io/code-generator/cmd/client-gen/types"
-	"k8s.io/gengo/generator"
-	"k8s.io/gengo/namer"
-	"k8s.io/gengo/types"
+	"k8s.io/gengo/v2/generator"
+	"k8s.io/gengo/v2/namer"
+	"k8s.io/gengo/v2/types"
 
 	"k8s.io/klog/v2"
 )
@@ -31,7 +31,7 @@ import (
 // factoryGenerator produces a file of listers for a given GroupVersion and
 // type.
 type factoryGenerator struct {
-	generator.DefaultGen
+	generator.GoGenerator
 	outputPackage             string
 	imports                   namer.ImportTracker
 	groupVersions             map[string]clientgentypes.GroupVersions
@@ -75,6 +75,7 @@ func (g *factoryGenerator) GenerateType(c *generator.Context, t *types.Type, w i
 	}
 	m := map[string]interface{}{
 		"cacheSharedIndexInformer":       c.Universe.Type(cacheSharedIndexInformer),
+		"cacheTransformFunc":             c.Universe.Type(cacheTransformFunc),
 		"groupVersions":                  g.groupVersions,
 		"gvInterfaces":                   gvInterfaces,
 		"gvNewFuncs":                     gvNewFuncs,
@@ -109,6 +110,7 @@ type sharedInformerFactory struct {
 	lock {{.syncMutex|raw}}
 	defaultResync {{.timeDuration|raw}}
 	customResync map[{{.reflectType|raw}}]{{.timeDuration|raw}}
+	transform {{.cacheTransformFunc|raw}}
 
 	informers map[{{.reflectType|raw}}]{{.cacheSharedIndexInformer|raw}}
 	// startedInformers is used for tracking which informers have been started.
@@ -143,6 +145,14 @@ func WithTweakListOptions(tweakListOptions internalinterfaces.TweakListOptionsFu
 func WithNamespace(namespace string) SharedInformerOption {
 	return func(factory *sharedInformerFactory) *sharedInformerFactory {
 		factory.namespace = namespace
+		return factory
+	}
+}
+
+// WithTransform sets a transform on all informers.
+func WithTransform(transform {{.cacheTransformFunc|raw}}) SharedInformerOption {
+	return func(factory *sharedInformerFactory) *sharedInformerFactory {
+		factory.transform = transform
 		return factory
 	}
 }
@@ -252,11 +262,11 @@ func (f *sharedInformerFactory) InformerFor(obj {{.runtimeObject|raw}}, newFunc 
   }
 
   informer = newFunc(f.client, resyncPeriod)
+  informer.SetTransform(f.transform)
   f.informers[informerType] = informer
 
   return informer
 }
-
 `
 
 var sharedInformerFactoryInterface = `
@@ -289,7 +299,8 @@ type SharedInformerFactory interface {
 
 	// Start initializes all requested informers. They are handled in goroutines
 	// which run until the stop channel gets closed.
-        Start(stopCh <-chan struct{})
+	// Warning: Start does not block. When run in a go-routine, it will race with a later WaitForCacheSync.
+	Start(stopCh <-chan struct{})
 
 	// Shutdown marks a factory as shutting down. At that point no new
 	// informers can be started anymore and Start will return without

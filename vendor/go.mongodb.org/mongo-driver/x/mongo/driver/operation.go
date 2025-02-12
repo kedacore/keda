@@ -310,6 +310,15 @@ type Operation struct {
 	// OP_MSG as well as for logging server selection data.
 	Name string
 
+	// OmitCSOTMaxTimeMS omits the automatically-calculated "maxTimeMS" from the
+	// command when CSOT is enabled. It does not effect "maxTimeMS" set by
+	// [Operation.MaxTime].
+	OmitCSOTMaxTimeMS bool
+
+	// Authenticator is the authenticator to use for this operation when a reauthentication is
+	// required.
+	Authenticator Authenticator
+
 	// omitReadPreference is a boolean that indicates whether to omit the
 	// read preference from the command. This omition includes the case
 	// where a default read preference is used when the operation
@@ -458,7 +467,7 @@ func (op Operation) getServerAndConnection(
 		if err := pinnedConn.PinToTransaction(); err != nil {
 			// Close the original connection to avoid a leak.
 			_ = conn.Close()
-			return nil, nil, fmt.Errorf("error incrementing connection reference count when starting a transaction: %v", err)
+			return nil, nil, fmt.Errorf("error incrementing connection reference count when starting a transaction: %w", err)
 		}
 		op.Client.PinnedConnection = pinnedConn
 	}
@@ -499,9 +508,9 @@ func (op Operation) Execute(ctx context.Context) error {
 		return err
 	}
 
-	// If no deadline is set on the passed-in context, op.Timeout is set, and context is not already
-	// a Timeout context, honor op.Timeout in new Timeout context for operation execution.
-	if _, deadlineSet := ctx.Deadline(); !deadlineSet && op.Timeout != nil && !csot.IsTimeoutContext(ctx) {
+	// If op.Timeout is set, and context is not already a Timeout context, honor
+	// op.Timeout in new Timeout context for operation execution.
+	if op.Timeout != nil && !csot.IsTimeoutContext(ctx) {
 		newCtx, cancelFunc := csot.MakeTimeoutContext(ctx, *op.Timeout)
 		// Redefine ctx to be the new timeout-derived context.
 		ctx = newCtx
@@ -568,8 +577,7 @@ func (op Operation) Execute(ctx context.Context) error {
 
 		// Set the previous indefinite error to be returned in any case where a retryable write error does not have a
 		// NoWritesPerfomed label (the definite case).
-		switch err := err.(type) {
-		case labeledError:
+		if err, ok := err.(labeledError); ok {
 			// If the "prevIndefiniteErr" is nil, then the current error is the first error encountered
 			// during the retry attempt cycle. We must persist the first error in the case where all
 			// following errors are labeled "NoWritesPerformed", which would otherwise raise nil as the
@@ -617,6 +625,13 @@ func (op Operation) Execute(ctx context.Context) error {
 		}
 	}()
 	for {
+		// If we're starting a retry and the error from the previous try was
+		// a context canceled or deadline exceeded error, stop retrying and
+		// return that error.
+		if errors.Is(prevErr, context.Canceled) || errors.Is(prevErr, context.DeadlineExceeded) {
+			return prevErr
+		}
+
 		requestID := wiremessage.NextRequestID()
 
 		// If the server or connection are nil, try to select a new server and get a new connection.
@@ -683,8 +698,7 @@ func (op Operation) Execute(ctx context.Context) error {
 			first = false
 		}
 
-		// Calculate maxTimeMS value to potentially be appended to the wire message.
-		maxTimeMS, err := op.calculateMaxTimeMS(ctx, srvr.RTTMonitor().P90(), srvr.RTTMonitor().Stats())
+		maxTimeMS, err := op.calculateMaxTimeMS(ctx, srvr.RTTMonitor())
 		if err != nil {
 			return err
 		}
@@ -777,7 +791,7 @@ func (op Operation) Execute(ctx context.Context) error {
 		} else if deadline, ok := ctx.Deadline(); ok {
 			if csot.IsTimeoutContext(ctx) && time.Now().Add(srvr.RTTMonitor().P90()).After(deadline) {
 				err = fmt.Errorf(
-					"remaining time %v until context deadline is less than 90th percentile RTT: %w\n%v",
+					"remaining time %v until context deadline is less than 90th percentile network round-trip time: %w\n%v",
 					time.Until(deadline),
 					ErrDeadlineWouldBeExceeded,
 					srvr.RTTMonitor().Stats())
@@ -901,6 +915,28 @@ func (op Operation) Execute(ctx context.Context) error {
 			operationErr.Labels = tt.Labels
 			operationErr.Raw = tt.Raw
 		case Error:
+			// 391 is the reauthentication required error code, so we will attempt a reauth and
+			// retry the operation, if it is successful.
+			if tt.Code == 391 {
+				if op.Authenticator != nil {
+					cfg := AuthConfig{
+						Description:  conn.Description(),
+						Connection:   conn,
+						ClusterClock: op.Clock,
+						ServerAPI:    op.ServerAPI,
+					}
+					if err := op.Authenticator.Reauth(ctx, &cfg); err != nil {
+						return fmt.Errorf("error reauthenticating: %w", err)
+					}
+					if op.Client != nil && op.Client.Committing {
+						// Apply majority write concern for retries
+						op.Client.UpdateCommitTransactionWriteConcern()
+						op.WriteConcern = op.Client.CurrentWc
+					}
+					resetForRetry(tt)
+					continue
+				}
+			}
 			if tt.HasErrorLabel(TransientTransactionError) || tt.HasErrorLabel(UnknownTransactionCommitResult) {
 				if err := op.Client.ClearPinnedResources(); err != nil {
 					return err
@@ -1089,7 +1125,7 @@ func (op Operation) readWireMessage(ctx context.Context, conn Connection) (resul
 	}
 
 	// decode
-	res, err := op.decodeResult(opcode, rem)
+	res, err := op.decodeResult(ctx, opcode, rem)
 	// Update cluster/operation time and recovery tokens before handling the error to ensure we're properly updating
 	// everything.
 	op.updateClusterTimes(res)
@@ -1162,18 +1198,12 @@ func (Operation) decompressWireMessage(wm []byte) (wiremessage.OpCode, []byte, e
 	if !ok {
 		return 0, nil, errors.New("malformed OP_COMPRESSED: missing compressor ID")
 	}
-	compressedSize := len(wm) - 9 // original opcode (4) + uncompressed size (4) + compressor ID (1)
-	// return the original wiremessage
-	msg, _, ok := wiremessage.ReadCompressedCompressedMessage(rem, int32(compressedSize))
-	if !ok {
-		return 0, nil, errors.New("malformed OP_COMPRESSED: insufficient bytes for compressed wiremessage")
-	}
 
 	opts := CompressionOpts{
 		Compressor:       compressorID,
 		UncompressedSize: uncompressedSize,
 	}
-	uncompressed, err := DecompressPayload(msg, opts)
+	uncompressed, err := DecompressPayload(rem, opts)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -1492,7 +1522,7 @@ func (op Operation) addWriteConcern(dst []byte, desc description.SelectedServer)
 	}
 
 	t, data, err := wc.MarshalBSONValue()
-	if err == writeconcern.ErrEmptyWriteConcern {
+	if errors.Is(err, writeconcern.ErrEmptyWriteConcern) {
 		return dst, nil
 	}
 	if err != nil {
@@ -1562,10 +1592,21 @@ func (op Operation) addClusterTime(dst []byte, desc description.SelectedServer) 
 // if the ctx is a Timeout context. If the context is not a Timeout context, it uses the
 // operation's MaxTimeMS if set. If no MaxTimeMS is set on the operation, and context is
 // not a Timeout context, calculateMaxTimeMS returns 0.
-func (op Operation) calculateMaxTimeMS(ctx context.Context, rtt90 time.Duration, rttStats string) (uint64, error) {
-	if csot.IsTimeoutContext(ctx) {
+func (op Operation) calculateMaxTimeMS(ctx context.Context, mon RTTMonitor) (uint64, error) {
+	// If CSOT is enabled and we're not omitting the CSOT-calculated maxTimeMS
+	// value, then calculate maxTimeMS.
+	//
+	// This allows commands that do not currently send CSOT-calculated maxTimeMS
+	// (e.g. Find and Aggregate) to still use a manually-provided maxTimeMS
+	// value.
+	//
+	// TODO(GODRIVER-2944): Remove or refactor this logic when we add the
+	// "timeoutMode" option, which will allow users to opt-in to the
+	// CSOT-calculated maxTimeMS values if that's the behavior they want.
+	if csot.IsTimeoutContext(ctx) && !op.OmitCSOTMaxTimeMS {
 		if deadline, ok := ctx.Deadline(); ok {
 			remainingTimeout := time.Until(deadline)
+			rtt90 := mon.P90()
 			maxTime := remainingTimeout - rtt90
 
 			// Always round up to the next millisecond value so we never truncate the calculated
@@ -1573,11 +1614,21 @@ func (op Operation) calculateMaxTimeMS(ctx context.Context, rtt90 time.Duration,
 			maxTimeMS := int64((maxTime + (time.Millisecond - 1)) / time.Millisecond)
 			if maxTimeMS <= 0 {
 				return 0, fmt.Errorf(
-					"remaining time %v until context deadline is less than or equal to 90th percentile RTT: %w\n%v",
+					"negative maxTimeMS: remaining time %v until context deadline is less than 90th percentile network round-trip time (%v): %w",
 					remainingTimeout,
-					ErrDeadlineWouldBeExceeded,
-					rttStats)
+					mon.Stats(),
+					ErrDeadlineWouldBeExceeded)
 			}
+
+			// The server will return a "BadValue" error if maxTimeMS is greater
+			// than the maximum positive int32 value (about 24.9 days). If the
+			// user specified a timeout value greater than that,  omit maxTimeMS
+			// and let the client-side timeout handle cancelling the op if the
+			// timeout is ever reached.
+			if maxTimeMS > math.MaxInt32 {
+				return 0, nil
+			}
+
 			return uint64(maxTimeMS), nil
 		}
 	} else if op.MaxTime != nil {
@@ -1748,7 +1799,7 @@ func (op Operation) createReadPref(desc description.SelectedServer, isOpQuery bo
 		doc = bsoncore.AppendBooleanElement(doc, "enabled", *hedgeEnabled)
 		doc, err = bsoncore.AppendDocumentEnd(doc, hedgeIdx)
 		if err != nil {
-			return nil, fmt.Errorf("error creating hedge document: %v", err)
+			return nil, fmt.Errorf("error creating hedge document: %w", err)
 		}
 	}
 
@@ -1827,7 +1878,7 @@ func (Operation) decodeOpReply(wm []byte) opReply {
 	return reply
 }
 
-func (op Operation) decodeResult(opcode wiremessage.OpCode, wm []byte) (bsoncore.Document, error) {
+func (op Operation) decodeResult(ctx context.Context, opcode wiremessage.OpCode, wm []byte) (bsoncore.Document, error) {
 	switch opcode {
 	case wiremessage.OpReply:
 		reply := op.decodeOpReply(wm)
@@ -1845,7 +1896,7 @@ func (op Operation) decodeResult(opcode wiremessage.OpCode, wm []byte) (bsoncore
 			return nil, NewCommandResponseError("malformed OP_REPLY: invalid document", err)
 		}
 
-		return rdr, ExtractErrorFromServerResponse(rdr)
+		return rdr, ExtractErrorFromServerResponse(ctx, rdr)
 	case wiremessage.OpMsg:
 		_, wm, ok := wiremessage.ReadMsgFlags(wm)
 		if !ok {
@@ -1867,7 +1918,6 @@ func (op Operation) decodeResult(opcode wiremessage.OpCode, wm []byte) (bsoncore
 					return nil, errors.New("malformed wire message: insufficient bytes to read single document")
 				}
 			case wiremessage.DocumentSequence:
-				// TODO(GODRIVER-617): Implement document sequence returns.
 				_, _, wm, ok = wiremessage.ReadMsgSectionDocumentSequence(wm)
 				if !ok {
 					return nil, errors.New("malformed wire message: insufficient bytes to read document sequence")
@@ -1882,7 +1932,7 @@ func (op Operation) decodeResult(opcode wiremessage.OpCode, wm []byte) (bsoncore
 			return nil, NewCommandResponseError("malformed OP_MSG: invalid document", err)
 		}
 
-		return res, ExtractErrorFromServerResponse(res)
+		return res, ExtractErrorFromServerResponse(ctx, res)
 	default:
 		return nil, fmt.Errorf("cannot decode result from %s", opcode)
 	}
@@ -1963,7 +2013,7 @@ func (op Operation) publishStartedEvent(ctx context.Context, info startedInforma
 	}
 }
 
-// canPublishSucceededEvent returns true if a CommandSucceededEvent can be
+// canPublishFinishedEvent returns true if a CommandSucceededEvent can be
 // published for the given command. This is true if the command is not an
 // unacknowledged write and the command monitor is monitoring succeeded events.
 func (op Operation) canPublishFinishedEvent(info finishedInformation) bool {

@@ -6,20 +6,20 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Creates a managed Contributor Insights rule for a specified Amazon Web Services
-// resource. When you enable a managed rule, you create a Contributor Insights rule
-// that collects data from Amazon Web Services services. You cannot edit these
-// rules with PutInsightRule . The rules can be enabled, disabled, and deleted
-// using EnableInsightRules , DisableInsightRules , and DeleteInsightRules . If a
-// previously created managed rule is currently disabled, a subsequent call to this
-// API will re-enable it. Use ListManagedInsightRules to describe all available
-// rules.
+//	Creates a managed Contributor Insights rule for a specified Amazon Web
+//
+// Services resource. When you enable a managed rule, you create a Contributor
+// Insights rule that collects data from Amazon Web Services services. You cannot
+// edit these rules with PutInsightRule . The rules can be enabled, disabled, and
+// deleted using EnableInsightRules , DisableInsightRules , and DeleteInsightRules
+// . If a previously created managed rule is currently disabled, a subsequent call
+// to this API will re-enable it. Use ListManagedInsightRules to describe all
+// available rules.
 func (c *Client) PutManagedInsightRules(ctx context.Context, params *PutManagedInsightRulesInput, optFns ...func(*Options)) (*PutManagedInsightRulesOutput, error) {
 	if params == nil {
 		params = &PutManagedInsightRulesInput{}
@@ -37,7 +37,7 @@ func (c *Client) PutManagedInsightRules(ctx context.Context, params *PutManagedI
 
 type PutManagedInsightRulesInput struct {
 
-	// A list of ManagedRules to enable.
+	//  A list of ManagedRules to enable.
 	//
 	// This member is required.
 	ManagedRules []types.ManagedRule
@@ -47,7 +47,7 @@ type PutManagedInsightRulesInput struct {
 
 type PutManagedInsightRulesOutput struct {
 
-	// An array that lists the rules that could not be enabled.
+	//  An array that lists the rules that could not be enabled.
 	Failures []types.PartialFailure
 
 	// Metadata pertaining to the operation's result.
@@ -78,25 +78,28 @@ func (c *Client) addOperationPutManagedInsightRulesMiddlewares(stack *middleware
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -111,13 +114,19 @@ func (c *Client) addOperationPutManagedInsightRulesMiddlewares(stack *middleware
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpPutManagedInsightRulesValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opPutManagedInsightRules(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -130,6 +139,18 @@ func (c *Client) addOperationPutManagedInsightRulesMiddlewares(stack *middleware
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

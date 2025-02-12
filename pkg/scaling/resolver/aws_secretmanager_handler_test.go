@@ -76,8 +76,6 @@ func TestAwsSecretManagerHandler_InitializeUsingPodIdentity(t *testing.T) {
 	}{
 		{provider: kedav1alpha1.PodIdentityProviderAws, isError: false},
 		{provider: kedav1alpha1.PodIdentityProviderAwsEKS, isError: true},
-		{provider: kedav1alpha1.PodIdentityProviderAwsKiam, isError: true},
-		{provider: kedav1alpha1.PodIdentityProviderAzure, isError: true},
 		{provider: kedav1alpha1.PodIdentityProviderAzureWorkload, isError: true},
 		{provider: kedav1alpha1.PodIdentityProviderGCP, isError: true},
 	}

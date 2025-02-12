@@ -54,10 +54,8 @@ type Addressable struct {
 	Audience *string `json:"audience,omitempty"`
 }
 
-var (
-	// Addressable is a Convertible type.
-	_ apis.Convertible = (*Addressable)(nil)
-)
+// Addressable is a Convertible type.
+var _ apis.Convertible = (*Addressable)(nil)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

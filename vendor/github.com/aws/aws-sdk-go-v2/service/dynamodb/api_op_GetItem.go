@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	internalEndpointDiscovery "github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery"
 	"github.com/aws/smithy-go/middleware"
@@ -15,11 +14,12 @@ import (
 
 // The GetItem operation returns a set of attributes for the item with the given
 // primary key. If there is no matching item, GetItem does not return any data and
-// there will be no Item element in the response. GetItem provides an eventually
-// consistent read by default. If your application requires a strongly consistent
-// read, set ConsistentRead to true . Although a strongly consistent read might
-// take more time than an eventually consistent read, it always returns the last
-// updated value.
+// there will be no Item element in the response.
+//
+// GetItem provides an eventually consistent read by default. If your application
+// requires a strongly consistent read, set ConsistentRead to true . Although a
+// strongly consistent read might take more time than an eventually consistent
+// read, it always returns the last updated value.
 func (c *Client) GetItem(ctx context.Context, params *GetItemInput, optFns ...func(*Options)) (*GetItemOutput, error) {
 	if params == nil {
 		params = &GetItemInput{}
@@ -39,22 +39,26 @@ func (c *Client) GetItem(ctx context.Context, params *GetItemInput, optFns ...fu
 type GetItemInput struct {
 
 	// A map of attribute names to AttributeValue objects, representing the primary
-	// key of the item to retrieve. For the primary key, you must provide all of the
-	// attributes. For example, with a simple primary key, you only need to provide a
-	// value for the partition key. For a composite primary key, you must provide
-	// values for both the partition key and the sort key.
+	// key of the item to retrieve.
+	//
+	// For the primary key, you must provide all of the attributes. For example, with
+	// a simple primary key, you only need to provide a value for the partition key.
+	// For a composite primary key, you must provide values for both the partition key
+	// and the sort key.
 	//
 	// This member is required.
 	Key map[string]types.AttributeValue
 
-	// The name of the table containing the requested item.
+	// The name of the table containing the requested item. You can also provide the
+	// Amazon Resource Name (ARN) of the table in this parameter.
 	//
 	// This member is required.
 	TableName *string
 
 	// This is a legacy parameter. Use ProjectionExpression instead. For more
-	// information, see AttributesToGet (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LegacyConditionalParameters.AttributesToGet.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// information, see [AttributesToGet]in the Amazon DynamoDB Developer Guide.
+	//
+	// [AttributesToGet]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LegacyConditionalParameters.AttributesToGet.html
 	AttributesToGet []string
 
 	// Determines the read consistency model: If set to true , then the operation uses
@@ -64,46 +68,67 @@ type GetItemInput struct {
 
 	// One or more substitution tokens for attribute names in an expression. The
 	// following are some use cases for using ExpressionAttributeNames :
+	//
 	//   - To access an attribute whose name conflicts with a DynamoDB reserved word.
+	//
 	//   - To create a placeholder for repeating occurrences of an attribute name in
 	//   an expression.
+	//
 	//   - To prevent special characters in an attribute name from being
 	//   misinterpreted in an expression.
+	//
 	// Use the # character in an expression to dereference an attribute name. For
 	// example, consider the following attribute name:
+	//
 	//   - Percentile
+	//
 	// The name of this attribute conflicts with a reserved word, so it cannot be used
-	// directly in an expression. (For the complete list of reserved words, see
-	// Reserved Words (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ReservedWords.html)
-	// in the Amazon DynamoDB Developer Guide). To work around this, you could specify
-	// the following for ExpressionAttributeNames :
+	// directly in an expression. (For the complete list of reserved words, see [Reserved Words]in the
+	// Amazon DynamoDB Developer Guide). To work around this, you could specify the
+	// following for ExpressionAttributeNames :
+	//
 	//   - {"#P":"Percentile"}
+	//
 	// You could then use this substitution in an expression, as in this example:
+	//
 	//   - #P = :val
+	//
 	// Tokens that begin with the : character are expression attribute values, which
-	// are placeholders for the actual value at runtime. For more information on
-	// expression attribute names, see Specifying Item Attributes (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.AccessingItemAttributes.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// are placeholders for the actual value at runtime.
+	//
+	// For more information on expression attribute names, see [Specifying Item Attributes] in the Amazon DynamoDB
+	// Developer Guide.
+	//
+	// [Reserved Words]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ReservedWords.html
+	// [Specifying Item Attributes]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.AccessingItemAttributes.html
 	ExpressionAttributeNames map[string]string
 
 	// A string that identifies one or more attributes to retrieve from the table.
 	// These attributes can include scalars, sets, or elements of a JSON document. The
-	// attributes in the expression must be separated by commas. If no attribute names
-	// are specified, then all attributes are returned. If any of the requested
-	// attributes are not found, they do not appear in the result. For more
-	// information, see Specifying Item Attributes (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.AccessingItemAttributes.html)
-	// in the Amazon DynamoDB Developer Guide.
+	// attributes in the expression must be separated by commas.
+	//
+	// If no attribute names are specified, then all attributes are returned. If any
+	// of the requested attributes are not found, they do not appear in the result.
+	//
+	// For more information, see [Specifying Item Attributes] in the Amazon DynamoDB Developer Guide.
+	//
+	// [Specifying Item Attributes]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.AccessingItemAttributes.html
 	ProjectionExpression *string
 
 	// Determines the level of detail about either provisioned or on-demand throughput
 	// consumption that is returned in the response:
+	//
 	//   - INDEXES - The response includes the aggregate ConsumedCapacity for the
 	//   operation, together with ConsumedCapacity for each table and secondary index
-	//   that was accessed. Note that some operations, such as GetItem and BatchGetItem
-	//   , do not access any indexes at all. In these cases, specifying INDEXES will
-	//   only return ConsumedCapacity information for table(s).
+	//   that was accessed.
+	//
+	// Note that some operations, such as GetItem and BatchGetItem , do not access any
+	//   indexes at all. In these cases, specifying INDEXES will only return
+	//   ConsumedCapacity information for table(s).
+	//
 	//   - TOTAL - The response includes only the aggregate ConsumedCapacity for the
 	//   operation.
+	//
 	//   - NONE - No ConsumedCapacity details are included in the response.
 	ReturnConsumedCapacity types.ReturnConsumedCapacity
 
@@ -117,8 +142,9 @@ type GetItemOutput struct {
 	// includes the total provisioned throughput consumed, along with statistics for
 	// the table and any indexes involved in the operation. ConsumedCapacity is only
 	// returned if the ReturnConsumedCapacity parameter was specified. For more
-	// information, see Provisioned Throughput (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ProvisionedThroughput.html#ItemSizeCalculations.Reads)
-	// in the Amazon DynamoDB Developer Guide.
+	// information, see [Capacity unit consumption for read operations]in the Amazon DynamoDB Developer Guide.
+	//
+	// [Capacity unit consumption for read operations]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/read-write-operations.html#read-operation-consumption
 	ConsumedCapacity *types.ConsumedCapacity
 
 	// A map of attribute names to AttributeValue objects, as specified by
@@ -153,25 +179,28 @@ func (c *Client) addOperationGetItemMiddlewares(stack *middleware.Stack, options
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -189,13 +218,19 @@ func (c *Client) addOperationGetItemMiddlewares(stack *middleware.Stack, options
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpGetItemValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGetItem(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -214,6 +249,18 @@ func (c *Client) addOperationGetItemMiddlewares(stack *middleware.Stack, options
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

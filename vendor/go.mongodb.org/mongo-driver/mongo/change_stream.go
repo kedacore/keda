@@ -137,7 +137,8 @@ func newChangeStream(ctx context.Context, config changeStreamConfig, pipeline in
 		ReadPreference(config.readPreference).ReadConcern(config.readConcern).
 		Deployment(cs.client.deployment).ClusterClock(cs.client.clock).
 		CommandMonitor(cs.client.monitor).Session(cs.sess).ServerSelector(cs.selector).Retry(driver.RetryNone).
-		ServerAPI(cs.client.serverAPI).Crypt(config.crypt).Timeout(cs.client.timeout)
+		ServerAPI(cs.client.serverAPI).Crypt(config.crypt).Timeout(cs.client.timeout).
+		Authenticator(cs.client.authenticator)
 
 	if cs.options.Collation != nil {
 		cs.aggregate.Collation(bsoncore.Document(cs.options.Collation.ToDocument()))
@@ -277,10 +278,10 @@ func (cs *ChangeStream) executeOperation(ctx context.Context, resuming bool) err
 		cs.aggregate.Pipeline(plArr)
 	}
 
-	// If no deadline is set on the passed-in context, cs.client.timeout is set, and context is not already
-	// a Timeout context, honor cs.client.timeout in new Timeout context for change stream operation execution
-	// and potential retry.
-	if _, deadlineSet := ctx.Deadline(); !deadlineSet && cs.client.timeout != nil && !csot.IsTimeoutContext(ctx) {
+	// If cs.client.timeout is set and context is not already a Timeout context,
+	// honor cs.client.timeout in new Timeout context for change stream
+	// operation execution and potential retry.
+	if cs.client.timeout != nil && !csot.IsTimeoutContext(ctx) {
 		newCtx, cancelFunc := csot.MakeTimeoutContext(ctx, *cs.client.timeout)
 		// Redefine ctx to be the new timeout-derived context.
 		ctx = newCtx
@@ -531,6 +532,12 @@ func (cs *ChangeStream) ID() int64 {
 	return cs.cursor.ID()
 }
 
+// RemainingBatchLength returns the number of documents left in the current batch. If this returns zero, the subsequent
+// call to Next or TryNext will do a network request to fetch the next batch.
+func (cs *ChangeStream) RemainingBatchLength() int {
+	return len(cs.batch)
+}
+
 // SetBatchSize sets the number of documents to fetch from the database with
 // each iteration of the ChangeStream's "Next" or "TryNext" method. This setting
 // only affects subsequent document batches fetched from the database.
@@ -689,8 +696,8 @@ func (cs *ChangeStream) loopNext(ctx context.Context, nonBlocking bool) {
 }
 
 func (cs *ChangeStream) isResumableError() bool {
-	commandErr, ok := cs.err.(CommandError)
-	if !ok || commandErr.HasErrorLabel(networkErrorLabel) {
+	var commandErr CommandError
+	if !errors.As(cs.err, &commandErr) || commandErr.HasErrorLabel(networkErrorLabel) {
 		// All non-server errors or network errors are resumable.
 		return true
 	}

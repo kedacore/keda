@@ -112,25 +112,21 @@ func (p *poolGenerationMap) stale(serviceIDPtr *primitive.ObjectID, knownGenerat
 		return true
 	}
 
-	serviceID := getServiceID(serviceIDPtr)
-	p.Lock()
-	defer p.Unlock()
-
-	if stats, ok := p.generationMap[serviceID]; ok {
-		return knownGeneration < stats.generation
+	if generation, ok := p.getGeneration(serviceIDPtr); ok {
+		return knownGeneration < generation
 	}
 	return false
 }
 
-func (p *poolGenerationMap) getGeneration(serviceIDPtr *primitive.ObjectID) uint64 {
+func (p *poolGenerationMap) getGeneration(serviceIDPtr *primitive.ObjectID) (uint64, bool) {
 	serviceID := getServiceID(serviceIDPtr)
 	p.Lock()
 	defer p.Unlock()
 
 	if stats, ok := p.generationMap[serviceID]; ok {
-		return stats.generation
+		return stats.generation, true
 	}
-	return 0
+	return 0, false
 }
 
 func (p *poolGenerationMap) getNumConns(serviceIDPtr *primitive.ObjectID) uint64 {

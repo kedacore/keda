@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	internalEndpointDiscovery "github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery"
 	"github.com/aws/smithy-go/middleware"
@@ -16,12 +15,16 @@ import (
 // Checks the status of continuous backups and point in time recovery on the
 // specified table. Continuous backups are ENABLED on all tables at table
 // creation. If point in time recovery is enabled, PointInTimeRecoveryStatus will
-// be set to ENABLED. After continuous backups and point in time recovery are
-// enabled, you can restore to any point in time within EarliestRestorableDateTime
-// and LatestRestorableDateTime . LatestRestorableDateTime is typically 5 minutes
-// before the current time. You can restore your table to any point in time during
-// the last 35 days. You can call DescribeContinuousBackups at a maximum rate of
-// 10 times per second.
+// be set to ENABLED.
+//
+// After continuous backups and point in time recovery are enabled, you can
+// restore to any point in time within EarliestRestorableDateTime and
+// LatestRestorableDateTime .
+//
+// LatestRestorableDateTime is typically 5 minutes before the current time. You
+// can restore your table to any point in time during the last 35 days.
+//
+// You can call DescribeContinuousBackups at a maximum rate of 10 times per second.
 func (c *Client) DescribeContinuousBackups(ctx context.Context, params *DescribeContinuousBackupsInput, optFns ...func(*Options)) (*DescribeContinuousBackupsOutput, error) {
 	if params == nil {
 		params = &DescribeContinuousBackupsInput{}
@@ -41,6 +44,9 @@ type DescribeContinuousBackupsInput struct {
 
 	// Name of the table for which the customer wants to check the continuous backups
 	// and point in time recovery settings.
+	//
+	// You can also provide the Amazon Resource Name (ARN) of the table in this
+	// parameter.
 	//
 	// This member is required.
 	TableName *string
@@ -82,25 +88,28 @@ func (c *Client) addOperationDescribeContinuousBackupsMiddlewares(stack *middlew
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -118,13 +127,19 @@ func (c *Client) addOperationDescribeContinuousBackupsMiddlewares(stack *middlew
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDescribeContinuousBackupsValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeContinuousBackups(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -143,6 +158,18 @@ func (c *Client) addOperationDescribeContinuousBackupsMiddlewares(stack *middlew
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

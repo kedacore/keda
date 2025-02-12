@@ -85,7 +85,6 @@ const (
 var testAppInsightsAuthConfigData = []testAppInsightsAuthConfigTestData{
 	{"client credentials", clientCredentialsConfig, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, ""},
 	{"client credentials - pod id none", clientCredentialsConfig, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, kedav1alpha1.PodIdentityProviderNone},
-	{"azure pod identity", msiConfig, AppInsightsInfo{}, kedav1alpha1.PodIdentityProviderAzure},
 	{"azure workload identity", workloadIdentityConfig, AppInsightsInfo{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
 }
 

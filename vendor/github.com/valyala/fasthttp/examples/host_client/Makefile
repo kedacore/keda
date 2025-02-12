@@ -1,6 +1,0 @@
-host_client: clean
-	go get -u github.com/valyala/fasthttp
-	go build
-
-clean:
-	rm -f host_client

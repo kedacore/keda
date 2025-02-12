@@ -1,0 +1,154 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.5
+  name: clustercloudeventsources.eventing.keda.sh
+spec:
+  group: eventing.keda.sh
+  names:
+    kind: ClusterCloudEventSource
+    listKind: ClusterCloudEventSourceList
+    plural: clustercloudeventsources
+    singular: clustercloudeventsource
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.conditions[?(@.type=="Active")].status
+      name: Active
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: CloudEventSourceSpec defines the spec of CloudEventSource
+            properties:
+              authenticationRef:
+                description: |-
+                  AuthenticationRef points to the TriggerAuthentication or ClusterTriggerAuthentication object that
+                  is used to authenticate the scaler with the environment
+                properties:
+                  kind:
+                    description: Kind of the resource being referred to. Defaults
+                      to TriggerAuthentication.
+                    type: string
+                  name:
+                    type: string
+                required:
+                - name
+                type: object
+              clusterName:
+                type: string
+              destination:
+                description: Destination defines the various ways to emit events
+                properties:
+                  azureEventGridTopic:
+                    properties:
+                      endpoint:
+                        type: string
+                    required:
+                    - endpoint
+                    type: object
+                  http:
+                    properties:
+                      uri:
+                        type: string
+                    required:
+                    - uri
+                    type: object
+                type: object
+              eventSubscription:
+                description: EventSubscription defines filters for events
+                properties:
+                  excludedEventTypes:
+                    items:
+                      enum:
+                      - keda.scaledobject.ready.v1
+                      - keda.scaledobject.failed.v1
+                      - keda.scaledobject.removed.v1
+                      - keda.scaledjob.ready.v1
+                      - keda.scaledjob.failed.v1
+                      - keda.scaledjob.removed.v1
+                      - keda.authentication.triggerauthentication.created.v1
+                      - keda.authentication.triggerauthentication.updated.v1
+                      - keda.authentication.triggerauthentication.removed.v1
+                      - keda.authentication.clustertriggerauthentication.created.v1
+                      - keda.authentication.clustertriggerauthentication.updated.v1
+                      - keda.authentication.clustertriggerauthentication.removed.v1
+                      type: string
+                    type: array
+                  includedEventTypes:
+                    items:
+                      enum:
+                      - keda.scaledobject.ready.v1
+                      - keda.scaledobject.failed.v1
+                      - keda.scaledobject.removed.v1
+                      - keda.scaledjob.ready.v1
+                      - keda.scaledjob.failed.v1
+                      - keda.scaledjob.removed.v1
+                      - keda.authentication.triggerauthentication.created.v1
+                      - keda.authentication.triggerauthentication.updated.v1
+                      - keda.authentication.triggerauthentication.removed.v1
+                      - keda.authentication.clustertriggerauthentication.created.v1
+                      - keda.authentication.clustertriggerauthentication.updated.v1
+                      - keda.authentication.clustertriggerauthentication.removed.v1
+                      type: string
+                    type: array
+                type: object
+            required:
+            - destination
+            type: object
+          status:
+            description: CloudEventSourceStatus defines the observed state of CloudEventSource
+            properties:
+              conditions:
+                description: Conditions an array representation to store multiple
+                  Conditions
+                items:
+                  description: Condition to store the condition state
+                  properties:
+                    message:
+                      description: A human readable message indicating details about
+                        the transition.
+                      type: string
+                    reason:
+                      description: The reason for the condition's last transition.
+                      type: string
+                    status:
+                      description: Status of the condition, one of True, False, Unknown.
+                      type: string
+                    type:
+                      description: Type of condition
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

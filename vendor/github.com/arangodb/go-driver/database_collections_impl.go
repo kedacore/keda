@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2023 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
 //
-// Author Ewout Prangsma
-//
 
 package driver
 
@@ -30,6 +28,19 @@ import (
 // Collection opens a connection to an existing collection within the database.
 // If no collection with given name exists, an NotFoundError is returned.
 func (d *database) Collection(ctx context.Context, name string) (Collection, error) {
+	coll, err := newCollection(name, d)
+	if err != nil {
+		return nil, WithStack(err)
+	}
+
+	if ctx != nil {
+		if v := ctx.Value(keySkipExistCheck); v != nil {
+			if skipIfExistCheck, ok := v.(bool); ok && skipIfExistCheck {
+				return coll, nil
+			}
+		}
+	}
+
 	escapedName := pathEscape(name)
 	req, err := d.conn.NewRequest("GET", path.Join(d.relPath(), "_api/collection", escapedName))
 	if err != nil {
@@ -40,10 +51,6 @@ func (d *database) Collection(ctx context.Context, name string) (Collection, err
 		return nil, WithStack(err)
 	}
 	if err := resp.CheckStatus(200); err != nil {
-		return nil, WithStack(err)
-	}
-	coll, err := newCollection(name, d)
-	if err != nil {
 		return nil, WithStack(err)
 	}
 	return coll, nil

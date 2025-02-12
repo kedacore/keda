@@ -6,13 +6,13 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Returns a list that contains the number of managed Contributor Insights rules
+//	Returns a list that contains the number of managed Contributor Insights rules
+//
 // in your account.
 func (c *Client) ListManagedInsightRules(ctx context.Context, params *ListManagedInsightRulesInput, optFns ...func(*Options)) (*ListManagedInsightRulesOutput, error) {
 	if params == nil {
@@ -31,17 +31,17 @@ func (c *Client) ListManagedInsightRules(ctx context.Context, params *ListManage
 
 type ListManagedInsightRulesInput struct {
 
-	// The ARN of an Amazon Web Services resource that has managed Contributor
+	//  The ARN of an Amazon Web Services resource that has managed Contributor
 	// Insights rules.
 	//
 	// This member is required.
 	ResourceARN *string
 
-	// The maximum number of results to return in one operation. If you omit this
+	//  The maximum number of results to return in one operation. If you omit this
 	// parameter, the default number is used. The default number is 100 .
 	MaxResults *int32
 
-	// Include this value to get the next set of rules if the value was returned by
+	//  Include this value to get the next set of rules if the value was returned by
 	// the previous operation.
 	NextToken *string
 
@@ -50,11 +50,11 @@ type ListManagedInsightRulesInput struct {
 
 type ListManagedInsightRulesOutput struct {
 
-	// The managed rules that are available for the specified Amazon Web Services
+	//  The managed rules that are available for the specified Amazon Web Services
 	// resource.
 	ManagedRules []types.ManagedRuleDescription
 
-	// Include this value to get the next set of rules if the value was returned by
+	//  Include this value to get the next set of rules if the value was returned by
 	// the previous operation.
 	NextToken *string
 
@@ -86,25 +86,28 @@ func (c *Client) addOperationListManagedInsightRulesMiddlewares(stack *middlewar
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -119,13 +122,19 @@ func (c *Client) addOperationListManagedInsightRulesMiddlewares(stack *middlewar
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpListManagedInsightRulesValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListManagedInsightRules(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -140,21 +149,25 @@ func (c *Client) addOperationListManagedInsightRulesMiddlewares(stack *middlewar
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// ListManagedInsightRulesAPIClient is a client that implements the
-// ListManagedInsightRules operation.
-type ListManagedInsightRulesAPIClient interface {
-	ListManagedInsightRules(context.Context, *ListManagedInsightRulesInput, ...func(*Options)) (*ListManagedInsightRulesOutput, error)
-}
-
-var _ ListManagedInsightRulesAPIClient = (*Client)(nil)
 
 // ListManagedInsightRulesPaginatorOptions is the paginator options for
 // ListManagedInsightRules
 type ListManagedInsightRulesPaginatorOptions struct {
-	// The maximum number of results to return in one operation. If you omit this
+	//  The maximum number of results to return in one operation. If you omit this
 	// parameter, the default number is used. The default number is 100 .
 	Limit int32
 
@@ -217,6 +230,9 @@ func (p *ListManagedInsightRulesPaginator) NextPage(ctx context.Context, optFns 
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListManagedInsightRules(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -235,6 +251,14 @@ func (p *ListManagedInsightRulesPaginator) NextPage(ctx context.Context, optFns 
 
 	return result, nil
 }
+
+// ListManagedInsightRulesAPIClient is a client that implements the
+// ListManagedInsightRules operation.
+type ListManagedInsightRulesAPIClient interface {
+	ListManagedInsightRules(context.Context, *ListManagedInsightRulesInput, ...func(*Options)) (*ListManagedInsightRulesOutput, error)
+}
+
+var _ ListManagedInsightRulesAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListManagedInsightRules(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

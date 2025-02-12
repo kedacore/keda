@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -21,28 +20,39 @@ import (
 // range of 382...454, then you could merge these two shards into a single shard
 // that would have a hash key range of 276...454. After the merge, the single child
 // shard receives data for all hash key values covered by the two parent shards.
+//
 // When invoking this API, you must use either the StreamARN or the StreamName
 // parameter, or both. It is recommended that you use the StreamARN input
-// parameter when you invoke this API. MergeShards is called when there is a need
-// to reduce the overall capacity of a stream because of excess capacity that is
-// not being used. You must specify the shard to be merged and the adjacent shard
-// for a stream. For more information about merging shards, see Merge Two Shards (https://docs.aws.amazon.com/kinesis/latest/dev/kinesis-using-sdk-java-resharding-merge.html)
-// in the Amazon Kinesis Data Streams Developer Guide. If the stream is in the
-// ACTIVE state, you can call MergeShards . If a stream is in the CREATING ,
-// UPDATING , or DELETING state, MergeShards returns a ResourceInUseException . If
-// the specified stream does not exist, MergeShards returns a
-// ResourceNotFoundException . You can use DescribeStreamSummary to check the
-// state of the stream, which is returned in StreamStatus . MergeShards is an
-// asynchronous operation. Upon receiving a MergeShards request, Amazon Kinesis
-// Data Streams immediately returns a response and sets the StreamStatus to
-// UPDATING . After the operation is completed, Kinesis Data Streams sets the
-// StreamStatus to ACTIVE . Read and write operations continue to work while the
-// stream is in the UPDATING state. You use DescribeStreamSummary and the
-// ListShards APIs to determine the shard IDs that are specified in the MergeShards
-// request. If you try to operate on too many streams in parallel using
-// CreateStream , DeleteStream , MergeShards , or SplitShard , you receive a
-// LimitExceededException . MergeShards has a limit of five transactions per
-// second per account.
+// parameter when you invoke this API.
+//
+// MergeShards is called when there is a need to reduce the overall capacity of a
+// stream because of excess capacity that is not being used. You must specify the
+// shard to be merged and the adjacent shard for a stream. For more information
+// about merging shards, see [Merge Two Shards]in the Amazon Kinesis Data Streams Developer Guide.
+//
+// If the stream is in the ACTIVE state, you can call MergeShards . If a stream is
+// in the CREATING , UPDATING , or DELETING state, MergeShards returns a
+// ResourceInUseException . If the specified stream does not exist, MergeShards
+// returns a ResourceNotFoundException .
+//
+// You can use DescribeStreamSummary to check the state of the stream, which is returned in StreamStatus
+// .
+//
+// MergeShards is an asynchronous operation. Upon receiving a MergeShards request,
+// Amazon Kinesis Data Streams immediately returns a response and sets the
+// StreamStatus to UPDATING . After the operation is completed, Kinesis Data
+// Streams sets the StreamStatus to ACTIVE . Read and write operations continue to
+// work while the stream is in the UPDATING state.
+//
+// You use DescribeStreamSummary and the ListShards APIs to determine the shard IDs that are specified in the
+// MergeShards request.
+//
+// If you try to operate on too many streams in parallel using CreateStream, DeleteStream, MergeShards , or SplitShard
+// , you receive a LimitExceededException .
+//
+// MergeShards has a limit of five transactions per second per account.
+//
+// [Merge Two Shards]: https://docs.aws.amazon.com/kinesis/latest/dev/kinesis-using-sdk-java-resharding-merge.html
 func (c *Client) MergeShards(ctx context.Context, params *MergeShardsInput, optFns ...func(*Options)) (*MergeShardsOutput, error) {
 	if params == nil {
 		params = &MergeShardsInput{}
@@ -81,6 +91,7 @@ type MergeShardsInput struct {
 }
 
 func (in *MergeShardsInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.StreamARN = in.StreamARN
 	p.OperationType = ptr.String("control")
 }
@@ -114,25 +125,28 @@ func (c *Client) addOperationMergeShardsMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -147,13 +161,19 @@ func (c *Client) addOperationMergeShardsMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpMergeShardsValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opMergeShards(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -166,6 +186,18 @@ func (c *Client) addOperationMergeShardsMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

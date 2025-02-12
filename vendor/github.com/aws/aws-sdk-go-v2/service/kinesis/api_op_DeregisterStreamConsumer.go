@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -16,10 +15,11 @@ import (
 // ARN of the data stream and the name you gave the consumer when you registered
 // it. You may also provide all three parameters, as long as they don't conflict
 // with each other. If you don't know the name or ARN of the consumer that you want
-// to deregister, you can use the ListStreamConsumers operation to get a list of
-// the descriptions of all the consumers that are currently registered with a given
-// data stream. The description of a consumer contains its name and ARN. This
-// operation has a limit of five transactions per second per stream.
+// to deregister, you can use the ListStreamConsumersoperation to get a list of the descriptions of
+// all the consumers that are currently registered with a given data stream. The
+// description of a consumer contains its name and ARN.
+//
+// This operation has a limit of five transactions per second per stream.
 func (c *Client) DeregisterStreamConsumer(ctx context.Context, params *DeregisterStreamConsumerInput, optFns ...func(*Options)) (*DeregisterStreamConsumerOutput, error) {
 	if params == nil {
 		params = &DeregisterStreamConsumerInput{}
@@ -48,15 +48,16 @@ type DeregisterStreamConsumerInput struct {
 	ConsumerName *string
 
 	// The ARN of the Kinesis data stream that the consumer is registered with. For
-	// more information, see Amazon Resource Names (ARNs) and Amazon Web Services
-	// Service Namespaces (https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-kinesis-streams)
-	// .
+	// more information, see [Amazon Resource Names (ARNs) and Amazon Web Services Service Namespaces].
+	//
+	// [Amazon Resource Names (ARNs) and Amazon Web Services Service Namespaces]: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-kinesis-streams
 	StreamARN *string
 
 	noSmithyDocumentSerde
 }
 
 func (in *DeregisterStreamConsumerInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.StreamARN = in.StreamARN
 	p.ConsumerARN = in.ConsumerARN
 	p.OperationType = ptr.String("control")
@@ -91,25 +92,28 @@ func (c *Client) addOperationDeregisterStreamConsumerMiddlewares(stack *middlewa
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -124,10 +128,16 @@ func (c *Client) addOperationDeregisterStreamConsumerMiddlewares(stack *middlewa
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeregisterStreamConsumer(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -140,6 +150,18 @@ func (c *Client) addOperationDeregisterStreamConsumerMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -36,24 +37,18 @@ type GrpcClient struct {
 	connection *grpc.ClientConn
 }
 
-func NewGrpcClient(url, certDir, authority string) (*GrpcClient, error) {
-	defaultConfig := fmt.Sprintf(`{
-			"methodConfig": [{
-				"timeout": "3s",
-				"waitForReady": true,
-				"retryPolicy": {
-					"InitialBackoff": ".25s",
-					"MaxBackoff": "2.0s",
-					"BackoffMultiplier": 2,
-					"RetryableStatusCodes": [ "UNAVAILABLE" ]
-				}
-			}],
-			"loadBalancingPolicy": "round_robin",
-			"healthCheckConfig": {
-				"serviceName": "%s"
-			}
-		}`,
-		api.MetricsService_ServiceDesc.ServiceName)
+func NewGrpcClient(url, certDir, authority string, clientMetrics *grpcprom.ClientMetrics) (*GrpcClient, error) {
+	defaultConfig := `{
+		"methodConfig": [{
+		  "timeout": "3s",
+		  "waitForReady": true,
+		  "retryPolicy": {
+			  "InitialBackoff": ".25s",
+			  "MaxBackoff": "2.0s",
+			  "BackoffMultiplier": 2,
+			  "RetryableStatusCodes": [ "UNAVAILABLE" ]
+		  }
+		}]}`
 
 	creds, err := utils.LoadGrpcTLSCredentials(certDir, false)
 	if err != nil {
@@ -64,6 +59,12 @@ func NewGrpcClient(url, certDir, authority string) (*GrpcClient, error) {
 		grpc.WithDefaultServiceConfig(defaultConfig),
 	}
 
+	opts = append(
+		opts,
+		grpc.WithChainUnaryInterceptor(clientMetrics.UnaryClientInterceptor()),
+		grpc.WithChainStreamInterceptor(clientMetrics.StreamClientInterceptor()),
+	)
+
 	if authority != "" {
 		// If an Authority header override is specified, add it to the client so it is set on every request.
 		// This is useful when the address used to dial the GRPC server does not match any hosts provided in the TLS certificate's
@@ -71,7 +72,7 @@ func NewGrpcClient(url, certDir, authority string) (*GrpcClient, error) {
 		opts = append(opts, grpc.WithAuthority(authority))
 	}
 
-	conn, err := grpc.Dial(url, opts...)
+	conn, err := grpc.NewClient(url, opts...)
 	if err != nil {
 		return nil, err
 	}

@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	internalEndpointDiscovery "github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery"
 	"github.com/aws/smithy-go/middleware"
@@ -18,12 +17,17 @@ import (
 // and weren't made with Amazon Web Services Backup. To list these backups for a
 // given table, specify TableName . ListBackups returns a paginated list of
 // results with at most 1 MB worth of items in a page. You can also specify a
-// maximum number of entries to be returned in a page. In the request, start time
-// is inclusive, but end time is exclusive. Note that these boundaries are for the
-// time at which the original backup was requested. You can call ListBackups a
-// maximum of five times per second. If you want to retrieve the complete list of
-// backups made with Amazon Web Services Backup, use the Amazon Web Services
-// Backup list API. (https://docs.aws.amazon.com/aws-backup/latest/devguide/API_ListBackupJobs.html)
+// maximum number of entries to be returned in a page.
+//
+// In the request, start time is inclusive, but end time is exclusive. Note that
+// these boundaries are for the time at which the original backup was requested.
+//
+// You can call ListBackups a maximum of five times per second.
+//
+// If you want to retrieve the complete list of backups made with Amazon Web
+// Services Backup, use the [Amazon Web Services Backup list API.]
+//
+// [Amazon Web Services Backup list API.]: https://docs.aws.amazon.com/aws-backup/latest/devguide/API_ListBackupJobs.html
 func (c *Client) ListBackups(ctx context.Context, params *ListBackupsInput, optFns ...func(*Options)) (*ListBackupsOutput, error) {
 	if params == nil {
 		params = &ListBackupsInput{}
@@ -41,11 +45,15 @@ func (c *Client) ListBackups(ctx context.Context, params *ListBackupsInput, optF
 
 type ListBackupsInput struct {
 
-	// The backups from the table specified by BackupType are listed. Where BackupType
-	// can be:
+	// The backups from the table specified by BackupType are listed.
+	//
+	// Where BackupType can be:
+	//
 	//   - USER - On-demand backup created by you. (The default setting if no other
 	//   backup types are specified.)
+	//
 	//   - SYSTEM - On-demand backup automatically created by DynamoDB.
+	//
 	//   - ALL - All types of on-demand backups (USER and SYSTEM).
 	BackupType types.BackupTypeFilter
 
@@ -59,7 +67,8 @@ type ListBackupsInput struct {
 	// Maximum number of backups to return at once.
 	Limit *int32
 
-	// The backups from the table specified by TableName are listed.
+	// Lists the backups from the table specified in TableName . You can also provide
+	// the Amazon Resource Name (ARN) of the table in this parameter.
 	TableName *string
 
 	// Only backups created after this time are listed. TimeRangeLowerBound is
@@ -78,14 +87,17 @@ type ListBackupsOutput struct {
 	// List of BackupSummary objects.
 	BackupSummaries []types.BackupSummary
 
-	// The ARN of the backup last evaluated when the current page of results was
+	//  The ARN of the backup last evaluated when the current page of results was
 	// returned, inclusive of the current page of results. This value may be specified
 	// as the ExclusiveStartBackupArn of a new ListBackups operation in order to fetch
-	// the next page of results. If LastEvaluatedBackupArn is empty, then the last
-	// page of results has been processed and there are no more results to be
-	// retrieved. If LastEvaluatedBackupArn is not empty, this may or may not indicate
-	// that there is more data to be returned. All results are guaranteed to have been
-	// returned if and only if no value for LastEvaluatedBackupArn is returned.
+	// the next page of results.
+	//
+	// If LastEvaluatedBackupArn is empty, then the last page of results has been
+	// processed and there are no more results to be retrieved.
+	//
+	// If LastEvaluatedBackupArn is not empty, this may or may not indicate that there
+	// is more data to be returned. All results are guaranteed to have been returned if
+	// and only if no value for LastEvaluatedBackupArn is returned.
 	LastEvaluatedBackupArn *string
 
 	// Metadata pertaining to the operation's result.
@@ -116,25 +128,28 @@ func (c *Client) addOperationListBackupsMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -152,10 +167,16 @@ func (c *Client) addOperationListBackupsMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListBackups(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -174,6 +195,18 @@ func (c *Client) addOperationListBackupsMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

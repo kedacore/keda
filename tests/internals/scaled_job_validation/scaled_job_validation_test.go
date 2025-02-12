@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	testName = "scaled-object-validation-test"
+	testName = "scaled-job-validation-test"
 )
 
 var (
@@ -32,6 +32,7 @@ apiVersion: keda.sh/v1alpha1
 kind: ScaledJob
 metadata:
   name: {{.EmptyTriggersSjName}}
+  namespace: {{.TestNamespace}}
 spec:
   jobTargetRef:
     template:

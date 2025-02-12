@@ -1,16 +1,5 @@
 // Copyright The OpenTelemetry Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
 
 package otlpmetrichttp // import "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 
@@ -25,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -69,10 +59,17 @@ func newClient(cfg oconf.Config) (*client, error) {
 		Transport: ourTransport,
 		Timeout:   cfg.Metrics.Timeout,
 	}
-	if cfg.Metrics.TLSCfg != nil {
-		transport := ourTransport.Clone()
-		transport.TLSClientConfig = cfg.Metrics.TLSCfg
-		httpClient.Transport = transport
+
+	if cfg.Metrics.TLSCfg != nil || cfg.Metrics.Proxy != nil {
+		clonedTransport := ourTransport.Clone()
+		httpClient.Transport = clonedTransport
+
+		if cfg.Metrics.TLSCfg != nil {
+			clonedTransport.TLSClientConfig = cfg.Metrics.TLSCfg
+		}
+		if cfg.Metrics.Proxy != nil {
+			clonedTransport.Proxy = cfg.Metrics.Proxy
+		}
 	}
 
 	u := &url.URL{
@@ -150,15 +147,20 @@ func (c *client) UploadMetrics(ctx context.Context, protoMetrics *metricpb.Resou
 		resp, err := c.httpClient.Do(request.Request)
 		var urlErr *url.Error
 		if errors.As(err, &urlErr) && urlErr.Temporary() {
-			return newResponseError(http.Header{})
+			return newResponseError(http.Header{}, err)
 		}
 		if err != nil {
 			return err
 		}
+		if resp != nil && resp.Body != nil {
+			defer func() {
+				if err := resp.Body.Close(); err != nil {
+					otel.Handle(err)
+				}
+			}()
+		}
 
-		var rErr error
-		switch sc := resp.StatusCode; {
-		case sc >= 200 && sc <= 299:
+		if sc := resp.StatusCode; sc >= 200 && sc <= 299 {
 			// Success, do not retry.
 
 			// Read the partial success message, if any.
@@ -186,26 +188,34 @@ func (c *client) UploadMetrics(ctx context.Context, protoMetrics *metricpb.Resou
 				}
 			}
 			return nil
-		case sc == http.StatusTooManyRequests,
-			sc == http.StatusBadGateway,
-			sc == http.StatusServiceUnavailable,
-			sc == http.StatusGatewayTimeout:
-			// Retry-able failure.
-			rErr = newResponseError(resp.Header)
-
-			// Going to retry, drain the body to reuse the connection.
-			if _, err := io.Copy(io.Discard, resp.Body); err != nil {
-				_ = resp.Body.Close()
-				return err
-			}
-		default:
-			rErr = fmt.Errorf("failed to send metrics to %s: %s", request.URL, resp.Status)
 		}
+		// Error cases.
 
-		if err := resp.Body.Close(); err != nil {
+		// server may return a message with the response
+		// body, so we read it to include in the error
+		// message to be returned. It will help in
+		// debugging the actual issue.
+		var respData bytes.Buffer
+		if _, err := io.Copy(&respData, resp.Body); err != nil {
 			return err
 		}
-		return rErr
+		respStr := strings.TrimSpace(respData.String())
+		if len(respStr) == 0 {
+			respStr = "(empty)"
+		}
+		bodyErr := fmt.Errorf("body: %s", respStr)
+
+		switch resp.StatusCode {
+		case http.StatusTooManyRequests,
+			http.StatusBadGateway,
+			http.StatusServiceUnavailable,
+			http.StatusGatewayTimeout:
+			// Retryable failure.
+			return newResponseError(resp.Header, bodyErr)
+		default:
+			// Non-retryable failure.
+			return fmt.Errorf("failed to send metrics to %s: %s (%w)", request.URL, resp.Status, bodyErr)
+		}
 	})
 }
 
@@ -238,7 +248,7 @@ func (c *client) newRequest(ctx context.Context, body []byte) (request, error) {
 		if _, err := gz.Write(body); err != nil {
 			return req, err
 		}
-		// Close needs to be called to ensure body if fully written.
+		// Close needs to be called to ensure body is fully written.
 		if err := gz.Close(); err != nil {
 			return req, err
 		}
@@ -273,22 +283,48 @@ func (r *request) reset(ctx context.Context) {
 // retryableError represents a request failure that can be retried.
 type retryableError struct {
 	throttle int64
+	err      error
 }
 
 // newResponseError returns a retryableError and will extract any explicit
-// throttle delay contained in headers.
-func newResponseError(header http.Header) error {
+// throttle delay contained in headers. The returned error wraps wrapped
+// if it is not nil.
+func newResponseError(header http.Header, wrapped error) error {
 	var rErr retryableError
 	if v := header.Get("Retry-After"); v != "" {
 		if t, err := strconv.ParseInt(v, 10, 64); err == nil {
 			rErr.throttle = t
 		}
 	}
+
+	rErr.err = wrapped
 	return rErr
 }
 
 func (e retryableError) Error() string {
+	if e.err != nil {
+		return "retry-able request failure: " + e.err.Error()
+	}
+
 	return "retry-able request failure"
+}
+
+func (e retryableError) Unwrap() error {
+	return e.err
+}
+
+func (e retryableError) As(target interface{}) bool {
+	if e.err == nil {
+		return false
+	}
+
+	switch v := target.(type) {
+	case **retryableError:
+		*v = &e
+		return true
+	default:
+		return false
+	}
 }
 
 // evaluate returns if err is retry-able. If it is and it includes an explicit
@@ -298,7 +334,10 @@ func evaluate(err error) (bool, time.Duration) {
 		return false, 0
 	}
 
-	rErr, ok := err.(retryableError)
+	// Do not use errors.As here, this should only be flattened one layer. If
+	// there are several chained errors, all the errors above it will be
+	// discarded if errors.As is used instead.
+	rErr, ok := err.(retryableError) //nolint:errorlint
 	if !ok {
 		return false, 0
 	}

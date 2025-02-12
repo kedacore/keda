@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -16,8 +15,6 @@ import (
 
 const (
 	cloudTasksStackDriverQueueSize = "cloudtasks.googleapis.com/queue/depth"
-
-	cloudTaskDefaultValue = 100
 )
 
 type gcpCloudTasksScaler struct {
@@ -28,11 +25,12 @@ type gcpCloudTasksScaler struct {
 }
 
 type gcpCloudTaskMetadata struct {
-	value           float64
-	activationValue float64
+	Value           float64 `keda:"name=value, order=triggerMetadata, optional, default=100"`
+	ActivationValue float64 `keda:"name=activationValue, order=triggerMetadata, optional, default=0"`
+	FilterDuration  int64   `keda:"name=filterDuration, order=triggerMetadata, optional"`
 
-	queueName        string
-	projectID        string
+	QueueName        string `keda:"name=queueName, order=triggerMetadata"`
+	ProjectID        string `keda:"name=projectID, order=triggerMetadata"`
 	gcpAuthorization *gcp.AuthorizationMetadata
 	triggerIndex     int
 }
@@ -59,53 +57,19 @@ func NewGcpCloudTasksScaler(config *scalersconfig.ScalerConfig) (Scaler, error) 
 }
 
 func parseGcpCloudTasksMetadata(config *scalersconfig.ScalerConfig) (*gcpCloudTaskMetadata, error) {
-	meta := gcpCloudTaskMetadata{value: cloudTaskDefaultValue}
-
-	value, valuePresent := config.TriggerMetadata["value"]
-
-	if valuePresent {
-		triggerValue, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			return nil, fmt.Errorf("value parsing error %w", err)
-		}
-		meta.value = triggerValue
-	}
-
-	if val, ok := config.TriggerMetadata["queueName"]; ok {
-		if val == "" {
-			return nil, fmt.Errorf("no queue name given")
-		}
-		meta.queueName = val
-	} else {
-		return nil, fmt.Errorf("no queue name given")
-	}
-
-	meta.activationValue = 0
-	if val, ok := config.TriggerMetadata["activationValue"]; ok {
-		activationValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("activationValue parsing error %w", err)
-		}
-		meta.activationValue = activationValue
-	}
-
-	if val, ok := config.TriggerMetadata["projectID"]; ok {
-		if val == "" {
-			return nil, fmt.Errorf("no project id given")
-		}
-
-		meta.projectID = val
-	} else {
-		return nil, fmt.Errorf("no project id given")
+	meta := &gcpCloudTaskMetadata{}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing Gcp cloud task metadata: %w", err)
 	}
 
 	auth, err := gcp.GetGCPAuthorization(config)
 	if err != nil {
 		return nil, err
 	}
+
 	meta.gcpAuthorization = auth
 	meta.triggerIndex = config.TriggerIndex
-	return &meta, nil
+	return meta, nil
 }
 
 func (s *gcpCloudTasksScaler) Close(context.Context) error {
@@ -123,9 +87,9 @@ func (s *gcpCloudTasksScaler) Close(context.Context) error {
 func (s *gcpCloudTasksScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ct-%s", s.metadata.queueName))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ct-%s", s.metadata.QueueName))),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.Value),
 	}
 
 	// Create the metric spec for the HPA
@@ -149,7 +113,7 @@ func (s *gcpCloudTasksScaler) GetMetricsAndActivity(ctx context.Context, metricN
 
 	metric := GenerateMetricInMili(metricName, value)
 
-	return []external_metrics.ExternalMetricValue{metric}, value > s.metadata.activationValue, nil
+	return []external_metrics.ExternalMetricValue{metric}, value > s.metadata.ActivationValue, nil
 }
 
 func (s *gcpCloudTasksScaler) setStackdriverClient(ctx context.Context) error {
@@ -176,9 +140,9 @@ func (s *gcpCloudTasksScaler) getMetrics(ctx context.Context, metricType string)
 			return -1, err
 		}
 	}
-	filter := `metric.type="` + metricType + `" AND resource.labels.queue_id="` + s.metadata.queueName + `"`
+	filter := `metric.type="` + metricType + `" AND resource.labels.queue_id="` + s.metadata.QueueName + `"`
 
 	// Cloud Tasks metrics are collected every 60 seconds so no need to aggregate them.
 	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-cloudtasks
-	return s.client.GetMetrics(ctx, filter, s.metadata.projectID, nil, nil)
+	return s.client.GetMetrics(ctx, filter, s.metadata.ProjectID, nil, nil, s.metadata.FilterDuration)
 }

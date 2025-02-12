@@ -84,7 +84,7 @@ It is also possible to use the `database/sql` interface and convert a connection
 
 ## Testing
 
-See CONTRIBUTING.md for setup instructions.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup instructions.
 
 ## Architecture
 
@@ -92,7 +92,7 @@ See the presentation at Golang Estonia, [PGX Top to Bottom](https://www.youtube.
 
 ## Supported Go and PostgreSQL Versions
 
-pgx supports the same versions of Go and PostgreSQL that are supported by their respective teams. For [Go](https://golang.org/doc/devel/release.html#policy) that is the two most recent major releases and for [PostgreSQL](https://www.postgresql.org/support/versioning/) the major releases in the last 5 years. This means pgx supports Go 1.20 and higher and PostgreSQL 12 and higher. pgx also is tested against the latest version of [CockroachDB](https://www.cockroachlabs.com/product/).
+pgx supports the same versions of Go and PostgreSQL that are supported by their respective teams. For [Go](https://golang.org/doc/devel/release.html#policy) that is the two most recent major releases and for [PostgreSQL](https://www.postgresql.org/support/versioning/) the major releases in the last 5 years. This means pgx supports Go 1.21 and higher and PostgreSQL 12 and higher. pgx also is tested against the latest version of [CockroachDB](https://www.cockroachlabs.com/product/).
 
 ## Version Policy
 
@@ -120,12 +120,13 @@ pgerrcode contains constants for the PostgreSQL error codes.
 
 * [github.com/jackc/pgx-gofrs-uuid](https://github.com/jackc/pgx-gofrs-uuid)
 * [github.com/jackc/pgx-shopspring-decimal](https://github.com/jackc/pgx-shopspring-decimal)
+* [github.com/twpayne/pgx-geos](https://github.com/twpayne/pgx-geos) ([PostGIS](https://postgis.net/) and [GEOS](https://libgeos.org/) via [go-geos](https://github.com/twpayne/go-geos))
 * [github.com/vgarvardt/pgx-google-uuid](https://github.com/vgarvardt/pgx-google-uuid)
 
 
 ## Adapters for 3rd Party Tracers
 
-* [https://github.com/jackhopner/pgx-xray-tracer](https://github.com/jackhopner/pgx-xray-tracer)
+* [github.com/jackhopner/pgx-xray-tracer](https://github.com/jackhopner/pgx-xray-tracer)
 
 ## Adapters for 3rd Party Loggers
 
@@ -155,7 +156,7 @@ Library for scanning data from a database into Go structs and more.
 A carefully designed SQL client for making using SQL easier,
 more productive, and less error-prone on Golang.
 
-### [https://github.com/otan/gopgkrb5](https://github.com/otan/gopgkrb5)
+### [github.com/otan/gopgkrb5](https://github.com/otan/gopgkrb5)
 
 Adds GSSAPI / Kerberos authentication support.
 
@@ -168,6 +169,6 @@ Explicit data mapping and scanning library for Go structs and slices.
 Type safe and flexible package for scanning database data into Go types.
 Supports, structs, maps, slices and custom mapping functions.
 
-### [https://github.com/z0ne-dev/mgx](https://github.com/z0ne-dev/mgx)
+### [github.com/z0ne-dev/mgx](https://github.com/z0ne-dev/mgx)
 
 Code first migration library for native pgx (no database/sql abstraction).

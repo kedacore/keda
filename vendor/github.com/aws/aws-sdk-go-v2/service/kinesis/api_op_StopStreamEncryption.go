@@ -6,29 +6,34 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Disables server-side encryption for a specified stream. When invoking this API,
-// you must use either the StreamARN or the StreamName parameter, or both. It is
-// recommended that you use the StreamARN input parameter when you invoke this
-// API. Stopping encryption is an asynchronous operation. Upon receiving the
-// request, Kinesis Data Streams returns immediately and sets the status of the
-// stream to UPDATING . After the update is complete, Kinesis Data Streams sets the
-// status of the stream back to ACTIVE . Stopping encryption normally takes a few
-// seconds to complete, but it can take minutes. You can continue to read and write
-// data to your stream while its status is UPDATING . Once the status of the stream
-// is ACTIVE , records written to the stream are no longer encrypted by Kinesis
-// Data Streams. API Limits: You can successfully disable server-side encryption 25
-// times in a rolling 24-hour period. Note: It can take up to 5 seconds after the
-// stream is in an ACTIVE status before all records written to the stream are no
-// longer subject to encryption. After you disabled encryption, you can verify that
-// encryption is not applied by inspecting the API response from PutRecord or
-// PutRecords .
+// Disables server-side encryption for a specified stream.
+//
+// When invoking this API, you must use either the StreamARN or the StreamName
+// parameter, or both. It is recommended that you use the StreamARN input
+// parameter when you invoke this API.
+//
+// Stopping encryption is an asynchronous operation. Upon receiving the request,
+// Kinesis Data Streams returns immediately and sets the status of the stream to
+// UPDATING . After the update is complete, Kinesis Data Streams sets the status of
+// the stream back to ACTIVE . Stopping encryption normally takes a few seconds to
+// complete, but it can take minutes. You can continue to read and write data to
+// your stream while its status is UPDATING . Once the status of the stream is
+// ACTIVE , records written to the stream are no longer encrypted by Kinesis Data
+// Streams.
+//
+// API Limits: You can successfully disable server-side encryption 25 times in a
+// rolling 24-hour period.
+//
+// Note: It can take up to 5 seconds after the stream is in an ACTIVE status
+// before all records written to the stream are no longer subject to encryption.
+// After you disabled encryption, you can verify that encryption is not applied by
+// inspecting the API response from PutRecord or PutRecords .
 func (c *Client) StopStreamEncryption(ctx context.Context, params *StopStreamEncryptionInput, optFns ...func(*Options)) (*StopStreamEncryptionOutput, error) {
 	if params == nil {
 		params = &StopStreamEncryptionInput{}
@@ -56,11 +61,16 @@ type StopStreamEncryptionInput struct {
 	// Amazon Resource Name (ARN) to either an alias or a key, or an alias name
 	// prefixed by "alias/".You can also use a master key owned by Kinesis Data Streams
 	// by specifying the alias aws/kinesis .
+	//
 	//   - Key ARN example:
 	//   arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012
+	//
 	//   - Alias ARN example: arn:aws:kms:us-east-1:123456789012:alias/MyAliasName
+	//
 	//   - Globally unique key ID example: 12345678-1234-1234-1234-123456789012
+	//
 	//   - Alias name example: alias/MyAliasName
+	//
 	//   - Master key owned by Kinesis Data Streams: alias/aws/kinesis
 	//
 	// This member is required.
@@ -76,6 +86,7 @@ type StopStreamEncryptionInput struct {
 }
 
 func (in *StopStreamEncryptionInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.StreamARN = in.StreamARN
 	p.OperationType = ptr.String("control")
 }
@@ -109,25 +120,28 @@ func (c *Client) addOperationStopStreamEncryptionMiddlewares(stack *middleware.S
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -142,13 +156,19 @@ func (c *Client) addOperationStopStreamEncryptionMiddlewares(stack *middleware.S
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpStopStreamEncryptionValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opStopStreamEncryption(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -161,6 +181,18 @@ func (c *Client) addOperationStopStreamEncryptionMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
@@ -14,22 +13,27 @@ import (
 )
 
 // Enables or updates server-side encryption using an Amazon Web Services KMS key
-// for a specified stream. When invoking this API, you must use either the
-// StreamARN or the StreamName parameter, or both. It is recommended that you use
-// the StreamARN input parameter when you invoke this API. Starting encryption is
-// an asynchronous operation. Upon receiving the request, Kinesis Data Streams
-// returns immediately and sets the status of the stream to UPDATING . After the
-// update is complete, Kinesis Data Streams sets the status of the stream back to
-// ACTIVE . Updating or applying encryption normally takes a few seconds to
-// complete, but it can take minutes. You can continue to read and write data to
-// your stream while its status is UPDATING . Once the status of the stream is
-// ACTIVE , encryption begins for records written to the stream. API Limits: You
-// can successfully apply a new Amazon Web Services KMS key for server-side
-// encryption 25 times in a rolling 24-hour period. Note: It can take up to 5
-// seconds after the stream is in an ACTIVE status before all records written to
-// the stream are encrypted. After you enable encryption, you can verify that
-// encryption is applied by inspecting the API response from PutRecord or
-// PutRecords .
+// for a specified stream.
+//
+// When invoking this API, you must use either the StreamARN or the StreamName
+// parameter, or both. It is recommended that you use the StreamARN input
+// parameter when you invoke this API.
+//
+// Starting encryption is an asynchronous operation. Upon receiving the request,
+// Kinesis Data Streams returns immediately and sets the status of the stream to
+// UPDATING . After the update is complete, Kinesis Data Streams sets the status of
+// the stream back to ACTIVE . Updating or applying encryption normally takes a few
+// seconds to complete, but it can take minutes. You can continue to read and write
+// data to your stream while its status is UPDATING . Once the status of the stream
+// is ACTIVE , encryption begins for records written to the stream.
+//
+// API Limits: You can successfully apply a new Amazon Web Services KMS key for
+// server-side encryption 25 times in a rolling 24-hour period.
+//
+// Note: It can take up to 5 seconds after the stream is in an ACTIVE status
+// before all records written to the stream are encrypted. After you enable
+// encryption, you can verify that encryption is applied by inspecting the API
+// response from PutRecord or PutRecords .
 func (c *Client) StartStreamEncryption(ctx context.Context, params *StartStreamEncryptionInput, optFns ...func(*Options)) (*StartStreamEncryptionOutput, error) {
 	if params == nil {
 		params = &StartStreamEncryptionInput{}
@@ -57,11 +61,16 @@ type StartStreamEncryptionInput struct {
 	// Amazon Resource Name (ARN) to either an alias or a key, or an alias name
 	// prefixed by "alias/".You can also use a master key owned by Kinesis Data Streams
 	// by specifying the alias aws/kinesis .
+	//
 	//   - Key ARN example:
 	//   arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012
+	//
 	//   - Alias ARN example: arn:aws:kms:us-east-1:123456789012:alias/MyAliasName
+	//
 	//   - Globally unique key ID example: 12345678-1234-1234-1234-123456789012
+	//
 	//   - Alias name example: alias/MyAliasName
+	//
 	//   - Master key owned by Kinesis Data Streams: alias/aws/kinesis
 	//
 	// This member is required.
@@ -77,6 +86,7 @@ type StartStreamEncryptionInput struct {
 }
 
 func (in *StartStreamEncryptionInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.StreamARN = in.StreamARN
 	p.OperationType = ptr.String("control")
 }
@@ -110,25 +120,28 @@ func (c *Client) addOperationStartStreamEncryptionMiddlewares(stack *middleware.
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -143,13 +156,19 @@ func (c *Client) addOperationStartStreamEncryptionMiddlewares(stack *middleware.
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpStartStreamEncryptionValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opStartStreamEncryption(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -162,6 +181,18 @@ func (c *Client) addOperationStartStreamEncryptionMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/redis/go-redis/v9"
@@ -33,9 +32,10 @@ var (
 
 	// ErrRedisUnequalHostsAndPorts is returned when the number of hosts and ports are unequal.
 	ErrRedisUnequalHostsAndPorts = errors.New("not enough hosts or ports given. number of hosts should be equal to the number of ports")
-)
 
-type redisAddressParser func(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error)
+	// ErrRedisParse is returned when "listName" is missing from the config.
+	ErrRedisParse = errors.New("error parsing redis metadata")
+)
 
 type redisScaler struct {
 	metricType      v2.MetricTargetType
@@ -46,29 +46,76 @@ type redisScaler struct {
 }
 
 type redisConnectionInfo struct {
-	addresses        []string
-	username         string
-	password         string
-	sentinelUsername string
-	sentinelPassword string
-	sentinelMaster   string
-	hosts            []string
-	ports            []string
-	enableTLS        bool
-	unsafeSsl        bool
-	cert             string
-	key              string
-	keyPassword      string
-	ca               string
+	Addresses        []string `keda:"name=address;addresses, order=triggerMetadata;authParams;resolvedEnv"`
+	Username         string   `keda:"name=username,          order=triggerMetadata;resolvedEnv;authParams"`
+	Password         string   `keda:"name=password,          order=triggerMetadata;resolvedEnv;authParams"`
+	SentinelUsername string   `keda:"name=sentinelUsername,  order=triggerMetadata;authParams;resolvedEnv"`
+	SentinelPassword string   `keda:"name=sentinelPassword,  order=triggerMetadata;authParams;resolvedEnv"`
+	SentinelMaster   string   `keda:"name=sentinelMaster,    order=triggerMetadata;authParams;resolvedEnv"`
+	Hosts            []string `keda:"name=host;hosts,        order=triggerMetadata;resolvedEnv;authParams"`
+	Ports            []string `keda:"name=port;ports,        order=triggerMetadata;resolvedEnv;authParams"`
+	EnableTLS        bool
+	UnsafeSsl        bool   `keda:"name=unsafeSsl,   order=triggerMetadata, default=false"`
+	Cert             string `keda:"name=Cert;cert,   order=authParams"`
+	Key              string `keda:"name=key,         order=authParams"`
+	KeyPassword      string `keda:"name=keyPassword, order=authParams"`
+	Ca               string `keda:"name=ca,          order=authParams"`
 }
 
 type redisMetadata struct {
-	listLength           int64
-	activationListLength int64
-	listName             string
-	databaseIndex        int
-	connectionInfo       redisConnectionInfo
+	ListLength           int64               `keda:"name=listLength,           order=triggerMetadata, default=5"`
+	ActivationListLength int64               `keda:"name=activationListLength, order=triggerMetadata, optional"`
+	ListName             string              `keda:"name=listName,             order=triggerMetadata"`
+	DatabaseIndex        int                 `keda:"name=databaseIndex,        order=triggerMetadata, optional"`
+	MetadataEnableTLS    string              `keda:"name=enableTLS,            order=triggerMetadata, optional"`
+	AuthParamEnableTLS   string              `keda:"name=tls,                  order=authParams, optional"`
+	ConnectionInfo       redisConnectionInfo `keda:"optional"`
 	triggerIndex         int
+}
+
+func (rci *redisConnectionInfo) SetEnableTLS(metadataEnableTLS string, authParamEnableTLS string) error {
+	EnableTLS := defaultEnableTLS
+
+	if metadataEnableTLS != "" && authParamEnableTLS != "" {
+		return errors.New("unable to set `tls` in both ScaledObject and TriggerAuthentication together")
+	}
+
+	if metadataEnableTLS != "" {
+		tls, err := strconv.ParseBool(metadataEnableTLS)
+		if err != nil {
+			return fmt.Errorf("EnableTLS parsing error %w", err)
+		}
+		EnableTLS = tls
+	}
+
+	// parse tls config defined in auth params
+	if authParamEnableTLS != "" {
+		switch authParamEnableTLS {
+		case stringEnable:
+			EnableTLS = true
+		case stringDisable:
+			EnableTLS = false
+		default:
+			return fmt.Errorf("error incorrect TLS value given, got %s", authParamEnableTLS)
+		}
+	}
+	rci.EnableTLS = EnableTLS
+	return nil
+}
+
+func (r *redisMetadata) Validate() error {
+	err := validateRedisAddress(&r.ConnectionInfo)
+
+	if err != nil {
+		return err
+	}
+
+	err = r.ConnectionInfo.SetEnableTLS(r.MetadataEnableTLS, r.AuthParamEnableTLS)
+	if err == nil {
+		r.MetadataEnableTLS, r.AuthParamEnableTLS = "", ""
+	}
+
+	return err
 }
 
 // NewRedisScaler creates a new redisScaler
@@ -94,30 +141,21 @@ func NewRedisScaler(ctx context.Context, isClustered, isSentinel bool, config *s
 
 	logger := InitializeLogger(config, "redis_scaler")
 
-	if isClustered {
-		meta, err := parseRedisMetadata(config, parseRedisClusterAddress)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing redis metadata: %w", err)
-		}
-		return createClusteredRedisScaler(ctx, meta, luaScript, metricType, logger)
-	} else if isSentinel {
-		meta, err := parseRedisMetadata(config, parseRedisSentinelAddress)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing redis metadata: %w", err)
-		}
-		return createSentinelRedisScaler(ctx, meta, luaScript, metricType, logger)
-	}
-
-	meta, err := parseRedisMetadata(config, parseRedisAddress)
+	meta, err := parseRedisMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing redis metadata: %w", err)
 	}
 
+	if isClustered {
+		return createClusteredRedisScaler(ctx, meta, luaScript, metricType, logger)
+	} else if isSentinel {
+		return createSentinelRedisScaler(ctx, meta, luaScript, metricType, logger)
+	}
 	return createRedisScaler(ctx, meta, luaScript, metricType, logger)
 }
 
 func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
-	client, err := getRedisClusterClient(ctx, meta.connectionInfo)
+	client, err := getRedisClusterClient(ctx, meta.ConnectionInfo)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis cluster failed: %w", err)
 	}
@@ -131,7 +169,7 @@ func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script
 	}
 
 	listLengthFn := func(ctx context.Context) (int64, error) {
-		cmd := client.Eval(ctx, script, []string{meta.listName})
+		cmd := client.Eval(ctx, script, []string{meta.ListName})
 		if cmd.Err() != nil {
 			return -1, cmd.Err()
 		}
@@ -149,7 +187,7 @@ func createClusteredRedisScaler(ctx context.Context, meta *redisMetadata, script
 }
 
 func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
-	client, err := getRedisSentinelClient(ctx, meta.connectionInfo, meta.databaseIndex)
+	client, err := getRedisSentinelClient(ctx, meta.ConnectionInfo, meta.DatabaseIndex)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis sentinel failed: %w", err)
 	}
@@ -158,7 +196,7 @@ func createSentinelRedisScaler(ctx context.Context, meta *redisMetadata, script 
 }
 
 func createRedisScaler(ctx context.Context, meta *redisMetadata, script string, metricType v2.MetricTargetType, logger logr.Logger) (Scaler, error) {
-	client, err := getRedisClient(ctx, meta.connectionInfo, meta.databaseIndex)
+	client, err := getRedisClient(ctx, meta.ConnectionInfo, meta.DatabaseIndex)
 	if err != nil {
 		return nil, fmt.Errorf("connection to redis failed: %w", err)
 	}
@@ -176,7 +214,7 @@ func createRedisScalerWithClient(client *redis.Client, meta *redisMetadata, scri
 	}
 
 	listLengthFn := func(ctx context.Context) (int64, error) {
-		cmd := client.Eval(ctx, script, []string{meta.listName})
+		cmd := client.Eval(ctx, script, []string{meta.ListName})
 		if cmd.Err() != nil {
 			return -1, cmd.Err()
 		}
@@ -193,110 +231,14 @@ func createRedisScalerWithClient(client *redis.Client, meta *redisMetadata, scri
 	}
 }
 
-func parseTLSConfigIntoConnectionInfo(config *scalersconfig.ScalerConfig, connInfo *redisConnectionInfo) error {
-	enableTLS := defaultEnableTLS
-	if val, ok := config.TriggerMetadata["enableTLS"]; ok {
-		tls, err := strconv.ParseBool(val)
-		if err != nil {
-			return fmt.Errorf("enableTLS parsing error %w", err)
-		}
-		enableTLS = tls
+func parseRedisMetadata(config *scalersconfig.ScalerConfig) (*redisMetadata, error) {
+	meta := &redisMetadata{}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing redis metadata: %w", err)
 	}
 
-	connInfo.unsafeSsl = false
-	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok {
-		parsedVal, err := strconv.ParseBool(val)
-		if err != nil {
-			return fmt.Errorf("error parsing unsafeSsl: %w", err)
-		}
-		connInfo.unsafeSsl = parsedVal
-	}
-
-	// parse tls config defined in auth params
-	if val, ok := config.AuthParams["tls"]; ok {
-		val = strings.TrimSpace(val)
-		if enableTLS {
-			return errors.New("unable to set `tls` in both ScaledObject and TriggerAuthentication together")
-		}
-		switch val {
-		case stringEnable:
-			enableTLS = true
-		case stringDisable:
-			enableTLS = false
-		default:
-			return fmt.Errorf("error incorrect TLS value given, got %s", val)
-		}
-	}
-	if enableTLS {
-		certGiven := config.AuthParams["cert"] != ""
-		keyGiven := config.AuthParams["key"] != ""
-		if certGiven && !keyGiven {
-			return errors.New("key must be provided with cert")
-		}
-		if keyGiven && !certGiven {
-			return errors.New("cert must be provided with key")
-		}
-		connInfo.ca = config.AuthParams["ca"]
-		connInfo.cert = config.AuthParams["cert"]
-		connInfo.key = config.AuthParams["key"]
-		if value, found := config.AuthParams["keyPassword"]; found {
-			connInfo.keyPassword = value
-		} else {
-			connInfo.keyPassword = ""
-		}
-	}
-	connInfo.enableTLS = enableTLS
-	return nil
-}
-
-func parseRedisMetadata(config *scalersconfig.ScalerConfig, parserFn redisAddressParser) (*redisMetadata, error) {
-	connInfo, err := parserFn(config.TriggerMetadata, config.ResolvedEnv, config.AuthParams)
-	if err != nil {
-		return nil, err
-	}
-	meta := redisMetadata{
-		connectionInfo: connInfo,
-	}
-
-	err = parseTLSConfigIntoConnectionInfo(config, &meta.connectionInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	meta.listLength = defaultListLength
-	if val, ok := config.TriggerMetadata["listLength"]; ok {
-		listLength, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("list length parsing error: %w", err)
-		}
-		meta.listLength = listLength
-	}
-
-	meta.activationListLength = defaultActivationListLength
-	if val, ok := config.TriggerMetadata["activationListLength"]; ok {
-		activationListLength, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("activationListLength parsing error %w", err)
-		}
-		meta.activationListLength = activationListLength
-	}
-
-	if val, ok := config.TriggerMetadata["listName"]; ok {
-		meta.listName = val
-	} else {
-		return nil, ErrRedisNoListName
-	}
-
-	meta.databaseIndex = defaultDBIdx
-	if val, ok := config.TriggerMetadata["databaseIndex"]; ok {
-		dbIndex, err := strconv.ParseInt(val, 10, 32)
-		if err != nil {
-			return nil, fmt.Errorf("databaseIndex: parsing error %w", err)
-		}
-		meta.databaseIndex = int(dbIndex)
-	}
 	meta.triggerIndex = config.TriggerIndex
-	return &meta, nil
+	return meta, nil
 }
 
 func (s *redisScaler) Close(context.Context) error {
@@ -305,12 +247,12 @@ func (s *redisScaler) Close(context.Context) error {
 
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *redisScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := util.NormalizeString(fmt.Sprintf("redis-%s", s.metadata.listName))
+	metricName := util.NormalizeString(fmt.Sprintf("redis-%s", s.metadata.ListName))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.listLength),
+		Target: GetMetricTarget(s.metricType, s.metadata.ListLength),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -329,189 +271,34 @@ func (s *redisScaler) GetMetricsAndActivity(ctx context.Context, metricName stri
 
 	metric := GenerateMetricInMili(metricName, float64(listLen))
 
-	return []external_metrics.ExternalMetricValue{metric}, listLen > s.metadata.activationListLength, nil
+	return []external_metrics.ExternalMetricValue{metric}, listLen > s.metadata.ActivationListLength, nil
 }
 
-func parseRedisAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
-	info := redisConnectionInfo{}
-	switch {
-	case authParams["address"] != "":
-		info.addresses = append(info.addresses, authParams["address"])
-	case metadata["address"] != "":
-		info.addresses = append(info.addresses, metadata["address"])
-	case metadata["addressFromEnv"] != "":
-		info.addresses = append(info.addresses, resolvedEnv[metadata["addressFromEnv"]])
-	default:
-		switch {
-		case authParams["host"] != "":
-			info.hosts = append(info.hosts, authParams["host"])
-		case metadata["host"] != "":
-			info.hosts = append(info.hosts, metadata["host"])
-		case metadata["hostFromEnv"] != "":
-			info.hosts = append(info.hosts, resolvedEnv[metadata["hostFromEnv"]])
+func validateRedisAddress(c *redisConnectionInfo) error {
+	if len(c.Hosts) != 0 && len(c.Ports) != 0 {
+		if len(c.Hosts) != len(c.Ports) {
+			return ErrRedisUnequalHostsAndPorts
 		}
-
-		switch {
-		case authParams["port"] != "":
-			info.ports = append(info.ports, authParams["port"])
-		case metadata["port"] != "":
-			info.ports = append(info.ports, metadata["port"])
-		case metadata["portFromEnv"] != "":
-			info.ports = append(info.ports, resolvedEnv[metadata["portFromEnv"]])
-		}
-
-		if len(info.hosts) != 0 && len(info.ports) != 0 {
-			info.addresses = append(info.addresses, net.JoinHostPort(info.hosts[0], info.ports[0]))
+		for i := range c.Hosts {
+			c.Addresses = append(c.Addresses, net.JoinHostPort(c.Hosts[i], c.Ports[i]))
 		}
 	}
+	// }
 
-	if len(info.addresses) == 0 || len(info.addresses[0]) == 0 {
-		return info, fmt.Errorf("no address or host given. address should be in the format of host:port or you should set the host/port values")
+	if len(c.Addresses) == 0 || len(c.Addresses[0]) == 0 {
+		return ErrRedisNoAddresses
 	}
-
-	switch {
-	case authParams["username"] != "":
-		info.username = authParams["username"]
-	case metadata["username"] != "":
-		info.username = metadata["username"]
-	case metadata["usernameFromEnv"] != "":
-		info.username = resolvedEnv[metadata["usernameFromEnv"]]
-	}
-
-	if authParams["password"] != "" {
-		info.password = authParams["password"]
-	} else if metadata["passwordFromEnv"] != "" {
-		info.password = resolvedEnv[metadata["passwordFromEnv"]]
-	}
-
-	return info, nil
-}
-
-func parseRedisMultipleAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
-	info := redisConnectionInfo{}
-	switch {
-	case authParams["addresses"] != "":
-		info.addresses = splitAndTrim(authParams["addresses"])
-	case metadata["addresses"] != "":
-		info.addresses = splitAndTrim(metadata["addresses"])
-	case metadata["addressesFromEnv"] != "":
-		info.addresses = splitAndTrim(resolvedEnv[metadata["addressesFromEnv"]])
-	default:
-		switch {
-		case authParams["hosts"] != "":
-			info.hosts = splitAndTrim(authParams["hosts"])
-		case metadata["hosts"] != "":
-			info.hosts = splitAndTrim(metadata["hosts"])
-		case metadata["hostsFromEnv"] != "":
-			info.hosts = splitAndTrim(resolvedEnv[metadata["hostsFromEnv"]])
-		}
-
-		switch {
-		case authParams["ports"] != "":
-			info.ports = splitAndTrim(authParams["ports"])
-		case metadata["ports"] != "":
-			info.ports = splitAndTrim(metadata["ports"])
-		case metadata["portsFromEnv"] != "":
-			info.ports = splitAndTrim(resolvedEnv[metadata["portsFromEnv"]])
-		}
-
-		if len(info.hosts) != 0 && len(info.ports) != 0 {
-			if len(info.hosts) != len(info.ports) {
-				return info, ErrRedisUnequalHostsAndPorts
-			}
-			for i := range info.hosts {
-				info.addresses = append(info.addresses, net.JoinHostPort(info.hosts[i], info.ports[i]))
-			}
-		}
-	}
-
-	if len(info.addresses) == 0 {
-		return info, ErrRedisNoAddresses
-	}
-
-	return info, nil
-}
-
-func parseRedisClusterAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
-	info, err := parseRedisMultipleAddress(metadata, resolvedEnv, authParams)
-	if err != nil {
-		return redisConnectionInfo{}, err
-	}
-
-	switch {
-	case authParams["username"] != "":
-		info.username = authParams["username"]
-	case metadata["username"] != "":
-		info.username = metadata["username"]
-	case metadata["usernameFromEnv"] != "":
-		info.username = resolvedEnv[metadata["usernameFromEnv"]]
-	}
-
-	if authParams["password"] != "" {
-		info.password = authParams["password"]
-	} else if metadata["passwordFromEnv"] != "" {
-		info.password = resolvedEnv[metadata["passwordFromEnv"]]
-	}
-
-	return info, nil
-}
-
-func parseRedisSentinelAddress(metadata, resolvedEnv, authParams map[string]string) (redisConnectionInfo, error) {
-	info, err := parseRedisMultipleAddress(metadata, resolvedEnv, authParams)
-	if err != nil {
-		return redisConnectionInfo{}, err
-	}
-
-	switch {
-	case authParams["username"] != "":
-		info.username = authParams["username"]
-	case metadata["username"] != "":
-		info.username = metadata["username"]
-	case metadata["usernameFromEnv"] != "":
-		info.username = resolvedEnv[metadata["usernameFromEnv"]]
-	}
-
-	if authParams["password"] != "" {
-		info.password = authParams["password"]
-	} else if metadata["passwordFromEnv"] != "" {
-		info.password = resolvedEnv[metadata["passwordFromEnv"]]
-	}
-
-	switch {
-	case authParams["sentinelUsername"] != "":
-		info.sentinelUsername = authParams["sentinelUsername"]
-	case metadata["sentinelUsername"] != "":
-		info.sentinelUsername = metadata["sentinelUsername"]
-	case metadata["sentinelUsernameFromEnv"] != "":
-		info.sentinelUsername = resolvedEnv[metadata["sentinelUsernameFromEnv"]]
-	}
-
-	if authParams["sentinelPassword"] != "" {
-		info.sentinelPassword = authParams["sentinelPassword"]
-	} else if metadata["sentinelPasswordFromEnv"] != "" {
-		info.sentinelPassword = resolvedEnv[metadata["sentinelPasswordFromEnv"]]
-	}
-
-	switch {
-	case authParams["sentinelMaster"] != "":
-		info.sentinelMaster = authParams["sentinelMaster"]
-	case metadata["sentinelMaster"] != "":
-		info.sentinelMaster = metadata["sentinelMaster"]
-	case metadata["sentinelMasterFromEnv"] != "":
-		info.sentinelMaster = resolvedEnv[metadata["sentinelMasterFromEnv"]]
-	}
-
-	return info, nil
+	return nil
 }
 
 func getRedisClusterClient(ctx context.Context, info redisConnectionInfo) (*redis.ClusterClient, error) {
 	options := &redis.ClusterOptions{
-		Addrs:    info.addresses,
-		Username: info.username,
-		Password: info.password,
+		Addrs:    info.Addresses,
+		Username: info.Username,
+		Password: info.Password,
 	}
-	if info.enableTLS {
-		tlsConfig, err := util.NewTLSConfigWithPassword(info.cert, info.key, info.keyPassword, info.ca, info.unsafeSsl)
+	if info.EnableTLS {
+		tlsConfig, err := util.NewTLSConfigWithPassword(info.Cert, info.Key, info.KeyPassword, info.Ca, info.UnsafeSsl)
 		if err != nil {
 			return nil, err
 		}
@@ -528,16 +315,16 @@ func getRedisClusterClient(ctx context.Context, info redisConnectionInfo) (*redi
 
 func getRedisSentinelClient(ctx context.Context, info redisConnectionInfo, dbIndex int) (*redis.Client, error) {
 	options := &redis.FailoverOptions{
-		Username:         info.username,
-		Password:         info.password,
+		Username:         info.Username,
+		Password:         info.Password,
 		DB:               dbIndex,
-		SentinelAddrs:    info.addresses,
-		SentinelUsername: info.sentinelUsername,
-		SentinelPassword: info.sentinelPassword,
-		MasterName:       info.sentinelMaster,
+		SentinelAddrs:    info.Addresses,
+		SentinelUsername: info.SentinelUsername,
+		SentinelPassword: info.SentinelPassword,
+		MasterName:       info.SentinelMaster,
 	}
-	if info.enableTLS {
-		tlsConfig, err := util.NewTLSConfigWithPassword(info.cert, info.key, info.keyPassword, info.ca, info.unsafeSsl)
+	if info.EnableTLS {
+		tlsConfig, err := util.NewTLSConfigWithPassword(info.Cert, info.Key, info.KeyPassword, info.Ca, info.UnsafeSsl)
 		if err != nil {
 			return nil, err
 		}
@@ -554,13 +341,13 @@ func getRedisSentinelClient(ctx context.Context, info redisConnectionInfo, dbInd
 
 func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int) (*redis.Client, error) {
 	options := &redis.Options{
-		Addr:     info.addresses[0],
-		Username: info.username,
-		Password: info.password,
+		Addr:     info.Addresses[0],
+		Username: info.Username,
+		Password: info.Password,
 		DB:       dbIndex,
 	}
-	if info.enableTLS {
-		tlsConfig, err := util.NewTLSConfigWithPassword(info.cert, info.key, info.keyPassword, info.ca, info.unsafeSsl)
+	if info.EnableTLS {
+		tlsConfig, err := util.NewTLSConfigWithPassword(info.Cert, info.Key, info.KeyPassword, info.Ca, info.UnsafeSsl)
 		if err != nil {
 			return nil, err
 		}
@@ -574,13 +361,4 @@ func getRedisClient(ctx context.Context, info redisConnectionInfo, dbIndex int) 
 		return nil, err
 	}
 	return c, nil
-}
-
-// Splits a string separated by comma and trims space from all the elements.
-func splitAndTrim(s string) []string {
-	x := strings.Split(s, ",")
-	for i := range x {
-		x[i] = strings.Trim(x[i], " ")
-	}
-	return x
 }

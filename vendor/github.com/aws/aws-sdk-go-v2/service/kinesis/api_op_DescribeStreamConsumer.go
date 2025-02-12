@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
@@ -17,12 +16,14 @@ import (
 // consumer. Alternatively, you can provide the ARN of the data stream and the name
 // you gave the consumer when you registered it. You may also provide all three
 // parameters, as long as they don't conflict with each other. If you don't know
-// the name or ARN of the consumer that you want to describe, you can use the
-// ListStreamConsumers operation to get a list of the descriptions of all the
-// consumers that are currently registered with a given data stream. This operation
-// has a limit of 20 transactions per second per stream. When making a
-// cross-account call with DescribeStreamConsumer , make sure to provide the ARN of
-// the consumer.
+// the name or ARN of the consumer that you want to describe, you can use the ListStreamConsumers
+// operation to get a list of the descriptions of all the consumers that are
+// currently registered with a given data stream.
+//
+// This operation has a limit of 20 transactions per second per stream.
+//
+// When making a cross-account call with DescribeStreamConsumer , make sure to
+// provide the ARN of the consumer.
 func (c *Client) DescribeStreamConsumer(ctx context.Context, params *DescribeStreamConsumerInput, optFns ...func(*Options)) (*DescribeStreamConsumerOutput, error) {
 	if params == nil {
 		params = &DescribeStreamConsumerInput{}
@@ -47,15 +48,16 @@ type DescribeStreamConsumerInput struct {
 	ConsumerName *string
 
 	// The ARN of the Kinesis data stream that the consumer is registered with. For
-	// more information, see Amazon Resource Names (ARNs) and Amazon Web Services
-	// Service Namespaces (https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-kinesis-streams)
-	// .
+	// more information, see [Amazon Resource Names (ARNs) and Amazon Web Services Service Namespaces].
+	//
+	// [Amazon Resource Names (ARNs) and Amazon Web Services Service Namespaces]: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-kinesis-streams
 	StreamARN *string
 
 	noSmithyDocumentSerde
 }
 
 func (in *DescribeStreamConsumerInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.StreamARN = in.StreamARN
 	p.ConsumerARN = in.ConsumerARN
 	p.OperationType = ptr.String("control")
@@ -96,25 +98,28 @@ func (c *Client) addOperationDescribeStreamConsumerMiddlewares(stack *middleware
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -129,10 +134,16 @@ func (c *Client) addOperationDescribeStreamConsumerMiddlewares(stack *middleware
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeStreamConsumer(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -145,6 +156,18 @@ func (c *Client) addOperationDescribeStreamConsumerMiddlewares(stack *middleware
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

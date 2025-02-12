@@ -6,16 +6,17 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deletes the specified anomaly detection model from your account. For more
-// information about how to delete an anomaly detection model, see Deleting an
-// anomaly detection model (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Create_Anomaly_Detection_Alarm.html#Delete_Anomaly_Detection_Model)
-// in the CloudWatch User Guide.
+//	Deletes the specified anomaly detection model from your account. For more
+//
+// information about how to delete an anomaly detection model, see [Deleting an anomaly detection model]in the
+// CloudWatch User Guide.
+//
+// [Deleting an anomaly detection model]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Create_Anomaly_Detection_Alarm.html#Delete_Anomaly_Detection_Model
 func (c *Client) DeleteAnomalyDetector(ctx context.Context, params *DeleteAnomalyDetectorInput, optFns ...func(*Options)) (*DeleteAnomalyDetectorOutput, error) {
 	if params == nil {
 		params = &DeleteAnomalyDetectorInput{}
@@ -38,14 +39,21 @@ type DeleteAnomalyDetectorInput struct {
 	// Deprecated: Use SingleMetricAnomalyDetector.
 	Dimensions []types.Dimension
 
-	// The metric math anomaly detector to be deleted. When using
-	// MetricMathAnomalyDetector , you cannot include following parameters in the same
-	// operation:
+	// The metric math anomaly detector to be deleted.
+	//
+	// When using MetricMathAnomalyDetector , you cannot include following parameters
+	// in the same operation:
+	//
 	//   - Dimensions ,
+	//
 	//   - MetricName
+	//
 	//   - Namespace
+	//
 	//   - Stat
+	//
 	//   - the SingleMetricAnomalyDetector parameters of DeleteAnomalyDetectorInput
+	//
 	// Instead, specify the metric math anomaly detector attributes as part of the
 	// MetricMathAnomalyDetector property.
 	MetricMathAnomalyDetector *types.MetricMathAnomalyDetector
@@ -60,14 +68,21 @@ type DeleteAnomalyDetectorInput struct {
 	// Deprecated: Use SingleMetricAnomalyDetector.
 	Namespace *string
 
-	// A single metric anomaly detector to be deleted. When using
-	// SingleMetricAnomalyDetector , you cannot include the following parameters in the
-	// same operation:
+	// A single metric anomaly detector to be deleted.
+	//
+	// When using SingleMetricAnomalyDetector , you cannot include the following
+	// parameters in the same operation:
+	//
 	//   - Dimensions ,
+	//
 	//   - MetricName
+	//
 	//   - Namespace
+	//
 	//   - Stat
+	//
 	//   - the MetricMathAnomalyDetector parameters of DeleteAnomalyDetectorInput
+	//
 	// Instead, specify the single metric anomaly detector attributes as part of the
 	// SingleMetricAnomalyDetector property.
 	SingleMetricAnomalyDetector *types.SingleMetricAnomalyDetector
@@ -109,25 +124,28 @@ func (c *Client) addOperationDeleteAnomalyDetectorMiddlewares(stack *middleware.
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -142,13 +160,19 @@ func (c *Client) addOperationDeleteAnomalyDetectorMiddlewares(stack *middleware.
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDeleteAnomalyDetectorValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteAnomalyDetector(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -161,6 +185,18 @@ func (c *Client) addOperationDeleteAnomalyDetectorMiddlewares(stack *middleware.
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

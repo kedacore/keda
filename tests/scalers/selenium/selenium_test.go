@@ -24,33 +24,47 @@ const (
 )
 
 var (
-	testNamespace         = fmt.Sprintf("%s-ns", testName)
-	chromeDeploymentName  = fmt.Sprintf("%s-chrome", testName)
-	firefoxDeploymentName = fmt.Sprintf("%s-firefox", testName)
-	edgeDeploymentName    = fmt.Sprintf("%s-edge", testName)
-	hubDeploymentName     = fmt.Sprintf("%s-hub", testName)
-	scaledObjectName      = fmt.Sprintf("%s-so", testName)
-	hubHost               = fmt.Sprintf("selenium-hub.%s", testNamespace)
-	hubPort               = 4444
-	hubGraphURL           = fmt.Sprintf("http://%s:%d/graphql", hubHost, hubPort)
-	minReplicaCount       = 0
-	maxReplicaCount       = 1
+	testNamespace              = fmt.Sprintf("%s-ns", testName)
+	secretName                 = fmt.Sprintf("%s-secret", testName)
+	triggerAuthName            = fmt.Sprintf("%s-trigger-auth", testName)
+	chromeDeploymentName       = fmt.Sprintf("%s-chrome", testName)
+	firefoxDeploymentName      = fmt.Sprintf("%s-firefox", testName)
+	edgeDeploymentName         = fmt.Sprintf("%s-edge", testName)
+	hubDeploymentName          = fmt.Sprintf("%s-hub", testName)
+	scaledObjectName           = fmt.Sprintf("%s-so", testName)
+	hubHost                    = fmt.Sprintf("%s:%s@selenium-hub.%s", hubBasicAuthUsername, hubBasicAuthPassword, testNamespace)
+	hubPort                    = 4444
+	hubGraphURL                = fmt.Sprintf("http://selenium-hub.%s:%d/graphql", testNamespace, hubPort)
+	hubBasicAuthUsername       = "admin"
+	hubBasicAuthPassword       = "admin"
+	hubBasicAuthUsernameB64enc = "YWRtaW4="
+	hubBasicAuthPasswordB64enc = "YWRtaW4="
+	hubBasicAuthHeader         = "YWRtaW46YWRtaW4="
+	minReplicaCount            = 0
+	maxReplicaCount            = 1
 )
 
 type templateData struct {
-	TestNamespace         string
-	ChromeDeploymentName  string
-	FirefoxDeploymentName string
-	EdgeDeploymentName    string
-	HubDeploymentName     string
-	HubHost               string
-	HubPort               int
-	HubGraphURL           string
-	WithVersion           bool
-	JobName               string
-	ScaledObjectName      string
-	MinReplicaCount       int
-	MaxReplicaCount       int
+	TestNamespace              string
+	SecretName                 string
+	TriggerAuthName            string
+	ChromeDeploymentName       string
+	FirefoxDeploymentName      string
+	EdgeDeploymentName         string
+	HubDeploymentName          string
+	HubHost                    string
+	HubPort                    int
+	HubGraphURL                string
+	HubBasicAuthUsername       string
+	HubBasicAuthPassword       string
+	HubBasicAuthUsernameB64enc string
+	HubBasicAuthPasswordB64enc string
+	HubBasicAuthHeader         string
+	WithVersion                bool
+	JobName                    string
+	ScaledObjectName           string
+	MinReplicaCount            int
+	MaxReplicaCount            int
 }
 
 const (
@@ -63,9 +77,9 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: helm
     app.kubernetes.io/instance: selenium-hpa
-    app.kubernetes.io/version: 4.0.0-beta-1-prerelease-20210114
-    app.kubernetes.io/component: selenium-grid-4.0.0-beta-1-prerelease-20210114
-    helm.sh/chart: selenium-grid-0.2.0
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/component: latest
+    helm.sh/chart: latest
 data:
   SE_EVENT_BUS_HOST: selenium-hub
   SE_EVENT_BUS_PUBLISH_PORT: "4442"
@@ -82,9 +96,9 @@ metadata:
     name: selenium-chrome-node
     app.kubernetes.io/managed-by: helm
     app.kubernetes.io/instance: selenium-hpa
-    app.kubernetes.io/version: 4.0.0-beta-1-prerelease-20210114
-    app.kubernetes.io/component: selenium-grid-4.0.0-beta-1-prerelease-20210114
-    helm.sh/chart: selenium-grid-0.2.0
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/component: latest
+    helm.sh/chart: latest
 spec:
   type: ClusterIP
   selector:
@@ -107,9 +121,9 @@ metadata:
     app.kubernetes.io/name: selenium-chrome-node
     app.kubernetes.io/managed-by: helm
     app.kubernetes.io/instance: selenium-hpa
-    app.kubernetes.io/version: 4.0.0-beta-1-prerelease-20210114
-    app.kubernetes.io/component: selenium-grid-4.0.0-beta-1-prerelease-20210114
-    helm.sh/chart: selenium-grid-0.2.0
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/component: latest
+    helm.sh/chart: latest
 spec:
   replicas: 0
   selector:
@@ -123,8 +137,13 @@ spec:
     spec:
       containers:
       - name: selenium-chrome-node
-        image: selenium/node-chrome:4.0.0-rc-1-prerelease-20210618
-        imagePullPolicy: IfNotPresent
+        image: selenium/node-chrome:nightly
+        imagePullPolicy: Always
+        env:
+        - name: SE_NODE_BROWSER_VERSION
+          value: ''
+        - name: SE_NODE_PLATFORM_NAME
+          value: ''
         envFrom:
         - configMapRef:
             name: selenium-event-bus-config
@@ -139,6 +158,34 @@ spec:
         emptyDir:
           medium: Memory
           sizeLimit: 1Gi
+`
+
+	secretTemplate = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.SecretName}}
+  namespace: {{.TestNamespace}}
+type: Opaque
+data:
+  username: '{{.HubBasicAuthUsernameB64enc}}'
+  password: '{{.HubBasicAuthPasswordB64enc}}'
+`
+
+	scaledTriggerAuthTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TriggerAuthName}}
+  namespace: {{.TestNamespace}}
+spec:
+  secretTargetRef:
+  - parameter: username
+    name: {{.SecretName}}
+    key: username
+  - parameter: password
+    name: {{.SecretName}}
+    key: password
 `
 
 	chromeScaledObjectTemplate = `
@@ -158,7 +205,10 @@ spec:
     metadata:
       url: '{{.HubGraphURL}}'
       browserName: 'chrome'
+      platformName: ''
       activationThreshold: '1'
+    authenticationRef:
+      name: '{{.TriggerAuthName}}'
 `
 
 	firefoxNodeServiceTemplate = `
@@ -171,9 +221,9 @@ metadata:
     name: selenium-firefox-node
     app.kubernetes.io/managed-by: helm
     app.kubernetes.io/instance: selenium-hpa
-    app.kubernetes.io/version: 4.0.0-beta-1-prerelease-20210114
-    app.kubernetes.io/component: selenium-grid-4.0.0-beta-1-prerelease-20210114
-    helm.sh/chart: selenium-grid-0.2.0
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/component: latest
+    helm.sh/chart: latest
 spec:
   type: ClusterIP
   selector:
@@ -195,9 +245,9 @@ metadata:
     app.kubernetes.io/name: selenium-firefox-node
     app.kubernetes.io/managed-by: helm
     app.kubernetes.io/instance: selenium-hpa
-    app.kubernetes.io/version: 4.0.0-beta-1-prerelease-20210114
-    app.kubernetes.io/component: selenium-grid-4.0.0-beta-1-prerelease-20210114
-    helm.sh/chart: selenium-grid-0.2.0
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/component: latest
+    helm.sh/chart: latest
 spec:
   replicas: 0
   selector:
@@ -211,8 +261,13 @@ spec:
     spec:
       containers:
       - name: selenium-firefox-node
-        image: selenium/node-firefox:4.0.0-rc-1-prerelease-20210618
-        imagePullPolicy: IfNotPresent
+        image: selenium/node-firefox:nightly
+        imagePullPolicy: Always
+        env:
+        - name: SE_NODE_BROWSER_VERSION
+          value: ''
+        - name: SE_NODE_PLATFORM_NAME
+          value: ''
         envFrom:
         - configMapRef:
             name: selenium-event-bus-config
@@ -246,7 +301,10 @@ spec:
       metadata:
         url: '{{.HubGraphURL}}'
         browserName: 'firefox'
+        platformName: ''
         activationThreshold: '1'
+      authenticationRef:
+        name: '{{.TriggerAuthName}}'
 `
 
 	edgeNodeServiceTemplate = `
@@ -259,9 +317,9 @@ metadata:
     name: selenium-edge-node
     app.kubernetes.io/managed-by: helm
     app.kubernetes.io/instance: selenium-hpa
-    app.kubernetes.io/version: 4.0.0-beta-1-prerelease-20210114
-    app.kubernetes.io/component: selenium-grid-4.0.0-beta-1-prerelease-20210114
-    helm.sh/chart: selenium-grid-0.2.0
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/component: latest
+    helm.sh/chart: latest
 spec:
   type: ClusterIP
   selector:
@@ -284,9 +342,9 @@ metadata:
     app.kubernetes.io/name: selenium-edge-node
     app.kubernetes.io/managed-by: helm
     app.kubernetes.io/instance: selenium-hpa
-    app.kubernetes.io/version: 4.0.0-beta-1-prerelease-20210114
-    app.kubernetes.io/component: selenium-grid-4.0.0-beta-1-prerelease-20210114
-    helm.sh/chart: selenium-grid-0.2.0
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/component: latest
+    helm.sh/chart: latest
 spec:
   replicas: 0
   selector:
@@ -300,8 +358,13 @@ spec:
     spec:
       containers:
       - name: selenium-edge-node
-        image: selenium/node-edge:4.0.0-rc-1-prerelease-20210618
-        imagePullPolicy: IfNotPresent
+        image: selenium/node-edge:nightly
+        imagePullPolicy: Always
+        env:
+        - name: SE_NODE_BROWSER_VERSION
+          value: ''
+        - name: SE_NODE_PLATFORM_NAME
+          value: ''
         envFrom:
         - configMapRef:
             name: selenium-event-bus-config
@@ -336,7 +399,10 @@ spec:
       url: '{{.HubGraphURL}}'
       browserName: 'MicrosoftEdge'
       sessionBrowserName: 'msedge'
+      platformName: ''
       activationThreshold: '1'
+    authenticationRef:
+      name: '{{.TriggerAuthName}}'
 `
 
 	hubServiceTemplate = `
@@ -349,9 +415,9 @@ metadata:
     app: selenium-hub
     app.kubernetes.io/managed-by: helm
     app.kubernetes.io/instance: selenium-hpa
-    app.kubernetes.io/version: 4.0.0-beta-1-prerelease-20210114
-    app.kubernetes.io/component: selenium-grid-4.0.0-beta-1-prerelease-20210114
-    helm.sh/chart: selenium-grid-0.2.0
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/component: latest
+    helm.sh/chart: latest
 spec:
   selector:
     app: selenium-hub
@@ -382,9 +448,9 @@ metadata:
     app.kubernetes.io/name: selenium-hub
     app.kubernetes.io/managed-by: helm
     app.kubernetes.io/instance: selenium-hpa
-    app.kubernetes.io/version: 4.0.0-beta-1-prerelease-20210114
-    app.kubernetes.io/component: selenium-grid-4.0.0-beta-1-prerelease-20210114
-    helm.sh/chart: selenium-grid-0.2.0
+    app.kubernetes.io/version: latest
+    app.kubernetes.io/component: latest
+    helm.sh/chart: latest
 spec:
   replicas: 1
   selector:
@@ -396,8 +462,13 @@ spec:
     spec:
       containers:
       - name: selenium-hub
-        image: selenium/hub:4.0.0-rc-1-prerelease-20210618
-        imagePullPolicy: IfNotPresent
+        image: selenium/hub:nightly
+        imagePullPolicy: Always
+        env:
+        - name: SE_ROUTER_USERNAME
+          value: '{{.HubBasicAuthUsername}}'
+        - name: SE_ROUTER_PASSWORD
+          value: '{{.HubBasicAuthPassword}}'
         ports:
         - containerPort: 4444
           protocol: TCP
@@ -409,6 +480,9 @@ spec:
           httpGet:
             path: /wd/hub/status
             port: 4444
+            httpHeaders:
+              - name: Authorization
+                value: Basic {{.HubBasicAuthHeader}}
           initialDelaySeconds: 10
           periodSeconds: 10
           timeoutSeconds: 10
@@ -418,6 +492,9 @@ spec:
           httpGet:
             path: /wd/hub/status
             port: 4444
+            httpHeaders:
+              - name: Authorization
+                value: Basic {{.HubBasicAuthHeader}}
           initialDelaySeconds: 12
           periodSeconds: 10
           timeoutSeconds: 10
@@ -519,18 +596,27 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:         testNamespace,
-			ChromeDeploymentName:  chromeDeploymentName,
-			FirefoxDeploymentName: firefoxDeploymentName,
-			EdgeDeploymentName:    edgeDeploymentName,
-			HubDeploymentName:     hubDeploymentName,
-			HubHost:               hubHost,
-			HubPort:               hubPort,
-			HubGraphURL:           hubGraphURL,
-			ScaledObjectName:      scaledObjectName,
-			MinReplicaCount:       minReplicaCount,
-			MaxReplicaCount:       maxReplicaCount,
+			TestNamespace:              testNamespace,
+			SecretName:                 secretName,
+			TriggerAuthName:            triggerAuthName,
+			ChromeDeploymentName:       chromeDeploymentName,
+			FirefoxDeploymentName:      firefoxDeploymentName,
+			EdgeDeploymentName:         edgeDeploymentName,
+			HubDeploymentName:          hubDeploymentName,
+			HubHost:                    hubHost,
+			HubPort:                    hubPort,
+			HubGraphURL:                hubGraphURL,
+			HubBasicAuthUsername:       hubBasicAuthUsername,
+			HubBasicAuthPassword:       hubBasicAuthPassword,
+			HubBasicAuthUsernameB64enc: hubBasicAuthUsernameB64enc,
+			HubBasicAuthPasswordB64enc: hubBasicAuthPasswordB64enc,
+			HubBasicAuthHeader:         hubBasicAuthHeader,
+			ScaledObjectName:           scaledObjectName,
+			MinReplicaCount:            minReplicaCount,
+			MaxReplicaCount:            maxReplicaCount,
 		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "scaledTriggerAuthTemplate", Config: scaledTriggerAuthTemplate},
 			{Name: "eventBusConfigTemplate", Config: eventBusConfigTemplate},
 			{Name: "hubDeploymentTemplate", Config: hubDeploymentTemplate},
 			{Name: "hubServiceTemplate", Config: hubServiceTemplate},

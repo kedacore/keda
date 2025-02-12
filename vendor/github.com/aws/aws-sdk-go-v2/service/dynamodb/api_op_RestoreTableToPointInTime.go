@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	internalEndpointDiscovery "github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery"
 	"github.com/aws/smithy-go/middleware"
@@ -17,24 +16,41 @@ import (
 // Restores the specified table to the specified point in time within
 // EarliestRestorableDateTime and LatestRestorableDateTime . You can restore your
 // table to any point in time during the last 35 days. Any number of users can
-// execute up to 4 concurrent restores (any type of restore) in a given account.
-// When you restore using point in time recovery, DynamoDB restores your table data
-// to the state based on the selected date and time (day:hour:minute:second) to a
-// new table. Along with data, the following are also included on the new restored
-// table using point in time recovery:
+// execute up to 50 concurrent restores (any type of restore) in a given account.
+//
+// When you restore using point in time recovery, DynamoDB restores your table
+// data to the state based on the selected date and time (day:hour:minute:second)
+// to a new table.
+//
+// Along with data, the following are also included on the new restored table
+// using point in time recovery:
+//
 //   - Global secondary indexes (GSIs)
+//
 //   - Local secondary indexes (LSIs)
+//
 //   - Provisioned read and write capacity
-//   - Encryption settings All these settings come from the current settings of
-//     the source table at the time of restore.
+//
+//   - Encryption settings
+//
+// All these settings come from the current settings of the source table at the
+//
+//	time of restore.
 //
 // You must manually set up the following on the restored table:
+//
 //   - Auto scaling policies
+//
 //   - IAM policies
+//
 //   - Amazon CloudWatch metrics and alarms
+//
 //   - Tags
+//
 //   - Stream settings
+//
 //   - Time to Live (TTL) settings
+//
 //   - Point in time recovery settings
 func (c *Client) RestoreTableToPointInTime(ctx context.Context, params *RestoreTableToPointInTimeInput, optFns ...func(*Options)) (*RestoreTableToPointInTimeOutput, error) {
 	if params == nil {
@@ -70,6 +86,11 @@ type RestoreTableToPointInTimeInput struct {
 	// should match existing secondary indexes. You can choose to exclude some or all
 	// of the indexes at the time of restore.
 	LocalSecondaryIndexOverride []types.LocalSecondaryIndex
+
+	// Sets the maximum number of read and write units for the specified on-demand
+	// table. If you use this parameter, you must specify MaxReadRequestUnits ,
+	// MaxWriteRequestUnits , or both.
+	OnDemandThroughputOverride *types.OnDemandThroughput
 
 	// Provisioned throughput settings for the restored table.
 	ProvisionedThroughputOverride *types.ProvisionedThroughput
@@ -127,25 +148,28 @@ func (c *Client) addOperationRestoreTableToPointInTimeMiddlewares(stack *middlew
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -163,13 +187,19 @@ func (c *Client) addOperationRestoreTableToPointInTimeMiddlewares(stack *middlew
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpRestoreTableToPointInTimeValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opRestoreTableToPointInTime(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -188,6 +218,18 @@ func (c *Client) addOperationRestoreTableToPointInTimeMiddlewares(stack *middlew
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

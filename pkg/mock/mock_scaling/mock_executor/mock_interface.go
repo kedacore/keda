@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	executor "github.com/kedacore/keda/v2/pkg/scaling/executor"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -21,6 +22,7 @@ import (
 type MockScaleExecutor struct {
 	ctrl     *gomock.Controller
 	recorder *MockScaleExecutorMockRecorder
+	isgomock struct{}
 }
 
 // MockScaleExecutorMockRecorder is the mock recorder for MockScaleExecutor.
@@ -41,25 +43,25 @@ func (m *MockScaleExecutor) EXPECT() *MockScaleExecutorMockRecorder {
 }
 
 // RequestJobScale mocks base method.
-func (m *MockScaleExecutor) RequestJobScale(ctx context.Context, scaledJob *v1alpha1.ScaledJob, isActive bool, scaleTo, maxScale int64) {
+func (m *MockScaleExecutor) RequestJobScale(ctx context.Context, scaledJob *v1alpha1.ScaledJob, isActive, isError bool, scaleTo, maxScale int64) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RequestJobScale", ctx, scaledJob, isActive, scaleTo, maxScale)
+	m.ctrl.Call(m, "RequestJobScale", ctx, scaledJob, isActive, isError, scaleTo, maxScale)
 }
 
 // RequestJobScale indicates an expected call of RequestJobScale.
-func (mr *MockScaleExecutorMockRecorder) RequestJobScale(ctx, scaledJob, isActive, scaleTo, maxScale any) *gomock.Call {
+func (mr *MockScaleExecutorMockRecorder) RequestJobScale(ctx, scaledJob, isActive, isError, scaleTo, maxScale any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestJobScale", reflect.TypeOf((*MockScaleExecutor)(nil).RequestJobScale), ctx, scaledJob, isActive, scaleTo, maxScale)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestJobScale", reflect.TypeOf((*MockScaleExecutor)(nil).RequestJobScale), ctx, scaledJob, isActive, isError, scaleTo, maxScale)
 }
 
 // RequestScale mocks base method.
-func (m *MockScaleExecutor) RequestScale(ctx context.Context, scaledObject *v1alpha1.ScaledObject, isActive, isError bool) {
+func (m *MockScaleExecutor) RequestScale(ctx context.Context, scaledObject *v1alpha1.ScaledObject, isActive, isError bool, options *executor.ScaleExecutorOptions) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RequestScale", ctx, scaledObject, isActive, isError)
+	m.ctrl.Call(m, "RequestScale", ctx, scaledObject, isActive, isError, options)
 }
 
 // RequestScale indicates an expected call of RequestScale.
-func (mr *MockScaleExecutorMockRecorder) RequestScale(ctx, scaledObject, isActive, isError any) *gomock.Call {
+func (mr *MockScaleExecutorMockRecorder) RequestScale(ctx, scaledObject, isActive, isError, options any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestScale", reflect.TypeOf((*MockScaleExecutor)(nil).RequestScale), ctx, scaledObject, isActive, isError)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestScale", reflect.TypeOf((*MockScaleExecutor)(nil).RequestScale), ctx, scaledObject, isActive, isError, options)
 }

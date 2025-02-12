@@ -5,6 +5,7 @@ package azservicebus
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/amqpwrap"
@@ -12,35 +13,25 @@ import (
 	"github.com/Azure/go-amqp"
 )
 
-type settler interface {
-	CompleteMessage(ctx context.Context, message *ReceivedMessage, options *CompleteMessageOptions) error
-	AbandonMessage(ctx context.Context, message *ReceivedMessage, options *AbandonMessageOptions) error
-	DeferMessage(ctx context.Context, message *ReceivedMessage, options *DeferMessageOptions) error
-	DeadLetterMessage(ctx context.Context, message *ReceivedMessage, options *DeadLetterOptions) error
-}
-
 type messageSettler struct {
 	links        internal.AMQPLinks
 	retryOptions RetryOptions
 
-	// used only for tests
-	onlyDoBackupSettlement bool
+	// these are used for testing so we can tell which paths we tried to settle.
+	notifySettleOnLink       func(message *ReceivedMessage)
+	notifySettleOnManagement func(message *ReceivedMessage)
 }
 
-func newMessageSettler(links internal.AMQPLinks, retryOptions RetryOptions) settler {
+func newMessageSettler(links internal.AMQPLinks, retryOptions RetryOptions) *messageSettler {
 	return &messageSettler{
-		links:        links,
-		retryOptions: retryOptions,
+		links:                    links,
+		retryOptions:             retryOptions,
+		notifySettleOnLink:       func(message *ReceivedMessage) {},
+		notifySettleOnManagement: func(message *ReceivedMessage) {},
 	}
 }
 
-func (s *messageSettler) useManagementLink(m *ReceivedMessage, receiver amqpwrap.AMQPReceiver) bool {
-	return s.onlyDoBackupSettlement ||
-		m.deferred ||
-		m.RawAMQPMessage.linkName != receiver.LinkName()
-}
-
-func (s *messageSettler) settleWithRetries(ctx context.Context, message *ReceivedMessage, settleFn func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error) error {
+func (s *messageSettler) settleWithRetries(ctx context.Context, settleFn func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error) error {
 	if s == nil {
 		return internal.NewErrNonRetriable("messages that are received in `ReceiveModeReceiveAndDelete` mode are not settleable")
 	}
@@ -62,13 +53,25 @@ type CompleteMessageOptions struct {
 }
 
 // CompleteMessage completes a message, deleting it from the queue or subscription.
-func (s *messageSettler) CompleteMessage(ctx context.Context, message *ReceivedMessage, options *CompleteMessageOptions) error {
-	return s.settleWithRetries(ctx, message, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
-		if s.useManagementLink(message, receiver) {
-			return internal.SendDisposition(ctx, rpcLink, receiver.LinkName(), bytesToAMQPUUID(message.LockToken), internal.Disposition{Status: internal.CompletedDisposition}, nil)
-		} else {
-			return receiver.AcceptMessage(ctx, message.RawAMQPMessage.inner)
+func (ms *messageSettler) CompleteMessage(ctx context.Context, message *ReceivedMessage, options *CompleteMessageOptions) error {
+	return ms.settleWithRetries(ctx, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
+		var err error
+
+		if shouldSettleOnReceiver(message) {
+			ms.notifySettleOnLink(message)
+			err = receiver.AcceptMessage(ctx, message.RawAMQPMessage.inner)
+
+			// NOTE: we're intentionally falling through. If we failed to settle
+			// we might be able to attempt to settle against the management link.
 		}
+
+		if shouldSettleOnMgmtLink(err, message) {
+			ms.notifySettleOnManagement(message)
+			return internal.SettleOnMgmtLink(ctx, rpcLink, receiver.LinkName(),
+				bytesToAMQPUUID(message.LockToken), internal.Disposition{Status: internal.CompletedDisposition}, nil)
+		}
+
+		return err
 	})
 }
 
@@ -81,9 +84,32 @@ type AbandonMessageOptions struct {
 // AbandonMessage will cause a message to be returned to the queue or subscription.
 // This will increment its delivery count, and potentially cause it to be dead lettered
 // depending on your queue or subscription's configuration.
-func (s *messageSettler) AbandonMessage(ctx context.Context, message *ReceivedMessage, options *AbandonMessageOptions) error {
-	return s.settleWithRetries(ctx, message, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
-		if s.useManagementLink(message, receiver) {
+func (ms *messageSettler) AbandonMessage(ctx context.Context, message *ReceivedMessage, options *AbandonMessageOptions) error {
+	return ms.settleWithRetries(ctx, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
+		var err error
+
+		if shouldSettleOnReceiver(message) {
+			ms.notifySettleOnLink(message)
+
+			var annotations amqp.Annotations
+
+			if options != nil {
+				annotations = newAnnotations(options.PropertiesToModify)
+			}
+
+			err = receiver.ModifyMessage(ctx, message.RawAMQPMessage.inner, &amqp.ModifyMessageOptions{
+				DeliveryFailed:    false,
+				UndeliverableHere: false,
+				Annotations:       annotations,
+			})
+
+			// NOTE: we're intentionally falling through. If we failed to settle
+			// we might be able to attempt to settle against the management link.
+		}
+
+		if shouldSettleOnMgmtLink(err, message) {
+			ms.notifySettleOnManagement(message)
+
 			d := internal.Disposition{
 				Status: internal.AbandonedDisposition,
 			}
@@ -94,20 +120,10 @@ func (s *messageSettler) AbandonMessage(ctx context.Context, message *ReceivedMe
 				propertiesToModify = options.PropertiesToModify
 			}
 
-			return internal.SendDisposition(ctx, rpcLink, receiver.LinkName(), bytesToAMQPUUID(message.LockToken), d, propertiesToModify)
+			return internal.SettleOnMgmtLink(ctx, rpcLink, receiver.LinkName(), bytesToAMQPUUID(message.LockToken), d, propertiesToModify)
 		}
 
-		var annotations amqp.Annotations
-
-		if options != nil {
-			annotations = newAnnotations(options.PropertiesToModify)
-		}
-
-		return receiver.ModifyMessage(ctx, message.RawAMQPMessage.inner, &amqp.ModifyMessageOptions{
-			DeliveryFailed:    false,
-			UndeliverableHere: false,
-			Annotations:       annotations,
-		})
+		return err
 	})
 }
 
@@ -119,9 +135,33 @@ type DeferMessageOptions struct {
 
 // DeferMessage will cause a message to be deferred. Deferred messages
 // can be received using `Receiver.ReceiveDeferredMessages`.
-func (s *messageSettler) DeferMessage(ctx context.Context, message *ReceivedMessage, options *DeferMessageOptions) error {
-	return s.settleWithRetries(ctx, message, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
-		if s.useManagementLink(message, receiver) {
+func (ms *messageSettler) DeferMessage(ctx context.Context, message *ReceivedMessage, options *DeferMessageOptions) error {
+	return ms.settleWithRetries(ctx, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
+		var err error
+
+		if shouldSettleOnReceiver(message) {
+			ms.notifySettleOnLink(message)
+
+			var annotations amqp.Annotations
+
+			if options != nil {
+				annotations = newAnnotations(options.PropertiesToModify)
+			}
+
+			err = receiver.ModifyMessage(ctx, message.RawAMQPMessage.inner,
+				&amqp.ModifyMessageOptions{
+					DeliveryFailed:    false,
+					UndeliverableHere: true,
+					Annotations:       annotations,
+				})
+
+			// NOTE: we're intentionally falling through. If we failed to settle
+			// we might be able to attempt to settle against the management link.
+		}
+
+		if shouldSettleOnMgmtLink(err, message) {
+			ms.notifySettleOnManagement(message)
+
 			d := internal.Disposition{
 				Status: internal.DeferredDisposition,
 			}
@@ -132,21 +172,10 @@ func (s *messageSettler) DeferMessage(ctx context.Context, message *ReceivedMess
 				propertiesToModify = options.PropertiesToModify
 			}
 
-			return internal.SendDisposition(ctx, rpcLink, receiver.LinkName(), bytesToAMQPUUID(message.LockToken), d, propertiesToModify)
+			return internal.SettleOnMgmtLink(ctx, rpcLink, receiver.LinkName(), bytesToAMQPUUID(message.LockToken), d, propertiesToModify)
 		}
 
-		var annotations amqp.Annotations
-
-		if options != nil {
-			annotations = newAnnotations(options.PropertiesToModify)
-		}
-
-		return receiver.ModifyMessage(ctx, message.RawAMQPMessage.inner,
-			&amqp.ModifyMessageOptions{
-				DeliveryFailed:    false,
-				UndeliverableHere: true,
-				Annotations:       annotations,
-			})
+		return err
 	})
 }
 
@@ -166,8 +195,8 @@ type DeadLetterOptions struct {
 // DeadLetterMessage settles a message by moving it to the dead letter queue for a
 // queue or subscription. To receive these messages create a receiver with `Client.NewReceiver()`
 // using the `SubQueue` option.
-func (s *messageSettler) DeadLetterMessage(ctx context.Context, message *ReceivedMessage, options *DeadLetterOptions) error {
-	return s.settleWithRetries(ctx, message, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
+func (ms *messageSettler) DeadLetterMessage(ctx context.Context, message *ReceivedMessage, options *DeadLetterOptions) error {
+	return ms.settleWithRetries(ctx, func(receiver amqpwrap.AMQPReceiver, rpcLink amqpwrap.RPCLink) error {
 		reason := ""
 		description := ""
 
@@ -181,7 +210,36 @@ func (s *messageSettler) DeadLetterMessage(ctx context.Context, message *Receive
 			}
 		}
 
-		if s.useManagementLink(message, receiver) {
+		var err error
+
+		if shouldSettleOnReceiver(message) {
+			ms.notifySettleOnLink(message)
+
+			info := map[string]any{
+				"DeadLetterReason":           reason,
+				"DeadLetterErrorDescription": description,
+			}
+
+			if options != nil && options.PropertiesToModify != nil {
+				for key, val := range options.PropertiesToModify {
+					info[key] = val
+				}
+			}
+
+			amqpErr := amqp.Error{
+				Condition: "com.microsoft:dead-letter",
+				Info:      info,
+			}
+
+			err = receiver.RejectMessage(ctx, message.RawAMQPMessage.inner, &amqpErr)
+
+			// NOTE: we're intentionally falling through. If we failed to settle
+			// we might be able to attempt to settle against the management link.
+		}
+
+		if shouldSettleOnMgmtLink(err, message) {
+			ms.notifySettleOnManagement(message)
+
 			d := internal.Disposition{
 				Status:                internal.SuspendedDisposition,
 				DeadLetterDescription: &description,
@@ -194,26 +252,10 @@ func (s *messageSettler) DeadLetterMessage(ctx context.Context, message *Receive
 				propertiesToModify = options.PropertiesToModify
 			}
 
-			return internal.SendDisposition(ctx, rpcLink, receiver.LinkName(), bytesToAMQPUUID(message.LockToken), d, propertiesToModify)
+			return internal.SettleOnMgmtLink(ctx, rpcLink, receiver.LinkName(), bytesToAMQPUUID(message.LockToken), d, propertiesToModify)
 		}
 
-		info := map[string]any{
-			"DeadLetterReason":           reason,
-			"DeadLetterErrorDescription": description,
-		}
-
-		if options != nil && options.PropertiesToModify != nil {
-			for key, val := range options.PropertiesToModify {
-				info[key] = val
-			}
-		}
-
-		amqpErr := amqp.Error{
-			Condition: "com.microsoft:dead-letter",
-			Info:      info,
-		}
-
-		return receiver.RejectMessage(ctx, message.RawAMQPMessage.inner, &amqpErr)
+		return err
 	})
 }
 
@@ -234,4 +276,31 @@ func newAnnotations(propertiesToModify map[string]any) amqp.Annotations {
 	}
 
 	return annotations
+}
+
+// shouldSettleOnReceiver determines if a message can be settled on an AMQP
+// link or should only be settled on the management link.
+func shouldSettleOnReceiver(message *ReceivedMessage) bool {
+	// deferred messages always go through the management link
+	return !message.settleOnMgmtLink
+}
+
+// shouldSettleOnMgmtLink checks if we can fallback to settling on the management
+// link (if `err` was a connection/link failure) or if the message always needs
+// to be settled on the management link, like with deferred messages.
+func shouldSettleOnMgmtLink(settlementErr error, message *ReceivedMessage) bool {
+	if message.settleOnMgmtLink {
+		// deferred messages always go through the management link
+		return true
+	}
+
+	if settlementErr == nil {
+		// we settled on the original receiver
+		return false
+	}
+
+	// if we got a connection or link error we can try settling against the mgmt link since
+	// our original receiver is gone.
+	var linkErr *amqp.LinkError
+	return errors.As(settlementErr, &linkErr)
 }

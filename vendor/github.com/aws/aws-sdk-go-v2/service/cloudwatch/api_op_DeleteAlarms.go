@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
@@ -14,20 +13,27 @@ import (
 // Deletes the specified alarms. You can delete up to 100 alarms in one operation.
 // However, this total can include no more than one composite alarm. For example,
 // you could delete 99 metric alarms and one composite alarms with one operation,
-// but you can't delete two composite alarms with one operation. If you specify an
-// incorrect alarm name or make any other error in the operation, no alarms are
-// deleted. To confirm that alarms were deleted successfully, you can use the
-// DescribeAlarms (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_DescribeAlarms.html)
-// operation after using DeleteAlarms . It is possible to create a loop or cycle of
-// composite alarms, where composite alarm A depends on composite alarm B, and
-// composite alarm B also depends on composite alarm A. In this scenario, you can't
-// delete any composite alarm that is part of the cycle because there is always
-// still a composite alarm that depends on that alarm that you want to delete. To
-// get out of such a situation, you must break the cycle by changing the rule of
-// one of the composite alarms in the cycle to remove a dependency that creates the
-// cycle. The simplest change to make to break a cycle is to change the AlarmRule
-// of one of the alarms to false . Additionally, the evaluation of composite alarms
-// stops if CloudWatch detects a cycle in the evaluation path.
+// but you can't delete two composite alarms with one operation.
+//
+// If you specify an incorrect alarm name or make any other error in the
+// operation, no alarms are deleted. To confirm that alarms were deleted
+// successfully, you can use the [DescribeAlarms]operation after using DeleteAlarms .
+//
+// It is possible to create a loop or cycle of composite alarms, where composite
+// alarm A depends on composite alarm B, and composite alarm B also depends on
+// composite alarm A. In this scenario, you can't delete any composite alarm that
+// is part of the cycle because there is always still a composite alarm that
+// depends on that alarm that you want to delete.
+//
+// To get out of such a situation, you must break the cycle by changing the rule
+// of one of the composite alarms in the cycle to remove a dependency that creates
+// the cycle. The simplest change to make to break a cycle is to change the
+// AlarmRule of one of the alarms to false .
+//
+// Additionally, the evaluation of composite alarms stops if CloudWatch detects a
+// cycle in the evaluation path.
+//
+// [DescribeAlarms]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_DescribeAlarms.html
 func (c *Client) DeleteAlarms(ctx context.Context, params *DeleteAlarmsInput, optFns ...func(*Options)) (*DeleteAlarmsOutput, error) {
 	if params == nil {
 		params = &DeleteAlarmsInput{}
@@ -82,25 +88,28 @@ func (c *Client) addOperationDeleteAlarmsMiddlewares(stack *middleware.Stack, op
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -115,13 +124,19 @@ func (c *Client) addOperationDeleteAlarmsMiddlewares(stack *middleware.Stack, op
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDeleteAlarmsValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteAlarms(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -134,6 +149,18 @@ func (c *Client) addOperationDeleteAlarmsMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

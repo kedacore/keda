@@ -23,20 +23,21 @@ import (
 
 // DropIndexes performs an dropIndexes operation.
 type DropIndexes struct {
-	index        *string
-	maxTime      *time.Duration
-	session      *session.Client
-	clock        *session.ClusterClock
-	collection   string
-	monitor      *event.CommandMonitor
-	crypt        driver.Crypt
-	database     string
-	deployment   driver.Deployment
-	selector     description.ServerSelector
-	writeConcern *writeconcern.WriteConcern
-	result       DropIndexesResult
-	serverAPI    *driver.ServerAPIOptions
-	timeout      *time.Duration
+	authenticator driver.Authenticator
+	index         any
+	maxTime       *time.Duration
+	session       *session.Client
+	clock         *session.ClusterClock
+	collection    string
+	monitor       *event.CommandMonitor
+	crypt         driver.Crypt
+	database      string
+	deployment    driver.Deployment
+	selector      description.ServerSelector
+	writeConcern  *writeconcern.WriteConcern
+	result        DropIndexesResult
+	serverAPI     *driver.ServerAPIOptions
+	timeout       *time.Duration
 }
 
 // DropIndexesResult represents a dropIndexes result returned by the server.
@@ -52,8 +53,7 @@ func buildDropIndexesResult(response bsoncore.Document) (DropIndexesResult, erro
 	}
 	dir := DropIndexesResult{}
 	for _, element := range elements {
-		switch element.Key() {
-		case "nIndexesWas":
+		if element.Key() == "nIndexesWas" {
 			var ok bool
 			dir.NIndexesWas, ok = element.Value().AsInt32OK()
 			if !ok {
@@ -65,9 +65,9 @@ func buildDropIndexesResult(response bsoncore.Document) (DropIndexesResult, erro
 }
 
 // NewDropIndexes constructs and returns a new DropIndexes.
-func NewDropIndexes(index string) *DropIndexes {
+func NewDropIndexes(index any) *DropIndexes {
 	return &DropIndexes{
-		index: &index,
+		index: index,
 	}
 }
 
@@ -101,25 +101,33 @@ func (di *DropIndexes) Execute(ctx context.Context) error {
 		ServerAPI:         di.serverAPI,
 		Timeout:           di.timeout,
 		Name:              driverutil.DropIndexesOp,
+		Authenticator:     di.authenticator,
 	}.Execute(ctx)
 
 }
 
 func (di *DropIndexes) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
 	dst = bsoncore.AppendStringElement(dst, "dropIndexes", di.collection)
-	if di.index != nil {
-		dst = bsoncore.AppendStringElement(dst, "index", *di.index)
+
+	switch t := di.index.(type) {
+	case string:
+		dst = bsoncore.AppendStringElement(dst, "index", t)
+	case bsoncore.Document:
+		if di.index != nil {
+			dst = bsoncore.AppendDocumentElement(dst, "index", t)
+		}
 	}
+
 	return dst, nil
 }
 
 // Index specifies the name of the index to drop. If '*' is specified, all indexes will be dropped.
-func (di *DropIndexes) Index(index string) *DropIndexes {
+func (di *DropIndexes) Index(index any) *DropIndexes {
 	if di == nil {
 		di = new(DropIndexes)
 	}
 
-	di.index = &index
+	di.index = index
 	return di
 }
 
@@ -240,5 +248,15 @@ func (di *DropIndexes) Timeout(timeout *time.Duration) *DropIndexes {
 	}
 
 	di.timeout = timeout
+	return di
+}
+
+// Authenticator sets the authenticator to use for this operation.
+func (di *DropIndexes) Authenticator(authenticator driver.Authenticator) *DropIndexes {
+	if di == nil {
+		di = new(DropIndexes)
+	}
+
+	di.authenticator = authenticator
 	return di
 }

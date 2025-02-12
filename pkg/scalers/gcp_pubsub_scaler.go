@@ -48,6 +48,8 @@ type pubsubMetadata struct {
 	gcpAuthorization *gcp.AuthorizationMetadata
 	triggerIndex     int
 	aggregation      string
+	timeHorizon      string
+	valueIfNull      *float64
 }
 
 // NewPubSubScaler creates a new pubsubScaler
@@ -69,6 +71,80 @@ func NewPubSubScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		metadata:   meta,
 		logger:     logger,
 	}, nil
+}
+
+func parsePubSubResourceConfig(config *scalersconfig.ScalerConfig, meta *pubsubMetadata) error {
+	sub, subPresent := config.TriggerMetadata["subscriptionName"]
+	subFromEnv, subFromEnvPresent := config.TriggerMetadata["subscriptionNameFromEnv"]
+	if subPresent && subFromEnvPresent {
+		return fmt.Errorf("exactly one of subscriptionName or subscriptionNameFromEnv is allowed")
+	}
+	hasSub := subPresent || subFromEnvPresent
+
+	topic, topicPresent := config.TriggerMetadata["topicName"]
+	topicFromEnv, topicFromEnvPresent := config.TriggerMetadata["topicNameFromEnv"]
+	if topicPresent && topicFromEnvPresent {
+		return fmt.Errorf("exactly one of topicName or topicNameFromEnv is allowed")
+	}
+	hasTopic := topicPresent || topicFromEnvPresent
+
+	if (!hasSub && !hasTopic) || (hasSub && hasTopic) {
+		return fmt.Errorf("exactly one of subscription or topic name must be given")
+	}
+
+	if hasSub {
+		if subPresent {
+			if sub == "" {
+				return fmt.Errorf("no subscription name given")
+			}
+
+			meta.resourceName = sub
+		} else {
+			if subFromEnv == "" {
+				return fmt.Errorf("no environment variable name given for resolving subscription name")
+			}
+
+			resolvedSub, ok := config.ResolvedEnv[subFromEnv]
+			if !ok {
+				return fmt.Errorf("resolved environment doesn't contain name '%s'", subFromEnv)
+			}
+
+			if resolvedSub == "" {
+				return fmt.Errorf("resolved environment subscription name is empty")
+			}
+
+			meta.resourceName = config.ResolvedEnv[subFromEnv]
+		}
+
+		meta.resourceType = resourceTypePubSubSubscription
+	} else {
+		if topicPresent {
+			if topic == "" {
+				return fmt.Errorf("no topic name given")
+			}
+
+			meta.resourceName = topic
+		} else {
+			if topicFromEnv == "" {
+				return fmt.Errorf("no environment variable name given for resolving topic name")
+			}
+
+			resolvedTopic, ok := config.ResolvedEnv[topicFromEnv]
+			if !ok {
+				return fmt.Errorf("resolved environment doesn't contain name '%s'", topicFromEnv)
+			}
+
+			if resolvedTopic == "" {
+				return fmt.Errorf("resolved environment topic name is empty")
+			}
+
+			meta.resourceName = config.ResolvedEnv[topicFromEnv]
+		}
+
+		meta.resourceType = resourceTypePubSubTopic
+	}
+
+	return nil
 }
 
 func parsePubSubMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*pubsubMetadata, error) {
@@ -104,28 +180,21 @@ func parsePubSubMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger)
 		}
 	}
 
-	meta.aggregation = config.TriggerMetadata["aggregation"]
-
-	sub, subPresent := config.TriggerMetadata["subscriptionName"]
-	topic, topicPresent := config.TriggerMetadata["topicName"]
-	if (!subPresent && !topicPresent) || (subPresent && topicPresent) {
-		return nil, fmt.Errorf("exactly one of subscription or topic name must be given")
+	if val, ok := config.TriggerMetadata["valueIfNull"]; ok && val != "" {
+		valueIfNull, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("valueIfNull parsing error %w", err)
+		}
+		meta.valueIfNull = &valueIfNull
 	}
 
-	if subPresent {
-		if sub == "" {
-			return nil, fmt.Errorf("no subscription name given")
-		}
+	meta.aggregation = config.TriggerMetadata["aggregation"]
 
-		meta.resourceName = sub
-		meta.resourceType = resourceTypePubSubSubscription
-	} else {
-		if topic == "" {
-			return nil, fmt.Errorf("no topic name given")
-		}
+	meta.timeHorizon = config.TriggerMetadata["timeHorizon"]
 
-		meta.resourceName = topic
-		meta.resourceType = resourceTypePubSubTopic
+	err := parsePubSubResourceConfig(config, &meta)
+	if err != nil {
+		return nil, err
 	}
 
 	meta.activationValue = 0
@@ -223,7 +292,7 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float
 	}
 	resourceID, projectID := getResourceData(s)
 	query, err := s.client.BuildMQLQuery(
-		projectID, s.metadata.resourceType, metricType, resourceID, s.metadata.aggregation,
+		projectID, s.metadata.resourceType, metricType, resourceID, s.metadata.aggregation, s.metadata.timeHorizon,
 	)
 	if err != nil {
 		return -1, err
@@ -231,7 +300,7 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float
 
 	// Pubsub metrics are collected every 60 seconds so no need to aggregate them.
 	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-pubsub
-	return s.client.QueryMetrics(ctx, projectID, query)
+	return s.client.QueryMetrics(ctx, projectID, query, s.metadata.valueIfNull)
 }
 
 func getResourceData(s *pubsubScaler) (string, string) {

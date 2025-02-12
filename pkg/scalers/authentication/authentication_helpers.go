@@ -211,16 +211,16 @@ func CreateHTTPRoundTripper(roundTripperType TransportType, auth *AuthMeta, conf
 		if auth != nil {
 			if auth.EnableBasicAuth {
 				rt = pConfig.NewBasicAuthRoundTripper(
-					auth.Username,
-					pConfig.Secret(auth.Password),
-					"", "", roundTripper,
+					pConfig.NewInlineSecret(auth.Username),
+					pConfig.NewInlineSecret(auth.Password),
+					roundTripper,
 				)
 			}
 
 			if auth.EnableBearerAuth {
 				rt = pConfig.NewAuthorizationCredentialsRoundTripper(
 					"Bearer",
-					pConfig.Secret(auth.BearerToken),
+					pConfig.NewInlineSecret(auth.BearerToken),
 					roundTripper,
 				)
 			}

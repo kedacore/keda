@@ -6,13 +6,14 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/amp/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Creates a new AMP workspace.
+// Creates a Prometheus workspace. A workspace is a logical space dedicated to the
+// storage and querying of Prometheus metrics. You can have one or more workspaces
+// in each Region in your account.
 func (c *Client) CreateWorkspace(ctx context.Context, params *CreateWorkspaceInput, optFns ...func(*Options)) (*CreateWorkspaceOutput, error) {
 	if params == nil {
 		params = &CreateWorkspaceInput{}
@@ -31,18 +32,25 @@ func (c *Client) CreateWorkspace(ctx context.Context, params *CreateWorkspaceInp
 // Represents the input of a CreateWorkspace operation.
 type CreateWorkspaceInput struct {
 
-	// An optional user-assigned alias for this workspace. This alias is for user
-	// reference and does not need to be unique.
+	// An alias that you assign to this workspace to help you identify it. It does not
+	// need to be unique.
+	//
+	// Blank spaces at the beginning or end of the alias that you specify will be
+	// trimmed from the value used.
 	Alias *string
 
-	// Optional, unique, case-sensitive, user-provided identifier to ensure the
-	// idempotency of the request.
+	// A unique identifier that you can provide to ensure the idempotency of the
+	// request. Case-sensitive.
 	ClientToken *string
 
-	// Optional, customer managed KMS key used to encrypt data for this workspace
+	// (optional) The ARN for a customer managed KMS key to use for encrypting data
+	// within your workspace. For more information about using your own key in your
+	// workspace, see [Encryption at rest]in the Amazon Managed Service for Prometheus User Guide.
+	//
+	// [Encryption at rest]: https://docs.aws.amazon.com/prometheus/latest/userguide/encryption-at-rest-Amazon-Service-Prometheus.html
 	KmsKeyArn *string
 
-	// Optional, user-provided tags for this workspace.
+	// The list of tag keys and values to associate with the workspace.
 	Tags map[string]string
 
 	noSmithyDocumentSerde
@@ -51,25 +59,27 @@ type CreateWorkspaceInput struct {
 // Represents the output of a CreateWorkspace operation.
 type CreateWorkspaceOutput struct {
 
-	// The ARN of the workspace that was just created.
+	// The ARN for the new workspace.
 	//
 	// This member is required.
 	Arn *string
 
-	// The status of the workspace that was just created (usually CREATING).
+	// The current status of the new workspace. Immediately after you create the
+	// workspace, the status is usually CREATING .
 	//
 	// This member is required.
 	Status *types.WorkspaceStatus
 
-	// The generated ID of the workspace that was just created.
+	// The unique ID for the new workspace.
 	//
 	// This member is required.
 	WorkspaceId *string
 
-	// Customer managed KMS key ARN for this workspace
+	// (optional) If the workspace was created with a customer managed KMS key, the
+	// ARN for the key used.
 	KmsKeyArn *string
 
-	// The tags of this workspace.
+	// The list of tag keys and values that are associated with the workspace.
 	Tags map[string]string
 
 	// Metadata pertaining to the operation's result.
@@ -100,25 +110,28 @@ func (c *Client) addOperationCreateWorkspaceMiddlewares(stack *middleware.Stack,
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -133,13 +146,19 @@ func (c *Client) addOperationCreateWorkspaceMiddlewares(stack *middleware.Stack,
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addIdempotencyToken_opCreateWorkspaceMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateWorkspace(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -152,6 +171,18 @@ func (c *Client) addOperationCreateWorkspaceMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

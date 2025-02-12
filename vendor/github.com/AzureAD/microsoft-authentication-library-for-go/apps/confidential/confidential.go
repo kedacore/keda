@@ -18,6 +18,8 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/cache"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/base"
@@ -48,8 +50,8 @@ duplication.
 
 .Net People, Take note on X509:
 This uses x509.Certificates and private keys. x509 does not store private keys. .Net
-has some x509.Certificate2 thing that has private keys, but that is just some bullcrap that .Net
-added, it doesn't exist in real life. As such I've put a PEM decoder into here.
+has a x509.Certificate2 abstraction that has private keys, but that just a strange invention.
+As such I've put a PEM decoder into here.
 */
 
 // TODO(msal): This should have example code for each method on client using Go's example doc framework.
@@ -315,16 +317,21 @@ func New(authority, clientID string, cred Credential, options ...Option) (Client
 	if err != nil {
 		return Client{}, err
 	}
-
+	autoEnabledRegion := os.Getenv("MSAL_FORCE_REGION")
 	opts := clientOptions{
 		authority: authority,
 		// if the caller specified a token provider, it will handle all details of authentication, using Client only as a token cache
 		disableInstanceDiscovery: cred.tokenProvider != nil,
 		httpClient:               shared.DefaultClient,
+		azureRegion:              autoEnabledRegion,
 	}
 	for _, o := range options {
 		o(&opts)
 	}
+	if strings.EqualFold(opts.azureRegion, "DisableMsalForceRegion") {
+		opts.azureRegion = ""
+	}
+
 	baseOpts := []base.Option{
 		base.WithCacheAccessor(opts.accessor),
 		base.WithClientCapabilities(opts.capabilities),

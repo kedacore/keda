@@ -65,8 +65,7 @@ func (n *BinaryNode) String() string {
 	var lhs, rhs string
 	var lwrap, rwrap bool
 
-	lb, ok := n.Left.(*BinaryNode)
-	if ok {
+	if lb, ok := n.Left.(*BinaryNode); ok {
 		if operator.Less(lb.Operator, n.Operator) {
 			lwrap = true
 		}
@@ -77,15 +76,20 @@ func (n *BinaryNode) String() string {
 			lwrap = true
 		}
 	}
-
-	rb, ok := n.Right.(*BinaryNode)
-	if ok {
+	if rb, ok := n.Right.(*BinaryNode); ok {
 		if operator.Less(rb.Operator, n.Operator) {
 			rwrap = true
 		}
 		if operator.IsBoolean(rb.Operator) && n.Operator != rb.Operator {
 			rwrap = true
 		}
+	}
+
+	if _, ok := n.Left.(*ConditionalNode); ok {
+		lwrap = true
+	}
+	if _, ok := n.Right.(*ConditionalNode); ok {
+		rwrap = true
 	}
 
 	if lwrap {
@@ -108,20 +112,25 @@ func (n *ChainNode) String() string {
 }
 
 func (n *MemberNode) String() string {
+	node := n.Node.String()
+	if _, ok := n.Node.(*BinaryNode); ok {
+		node = fmt.Sprintf("(%s)", node)
+	}
+
 	if n.Optional {
 		if str, ok := n.Property.(*StringNode); ok && utils.IsValidIdentifier(str.Value) {
-			return fmt.Sprintf("%s?.%s", n.Node.String(), str.Value)
+			return fmt.Sprintf("%s?.%s", node, str.Value)
 		} else {
-			return fmt.Sprintf("get(%s, %s)", n.Node.String(), n.Property.String())
+			return fmt.Sprintf("%s?.[%s]", node, n.Property.String())
 		}
 	}
 	if str, ok := n.Property.(*StringNode); ok && utils.IsValidIdentifier(str.Value) {
 		if _, ok := n.Node.(*PointerNode); ok {
 			return fmt.Sprintf(".%s", str.Value)
 		}
-		return fmt.Sprintf("%s.%s", n.Node.String(), str.Value)
+		return fmt.Sprintf("%s.%s", node, str.Value)
 	}
-	return fmt.Sprintf("%s[%s]", n.Node.String(), n.Property.String())
+	return fmt.Sprintf("%s[%s]", node, n.Property.String())
 }
 
 func (n *SliceNode) String() string {
@@ -202,5 +211,11 @@ func (n *MapNode) String() string {
 }
 
 func (n *PairNode) String() string {
-	return fmt.Sprintf("%s: %s", n.Key.String(), n.Value.String())
+	if str, ok := n.Key.(*StringNode); ok {
+		if utils.IsValidIdentifier(str.Value) {
+			return fmt.Sprintf("%s: %s", str.Value, n.Value.String())
+		}
+		return fmt.Sprintf("%s: %s", str.String(), n.Value.String())
+	}
+	return fmt.Sprintf("(%s): %s", n.Key.String(), n.Value.String())
 }

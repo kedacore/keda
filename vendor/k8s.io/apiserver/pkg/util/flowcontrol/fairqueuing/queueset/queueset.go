@@ -33,11 +33,6 @@ import (
 	fqrequest "k8s.io/apiserver/pkg/util/flowcontrol/request"
 	"k8s.io/apiserver/pkg/util/shufflesharding"
 	"k8s.io/klog/v2"
-
-	// The following hack is needed to work around a tooling deficiency.
-	// Packages imported only for test code are not included in vendor.
-	// See https://kubernetes.slack.com/archives/C0EG7JC6T/p1626985671458800?thread_ts=1626983387.450800&cid=C0EG7JC6T
-	_ "k8s.io/utils/clock/testing"
 )
 
 const nsTimeFmt = "2006-01-02 15:04:05.000000000"
@@ -53,7 +48,7 @@ type queueSetFactory struct {
 // - whose Set method is invoked with the queueSet locked, and
 // - whose Get method is invoked with the queueSet not locked.
 // The parameters are the same as for `promise.NewWriteOnce`.
-type promiseFactory func(initial interface{}, doneCh <-chan struct{}, doneVal interface{}) promise.WriteOnce
+type promiseFactory func(initial interface{}, doneCtx context.Context, doneVal interface{}) promise.WriteOnce
 
 // promiseFactoryFactory returns the promiseFactory to use for the given queueSet
 type promiseFactoryFactory func(*queueSet) promiseFactory
@@ -567,7 +562,7 @@ func (qs *queueSet) shuffleShardAndRejectOrEnqueueLocked(ctx context.Context, wo
 		fsName:            fsName,
 		flowDistinguisher: flowDistinguisher,
 		ctx:               ctx,
-		decision:          qs.promiseFactory(nil, ctx.Done(), decisionCancel),
+		decision:          qs.promiseFactory(nil, ctx, decisionCancel),
 		arrivalTime:       qs.clock.Now(),
 		arrivalR:          qs.currentR,
 		queue:             queue,
@@ -670,7 +665,7 @@ func (qs *queueSet) dispatchSansQueueLocked(ctx context.Context, workEstimate *f
 		flowDistinguisher: flowDistinguisher,
 		ctx:               ctx,
 		startTime:         now,
-		decision:          qs.promiseFactory(decisionExecute, ctx.Done(), decisionCancel),
+		decision:          qs.promiseFactory(decisionExecute, ctx, decisionCancel),
 		arrivalTime:       now,
 		arrivalR:          qs.currentR,
 		descr1:            descr1,
@@ -792,11 +787,11 @@ func (qs *queueSet) findDispatchQueueToBoundLocked() (*queue, *request) {
 		queue := qs.queues[qs.robinIndex]
 		oldestWaiting, _ := queue.requestsWaiting.Peek()
 		if oldestWaiting != nil {
-			sMin = ssMin(sMin, queue.nextDispatchR)
-			sMax = ssMax(sMax, queue.nextDispatchR)
+			sMin = min(sMin, queue.nextDispatchR)
+			sMax = max(sMax, queue.nextDispatchR)
 			estimatedWorkInProgress := fqrequest.SeatsTimesDuration(float64(queue.seatsInUse), qs.estimatedServiceDuration)
-			dsMin = ssMin(dsMin, queue.nextDispatchR-estimatedWorkInProgress)
-			dsMax = ssMax(dsMax, queue.nextDispatchR-estimatedWorkInProgress)
+			dsMin = min(dsMin, queue.nextDispatchR-estimatedWorkInProgress)
+			dsMax = max(dsMax, queue.nextDispatchR-estimatedWorkInProgress)
 			currentVirtualFinish := queue.nextDispatchR + oldestWaiting.totalWork()
 			klog.V(11).InfoS("Considering queue to dispatch", "queueSet", qs.qCfg.Name, "queue", qs.robinIndex, "finishR", currentVirtualFinish)
 			if currentVirtualFinish < minVirtualFinish {
@@ -846,20 +841,6 @@ func (qs *queueSet) findDispatchQueueToBoundLocked() (*queue, *request) {
 	}
 	metrics.SetDispatchMetrics(qs.qCfg.Name, qs.currentR.ToFloat(), minQueue.nextDispatchR.ToFloat(), sMin.ToFloat(), sMax.ToFloat(), dsMin.ToFloat(), dsMax.ToFloat())
 	return minQueue, oldestReqFromMinQueue
-}
-
-func ssMin(a, b fqrequest.SeatSeconds) fqrequest.SeatSeconds {
-	if a > b {
-		return b
-	}
-	return a
-}
-
-func ssMax(a, b fqrequest.SeatSeconds) fqrequest.SeatSeconds {
-	if a < b {
-		return b
-	}
-	return a
 }
 
 // finishRequestAndDispatchAsMuchAsPossible is a convenience method

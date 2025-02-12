@@ -21,8 +21,8 @@ pr:
     include:
     - sdk/messaging/azservicebus
 
-stages:
-- template: /eng/pipelines/templates/jobs/archetype-sdk-client.yml
+extends:
+  template: /eng/pipelines/templates/jobs/archetype-sdk-client.yml
   parameters:
     ServiceDirectory: 'messaging/azservicebus'
     RunLiveTests: true
@@ -30,11 +30,17 @@ stages:
     SupportedClouds: 'China'
     CloudConfig:
       Public:
-        SubscriptionConfiguration: $(sub-config-azure-cloud-test-resources)
+        ServiceConnection: azure-sdk-tests
+        SubscriptionConfigurationFilePaths:
+          - eng/common/TestResources/sub-config/AzurePublicMsft.json
       UsGov:
-        SubscriptionConfiguration: $(sub-config-gov-test-resources)
+        ServiceConnection: usgov_azure-sdk-tests
+        SubscriptionConfigurationFilePaths:
+          - eng/common/TestResources/sub-config/AzureUsGovMsft.json
       China:
-        SubscriptionConfiguration: $(sub-config-cn-test-resources)
+        ServiceConnection: china_azure-sdk-tests
+        SubscriptionConfigurationFilePaths:
+          - eng/common/TestResources/sub-config/AzureChinaMsft.json
         MatrixReplace:
           # Use dedicated pool with regional affinity to China cloud
           - Pool=(.*)-general/$1-asia

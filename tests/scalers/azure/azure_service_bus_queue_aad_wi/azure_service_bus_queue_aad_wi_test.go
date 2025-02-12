@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package azure_service_bus_queue_aad_pod_identity_test
+package azure_service_bus_queue_wi_test
 
 import (
 	"context"

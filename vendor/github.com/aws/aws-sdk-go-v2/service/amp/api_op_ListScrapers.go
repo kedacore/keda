@@ -6,14 +6,14 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/amp/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Lists all scrapers in a customer account, including scrapers being created or
-// deleted. You may provide filters to return a more specific list of results.
+// The ListScrapers operation lists all of the scrapers in your account. This
+// includes scrapers being created or deleted. You can optionally filter the
+// returned list.
 func (c *Client) ListScrapers(ctx context.Context, params *ListScrapersInput, optFns ...func(*Options)) (*ListScrapersOutput, error) {
 	if params == nil {
 		params = &ListScrapersInput{}
@@ -32,14 +32,32 @@ func (c *Client) ListScrapers(ctx context.Context, params *ListScrapersInput, op
 // Represents the input of a ListScrapers operation.
 type ListScrapersInput struct {
 
-	// A list of scraper filters.
+	// (Optional) A list of key-value pairs to filter the list of scrapers returned.
+	// Keys include status , sourceArn , destinationArn , and alias .
+	//
+	// Filters on the same key are OR 'd together, and filters on different keys are
+	// AND 'd together. For example, status=ACTIVE&status=CREATING&alias=Test , will
+	// return all scrapers that have the alias Test, and are either in status ACTIVE or
+	// CREATING.
+	//
+	// To find all active scrapers that are sending metrics to a specific Amazon
+	// Managed Service for Prometheus workspace, you would use the ARN of the workspace
+	// in a query:
+	//
+	//     status=ACTIVE&destinationArn=arn:aws:aps:us-east-1:123456789012:workspace/ws-example1-1234-abcd-56ef-123456789012
+	//
+	// If this is included, it filters the results to only the scrapers that match the
+	// filter.
 	Filters map[string][]string
 
-	// Maximum results to return in response (default=100, maximum=1000).
+	// Optional) The maximum number of scrapers to return in one ListScrapers
+	// operation. The range is 1-1000.
+	//
+	// If you omit this parameter, the default of 100 is used.
 	MaxResults *int32
 
-	// Pagination token to request the next page in a paginated list. This token is
-	// obtained from the output of the previous ListScrapers request.
+	// (Optional) The token for the next set of items to return. (You received this
+	// token from a previous call.)
 	NextToken *string
 
 	noSmithyDocumentSerde
@@ -48,13 +66,14 @@ type ListScrapersInput struct {
 // Represents the output of a ListScrapers operation.
 type ListScrapersOutput struct {
 
-	// The list of scrapers, filtered down if a set of filters was provided in the
-	// request.
+	// A list of ScraperSummary structures giving information about scrapers in the
+	// account that match the filters provided.
 	//
 	// This member is required.
 	Scrapers []types.ScraperSummary
 
-	// Pagination token to use when requesting the next page in this list.
+	// A token indicating that there are more results to retrieve. You can use this
+	// token as part of your next ListScrapers operation to retrieve those results.
 	NextToken *string
 
 	// Metadata pertaining to the operation's result.
@@ -85,25 +104,28 @@ func (c *Client) addOperationListScrapersMiddlewares(stack *middleware.Stack, op
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -118,10 +140,16 @@ func (c *Client) addOperationListScrapersMiddlewares(stack *middleware.Stack, op
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListScrapers(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -136,19 +164,27 @@ func (c *Client) addOperationListScrapersMiddlewares(stack *middleware.Stack, op
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
-// ListScrapersAPIClient is a client that implements the ListScrapers operation.
-type ListScrapersAPIClient interface {
-	ListScrapers(context.Context, *ListScrapersInput, ...func(*Options)) (*ListScrapersOutput, error)
-}
-
-var _ ListScrapersAPIClient = (*Client)(nil)
-
 // ListScrapersPaginatorOptions is the paginator options for ListScrapers
 type ListScrapersPaginatorOptions struct {
-	// Maximum results to return in response (default=100, maximum=1000).
+	// Optional) The maximum number of scrapers to return in one ListScrapers
+	// operation. The range is 1-1000.
+	//
+	// If you omit this parameter, the default of 100 is used.
 	Limit int32
 
 	// Set to true if pagination should stop if the service returns a pagination token
@@ -209,6 +245,9 @@ func (p *ListScrapersPaginator) NextPage(ctx context.Context, optFns ...func(*Op
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListScrapers(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -227,6 +266,13 @@ func (p *ListScrapersPaginator) NextPage(ctx context.Context, optFns ...func(*Op
 
 	return result, nil
 }
+
+// ListScrapersAPIClient is a client that implements the ListScrapers operation.
+type ListScrapersAPIClient interface {
+	ListScrapers(context.Context, *ListScrapersInput, ...func(*Options)) (*ListScrapersOutput, error)
+}
+
+var _ ListScrapersAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListScrapers(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{

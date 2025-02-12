@@ -149,6 +149,23 @@ Example:
 
     proto.hasExt(msg, google.expr.proto2.test.int32_ext) // returns true || false
 
+## Lists
+
+Extended functions for list manipulation. As a general note, all indices are
+zero-based.
+
+### Slice
+
+
+Returns a new sub-list using the indexes provided.
+
+    <list>.slice(<int>, <int>) -> <list>
+
+Examples:
+
+    [1,2,3,4].slice(1, 3) // return [2, 3]
+    [1,2,3,4].slice(2, 4) // return [3 ,4]
+
 ## Sets
 
 Sets provides set relationship tests.
@@ -397,3 +414,17 @@ Examples:
 
      'TacoCat'.upperAscii()      // returns 'TACOCAT'
      'TacoCÆt Xii'.upperAscii()  // returns 'TACOCÆT XII'
+
+### Reverse
+
+Returns a new string whose characters are the same as the target string, only formatted in
+reverse order.
+This function relies on converting strings to rune arrays in order to reverse.
+It can be located in Version 3 of strings.
+
+    <string>.reverse() -> <string>
+
+Examples:
+
+    'gums'.reverse() // returns 'smug'
+    'John Smith'.reverse() // returns 'htimS nhoJ'

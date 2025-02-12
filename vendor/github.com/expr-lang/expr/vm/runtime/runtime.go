@@ -6,20 +6,13 @@ import (
 	"fmt"
 	"math"
 	"reflect"
-)
 
-func deref(kind reflect.Kind, value reflect.Value) (reflect.Kind, reflect.Value) {
-	for kind == reflect.Ptr || kind == reflect.Interface {
-		value = value.Elem()
-		kind = value.Kind()
-	}
-	return kind, value
-}
+	"github.com/expr-lang/expr/internal/deref"
+)
 
 func Fetch(from, i any) any {
 	v := reflect.ValueOf(from)
-	kind := v.Kind()
-	if kind == reflect.Invalid {
+	if v.Kind() == reflect.Invalid {
 		panic(fmt.Sprintf("cannot fetch %v from %T", i, from))
 	}
 
@@ -37,15 +30,17 @@ func Fetch(from, i any) any {
 	// a value, when they are accessed through a pointer we don't want to
 	// copy them to a value.
 	// De-reference everything if necessary (interface and pointers)
-	kind, v = deref(kind, v)
+	v = deref.Value(v)
 
-	// TODO: We can create separate opcodes for each of the cases below to make
-	// the little bit faster.
-	switch kind {
+	switch v.Kind() {
 	case reflect.Array, reflect.Slice, reflect.String:
 		index := ToInt(i)
+		l := v.Len()
 		if index < 0 {
-			index = v.Len() + index
+			index = l + index
+		}
+		if index < 0 || index >= l {
+			panic(fmt.Sprintf("index out of range: %v (array length is %v)", index, l))
 		}
 		value := v.Index(index)
 		if value.IsValid() {
@@ -89,11 +84,9 @@ type Field struct {
 
 func FetchField(from any, field *Field) any {
 	v := reflect.ValueOf(from)
-	kind := v.Kind()
-	if kind != reflect.Invalid {
-		if kind == reflect.Ptr {
-			v = reflect.Indirect(v)
-		}
+	if v.Kind() != reflect.Invalid {
+		v = reflect.Indirect(v)
+
 		// We can use v.FieldByIndex here, but it will panic if the field
 		// is not exists. And we need to recover() to generate a more
 		// user-friendly error message.
@@ -142,27 +135,6 @@ func FetchMethod(from any, method *Method) any {
 		}
 	}
 	panic(fmt.Sprintf("cannot fetch %v from %T", method.Name, from))
-}
-
-func Deref(i any) any {
-	if i == nil {
-		return nil
-	}
-
-	v := reflect.ValueOf(i)
-
-	for v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
-		if v.IsNil() {
-			return nil
-		}
-		v = v.Elem()
-	}
-
-	if v.IsValid() {
-		return v.Interface()
-	}
-
-	panic(fmt.Sprintf("cannot dereference %v", i))
 }
 
 func Slice(array, from, to any) any {

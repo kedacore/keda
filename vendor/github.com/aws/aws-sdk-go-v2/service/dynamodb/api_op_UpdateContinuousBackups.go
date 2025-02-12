@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	internalEndpointDiscovery "github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery"
 	"github.com/aws/smithy-go/middleware"
@@ -17,11 +16,14 @@ import (
 // specified table. A successful UpdateContinuousBackups call returns the current
 // ContinuousBackupsDescription . Continuous backups are ENABLED on all tables at
 // table creation. If point in time recovery is enabled, PointInTimeRecoveryStatus
-// will be set to ENABLED. Once continuous backups and point in time recovery are
-// enabled, you can restore to any point in time within EarliestRestorableDateTime
-// and LatestRestorableDateTime . LatestRestorableDateTime is typically 5 minutes
-// before the current time. You can restore your table to any point in time during
-// the last 35 days.
+// will be set to ENABLED.
+//
+// Once continuous backups and point in time recovery are enabled, you can restore
+// to any point in time within EarliestRestorableDateTime and
+// LatestRestorableDateTime .
+//
+// LatestRestorableDateTime is typically 5 minutes before the current time. You
+// can restore your table to any point in time during the last 35 days.
 func (c *Client) UpdateContinuousBackups(ctx context.Context, params *UpdateContinuousBackupsInput, optFns ...func(*Options)) (*UpdateContinuousBackupsOutput, error) {
 	if params == nil {
 		params = &UpdateContinuousBackupsInput{}
@@ -44,7 +46,8 @@ type UpdateContinuousBackupsInput struct {
 	// This member is required.
 	PointInTimeRecoverySpecification *types.PointInTimeRecoverySpecification
 
-	// The name of the table.
+	// The name of the table. You can also provide the Amazon Resource Name (ARN) of
+	// the table in this parameter.
 	//
 	// This member is required.
 	TableName *string
@@ -86,25 +89,28 @@ func (c *Client) addOperationUpdateContinuousBackupsMiddlewares(stack *middlewar
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
+		return err
+	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -122,13 +128,19 @@ func (c *Client) addOperationUpdateContinuousBackupsMiddlewares(stack *middlewar
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
 	if err = addOpUpdateContinuousBackupsValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUpdateContinuousBackups(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -147,6 +159,18 @@ func (c *Client) addOperationUpdateContinuousBackupsMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil
