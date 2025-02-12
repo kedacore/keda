@@ -627,7 +627,6 @@ func (s *SolaceDMScaler) GetSolaceDMSempMetrics(ctx context.Context, httpClient 
 }
 
 func (s *SolaceDMScaler) GetSolaceDMSempMetricsFromHost(ctx context.Context, httpClient *http.Client, sempUrl string, username string, password string, requestBody string) ([]byte, error) {
-	//TODO encapsulate this and try with all urls
 	//	Retrieve metrics from Solace SEMP v1
 	//	Define HTTP Request
 	request, err := http.NewRequestWithContext(ctx, "POST", sempUrl, bytes.NewBuffer([]byte(requestBody)))
