@@ -205,16 +205,16 @@ func parseSolaceMetadata(config *scalersconfig.ScalerConfig) (*SolaceMetadata, e
             sempURL,
             solaceAPIName,
             solaceAPIVersion,
-            meta.messageVpn,
+            meta.MessageVpn,
             solaceAPIObjectTypeQueue,
-            url.QueryEscape(meta.queueName),
+            url.QueryEscape(meta.QueueName),
         ))
         meta.vpnStateURLsList = append(meta.vpnStateURLsList, fmt.Sprintf(
             solaceSempVpnStateURLTemplate,
             sempURL,
             solaceAPIName,
             solaceAPIVersion,
-            meta.messageVpn,
+            meta.MessageVpn,
         ))
     }
 
@@ -281,7 +281,7 @@ func (s *SolaceScaler) getVpnState(ctx context.Context, sempURL string) (string,
     }
 
     //	Add HTTP Auth and Headers
-    request.SetBasicAuth(s.metadata.username, s.metadata.password)
+    request.SetBasicAuth(s.metadata.Username, s.metadata.Password)
     request.Header.Set("Content-Type", "application/json")
 
     //	Call Solace SEMP API
@@ -321,7 +321,7 @@ func (s *SolaceScaler) getQueueMetrics(ctx context.Context, sempURL string) (Sol
     }
 
     //	Add HTTP Auth and Headers
-    request.SetBasicAuth(s.metadata.username, s.metadata.password)
+    request.SetBasicAuth(s.metadata.Username, s.metadata.Password)
     request.Header.Set("Content-Type", "application/json")
 
     //	Call Solace SEMP API
