@@ -382,7 +382,7 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (Solac
         return metricValues, nil
     }
 
-	return SolaceMetricValues{}, fmt.Errorf("Unable to collect metrics, error(s): %w", strings.Join(errorList, "\n  "))
+	return SolaceMetricValues{}, fmt.Errorf("Unable to collect metrics, error(s): %s", strings.Join(errorList, "\n  "))
 }
 
 // INTERFACE METHOD
@@ -394,7 +394,6 @@ func (s *SolaceScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 	var mve error
 
 	if mv, mve = s.getSolaceQueueMetricsFromSEMP(ctx); mve != nil {
-		//s.logger.Error(mve, "Failed to collect metrics")
 		return []external_metrics.ExternalMetricValue{}, false, mve
 	}
 	metricValues = mv

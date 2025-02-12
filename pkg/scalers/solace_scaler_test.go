@@ -549,7 +549,6 @@ func TestSolaceParseSolaceMetadata(t *testing.T) {
 			sempQueueURL := meta.endpointURLsList[i]
 			if !testData.isError && strings.Contains(testData.metadata["queueName"], "/") && !strings.Contains(sempQueueURL, url.QueryEscape(testData.metadata["queueName"])) {
 				t.Error("expected endpointURL to query escape special characters in the URL but got:", sempQueueURL)
-				fmt.Println(" --> FAIL")
 			}
 		}
 	}
