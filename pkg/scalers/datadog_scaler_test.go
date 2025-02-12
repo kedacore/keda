@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -48,7 +49,7 @@ func TestMaxFloatFromSlice(t *testing.T) {
 	input := []float64{1.0, 2.0, 3.0, 4.0}
 	expectedOutput := float64(4.0)
 
-	output := MaxFloatFromSlice(input)
+	output := slices.Max(input)
 
 	assertEqual(t, output, expectedOutput)
 }

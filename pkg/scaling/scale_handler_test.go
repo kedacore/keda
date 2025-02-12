@@ -336,7 +336,6 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 	for i := 0; i < len(metricNames); i++ {
-		i := i
 		scalerCollection[i].EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecFn(i))
 		scalerCollection[i].EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 			return metricsValueFn(i), true, nil
@@ -351,7 +350,6 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 	expectNoStatusPatch(ctrl)
 
 	for i := 0; i < len(metricNames); i++ {
-		i := i
 		scalerCollection[i].EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecFn(i))
 		scalerCollection[i].EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 			return metricsValueFn(i), true, nil

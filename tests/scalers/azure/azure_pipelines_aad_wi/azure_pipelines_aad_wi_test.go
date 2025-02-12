@@ -205,7 +205,7 @@ func getAzDoPoolID(t *testing.T, connection *azuredevops.Connection) int {
 	defer cancel()
 	taskClient, err := taskagent.NewClient(ctx, connection)
 	if err != nil {
-		t.Errorf("unable to create task agent client")
+		t.Error(fmt.Sprintf("unable to create  task agent client: %s", err.Error()), err)
 	}
 	args := taskagent.GetAgentPoolsArgs{
 		PoolName: &poolName,
@@ -222,7 +222,7 @@ func queueBuild(t *testing.T, connection *azuredevops.Connection) {
 	defer cancel()
 	buildClient, err := build.NewClient(ctx, connection)
 	if err != nil {
-		t.Errorf("unable to create build client")
+		t.Error(fmt.Sprintf("unable to create build client: %s", err.Error()), err)
 	}
 	id, err := strconv.Atoi(buildID)
 	if err != nil {
@@ -247,7 +247,7 @@ func clearAllBuilds(t *testing.T, connection *azuredevops.Connection) {
 	defer cancel()
 	buildClient, err := build.NewClient(ctx, connection)
 	if err != nil {
-		t.Errorf("unable to create build client")
+		t.Error(fmt.Sprintf("unable to create build client: %s", err.Error()), err)
 	}
 	var top = 20
 	args := build.GetBuildsArgs{

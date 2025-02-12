@@ -73,11 +73,6 @@ var parsePulsarMetadataTestDataset = []parsePulsarMetadataTestData{
 	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "isPartitionedTopic": "true", "subscription": "sub1"}, false, false, true, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
 	// test metric msgBacklogThreshold
 	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "isPartitionedTopic": "true", "subscription": "sub1", "msgBacklogThreshold": "5"}, false, false, true, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
-	// FIXME: msgBacklog support DEPRECATED to be removed in v2.14
-	// test metric msgBacklog
-	{map[string]string{"adminURL": "http://127.0.0.1:8080", "topic": "persistent://public/default/my-topic", "isPartitionedTopic": "true", "subscription": "sub1", "msgBacklog": "5"}, false, false, true, "http://127.0.0.1:8080", "persistent://public/default/my-topic", "sub1"},
-	// END FIXME
-
 	// tls
 	{map[string]string{"adminURL": "https://localhost:8443", "tls": "enable", "cert": "certdata", "key": "keydata", "ca": "cadata", "topic": "persistent://public/default/my-topic", "subscription": "sub1"}, false, true, false, "https://localhost:8443", "persistent://public/default/my-topic", "sub1"},
 }

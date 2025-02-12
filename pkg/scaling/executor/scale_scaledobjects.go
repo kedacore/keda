@@ -161,12 +161,12 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		// isActive == false
 		switch {
 		case isError && scaledObject.Spec.Fallback != nil && scaledObject.Spec.Fallback.Replicas != 0:
-			// there are no active triggers, but a scaler responded with an error
-			// AND
-			// there is a fallback replicas count defined
-
-			// Scale to the fallback replicas count
-			e.doFallbackScaling(ctx, scaledObject, currentScale, logger, currentReplicas)
+			// We need to have this switch case even if just for logging.
+			// Otherwise, if we have `minReplicas=zero`, we will fall into the third case expression,
+			// which will scale the target to 0. Scaling the target to 0 means the HPA will not scale it to fallback.replicas
+			// after fallback.failureThreshold has passed because of what's described here:
+			// https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#implicit-maintenance-mode-deactivation
+			logger.V(1).Info("ScaleTarget will fallback to Fallback.Replicas after Fallback.FailureThreshold")
 		case isError && scaledObject.Spec.Fallback == nil:
 			// there are no active triggers, but a scaler responded with an error
 			// AND
@@ -230,18 +230,6 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	}
 }
 
-func (e *scaleExecutor) doFallbackScaling(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, currentScale *autoscalingv1.Scale, logger logr.Logger, currentReplicas int32) {
-	_, err := e.updateScaleOnScaleTarget(ctx, scaledObject, currentScale, scaledObject.Spec.Fallback.Replicas)
-	if err == nil {
-		logger.Info("Successfully set ScaleTarget replicas count to ScaledObject fallback.replicas",
-			"Original Replicas Count", currentReplicas,
-			"New Replicas Count", scaledObject.Spec.Fallback.Replicas)
-	}
-	if e := e.setFallbackCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "FallbackExists", "At least one trigger is falling back on this scaled object"); e != nil {
-		logger.Error(e, "Error setting fallback condition")
-	}
-}
-
 // An object will be scaled down to 0 only if it's passed its cooldown period
 // or if LastActiveTime is nil
 func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) {
@@ -289,7 +277,7 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 			}
 		} else {
 			e.recorder.Eventf(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScaleTargetDeactivationFailed,
-				"Failed to deactivated %s %s/%s", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
+				"Failed to deactivate %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
 		}
 	} else {
 		logger.V(1).Info("ScaleTarget cooling down",

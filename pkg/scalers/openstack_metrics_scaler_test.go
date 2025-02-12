@@ -107,7 +107,6 @@ func TestOpenstackMetricsGetMetricsForSpecScaling(t *testing.T) {
 	}
 
 	for _, testData := range testCases {
-		testData := testData
 		meta, err := parseOpenstackMetricMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, TriggerIndex: testData.triggerIndex}, logr.Discard())
 
 		if err != nil {
@@ -144,7 +143,6 @@ func TestOpenstackMetricsGetMetricsForSpecScalingInvalidMetaData(t *testing.T) {
 	}
 
 	for _, testData := range testCases {
-		testData := testData
 		t.Run(testData.name, func(pt *testing.T) {
 			_, err := parseOpenstackMetricMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, TriggerIndex: testData.triggerIndex}, logr.Discard())
 			assert.NotNil(t, err)
@@ -163,7 +161,6 @@ func TestOpenstackMetricAuthenticationInvalidAuthMetadata(t *testing.T) {
 	}
 
 	for _, testData := range testCases {
-		testData := testData
 		t.Run(testData.name, func(ptr *testing.T) {
 			_, err := parseOpenstackMetricAuthenticationMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, TriggerIndex: testData.triggerIndex})
 			assert.NotNil(t, err)
