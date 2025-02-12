@@ -32,6 +32,7 @@ import (
 	reflect "reflect"
 	"strconv"
 	sync "sync"
+	unsafe "unsafe"
 
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -758,27 +759,46 @@ func (TimeoutType) EnumDescriptor() ([]byte, []int) {
 	return file_temporal_api_enums_v1_workflow_proto_rawDescGZIP(), []int{9}
 }
 
+// Versioning Behavior specifies if and how a workflow execution moves between Worker Deployment
+// Versions. The Versioning Behavior of a workflow execution is typically specified by the worker
+// who completes the first task of the execution, but is also overridable manually for new and
+// existing workflows (see VersioningOverride).
+// Experimental. Worker Deployments are experimental and might significantly change in the future.
 type VersioningBehavior int32
 
 const (
-	// Workflow execution is unversioned. This is the legacy behavior. An unversioned workflow's
-	// task may go to any unversioned worker who is polling for the task queue.
+	// Workflow execution does not have a Versioning Behavior and is called Unversioned. This is the
+	// legacy behavior. An Unversioned workflow's task can go to any Unversioned worker (see
+	// `WorkerVersioningMode`.)
+	// User needs to use Patching to keep the new code compatible with prior versions when dealing
+	// with Unversioned workflows.
 	VERSIONING_BEHAVIOR_UNSPECIFIED VersioningBehavior = 0
-	// Workflow will be pinned to the current deployment until completion. Can be overridden
-	// explicitly via `UpdateWorkflowExecutionOptions` API.
-	// Activities of `PINNED` workflows are sent to the same deployment. Exception to this would be
-	// when the activity task queue workers are not present in the workflows deployment, in which
-	// case the activity will be sent to the current deployment of its own task queue.
+	// Workflow will start on the Current Deployment Version of its Task Queue, and then
+	// will be pinned to that same Deployment Version until completion (the Version that
+	// this Workflow is pinned to is specified in `versioning_info.version`).
+	// This behavior eliminates most of compatibility concerns users face when changing their code.
+	// Patching is not needed when pinned workflows code change.
+	// Can be overridden explicitly via `UpdateWorkflowExecutionOptions` API to move the
+	// execution to another Deployment Version.
+	// Activities of `PINNED` workflows are sent to the same Deployment Version. Exception to this
+	// would be when the activity Task Queue workers are not present in the workflow's Deployment
+	// Version, in which case the activity will be sent to the Current Deployment Version of its own
+	// task queue.
 	VERSIONING_BEHAVIOR_PINNED VersioningBehavior = 1
-	// Workflow will automatically move to the current deployment of its task queue when the next
-	// workflow task is dispatched.
-	// Activities of `AUTO_UPGRADE` workflows are sent to the current deployment of the workflow
-	// execution based on the last completed workflow task. Exception to this would be when the
-	// activity task queue workers are not present in the workflow's deployment, in which case the
-	// activity will be sent to the current deployment of its own task queue.
-	// Workflows stuck on a backlogged activity will still auto-upgrade if the default deployment
-	// of their task queue changes, without having to wait for the backlogged activity to complete
-	// on the old deployment.
+	// Workflow will automatically move to the Current Deployment Version of its Task Queue when the
+	// next workflow task is dispatched.
+	// AutoUpgrade behavior is suitable for long-running workflows as it allows them to move to the
+	// latest Deployment Version, but the user still needs to use Patching to keep the new code
+	// compatible with prior versions for changed workflow types.
+	// Activities of `AUTO_UPGRADE` workflows are sent to the Deployment Version of the workflow
+	// execution (as specified in versioning_info.version based on the last completed
+	// workflow task). Exception to this would be when the activity Task Queue workers are not
+	// present in the workflow's Deployment Version, in which case, the activity will be sent to a
+	// different Deployment Version according to the Current Deployment Version of its own task
+	// queue.
+	// Workflows stuck on a backlogged activity will still auto-upgrade if the Current Deployment
+	// Version of their Task Queue changes, without having to wait for the backlogged activity to
+	// complete on the old Version.
 	VERSIONING_BEHAVIOR_AUTO_UPGRADE VersioningBehavior = 2
 )
 
@@ -835,7 +855,7 @@ func (VersioningBehavior) EnumDescriptor() ([]byte, []int) {
 
 var File_temporal_api_enums_v1_workflow_proto protoreflect.FileDescriptor
 
-var file_temporal_api_enums_v1_workflow_proto_rawDesc = []byte{
+var file_temporal_api_enums_v1_workflow_proto_rawDesc = string([]byte{
 	0x0a, 0x24, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x65,
 	0x6e, 0x75, 0x6d, 0x73, 0x2f, 0x76, 0x31, 0x2f, 0x77, 0x6f, 0x72, 0x6b, 0x66, 0x6c, 0x6f, 0x77,
 	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x15, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c,
@@ -993,16 +1013,16 @@ var file_temporal_api_enums_v1_workflow_proto_rawDesc = []byte{
 	0x54, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x69, 0x6f, 0x3a, 0x3a, 0x41, 0x70, 0x69, 0x3a,
 	0x3a, 0x45, 0x6e, 0x75, 0x6d, 0x73, 0x3a, 0x3a, 0x56, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
 	0x6f, 0x33,
-}
+})
 
 var (
 	file_temporal_api_enums_v1_workflow_proto_rawDescOnce sync.Once
-	file_temporal_api_enums_v1_workflow_proto_rawDescData = file_temporal_api_enums_v1_workflow_proto_rawDesc
+	file_temporal_api_enums_v1_workflow_proto_rawDescData []byte
 )
 
 func file_temporal_api_enums_v1_workflow_proto_rawDescGZIP() []byte {
 	file_temporal_api_enums_v1_workflow_proto_rawDescOnce.Do(func() {
-		file_temporal_api_enums_v1_workflow_proto_rawDescData = protoimpl.X.CompressGZIP(file_temporal_api_enums_v1_workflow_proto_rawDescData)
+		file_temporal_api_enums_v1_workflow_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_temporal_api_enums_v1_workflow_proto_rawDesc), len(file_temporal_api_enums_v1_workflow_proto_rawDesc)))
 	})
 	return file_temporal_api_enums_v1_workflow_proto_rawDescData
 }
@@ -1038,7 +1058,7 @@ func file_temporal_api_enums_v1_workflow_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: file_temporal_api_enums_v1_workflow_proto_rawDesc,
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_temporal_api_enums_v1_workflow_proto_rawDesc), len(file_temporal_api_enums_v1_workflow_proto_rawDesc)),
 			NumEnums:      11,
 			NumMessages:   0,
 			NumExtensions: 0,
@@ -1049,7 +1069,6 @@ func file_temporal_api_enums_v1_workflow_proto_init() {
 		EnumInfos:         file_temporal_api_enums_v1_workflow_proto_enumTypes,
 	}.Build()
 	File_temporal_api_enums_v1_workflow_proto = out.File
-	file_temporal_api_enums_v1_workflow_proto_rawDesc = nil
 	file_temporal_api_enums_v1_workflow_proto_goTypes = nil
 	file_temporal_api_enums_v1_workflow_proto_depIdxs = nil
 }
