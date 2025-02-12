@@ -66,6 +66,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Enable OpenSSF Scorecard to enhance security practices across the project ([#5913](https://github.com/kedacore/keda/issues/5913))
 - **General**: Introduce new NSQ scaler ([#3281](https://github.com/kedacore/keda/issues/3281))
 - **General**: Operator flag to control patching of webhook resources certificates ([#6184](https://github.com/kedacore/keda/issues/6184))
+- **Azure Pipelines Scaler**: Introduce requireAllDemandsAndIgnoreOthers to match job demands while ignoring extras ([#5579](https://github.com/kedacore/keda/issues/5579))
 
 #### Experimental
 
@@ -78,6 +79,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Add SecretKey to AWS SecretsManager TriggerAuthentication to allow parsing JSON / Key/Value Pairs in secrets ([#5940](https://github.com/kedacore/keda/issues/5940))
 - **IBMMQ Scaler**: Handling StatusNotFound in IBMMQ scaler ([#6472](https://github.com/kedacore/keda/pull/6472))
 - **RabbitMQ Scaler**: Support use of the ‘vhostName’ parameter in the ‘TriggerAuthentication’ resource ([#6369](https://github.com/kedacore/keda/issues/6369))
+- **Selenium Grid**: Add trigger param to set custom capabilities for matching specific Nodes ([#6536](https://github.com/kedacore/keda/issues/6536))
 
 
 ### Fixes
