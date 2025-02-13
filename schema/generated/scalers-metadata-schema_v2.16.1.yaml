@@ -1,0 +1,1297 @@
+kedaVersion: 2.16.1
+schemaVersion: 1
+scalers:
+    - type: activemq
+      metadata:
+        - name: managementEndpoint
+          type: string
+          optional: true
+        - name: destinationName
+          type: string
+          optional: true
+        - name: brokerName
+          type: string
+          optional: true
+        - name: username
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: corsHeader
+          type: string
+          optional: true
+        - name: restAPITemplate
+          type: string
+          optional: true
+        - name: targetQueueSize
+          type: string
+          optional: true
+          default: "10"
+        - name: activationTargetQueueSize
+          type: string
+          optional: true
+          default: "0"
+    - type: apache-kafka
+      metadata:
+        - name: bootstrapServers
+          type: string
+          canReadFromEnv: true
+        - name: consumerGroup
+          type: string
+          canReadFromEnv: true
+        - name: topic
+          type: string
+          optional: true
+          canReadFromEnv: true
+        - name: partitionLimitation
+          type: string
+          optional: true
+          rangeSeparator: '-'
+        - name: lagThreshold
+          type: string
+          default: "10"
+        - name: activationLagThreshold
+          type: string
+          default: "0"
+        - name: offsetResetPolicy
+          type: string
+          default: latest
+          allowedValue:
+            - earliest
+            - latest
+        - name: allowIdleConsumers
+          type: string
+          optional: true
+        - name: excludePersistentLag
+          type: string
+          optional: true
+        - name: scaleToZeroOnInvalidOffset
+          type: string
+          optional: true
+        - name: limitToPartitionsWithLag
+          type: string
+          optional: true
+        - name: sasl
+          type: string
+          default: none
+          allowedValue:
+            - none
+            - plaintext
+            - scram_sha256
+            - scram_sha512
+            - gssapi
+            - aws_msk_iam
+          canReadFromAuth: true
+        - name: username
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: awsRegion
+          type: string
+          optional: true
+        - name: awsEndpoint
+          type: string
+          optional: true
+        - name: tls
+          type: string
+          default: disable
+          allowedValue:
+            - enable
+            - disable
+          canReadFromAuth: true
+        - name: cert
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: key
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: keyPassword
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: ca
+          type: string
+          optional: true
+          canReadFromAuth: true
+    - type: arangodb
+      metadata:
+        - name: endpoints
+          type: string
+          canReadFromAuth: true
+        - name: collection
+          type: string
+        - name: query
+          type: string
+        - name: queryValue
+          type: string
+          default: "0"
+        - name: activationQueryValue
+          type: string
+          default: "0"
+        - name: unsafeSsl
+          type: string
+          default: "false"
+        - name: connectionLimit
+          type: string
+          optional: true
+    - type: aws-cloudwatch
+      metadata:
+        - name: namespace
+          type: string
+          optional: true
+        - name: metricName
+          type: string
+          optional: true
+        - name: dimensionName
+          type: string
+          optional: true
+          separator: ;
+        - name: dimensionValue
+          type: string
+          optional: true
+          separator: ;
+        - name: expression
+          type: string
+          optional: true
+        - name: targetMetricValue
+          type: string
+        - name: activationTargetMetricValue
+          type: string
+          optional: true
+        - name: minMetricValue
+          type: string
+        - name: ignoreNullValues
+          type: string
+          optional: true
+          default: "true"
+        - name: metricCollectionTime
+          type: string
+          optional: true
+          default: "300"
+        - name: metricStat
+          type: string
+          optional: true
+          default: Average
+        - name: metricUnit
+          type: string
+          optional: true
+        - name: metricStatPeriod
+          type: string
+          optional: true
+          default: "300"
+        - name: metricEndTimeOffset
+          type: string
+          optional: true
+          default: "0"
+        - name: awsRegion
+          type: string
+          canReadFromAuth: true
+        - name: awsEndpoint
+          type: string
+          optional: true
+    - type: aws-dynamodb
+      metadata:
+        - name: tableName
+          type: string
+        - name: awsRegion
+          type: string
+          canReadFromAuth: true
+        - name: awsEndpoint
+          type: string
+          optional: true
+        - name: keyConditionExpression
+          type: string
+        - name: indexName
+          type: string
+          optional: true
+        - name: targetValue
+          type: string
+          optional: true
+          default: "-1"
+        - name: activationTargetValue
+          type: string
+          default: "0"
+    - type: aws-dynamodb-streams
+      metadata:
+        - name: shardCount
+          type: string
+          default: "2"
+        - name: activationShardCount
+          type: string
+          default: "0"
+        - name: tableName
+          type: string
+        - name: awsRegion
+          type: string
+          canReadFromAuth: true
+        - name: awsEndpoint
+          type: string
+          optional: true
+    - type: aws-kinesis-stream
+      metadata:
+        - name: shardCount
+          type: string
+          default: "2"
+        - name: activationShardCount
+          type: string
+          default: "0"
+        - name: streamName
+          type: string
+        - name: awsRegion
+          type: string
+          canReadFromAuth: true
+        - name: awsEndpoint
+          type: string
+          optional: true
+    - type: aws-sqs-queue
+      metadata:
+        - name: queueLength
+          type: string
+          default: "5"
+        - name: activationQueueLength
+          type: string
+          default: "0"
+        - name: queueURL
+          type: string
+          canReadFromEnv: true
+        - name: queueURLFromEnv
+          type: string
+          canReadFromEnv: true
+        - name: awsRegion
+          type: string
+          canReadFromAuth: true
+        - name: awsEndpoint
+          type: string
+          optional: true
+        - name: scaleOnInFlight
+          type: string
+          default: "true"
+        - name: scaleOnDelayed
+          type: string
+          default: "false"
+    - type: etcd
+      metadata:
+        - name: endpoints
+          type: string
+        - name: watchKey
+          type: string
+        - name: value
+          type: string
+        - name: activationValue
+          type: string
+          optional: true
+          default: "0"
+        - name: watchProgressNotifyInterval
+          type: string
+          optional: true
+          default: "600"
+        - name: username
+          type: string
+          optional: true
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          optional: true
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: tls
+          type: string
+          optional: true
+          default: disable
+          canReadFromAuth: true
+        - name: cert
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: key
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: keyPassword
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: ca
+          type: string
+          optional: true
+          canReadFromAuth: true
+    - type: gcp-cloudtasks
+      metadata:
+        - name: value
+          type: string
+          optional: true
+          default: "100"
+        - name: activationValue
+          type: string
+          optional: true
+          default: "0"
+        - name: filterDuration
+          type: string
+          optional: true
+        - name: queueName
+          type: string
+        - name: projectID
+          type: string
+    - type: ibmmq
+      metadata:
+        - name: host
+          type: string
+        - name: queueName
+          type: string
+        - name: queueNames
+          type: string
+        - name: queueDepth
+          type: string
+          default: "20"
+        - name: activationQueueDepth
+          type: string
+          default: "0"
+        - name: operation
+          type: string
+          default: max
+          allowedValue:
+            - max
+            - avg
+            - sum
+        - name: username
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: unsafeSsl
+          type: string
+          default: "false"
+        - name: tls
+          type: string
+          default: "false"
+          deprecatedAnnounce: The 'tls' setting is DEPRECATED and will be removed in v2.18 - Use 'unsafeSsl' instead
+        - name: ca
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: cert
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: key
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: keyPassword
+          type: string
+          optional: true
+          canReadFromAuth: true
+    - type: influxdb
+      metadata:
+        - name: authToken
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: organizationName
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: query
+          type: string
+        - name: serverURL
+          type: string
+          canReadFromAuth: true
+        - name: unsafeSsl
+          type: string
+          optional: true
+        - name: thresholdValue
+          type: string
+          optional: true
+        - name: activationThresholdValue
+          type: string
+          optional: true
+    - type: kubernetes-workload
+      metadata:
+        - name: podSelector
+          type: string
+        - name: value
+          type: string
+          default: "0"
+        - name: activationValue
+          type: string
+          default: "0"
+    - type: nsq
+      metadata:
+        - name: nsqLookupdHTTPAddresses
+          type: string
+          canReadFromEnv: true
+        - name: topic
+          type: string
+          canReadFromEnv: true
+        - name: channel
+          type: string
+          canReadFromEnv: true
+        - name: depthThreshold
+          type: string
+          default: "10"
+          canReadFromEnv: true
+        - name: activationDepthThreshold
+          type: string
+          default: "0"
+          canReadFromEnv: true
+        - name: useHttps
+          type: string
+          default: "false"
+          canReadFromEnv: true
+        - name: unsafeSsl
+          type: string
+          default: "false"
+          canReadFromEnv: true
+    - type: postgresql
+      metadata:
+        - name: targetQueryValue
+          type: string
+          optional: true
+        - name: activationTargetQueryValue
+          type: string
+          optional: true
+        - name: connection
+          type: string
+          optional: true
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: query
+          type: string
+        - name: host
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: port
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: userName
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: dbName
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: sslmode
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          optional: true
+          canReadFromEnv: true
+          canReadFromAuth: true
+    - type: predictkube
+      metadata:
+        - name: prometheusAddress
+          type: string
+        - name: query
+          type: string
+        - name: predictHorizon
+          type: string
+        - name: queryStep
+          type: string
+        - name: historyTimeWindow
+          type: string
+        - name: apiKey
+          type: string
+          canReadFromAuth: true
+        - name: threshold
+          type: string
+          optional: true
+        - name: activationThreshold
+          type: string
+          optional: true
+    - type: prometheus
+      metadata:
+        - name: serverAddress
+          type: string
+        - name: query
+          type: string
+        - name: queryParameters
+          type: string
+          optional: true
+        - name: threshold
+          type: string
+        - name: activationThreshold
+          type: string
+          optional: true
+        - name: namespace
+          type: string
+          optional: true
+        - name: customHeaders
+          type: string
+          optional: true
+        - name: ignoreNullValues
+          type: string
+          optional: true
+          default: "true"
+        - name: unsafeSsl
+          type: string
+          optional: true
+        - name: awsRegion
+          type: string
+          optional: true
+          canReadFromAuth: true
+    - type: rabbitmq
+      metadata:
+        - name: queueName
+          type: string
+        - name: mode
+          type: string
+          optional: true
+          default: Unknown
+        - name: queueLength
+          type: string
+          optional: true
+        - name: value
+          type: string
+          optional: true
+        - name: activationValue
+          type: string
+          optional: true
+        - name: host
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: protocol
+          type: string
+          optional: true
+          default: auto
+          canReadFromAuth: true
+        - name: vhostName
+          type: string
+          optional: true
+        - name: useRegex
+          type: string
+          optional: true
+        - name: excludeUnacknowledged
+          type: string
+          optional: true
+        - name: pageSize
+          type: string
+          optional: true
+          default: "100"
+        - name: operation
+          type: string
+          optional: true
+          default: sum
+        - name: timeout
+          type: string
+          optional: true
+        - name: username
+          type: string
+          optional: true
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          optional: true
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: ca
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: cert
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: key
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: keyPassword
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: tls
+          type: string
+          optional: true
+          default: disable
+          canReadFromAuth: true
+        - name: unsafeSsl
+          type: string
+          optional: true
+        - name: workloadIdentityResource
+          type: string
+          optional: true
+          canReadFromAuth: true
+    - type: redis
+      metadata:
+        - name: listLength
+          type: string
+          optional: true
+          default: "5"
+        - name: activationListLength
+          type: string
+          optional: true
+        - name: listName
+          type: string
+        - name: databaseIndex
+          type: string
+          optional: true
+        - name: enableTLS
+          type: string
+          optional: true
+        - name: tls
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: address
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: addresses
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: username
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelUsername
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelPassword
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelMaster
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: host
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: hosts
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: port
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: ports
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: unsafeSsl
+          type: string
+          optional: true
+          default: "false"
+        - name: Cert
+          type: string
+          canReadFromAuth: true
+        - name: cert
+          type: string
+          canReadFromAuth: true
+        - name: key
+          type: string
+          canReadFromAuth: true
+        - name: keyPassword
+          type: string
+          canReadFromAuth: true
+        - name: ca
+          type: string
+          canReadFromAuth: true
+    - type: redis-cluster
+      metadata:
+        - name: listLength
+          type: string
+          optional: true
+          default: "5"
+        - name: activationListLength
+          type: string
+          optional: true
+        - name: listName
+          type: string
+        - name: databaseIndex
+          type: string
+          optional: true
+        - name: enableTLS
+          type: string
+          optional: true
+        - name: tls
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: address
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: addresses
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: username
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelUsername
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelPassword
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelMaster
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: host
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: hosts
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: port
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: ports
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: unsafeSsl
+          type: string
+          optional: true
+          default: "false"
+        - name: Cert
+          type: string
+          canReadFromAuth: true
+        - name: cert
+          type: string
+          canReadFromAuth: true
+        - name: key
+          type: string
+          canReadFromAuth: true
+        - name: keyPassword
+          type: string
+          canReadFromAuth: true
+        - name: ca
+          type: string
+          canReadFromAuth: true
+    - type: redis-sentinel
+      metadata:
+        - name: listLength
+          type: string
+          optional: true
+          default: "5"
+        - name: activationListLength
+          type: string
+          optional: true
+        - name: listName
+          type: string
+        - name: databaseIndex
+          type: string
+          optional: true
+        - name: enableTLS
+          type: string
+          optional: true
+        - name: tls
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: address
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: addresses
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: username
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelUsername
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelPassword
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelMaster
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: host
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: hosts
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: port
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: ports
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: unsafeSsl
+          type: string
+          optional: true
+          default: "false"
+        - name: Cert
+          type: string
+          canReadFromAuth: true
+        - name: cert
+          type: string
+          canReadFromAuth: true
+        - name: key
+          type: string
+          canReadFromAuth: true
+        - name: keyPassword
+          type: string
+          canReadFromAuth: true
+        - name: ca
+          type: string
+          canReadFromAuth: true
+    - type: redis-cluster-streams
+      metadata:
+        - name: pendingEntriesCount
+          type: string
+          optional: true
+          default: "5"
+        - name: streamLength
+          type: string
+          optional: true
+          default: "5"
+        - name: lagCount
+          type: string
+          optional: true
+        - name: stream
+          type: string
+        - name: consumerGroup
+          type: string
+          optional: true
+        - name: databaseIndex
+          type: string
+          optional: true
+        - name: address
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: addresses
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: username
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelUsername
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelPassword
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelMaster
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: host
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: hosts
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: port
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: ports
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: unsafeSsl
+          type: string
+          optional: true
+          default: "false"
+        - name: Cert
+          type: string
+          canReadFromAuth: true
+        - name: cert
+          type: string
+          canReadFromAuth: true
+        - name: key
+          type: string
+          canReadFromAuth: true
+        - name: keyPassword
+          type: string
+          canReadFromAuth: true
+        - name: ca
+          type: string
+          canReadFromAuth: true
+        - name: activationLagCount
+          type: string
+          optional: true
+        - name: enableTLS
+          type: string
+          optional: true
+        - name: tls
+          type: string
+          optional: true
+          canReadFromAuth: true
+    - type: redis-sentinel-streams
+      metadata:
+        - name: pendingEntriesCount
+          type: string
+          optional: true
+          default: "5"
+        - name: streamLength
+          type: string
+          optional: true
+          default: "5"
+        - name: lagCount
+          type: string
+          optional: true
+        - name: stream
+          type: string
+        - name: consumerGroup
+          type: string
+          optional: true
+        - name: databaseIndex
+          type: string
+          optional: true
+        - name: address
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: addresses
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: username
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelUsername
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelPassword
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelMaster
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: host
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: hosts
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: port
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: ports
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: unsafeSsl
+          type: string
+          optional: true
+          default: "false"
+        - name: Cert
+          type: string
+          canReadFromAuth: true
+        - name: cert
+          type: string
+          canReadFromAuth: true
+        - name: key
+          type: string
+          canReadFromAuth: true
+        - name: keyPassword
+          type: string
+          canReadFromAuth: true
+        - name: ca
+          type: string
+          canReadFromAuth: true
+        - name: activationLagCount
+          type: string
+          optional: true
+        - name: enableTLS
+          type: string
+          optional: true
+        - name: tls
+          type: string
+          optional: true
+          canReadFromAuth: true
+    - type: redis-streams
+      metadata:
+        - name: pendingEntriesCount
+          type: string
+          optional: true
+          default: "5"
+        - name: streamLength
+          type: string
+          optional: true
+          default: "5"
+        - name: lagCount
+          type: string
+          optional: true
+        - name: stream
+          type: string
+        - name: consumerGroup
+          type: string
+          optional: true
+        - name: databaseIndex
+          type: string
+          optional: true
+        - name: address
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: addresses
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: username
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelUsername
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelPassword
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: sentinelMaster
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: host
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: hosts
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: port
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: ports
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: unsafeSsl
+          type: string
+          optional: true
+          default: "false"
+        - name: Cert
+          type: string
+          canReadFromAuth: true
+        - name: cert
+          type: string
+          canReadFromAuth: true
+        - name: key
+          type: string
+          canReadFromAuth: true
+        - name: keyPassword
+          type: string
+          canReadFromAuth: true
+        - name: ca
+          type: string
+          canReadFromAuth: true
+        - name: activationLagCount
+          type: string
+          optional: true
+        - name: enableTLS
+          type: string
+          optional: true
+        - name: tls
+          type: string
+          optional: true
+          canReadFromAuth: true
+    - type: selenium-grid
+      metadata:
+        - name: url
+          type: string
+          canReadFromAuth: true
+        - name: authType
+          type: string
+          optional: true
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: username
+          type: string
+          optional: true
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          optional: true
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: accessToken
+          type: string
+          optional: true
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: browserName
+          type: string
+          optional: true
+        - name: sessionBrowserName
+          type: string
+          optional: true
+        - name: browserVersion
+          type: string
+          optional: true
+        - name: platformName
+          type: string
+          optional: true
+        - name: activationThreshold
+          type: string
+          optional: true
+        - name: unsafeSsl
+          type: string
+          default: "false"
+        - name: nodeMaxSessions
+          type: string
+          default: "1"
+    - type: solace-event-queue
+      metadata:
+        - name: solaceSempBaseURL
+          type: string
+        - name: messageVpn
+          type: string
+        - name: queueName
+          type: string
+        - name: username
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          canReadFromEnv: true
+          canReadFromAuth: true
+        - name: messageCountTarget
+          type: string
+          optional: true
+        - name: messageSpoolUsageTarget
+          type: string
+          optional: true
+        - name: messageReceiveRateTarget
+          type: string
+          optional: true
+        - name: activationMessageCountTarget
+          type: string
+          optional: true
+          default: "0"
+        - name: activationMessageSpoolUsageTarget
+          type: string
+          optional: true
+          default: "0"
+        - name: activationMessageReceiveRateTarget
+          type: string
+          optional: true
+          default: "0"
+    - type: solr
+      metadata:
+        - name: host
+          type: string
+        - name: collection
+          type: string
+        - name: targetQueryValue
+          type: string
+        - name: activationTargetQueryValue
+          type: string
+          optional: true
+          default: "0"
+        - name: query
+          type: string
+          optional: true
+        - name: username
+          type: string
+          canReadFromAuth: true
+        - name: password
+          type: string
+          canReadFromAuth: true
+    - type: splunk
+      metadata:
+        - name: apiToken
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: password
+          type: string
+          optional: true
+          canReadFromAuth: true
+        - name: username
+          type: string
+          canReadFromAuth: true
+        - name: host
+          type: string
+        - name: unsafeSsl
+          type: string
+          optional: true
+        - name: targetValue
+          type: string
+        - name: activationValue
+          type: string
+        - name: savedSearchName
+          type: string
+        - name: valueField
+          type: string
