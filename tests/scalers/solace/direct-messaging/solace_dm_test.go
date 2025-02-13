@@ -263,14 +263,14 @@ func testNoScaler(t *testing.T, kc *kubernetes.Clientset) {
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, mode string, messageRate int, messageNumber int, iterations int, interval int) {
-	t.Log(fmt.Sprintf("--- testing scale up: '%s' ---", mode))
+	t.Logf("--- testing scale up: '%s' ---", mode)
 	publishMessages(t, messageRate, messageNumber, 1024)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, consumerDeploymentName, solaceDMTestNamespace, maxReplicaCount, iterations, interval),
 		"replica count should be '%d' after '%d' seconds", maxReplicaCount, iterations*interval)
 }
 
 func testScaleDown(t *testing.T, kc *kubernetes.Clientset, mode string, iterations int, interval int) {
-	t.Log(fmt.Sprintf("--- testing scale down: '%s' ---", mode))
+	t.Logf("--- testing scale down: '%s' ---", mode)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, consumerDeploymentName, solaceDMTestNamespace, minReplicaCount, iterations, interval),
 		"replica count should be '%d' after '%d' seconds", minReplicaCount, iterations*interval)
 }

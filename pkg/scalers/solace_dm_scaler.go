@@ -21,9 +21,9 @@ import (
 )
 
 const (
-	//Metric Type
+	// Metric Type
 	solaceDMExternalMetricType = "External"
-	//Scaler ID
+	// Scaler ID
 	solaceDMScalerID = "solaceDirectMessaging"
 	// Target Client TxByteRate
 	aggregatedClientTxByteRateTargetMetricName = "aggregatedClientTxByteRateTarget"
@@ -33,17 +33,13 @@ const (
 	aggregatedClientTxMsgRateTargetMetricName = "aggregatedClientTxMsgRateTarget"
 	// Target Client AverageTxMsgRate
 	aggregatedClientAverageTxMsgRateTargetMetricName = "aggregatedClientAverageTxMsgRateTarget"
-	// Target D1 Queue backlog
-	aggregateClientD1QueueBacklogTargetMetricName = "aggregateClientD1QueueBacklogTarget"
-	//
-	d1QueueBacklogMetricBaseValue int64 = 100
-	//url validation regex pattern
+	// URL validation regex pattern
 	urlValidationPattern = "https?://[-_.A-Za-z0-9]{2,255}(:[0-9]{2,6})?"
-	//SEMP v1 URL Pattern
-	sempUrlPattern = "%s/SEMP"
-	//D-1 Queue
+	// SEMP v1 URL Pattern
+	sempURLPattern = "%s/SEMP"
+	// D-1 Queue
 	d1PriorityQueue = "D-1"
-	//Unit of Work Byte Size
+	// Unit of Work Byte Size
 	unitOfWorkByteSize = 2048
 )
 
@@ -54,8 +50,8 @@ type SolaceDMScalerConfiguration struct {
 	// Scaler index
 	triggerIndex int
 
-	//HostUrl
-	HostUrl string `keda:"name=hostUrl, order=triggerMetadata"`
+	//HostURL
+	HostURL string `keda:"name=hostUrl, order=triggerMetadata"`
 	// Basic Auth Username
 	Username string `keda:"name=username, order=authParams;triggerMetadata;resolvedEnv"`
 	// Basic Auth Password
@@ -91,26 +87,22 @@ type SolaceDMScalerConfiguration struct {
 	ActivationAggregatedClientAverageTxMsgRateTarget int `keda:"name=activationAggregatedClientAverageTxMsgRateTarget, order=triggerMetadata, optional=true, default=0"`
 
 	// Full SEMP URLs to get stats
-	sempUrl []string
+	sempURL []string
 }
 
 func (s *SolaceDMScalerConfiguration) Validate() error {
-
 	//host url is not empty or full of spaces!
-	s.HostUrl = strings.TrimSpace(s.HostUrl)
+	s.HostURL = strings.TrimSpace(s.HostURL)
 
-	if len(s.HostUrl) == 0 {
-		return fmt.Errorf("no host url value found in the scaler configuration. HostUrl: '%s'", s.HostUrl)
+	if len(s.HostURL) == 0 {
+		return fmt.Errorf("no host url value found in the scaler configuration. HostUrl: '%s'", s.HostURL)
 	}
 
 	// Compile the regular expression
-	re, err := regexp.Compile(urlValidationPattern)
-	if err != nil {
-		return fmt.Errorf("error compiling regex: %w", err)
-	}
+	re := regexp.MustCompile(urlValidationPattern)
 
 	//check each of the urls for: empty strings, valid url pattern
-	urls := strings.Split(s.HostUrl, ",")
+	urls := strings.Split(s.HostURL, ",")
 
 	for i, v := range urls {
 		url := strings.TrimSpace(v)
@@ -323,7 +315,6 @@ type SolaceDMScaler struct {
 
 // Constructor for SolaceDMScaler
 func NewSolaceDMScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
-
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -363,13 +354,13 @@ func parseSolaceDMConfiguration(scalerConfig *scalersconfig.ScalerConfig) (*Sola
 	meta.triggerIndex = scalerConfig.TriggerIndex
 
 	//initialize urls
-	meta.sempUrl = []string{}
-	urls := strings.Split(meta.HostUrl, ",")
+	meta.sempURL = []string{}
+	urls := strings.Split(meta.HostURL, ",")
 
 	for _, v := range urls {
 		url := strings.TrimSpace(v)
-		fullUrl := fmt.Sprintf(sempUrlPattern, url)
-		meta.sempUrl = append(meta.sempUrl, fullUrl)
+		fullURL := fmt.Sprintf(sempURLPattern, url)
+		meta.sempURL = append(meta.sempURL, fullURL)
 	}
 
 	return meta, nil
@@ -378,7 +369,7 @@ func parseSolaceDMConfiguration(scalerConfig *scalersconfig.ScalerConfig) (*Sola
 // Interface required method!!
 // GetMetricSpecForScaling returns the metrics based on which this scaler determines that the ScaleTarget scales. This is used to construct the HPA spec that is created for
 // this scaled object. The labels used should match the selectors used in GetMetrics
-func (s *SolaceDMScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+func (s *SolaceDMScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
 	var metricSpecList []v2.MetricSpec
 	var triggerIndex = s.configuration.triggerIndex
 	var clientNamePattern = s.configuration.ClientNamePrefix
@@ -436,17 +427,16 @@ func (s *SolaceDMScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metri
 	}
 
 	return metricSpecList
-
 }
 
 // Interface required method!!
 // GetMetricsAndActivity returns the metric values and activity for a metric Name
 func (s *SolaceDMScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	metricValues, err := &SolaceDMScalerMetricValues{}, error(nil)
+	metricValues, _ := &SolaceDMScalerMetricValues{}, error(nil)
 
 	s.logger.V(1).Info(fmt.Sprintf("* MetricName: '%s'", metricName))
 
-	err = s.getClientStats(ctx, metricValues)
+	err := s.getClientStats(ctx, metricValues)
 
 	if err != nil {
 		s.logger.Error(err, "call to semp endpoint (client stats) failed")
@@ -493,7 +483,7 @@ func (s *SolaceDMScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 
 // Interface required method!!
 // Close any resources that need disposing when scaler is no longer used or destroyed
-func (s *SolaceDMScaler) Close(ctx context.Context) error {
+func (s *SolaceDMScaler) Close(_ context.Context) error {
 	if s.httpClient != nil {
 		s.httpClient.CloseIdleConnections()
 	}
@@ -507,7 +497,7 @@ func (s *SolaceDMScaler) getClientStats(ctx context.Context, metricValues *Solac
 	//get client stats for the clients that have the prefix
 	clientStatsReqBody := "<rpc><show><client><name>" + s.configuration.ClientNamePrefix + "*</name><stats/></client></show></rpc>"
 
-	bodyBytes, err := s.GetSolaceDMSempMetrics(ctx, s.httpClient, s.configuration.sempUrl, s.configuration.Username, s.configuration.Password, clientStatsReqBody)
+	bodyBytes, err := s.GetSolaceDMSempMetrics(ctx, s.httpClient, s.configuration.sempURL, s.configuration.Username, s.configuration.Password, clientStatsReqBody)
 	if err != nil {
 		return fmt.Errorf("reading client stats failed: %w", err)
 	}
@@ -526,7 +516,7 @@ func (s *SolaceDMScaler) getClientStats(ctx context.Context, metricValues *Solac
 	metricValues.AggregatedClientAverageTxByteRate = 0
 	metricValues.AggregatedClientTxMsgRate = 0
 	metricValues.AggregatedClientAverageTxMsgRate = 0
-	var numClients int64 = 0
+	var numClients int64
 
 	for i := 0; i < len(clients); i++ {
 		client := clients[i]
@@ -551,7 +541,7 @@ func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *
 	//get client stats for the clients that have the prefix
 	clientStatQueuesReqBody := fmt.Sprintf("<rpc><show><client><name>%s*</name><stats></stats><queues></queues></client></show></rpc>", s.configuration.ClientNamePrefix)
 
-	bodyBytes, err := s.GetSolaceDMSempMetrics(ctx, s.httpClient, s.configuration.sempUrl, s.configuration.Username, s.configuration.Password, clientStatQueuesReqBody)
+	bodyBytes, err := s.GetSolaceDMSempMetrics(ctx, s.httpClient, s.configuration.sempURL, s.configuration.Username, s.configuration.Password, clientStatQueuesReqBody)
 	if err != nil {
 		return fmt.Errorf("reading client stats queue failed: %w", err)
 	}
@@ -570,9 +560,9 @@ func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *
 	metricValues.AggregatedClientD1QueueUnitsOfWork = 0
 	metricValues.AggregatedClientD1QueueUnitsOfWorkRatio = 0
 
-	var aggregatedMaxUnitOfWork int64 = 0
-	var aggregatedUsedUnitsOfWork int64 = 0
-	var numClients int32 = 0
+	var aggregatedMaxUnitOfWork int64
+	var aggregatedUsedUnitsOfWork int64
+	var numClients int32
 
 	for i := 0; i < len(clients); i++ {
 		client := clients[i]
@@ -597,15 +587,6 @@ func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *
 		}
 	}
 
-	if aggregatedMaxUnitOfWork == 0 {
-		metricValues.AggregatedClientD1QueueUnitsOfWorkRatio = int64(d1QueueBacklogMetricBaseValue)
-	} else {
-		var ratio float64 = (float64(aggregatedUsedUnitsOfWork) / float64(aggregatedMaxUnitOfWork))
-		var calculatedValue float64 = (float64(1.0) + ratio) * float64(d1QueueBacklogMetricBaseValue)
-
-		metricValues.AggregatedClientD1QueueUnitsOfWorkRatio = int64(calculatedValue)
-	}
-
 	s.logger.V(1).Info(fmt.Sprintf("   MetricValues - AggregatedClientD1QueueMsgCount: '%d'", metricValues.AggregatedClientD1QueueMsgCount))
 	s.logger.V(1).Info(fmt.Sprintf("   MetricValues - AggregatedClientD1QueueUnitsOfWork: '%d'", metricValues.AggregatedClientD1QueueUnitsOfWork))
 	//no error
@@ -613,23 +594,22 @@ func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *
 }
 
 func (s *SolaceDMScaler) GetSolaceDMSempMetrics(ctx context.Context, httpClient *http.Client, sempUrls []string, username string, password string, requestBody string) ([]byte, error) {
-	for _, sempUrl := range sempUrls {
-		bytes, err := s.GetSolaceDMSempMetricsFromHost(ctx, httpClient, sempUrl, username, password, requestBody)
+	for _, sempURL := range sempUrls {
+		bytes, err := s.GetSolaceDMSempMetricsFromHost(ctx, httpClient, sempURL, username, password, requestBody)
 
 		if err == nil {
 			return bytes, nil
-		} else {
-			s.logger.Info(fmt.Sprintf("Warning: getting metrics from url: '%s' failed, using next url in list. err: '%s'", sempUrl, err))
 		}
+		s.logger.Info(fmt.Sprintf("Warning: getting metrics from url: '%s' failed, using next url in list. err: '%s'", sempURL, err))
 	}
 	//should not reach this code
 	return []byte{}, errors.New("no url return anything")
 }
 
-func (s *SolaceDMScaler) GetSolaceDMSempMetricsFromHost(ctx context.Context, httpClient *http.Client, sempUrl string, username string, password string, requestBody string) ([]byte, error) {
+func (s *SolaceDMScaler) GetSolaceDMSempMetricsFromHost(ctx context.Context, httpClient *http.Client, sempURL string, username string, password string, requestBody string) ([]byte, error) {
 	//	Retrieve metrics from Solace SEMP v1
 	//	Define HTTP Request
-	request, err := http.NewRequestWithContext(ctx, "POST", sempUrl, bytes.NewBuffer([]byte(requestBody)))
+	request, err := http.NewRequestWithContext(ctx, "POST", sempURL, bytes.NewBuffer([]byte(requestBody)))
 	if err != nil {
 		return []byte{}, fmt.Errorf("failed attempting request to solace semp api: %w", err)
 	}

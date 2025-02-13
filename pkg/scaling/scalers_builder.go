@@ -250,10 +250,10 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewRedisStreamsScaler(ctx, false, false, config)
 	case "selenium-grid":
 		return scalers.NewSeleniumGridScaler(config)
-	case "solace-event-queue":
-		return scalers.NewSolaceScaler(config)
 	case "solace-direct-messaging":
 		return scalers.NewSolaceDMScaler(config)
+	case "solace-event-queue":
+		return scalers.NewSolaceScaler(config)
 	case "solr":
 		return scalers.NewSolrScaler(config)
 	case "splunk":
