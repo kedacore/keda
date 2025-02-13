@@ -361,8 +361,8 @@ func TestParseSolaceDMConfiguration(t *testing.T) {
 func testScenario(t *testing.T, i int, testData testSolaceDMConfiguration) {
 	t.Logf("Test [%d], ParseErrorExpected: '%t' - TestID: '%s'", i, testData.parseErrorExpected, testData.testID)
 	config, err := parseSolaceDMConfiguration(&scalersconfig.ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.configuration, AuthParams: testSolaceDMAuthParams, TriggerIndex: 1})
-	switch {
 
+	switch {
 	case testData.parseErrorExpected && err == nil:
 		t.Log(" --> FAIL")
 		t.Error("expected error but got success")
@@ -379,7 +379,7 @@ func testScenario(t *testing.T, i int, testData testSolaceDMConfiguration) {
 
 	case !testData.parseErrorExpected && err == nil:
 		if len(testData.expectedUrls) > 0 {
-			if !testEq(testData.expectedUrls, config.sempUrl) {
+			if !testEq(testData.expectedUrls, config.sempURL) {
 				t.Log(" --> FAIL")
 				t.Error("URLs are different from expected")
 				return
