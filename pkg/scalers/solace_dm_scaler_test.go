@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	v2 "k8s.io/api/autoscaling/v2"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 // host url empty or full of spaces
@@ -387,7 +388,7 @@ func testScenario(t *testing.T, i int, testData testSolaceDMConfiguration) {
 		}
 	}
 
-	//At this point configuration should be ok!
+	// At this point configuration should be ok!
 	testSolaceScaler := SolaceDMScaler{
 		configuration: config,
 		httpClient:    http.DefaultClient,

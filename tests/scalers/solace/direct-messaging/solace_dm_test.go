@@ -9,10 +9,11 @@ import (
 	"testing"
 
 	"github.com/joho/godotenv"
-	. "github.com/kedacore/keda/v2/tests/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
+
+	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 // Load environment variables from .env file
@@ -27,11 +28,11 @@ var (
 	consumerDeploymentName        = "direct-messaging-simple-consumer"
 	consumerDeploymentSecretsName = fmt.Sprintf("%s-secrets", solaceDMTestName)
 	producerPodName               = fmt.Sprintf("%s-producer", solaceDMTestName)
-	//scaler
+	// scaler
 	scalerSecretsName               = fmt.Sprintf("%s-scaler-secrets", solaceDMTestName)
 	scalerTriggerAuthenticationName = fmt.Sprintf("%s-scaler-trigger-auth", solaceDMTestName)
 	scalerScaledObjectName          = fmt.Sprintf("%s-scaler-so", solaceDMTestName)
-	//scaled object parameters
+	// scaled object parameters
 	minReplicaCount                         = 1
 	maxReplicaCount                         = 5
 	aggregatedClientTxMsgRateTarget         = 600
@@ -240,12 +241,6 @@ func installSolace(t *testing.T) {
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
-func configureProducer(t *testing.T) {
-	// Create the pubsub broker
-	_, _, err := ExecCommandOnSpecificPod(t, producerPodName, solaceDMTestNamespace, "./config/config_solace.sh")
-	require.NoErrorf(t, err, "cannot execute command - %s", err)
-}
-
 func uninstallSolace(t *testing.T) {
 	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall --namespace %s --wait kedalab`, solaceDMTestNamespace))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
@@ -254,12 +249,6 @@ func uninstallSolace(t *testing.T) {
 func publishMessages(t *testing.T, messageRate, messageNumber, messageSize int) {
 	_, _, err := ExecCommandOnSpecificPod(t, producerPodName, solaceDMTestNamespace, fmt.Sprintf("./sdkperf/sdkperf_java.sh -cip=kedalab-pubsubplus-dev:55555 -cu default@default -cp= -mr %d -mn %d -msx %d -mt=direct -ptl=topic/message/A", messageRate, messageNumber, messageSize))
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
-}
-
-func testNoScaler(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing no scaler behavior ---")
-	publishMessages(t, 700, 70*60, 1024)
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, consumerDeploymentName, solaceDMTestNamespace, minReplicaCount, 60)
 }
 
 func testScaleUp(t *testing.T, kc *kubernetes.Clientset, mode string, messageRate int, messageNumber int, iterations int, interval int) {
@@ -276,7 +265,7 @@ func testScaleDown(t *testing.T, kc *kubernetes.Clientset, mode string, iteratio
 }
 
 func cleanParams(data *solaceDMTemplateData) {
-	//clean
+	// clean
 	data.AggregatedClientTxMsgRateTarget = 0
 	data.AggregatedClientTxByteRateTarget = 0
 	data.AggregatedClientAverageTxMsgRateTarget = 0
@@ -284,50 +273,32 @@ func cleanParams(data *solaceDMTemplateData) {
 }
 
 func testMsgRatePerSecond(t *testing.T, kc *kubernetes.Clientset, data *solaceDMTemplateData) {
-
 	cleanParams(data)
 
 	data.AggregatedClientTxMsgRateTarget = 600
-	//Install ScaledObject
+	// Install ScaledObject
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scalerObjectTemplate)
-	// will send 700 msgs per second during 60 secs
+	// will send 700 msgs per second during 30 secs
 	// wait 60 secs
 	// the number of instances should be the maximum configured
 	testScaleUp(t, kc, "TxtMsgRate", 700, 700*30, 30, 1)
 
-	//wait 180 seconds to scaler to reduce the replica number to the minimumn
+	// wait 125 seconds to scaler to reduce the replica number to the minimumn
 	testScaleDown(t, kc, "TxtMsgRate", 125, 1)
 }
-func testAvgMsgRatePerSecond(t *testing.T, kc *kubernetes.Clientset, data *solaceDMTemplateData) {
-
-	cleanParams(data)
-
-	data.AggregatedClientAverageTxMsgRateTarget = 600
-	//Install ScaledObject
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scalerObjectTemplate)
-	// will send 700 msgs per second during 60 secs
-	// wait 60 secs
-	// the number of instances should be the maximum configured
-	testScaleUp(t, kc, "AvgTxtMsgRate", 700, 700*30, 30, 1)
-
-	//wait 180 seconds to scaler to reduce the replica number to the minimumn
-	testScaleDown(t, kc, "AvgTxtMsgRate", 165, 1)
-}
-
 func testByteRatePerSecond(t *testing.T, kc *kubernetes.Clientset, data *solaceDMTemplateData) {
-
 	cleanParams(data)
 
 	data.AggregatedClientTxByteRateTarget = 600 * 1024
-	//Install ScaledObject
+	// Install ScaledObject
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scalerObjectTemplate)
 
-	// will send 700 msgs per second during 60 secs
+	// will send 900 msgs per second during 30 secs
 	// wait 60 secs
 	// the number of instances should be the maximum configured
 	testScaleUp(t, kc, "TxtByteRate", 900, 900*30, 30, 1)
 
-	//wait 180 seconds to scaler to reduce the replica number to the minimumn
+	// wait 130 seconds to scaler to reduce the replica number to the minimumn
 	testScaleDown(t, kc, "TxtByteRate", 130, 1)
 }
 
