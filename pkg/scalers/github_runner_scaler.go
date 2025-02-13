@@ -36,7 +36,7 @@ type githubRunnerScaler struct {
 	logger        logr.Logger
 	etags         map[string]string
 	previousRepos []string
-	previousWfrs  map[string]*WorkflowRuns
+	previousWfrs  map[string]map[string]*WorkflowRuns
 	previousJobs  map[string][]Job
 }
 
@@ -358,7 +358,7 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	etags := make(map[string]string)
 	previousRepos := []string{}
 	previousJobs := map[string][]Job{}
-	previousWfrs := map[string]*WorkflowRuns{}
+	previousWfrs := map[string]map[string]*WorkflowRuns{}
 
 	return &githubRunnerScaler{
 		metricType:    metricType,
@@ -650,7 +650,7 @@ func stripDeadRuns(allWfrs []WorkflowRuns) []WorkflowRun {
 
 // getWorkflowRunJobs returns a list of jobs for a given workflow run
 func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRunID int64, repoName string) ([]Job, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs", s.metadata.githubAPIURL, s.metadata.owner, repoName, workflowRunID)
+	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs?per_page=100", s.metadata.githubAPIURL, s.metadata.owner, repoName, workflowRunID)
 	body, statusCode, err := s.getGithubRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil {
 		return nil, err
@@ -677,8 +677,8 @@ func (s *githubRunnerScaler) getWorkflowRunJobs(ctx context.Context, workflowRun
 }
 
 // getWorkflowRuns returns a list of workflow runs for a given repository
-func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName string) (*WorkflowRuns, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs", s.metadata.githubAPIURL, s.metadata.owner, repoName)
+func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName string, status string) (*WorkflowRuns, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/actions/runs?status=%s&per_page=100", s.metadata.githubAPIURL, s.metadata.owner, repoName, status)
 	body, statusCode, err := s.getGithubRequest(ctx, url, s.metadata, s.httpClient)
 	if err != nil && statusCode == 404 {
 		return nil, nil
@@ -686,11 +686,11 @@ func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName strin
 		return nil, err
 	}
 	if statusCode == 304 && s.metadata.enableEtags {
-		if s.previousWfrs[repoName] != nil {
-			return s.previousWfrs[repoName], nil
+		if s.previousWfrs[repoName][status] != nil {
+			return s.previousWfrs[repoName][status], nil
 		}
 
-		return nil, fmt.Errorf("request for workflow runs returned status: %d %s but previous workflow runs is not set", statusCode, http.StatusText(statusCode))
+		return nil, fmt.Errorf("request for workflow runs returned status: %d %s but previous workflow runs is not set. Repo: %s, Status: %s", statusCode, http.StatusText(statusCode), repoName, status)
 	}
 
 	var wfrs WorkflowRuns
@@ -700,7 +700,7 @@ func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName strin
 	}
 
 	if s.metadata.enableEtags {
-		s.previousWfrs[repoName] = &wfrs
+		s.previousWfrs[repoName][status] = &wfrs
 	}
 
 	return &wfrs, nil
@@ -742,12 +742,19 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	var allWfrs []WorkflowRuns
 
 	for _, repo := range repos {
-		wfrs, err := s.getWorkflowRuns(ctx, repo)
+		wfrsQueued, err := s.getWorkflowRuns(ctx, repo, "queued")
 		if err != nil {
 			return -1, err
 		}
-		if wfrs != nil {
-			allWfrs = append(allWfrs, *wfrs)
+		if wfrsQueued != nil {
+			allWfrs = append(allWfrs, *wfrsQueued)
+		}
+		wfrsInProgress, err := s.getWorkflowRuns(ctx, repo, "in_progress")
+		if err != nil {
+			return -1, err
+		}
+		if wfrsInProgress != nil {
+			allWfrs = append(allWfrs, *wfrsInProgress)
 		}
 	}
 

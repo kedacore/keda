@@ -125,10 +125,3 @@ func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logg
 	}
 	return e.setCondition(ctx, logger, object, status, reason, message, active)
 }
-
-func (e *scaleExecutor) setFallbackCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
-	fallback := func(conditions kedav1alpha1.Conditions, status metav1.ConditionStatus, reason string, message string) {
-		conditions.SetFallbackCondition(status, reason, message)
-	}
-	return e.setCondition(ctx, logger, object, status, reason, message, fallback)
-}
