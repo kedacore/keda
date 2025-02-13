@@ -125,7 +125,7 @@ const scalerTriggerAuthenticationTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
-  name: {{.ScalerTriggerAuthenticationName}} 
+  name: {{.ScalerTriggerAuthenticationName}}
   namespace: {{.TestNamespace}}
 spec:
   secretTargetRef:
@@ -186,12 +186,12 @@ spec:
       #if there are messages queued means we are behind
       queuedMessagesFactor: '3'
       #Metrics
-      aggregatedClientTxMsgRateTarget: '{{.AggregatedClientTxMsgRateTarget}}'      
+      aggregatedClientTxMsgRateTarget: '{{.AggregatedClientTxMsgRateTarget}}'
       aggregatedClientTxByteRateTarget: '{{.AggregatedClientTxByteRateTarget}}'
       aggregatedClientAverageTxByteRateTarget: '{{.AggregatedClientAverageTxByteRateTarget}}'
       aggregatedClientAverageTxMsgRateTarget: '{{.AggregatedClientAverageTxMsgRateTarget}}'
     authenticationRef:
-      name: {{.ScalerTriggerAuthenticationName}} 
+      name: {{.ScalerTriggerAuthenticationName}}
 `
 
 func TestSolaceDMScalerRatePerSecond(t *testing.T) {
