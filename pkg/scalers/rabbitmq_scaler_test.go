@@ -161,6 +161,10 @@ var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
 	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"username": "user"}, true, rmqTLSDisable, false},
 	// failure, password but no username
 	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"password": "PASSWORD"}, true, rmqTLSDisable, false},
+	// success, vhostName
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"vhostName": "myVhost"}, false, rmqTLSDisable, false},
+	// success, vhostName but empty
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"vhostName": ""}, false, rmqTLSDisable, false},
 	// success, username and password from env
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "usernameFromEnv": rabbitMQUsername, "passwordFromEnv": rabbitMQPassword}, v1alpha1.AuthPodIdentity{}, map[string]string{}, false, rmqTLSDisable, false},
 	// failure, username from env but not password
@@ -367,7 +371,6 @@ func TestGetQueueInfo(t *testing.T) {
 	}
 
 	for _, testData := range allTestData {
-		testData := testData
 		vhost, path := getVhostAndPathFromURL(testData.urlPath, testData.extraMetadata["vhostName"])
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			expectedPath := fmt.Sprintf("%s/api/queues%s/evaluate_trials", path, vhost)
@@ -508,7 +511,6 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 	}
 
 	for _, testData := range allTestData {
-		testData := testData
 		vhost, path := getVhostAndPathFromURL(testData.urlPath, testData.extraMetadata["vhostName"])
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			expectedPath := fmt.Sprintf("%s/api/queues%s?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=100", path, vhost)
