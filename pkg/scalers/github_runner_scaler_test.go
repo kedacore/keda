@@ -196,6 +196,7 @@ func apiStubHandlerCustomJob(hasRateLeft bool, exceeds30Repos bool, jobResponse 
 			w.WriteHeader(http.StatusForbidden)
 		}
 		if strings.HasSuffix(r.URL.String(), "jobs?per_page=100") {
+			// nosemgrep: no-direct-write-to-responsewriter
 			_, _ = w.Write([]byte(jobResponse))
 			w.WriteHeader(http.StatusOK)
 		}

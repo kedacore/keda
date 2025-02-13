@@ -357,8 +357,8 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	etags := make(map[string]string)
 	previousRepos := []string{}
-	previousJobs := map[string][]Job{}
-	previousWfrs := map[string]map[string]*WorkflowRuns{}
+	previousJobs := make(map[string][]Job)
+	previousWfrs := make(map[string]map[string]*WorkflowRuns)
 
 	return &githubRunnerScaler{
 		metricType:    metricType,
@@ -700,7 +700,11 @@ func (s *githubRunnerScaler) getWorkflowRuns(ctx context.Context, repoName strin
 	}
 
 	if s.metadata.enableEtags {
-		s.previousWfrs[repoName][status] = &wfrs
+		if _, repoFound := s.previousWfrs[repoName]; !repoFound {
+			s.previousWfrs[repoName] = map[string]*WorkflowRuns{status: &wfrs}
+		} else {
+			s.previousWfrs[repoName][status] = &wfrs
+		}
 	}
 
 	return &wfrs, nil
