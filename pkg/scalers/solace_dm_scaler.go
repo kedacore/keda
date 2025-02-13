@@ -14,10 +14,11 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -41,6 +42,8 @@ const (
 	d1PriorityQueue = "D-1"
 	// Unit of Work Byte Size
 	unitOfWorkByteSize = 2048
+	// JSON Marshall error
+	marshallError = "marshall error"
 )
 
 /*************************************************************************/
@@ -50,7 +53,7 @@ type SolaceDMScalerConfiguration struct {
 	// Scaler index
 	triggerIndex int
 
-	//HostURL
+	// HostURL
 	HostURL string `keda:"name=hostUrl, order=triggerMetadata"`
 	// Basic Auth Username
 	Username string `keda:"name=username, order=authParams;triggerMetadata;resolvedEnv"`
@@ -62,7 +65,7 @@ type SolaceDMScalerConfiguration struct {
 	// Client Name Prefix
 	ClientNamePrefix string `keda:"name=clientNamePrefix, order=triggerMetadata"`
 
-	//UnsafeSSL
+	// UnsafeSSL
 	UnsafeSSL bool `keda:"name=unsafeSSL, order=triggerMetadata, default=false"`
 
 	// factor to multiply queued messages length
@@ -91,7 +94,7 @@ type SolaceDMScalerConfiguration struct {
 }
 
 func (s *SolaceDMScalerConfiguration) Validate() error {
-	//host url is not empty or full of spaces!
+	// host url is not empty or full of spaces!
 	s.HostURL = strings.TrimSpace(s.HostURL)
 
 	if len(s.HostURL) == 0 {
@@ -101,7 +104,7 @@ func (s *SolaceDMScalerConfiguration) Validate() error {
 	// Compile the regular expression
 	re := regexp.MustCompile(urlValidationPattern)
 
-	//check each of the urls for: empty strings, valid url pattern
+	// Check each of the urls for: empty strings, valid url pattern
 	urls := strings.Split(s.HostURL, ",")
 
 	for i, v := range urls {
@@ -170,7 +173,7 @@ type SolaceDMScalerMetricValues struct {
 func (c SolaceDMScalerMetricValues) String() string {
 	out, err := json.Marshal(c)
 	if err != nil {
-		return "error"
+		return marshallError
 	}
 
 	return fmt.Sprint(string(out))
@@ -236,7 +239,7 @@ type CSStats struct {
 func (c CSClientD) String() string {
 	out, err := json.Marshal(c)
 	if err != nil {
-		return "error"
+		return marshallError
 	}
 
 	return fmt.Sprint(string(out))
@@ -294,7 +297,7 @@ type CSQClientQueue struct {
 func (c CSQClientD) String() string {
 	out, err := json.Marshal(c)
 	if err != nil {
-		return "error"
+		return marshallError
 	}
 
 	return fmt.Sprint(string(out))
@@ -353,7 +356,7 @@ func parseSolaceDMConfiguration(scalerConfig *scalersconfig.ScalerConfig) (*Sola
 	}
 	meta.triggerIndex = scalerConfig.TriggerIndex
 
-	//initialize urls
+	// initialize urls
 	meta.sempURL = []string{}
 	urls := strings.Split(meta.HostURL, ",")
 
@@ -450,7 +453,7 @@ func (s *SolaceDMScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
-	//Use the queued messages in D-1 queue to add them to the other metrics!
+	// Use the queued messages in D-1 queue to add them to the other metrics!
 	metricValues.AggregatedClientTxMsgRate += (metricValues.AggregatedClientD1QueueMsgCount * s.configuration.QueuedMessagesFactor)
 	metricValues.AggregatedClientAverageTxMsgRate += (metricValues.AggregatedClientD1QueueMsgCount * s.configuration.QueuedMessagesFactor)
 	metricValues.AggregatedClientTxByteRate += (metricValues.AggregatedClientD1QueueUnitsOfWork * s.configuration.QueuedMessagesFactor * unitOfWorkByteSize)
@@ -477,7 +480,7 @@ func (s *SolaceDMScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	}
 
 	s.logger.Info(fmt.Sprintf("Metrics: '%s'", metricValues))
-	//always return true for activation unless its not needed this needs at least one instace
+	// always return true for activation unless its not needed this needs at least one instace
 	return []external_metrics.ExternalMetricValue{metric}, true, nil
 }
 
@@ -494,7 +497,7 @@ func (s *SolaceDMScaler) Close(_ context.Context) error {
 /************ Additional Internal methods                                       *****************************/
 /************************************************************************************************************/
 func (s *SolaceDMScaler) getClientStats(ctx context.Context, metricValues *SolaceDMScalerMetricValues) error {
-	//get client stats for the clients that have the prefix
+	// get client stats for the clients that have the prefix
 	clientStatsReqBody := "<rpc><show><client><name>" + s.configuration.ClientNamePrefix + "*</name><stats/></client></show></rpc>"
 
 	bodyBytes, err := s.GetSolaceDMSempMetrics(ctx, s.httpClient, s.configuration.sempURL, s.configuration.Username, s.configuration.Password, clientStatsReqBody)
@@ -511,7 +514,7 @@ func (s *SolaceDMScaler) getClientStats(ctx context.Context, metricValues *Solac
 
 	clients := clientStatsReply.RPC.Show.Client.PrimaryVirtualRouter.Clients
 
-	//make sure they are clean before the agg
+	// make sure they are clean before the agg
 	metricValues.AggregatedClientTxByteRate = 0
 	metricValues.AggregatedClientAverageTxByteRate = 0
 	metricValues.AggregatedClientTxMsgRate = 0
@@ -521,7 +524,7 @@ func (s *SolaceDMScaler) getClientStats(ctx context.Context, metricValues *Solac
 	for i := 0; i < len(clients); i++ {
 		client := clients[i]
 
-		//only consider the configured vpn
+		// only consider the configured vpn
 		if client.MessageVpn == s.configuration.MessageVpn {
 			numClients++
 			s.logger.V(1).Info(fmt.Sprintf("    Client[%d] - ByteRatePerSecond: '%d', AvgByteRatePerMinute: '%d', MsgRatePerSecond: '%d', AvgMsgRatePerMinute: '%d'", i, client.Stats.ByteRatePerSecond, client.Stats.AvgByteRatePerMinute, client.Stats.MsgRatePerSecond, client.Stats.AvgMsgRatePerMinute))
@@ -533,12 +536,12 @@ func (s *SolaceDMScaler) getClientStats(ctx context.Context, metricValues *Solac
 	}
 
 	s.logger.V(1).Info(fmt.Sprintf("   MetricValues - ByteRatePerSecond: '%d', AvgByteRatePerMinute: '%d', MsgRatePerSecond: '%d', AvgMsgRatePerMinute: '%d'", metricValues.AggregatedClientTxByteRate, metricValues.AggregatedClientAverageTxByteRate, metricValues.AggregatedClientTxMsgRate, metricValues.AggregatedClientAverageTxMsgRate))
-	//no error
+	// no error
 	return nil
 }
 
 func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *SolaceDMScalerMetricValues) error {
-	//get client stats for the clients that have the prefix
+	// get client stats for the clients that have the prefix
 	clientStatQueuesReqBody := fmt.Sprintf("<rpc><show><client><name>%s*</name><stats></stats><queues></queues></client></show></rpc>", s.configuration.ClientNamePrefix)
 
 	bodyBytes, err := s.GetSolaceDMSempMetrics(ctx, s.httpClient, s.configuration.sempURL, s.configuration.Username, s.configuration.Password, clientStatQueuesReqBody)
@@ -555,7 +558,7 @@ func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *
 
 	clients := clientStatsReply.RPC.Show.Client.PrimaryVirtualRouter.Clients
 
-	//make sure they are clean before the agg
+	// make sure they are clean before the agg
 	metricValues.AggregatedClientD1QueueMsgCount = 0
 	metricValues.AggregatedClientD1QueueUnitsOfWork = 0
 	metricValues.AggregatedClientD1QueueUnitsOfWorkRatio = 0
@@ -567,7 +570,7 @@ func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *
 	for i := 0; i < len(clients); i++ {
 		client := clients[i]
 
-		//only consider the configured vpn
+		// only consider the configured vpn
 		if client.MessageVpn == s.configuration.MessageVpn {
 			clientQueues := client.ClientQueues
 
@@ -589,7 +592,7 @@ func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *
 
 	s.logger.V(1).Info(fmt.Sprintf("   MetricValues - AggregatedClientD1QueueMsgCount: '%d'", metricValues.AggregatedClientD1QueueMsgCount))
 	s.logger.V(1).Info(fmt.Sprintf("   MetricValues - AggregatedClientD1QueueUnitsOfWork: '%d'", metricValues.AggregatedClientD1QueueUnitsOfWork))
-	//no error
+	// no error
 	return nil
 }
 
@@ -602,7 +605,7 @@ func (s *SolaceDMScaler) GetSolaceDMSempMetrics(ctx context.Context, httpClient 
 		}
 		s.logger.Info(fmt.Sprintf("Warning: getting metrics from url: '%s' failed, using next url in list. err: '%s'", sempURL, err))
 	}
-	//should not reach this code
+	// should not reach this code
 	return []byte{}, errors.New("no url return anything")
 }
 
