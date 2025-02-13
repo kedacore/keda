@@ -128,7 +128,7 @@ spec:
 var (
 	testNamespace             = fmt.Sprintf("%s-ns", testName)
 	deploymentName            = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName          = fmt.Sprintf("%s-so", testName)
+	scaledObjectName          = "this-is-a-very-long-name-that-exceeds-kubernetes-label-length-limit-xxxxx"
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	dynamoDBTableName         = fmt.Sprintf("table-%d", GetRandomNumber())
 	awsAccessKeyID            = os.Getenv("TF_AWS_ACCESS_KEY")
