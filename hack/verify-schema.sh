@@ -74,4 +74,3 @@ else
   echo "${SCHEMAROOT} is out of date. Please run 'make generate-scalers-schema'"
   exit 1
 fi
-
