@@ -176,7 +176,11 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metri
 			Metric: v2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, spec.MetricName),
 			},
-			Target: GetMetricTarget(s.metricType, spec.TargetSize),
+		}
+		if spec.TargetSizeFloat > 0 {
+			externalMetric.Target = GetMetricTargetMili(s.metricType, spec.TargetSizeFloat)
+		} else {
+			externalMetric.Target = GetMetricTarget(s.metricType, spec.TargetSize)
 		}
 
 		// Create the metric spec for the HPA
@@ -217,7 +221,11 @@ func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	}
 
 	for _, metricResult := range metricsResponse.MetricValues {
-		metric := GenerateMetricInMili(metricName, float64(metricResult.MetricValue))
+		value := float64(metricResult.MetricValue)
+		if metricResult.MetricValueFloat > 0 {
+			value = metricResult.MetricValueFloat
+		}
+		metric := GenerateMetricInMili(metricName, value)
 		metrics = append(metrics, metric)
 	}
 
