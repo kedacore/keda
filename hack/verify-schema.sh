@@ -42,7 +42,7 @@ find $SCHEMAROOT -name "*.json" | while read file; do
 
     if [ ! -z "$err_line_content" ]; then
         echo "ERROR: error schema format founded: $err_line_content in $file"
-        exit 1 
+        exit 1
     fi
 done
 echo "Schema json files are in correct format"
@@ -54,7 +54,7 @@ find $SCHEMAROOT -name "*.yaml" | while read file; do
         echo "ERROR: error schema format founded: $err_line_content in $file"
         exit 1
     fi
-done 
+done
 echo "Schema yaml files are in correct format"
 
 cleanup
