@@ -71,7 +71,7 @@ OUTPUT_FILE_PATH ?= "schema/generated/"
 OUTPUT_FILE_NAME ?= "scalers-metadata-schema"
   
 ifneq '${VERSION}' 'main' 
-  OUTPUT_FILE_NAME :="${OUTPUT_FILE_NAME}_v${VERSION}"  
+  OUTPUT_FILE_NAME :="${OUTPUT_FILE_NAME}_v${VERSION}" 
 endif 
   
 
