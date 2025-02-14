@@ -30,7 +30,7 @@ cleanup() {
 trap "cleanup" EXIT SIGINT
 
 # Make sure schema json file has correct format
-find $SCHEMAROOT -name "*.json" | while read file; do 
+find $SCHEMAROOT -name "*.json" | while read file; do
   if jq -e . $file >/dev/null 2>&1; then
       echo "Parsed JSON successfully and got something other than false/null"
   else
@@ -40,20 +40,20 @@ find $SCHEMAROOT -name "*.json" | while read file; do
 
    err_line_content=$(grep -vE '"kedaVersion":.+|"schemaVersion":.+|"scalers": \[|"metadata": \[|"optional":.+|"default":.+|"canReadFromEnv":.+|"canReadFromAuth":.+|"type":.+|"name":.+|"rangeSeparator":.+|"separator":.+|"allowedValue": \[|"deprecatedAnnounce":.+|^[^:]*$' "$file")
 
-    if [ ! -z "$err_line_content" ]; then 
-        echo "ERROR: error schema format founded: $err_line_content in $file" 
+    if [ ! -z "$err_line_content" ]; then
+        echo "ERROR: error schema format founded: $err_line_content in $file"
         exit 1 
-    fi 
-done 
+    fi
+done
 echo "Schema json files are in correct format"
 
 # Make sure schema yaml file has correct format
-find $SCHEMAROOT -name "*.yaml" | while read file; do 
+find $SCHEMAROOT -name "*.yaml" | while read file; do
    err_line_content=$(grep -vE "kedaVersion:.+|schemaVersion:.+|scalers:|metadata:|optional:.+|default:.+|canReadFromEnv:.+|canReadFromAuth:.+|type:.+|name:.+|rangeSeparator:.+|separator:.+|allowedValue:|deprecatedAnnounce:.+|^[^:]*$" "$file")
-    if [ ! -z "$err_line_content" ]; then 
-        echo "ERROR: error schema format founded: $err_line_content in $file" 
+    if [ ! -z "$err_line_content" ]; then
+        echo "ERROR: error schema format founded: $err_line_content in $file"
         exit 1
-    fi 
+    fi
 done 
 echo "Schema yaml files are in correct format"
 
