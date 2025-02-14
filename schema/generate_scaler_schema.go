@@ -166,32 +166,48 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 		if err != nil {
 			return err
 		}
+
 		fileName := outputFilePath + "/" + outputFileName + ".yaml"
 		err = os.WriteFile(fileName, filedata, 0644)
+		if err != nil {
+			return err
+		}
 	case "json":
 		filedata, err := json.MarshalIndent(fullMetadataSchema, "", "    ")
 		if err != nil {
 			return err
 		}
+
 		filedata = append(filedata, '\n')
 		fileName := outputFilePath + "/" + outputFileName + ".json"
 		err = os.WriteFile(fileName, filedata, 0644)
+		if err != nil {
+			return err
+		}
 	case "both":
 
 		filedata, err := yaml.Marshal(fullMetadataSchema)
 		if err != nil {
 			return err
 		}
+
 		fileName := outputFilePath + "/" + outputFileName + ".yaml"
 		err = os.WriteFile(fileName, filedata, 0644)
+		if err != nil {
+			return err
+		}
 
 		filedata, err = json.MarshalIndent(fullMetadataSchema, "", "    ")
 		if err != nil {
 			return err
 		}
+
 		filedata = append(filedata, '\n')
 		fileName = outputFilePath + "/" + outputFileName + ".json"
 		err = os.WriteFile(fileName, filedata, 0644)
+		if err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("output file format %s is not supported", outputFileFormat)
 	}
