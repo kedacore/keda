@@ -477,7 +477,7 @@ func (s *SolaceDMScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
-	s.logger.Info(fmt.Sprintf("Metrics: '%s'", metricValues))
+	s.logger.V(1).Info(fmt.Sprintf("Metrics: '%s'", metricValues))
 	// always return true for activation unless its not needed this needs at least one instace
 	return []external_metrics.ExternalMetricValue{metric}, true, nil
 }
