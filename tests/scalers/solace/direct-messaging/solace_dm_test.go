@@ -209,7 +209,7 @@ func TestSolaceDMScalerRatePerSecond(t *testing.T) {
 	})
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, consumerDeploymentName, solaceDMTestNamespace, minReplicaCount, 60, 1),
-		"replica count should be 0 after 1 minute - before start testing")
+		"replica count should be 1 after 1 minute - before start testing")
 
 	testMsgRatePerSecond(t, kc, &data)
 }
@@ -229,7 +229,7 @@ func TestSolaceDMScalerBytePerSecond(t *testing.T) {
 	})
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, consumerDeploymentName, solaceDMTestNamespace, minReplicaCount, 60, 1),
-		"replica count should be 0 after 1 minute - before start testing")
+		"replica count should be 1 after 1 minute - before start testing")
 
 	testByteRatePerSecond(t, kc, &data)
 }
