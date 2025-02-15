@@ -369,7 +369,6 @@ func parseSolaceDMConfiguration(scalerConfig *scalersconfig.ScalerConfig) (*Sola
 	return meta, nil
 }
 
-// Interface required method!!
 // GetMetricSpecForScaling returns the metrics based on which this scaler determines that the ScaleTarget scales. This is used to construct the HPA spec that is created for
 // this scaled object. The labels used should match the selectors used in GetMetrics
 func (s *SolaceDMScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
