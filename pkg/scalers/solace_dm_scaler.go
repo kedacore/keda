@@ -482,7 +482,6 @@ func (s *SolaceDMScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	return []external_metrics.ExternalMetricValue{metric}, true, nil
 }
 
-// Interface required method!!
 // Close any resources that need disposing when scaler is no longer used or destroyed
 func (s *SolaceDMScaler) Close(_ context.Context) error {
 	if s.httpClient != nil {
