@@ -431,7 +431,6 @@ func (s *SolaceDMScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricS
 	return metricSpecList
 }
 
-// Interface required method!!
 // GetMetricsAndActivity returns the metric values and activity for a metric Name
 func (s *SolaceDMScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricValues, _ := &SolaceDMScalerMetricValues{}, error(nil)
