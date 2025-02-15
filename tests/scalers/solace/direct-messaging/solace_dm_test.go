@@ -158,13 +158,13 @@ spec:
     horizontalPodAutoscalerConfig:
       behavior:
         scaleDown:
-          stabilizationWindowSeconds: 30
+          stabilizationWindowSeconds: 15
           #Policy (Pods) allows at most 5 replicas to be scaled down in 10 seconds.
           policies:
           - type:          Pods
             value:         5
             #Indicates the length of time in the past for which the policy must hold true
-            periodSeconds: 10
+            periodSeconds: 5
         scaleUp:
           stabilizationWindowSeconds: 0
           #Policy (Pods) allows at most 3 replicas to be scaled up in 3 seconds.
@@ -208,6 +208,9 @@ func TestSolaceDMScalerRatePerSecond(t *testing.T) {
 		DeleteKubernetesResources(t, solaceDMTestNamespace, data, templates)
 	})
 
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, consumerDeploymentName, solaceDMTestNamespace, minReplicaCount, 60, 1),
+		"replica count should be 0 after 1 minute - before start testing")
+
 	testMsgRatePerSecond(t, kc, &data)
 }
 
@@ -224,6 +227,9 @@ func TestSolaceDMScalerBytePerSecond(t *testing.T) {
 		uninstallSolace(t)
 		DeleteKubernetesResources(t, solaceDMTestNamespace, data, templates)
 	})
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, consumerDeploymentName, solaceDMTestNamespace, minReplicaCount, 60, 1),
+		"replica count should be 0 after 1 minute - before start testing")
 
 	testByteRatePerSecond(t, kc, &data)
 }
@@ -279,12 +285,12 @@ func testMsgRatePerSecond(t *testing.T, kc *kubernetes.Clientset, data *solaceDM
 	// Install ScaledObject
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scalerObjectTemplate)
 	// will send 700 msgs per second during 30 secs
-	// wait 60 secs
+	// wait 30 secs
 	// the number of instances should be the maximum configured
 	testScaleUp(t, kc, "TxtMsgRate", 700, 700*30, 30, 1)
 
 	// wait 125 seconds to scaler to reduce the replica number to the minimumn
-	testScaleDown(t, kc, "TxtMsgRate", 125, 1)
+	testScaleDown(t, kc, "TxtMsgRate", 180, 1)
 }
 func testByteRatePerSecond(t *testing.T, kc *kubernetes.Clientset, data *solaceDMTemplateData) {
 	cleanParams(data)
@@ -294,12 +300,12 @@ func testByteRatePerSecond(t *testing.T, kc *kubernetes.Clientset, data *solaceD
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scalerObjectTemplate)
 
 	// will send 900 msgs per second during 30 secs
-	// wait 60 secs
+	// wait 30 secs
 	// the number of instances should be the maximum configured
 	testScaleUp(t, kc, "TxtByteRate", 900, 900*30, 30, 1)
 
 	// wait 130 seconds to scaler to reduce the replica number to the minimumn
-	testScaleDown(t, kc, "TxtByteRate", 130, 1)
+	testScaleDown(t, kc, "TxtByteRate", 180, 1)
 }
 
 func getSolaceDMTemplateData() (solaceDMTemplateData, []Template) {
