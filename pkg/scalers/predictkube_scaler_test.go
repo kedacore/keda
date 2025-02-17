@@ -16,12 +16,52 @@ import (
 	pb "github.com/dysnix/predictkube-proto/external/proto/services"
 	"github.com/phayes/freeport"
 	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
+	prometheusModel "github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
+
+var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	if r.RequestURI == "/api/v1/status/runtimeinfo" {
+		w.WriteHeader(http.StatusOK)
+		runtimeInfo := prometheusV1.RuntimeinfoResult{
+			StartTime: time.Now(),
+		}
+		data, _ := json.Marshal(runtimeInfo)
+		response := struct {
+			Data json.RawMessage `json:"data"`
+		}{
+			Data: data,
+		}
+		_ = json.NewEncoder(w).Encode(response)
+		return
+	}
+	if r.RequestURI == "/api/v1/query_range" {
+		w.WriteHeader(http.StatusOK)
+		result := struct {
+			Type   model.ValueType `json:"resultType"`
+			Result interface{}     `json:"result"`
+		}{
+			Type: model.ValScalar,
+			Result: prometheusModel.Scalar{
+				Value:     model.ZeroSamplePair.Value,
+				Timestamp: model.Now(),
+			},
+		}
+		data, _ := json.Marshal(result)
+		response := struct {
+			Data json.RawMessage `json:"data"`
+		}{
+			Data: data,
+		}
+		_ = json.NewEncoder(w).Encode(response)
+		return
+	}
+}))
 
 type server struct {
 	pb.UnimplementedMlEngineServiceServer
@@ -109,7 +149,7 @@ func runMockGrpcPredictServer() (*server, *grpc.Server) {
 	return mockGrpcServer, grpcServer
 }
 
-const testAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0IENyZWF0ZUNsaWVudCIsImV4cCI6MTY0NjkxNzI3Nywic3ViIjoiODM4NjY5ODAtM2UzNS0xMWVjLTlmMjQtYWNkZTQ4MDAxMTIyIn0.5QEuO6_ysdk2abGvk3Xp7Q25M4H4pIFXeqP2E7n9rKI"
+const testAPIKey = "TEST_API_KEY"
 
 type predictKubeMetadataTestData struct {
 	metadata   map[string]string
@@ -120,7 +160,7 @@ type predictKubeMetadataTestData struct {
 var testPredictKubeMetadata = []predictKubeMetadataTestData{
 	// all properly formed
 	{
-		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": "http://demo.robustperception.io:9090", "queryStep": "2m", "threshold": "2000", "query": "up"},
+		map[string]string{"predictHorizon": "2h", "historyTimeWindow": "7d", "prometheusAddress": apiStub.URL, "queryStep": "2m", "threshold": "2000", "query": "up"},
 		map[string]string{"apiKey": testAPIKey}, false,
 	},
 	// missing prometheusAddress
@@ -180,29 +220,7 @@ func TestPredictKubeGetMetricSpecForScaling(t *testing.T) {
 	mlEngineHost = "0.0.0.0"
 	mlEnginePort = mockPredictServer.port
 
-	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		runtimeInfo := prometheusV1.RuntimeinfoResult{
-			StartTime: time.Now(),
-		}
-		data, err := json.Marshal(runtimeInfo)
-		if err != nil {
-			t.Fatal(err)
-		}
-		response := struct {
-			Data json.RawMessage `json:"data"`
-		}{
-			Data: data,
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			t.Fatal(err)
-		}
-	}))
-
 	for _, testData := range predictKubeMetricIdentifiers {
-		if testData.metadataTestData.metadata["prometheusAddress"] != "" {
-			testData.metadataTestData.metadata["prometheusAddress"] = apiStub.URL
-		}
 		mockPredictKubeScaler, err := NewPredictKubeScaler(
 			context.Background(), &scalersconfig.ScalerConfig{
 				TriggerMetadata: testData.metadataTestData.metadata,
