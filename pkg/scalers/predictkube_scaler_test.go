@@ -17,7 +17,6 @@ import (
 	"github.com/phayes/freeport"
 	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
-	prometheusModel "github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -47,7 +46,7 @@ var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r 
 			Result interface{}     `json:"result"`
 		}{
 			Type: model.ValScalar,
-			Result: prometheusModel.Scalar{
+			Result: model.Scalar{
 				Value:     model.ZeroSamplePair.Value,
 				Timestamp: model.Now(),
 			},
@@ -149,7 +148,7 @@ func runMockGrpcPredictServer() (*server, *grpc.Server) {
 	return mockGrpcServer, grpcServer
 }
 
-const testAPIKey = "TEST_API_KEY"
+const testAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ0ZXN0IENyZWF0ZUNsaWVudCIsImV4cCI6MTY0NjkxNzI3Nywic3ViIjoiODM4NjY5ODAtM2UzNS0xMWVjLTlmMjQtYWNkZTQ4MDAxMTIyIn0.5QEuO6_ysdk2abGvk3Xp7Q25M4H4pIFXeqP2E7n9rKI"
 
 type predictKubeMetadataTestData struct {
 	metadata   map[string]string
