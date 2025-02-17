@@ -24,8 +24,6 @@ import (
 const (
 	// Metric Type
 	solaceDMExternalMetricType = "External"
-	// Scaler ID
-	solaceDMScalerID = "solaceDirectMessaging"
 	// Target Client TxByteRate
 	aggregatedClientTxByteRateTargetMetricName = "aggregatedClientTxByteRateTarget"
 	// Target Client AverageTxByteRate
