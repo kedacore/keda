@@ -321,7 +321,7 @@ func NewSolaceDMScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
-	logger := InitializeLogger(config, solaceDMScalerID+"_scaler")
+	logger := InitializeLogger(config, "solace-dm-scaler")
 
 	// Parse Solace Metadata
 	scalerConfig, err := parseSolaceDMConfiguration(config)
