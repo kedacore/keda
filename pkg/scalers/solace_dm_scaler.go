@@ -56,9 +56,9 @@ type SolaceDMScalerConfiguration struct {
 	// HostURL
 	HostURL string `keda:"name=hostUrl, order=triggerMetadata"`
 	// Basic Auth Username
-	Username string `keda:"name=username, order=authParams;triggerMetadata;resolvedEnv"`
+	Username string `keda:"name=username, order=authParams;resolvedEnv"`
 	// Basic Auth Password
-	Password string `keda:"name=password, order=authParams;triggerMetadata;resolvedEnv"`
+	Password string `keda:"name=password, order=authParams;resolvedEnv"`
 
 	// Message VPN
 	MessageVpn string `keda:"name=messageVpn, order=triggerMetadata"`
