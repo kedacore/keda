@@ -194,12 +194,7 @@ func TestPredictKubeGetMetricSpecForScaling(t *testing.T) {
 		}{
 			Data: data,
 		}
-		payload, err := json.Marshal(response)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, err = w.Write(payload)
-		if err != nil {
+		if err := json.NewEncoder(w).Encode(response); err != nil {
 			t.Fatal(err)
 		}
 	}))
