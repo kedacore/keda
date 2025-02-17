@@ -44,6 +44,10 @@ const (
 	marshallError = "marshall error"
 )
 
+// Package level variables
+// Compile the regular expression
+var re = regexp.MustCompile(urlValidationPattern)
+
 /*************************************************************************/
 /*** Scaler configuration ´Metadata´                                     */
 /*************************************************************************/
@@ -98,9 +102,6 @@ func (s *SolaceDMScalerConfiguration) Validate() error {
 	if len(s.HostURL) == 0 {
 		return fmt.Errorf("no host url value found in the scaler configuration. HostUrl: '%s'", s.HostURL)
 	}
-
-	// Compile the regular expression
-	re := regexp.MustCompile(urlValidationPattern)
 
 	// Check each of the urls for: empty strings, valid url pattern
 	urls := strings.Split(s.HostURL, ",")
@@ -175,17 +176,6 @@ func (c SolaceDMScalerMetricValues) String() string {
 	}
 
 	return fmt.Sprint(string(out))
-}
-
-/*************************************************************************/
-/*** Solace DM Semp Requestor                                            */
-/*************************************************************************/
-type SolaceDMSempRequestorType interface {
-	GetSolaceDMSempMetrics(ctx context.Context, httpClient *http.Client, sempUrls []string, username string, password string, requestBody string) ([]byte, error)
-}
-
-type SolaceDMSempRequestor struct {
-	requestor SolaceDMSempRequestorType
 }
 
 /*************************************************************************/
@@ -309,7 +299,6 @@ type SolaceDMScaler struct {
 	configuration *SolaceDMScalerConfiguration
 	httpClient    *http.Client
 	logger        logr.Logger
-	sempRequestor *SolaceDMSempRequestor
 }
 
 /*****/
@@ -333,16 +322,12 @@ func NewSolaceDMScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	// Create HTTP Client
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, scalerConfig.UnsafeSSL)
 
-	requestor := &SolaceDMSempRequestor{requestor: nil}
-
 	scaler := &SolaceDMScaler{
 		metricType:    metricType,
 		configuration: scalerConfig,
 		httpClient:    httpClient,
 		logger:        logger,
-		sempRequestor: requestor,
 	}
-	scaler.sempRequestor.requestor = scaler
 
 	return scaler, nil
 }
