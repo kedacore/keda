@@ -2,16 +2,20 @@ package scalers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	libsSrv "github.com/dysnix/predictkube-libs/external/grpc/server"
 	pb "github.com/dysnix/predictkube-proto/external/proto/services"
 	"github.com/phayes/freeport"
+	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -176,7 +180,34 @@ func TestPredictKubeGetMetricSpecForScaling(t *testing.T) {
 	mlEngineHost = "0.0.0.0"
 	mlEnginePort = mockPredictServer.port
 
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		runtimeInfo := prometheusV1.RuntimeinfoResult{
+			StartTime: time.Now(),
+		}
+		data, err := json.Marshal(runtimeInfo)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response := struct {
+			Data json.RawMessage `json:"data"`
+		}{
+			Data: data,
+		}
+		payload, err := json.Marshal(response)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = w.Write(payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}))
+
 	for _, testData := range predictKubeMetricIdentifiers {
+		if testData.metadataTestData.metadata["prometheusAddress"] != "" {
+			testData.metadataTestData.metadata["prometheusAddress"] = apiStub.URL
+		}
 		mockPredictKubeScaler, err := NewPredictKubeScaler(
 			context.Background(), &scalersconfig.ScalerConfig{
 				TriggerMetadata: testData.metadataTestData.metadata,
