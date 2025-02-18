@@ -71,7 +71,7 @@ OUTPUT_FILE_PATH ?= "schema/generated/"
 OUTPUT_FILE_NAME ?= "scalers-metadata-schema"
 
 ifneq '${VERSION}' 'main'
-  OUTPUT_FILE_NAME :="${OUTPUT_FILE_NAME}_v${VERSION}"
+  OUTPUT_FILE_NAME :="${OUTPUT_FILE_NAME}-${VERSION}"
 endif
 
 ##################################################
@@ -246,7 +246,7 @@ publish-webhooks-multiarch: ## Build and push multi-arch Docker image for KEDA H
 
 publish-multiarch: publish-controller-multiarch publish-adapter-multiarch publish-webhooks-multiarch ## Push multi-arch Docker images on to Container Registry (default: ghcr.io).
 
-release: manifests kustomize set-version ## Produce new KEDA release in keda-$(VERSION).yaml file.
+release: manifests kustomize set-version generate-scalers-schema## Produce new KEDA release in keda-$(VERSION).yaml file.
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER}
 	cd config/metrics-server && \
