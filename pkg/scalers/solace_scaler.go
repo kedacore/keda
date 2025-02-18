@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -76,6 +77,8 @@ type SolaceScaler struct {
 	metadata   *SolaceMetadata
 	httpClient *http.Client
 	logger     logr.Logger
+	stateLock  sync.Mutex
+	curHostIdx int
 }
 
 type SolaceMetadata struct {
@@ -87,7 +90,6 @@ type SolaceMetadata struct {
 	// Full SEMP URL to target queue (CONSTRUCTED IN CODE)
 	endpointURLsList []string
 	vpnStateURLsList []string
-	solaceSempURL string
 
 	// Solace Message VPN
 	MessageVpn string `keda:"name=messageVpn,   order=triggerMetadata"`
@@ -185,6 +187,7 @@ func NewSolaceScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		metadata:   solaceMetadata,
 		httpClient: httpClient,
 		logger:     logger,
+		curHostIdx: 0,
 	}, nil
 }
 
@@ -197,7 +200,7 @@ func parseSolaceMetadata(config *scalersconfig.ScalerConfig) (*SolaceMetadata, e
 	meta.triggerIndex = config.TriggerIndex
 
 	// Format Solace SEMP Queue Endpoint (REST URL)
-	sempURLs := strings.Split(meta.solaceSempURL, ",")
+	sempURLs := strings.Split(meta.SolaceMetaSempBaseURL, ",")
 	for i := 0; i < len(sempURLs); i++ {
 		sempURL := strings.TrimSpace(sempURLs[i])
         meta.endpointURLsList = append(meta.endpointURLsList, fmt.Sprintf(
@@ -357,25 +360,30 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (Solac
 	var metricValues SolaceMetricValues
 	var errorList []string
 
+	s.stateLock.Lock()
+	defer s.stateLock.Unlock()
+
 	//	RETRIEVE METRICS FROM SOLACE SEMP API
 	for i := 0; i < len(s.metadata.endpointURLsList); i++ {
-		sempQueueURL := s.metadata.endpointURLsList[i]
-		sempVpnStateURL := s.metadata.vpnStateURLsList[i]
+		idx := (s.curHostIdx + i) % len(s.metadata.endpointURLsList)
+		s.curHostIdx = idx
+		sempQueueURL := s.metadata.endpointURLsList[idx]
+		sempVpnStateURL := s.metadata.vpnStateURLsList[idx]
 
 		vpnState, err := s.getVpnState(ctx, sempVpnStateURL)
 		if err != nil {
-		    errorList = append(errorList, "Host " + strconv.Itoa(i + 1) + " Error: " + err.Error())
+		    errorList = append(errorList, "Host " + strconv.Itoa(idx + 1) + " Error: " + err.Error())
 		    continue
         }
 
         if(vpnState != "up") {
-            errorList = append(errorList, "Host " + strconv.Itoa(i + 1) + " Error: Message vpn is not up (" + vpnState + ") url: " + sempVpnStateURL)
+            errorList = append(errorList, "Host " + strconv.Itoa(idx + 1) + " Error: Message vpn is not up (" + vpnState + ") url: " + sempVpnStateURL)
             continue
         }
 
         metricValues, err = s.getQueueMetrics(ctx, sempQueueURL)
         if err != nil {
-            errorList = append(errorList, "Host " + strconv.Itoa(i + 1) + " Error: " + err.Error())
+            errorList = append(errorList, "Host " + strconv.Itoa(idx + 1) + " Error: " + err.Error())
             continue
         }
 
