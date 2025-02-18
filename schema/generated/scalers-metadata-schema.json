@@ -1,5 +1,5 @@
 {
-    "kedaVersion": "2.16.1",
+    "kedaVersion": "main",
     "schemaVersion": 1,
     "scalers": [
         {
@@ -45,13 +45,11 @@
                 {
                     "name": "targetQueueSize",
                     "type": "string",
-                    "optional": true,
                     "default": "10"
                 },
                 {
                     "name": "activationTargetQueueSize",
                     "type": "string",
-                    "optional": true,
                     "default": "0"
                 }
             ]
@@ -276,19 +274,16 @@
                 {
                     "name": "ignoreNullValues",
                     "type": "string",
-                    "optional": true,
                     "default": "true"
                 },
                 {
                     "name": "metricCollectionTime",
                     "type": "string",
-                    "optional": true,
                     "default": "300"
                 },
                 {
                     "name": "metricStat",
                     "type": "string",
-                    "optional": true,
                     "default": "Average"
                 },
                 {
@@ -299,13 +294,11 @@
                 {
                     "name": "metricStatPeriod",
                     "type": "string",
-                    "optional": true,
                     "default": "300"
                 },
                 {
                     "name": "metricEndTimeOffset",
                     "type": "string",
-                    "optional": true,
                     "default": "0"
                 },
                 {
@@ -480,13 +473,11 @@
                 {
                     "name": "activationValue",
                     "type": "string",
-                    "optional": true,
                     "default": "0"
                 },
                 {
                     "name": "watchProgressNotifyInterval",
                     "type": "string",
-                    "optional": true,
                     "default": "600"
                 },
                 {
@@ -506,7 +497,6 @@
                 {
                     "name": "tls",
                     "type": "string",
-                    "optional": true,
                     "default": "disable",
                     "canReadFromAuth": true
                 },
@@ -711,6 +701,38 @@
             ]
         },
         {
+            "type": "liiklus",
+            "metadata": [
+                {
+                    "name": "lagThreshold",
+                    "type": "string",
+                    "default": "10"
+                },
+                {
+                    "name": "activationLagThreshold",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "address",
+                    "type": "string"
+                },
+                {
+                    "name": "topic",
+                    "type": "string"
+                },
+                {
+                    "name": "group",
+                    "type": "string"
+                },
+                {
+                    "name": "groupVersion",
+                    "type": "string",
+                    "default": "0"
+                }
+            ]
+        },
+        {
             "type": "nsq",
             "metadata": [
                 {
@@ -895,7 +917,6 @@
                 {
                     "name": "ignoreNullValues",
                     "type": "string",
-                    "optional": true,
                     "default": "true"
                 },
                 {
@@ -948,14 +969,14 @@
                 {
                     "name": "protocol",
                     "type": "string",
-                    "optional": true,
                     "default": "auto",
                     "canReadFromAuth": true
                 },
                 {
                     "name": "vhostName",
                     "type": "string",
-                    "optional": true
+                    "optional": true,
+                    "canReadFromAuth": true
                 },
                 {
                     "name": "useRegex",
@@ -970,13 +991,11 @@
                 {
                     "name": "pageSize",
                     "type": "string",
-                    "optional": true,
                     "default": "100"
                 },
                 {
                     "name": "operation",
                     "type": "string",
-                    "optional": true,
                     "default": "sum"
                 },
                 {
@@ -1025,7 +1044,6 @@
                 {
                     "name": "tls",
                     "type": "string",
-                    "optional": true,
                     "default": "disable",
                     "canReadFromAuth": true
                 },
@@ -1048,7 +1066,6 @@
                 {
                     "name": "listLength",
                     "type": "string",
-                    "optional": true,
                     "default": "5"
                 },
                 {
@@ -1145,7 +1162,6 @@
                 {
                     "name": "unsafeSsl",
                     "type": "string",
-                    "optional": true,
                     "default": "false"
                 },
                 {
@@ -1181,7 +1197,6 @@
                 {
                     "name": "listLength",
                     "type": "string",
-                    "optional": true,
                     "default": "5"
                 },
                 {
@@ -1278,7 +1293,6 @@
                 {
                     "name": "unsafeSsl",
                     "type": "string",
-                    "optional": true,
                     "default": "false"
                 },
                 {
@@ -1314,7 +1328,6 @@
                 {
                     "name": "listLength",
                     "type": "string",
-                    "optional": true,
                     "default": "5"
                 },
                 {
@@ -1411,7 +1424,6 @@
                 {
                     "name": "unsafeSsl",
                     "type": "string",
-                    "optional": true,
                     "default": "false"
                 },
                 {
@@ -1447,13 +1459,11 @@
                 {
                     "name": "pendingEntriesCount",
                     "type": "string",
-                    "optional": true,
                     "default": "5"
                 },
                 {
                     "name": "streamLength",
                     "type": "string",
-                    "optional": true,
                     "default": "5"
                 },
                 {
@@ -1544,7 +1554,6 @@
                 {
                     "name": "unsafeSsl",
                     "type": "string",
-                    "optional": true,
                     "default": "false"
                 },
                 {
@@ -1575,7 +1584,7 @@
                 {
                     "name": "activationLagCount",
                     "type": "string",
-                    "optional": true
+                    "default": "0"
                 },
                 {
                     "name": "enableTLS",
@@ -1596,13 +1605,11 @@
                 {
                     "name": "pendingEntriesCount",
                     "type": "string",
-                    "optional": true,
                     "default": "5"
                 },
                 {
                     "name": "streamLength",
                     "type": "string",
-                    "optional": true,
                     "default": "5"
                 },
                 {
@@ -1693,7 +1700,6 @@
                 {
                     "name": "unsafeSsl",
                     "type": "string",
-                    "optional": true,
                     "default": "false"
                 },
                 {
@@ -1724,7 +1730,7 @@
                 {
                     "name": "activationLagCount",
                     "type": "string",
-                    "optional": true
+                    "default": "0"
                 },
                 {
                     "name": "enableTLS",
@@ -1745,13 +1751,11 @@
                 {
                     "name": "pendingEntriesCount",
                     "type": "string",
-                    "optional": true,
                     "default": "5"
                 },
                 {
                     "name": "streamLength",
                     "type": "string",
-                    "optional": true,
                     "default": "5"
                 },
                 {
@@ -1842,7 +1846,6 @@
                 {
                     "name": "unsafeSsl",
                     "type": "string",
-                    "optional": true,
                     "default": "false"
                 },
                 {
@@ -1873,7 +1876,7 @@
                 {
                     "name": "activationLagCount",
                     "type": "string",
-                    "optional": true
+                    "default": "0"
                 },
                 {
                     "name": "enableTLS",
@@ -1958,6 +1961,11 @@
                     "name": "nodeMaxSessions",
                     "type": "string",
                     "default": "1"
+                },
+                {
+                    "name": "capabilities",
+                    "type": "string",
+                    "optional": true
                 }
             ]
         },
@@ -2006,19 +2014,16 @@
                 {
                     "name": "activationMessageCountTarget",
                     "type": "string",
-                    "optional": true,
                     "default": "0"
                 },
                 {
                     "name": "activationMessageSpoolUsageTarget",
                     "type": "string",
-                    "optional": true,
                     "default": "0"
                 },
                 {
                     "name": "activationMessageReceiveRateTarget",
                     "type": "string",
-                    "optional": true,
                     "default": "0"
                 }
             ]
@@ -2041,7 +2046,6 @@
                 {
                     "name": "activationTargetQueryValue",
                     "type": "string",
-                    "optional": true,
                     "default": "0"
                 },
                 {
@@ -2105,6 +2109,99 @@
                 {
                     "name": "valueField",
                     "type": "string"
+                }
+            ]
+        },
+        {
+            "type": "temporal",
+            "metadata": [
+                {
+                    "name": "endpoint",
+                    "type": "string",
+                    "canReadFromEnv": true
+                },
+                {
+                    "name": "namespace",
+                    "type": "string",
+                    "default": "default",
+                    "canReadFromEnv": true
+                },
+                {
+                    "name": "activationTargetQueueSize",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "targetQueueSize",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "taskQueue",
+                    "type": "string",
+                    "canReadFromEnv": true
+                },
+                {
+                    "name": "queueTypes",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "buildId",
+                    "type": "string",
+                    "optional": true,
+                    "canReadFromEnv": true
+                },
+                {
+                    "name": "selectAllActive",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "selectUnversioned",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "apiKey",
+                    "type": "string",
+                    "optional": true,
+                    "canReadFromEnv": true,
+                    "canReadFromAuth": true
+                },
+                {
+                    "name": "minConnectTimeout",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "optional": true,
+                    "canReadFromAuth": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "optional": true,
+                    "canReadFromAuth": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "optional": true,
+                    "canReadFromAuth": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "optional": true,
+                    "canReadFromAuth": true
                 }
             ]
         }
