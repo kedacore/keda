@@ -100,7 +100,12 @@ func FromStatus(st *status.Status) error {
 	case codes.Canceled:
 		return newCanceled(st)
 	case codes.Unavailable:
-		return newUnavailable(st)
+		switch errDetails := errDetails.(type) {
+		case *errordetails.NamespaceUnavailableFailure:
+			return newNamespaceUnavailable(st, errDetails)
+		default:
+			return newUnavailable(st)
+		}
 	case codes.Unimplemented:
 		return newUnimplemented(st)
 	case codes.Unknown:
@@ -130,9 +135,9 @@ func FromStatus(st *status.Status) error {
 			return newNotFound(st, nil)
 		}
 	case codes.InvalidArgument:
-		switch errDetails.(type) {
+		switch errDetails := errDetails.(type) {
 		case *errordetails.QueryFailedFailure:
-			return newQueryFailed(st)
+			return newQueryFailed(st, errDetails)
 		default:
 			return newInvalidArgument(st)
 		}

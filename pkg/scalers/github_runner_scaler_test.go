@@ -196,6 +196,7 @@ func apiStubHandlerCustomJob(hasRateLeft bool, exceeds30Repos bool, jobResponse 
 			w.WriteHeader(http.StatusForbidden)
 		}
 		if strings.HasSuffix(r.URL.String(), "jobs?per_page=100") {
+			// nosemgrep: no-direct-write-to-responsewriter
 			_, _ = w.Write([]byte(jobResponse))
 			w.WriteHeader(http.StatusOK)
 		}
@@ -208,6 +209,7 @@ func apiStubHandlerCustomJob(hasRateLeft bool, exceeds30Repos bool, jobResponse 
 			if strings.Contains(r.URL.String(), "BadRepo") {
 				w.WriteHeader(http.StatusNotFound)
 			} else {
+				// nosemgrep: no-direct-write-to-responsewriter
 				_, _ = w.Write(buildQueueJSON())
 				w.WriteHeader(http.StatusOK)
 			}
@@ -227,6 +229,7 @@ func apiStubHandlerCustomJob(hasRateLeft bool, exceeds30Repos bool, jobResponse 
 				}
 				w.WriteHeader(http.StatusOK)
 			} else {
+				// nosemgrep: no-direct-write-to-responsewriter
 				_, _ = w.Write([]byte(testGhUserReposResponse))
 				w.WriteHeader(http.StatusOK)
 			}
@@ -237,7 +240,16 @@ func apiStubHandlerCustomJob(hasRateLeft bool, exceeds30Repos bool, jobResponse 
 func apiStubHandler404() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
+		// nosemgrep: no-direct-write-to-responsewriter
 		_, _ = w.Write([]byte("not found"))
+	}))
+}
+
+func apiStubHandler304() *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotModified)
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write([]byte{})
 	}))
 }
 
@@ -424,6 +436,58 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithoutScalerDefaultLabels
 	mockGitHubRunnerScaler.metadata.repos = []string{"test"}
 	mockGitHubRunnerScaler.metadata.noDefaultLabels = true
 	mockGitHubRunnerScaler.metadata.labels = []string{"foo", "bar"}
+
+	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.Background())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queueLen != 1 {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithNotModified(t *testing.T) {
+	var apiStub = apiStubHandler304()
+
+	meta := getGitHubTestMetaData(apiStub.URL)
+
+	var wfrsQueued WorkflowRuns
+	if err := json.Unmarshal([]byte(testGhWorkflowResponse), &wfrsQueued); err != nil {
+		t.Fail()
+	}
+
+	var wfrsInProgress WorkflowRuns
+	if err := json.Unmarshal([]byte(testGhWorkflowResponseInProgress), &wfrsInProgress); err != nil {
+		t.Fail()
+	}
+
+	previousWfrs := map[string]map[string]*WorkflowRuns{
+		"test": {
+			"in_progress": &wfrsQueued,
+			"queued":      &wfrsInProgress,
+		},
+	}
+
+	var jobs Jobs
+	if err := json.Unmarshal([]byte(testGhWFJobResponse), &jobs); err != nil {
+		t.Fail()
+	}
+	previousJobs := map[string][]Job{
+		"Hello-World": jobs.Jobs,
+	}
+
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	mockGitHubRunnerScaler.metadata.enableEtags = true
+	mockGitHubRunnerScaler.metadata.repos = []string{"test"}
+	mockGitHubRunnerScaler.metadata.labels = []string{"foo", "bar"}
+	mockGitHubRunnerScaler.previousJobs = previousJobs
+	mockGitHubRunnerScaler.previousWfrs = previousWfrs
 
 	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.Background())
 
