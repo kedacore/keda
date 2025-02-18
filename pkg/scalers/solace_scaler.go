@@ -280,7 +280,7 @@ func (s *SolaceScaler) getVpnState(ctx context.Context, sempURL string) (string,
     //	Define HTTP Request
     request, err := http.NewRequestWithContext(ctx, "GET", sempURL, nil)
     if err != nil {
-        return "", fmt.Errorf("Failed attempting request to solace semp api: " + err.Error() + " url: " + sempURL)
+	    return "", fmt.Errorf("Failed attempting request to solace semp api: %w url: %s", err.Error(), sempURL)
     }
 
     //	Add HTTP Auth and Headers
@@ -290,22 +290,22 @@ func (s *SolaceScaler) getVpnState(ctx context.Context, sempURL string) (string,
     //	Call Solace SEMP API
     response, err := httpClient.Do(request)
     if err != nil {
-        return "", fmt.Errorf("call to solace semp api failed: " + err.Error() + " url: " + sempURL)
+	    return "", fmt.Errorf("call to solace semp api failed: %w, url: %s", err.Error(), sempURL)
     }
     defer response.Body.Close()
 
     // Check HTTP Status Code
     if response.StatusCode < 200 || response.StatusCode > 299 {
-        return "", fmt.Errorf("semp request http status code: " + strconv.Itoa(response.StatusCode) + " - " + response.Status + " url: " + sempURL)
+        return "", fmt.Errorf("semp request http status code: %d - %s, url: %s", response.StatusCode, response.Status, sempURL)
     }
 
     // Decode SEMP Response and Test
     if err := json.NewDecoder(response.Body).Decode(&sempResponse); err != nil {
-        return "", fmt.Errorf("failed to read semp response body: " + err.Error() + " url: " + sempURL)
+	    return "", fmt.Errorf("failed to read semp response body: %w, url: %s", err.Error(), sempURL)
     }
 
     if sempResponse.Meta.ResponseCode < 200 || sempResponse.Meta.ResponseCode > 299 {
-        return "", fmt.Errorf("solace semp api returned error status: " + strconv.Itoa(sempResponse.Meta.ResponseCode) + " url: " + sempURL)
+        return "", fmt.Errorf("solace semp api returned error status: %d, URL: %s", sempResponse.Meta.ResponseCode, sempURL)
     }
 
     return sempResponse.Data.State, nil
@@ -320,7 +320,7 @@ func (s *SolaceScaler) getQueueMetrics(ctx context.Context, sempURL string) (Sol
     //	Define HTTP Request
     request, err := http.NewRequestWithContext(ctx, "GET", sempURL, nil)
     if err != nil {
-        return SolaceMetricValues{}, fmt.Errorf("Failed attempting request to solace semp api: " + err.Error() + " url: " + sempURL)
+	    return SolaceMetricValues{}, fmt.Errorf("Failed attempting request to solace semp api: %w, url: %s", err.Error(), sempURL)
     }
 
     //	Add HTTP Auth and Headers
@@ -330,22 +330,22 @@ func (s *SolaceScaler) getQueueMetrics(ctx context.Context, sempURL string) (Sol
     //	Call Solace SEMP API
     response, err := httpClient.Do(request)
     if err != nil {
-        return SolaceMetricValues{}, fmt.Errorf("call to solace semp api failed: " + err.Error() + " url: " + sempURL)
+	    return SolaceMetricValues{}, fmt.Errorf("call to solace semp api failed: %w, url: %s", err.Error(), sempURL)
     }
     defer response.Body.Close()
 
     // Check HTTP Status Code
     if response.StatusCode < 200 || response.StatusCode > 299 {
-        return SolaceMetricValues{}, fmt.Errorf("semp request http status code: " + strconv.Itoa(response.StatusCode) + " - " + response.Status + " url: " + sempURL)
+	    return SolaceMetricValues{}, fmt.Errorf("semp request http status code: %d - %s, url: %s", response.StatusCode, response.Status, sempURL)
     }
 
     // Decode SEMP Response and Test
     if err := json.NewDecoder(response.Body).Decode(&sempResponse); err != nil {
-        return SolaceMetricValues{}, fmt.Errorf("failed to read semp response body: " + err.Error() + " url: " + sempURL)
+	    return SolaceMetricValues{}, fmt.Errorf("failed to read semp response body: %w, url: %s", err.Error(), sempURL)
     }
 
     if sempResponse.Meta.ResponseCode < 200 || sempResponse.Meta.ResponseCode > 299 {
-        return SolaceMetricValues{}, fmt.Errorf("solace semp api returned error status: " + strconv.Itoa(sempResponse.Meta.ResponseCode) + " url: " + sempURL)
+	    return SolaceMetricValues{}, fmt.Errorf("solace semp api returned error status: %d, url: %s", sempResponse.Meta.ResponseCode, sempURL)
     }
 
     metricValues.msgCount = sempResponse.Collections.Msgs.Count
@@ -377,13 +377,13 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (Solac
         }
 
         if(vpnState != "up") {
-            errorList = append(errorList, "Host " + strconv.Itoa(idx + 1) + " Error: Message vpn is not up (" + vpnState + ") url: " + sempVpnStateURL)
+		errorList = append(errorList, "Host " + strconv.Itoa(idx + 1) + " Error: Message vpn is not up (" + vpnState + ") url: " + sempVpnStateURL)
             continue
         }
 
         metricValues, err = s.getQueueMetrics(ctx, sempQueueURL)
         if err != nil {
-            errorList = append(errorList, "Host " + strconv.Itoa(idx + 1) + " Error: " + err.Error())
+	    errorList = append(errorList, "Host " + strconv.Itoa(idx + 1) + " Error: " + err.Error())
             continue
         }
 
