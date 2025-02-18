@@ -421,7 +421,6 @@ func (s *SolaceDMScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	s.logger.V(1).Info(fmt.Sprintf("* MetricName: '%s'", metricName))
 
 	err := s.getClientStats(ctx, metricValues)
-
 	if err != nil {
 		s.logger.Error(err, "call to semp endpoint (client stats) failed")
 		return []external_metrics.ExternalMetricValue{}, false, err
