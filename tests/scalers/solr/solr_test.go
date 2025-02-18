@@ -122,7 +122,7 @@ spec:
     spec:
       containers:
         - name: solr
-          image: solr:latest
+          image: solr:8
           ports:
             - containerPort: 8983
           volumeMounts:
@@ -229,12 +229,11 @@ func setupSolr(t *testing.T, kc *kubernetes.Clientset) {
 func checkIfSolrStatusIsReady(t *testing.T, name string) error {
 	t.Log("--- checking solr status ---")
 
-	time.Sleep(time.Second * 10)
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 12; i++ {
 		out, errOut, _ := ExecCommandOnSpecificPod(t, name, testNamespace, fmt.Sprintf("%s status", solrPath))
 		t.Logf("Output: %s, Error: %s", out, errOut)
 		if !strings.Contains(out, "running on port") {
-			time.Sleep(time.Second * 10)
+			time.Sleep(time.Second * 5)
 			continue
 		}
 		return nil
@@ -292,7 +291,13 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 
-	_, _, err := ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("curl -u %s:%s -X POST 'http://localhost:8983/solr/%s/update' --data '<delete><query>*:*</query></delete>' -H 'Content-type:text/xml; charset=utf-8'", solrUsername, solrPassword, solrCollection))
+	// Delete documents
+	out, errOut, err := ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("curl -u %s:%s -X POST 'http://localhost:8983/solr/%s/update' --data '<delete><query>*:*</query></delete>' -H 'Content-type:text/xml; charset=utf-8'", solrUsername, solrPassword, solrCollection))
+	t.Logf("Output: %s, Error: %s", out, errOut)
+	// Commit changes
+	out, errOut, _ = ExecCommandOnSpecificPod(t, solrPodName, testNamespace, fmt.Sprintf("curl -u %s:%s -X POST 'http://localhost:8983/solr/%s/update' --data-binary '{\"commit\":{}}' -H 'Content-type:application/json'", solrUsername, solrPassword, solrCollection))
+	t.Logf("Output: %s, Error: %s", out, errOut)
+
 	assert.NoErrorf(t, err, "cannot enqueue messages - %s", err)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", minReplicaCount)
