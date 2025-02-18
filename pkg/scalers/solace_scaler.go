@@ -280,7 +280,7 @@ func (s *SolaceScaler) getVpnState(ctx context.Context, sempURL string) (string,
     //	Define HTTP Request
     request, err := http.NewRequestWithContext(ctx, "GET", sempURL, nil)
     if err != nil {
-	    return "", fmt.Errorf("Failed attempting request to solace semp api: %s url: %s", err.Error(), sempURL)
+	    return "", fmt.Errorf("failed attempting request to solace semp api: %s url: %s", err.Error(), sempURL)
     }
 
     //	Add HTTP Auth and Headers
@@ -320,7 +320,7 @@ func (s *SolaceScaler) getQueueMetrics(ctx context.Context, sempURL string) (Sol
     //	Define HTTP Request
     request, err := http.NewRequestWithContext(ctx, "GET", sempURL, nil)
     if err != nil {
-	    return SolaceMetricValues{}, fmt.Errorf("Failed attempting request to solace semp api: %s, url: %s", err.Error(), sempURL)
+	    return SolaceMetricValues{}, fmt.Errorf("failed attempting request to solace semp api: %s, url: %s", err.Error(), sempURL)
     }
 
     //	Add HTTP Auth and Headers
@@ -390,7 +390,7 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (Solac
         return metricValues, nil
     }
 
-	return SolaceMetricValues{}, fmt.Errorf("Unable to collect metrics, error(s): %s", strings.Join(errorList, "\n  "))
+	return SolaceMetricValues{}, fmt.Errorf("unable to collect metrics, error(s): %s", strings.Join(errorList, "\n  "))
 }
 
 // INTERFACE METHOD
