@@ -163,12 +163,14 @@ spec:
       url: "{{.MetricsServerEndpoint}}"
       valueLocation: 'value'
       method: "query"
+    metricType: "AverageValue"
     authenticationRef:
       name: {{.TriggerAuthName}}
   - type: kubernetes-workload
     name: kw_trig
     metadata:
       podSelector: pod=workload-test
+    metricType: "AverageValue"
 `
 
 	soComplexFormula = `
@@ -205,12 +207,14 @@ spec:
       url: "{{.MetricsServerEndpoint}}"
       valueLocation: 'value'
       method: "query"
+    metricType: "AverageValue"
     authenticationRef:
       name: {{.TriggerAuthName}}
   - type: kubernetes-workload
     name: kw_trig
     metadata:
       podSelector: pod=workload-test
+    metricType: "AverageValue"
 `
 
 	workloadDeploymentTemplate = `

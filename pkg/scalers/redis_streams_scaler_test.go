@@ -47,7 +47,6 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 	}
 
 	for _, tc := range testCasesPending {
-		tc := tc
 		t.Run(tc.name, func(te *testing.T) {
 			m, err := parseRedisStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: tc.authParams})
 			assert.Nil(t, err)
@@ -97,7 +96,6 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 	}
 
 	for _, tc := range testCasesLag {
-		tc := tc
 		t.Run(tc.name, func(te *testing.T) {
 			m, err := parseRedisStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: tc.authParams})
 			assert.Nil(t, err)
@@ -158,7 +156,6 @@ func TestParseRedisStreamsMetadataForInvalidCases(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(te *testing.T) {
 			_, err := parseRedisStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: map[string]string{}})
 			assert.NotNil(t, err)
@@ -281,6 +278,30 @@ func TestParseRedisClusterStreamsMetadata(t *testing.T) {
 				TargetPendingEntriesCount: 0,
 				TargetLag:                 6,
 				ActivationLagCount:        3,
+				ConsumerGroupName:         "consumer1",
+				ConnectionInfo: redisConnectionInfo{
+					Addresses: []string{":7001", ":7002"},
+				},
+				scaleFactor: lagFactor,
+			},
+			wantErr: nil,
+		},
+		{
+			name: "zero activation lag count with lag count is allowed",
+			metadata: map[string]string{
+				"stream":             "my-stream",
+				"lagCount":           "7",
+				"activationLagCount": "0",
+				"consumerGroup":      "consumer1",
+			},
+			authParams: map[string]string{
+				"addresses": ":7001, :7002",
+			},
+			wantMeta: &redisStreamsMetadata{
+				StreamName:                "my-stream",
+				TargetPendingEntriesCount: 0,
+				TargetLag:                 7,
+				ActivationLagCount:        0,
 				ConsumerGroupName:         "consumer1",
 				ConnectionInfo: redisConnectionInfo{
 					Addresses: []string{":7001", ":7002"},

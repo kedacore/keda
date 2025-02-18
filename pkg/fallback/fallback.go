@@ -40,7 +40,12 @@ func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.Me
 		return false
 	}
 
-	if metricSpec.External.Target.Type != v2.AverageValueMetricType {
+	// If we are using ScalingModifiers, we only care whether its metric type is AverageValue.
+	// If not, test the type of metricSpec passed.
+	if scaledObject.IsUsingModifiers() && scaledObject.Spec.Advanced.ScalingModifiers.MetricType != v2.AverageValueMetricType {
+		log.V(0).Info("Fallback can only be enabled for scalingModifiers with metric of type AverageValue", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
+		return false
+	} else if !scaledObject.IsUsingModifiers() && metricSpec.External.Target.Type != v2.AverageValueMetricType {
 		log.V(0).Info("Fallback can only be enabled for triggers with metric of type AverageValue", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 		return false
 	}
