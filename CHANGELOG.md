@@ -71,6 +71,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Improve Events emitted from ScaledObject controller ([#6802](https://github.com/kedacore/keda/issues/6802))
 - **General**: Internal gRPC connection's certificates are hot reloaded ([#6756](https://github.com/kedacore/keda/pull/6756))
+- **Apache Kafka Scaler**: Add support for even distribution of partitions to consumers ([#2581](https://github.com/kedacore/keda/issues/2581))
+- **Kafka Scaler**: Add support for even distribution of partitions to consumers ([#2581](https://github.com/kedacore/keda/issues/2581))
 - **Metrics API**: Support multiple auth methods simultaneously in Metrics API scaler ([#6642](https://github.com/kedacore/keda/issues/6642))
 - **Temporal Scaler**: Support custom tlsServerName ([#6820](https://github.com/kedacore/keda/pull/6820))
 
