@@ -210,7 +210,7 @@ spec:
   minReplicaCount: 0
   maxReplicaCount: 5
   fallback:
-    failureThreshold: 3
+    failureThreshold: 1
     replicas: {{.DefaultFallback}}
     behavior: currentReplicasIfHigher
   advanced:
@@ -247,7 +247,7 @@ spec:
   minReplicaCount: 0
   maxReplicaCount: 5
   fallback:
-    failureThreshold: 3
+    failureThreshold: 1
     replicas: {{.DefaultFallback}}
     behavior: currentReplicasIfLower
   advanced:
@@ -284,7 +284,7 @@ spec:
   minReplicaCount: 0
   maxReplicaCount: 5
   fallback:
-    failureThreshold: 3
+    failureThreshold: 1
     replicas: {{.DefaultFallback}}
     behavior: currentReplicas
   advanced:
@@ -321,7 +321,7 @@ spec:
   minReplicaCount: 0
   maxReplicaCount: 5
   fallback:
-    failureThreshold: 3
+    failureThreshold: 1
     replicas: {{.DefaultFallback}}
     behavior: static
   advanced:
