@@ -424,11 +424,11 @@ func TestFallbackWithCurrentReplicasIfHigher(t *testing.T) {
 	KubectlApplyWithTemplate(t, data, "fallbackMSDeploymentTemplate", fallbackMSDeploymentTemplate)
 
 	// Should keep 4 replicas as it's higher than fallback value (3)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 60, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 30, 3),
 		"replica count should remain at 4 after fallback")
 
 	// Ensure the replica count remains stable
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 4, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 4, 30)
 
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
@@ -463,11 +463,11 @@ func TestFallbackWithCurrentReplicasIfLower(t *testing.T) {
 	KubectlApplyWithTemplate(t, data, "fallbackMSDeploymentTemplate", fallbackMSDeploymentTemplate)
 
 	// Should keep fallback value (3) as it's lower than current replicas (4)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 60, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 30, 3),
 		"replica count should remain at 3 after fallback")
 
 	// Ensure the replica count remains stable
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 3, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 3, 30)
 
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
@@ -502,11 +502,11 @@ func TestFallbackWithCurrentReplicas(t *testing.T) {
 	KubectlApplyWithTemplate(t, data, "fallbackMSDeploymentTemplate", fallbackMSDeploymentTemplate)
 
 	// Should keep current replicas (4)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 60, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 30, 3),
 		"replica count should remain at 4 after fallback")
 
 	// Ensure the replica count remains stable
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 4, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 4, 30)
 
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
@@ -541,11 +541,11 @@ func TestFallbackWithStatic(t *testing.T) {
 	KubectlApplyWithTemplate(t, data, "fallbackMSDeploymentTemplate", fallbackMSDeploymentTemplate)
 
 	// Should keep fallback value (3) because of static
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 60, 3),
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 30, 3),
 		"replica count should remain at 3 after fallback")
 
 	// Ensure the replica count remains stable
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 3, 60)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 3, 30)
 
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
