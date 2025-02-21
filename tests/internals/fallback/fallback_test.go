@@ -307,6 +307,43 @@ spec:
       name: {{.TriggerAuthName}}
 `
 
+	scaledObjectTemplateWithStatic = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectNameBehavior}}
+  namespace: {{.Namespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  minReplicaCount: 0
+  maxReplicaCount: 5
+  fallback:
+    failureThreshold: 3
+    replicas: {{.DefaultFallback}}
+    behavior: static
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 1
+  cooldownPeriod: 1
+  pollingInterval: 5
+  triggers:
+  - type: metrics-api
+    metricType: AverageValue
+    metadata:
+      targetValue: "5"
+      url: "{{.MetricsServerEndpoint}}"
+      valueLocation: 'value'
+      method: "query"
+    metricType: "AverageValue"
+    authenticationRef:
+      name: {{.TriggerAuthName}}
+`
+
 	updateMetricsTemplate = `
 apiVersion: batch/v1
 kind: Job
@@ -470,6 +507,45 @@ func TestFallbackWithCurrentReplicas(t *testing.T) {
 
 	// Ensure the replica count remains stable
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 4, 60)
+
+	DeleteKubernetesResources(t, namespace, data, templates)
+}
+
+func TestFallbackWithStatic(t *testing.T) {
+	// setup
+	t.Log("--- setting up CurrentReplicas test ---")
+	kc := GetKubernetesClient(t)
+	data, templates := getTemplateData()
+
+	// Replace the default scaledObject template
+	for i, tmpl := range templates {
+		if tmpl.Name == "scaledObjectTemplate" {
+			templates[i].Config = scaledObjectTemplateWithStatic
+			break
+		}
+	}
+
+	CreateKubernetesResources(t, kc, namespace, data, templates)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
+		"replica count should be %d after 3 minutes", minReplicas)
+
+	// Scale out to 4 replicas (20 / 5 = 4)
+	data.MetricValue = 20
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 60, 3),
+		"replica count should be 4 after 3 minutes")
+
+	// Stop metrics server to trigger fallback
+	KubectlApplyWithTemplate(t, data, "fallbackMSDeploymentTemplate", fallbackMSDeploymentTemplate)
+
+	// Should keep fallback value (3) because of static
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 60, 3),
+		"replica count should remain at 3 after fallback")
+
+	// Ensure the replica count remains stable
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 3, 60)
 
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
