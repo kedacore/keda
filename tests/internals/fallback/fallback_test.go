@@ -195,6 +195,7 @@ spec:
     authenticationRef:
       name: {{.TriggerAuthName}}
 `
+
 	scaledObjectTemplateWithCurrentReplicasIfHigher = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -212,6 +213,80 @@ spec:
     failureThreshold: 3
     replicas: {{.DefaultFallback}}
     behavior: currentReplicasIfHigher
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 1
+  cooldownPeriod: 1
+  pollingInterval: 5
+  triggers:
+  - type: metrics-api
+    metricType: AverageValue
+    metadata:
+      targetValue: "5"
+      url: "{{.MetricsServerEndpoint}}"
+      valueLocation: 'value'
+      method: "query"
+    metricType: "AverageValue"
+    authenticationRef:
+      name: {{.TriggerAuthName}}
+`
+
+	scaledObjectTemplateWithCurrentReplicasIfLower = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectNameBehavior}}
+  namespace: {{.Namespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  minReplicaCount: 0
+  maxReplicaCount: 5
+  fallback:
+    failureThreshold: 3
+    replicas: {{.DefaultFallback}}
+    behavior: currentReplicasIfLower
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 1
+  cooldownPeriod: 1
+  pollingInterval: 5
+  triggers:
+  - type: metrics-api
+    metricType: AverageValue
+    metadata:
+      targetValue: "5"
+      url: "{{.MetricsServerEndpoint}}"
+      valueLocation: 'value'
+      method: "query"
+    metricType: "AverageValue"
+    authenticationRef:
+      name: {{.TriggerAuthName}}
+`
+
+	scaledObjectTemplateWithCurrentReplicas = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectNameBehavior}}
+  namespace: {{.Namespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  minReplicaCount: 0
+  maxReplicaCount: 5
+  fallback:
+    failureThreshold: 3
+    replicas: {{.DefaultFallback}}
+    behavior: currentReplicas
   advanced:
     horizontalPodAutoscalerConfig:
       behavior:
@@ -316,7 +391,85 @@ func TestFallbackWithCurrentReplicasIfHigher(t *testing.T) {
 		"replica count should remain at 4 after fallback")
 
 	// Ensure the replica count remains stable
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 4, 180)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 4, 60)
+
+	DeleteKubernetesResources(t, namespace, data, templates)
+}
+
+func TestFallbackWithCurrentReplicasIfLower(t *testing.T) {
+	// setup
+	t.Log("--- setting up CurrentReplicasIfLower test ---")
+	kc := GetKubernetesClient(t)
+	data, templates := getTemplateData()
+
+	// Replace the default scaledObject template
+	for i, tmpl := range templates {
+		if tmpl.Name == "scaledObjectTemplate" {
+			templates[i].Config = scaledObjectTemplateWithCurrentReplicasIfLower
+			break
+		}
+	}
+
+	CreateKubernetesResources(t, kc, namespace, data, templates)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
+		"replica count should be %d after 3 minutes", minReplicas)
+
+	// Scale out to 4 replicas (20 / 5 = 4)
+	data.MetricValue = 20
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 60, 3),
+		"replica count should be 4 after 3 minutes")
+
+	// Stop metrics server to trigger fallback
+	KubectlApplyWithTemplate(t, data, "fallbackMSDeploymentTemplate", fallbackMSDeploymentTemplate)
+
+	// Should keep fallback value (3) as it's lower than current replicas (4)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 60, 3),
+		"replica count should remain at 3 after fallback")
+
+	// Ensure the replica count remains stable
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 3, 60)
+
+	DeleteKubernetesResources(t, namespace, data, templates)
+}
+
+func TestFallbackWithCurrentReplicas(t *testing.T) {
+	// setup
+	t.Log("--- setting up CurrentReplicas test ---")
+	kc := GetKubernetesClient(t)
+	data, templates := getTemplateData()
+
+	// Replace the default scaledObject template
+	for i, tmpl := range templates {
+		if tmpl.Name == "scaledObjectTemplate" {
+			templates[i].Config = scaledObjectTemplateWithCurrentReplicas
+			break
+		}
+	}
+
+	CreateKubernetesResources(t, kc, namespace, data, templates)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
+		"replica count should be %d after 3 minutes", minReplicas)
+
+	// Scale out to 4 replicas (20 / 5 = 4)
+	data.MetricValue = 20
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 60, 3),
+		"replica count should be 4 after 3 minutes")
+
+	// Stop metrics server to trigger fallback
+	KubectlApplyWithTemplate(t, data, "fallbackMSDeploymentTemplate", fallbackMSDeploymentTemplate)
+
+	// Should keep current replicas (4)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 4, 60, 3),
+		"replica count should remain at 4 after fallback")
+
+	// Ensure the replica count remains stable
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 4, 60)
 
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
