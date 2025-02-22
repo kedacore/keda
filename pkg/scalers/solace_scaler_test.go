@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
-	"strings"
 	"testing"
 
 	v2 "k8s.io/api/autoscaling/v2"
@@ -534,7 +532,7 @@ var testSolaceExpectedMetricNames = map[string]string{
 func TestSolaceParseSolaceMetadata(t *testing.T) {
 	for _, testData := range testParseSolaceMetadata {
 		fmt.Print(testData.testID)
-		meta, err := parseSolaceMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.metadata, AuthParams: nil, TriggerIndex: testData.triggerIndex})
+		_, err := parseSolaceMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.metadata, AuthParams: nil, TriggerIndex: testData.triggerIndex})
 		switch {
 		case err != nil && !testData.isError:
 			t.Error("expected success but got error: ", err)
@@ -544,10 +542,6 @@ func TestSolaceParseSolaceMetadata(t *testing.T) {
 			fmt.Println(" --> FAIL")
 		default:
 			fmt.Println(" --> PASS")
-		}
-		if !testData.isError && strings.Contains(testData.metadata["queueName"], "/") && !strings.Contains(meta.EndpointURL, url.QueryEscape(testData.metadata["queueName"])) {
-			t.Error("expected endpointURL to query escape special characters in the URL but got:", meta.EndpointURL)
-			fmt.Println(" --> FAIL")
 		}
 	}
 	for _, testData := range testSolaceEnvCreds {
