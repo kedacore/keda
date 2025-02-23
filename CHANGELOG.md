@@ -68,6 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Introduce new NSQ scaler ([#3281](https://github.com/kedacore/keda/issues/3281))
 - **General**: Operator flag to control patching of webhook resources certificates ([#6184](https://github.com/kedacore/keda/issues/6184))
 - **Azure Pipelines Scaler**: Introduce requireAllDemandsAndIgnoreOthers to match job demands while ignoring extras ([#5579](https://github.com/kedacore/keda/issues/5579))
+- **Kafka Scaler**: Add support for even distribution of partitions to consumers ([#2581](https://github.com/kedacore/keda/issues/2581))
 
 #### Experimental
 
