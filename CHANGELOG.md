@@ -63,6 +63,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Add Fallback option `behavior` for dynamic fallback calculation ([#6450](https://github.com/kedacore/keda/issues/6450))
 - **General**: Enable OpenSSF Scorecard to enhance security practices across the project ([#5913](https://github.com/kedacore/keda/issues/5913))
 - **General**: Introduce new NSQ scaler ([#3281](https://github.com/kedacore/keda/issues/3281))
 - **General**: Introduce new Solace Direct Messaging scaler ([#6545](https://github.com/kedacore/keda/issues/6545))
