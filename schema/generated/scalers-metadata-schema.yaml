@@ -1564,6 +1564,19 @@ scalers:
           type: string
           default: "false"
           metadataVariableReadable: true
+        - name: aggregateFromKubeServiceEndpoints
+          type: string
+          default: "false"
+          metadataVariableReadable: true
+        - name: aggregationType
+          type: string
+          default: average
+          allowedValue:
+            - average
+            - sum
+            - max
+            - min
+          metadataVariableReadable: true
     - type: mongodb
       parameters:
         - name: connectionString
