@@ -40,8 +40,8 @@ type seleniumGridScalerMetadata struct {
 	ActivationThreshold    int64  `keda:"name=activationThreshold,      order=triggerMetadata, optional"`
 	UnsafeSsl              bool   `keda:"name=unsafeSsl,                order=triggerMetadata, default=false"`
 	NodeMaxSessions        int64  `keda:"name=nodeMaxSessions,          order=triggerMetadata, default=1"`
-	EnableManegedDownloads bool   `keda:"name=enableManegedDownloads,  	order=triggerMetadata, optional"`
-	Capabilities           string `keda:"name=capabilities,        	 	order=triggerMetadata, optional"`
+	EnableManegedDownloads bool   `keda:"name=enableManegedDownloads,   order=triggerMetadata, optional"`
+	Capabilities           string `keda:"name=capabilities,             order=triggerMetadata, optional"`
 
 	TargetValue int64
 }
@@ -165,14 +165,6 @@ func parseCapabilitiesToMap(_capabilities string) (map[string]interface{}, error
 		}
 	}
 	return capabilities, nil
-}
-
-func mapToJSONString(data map[string]interface{}) (string, error) {
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return "", err
-	}
-	return string(jsonData), nil
 }
 
 func parseSeleniumGridScalerMetadata(config *scalersconfig.ScalerConfig) (*seleniumGridScalerMetadata, error) {
