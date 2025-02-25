@@ -40,7 +40,7 @@ type seleniumGridScalerMetadata struct {
 	ActivationThreshold    int64  `keda:"name=activationThreshold,      order=triggerMetadata, optional"`
 	UnsafeSsl              bool   `keda:"name=unsafeSsl,                order=triggerMetadata, default=false"`
 	NodeMaxSessions        int64  `keda:"name=nodeMaxSessions,          order=triggerMetadata, default=1"`
-	EnableManegedDownloads bool   `keda:"name=enableManegedDownloads,   order=triggerMetadata, optional"`
+	EnableManagedDownloads bool   `keda:"name=enableManagedDownloads,   order=triggerMetadata, optional"`
 	Capabilities           string `keda:"name=capabilities,             order=triggerMetadata, optional"`
 
 	TargetValue int64
@@ -255,7 +255,7 @@ func (s *seleniumGridScaler) getSessionsQueueLength(ctx context.Context, logger 
 		logger.Error(err, fmt.Sprintf("Error when reading Selenium Grid response body: %s", err))
 		return -1, -1, err
 	}
-	newRequestNodes, onGoingSession, err := getCountFromSeleniumResponse(b, s.metadata.BrowserName, s.metadata.BrowserVersion, s.metadata.SessionBrowserName, s.metadata.PlatformName, s.metadata.NodeMaxSessions, s.metadata.EnableManegedDownloads, s.metadata.Capabilities, logger)
+	newRequestNodes, onGoingSession, err := getCountFromSeleniumResponse(b, s.metadata.BrowserName, s.metadata.BrowserVersion, s.metadata.SessionBrowserName, s.metadata.PlatformName, s.metadata.NodeMaxSessions, s.metadata.EnableManagedDownloads, s.metadata.Capabilities, logger)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Error when getting count from Selenium Grid response: %s", err))
 		return -1, -1, err
@@ -383,7 +383,7 @@ func updateOrAddReservedNode(reservedNodes []ReservedNodes, nodeID string, slotC
 	return append(reservedNodes, ReservedNodes{ID: nodeID, SlotCount: slotCount, MaxSession: maxSession})
 }
 
-func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string, platformName string, nodeMaxSessions int64, enableManegedDownloads bool, _capabilities string, logger logr.Logger) (int64, int64, error) {
+func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string, platformName string, nodeMaxSessions int64, enableManagedDownloads bool, _capabilities string, logger logr.Logger) (int64, int64, error) {
 	// Track number of available slots of existing Nodes in the Grid can be reserved for the matched requests
 	var availableSlots int64
 	// Track number of matched requests in the sessions queue will be served by this scaler
@@ -397,7 +397,7 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	capabilities, err := parseCapabilitiesToMap(_capabilities)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Error when unmarshaling trigger metadata 'capabilities': %s", err))
-	} else if enableManegedDownloads {
+	} else if enableManagedDownloads {
 		capabilities[EnableManagedDownloadsCapability] = true
 	}
 

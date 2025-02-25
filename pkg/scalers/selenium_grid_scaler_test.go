@@ -17,7 +17,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 		browserVersion         string
 		platformName           string
 		nodeMaxSessions        int64
-		enableManegedDownloads bool
+		enableManagedDownloads bool
 		capabilities           string
 	}
 	tests := []struct {
@@ -1955,7 +1955,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:         "",
 				platformName:           "linux",
 				nodeMaxSessions:        2,
-				enableManegedDownloads: true,
+				enableManagedDownloads: true,
 			},
 			wantNewRequestNodes: 1,
 			wantOnGoingSessions: 1,
@@ -2061,7 +2061,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				browserVersion:         "",
 				platformName:           "linux",
 				nodeMaxSessions:        1,
-				enableManegedDownloads: true,
+				enableManagedDownloads: true,
 				capabilities:           "{\"myApp:version\": \"beta\", \"myApp:scope\": \"internal\"}",
 			},
 			wantNewRequestNodes: 1,
@@ -3027,7 +3027,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			newRequestNodes, onGoingSessions, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion, tt.args.sessionBrowserName, tt.args.platformName, tt.args.nodeMaxSessions, tt.args.enableManegedDownloads, tt.args.capabilities, logr.Discard())
+			newRequestNodes, onGoingSessions, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion, tt.args.sessionBrowserName, tt.args.platformName, tt.args.nodeMaxSessions, tt.args.enableManagedDownloads, tt.args.capabilities, logr.Discard())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCountFromSeleniumResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -3206,7 +3206,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 						"url":                    "http://selenium-hub:4444/graphql",
 						"browserName":            "MicrosoftEdge",
 						"sessionBrowserName":     "msedge",
-						"enableManegedDownloads": "true",
+						"enableManagedDownloads": "true",
 						"capabilities":           "{\"myApp:version\": \"beta\"}",
 					},
 				},
@@ -3222,7 +3222,7 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 				Username:               "username",
 				Password:               "password",
 				NodeMaxSessions:        1,
-				EnableManegedDownloads: true,
+				EnableManagedDownloads: true,
 				Capabilities:           "{\"myApp:version\": \"beta\"}",
 			},
 		},
