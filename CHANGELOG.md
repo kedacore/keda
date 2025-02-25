@@ -60,6 +60,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Fix the check whether Fallback is enabled when using ScalingModifiers ([#6521](https://github.com/kedacore/keda/pull/6521))
 - **General**: Fix waiting to reach `failureThreshold` before fallback ([#6520](https://github.com/kedacore/keda/pull/6520))
 - **General**: Introduce new Temporal scaler ([#4724](https://github.com/kedacore/keda/issues/4724))
+- **Metrics API scaler**: Introduce new `aggregateFromKubeServiceEndpoints` and `aggregationType` metadata fields to `metrics-api` so it is able to fetch metrics from all endpoints behind a kubernetes service and aggregate them ([#6565](https://github.com/kedacore/keda/pull/6565))
 
 ### New
 
