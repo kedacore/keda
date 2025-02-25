@@ -28,19 +28,20 @@ type seleniumGridScaler struct {
 type seleniumGridScalerMetadata struct {
 	triggerIndex int
 
-	URL                 string `keda:"name=url,                      order=authParams;triggerMetadata"`
-	AuthType            string `keda:"name=authType,                 order=authParams;resolvedEnv, optional"`
-	Username            string `keda:"name=username,                 order=authParams;resolvedEnv, optional"`
-	Password            string `keda:"name=password,                 order=authParams;resolvedEnv, optional"`
-	AccessToken         string `keda:"name=accessToken,              order=authParams;resolvedEnv, optional"`
-	BrowserName         string `keda:"name=browserName,              order=triggerMetadata, optional"`
-	SessionBrowserName  string `keda:"name=sessionBrowserName,       order=triggerMetadata, optional"`
-	BrowserVersion      string `keda:"name=browserVersion,           order=triggerMetadata, optional"`
-	PlatformName        string `keda:"name=platformName,             order=triggerMetadata, optional"`
-	ActivationThreshold int64  `keda:"name=activationThreshold,      order=triggerMetadata, optional"`
-	UnsafeSsl           bool   `keda:"name=unsafeSsl,                order=triggerMetadata, default=false"`
-	NodeMaxSessions     int64  `keda:"name=nodeMaxSessions,          order=triggerMetadata, default=1"`
-	Capabilities        string `keda:"name=capabilities,        	 order=triggerMetadata, optional"`
+	URL                    string `keda:"name=url,                      order=authParams;triggerMetadata"`
+	AuthType               string `keda:"name=authType,                 order=authParams;resolvedEnv, optional"`
+	Username               string `keda:"name=username,                 order=authParams;resolvedEnv, optional"`
+	Password               string `keda:"name=password,                 order=authParams;resolvedEnv, optional"`
+	AccessToken            string `keda:"name=accessToken,              order=authParams;resolvedEnv, optional"`
+	BrowserName            string `keda:"name=browserName,              order=triggerMetadata, optional"`
+	SessionBrowserName     string `keda:"name=sessionBrowserName,       order=triggerMetadata, optional"`
+	BrowserVersion         string `keda:"name=browserVersion,           order=triggerMetadata, optional"`
+	PlatformName           string `keda:"name=platformName,             order=triggerMetadata, optional"`
+	ActivationThreshold    int64  `keda:"name=activationThreshold,      order=triggerMetadata, optional"`
+	UnsafeSsl              bool   `keda:"name=unsafeSsl,                order=triggerMetadata, default=false"`
+	NodeMaxSessions        int64  `keda:"name=nodeMaxSessions,          order=triggerMetadata, default=1"`
+	EnableManegedDownloads bool   `keda:"name=enableManegedDownloads,  	order=triggerMetadata, optional"`
+	Capabilities           string `keda:"name=capabilities,        	 	order=triggerMetadata, optional"`
 
 	TargetValue int64
 }
@@ -101,8 +102,10 @@ type Stereotypes []struct {
 	Stereotype map[string]interface{} `json:"stereotype"`
 }
 
+const EnableManagedDownloadsCapability = "se:downloadsEnabled"
+
 var ExtensionCapabilitiesPrefixes = []string{"goog:", "moz:", "ms:", "se:"}
-var FunctionCapabilitiesPrefixes = []string{"se:downloadsEnabled"}
+var FunctionCapabilitiesPrefixes = []string{EnableManagedDownloadsCapability}
 
 // Follow pattern in https://github.com/SeleniumHQ/selenium/blob/trunk/java/src/org/openqa/selenium/grid/data/DefaultSlotMatcher.java
 func filterCapabilities(capabilities map[string]interface{}) map[string]interface{} {
@@ -152,6 +155,24 @@ func NewSeleniumGridScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		httpClient: httpClient,
 		logger:     logger,
 	}, nil
+}
+
+func parseCapabilitiesToMap(_capabilities string) (map[string]interface{}, error) {
+	capabilities := map[string]interface{}{}
+	if _capabilities != "" {
+		if err := json.Unmarshal([]byte(_capabilities), &capabilities); err != nil {
+			return nil, err
+		}
+	}
+	return capabilities, nil
+}
+
+func mapToJSONString(data map[string]interface{}) (string, error) {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonData), nil
 }
 
 func parseSeleniumGridScalerMetadata(config *scalersconfig.ScalerConfig) (*seleniumGridScalerMetadata, error) {
@@ -242,7 +263,7 @@ func (s *seleniumGridScaler) getSessionsQueueLength(ctx context.Context, logger 
 		logger.Error(err, fmt.Sprintf("Error when reading Selenium Grid response body: %s", err))
 		return -1, -1, err
 	}
-	newRequestNodes, onGoingSession, err := getCountFromSeleniumResponse(b, s.metadata.BrowserName, s.metadata.BrowserVersion, s.metadata.SessionBrowserName, s.metadata.PlatformName, s.metadata.NodeMaxSessions, s.metadata.Capabilities, logger)
+	newRequestNodes, onGoingSession, err := getCountFromSeleniumResponse(b, s.metadata.BrowserName, s.metadata.BrowserVersion, s.metadata.SessionBrowserName, s.metadata.PlatformName, s.metadata.NodeMaxSessions, s.metadata.EnableManegedDownloads, s.metadata.Capabilities, logger)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Error when getting count from Selenium Grid response: %s", err))
 		return -1, -1, err
@@ -370,7 +391,7 @@ func updateOrAddReservedNode(reservedNodes []ReservedNodes, nodeID string, slotC
 	return append(reservedNodes, ReservedNodes{ID: nodeID, SlotCount: slotCount, MaxSession: maxSession})
 }
 
-func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string, platformName string, nodeMaxSessions int64, _capabilities string, logger logr.Logger) (int64, int64, error) {
+func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string, platformName string, nodeMaxSessions int64, enableManegedDownloads bool, _capabilities string, logger logr.Logger) (int64, int64, error) {
 	// Track number of available slots of existing Nodes in the Grid can be reserved for the matched requests
 	var availableSlots int64
 	// Track number of matched requests in the sessions queue will be served by this scaler
@@ -380,12 +401,12 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	if err := json.Unmarshal(b, &seleniumResponse); err != nil {
 		return 0, 0, err
 	}
-	capabilities := map[string]interface{}{}
-	if _capabilities != "" {
-		if err := json.Unmarshal([]byte(_capabilities), &capabilities); err != nil {
-			logger.Error(err, fmt.Sprintf("Error when unmarshaling trigger metadata 'capabilities': %s", err))
-			return 0, 0, err
-		}
+
+	capabilities, err := parseCapabilitiesToMap(_capabilities)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Error when unmarshaling trigger metadata 'capabilities': %s", err))
+	} else if enableManegedDownloads {
+		capabilities[EnableManagedDownloadsCapability] = true
 	}
 
 	var sessionQueueRequests = seleniumResponse.Data.SessionsInfo.SessionQueueRequests
