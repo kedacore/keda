@@ -109,7 +109,7 @@ var FunctionCapabilitiesPrefixes = []string{EnableManagedDownloadsCapability}
 
 // Follow pattern in https://github.com/SeleniumHQ/selenium/blob/trunk/java/src/org/openqa/selenium/grid/data/DefaultSlotMatcher.java
 func filterCapabilities(capabilities map[string]interface{}) map[string]interface{} {
-	filteredCapabilities := make(map[string]interface{})
+	filteredCapabilities := map[string]interface{}{}
 
 	for key, value := range capabilities {
 		retain := true
@@ -308,12 +308,28 @@ func countMatchingSessions(sessions Sessions, browserName string, browserVersion
 	return matchingSessions
 }
 
+func managedDownloadsEnabled(stereotype map[string]interface{}, capabilities map[string]interface{}) bool {
+	// First lets check if user wanted a Node with managed downloads enabled
+	value1, ok1 := capabilities[EnableManagedDownloadsCapability]
+	if !ok1 || !value1.(bool) {
+		// User didn't ask. So lets move on to the next matching criteria
+		return true
+	}
+	// User wants managed downloads enabled to be done on this Node, let's check the stereotype
+	value2, ok2 := stereotype[EnableManagedDownloadsCapability]
+	// Try to match what the user requested
+	return ok2 && value2.(bool)
+}
+
 func extensionCapabilitiesMatch(stereotype map[string]interface{}, capabilities map[string]interface{}) bool {
 	capabilities = filterCapabilities(capabilities)
 	if len(capabilities) == 0 {
 		return true
 	}
 	for key, value := range capabilities {
+		if key == EnableManagedDownloadsCapability {
+			continue
+		}
 		if stereotypeValue, ok := stereotype[key]; !ok || stereotypeValue != value {
 			return false
 		}
@@ -338,7 +354,7 @@ func checkRequestCapabilitiesMatch(request map[string]interface{}, browserName s
 	platformNameMatch := (_platformName == "" || strings.EqualFold("any", _platformName) || strings.EqualFold(platformName, _platformName)) &&
 		(platformName == "" || platformName == "any" || strings.EqualFold(platformName, _platformName))
 
-	return browserNameMatch && browserVersionMatch && platformNameMatch && extensionCapabilitiesMatch(request, capabilities)
+	return browserNameMatch && browserVersionMatch && platformNameMatch && managedDownloadsEnabled(capabilities, request) && extensionCapabilitiesMatch(request, capabilities)
 }
 
 // This function checks if Node stereotypes or ongoing sessions match the scaler metadata
@@ -359,7 +375,7 @@ func checkStereotypeCapabilitiesMatch(capability map[string]interface{}, browser
 	platformNameMatch := (_platformVersion == "" || strings.EqualFold("any", _platformVersion) || strings.EqualFold(platformName, _platformVersion)) &&
 		(platformName == "" || platformName == "any" || strings.EqualFold(platformName, _platformVersion))
 
-	return browserNameMatch && browserVersionMatch && platformNameMatch && extensionCapabilitiesMatch(capability, capabilities)
+	return browserNameMatch && browserVersionMatch && platformNameMatch && managedDownloadsEnabled(capabilities, capability) && extensionCapabilitiesMatch(capability, capabilities)
 }
 
 func checkNodeReservedSlots(reservedNodes []ReservedNodes, nodeID string, availableSlots int64) int64 {
@@ -397,7 +413,8 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	capabilities, err := parseCapabilitiesToMap(_capabilities)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Error when unmarshaling trigger metadata 'capabilities': %s", err))
-	} else if enableManagedDownloads {
+	}
+	if enableManagedDownloads {
 		capabilities[EnableManagedDownloadsCapability] = true
 	}
 
