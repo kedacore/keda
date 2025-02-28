@@ -89,6 +89,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Centralize and improve automaxprocs configuration with proper structured logging ([#5970](https://github.com/kedacore/keda/issues/5970))
 - **General**: Fix event text when deactivation fails ([#6469](https://github.com/kedacore/keda/issues/6469))
 - **General**: Paused ScaledObject count is reported correctly after operator restart ([#6321](https://github.com/kedacore/keda/issues/6321))
+- **General**: Remove klogr dependency and replace with zap ([#6578](https://github.com/kedacore/keda/issues/5732))
 - **General**: ScaledJobs ready status set to true when recoverred problem ([#6329](https://github.com/kedacore/keda/pull/6329))
 - **AWS Scalers**: Add AWS region to the AWS Config Cache key ([#6128](https://github.com/kedacore/keda/issues/6128))
 - **Redis Streams**: Allow default value of 0 for activationLagCount ([#6478](https://github.com/kedacore/keda/issues/6478))
