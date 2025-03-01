@@ -175,6 +175,12 @@ func (c *Client) addOperationExportTableToPointInTimeMiddlewares(stack *middlewa
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addIdempotencyToken_opExportTableToPointInTimeMiddleware(stack, options); err != nil {
 		return err
 	}

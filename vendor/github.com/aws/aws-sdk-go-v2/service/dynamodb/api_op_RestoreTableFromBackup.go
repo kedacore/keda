@@ -162,6 +162,12 @@ func (c *Client) addOperationRestoreTableFromBackupMiddlewares(stack *middleware
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpRestoreTableFromBackupValidationMiddleware(stack); err != nil {
 		return err
 	}

@@ -112,6 +112,12 @@ func (c *Client) addOperationDescribeExportMiddlewares(stack *middleware.Stack, 
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDescribeExportValidationMiddleware(stack); err != nil {
 		return err
 	}

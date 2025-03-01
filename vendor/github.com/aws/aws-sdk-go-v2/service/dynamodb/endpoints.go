@@ -399,10 +399,10 @@ func (r *resolver) ResolveEndpoint(
 								SchemeID: "aws.auth#sigv4",
 								SignerProperties: func() smithy.Properties {
 									var sp smithy.Properties
-									smithyhttp.SetSigV4SigningRegion(&sp, "us-east-1")
-
 									smithyhttp.SetSigV4SigningName(&sp, "dynamodb")
 									smithyhttp.SetSigV4ASigningName(&sp, "dynamodb")
+
+									smithyhttp.SetSigV4SigningRegion(&sp, "us-east-1")
 									return sp
 								}(),
 							},
@@ -712,6 +712,7 @@ func bindEndpointParams(ctx context.Context, input interface{}, options Options)
 	params.UseFIPS = aws.Bool(options.EndpointOptions.UseFIPSEndpoint == aws.FIPSEndpointStateEnabled)
 	params.Endpoint = options.BaseEndpoint
 	params.AccountId = resolveAccountID(getIdentity(ctx), options.AccountIDEndpointMode)
+	params.AccountIdEndpointMode = aws.String(string(options.AccountIDEndpointMode))
 
 	if b, ok := input.(endpointParamsBinder); ok {
 		b.bindEndpointParams(params)

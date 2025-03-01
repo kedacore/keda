@@ -116,6 +116,12 @@ func (c *Client) addOperationDescribeTableReplicaAutoScalingMiddlewares(stack *m
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDescribeTableReplicaAutoScalingValidationMiddleware(stack); err != nil {
 		return err
 	}
