@@ -233,7 +233,6 @@ func main() {
 	cmd.Name = "keda-adapter"
 
 	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
-	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
 	cmd.Flags().IntVar(&metricsAPIServerPort, "port", 8080, "Set the port for the metrics API server")
 	cmd.Flags().StringVar(&metricsServiceAddr, "metrics-service-address", generateDefaultMetricsServiceAddr(), "The address of the GRPC Metrics Service Server.")
 	cmd.Flags().StringVar(&metricsServiceGRPCAuthority, "metrics-service-grpc-authority", "", "Host Authority override for the Metrics Service if the Host Authority is not the same as the address used for the GRPC Metrics Service Server.")
@@ -241,10 +240,12 @@ func main() {
 	cmd.Flags().Float32Var(&adapterClientRequestQPS, "kube-api-qps", 20.0, "Set the QPS rate for throttling requests sent to the apiserver")
 	cmd.Flags().IntVar(&adapterClientRequestBurst, "kube-api-burst", 30, "Set the burst for throttling requests sent to the apiserver")
 	cmd.Flags().BoolVar(&disableCompression, "disable-compression", true, "Disable response compression for k8s restAPI in client-go. ")
+
+	// Make sure we get the zap flags
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 	cmd.Flags().AddGoFlagSet(flag.CommandLine)
-	// pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+
 	if err := cmd.Flags().Parse(os.Args); err != nil {
 		return
 	}
