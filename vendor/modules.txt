@@ -275,8 +275,8 @@ github.com/Huawei/gophercloud/openstack/identity/v3/services
 github.com/Huawei/gophercloud/openstack/identity/v3/tokens
 github.com/Huawei/gophercloud/openstack/utils
 github.com/Huawei/gophercloud/pagination
-# github.com/IBM/sarama v1.43.3
-## explicit; go 1.19
+# github.com/IBM/sarama v1.45.0
+## explicit; go 1.21
 github.com/IBM/sarama
 # github.com/NYTimes/gziphandler v1.1.1
 ## explicit; go 1.11
@@ -1102,8 +1102,8 @@ github.com/jstemmer/go-junit-report/v2/junit
 github.com/jstemmer/go-junit-report/v2/parser/gotest
 github.com/jstemmer/go-junit-report/v2/parser/gotest/internal/collector
 github.com/jstemmer/go-junit-report/v2/parser/gotest/internal/reader
-# github.com/klauspost/compress v1.17.9
-## explicit; go 1.20
+# github.com/klauspost/compress v1.17.11
+## explicit; go 1.21
 github.com/klauspost/compress
 github.com/klauspost/compress/flate
 github.com/klauspost/compress/fse
@@ -1297,7 +1297,7 @@ github.com/pborman/uuid
 # github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 ## explicit
 github.com/phayes/freeport
-# github.com/pierrec/lz4/v4 v4.1.21
+# github.com/pierrec/lz4/v4 v4.1.22
 ## explicit; go 1.14
 github.com/pierrec/lz4/v4
 github.com/pierrec/lz4/v4/internal/lz4block
@@ -1801,7 +1801,7 @@ go.uber.org/zap/internal/pool
 go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
-# golang.org/x/crypto v0.31.0 => golang.org/x/crypto v0.31.0
+# golang.org/x/crypto v0.32.0 => golang.org/x/crypto v0.31.0
 ## explicit; go 1.20
 golang.org/x/crypto/argon2
 golang.org/x/crypto/blake2b
@@ -1833,7 +1833,7 @@ golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.33.0 => golang.org/x/net v0.33.0
+# golang.org/x/net v0.34.0 => golang.org/x/net v0.33.0
 ## explicit; go 1.18
 golang.org/x/net/context
 golang.org/x/net/html
