@@ -118,8 +118,8 @@ var testDatadogClusterAgentMetadata = []datadogAuthMetadataTestData{
 	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "type": "global"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "datadogMetricsServicePort": "notanint", "unsafeSsl": "true", "authMode": "bearer"}, true},
 	// wrong targetValue type
 	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "notanint", "type": "global"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "datadogMetricsServicePort": "8080", "unsafeSsl": "true", "authMode": "bearer"}, true},
-	// wrong type DEPRECATED test case ?????
-	//{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "type": "notatype"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "datadogMetricsServicePort": "8080", "unsafeSsl": "true", "authMode": "bearer"}, true},
+	// wrong type
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "type": "notatype"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "datadogMetricsServicePort": "8080", "unsafeSsl": "true", "authMode": "bearer"}, true},
 }
 
 var testDatadogAPIMetadata = []datadogAuthMetadataTestData{
@@ -137,10 +137,10 @@ var testDatadogAPIMetadata = []datadogAuthMetadataTestData{
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricUnavailableValue": "1.5", "type": "average", "age": "60", "timeWindowOffset": "30"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
 	// default type
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
-	// wrong type DEPRECATED TEST CASE ????
-	//{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "type": "invalid", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
-	// both metadata type and trigger type DEPRECATED TEST CASE ????
-	//{v2.AverageValueMetricType, map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
+	// wrong type
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "type": "invalid", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
+	//both metadata type and trigger type
+	{v2.AverageValueMetricType, map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	//missing query
 	{"", map[string]string{"queryValue": "7", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	//missing queryValue
@@ -204,7 +204,7 @@ func TestDatadogGetMetricSpecForScaling(t *testing.T) {
 	var err error
 	var meta *datadogMetadata
 
-	for _, testData := range datadogMetricIdentifiers {
+	for idx, testData := range datadogMetricIdentifiers {
 		if testData.typeOfScaler == apiType {
 			meta, err = parseDatadogAPIMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
 		} else {
@@ -223,7 +223,7 @@ func TestDatadogGetMetricSpecForScaling(t *testing.T) {
 		metricSpec := mockDatadogScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName)
+			t.Errorf("Wrong External metric source name:%s for test case %d", metricName, idx)
 		}
 	}
 }

@@ -69,7 +69,7 @@ type datadogMetadata struct {
 	FillValue     float64 `keda:"name=metricUnavailableValue, order=triggerMetadata, default=0"`
 	UseFiller     bool
 	TargetValue   float64 `keda:"name=targetValue;queryValue, order=triggerMetadata, default=-1"`
-	VType         v2.MetricTargetType
+	vType         v2.MetricTargetType
 	triggerIndex  int
 }
 
@@ -172,7 +172,27 @@ func parseDatadogAPIMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 			return nil, fmt.Errorf("no targetValue or queryValue given")
 		}
 	}
-
+	if val, ok := config.TriggerMetadata["type"]; ok {
+		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
+		if config.MetricType != "" {
+			return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
+		}
+		val = strings.ToLower(val)
+		switch val {
+		case avgString:
+			meta.vType = v2.AverageValueMetricType
+		case "global":
+			meta.vType = v2.ValueMetricType
+		default:
+			return nil, fmt.Errorf("type has to be global or average")
+		}
+	} else {
+		metricType, err := GetMetricTargetType(config)
+		if err != nil {
+			return nil, fmt.Errorf("error getting scaler metric type: %w", err)
+		}
+		meta.vType = metricType
+	}
 	if meta.Query == "" {
 		return nil, fmt.Errorf("error parsing Datadog metadata: missing Query")
 	}
@@ -211,6 +231,28 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 			return nil, fmt.Errorf("no targetValue or queryValue given")
 		}
 	}
+	if val, ok := config.TriggerMetadata["type"]; ok {
+		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
+		if config.MetricType != "" {
+			return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
+		}
+		val = strings.ToLower(val)
+		switch val {
+		case avgString:
+			meta.vType = v2.AverageValueMetricType
+		case "global":
+			meta.vType = v2.ValueMetricType
+		default:
+			return nil, fmt.Errorf("type has to be global or average")
+		}
+	} else {
+		metricType, err := GetMetricTargetType(config)
+		if err != nil {
+			return nil, fmt.Errorf("error getting scaler metric type: %w", err)
+		}
+		meta.vType = metricType
+	}
+	meta.HpaMetricName = "datadogmetric@" + meta.DatadogMetricNamespace + ":" + meta.DatadogMetricName
 
 	return meta, nil
 }
