@@ -203,9 +203,14 @@ func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int64) (int64, er
 	var count int64
 
 	for count < maxCount {
-		_, err := it.Next()
+		item, err := it.Next()
 		if err == iterator.Done {
 			break
+		}
+		// The folder is retrieved as an entity, so if the name is exactly
+		// the blob prefix, we can skip it
+		if item.Name == s.metadata.blobPrefix {
+			continue
 		}
 		if err != nil {
 			if errors.Is(err, storage.ErrBucketNotExist) {
