@@ -51,17 +51,18 @@ var (
 )
 
 type templateData struct {
-	TestNamespace             string
-	SecretName                string
-	DeploymentName            string
-	ScaledObjectName          string
-	ScaledJobName             string
-	MinReplicaCount           string
-	MaxReplicaCount           string
-	Pat                       string
-	GitlabAPIURL              string
-	ProjectID                 string
-	TargetPipelineQueueLength string
+	TestNamespace                       string
+	SecretName                          string
+	DeploymentName                      string
+	ScaledObjectName                    string
+	ScaledJobName                       string
+	MinReplicaCount                     string
+	MaxReplicaCount                     string
+	Pat                                 string
+	GitlabAPIURL                        string
+	ProjectID                           string
+	TargetPipelineQueueLength           string
+	ActivationTargetPipelineQueueLength string
 }
 
 const (
@@ -129,7 +130,7 @@ spec:
       gitlabAPIURL: {{.GitlabAPIURL}}
       projectID: "{{.ProjectID}}"
       targetPipelineQueueLength: "{{.TargetPipelineQueueLength}}"
-      labels: "e2eSOtester"
+      activationTargetPipelineQueueLength: "{{.ActivationTargetPipelineQueueLength}}"
     authenticationRef:
      name: gitlab-trigger-auth
 `
@@ -167,10 +168,10 @@ func TestScaler(t *testing.T) {
 
 	// test scaling Scaled Object
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	testSONotActivated(t, kc)
+	testActivation(t, kc)
 
-	testSOScaleOut(t, kc, projectID)
-	testSOScaleIn(t, kc, projectID)
+	testScaleOut(t, kc, projectID)
+	testScaleIn(t, kc, projectID)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
@@ -185,16 +186,17 @@ func getTemplateData(projectID string) (templateData, []Template) {
 	base64Pat := base64.StdEncoding.EncodeToString([]byte(personalAccessToken))
 
 	return templateData{
-			TestNamespace:             testNamespace,
-			SecretName:                secretName,
-			DeploymentName:            deploymentName,
-			ScaledObjectName:          scaledObjectName,
-			MinReplicaCount:           fmt.Sprintf("%v", minReplicaCount),
-			MaxReplicaCount:           fmt.Sprintf("%v", maxReplicaCount),
-			Pat:                       base64Pat,
-			GitlabAPIURL:              "https://gitlab.com",
-			ProjectID:                 projectID,
-			TargetPipelineQueueLength: "1",
+			TestNamespace:                       testNamespace,
+			SecretName:                          secretName,
+			DeploymentName:                      deploymentName,
+			ScaledObjectName:                    scaledObjectName,
+			MinReplicaCount:                     fmt.Sprintf("%v", minReplicaCount),
+			MaxReplicaCount:                     fmt.Sprintf("%v", maxReplicaCount),
+			Pat:                                 base64Pat,
+			GitlabAPIURL:                        "https://gitlab.com",
+			ProjectID:                           projectID,
+			TargetPipelineQueueLength:           "1",
+			ActivationTargetPipelineQueueLength: "1",
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "authTemplate", Config: triggerAuthTemplate},
@@ -203,20 +205,20 @@ func getTemplateData(projectID string) (templateData, []Template) {
 		}
 }
 
-func testSONotActivated(t *testing.T, kc *kubernetes.Clientset) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing none activation ---")
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testSOScaleOut(t *testing.T, kc *kubernetes.Clientset, projectID string) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, projectID string) {
 	t.Log("--- testing scale out ---")
 	queueRun(t, projectID)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
-		"replica count should be 2 after 1 minute")
+		"replica count should be 1 after 1 minute")
 }
 
-func testSOScaleIn(t *testing.T, kc *kubernetes.Clientset, projectID string) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, projectID string) {
 	t.Log("--- testing scale in ---")
 	deleteAllPipelines(t, gitlabBaseURL, projectID)
 

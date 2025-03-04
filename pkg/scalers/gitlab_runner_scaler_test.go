@@ -207,10 +207,11 @@ func TestGitLabRunnerScaler_GetMetricsAndActivity(t *testing.T) {
 		pipelineWaitingForResourceQueueLength int64
 		pipelineRunningQueueLength            int64
 
-		targetPipelineQueueLength int64
-		expectedMetricValue       int64
-		expectedActive            bool
-		expectError               bool
+		targetPipelineQueueLength           int64
+		activationTargetPipelineQueueLength int64
+		expectedMetricValue                 int64
+		expectedActive                      bool
+		expectError                         bool
 	}{
 		{
 			name: "Queue length below target",
@@ -219,10 +220,11 @@ func TestGitLabRunnerScaler_GetMetricsAndActivity(t *testing.T) {
 			pipelineWaitingForResourceQueueLength: 0,
 			pipelineRunningQueueLength:            0,
 
-			targetPipelineQueueLength: 5,
-			expectedMetricValue:       2,
-			expectedActive:            false,
-			expectError:               false,
+			targetPipelineQueueLength:           5,
+			activationTargetPipelineQueueLength: 3,
+			expectedMetricValue:                 2,
+			expectedActive:                      false,
+			expectError:                         false,
 		},
 		{
 			name: "Queue length equal to target",
@@ -231,10 +233,11 @@ func TestGitLabRunnerScaler_GetMetricsAndActivity(t *testing.T) {
 			pipelineWaitingForResourceQueueLength: 0,
 			pipelineRunningQueueLength:            0,
 
-			targetPipelineQueueLength: 5,
-			expectedMetricValue:       5,
-			expectedActive:            true,
-			expectError:               false,
+			targetPipelineQueueLength:           5,
+			activationTargetPipelineQueueLength: 3,
+			expectedMetricValue:                 5,
+			expectedActive:                      true,
+			expectError:                         false,
 		},
 		{
 			name: "Queue length above target",
@@ -243,10 +246,11 @@ func TestGitLabRunnerScaler_GetMetricsAndActivity(t *testing.T) {
 			pipelineWaitingForResourceQueueLength: 0,
 			pipelineRunningQueueLength:            0,
 
-			targetPipelineQueueLength: 5,
-			expectedMetricValue:       10,
-			expectedActive:            true,
-			expectError:               false,
+			targetPipelineQueueLength:           5,
+			activationTargetPipelineQueueLength: 3,
+			expectedMetricValue:                 10,
+			expectedActive:                      true,
+			expectError:                         false,
 		},
 		{
 			name: "Queue length is sum of statuses",
@@ -255,10 +259,11 @@ func TestGitLabRunnerScaler_GetMetricsAndActivity(t *testing.T) {
 			pipelineWaitingForResourceQueueLength: 3,
 			pipelineRunningQueueLength:            5,
 
-			targetPipelineQueueLength: 5,
-			expectedMetricValue:       9,
-			expectedActive:            true,
-			expectError:               false,
+			targetPipelineQueueLength:           5,
+			activationTargetPipelineQueueLength: 3,
+			expectedMetricValue:                 9,
+			expectedActive:                      true,
+			expectError:                         false,
 		},
 		{
 			name: "Error retrieving queue length",
@@ -267,10 +272,11 @@ func TestGitLabRunnerScaler_GetMetricsAndActivity(t *testing.T) {
 			pipelineWaitingForResourceQueueLength: 0,
 			pipelineRunningQueueLength:            0,
 
-			targetPipelineQueueLength: 5,
-			expectedMetricValue:       0,
-			expectedActive:            false,
-			expectError:               true,
+			targetPipelineQueueLength:           5,
+			activationTargetPipelineQueueLength: 3,
+			expectedMetricValue:                 0,
+			expectedActive:                      false,
+			expectError:                         true,
 		},
 	}
 
@@ -323,10 +329,11 @@ func TestGitLabRunnerScaler_GetMetricsAndActivity(t *testing.T) {
 			defer server.Close()
 
 			meta := &gitlabRunnerMetadata{
-				GitLabAPIURL:              mustParseURL(server.URL),
-				PersonalAccessToken:       "test-token",
-				TargetPipelineQueueLength: tc.targetPipelineQueueLength,
-				ProjectID:                 "12345",
+				GitLabAPIURL:                        mustParseURL(server.URL),
+				PersonalAccessToken:                 "test-token",
+				TargetPipelineQueueLength:           tc.targetPipelineQueueLength,
+				ActivationTargetPipelineQueueLength: tc.activationTargetPipelineQueueLength,
+				ProjectID:                           "12345",
 			}
 
 			scaler := gitlabRunnerScaler{
@@ -354,7 +361,7 @@ func TestGitLabRunnerScaler_GetMetricSpecForScaling(t *testing.T) {
 	meta := &gitlabRunnerMetadata{
 		ProjectID:                 "12345",
 		TargetPipelineQueueLength: 5,
-		TriggerIndex:              0,
+		TriggerIndex:              1,
 	}
 
 	scaler := gitlabRunnerScaler{
@@ -367,7 +374,7 @@ func TestGitLabRunnerScaler_GetMetricSpecForScaling(t *testing.T) {
 
 	metricSpec := metricSpecs[0]
 	assert.Equal(t, v2.ExternalMetricSourceType, metricSpec.Type)
-	assert.Equal(t, "s0-gitlab-runner-12345", metricSpec.External.Metric.Name)
+	assert.Equal(t, "s1-gitlab-runner-12345", metricSpec.External.Metric.Name)
 	assert.Equal(t, int64(5), metricSpec.External.Target.AverageValue.Value())
 }
 

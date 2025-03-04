@@ -44,8 +44,9 @@ type gitlabRunnerMetadata struct {
 	PersonalAccessToken string   `keda:"name=personalAccessToken, order=authParams"`
 	ProjectID           string   `keda:"name=projectID, order=triggerMetadata"`
 
-	TargetPipelineQueueLength int64 `keda:"name=targetPipelineQueueLength, order=triggerMetadata, default=1, optional"`
-	TriggerIndex              int
+	TargetPipelineQueueLength           int64 `keda:"name=targetPipelineQueueLength, order=triggerMetadata, default=1, optional"`
+	ActivationTargetPipelineQueueLength int64 `keda:"name=activationTargetPipelineQueueLength, order=triggerMetadata, default=0, optional"`
+	TriggerIndex                        int
 }
 
 // NewGitLabRunnerScaler creates a new GitLab Runner Scaler
@@ -110,7 +111,7 @@ func (s *gitlabRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricNa
 
 	metric := GenerateMetricInMili(metricName, float64(queueLen))
 
-	return []external_metrics.ExternalMetricValue{metric}, queueLen >= s.metadata.TargetPipelineQueueLength, nil
+	return []external_metrics.ExternalMetricValue{metric}, queueLen > s.metadata.ActivationTargetPipelineQueueLength, nil
 }
 
 func (s *gitlabRunnerScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
