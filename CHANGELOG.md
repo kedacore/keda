@@ -78,6 +78,7 @@ Here is an overview of all new **experimental** features:
 
 - **General**: Fix event text when deactivation fails ([#6469](https://github.com/kedacore/keda/issues/6469))
 - **AWS Scalers**: Add AWS region to the AWS Config Cache key ([#6128](https://github.com/kedacore/keda/issues/6128))
+- **GCP Storage**: GCP Storage scaler ignores folders ([#6531](https://github.com/kedacore/keda/issues/6531))
 - **Redis Streams**: Allow default value of 0 for activationLagCount ([#6478](https://github.com/kedacore/keda/issues/6478))
 - **Selenium Grid**: Scaler logic on platformName is set empty or `any` ([#6477](https://github.com/kedacore/keda/issues/6477))
 
