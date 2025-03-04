@@ -380,7 +380,7 @@ func (s *PredictKubeScaler) parsePrometheusResult(result model.Value) (out []*co
 func parsePredictKubeMetadata(config *scalersconfig.ScalerConfig) (result *predictKubeMetadata, err error) {
 	meta := &predictKubeMetadata{}
 	if err := config.TypedConfig(meta); err != nil {
-		return nil, fmt.Errorf("error parsing arango metadata: %w", err)
+		return nil, fmt.Errorf("error parsing predictKube metadata: %w", err)
 	}
 
 	if !config.AsMetricSource && meta.Threshold == 0 {

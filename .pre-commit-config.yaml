@@ -44,8 +44,7 @@ repos:
       entry: "bash hack/validate-changelog.sh"
       pass_filenames: false
     - id: golangci-lint
-      language: golang
+      language: system
       name: Run golangci against the code
-      entry: golangci-lint run
-      types: [go]
+      entry: make golangci
       pass_filenames: false
