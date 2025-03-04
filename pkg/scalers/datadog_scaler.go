@@ -52,7 +52,7 @@ type datadogMetadata struct {
 	ActivationTargetValue   float64 `keda:"name=activationTargetValue,   order=triggerMetadata, default=0"`
 
 	// AuthParams Datadog API
-	ApiKey      string `keda:"name=apiKey,      order=authParams, optional"`
+	APIKey      string `keda:"name=apiKey,      order=authParams, optional"`
 	AppKey      string `keda:"name=appKey,      order=authParams, optional"`
 	DatadogSite string `keda:"name=datadogSite, order=authParams, default=datadoghq.com"`
 
@@ -70,10 +70,8 @@ type datadogMetadata struct {
 	UseFiller     bool
 	TargetValue   float64 `keda:"name=targetValue;queryValue, order=triggerMetadata, default=-1"`
 	vType         v2.MetricTargetType
-	triggerIndex  int
 }
 
-const maxString = "max"
 const avgString = "average"
 
 var filter *regexp.Regexp
@@ -157,13 +155,12 @@ func parseDatadogAPIMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 
 	if meta.Age < 60 {
 		logger.Info("selecting a window smaller than 60 seconds can cause Datadog not finding a metric value for the query")
-
 	}
 	if meta.AppKey == "" {
 		return nil, fmt.Errorf("error parsing Datadog metadata: missing AppKey")
 	}
-	if meta.ApiKey == "" {
-		return nil, fmt.Errorf("error parsing Datadog metadata: missing ApiKey")
+	if meta.APIKey == "" {
+		return nil, fmt.Errorf("error parsing Datadog metadata: missing APIKey")
 	}
 	if meta.TargetValue == -1 {
 		if config.AsMetricSource {
@@ -203,6 +200,7 @@ func parseDatadogAPIMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 	} else {
 		meta.HpaMetricName = "datadogmetric@" + meta.DatadogMetricNamespace + ":" + meta.DatadogMetricName
 	}
+
 	return meta, nil
 }
 
@@ -264,7 +262,7 @@ func newDatadogAPIConnection(ctx context.Context, meta *datadogMetadata, config 
 		datadog.ContextAPIKeys,
 		map[string]datadog.APIKey{
 			"apiKeyAuth": {
-				Key: meta.ApiKey,
+				Key: meta.APIKey,
 			},
 			"appKeyAuth": {
 				Key: meta.AppKey,
@@ -305,7 +303,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		datadog.ContextAPIKeys,
 		map[string]datadog.APIKey{
 			"apiKeyAuth": {
-				Key: s.metadata.ApiKey,
+				Key: s.metadata.APIKey,
 			},
 			"appKeyAuth": {
 				Key: s.metadata.AppKey,
@@ -546,7 +544,6 @@ func (s *datadogMetadata) Validate() error {
 		default:
 			return fmt.Errorf("err incorrect value for authMode is given: %s", s.AuthMode)
 		}
-
 	}
 	return nil
 }
