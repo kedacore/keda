@@ -30,7 +30,7 @@ const (
 	testName      = "gitlab-runner-test"
 	gitlabBaseURL = "https://gitlab.com"
 
-	ciFileContent = `stages: [deploy]\ndeploy-job:\n  stage: deploy\n  script: [\"sleep 15\"]`
+	ciFileContent = `stages: [deploy]\ndeploy-job:\n  stage: deploy\n  script: [\"sleep 90\"]`
 )
 
 var (
@@ -168,8 +168,8 @@ func TestScaler(t *testing.T) {
 
 	// test scaling Scaled Object
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	testActivation(t, kc)
 
+	testActivation(t, kc, projectID)
 	testScaleOut(t, kc, projectID)
 	testScaleIn(t, kc, projectID)
 
@@ -196,7 +196,7 @@ func getTemplateData(projectID string) (templateData, []Template) {
 			GitlabAPIURL:                        "https://gitlab.com",
 			ProjectID:                           projectID,
 			TargetPipelineQueueLength:           "1",
-			ActivationTargetPipelineQueueLength: "1",
+			ActivationTargetPipelineQueueLength: "2",
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "authTemplate", Config: triggerAuthTemplate},
@@ -205,17 +205,20 @@ func getTemplateData(projectID string) (templateData, []Template) {
 		}
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset, projectID string) {
 	t.Log("--- testing none activation ---")
+	queueRun(t, projectID)
+
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset, projectID string) {
 	t.Log("--- testing scale out ---")
 	queueRun(t, projectID)
+	queueRun(t, projectID)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 1),
-		"replica count should be 1 after 1 minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 2),
+		"replica count should be 2 after 1 minute")
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, projectID string) {
