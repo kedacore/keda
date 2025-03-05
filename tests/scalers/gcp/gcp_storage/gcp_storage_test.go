@@ -259,7 +259,7 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 	// Delete files so we are still left with activationThreshold number of files which should be enough
 	// to scale in to 0.
-	cmd := fmt.Sprintf("%sgsutil -m rm -a gs://%s/gsutil*", gsPrefix, bucketName)
+	cmd := fmt.Sprintf("%sgsutil -m rm -a  gs://%s/%sgsutil*", gsPrefix, bucketName, blobPrefix)
 	_, err := ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "cannot clear bucket - %s", err)
 
