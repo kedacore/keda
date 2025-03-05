@@ -75,13 +75,9 @@ all: build
 ##################################################
 
 ##@ Test
-.PHONY: install-test-deps
-install-test-deps:
-	go install gotest.tools/gotestsum@latest
-
 .PHONY: test
-test: manifests generate fmt vet envtest install-test-deps ## Run tests and export the result to junit format.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" gotestsum --format standard-quiet --rerun-fails --junitfile report.xml
+test: manifests generate fmt vet envtest gotestsum ## Run tests and export the result to junit format.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" $(GOTESTSUM) --format standard-quiet --rerun-fails --junitfile report.xml
 
 .PHONY:
 az-login:
@@ -327,6 +323,7 @@ $(LOCALBIN):
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
+GOTESTSUM ?= $(LOCALBIN)/gotestsum
 MOCKGEN ?= $(LOCALBIN)/mockgen
 PROTOCGEN ?= $(LOCALBIN)/protoc-gen-go
 PROTOCGEN_GRPC ?= $(LOCALBIN)/protoc-gen-go-grpc
@@ -346,6 +343,11 @@ $(KUSTOMIZE): $(LOCALBIN)
 envtest: $(ENVTEST) ## Install envtest-setup from vendor dir if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest
+
+.PHONY: gotestsum
+gotestsum: $(GOTESTSUM) ## Install gotestsum from vendor dir if necessary.
+$(GOTESTSUM): $(LOCALBIN)
+	test -s $(LOCALBIN)/gotestsum || GOBIN=$(LOCALBIN) go install gotest.tools/gotestsum@latest
 
 .PHONY: mockgen
 mockgen: $(MOCKGEN) ## Install mockgen from vendor dir if necessary.
