@@ -110,7 +110,7 @@ spec:
       metadata:
         bucketName: {{.BucketName}}
         targetObjectCount: '5'
-		blobPrefix: {{.BlobPrefix}}
+        blobPrefix: {{.BlobPrefix}}
         activationTargetObjectCount: '{{.ActivationThreshold}}'
         credentialsFromEnv: GOOGLE_APPLICATION_CREDENTIALS_JSON
 `
