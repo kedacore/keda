@@ -46,6 +46,8 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+GOPATH:=$(shell go env GOPATH)
+
 GO_BUILD_VARS= GO111MODULE=on CGO_ENABLED=$(CGO) GOOS=$(TARGET_OS) GOARCH=$(ARCH)
 GO_LDFLAGS="-X=github.com/kedacore/keda/v2/version.GitCommit=$(GIT_COMMIT) -X=github.com/kedacore/keda/v2/version.Version=$(VERSION)"
 
@@ -53,6 +55,8 @@ COSIGN_FLAGS ?= -y -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.32
+
+GOLANGCI_VERSION:=1.63.4
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -71,13 +75,9 @@ all: build
 ##################################################
 
 ##@ Test
-.PHONY: install-test-deps
-install-test-deps:
-	go install gotest.tools/gotestsum@latest
-
 .PHONY: test
-test: manifests generate fmt vet envtest install-test-deps ## Run tests and export the result to junit format.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" gotestsum --format standard-quiet --rerun-fails --junitfile report.xml
+test: manifests generate fmt vet envtest gotestsum ## Run tests and export the result to junit format.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" $(GOTESTSUM) --format standard-quiet --rerun-fails --junitfile report.xml
 
 .PHONY:
 az-login:
@@ -146,7 +146,12 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
+HAS_GOLANGCI_VERSION:=$(shell $(GOPATH)/bin/golangci-lint version --format=short)
+.PHONY: golangci
 golangci: ## Run golangci against code.
+ifneq ($(HAS_GOLANGCI_VERSION), $(GOLANGCI_VERSION))
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin v$(GOLANGCI_VERSION)
+endif
 	golangci-lint run
 
 verify-manifests: ## Verify manifests are up to date.
@@ -318,6 +323,7 @@ $(LOCALBIN):
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
+GOTESTSUM ?= $(LOCALBIN)/gotestsum
 MOCKGEN ?= $(LOCALBIN)/mockgen
 PROTOCGEN ?= $(LOCALBIN)/protoc-gen-go
 PROTOCGEN_GRPC ?= $(LOCALBIN)/protoc-gen-go-grpc
@@ -337,6 +343,11 @@ $(KUSTOMIZE): $(LOCALBIN)
 envtest: $(ENVTEST) ## Install envtest-setup from vendor dir if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest
+
+.PHONY: gotestsum
+gotestsum: $(GOTESTSUM) ## Install gotestsum from vendor dir if necessary.
+$(GOTESTSUM): $(LOCALBIN)
+	test -s $(LOCALBIN)/gotestsum || GOBIN=$(LOCALBIN) go install gotest.tools/gotestsum@latest
 
 .PHONY: mockgen
 mockgen: $(MOCKGEN) ## Install mockgen from vendor dir if necessary.

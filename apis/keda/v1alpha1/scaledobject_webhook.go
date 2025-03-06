@@ -180,6 +180,7 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	return nil, nil
 }
 
+//nolint:unparam
 func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
 	err := CheckReplicaCountBoundsAreValid(incomingSo)
 	if err != nil {
@@ -195,7 +196,7 @@ func verifyFallback(incomingSo *ScaledObject, action string, _ bool) error {
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
 		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-fallback")
 	}
-	return nil
+	return err
 }
 
 func verifyTriggers(incomingObject interface{}, action string, _ bool) error {

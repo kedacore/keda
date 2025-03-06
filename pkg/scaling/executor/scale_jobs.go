@@ -225,7 +225,6 @@ func (e *scaleExecutor) getRunningJobCount(ctx context.Context, scaledJob *kedav
 	}
 
 	for _, job := range jobs.Items {
-		job := job
 		if !e.isJobFinished(&job) {
 			runningJobs++
 		}
@@ -299,8 +298,6 @@ func (e *scaleExecutor) getPendingJobCount(ctx context.Context, scaledJob *kedav
 	}
 
 	for _, job := range jobs.Items {
-		job := job
-
 		if !e.isJobFinished(&job) {
 			if len(scaledJob.Spec.ScalingStrategy.PendingPodConditions) > 0 {
 				if !e.areAllPendingPodConditionsFulfilled(ctx, &job, scaledJob.Spec.ScalingStrategy.PendingPodConditions) {
@@ -336,7 +333,6 @@ func (e *scaleExecutor) cleanUp(ctx context.Context, scaledJob *kedav1alpha1.Sca
 	var completedJobs []batchv1.Job
 	var failedJobs []batchv1.Job
 	for _, job := range jobs.Items {
-		job := job
 		finishedJobConditionType := e.getFinishedJobConditionType(&job)
 		switch finishedJobConditionType {
 		case batchv1.JobComplete:
@@ -469,11 +465,4 @@ type eagerScalingStrategy struct {
 
 func (s eagerScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount, _ int64) (int64, int64) {
 	return min(maxReplicaCount-runningJobCount-pendingJobCount, maxScale), maxReplicaCount
-}
-
-func min(x, y int64) int64 {
-	if x > y {
-		return y
-	}
-	return x
 }

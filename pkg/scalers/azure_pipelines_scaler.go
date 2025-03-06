@@ -150,6 +150,7 @@ type azurePipelinesMetadata struct {
 	jobsToFetch                          int64
 	triggerIndex                         int
 	requireAllDemands                    bool
+	requireAllDemandsAndIgnoreOthers     bool
 }
 
 type authContext struct {
@@ -506,6 +507,8 @@ func getCanAgentDemandFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 
 	if metadata.requireAllDemands {
 		return countDemands == len(demandsInJob) && countDemands == len(demandsInScaler)
+	} else if metadata.requireAllDemandsAndIgnoreOthers {
+		return countDemands == len(demandsInScaler)
 	}
 	return countDemands == len(demandsInJob)
 }

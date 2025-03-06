@@ -371,7 +371,6 @@ func TestGetQueueInfo(t *testing.T) {
 	}
 
 	for _, testData := range allTestData {
-		testData := testData
 		vhost, path := getVhostAndPathFromURL(testData.urlPath, testData.extraMetadata["vhostName"])
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			expectedPath := fmt.Sprintf("%s/api/queues%s/evaluate_trials", path, vhost)
@@ -512,7 +511,6 @@ func TestGetQueueInfoWithRegex(t *testing.T) {
 	}
 
 	for _, testData := range allTestData {
-		testData := testData
 		vhost, path := getVhostAndPathFromURL(testData.urlPath, testData.extraMetadata["vhostName"])
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			expectedPath := fmt.Sprintf("%s/api/queues%s?page=1&use_regex=true&pagination=false&name=%%5Eevaluate_trials%%24&page_size=100", path, vhost)
