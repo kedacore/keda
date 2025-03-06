@@ -41,6 +41,7 @@ type elasticsearchMetadata struct {
 	ValueLocation         string   `keda:"name=valueLocation,         order=authParams;triggerMetadata"`
 	TargetValue           float64  `keda:"name=targetValue,           order=authParams;triggerMetadata"`
 	ActivationTargetValue float64  `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
+	IgnoreNullValues      bool     `keda:"name=ignoreNullValues,      order=triggerMetadata, default=false"`
 	MetricName            string   `keda:"name=metricName,            order=triggerMetadata, optional"`
 
 	TriggerIndex int
@@ -184,7 +185,7 @@ func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (float64, erro
 	if err != nil {
 		return 0, err
 	}
-	v, err := getValueFromSearch(b, s.metadata.ValueLocation)
+	v, err := getValueFromSearch(b, s.metadata.ValueLocation, s.metadata.IgnoreNullValues)
 	if err != nil {
 		return 0, err
 	}
@@ -210,9 +211,17 @@ func buildQuery(metadata *elasticsearchMetadata) map[string]interface{} {
 	return query
 }
 
-func getValueFromSearch(body []byte, valueLocation string) (float64, error) {
+func getValueFromSearch(body []byte, valueLocation string, ignoreNullValues bool) (float64, error) {
 	r := gjson.GetBytes(body, valueLocation)
 	errorMsg := "valueLocation must point to value of type number but got: '%s'"
+
+	if r.Type == gjson.Null {
+		if ignoreNullValues {
+			return 0, nil // Return 0 when the value is null and we're ignoring null values
+		}
+		return 0, fmt.Errorf(errorMsg, "Null")
+	}
+
 	if r.Type == gjson.String {
 		q, err := strconv.ParseFloat(r.String(), 64)
 		if err != nil {
@@ -220,6 +229,7 @@ func getValueFromSearch(body []byte, valueLocation string) (float64, error) {
 		}
 		return q, nil
 	}
+
 	if r.Type != gjson.Number {
 		return 0, fmt.Errorf(errorMsg, r.Type.String())
 	}
