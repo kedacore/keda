@@ -49,7 +49,8 @@ type prometheusMetadata struct {
 	CustomHeaders       map[string]string      `keda:"name=customHeaders,       order=triggerMetadata, 				    optional"`
 	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    order=triggerMetadata, 				    default=true"`
 	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata, 				    optional"`
-	AwsRegion           string                 `keda:"name=awsRegion, 			    order=triggerMetadata;authParams, optional"`
+	AwsRegion           string                 `keda:"name=awsRegion, 			order=triggerMetadata;authParams, 		optional"`
+	Timeout             int                    `keda:"name=timeout,             order=triggerMetadata, 					optional"` // custom HTTP client timeout
 }
 
 type promQueryResult struct {
@@ -78,7 +79,13 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.UnsafeSSL)
+	// handle HTTP client timeout
+	httpClientTimeout := config.GlobalHTTPTimeout
+	if meta.Timeout > 0 {
+		httpClientTimeout = time.Duration(meta.Timeout) * time.Millisecond
+	}
+
+	httpClient := kedautil.CreateHTTPClient(httpClientTimeout, meta.UnsafeSSL)
 
 	if !meta.PrometheusAuth.Disabled() {
 		if meta.PrometheusAuth.CA != "" || meta.PrometheusAuth.EnabledTLS() {
@@ -146,6 +153,11 @@ func parsePrometheusMetadata(config *scalersconfig.ScalerConfig) (meta *promethe
 	err = checkAuthConfigWithPodIdentity(config, meta)
 	if err != nil {
 		return nil, err
+	}
+
+	// validate the timeout
+	if meta.Timeout < 0 {
+		return nil, fmt.Errorf("timeout must be greater than 0: %d", meta.Timeout)
 	}
 
 	return meta, nil
