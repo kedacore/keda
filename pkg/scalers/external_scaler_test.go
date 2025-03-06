@@ -68,7 +68,7 @@ type parseExternalScalerMetadataTestData struct {
 var testExternalScalerMetadata = []parseExternalScalerMetadataTestData{
 	{map[string]string{}, true, map[string]string{}},
 	// all properly formed
-	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS", "insecureSkipVerify": "true"}, false, map[string]string{"caCert": serverRootCA, "tlsClientCert": clientCert}},
+	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS", "enableTLS": "true", "insecureSkipVerify": "true"}, false, map[string]string{"caCert": serverRootCA, "tlsClientCert": clientCert}},
 	// missing scalerAddress
 	{map[string]string{"test1": "1", "test2": "SAMPLE_CREDS"}, true, map[string]string{}},
 }
@@ -82,6 +82,9 @@ func TestExternalScalerParseMetadata(t *testing.T) {
 
 		if testData.metadata["unsafeSsl"] == "true" && !metadata.unsafeSsl {
 			t.Error("Expected unsafeSsl to be true but got", metadata.unsafeSsl)
+		}
+		if testData.metadata["enableTLS"] == "true" && !metadata.enableTLS {
+			t.Error("Expected enableTLS to be true but got", metadata.enableTLS)
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
