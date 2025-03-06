@@ -173,6 +173,7 @@ New deprecation(s):
 - **AWS SQS Scaler**: Improve error handling for SQS queue metrics ([#6178](https://github.com/kedacore/keda/issues/6178))
 - **Azure Event Hub Scaler**: Checkpointer errors are correctly handled ([#6084](https://github.com/kedacore/keda/issues/6084))
 - **Metrics API Scaler**: Prometheus metrics can have multiple labels ([#6077](https://github.com/kedacore/keda/issues/6077))
+- **ScaledJob CRD**: Support metadata annotations for ephemeral volume claims ([#6254](https://github.com/kedacore/keda/issues/6254))
 
 ### Deprecations
 
