@@ -37,6 +37,7 @@ type natsJetStreamScaler struct {
 
 type natsJetStreamMetadata struct {
 	account                string
+	accountID              string
 	stream                 string
 	consumer               string
 	consumerLeader         string
@@ -64,6 +65,7 @@ type jetStreamCluster struct {
 }
 
 type accountDetail struct {
+	ID      string          `json:"id"`
 	Name    string          `json:"name"`
 	Streams []*streamDetail `json:"stream_detail"`
 }
@@ -141,6 +143,11 @@ func parseNATSJetStreamMetadata(config *scalersconfig.ScalerConfig) (natsJetStre
 		return meta, err
 	}
 	meta.account = account
+
+	meta.accountID, err = GetFromAuthOrMeta(config, "accountID")
+	if err != nil {
+		meta.accountID = meta.account
+	}
 
 	if config.TriggerMetadata["stream"] == "" {
 		return meta, errors.New("no stream name given")
@@ -278,7 +285,7 @@ func (s *natsJetStreamScaler) getNATSJetstreamMonitoringData(ctx context.Context
 			}
 
 			for _, jetStreamAccount := range jetStreamAccountResp.Accounts {
-				if jetStreamAccount.Name == s.metadata.account {
+				if jetStreamAccount.Name == s.metadata.accountID {
 					for _, stream := range jetStreamAccount.Streams {
 						if stream.Name == s.metadata.stream {
 							for _, consumer := range stream.Consumers {
@@ -305,7 +312,7 @@ func (s *natsJetStreamScaler) setNATSJetStreamMonitoringData(jetStreamAccountRes
 
 	// find and assign the stream that we are looking for.
 	for _, jsAccount := range jetStreamAccountResp.Accounts {
-		if jsAccount.Name == s.metadata.account {
+		if jsAccount.Name == s.metadata.accountID {
 			for _, stream := range jsAccount.Streams {
 				if stream.Name == s.metadata.stream {
 					s.stream = stream
