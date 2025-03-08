@@ -222,7 +222,7 @@ func TestGetLogSearchResult(t *testing.T) {
 				t.Errorf("Expected no error, got %s", err.Error())
 			}
 
-			if !test.expectErr && result != nil {
+			if !test.expectErr && result == nil {
 				t.Error("Expected records to be not nil")
 			}
 		})
