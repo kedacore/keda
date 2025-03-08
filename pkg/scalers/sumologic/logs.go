@@ -3,6 +3,7 @@ package sumologic
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -10,22 +11,34 @@ const (
 	searchJobPath = "api/v1/search/jobs"
 )
 
-func (c *Client) createLogSearchJob(payload []byte) (string, error) {
-	url := fmt.Sprintf("%s/%s", c.config.Host, searchJobPath)
+func (c *Client) createLogSearchJob(query, from, to, tz string) (string, error) {
+	requestPayload := LogSearchRequest{
+		Query:    query,
+		From:     from,
+		To:       to,
+		TimeZone: tz,
+	}
 
+	payload, err := json.Marshal(requestPayload)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal log search request: %v", err)
+	}
+
+	url := fmt.Sprintf("%s/%s", c.config.Host, searchJobPath)
 	resp, err := c.makeRequest("POST", url, payload)
 	if err != nil {
 		return "", err
 	}
 
-	var jobResp SearchJobResponse
+	var jobResp LogSearchJobResponse
 	if err := json.Unmarshal(resp, &jobResp); err != nil {
 		return "", err
 	}
+
 	return jobResp.ID, nil
 }
 
-func (c *Client) waitForLogSearchJobCompletion(jobID string) (*SearchJobStatus, error) {
+func (c *Client) waitForLogSearchJobCompletion(jobID string) (*LogSearchJobStatus, error) {
 	url := fmt.Sprintf("%s/%s/%s", c.config.Host, searchJobPath, jobID)
 
 	for {
@@ -34,7 +47,7 @@ func (c *Client) waitForLogSearchJobCompletion(jobID string) (*SearchJobStatus, 
 			return nil, err
 		}
 
-		var status SearchJobStatus
+		var status LogSearchJobStatus
 		if err := json.Unmarshal(resp, &status); err != nil {
 			return nil, err
 		}
@@ -51,8 +64,8 @@ func (c *Client) waitForLogSearchJobCompletion(jobID string) (*SearchJobStatus, 
 	}
 }
 
-func (c *Client) getLogSearchRecords(jobID string, totalRecords int) ([]string, error) {
-	var allRecords []string
+func (c *Client) getLogSearchRecords(jobID string, totalRecords int) ([]float64, error) {
+	var allRecords []float64
 	offset := 0
 	limit := 10000
 
@@ -68,7 +81,7 @@ func (c *Client) getLogSearchRecords(jobID string, totalRecords int) ([]string, 
 			return nil, err
 		}
 
-		var recordsResponse RecordsResponse
+		var recordsResponse LogSearchRecordsResponse
 		if err := json.Unmarshal(resp, &recordsResponse); err != nil {
 			return nil, err
 		}
@@ -79,7 +92,11 @@ func (c *Client) getLogSearchRecords(jobID string, totalRecords int) ([]string, 
 
 		for _, record := range recordsResponse.Records {
 			if result, exists := record.Map["result"]; exists {
-				allRecords = append(allRecords, result)
+				val, err := strconv.ParseFloat(result, 64)
+				if err != nil {
+					return nil, fmt.Errorf("failed to parse result value %w", err)
+				}
+				allRecords = append(allRecords, val)
 			}
 		}
 		offset += limit
