@@ -11,7 +11,7 @@ const (
 )
 
 func (c *Client) createLogSearchJob(payload []byte) (string, error) {
-	url := fmt.Sprintf("https://%s/%s", c.config.Host, searchJobPath)
+	url := fmt.Sprintf("%s/%s", c.config.Host, searchJobPath)
 
 	resp, err := c.makeRequest("POST", url, payload)
 	if err != nil {
@@ -26,7 +26,7 @@ func (c *Client) createLogSearchJob(payload []byte) (string, error) {
 }
 
 func (c *Client) waitForLogSearchJobCompletion(jobID string) (*SearchJobStatus, error) {
-	url := fmt.Sprintf("https://%s/%s/%s", c.config.Host, searchJobPath, jobID)
+	url := fmt.Sprintf("%s/%s/%s", c.config.Host, searchJobPath, jobID)
 
 	for {
 		resp, err := c.makeRequest("GET", url, nil)
@@ -62,7 +62,7 @@ func (c *Client) getLogSearchRecords(jobID string, totalRecords int) ([]string, 
 			limit = remaining
 		}
 
-		url := fmt.Sprintf("https://%s/%s/%s/records?offset=%d&limit=%d", c.config.Host, searchJobPath, jobID, offset, limit)
+		url := fmt.Sprintf("%s/%s/%s/records?offset=%d&limit=%d", c.config.Host, searchJobPath, jobID, offset, limit)
 		resp, err := c.makeRequest("GET", url, nil)
 		if err != nil {
 			return nil, err
@@ -91,7 +91,7 @@ func (c *Client) getLogSearchRecords(jobID string, totalRecords int) ([]string, 
 }
 
 func (c *Client) deleteLogSearchJob(jobID string) error {
-	url := fmt.Sprintf("https://%s/%s/%s", c.config.Host, searchJobPath, jobID)
+	url := fmt.Sprintf("%s/%s/%s", c.config.Host, searchJobPath, jobID)
 
 	_, err := c.makeRequest("DELETE", url, nil)
 	if err == nil {
