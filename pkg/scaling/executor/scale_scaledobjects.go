@@ -23,14 +23,13 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 )
 
@@ -38,37 +37,13 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	logger := e.logger.WithValues("scaledobject.Name", scaledObject.Name,
 		"scaledObject.Namespace", scaledObject.Namespace,
 		"scaleTarget.Name", scaledObject.Spec.ScaleTargetRef.Name)
-	// Get the current replica count. As a special case, Deployments and StatefulSets fetch directly from the object so they can use the informer cache
-	// to reduce API calls. Everything else uses the scale subresource.
 	var currentScale *autoscalingv1.Scale
 	var currentReplicas int32
-	targetName := scaledObject.Spec.ScaleTargetRef.Name
-	targetGVKR := scaledObject.Status.ScaleTargetGVKR
-	switch {
-	case targetGVKR.Group == "apps" && targetGVKR.Kind == "Deployment":
-		deployment := &appsv1.Deployment{}
-		err := e.client.Get(ctx, client.ObjectKey{Name: targetName, Namespace: scaledObject.Namespace}, deployment)
-		if err != nil {
-			logger.Error(err, "Error getting information on the current Scale (ie. replicas count) on the scaleTarget")
-			return
-		}
-		currentReplicas = *deployment.Spec.Replicas
-	case targetGVKR.Group == "apps" && targetGVKR.Kind == "StatefulSet":
-		statefulSet := &appsv1.StatefulSet{}
-		err := e.client.Get(ctx, client.ObjectKey{Name: targetName, Namespace: scaledObject.Namespace}, statefulSet)
-		if err != nil {
-			logger.Error(err, "Error getting information on the current Scale (ie. replicas count) on the scaleTarget")
-			return
-		}
-		currentReplicas = *statefulSet.Spec.Replicas
-	default:
-		var err error
-		currentScale, err = e.getScaleTargetScale(ctx, scaledObject)
-		if err != nil {
-			logger.Error(err, "Error getting information on the current Scale (ie. replicas count) on the scaleTarget")
-			return
-		}
-		currentReplicas = currentScale.Spec.Replicas
+	// Get the current replica count
+	currentReplicas, err := resolver.GetCurrentReplicas(ctx, e.client, e.scaleClient, scaledObject)
+	if err != nil {
+		logger.Error(err, "Error getting information on the current Scale")
+		return
 	}
 	// if the ScaledObject's triggers aren't in the error state,
 	// but ScaledObject.Status.ReadyCondition is set not set to 'true' -> set it back to 'true'
