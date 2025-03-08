@@ -81,15 +81,13 @@ func (c *Client) makeRequest(method, url string, payload []byte) ([]byte, error)
 	return respBody, nil
 }
 
-func (c *Client) GetLogSearchResult(query string, timerange time.Duration, tz string) ([]string, error) {
+func (c *Client) GetLogSearchResult(query string, timerange time.Duration, dimension, tz string) (*float64, error) {
 	from, to, err := c.getTimerange(tz, timerange)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse time range: %v", err)
 	}
 
-	payload := []byte(fmt.Sprintf(`{"from":"%s","to":"%s","query":"%s","timeZone":"%s"}`, from, to, query, tz))
-
-	jobID, err := c.createLogSearchJob(payload)
+	jobID, err := c.createLogSearchJob(query, from, to, tz)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +112,12 @@ func (c *Client) GetLogSearchResult(query string, timerange time.Duration, tz st
 		return nil, err
 	}
 
-	return records, nil
+	result, err := c.metricsStats(records, dimension)
+	if err != nil {
+		return nil, fmt.Errorf("error computing metric stats: %w", err)
+	}
+
+	return result, nil
 }
 
 func (c *Client) GetMetricsSearchResult(query string, quantization, timerange time.Duration, dimension, tz string) (*float64, error) {
