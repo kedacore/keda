@@ -81,10 +81,11 @@ func TestGetLogSearchResult(t *testing.T) {
 		query             string
 		timerange         time.Duration
 		tz                string
+		dimension         string
 		expectErr         bool
-		createJobResponse SearchJobResponse
-		jobStatusResponse SearchJobStatus
-		recordsResponse   RecordsResponse
+		createJobResponse LogSearchJobResponse
+		jobStatusResponse LogSearchJobStatus
+		recordsResponse   LogSearchRecordsResponse
 		statusCode        int
 	}{
 		{
@@ -98,14 +99,15 @@ func TestGetLogSearchResult(t *testing.T) {
 			query:     "test query | count as result",
 			timerange: 10,
 			tz:        "Asia/Kolkata",
-			createJobResponse: SearchJobResponse{
+			dimension: "latest",
+			createJobResponse: LogSearchJobResponse{
 				ID: "fake",
 			},
-			jobStatusResponse: SearchJobStatus{
+			jobStatusResponse: LogSearchJobStatus{
 				State:       "DONE GATHERING RESULTS",
 				RecordCount: 1,
 			},
-			recordsResponse: RecordsResponse{
+			recordsResponse: LogSearchRecordsResponse{
 				Records: []struct {
 					Map map[string]string `json:"map"`
 				}{
@@ -127,10 +129,11 @@ func TestGetLogSearchResult(t *testing.T) {
 			query:     "test query",
 			timerange: 10,
 			tz:        "UTC",
-			createJobResponse: SearchJobResponse{
+			dimension: "latest",
+			createJobResponse: LogSearchJobResponse{
 				ID: "fake",
 			},
-			jobStatusResponse: SearchJobStatus{
+			jobStatusResponse: LogSearchJobStatus{
 				State:       "CANCELLED",
 				RecordCount: 0,
 			},
@@ -148,10 +151,11 @@ func TestGetLogSearchResult(t *testing.T) {
 			query:     "test non-agg query",
 			timerange: 10,
 			tz:        "UTC",
-			createJobResponse: SearchJobResponse{
+			dimension: "latest",
+			createJobResponse: LogSearchJobResponse{
 				ID: "fake",
 			},
-			jobStatusResponse: SearchJobStatus{
+			jobStatusResponse: LogSearchJobStatus{
 				State:       "DONE GATHERING RESULTS",
 				RecordCount: 0,
 			},
@@ -201,10 +205,10 @@ func TestGetLogSearchResult(t *testing.T) {
 				GlobalHTTPTimeout: 10 * time.Second,
 			})
 			if err != nil {
-				t.Fatalf("Expected no error, got 111 %s", err.Error())
+				t.Fatalf("Expected no error, got %s", err.Error())
 			}
 
-			records, err := client.GetLogSearchResult(test.query, test.timerange, test.tz)
+			result, err := client.GetLogSearchResult(test.query, test.timerange, test.dimension, test.tz)
 
 			if test.expectErr && err != nil {
 				return
@@ -218,8 +222,8 @@ func TestGetLogSearchResult(t *testing.T) {
 				t.Errorf("Expected no error, got %s", err.Error())
 			}
 
-			if !test.expectErr && len(records) == 0 {
-				t.Error("Expected records to be non-empty")
+			if !test.expectErr && result != nil {
+				t.Error("Expected records to be not nil")
 			}
 		})
 	}

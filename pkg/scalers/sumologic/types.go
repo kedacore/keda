@@ -16,16 +16,23 @@ type Client struct {
 	client *http.Client
 }
 
-type SearchJobResponse struct {
+type LogSearchRequest struct {
+	Query    string `json:"query"`
+	From     string `json:"from"`
+	To       string `json:"to"`
+	TimeZone string `json:"timeZone"`
+}
+
+type LogSearchJobResponse struct {
 	ID string `json:"id"`
 }
 
-type SearchJobStatus struct {
+type LogSearchJobStatus struct {
 	State       string `json:"state"`
 	RecordCount int    `json:"recordCount"`
 }
 
-type RecordsResponse struct {
+type LogSearchRecordsResponse struct {
 	Records []struct {
 		Map map[string]string `json:"map"`
 	} `json:"records"`
