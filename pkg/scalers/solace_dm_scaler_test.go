@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
-// host url empty or full of spaces
+// solaceSempBaseURL - host url empty or full of spaces
 // each url (splitted by , is is not empty or spaces)
 // matches regex http(s)://.*:/d(3)+
 // username not empty
@@ -27,10 +28,33 @@ type testSolaceDMConfiguration struct {
 	expectedMetrics    map[string]string
 }
 
-// AUTH RECORD FOR TEST
+var (
+	solaceDMTestEnvUsernameKey = "SOLACE_DM_TEST_USERNAME_ENV"
+	solaceDMtestEnvPasswordKey = "SOLACE_DM_TEST_PASSWORD_ENV"
+)
+
+// Trigger Auth - Username/Password
 var testSolaceDMAuthParams = map[string]string{
-	"username": "username",
-	"password": "password",
+	solaceDMUsername: "username_auth_param",
+	solaceDMPassword: "password_auth_param",
+}
+
+// Trigger Auth - empty
+var testSolaceDMEmptyAuthParams = map[string]string{}
+
+// Environment with Username/Password
+var testSolaceDMEmptyEnv = map[string]string{}
+
+// Environment with Username/Password
+var testSolaceDMNonEmptyEnv = map[string]string{
+	solaceDMTestEnvUsernameKey: "username_env_value",
+	solaceDMtestEnvPasswordKey: "password_env_value",
+}
+
+// Additional props to get Username/Password from Env
+var testSolaceAdditionalFromEnvKeys = map[string]string{
+	solaceDMUsernameFromEnv: solaceDMTestEnvUsernameKey,
+	solaceDMPasswordFromEnv: solaceDMtestEnvPasswordKey,
 }
 
 // TEST CASES FOR parseSolaceDMConfiguration()
@@ -45,15 +69,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"Correct configuration",
 		map[string]string{
-			"hostUrl":                                 "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
-			"messageVpn":                              "training-dmr-2",
-			"clientNamePrefix":                        "direct-messaging-simple",
-			"unsafeSSL":                               "true",
-			"queuedMessagesFactor":                    "3",
-			"aggregatedClientTxMsgRateTarget":         "600",
-			"aggregatedClientTxByteRateTarget":        "0",
-			"aggregatedClientAverageTxByteRateTarget": "0",
-			"aggregatedClientAverageTxMsgRateTarget":  "0",
+			solaceDMSempBaseURL:                               "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
+			solaceDMMessageVpn:                                "training-dmr-2",
+			solaceDMClientNamePattern:                         "direct-messaging-simple",
+			solaceDMUnsafeSSL:                                 "true",
+			solaceDMQueuedMessagesFactor:                      "3",
+			aggregatedClientTxMsgRateTargetMetricName:         "600",
+			aggregatedClientTxByteRateTargetMetricName:        "0",
+			aggregatedClientAverageTxByteRateTargetMetricName: "0",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "0",
 		},
 		false,
 		[]string{
@@ -67,15 +91,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"No Host URL",
 		map[string]string{
-			"hostUrl":                                 "",
-			"messageVpn":                              "training-dmr-2",
-			"clientNamePrefix":                        "direct-messaging-simple",
-			"unsafeSSL":                               "true",
-			"queuedMessagesFactor":                    "3",
-			"aggregatedClientTxMsgRateTarget":         "600",
-			"aggregatedClientTxByteRateTarget":        "0",
-			"aggregatedClientAverageTxByteRateTarget": "0",
-			"aggregatedClientAverageTxMsgRateTarget":  "0",
+			solaceDMSempBaseURL:                               "",
+			solaceDMMessageVpn:                                "training-dmr-2",
+			solaceDMClientNamePattern:                         "direct-messaging-simple",
+			solaceDMUnsafeSSL:                                 "true",
+			solaceDMQueuedMessagesFactor:                      "3",
+			aggregatedClientTxMsgRateTargetMetricName:         "600",
+			aggregatedClientTxByteRateTargetMetricName:        "0",
+			aggregatedClientAverageTxByteRateTargetMetricName: "0",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "0",
 		},
 		true,
 		[]string{},
@@ -84,15 +108,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"Invalid Host URL",
 		map[string]string{
-			"hostUrl":                                 "asdsdfsdhiohiosdfi, d,,this is an invalid URL?.-xD,:",
-			"messageVpn":                              "training-dmr-2",
-			"clientNamePrefix":                        "direct-messaging-simple",
-			"unsafeSSL":                               "true",
-			"queuedMessagesFactor":                    "3",
-			"aggregatedClientTxMsgRateTarget":         "600",
-			"aggregatedClientTxByteRateTarget":        "0",
-			"aggregatedClientAverageTxByteRateTarget": "0",
-			"aggregatedClientAverageTxMsgRateTarget":  "0",
+			solaceDMSempBaseURL:                               "asdsdfsdhiohiosdfi, d,,this is an invalid URL?.-xD,:",
+			solaceDMMessageVpn:                                "training-dmr-2",
+			solaceDMClientNamePattern:                         "direct-messaging-simple",
+			solaceDMUnsafeSSL:                                 "true",
+			solaceDMQueuedMessagesFactor:                      "3",
+			aggregatedClientTxMsgRateTargetMetricName:         "600",
+			aggregatedClientTxByteRateTargetMetricName:        "0",
+			aggregatedClientAverageTxByteRateTargetMetricName: "0",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "0",
 		},
 		true,
 		[]string{},
@@ -101,15 +125,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"Empty Message VPN",
 		map[string]string{
-			"hostUrl":                                 "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
-			"messageVpn":                              "",
-			"clientNamePrefix":                        "direct-messaging-simple",
-			"unsafeSSL":                               "true",
-			"queuedMessagesFactor":                    "3",
-			"aggregatedClientTxMsgRateTarget":         "600",
-			"aggregatedClientTxByteRateTarget":        "0",
-			"aggregatedClientAverageTxByteRateTarget": "0",
-			"aggregatedClientAverageTxMsgRateTarget":  "0",
+			solaceDMSempBaseURL:                               "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
+			solaceDMMessageVpn:                                "",
+			solaceDMClientNamePattern:                         "direct-messaging-simple",
+			solaceDMUnsafeSSL:                                 "true",
+			solaceDMQueuedMessagesFactor:                      "3",
+			aggregatedClientTxMsgRateTargetMetricName:         "600",
+			aggregatedClientTxByteRateTargetMetricName:        "0",
+			aggregatedClientAverageTxByteRateTargetMetricName: "0",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "0",
 		},
 		true,
 		[]string{
@@ -121,15 +145,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"Empty Client Name Prefix",
 		map[string]string{
-			"hostUrl":                                 "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
-			"messageVpn":                              "default",
-			"clientNamePrefix":                        "",
-			"unsafeSSL":                               "true",
-			"queuedMessagesFactor":                    "3",
-			"aggregatedClientTxMsgRateTarget":         "600",
-			"aggregatedClientTxByteRateTarget":        "0",
-			"aggregatedClientAverageTxByteRateTarget": "0",
-			"aggregatedClientAverageTxMsgRateTarget":  "0",
+			solaceDMSempBaseURL:                               "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
+			solaceDMMessageVpn:                                "default",
+			solaceDMClientNamePattern:                         "",
+			solaceDMUnsafeSSL:                                 "true",
+			solaceDMQueuedMessagesFactor:                      "3",
+			aggregatedClientTxMsgRateTargetMetricName:         "600",
+			aggregatedClientTxByteRateTargetMetricName:        "0",
+			aggregatedClientAverageTxByteRateTargetMetricName: "0",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "0",
 		},
 		true,
 		[]string{
@@ -141,15 +165,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"Invalid Client Name Prefix",
 		map[string]string{
-			"hostUrl":                                 "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
-			"messageVpn":                              "default",
-			"clientNamePrefix":                        "direct-mess*",
-			"unsafeSSL":                               "true",
-			"queuedMessagesFactor":                    "3",
-			"aggregatedClientTxMsgRateTarget":         "600",
-			"aggregatedClientTxByteRateTarget":        "0",
-			"aggregatedClientAverageTxByteRateTarget": "0",
-			"aggregatedClientAverageTxMsgRateTarget":  "0",
+			solaceDMSempBaseURL:                               "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
+			solaceDMMessageVpn:                                "default",
+			solaceDMClientNamePattern:                         "direct-mess*",
+			solaceDMUnsafeSSL:                                 "true",
+			solaceDMQueuedMessagesFactor:                      "3",
+			aggregatedClientTxMsgRateTargetMetricName:         "600",
+			aggregatedClientTxByteRateTargetMetricName:        "0",
+			aggregatedClientAverageTxByteRateTargetMetricName: "0",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "0",
 		},
 		true,
 		[]string{
@@ -161,15 +185,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"Invalid Boolean Value in UnsafeSSL",
 		map[string]string{
-			"hostUrl":                                 "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
-			"messageVpn":                              "default",
-			"clientNamePrefix":                        "direct-mess",
-			"unsafeSSL":                               "trxex",
-			"queuedMessagesFactor":                    "3",
-			"aggregatedClientTxMsgRateTarget":         "600",
-			"aggregatedClientTxByteRateTarget":        "0",
-			"aggregatedClientAverageTxByteRateTarget": "0",
-			"aggregatedClientAverageTxMsgRateTarget":  "0",
+			solaceDMSempBaseURL:                               "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
+			solaceDMMessageVpn:                                "default",
+			solaceDMClientNamePattern:                         "direct-mess",
+			solaceDMUnsafeSSL:                                 "trxex",
+			solaceDMQueuedMessagesFactor:                      "3",
+			aggregatedClientTxMsgRateTargetMetricName:         "600",
+			aggregatedClientTxByteRateTargetMetricName:        "0",
+			aggregatedClientAverageTxByteRateTargetMetricName: "0",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "0",
 		},
 		true,
 		[]string{
@@ -181,15 +205,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"Invalid int64 in Queued Messages Factor",
 		map[string]string{
-			"hostUrl":                                 "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
-			"messageVpn":                              "default",
-			"clientNamePrefix":                        "direct-mess",
-			"unsafeSSL":                               "true",
-			"queuedMessagesFactor":                    "3a",
-			"aggregatedClientTxMsgRateTarget":         "600",
-			"aggregatedClientTxByteRateTarget":        "0",
-			"aggregatedClientAverageTxByteRateTarget": "0",
-			"aggregatedClientAverageTxMsgRateTarget":  "0",
+			solaceDMSempBaseURL:                               "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
+			solaceDMMessageVpn:                                "default",
+			solaceDMClientNamePattern:                         "direct-mess",
+			solaceDMUnsafeSSL:                                 "true",
+			solaceDMQueuedMessagesFactor:                      "3a",
+			aggregatedClientTxMsgRateTargetMetricName:         "600",
+			aggregatedClientTxByteRateTargetMetricName:        "0",
+			aggregatedClientAverageTxByteRateTargetMetricName: "0",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "0",
 		},
 		true,
 		[]string{
@@ -201,15 +225,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"Invalid value (<0 and >100) in Queued Messages Factor",
 		map[string]string{
-			"hostUrl":                                 "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
-			"messageVpn":                              "default",
-			"clientNamePrefix":                        "direct-mess",
-			"unsafeSSL":                               "true",
-			"queuedMessagesFactor":                    "300",
-			"aggregatedClientTxMsgRateTarget":         "600",
-			"aggregatedClientTxByteRateTarget":        "0",
-			"aggregatedClientAverageTxByteRateTarget": "0",
-			"aggregatedClientAverageTxMsgRateTarget":  "0",
+			solaceDMSempBaseURL:                               "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
+			solaceDMMessageVpn:                                "default",
+			solaceDMClientNamePattern:                         "direct-mess",
+			solaceDMUnsafeSSL:                                 "true",
+			solaceDMQueuedMessagesFactor:                      "300",
+			aggregatedClientTxMsgRateTargetMetricName:         "600",
+			aggregatedClientTxByteRateTargetMetricName:        "0",
+			aggregatedClientAverageTxByteRateTargetMetricName: "0",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "0",
 		},
 		true,
 		[]string{
@@ -221,15 +245,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"All metrics with 0 as Target",
 		map[string]string{
-			"hostUrl":                                 "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
-			"messageVpn":                              "default",
-			"clientNamePrefix":                        "direct-mess",
-			"unsafeSSL":                               "true",
-			"queuedMessagesFactor":                    "3",
-			"aggregatedClientTxMsgRateTarget":         "0",
-			"aggregatedClientTxByteRateTarget":        "0",
-			"aggregatedClientAverageTxByteRateTarget": "0",
-			"aggregatedClientAverageTxMsgRateTarget":  "0",
+			solaceDMSempBaseURL:                               "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
+			solaceDMMessageVpn:                                "default",
+			solaceDMClientNamePattern:                         "direct-mess",
+			solaceDMUnsafeSSL:                                 "true",
+			solaceDMQueuedMessagesFactor:                      "3",
+			aggregatedClientTxMsgRateTargetMetricName:         "0",
+			aggregatedClientTxByteRateTargetMetricName:        "0",
+			aggregatedClientAverageTxByteRateTargetMetricName: "0",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "0",
 		},
 		true,
 		[]string{
@@ -241,15 +265,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"Correct Params - Metric 1",
 		map[string]string{
-			"hostUrl":                                 "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
-			"messageVpn":                              "default",
-			"clientNamePrefix":                        "direct-messaging-simple",
-			"unsafeSSL":                               "true",
-			"queuedMessagesFactor":                    "3",
-			"aggregatedClientTxMsgRateTarget":         "1000",
-			"aggregatedClientTxByteRateTarget":        "0",
-			"aggregatedClientAverageTxByteRateTarget": "0",
-			"aggregatedClientAverageTxMsgRateTarget":  "0",
+			solaceDMSempBaseURL:                               "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
+			solaceDMMessageVpn:                                "default",
+			solaceDMClientNamePattern:                         "direct-messaging-simple",
+			solaceDMUnsafeSSL:                                 "true",
+			solaceDMQueuedMessagesFactor:                      "3",
+			aggregatedClientTxMsgRateTargetMetricName:         "1000",
+			aggregatedClientTxByteRateTargetMetricName:        "0",
+			aggregatedClientAverageTxByteRateTargetMetricName: "0",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "0",
 		},
 		false,
 		[]string{
@@ -263,15 +287,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"Correct Params - Metric 2",
 		map[string]string{
-			"hostUrl":                                 "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
-			"messageVpn":                              "default",
-			"clientNamePrefix":                        "direct-messaging-simple",
-			"unsafeSSL":                               "true",
-			"queuedMessagesFactor":                    "3",
-			"aggregatedClientTxMsgRateTarget":         "0",
-			"aggregatedClientTxByteRateTarget":        "1000",
-			"aggregatedClientAverageTxByteRateTarget": "0",
-			"aggregatedClientAverageTxMsgRateTarget":  "0",
+			solaceDMSempBaseURL:                               "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
+			solaceDMMessageVpn:                                "default",
+			solaceDMClientNamePattern:                         "direct-messaging-simple",
+			solaceDMUnsafeSSL:                                 "true",
+			solaceDMQueuedMessagesFactor:                      "3",
+			aggregatedClientTxMsgRateTargetMetricName:         "0",
+			aggregatedClientTxByteRateTargetMetricName:        "1000",
+			aggregatedClientAverageTxByteRateTargetMetricName: "0",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "0",
 		},
 		false,
 		[]string{
@@ -285,15 +309,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"Correct Params - Metric 3",
 		map[string]string{
-			"hostUrl":                                 "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
-			"messageVpn":                              "default",
-			"clientNamePrefix":                        "direct-messaging-simple",
-			"unsafeSSL":                               "true",
-			"queuedMessagesFactor":                    "3",
-			"aggregatedClientTxMsgRateTarget":         "0",
-			"aggregatedClientTxByteRateTarget":        "0",
-			"aggregatedClientAverageTxByteRateTarget": "10000",
-			"aggregatedClientAverageTxMsgRateTarget":  "0",
+			solaceDMSempBaseURL:                               "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
+			solaceDMMessageVpn:                                "default",
+			solaceDMClientNamePattern:                         "direct-messaging-simple",
+			solaceDMUnsafeSSL:                                 "true",
+			solaceDMQueuedMessagesFactor:                      "3",
+			aggregatedClientTxMsgRateTargetMetricName:         "0",
+			aggregatedClientTxByteRateTargetMetricName:        "0",
+			aggregatedClientAverageTxByteRateTargetMetricName: "10000",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "0",
 		},
 		false,
 		[]string{
@@ -307,15 +331,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"Correct Params - Metric 4",
 		map[string]string{
-			"hostUrl":                                 "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
-			"messageVpn":                              "default",
-			"clientNamePrefix":                        "direct-messaging-simple",
-			"unsafeSSL":                               "true",
-			"queuedMessagesFactor":                    "3",
-			"aggregatedClientTxMsgRateTarget":         "0",
-			"aggregatedClientTxByteRateTarget":        "0",
-			"aggregatedClientAverageTxByteRateTarget": "0",
-			"aggregatedClientAverageTxMsgRateTarget":  "10000",
+			solaceDMSempBaseURL:                               "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
+			solaceDMMessageVpn:                                "default",
+			solaceDMClientNamePattern:                         "direct-messaging-simple",
+			solaceDMUnsafeSSL:                                 "true",
+			solaceDMQueuedMessagesFactor:                      "3",
+			aggregatedClientTxMsgRateTargetMetricName:         "0",
+			aggregatedClientTxByteRateTargetMetricName:        "0",
+			aggregatedClientAverageTxByteRateTargetMetricName: "0",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "10000",
 		},
 		false,
 		[]string{
@@ -329,15 +353,15 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"Correct Params - All Metrics",
 		map[string]string{
-			"hostUrl":                                 "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
-			"messageVpn":                              "default",
-			"clientNamePrefix":                        "direct-messaging-simple",
-			"unsafeSSL":                               "true",
-			"queuedMessagesFactor":                    "3",
-			"aggregatedClientTxMsgRateTarget":         "300",
-			"aggregatedClientTxByteRateTarget":        "300",
-			"aggregatedClientAverageTxByteRateTarget": "10000",
-			"aggregatedClientAverageTxMsgRateTarget":  "10000",
+			solaceDMSempBaseURL:                               "https://mr-connection-s2vulj70fsu.messaging.solace.cloud:944,https://mr-connection-s2vulj70fsu.messaging.solace.cloud:943",
+			solaceDMMessageVpn:                                "default",
+			solaceDMClientNamePattern:                         "direct-messaging-simple",
+			solaceDMUnsafeSSL:                                 "true",
+			solaceDMQueuedMessagesFactor:                      "3",
+			aggregatedClientTxMsgRateTargetMetricName:         "300",
+			aggregatedClientTxByteRateTargetMetricName:        "300",
+			aggregatedClientAverageTxByteRateTargetMetricName: "10000",
+			aggregatedClientAverageTxMsgRateTargetMetricName:  "10000",
 		},
 		false,
 		[]string{
@@ -354,14 +378,29 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 }
 
 func TestParseSolaceDMConfiguration(t *testing.T) {
+	// initial round - empty environment, auth params
+	t.Log(" --> *** Round 1: Environment: empty, AuthParams: true ***")
 	for i, testData := range solaceDMParseConfigurationTestCases {
-		testScenario(t, i, testData)
+		testScenario(t, i, testSolaceDMEmptyEnv, testSolaceDMAuthParams, testData)
 	}
+
+	// Second round - environment with usr/pwd, empty params, reference to env keys
+	t.Log(" --> *** Round 2: Environment: true, AuthParams: empty ***")
+	for i, testData := range solaceDMParseConfigurationTestCases {
+		testDatawithEnvKeys := map[string]string{}
+		maps.Insert(testDatawithEnvKeys, maps.All(testData.configuration))
+		maps.Insert(testDatawithEnvKeys, maps.All(testSolaceAdditionalFromEnvKeys))
+
+		testData.configuration = testDatawithEnvKeys
+
+		testScenario(t, i, testSolaceDMNonEmptyEnv, testSolaceDMEmptyAuthParams, testData)
+	}
+
 }
 
-func testScenario(t *testing.T, i int, testData testSolaceDMConfiguration) {
+func testScenario(t *testing.T, i int, resolvedEnv map[string]string, authParams map[string]string, testData testSolaceDMConfiguration) {
 	t.Logf("Test [%d], ParseErrorExpected: '%t' - TestID: '%s'", i, testData.parseErrorExpected, testData.testID)
-	config, err := parseSolaceDMConfiguration(&scalersconfig.ScalerConfig{ResolvedEnv: nil, TriggerMetadata: testData.configuration, AuthParams: testSolaceDMAuthParams, TriggerIndex: 1})
+	config, err := parseSolaceDMConfiguration(&scalersconfig.ScalerConfig{ResolvedEnv: resolvedEnv, TriggerMetadata: testData.configuration, AuthParams: authParams, TriggerIndex: 1})
 
 	switch {
 	case testData.parseErrorExpected && err == nil:
@@ -393,6 +432,21 @@ func testScenario(t *testing.T, i int, testData testSolaceDMConfiguration) {
 		configuration: config,
 		httpClient:    http.DefaultClient,
 	}
+
+	// Test username/password resolution from triggerAuth and Env
+	if testSolaceScaler.configuration.Username == "" {
+		t.Log(" --> FAIL")
+		t.Errorf("Username not populated")
+		return
+	}
+
+	if testSolaceScaler.configuration.Password == "" {
+		t.Log(" --> FAIL")
+		t.Errorf("Username not populated")
+		return
+	}
+
+	fmt.Printf("Username: '%s', Password: '%s'", testSolaceScaler.configuration.Username, testSolaceScaler.configuration.Password)
 
 	var metrics []v2.MetricSpec
 	if metrics = testSolaceScaler.GetMetricSpecForScaling(context.Background()); len(metrics) == 0 {

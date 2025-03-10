@@ -24,6 +24,20 @@ import (
 const (
 	// Metric Type
 	solaceDMExternalMetricType = "External"
+
+	// Credential Identifiers
+	solaceDMUsername        = "username"
+	solaceDMPassword        = "password"
+	solaceDMUsernameFromEnv = "usernameFromEnv"
+	solaceDMPasswordFromEnv = "passwordFromEnv"
+
+	//
+	solaceDMSempBaseURL          = "solaceSempBaseURL"
+	solaceDMMessageVpn           = "messageVpn"
+	solaceDMClientNamePattern    = "clientNamePattern"
+	solaceDMUnsafeSSL            = "unsafeSSL"
+	solaceDMQueuedMessagesFactor = "queuedMessagesFactor"
+
 	// Target Client TxByteRate
 	aggregatedClientTxByteRateTargetMetricName = "aggregatedClientTxByteRateTarget"
 	// Target Client AverageTxByteRate
@@ -55,8 +69,8 @@ type SolaceDMScalerConfiguration struct {
 	// Scaler index
 	triggerIndex int
 
-	// HostURL
-	HostURL string `keda:"name=hostUrl, order=triggerMetadata"`
+	// SolaceSEMPBaseURL
+	SolaceSEMPBaseURL string `keda:"name=solaceSempBaseURL, order=triggerMetadata"`
 	// Basic Auth Username
 	Username string `keda:"name=username, order=authParams;resolvedEnv"`
 	// Basic Auth Password
@@ -65,7 +79,7 @@ type SolaceDMScalerConfiguration struct {
 	// Message VPN
 	MessageVpn string `keda:"name=messageVpn, order=triggerMetadata"`
 	// Client Name Prefix
-	ClientNamePrefix string `keda:"name=clientNamePrefix, order=triggerMetadata"`
+	ClientNamePattern string `keda:"name=clientNamePattern, order=triggerMetadata"`
 
 	// UnsafeSSL
 	UnsafeSSL bool `keda:"name=unsafeSSL, order=triggerMetadata, default=false"`
@@ -97,14 +111,14 @@ type SolaceDMScalerConfiguration struct {
 
 func (s *SolaceDMScalerConfiguration) Validate() error {
 	// host url is not empty or full of spaces!
-	s.HostURL = strings.TrimSpace(s.HostURL)
+	s.SolaceSEMPBaseURL = strings.TrimSpace(s.SolaceSEMPBaseURL)
 
-	if len(s.HostURL) == 0 {
-		return fmt.Errorf("no host url value found in the scaler configuration. HostUrl: '%s'", s.HostURL)
+	if len(s.SolaceSEMPBaseURL) == 0 {
+		return fmt.Errorf("no host url value found in the scaler configuration. SolaceSEMPBaseURL: '%s'", s.SolaceSEMPBaseURL)
 	}
 
 	// Check each of the urls for: empty strings, valid url pattern
-	urls := strings.Split(s.HostURL, ",")
+	urls := strings.Split(s.SolaceSEMPBaseURL, ",")
 
 	for i, v := range urls {
 		url := strings.TrimSpace(v)
@@ -127,13 +141,13 @@ func (s *SolaceDMScalerConfiguration) Validate() error {
 		return fmt.Errorf("no message-vpn value found in the scaler configuration. MessageVpn: '%s'", s.MessageVpn)
 	}
 
-	s.ClientNamePrefix = strings.TrimSpace(s.ClientNamePrefix)
-	if len(s.ClientNamePrefix) == 0 {
-		return fmt.Errorf("no client-name-prefix value found in the scaler configuration. ClientNamePrefix: '%s'", s.ClientNamePrefix)
+	s.ClientNamePattern = strings.TrimSpace(s.ClientNamePattern)
+	if len(s.ClientNamePattern) == 0 {
+		return fmt.Errorf("no client-name-pattern value found in the scaler configuration. ClientNamePattern: '%s'", s.ClientNamePattern)
 	}
 
-	if strings.Contains(s.ClientNamePrefix, "*") {
-		return fmt.Errorf("client-name-prefix should not contain '*'. ClientNamePrefix: '%s'", s.ClientNamePrefix)
+	if strings.Contains(s.ClientNamePattern, "*") {
+		return fmt.Errorf("client-name-pattern should not contain '*'. ClientNamePattern: '%s'", s.ClientNamePattern)
 	}
 
 	if s.QueuedMessagesFactor < 1 || s.QueuedMessagesFactor > 100 {
@@ -341,7 +355,7 @@ func parseSolaceDMConfiguration(scalerConfig *scalersconfig.ScalerConfig) (*Sola
 
 	// initialize urls
 	meta.sempURL = []string{}
-	urls := strings.Split(meta.HostURL, ",")
+	urls := strings.Split(meta.SolaceSEMPBaseURL, ",")
 
 	for _, v := range urls {
 		url := strings.TrimSpace(v)
@@ -357,7 +371,7 @@ func parseSolaceDMConfiguration(scalerConfig *scalersconfig.ScalerConfig) (*Sola
 func (s *SolaceDMScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
 	var metricSpecList []v2.MetricSpec
 	var triggerIndex = s.configuration.triggerIndex
-	var clientNamePattern = s.configuration.ClientNamePrefix
+	var clientNamePattern = s.configuration.ClientNamePattern
 
 	// Target Client TxByteRate
 	if s.configuration.AggregatedClientTxByteRateTarget > 0 {
@@ -476,7 +490,7 @@ func (s *SolaceDMScaler) Close(_ context.Context) error {
 /************************************************************************************************************/
 func (s *SolaceDMScaler) getClientStats(ctx context.Context, metricValues *SolaceDMScalerMetricValues) error {
 	// get client stats for the clients that have the prefix
-	clientStatsReqBody := "<rpc><show><client><name>" + s.configuration.ClientNamePrefix + "*</name><stats/></client></show></rpc>"
+	clientStatsReqBody := "<rpc><show><client><name>*" + s.configuration.ClientNamePattern + "*</name><stats/></client></show></rpc>"
 
 	bodyBytes, err := s.GetSolaceDMSempMetrics(ctx, s.httpClient, s.configuration.sempURL, s.configuration.Username, s.configuration.Password, clientStatsReqBody)
 	if err != nil {
@@ -520,7 +534,7 @@ func (s *SolaceDMScaler) getClientStats(ctx context.Context, metricValues *Solac
 
 func (s *SolaceDMScaler) getClientStatQueues(ctx context.Context, metricValues *SolaceDMScalerMetricValues) error {
 	// get client stats for the clients that have the prefix
-	clientStatQueuesReqBody := fmt.Sprintf("<rpc><show><client><name>%s*</name><stats></stats><queues></queues></client></show></rpc>", s.configuration.ClientNamePrefix)
+	clientStatQueuesReqBody := fmt.Sprintf("<rpc><show><client><name>*%s*</name><stats></stats><queues></queues></client></show></rpc>", s.configuration.ClientNamePattern)
 
 	bodyBytes, err := s.GetSolaceDMSempMetrics(ctx, s.httpClient, s.configuration.sempURL, s.configuration.Username, s.configuration.Password, clientStatQueuesReqBody)
 	if err != nil {

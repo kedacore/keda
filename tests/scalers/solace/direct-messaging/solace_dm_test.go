@@ -177,9 +177,9 @@ spec:
   - type: solace-direct-messaging
     metricType: Value
     metadata:
-      hostUrl:  "http://kedalab-pubsubplus-dev.{{.TestNamespace}}.svc.cluster.local:8080"
+      solaceSempBaseURL:  "http://kedalab-pubsubplus-dev.{{.TestNamespace}}.svc.cluster.local:8080"
       messageVpn: "default"
-      clientNamePrefix: "direct-messaging-simple"
+      clientNamePattern: "direct-messaging-simple"
       #to be able to use self signed certs
       unsafeSSL: "true"
       #to increase weight on queued messages and scale faster
