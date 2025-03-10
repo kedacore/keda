@@ -395,7 +395,6 @@ func TestParseSolaceDMConfiguration(t *testing.T) {
 
 		testScenario(t, i, testSolaceDMNonEmptyEnv, testSolaceDMEmptyAuthParams, testData)
 	}
-
 }
 
 func testScenario(t *testing.T, i int, resolvedEnv map[string]string, authParams map[string]string, testData testSolaceDMConfiguration) {
