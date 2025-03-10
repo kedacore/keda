@@ -28,21 +28,27 @@ type seleniumGridScaler struct {
 type seleniumGridScalerMetadata struct {
 	triggerIndex int
 
-	URL                 string `keda:"name=url,                      order=authParams;triggerMetadata"`
-	AuthType            string `keda:"name=authType,                 order=authParams;resolvedEnv, optional"`
-	Username            string `keda:"name=username,                 order=authParams;resolvedEnv, optional"`
-	Password            string `keda:"name=password,                 order=authParams;resolvedEnv, optional"`
-	AccessToken         string `keda:"name=accessToken,              order=authParams;resolvedEnv, optional"`
-	BrowserName         string `keda:"name=browserName,              order=triggerMetadata, optional"`
-	SessionBrowserName  string `keda:"name=sessionBrowserName,       order=triggerMetadata, optional"`
-	BrowserVersion      string `keda:"name=browserVersion,           order=triggerMetadata, optional"`
-	PlatformName        string `keda:"name=platformName,             order=triggerMetadata, optional"`
-	ActivationThreshold int64  `keda:"name=activationThreshold,      order=triggerMetadata, optional"`
-	UnsafeSsl           bool   `keda:"name=unsafeSsl,                order=triggerMetadata, default=false"`
-	NodeMaxSessions     int64  `keda:"name=nodeMaxSessions,          order=triggerMetadata, default=1"`
-	Capabilities        string `keda:"name=capabilities,        	 order=triggerMetadata, optional"`
+	URL                    string `keda:"name=url,                      order=authParams;triggerMetadata"`
+	AuthType               string `keda:"name=authType,                 order=authParams;resolvedEnv, optional"`
+	Username               string `keda:"name=username,                 order=authParams;resolvedEnv, optional"`
+	Password               string `keda:"name=password,                 order=authParams;resolvedEnv, optional"`
+	AccessToken            string `keda:"name=accessToken,              order=authParams;resolvedEnv, optional"`
+	BrowserName            string `keda:"name=browserName,              order=triggerMetadata, optional"`
+	SessionBrowserName     string `keda:"name=sessionBrowserName,       order=triggerMetadata, optional"`
+	BrowserVersion         string `keda:"name=browserVersion,           order=triggerMetadata, optional"`
+	PlatformName           string `keda:"name=platformName,             order=triggerMetadata, optional"`
+	ActivationThreshold    int64  `keda:"name=activationThreshold,      order=triggerMetadata, optional"`
+	UnsafeSsl              bool   `keda:"name=unsafeSsl,                order=triggerMetadata, default=false"`
+	NodeMaxSessions        int64  `keda:"name=nodeMaxSessions,          order=triggerMetadata, default=1"`
+	EnableManagedDownloads bool   `keda:"name=enableManagedDownloads,   order=triggerMetadata, optional"`
+	Capabilities           string `keda:"name=capabilities,             order=triggerMetadata, optional"`
 
 	TargetValue int64
+}
+
+type Platform struct {
+	name   string
+	family *Platform
 }
 
 type SeleniumResponse struct {
@@ -101,12 +107,14 @@ type Stereotypes []struct {
 	Stereotype map[string]interface{} `json:"stereotype"`
 }
 
+const EnableManagedDownloadsCapability = "se:downloadsEnabled"
+
 var ExtensionCapabilitiesPrefixes = []string{"goog:", "moz:", "ms:", "se:"}
-var FunctionCapabilitiesPrefixes = []string{"se:downloadsEnabled"}
+var FunctionCapabilitiesPrefixes = []string{EnableManagedDownloadsCapability}
 
 // Follow pattern in https://github.com/SeleniumHQ/selenium/blob/trunk/java/src/org/openqa/selenium/grid/data/DefaultSlotMatcher.java
 func filterCapabilities(capabilities map[string]interface{}) map[string]interface{} {
-	filteredCapabilities := make(map[string]interface{})
+	filteredCapabilities := map[string]interface{}{}
 
 	for key, value := range capabilities {
 		retain := true
@@ -152,6 +160,16 @@ func NewSeleniumGridScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		httpClient: httpClient,
 		logger:     logger,
 	}, nil
+}
+
+func parseCapabilitiesToMap(_capabilities string) (map[string]interface{}, error) {
+	capabilities := map[string]interface{}{}
+	if _capabilities != "" {
+		if err := json.Unmarshal([]byte(_capabilities), &capabilities); err != nil {
+			return nil, err
+		}
+	}
+	return capabilities, nil
 }
 
 func parseSeleniumGridScalerMetadata(config *scalersconfig.ScalerConfig) (*seleniumGridScalerMetadata, error) {
@@ -242,7 +260,7 @@ func (s *seleniumGridScaler) getSessionsQueueLength(ctx context.Context, logger 
 		logger.Error(err, fmt.Sprintf("Error when reading Selenium Grid response body: %s", err))
 		return -1, -1, err
 	}
-	newRequestNodes, onGoingSession, err := getCountFromSeleniumResponse(b, s.metadata.BrowserName, s.metadata.BrowserVersion, s.metadata.SessionBrowserName, s.metadata.PlatformName, s.metadata.NodeMaxSessions, s.metadata.Capabilities, logger)
+	newRequestNodes, onGoingSession, err := getCountFromSeleniumResponse(b, s.metadata.BrowserName, s.metadata.BrowserVersion, s.metadata.SessionBrowserName, s.metadata.PlatformName, s.metadata.NodeMaxSessions, s.metadata.EnableManagedDownloads, s.metadata.Capabilities, logger)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Error when getting count from Selenium Grid response: %s", err))
 		return -1, -1, err
@@ -295,12 +313,28 @@ func countMatchingSessions(sessions Sessions, browserName string, browserVersion
 	return matchingSessions
 }
 
+func managedDownloadsEnabled(stereotype map[string]interface{}, capabilities map[string]interface{}) bool {
+	// First lets check if user wanted a Node with managed downloads enabled
+	value1, ok1 := capabilities[EnableManagedDownloadsCapability]
+	if !ok1 || !value1.(bool) {
+		// User didn't ask. So lets move on to the next matching criteria
+		return true
+	}
+	// User wants managed downloads enabled to be done on this Node, let's check the stereotype
+	value2, ok2 := stereotype[EnableManagedDownloadsCapability]
+	// Try to match what the user requested
+	return ok2 && value2.(bool)
+}
+
 func extensionCapabilitiesMatch(stereotype map[string]interface{}, capabilities map[string]interface{}) bool {
 	capabilities = filterCapabilities(capabilities)
 	if len(capabilities) == 0 {
 		return true
 	}
 	for key, value := range capabilities {
+		if key == EnableManagedDownloadsCapability {
+			continue
+		}
 		if stereotypeValue, ok := stereotype[key]; !ok || stereotypeValue != value {
 			return false
 		}
@@ -321,11 +355,10 @@ func checkRequestCapabilitiesMatch(request map[string]interface{}, browserName s
 		(_browserVersion != "" && strings.HasPrefix(browserVersion, _browserVersion))
 
 	// Check if platformName matches
-	_platformName := getPlatformName(request)
-	platformNameMatch := (_platformName == "" || strings.EqualFold("any", _platformName) || strings.EqualFold(platformName, _platformName)) &&
-		(platformName == "" || platformName == "any" || strings.EqualFold(platformName, _platformName))
+	platformNameMatch := strings.EqualFold(GetPlatform(platformName).name, GetPlatform(getPlatformName(request)).name) ||
+		isSameFamily(GetPlatform(platformName), GetPlatform(getPlatformName(request)))
 
-	return browserNameMatch && browserVersionMatch && platformNameMatch && extensionCapabilitiesMatch(request, capabilities)
+	return browserNameMatch && browserVersionMatch && platformNameMatch && managedDownloadsEnabled(capabilities, request) && extensionCapabilitiesMatch(request, capabilities)
 }
 
 // This function checks if Node stereotypes or ongoing sessions match the scaler metadata
@@ -342,11 +375,10 @@ func checkStereotypeCapabilitiesMatch(capability map[string]interface{}, browser
 		(_browserVersion != "" && strings.HasPrefix(browserVersion, _browserVersion))
 
 	// Check if platformName matches
-	_platformVersion := getPlatformName(capability)
-	platformNameMatch := (_platformVersion == "" || strings.EqualFold("any", _platformVersion) || strings.EqualFold(platformName, _platformVersion)) &&
-		(platformName == "" || platformName == "any" || strings.EqualFold(platformName, _platformVersion))
+	platformNameMatch := strings.EqualFold(GetPlatform(platformName).name, GetPlatform(getPlatformName(capability)).name) ||
+		isSameFamily(GetPlatform(platformName), GetPlatform(getPlatformName(capability)))
 
-	return browserNameMatch && browserVersionMatch && platformNameMatch && extensionCapabilitiesMatch(capability, capabilities)
+	return browserNameMatch && browserVersionMatch && platformNameMatch && managedDownloadsEnabled(capabilities, capability) && extensionCapabilitiesMatch(capability, capabilities)
 }
 
 func checkNodeReservedSlots(reservedNodes []ReservedNodes, nodeID string, availableSlots int64) int64 {
@@ -370,7 +402,7 @@ func updateOrAddReservedNode(reservedNodes []ReservedNodes, nodeID string, slotC
 	return append(reservedNodes, ReservedNodes{ID: nodeID, SlotCount: slotCount, MaxSession: maxSession})
 }
 
-func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string, platformName string, nodeMaxSessions int64, _capabilities string, logger logr.Logger) (int64, int64, error) {
+func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion string, sessionBrowserName string, platformName string, nodeMaxSessions int64, enableManagedDownloads bool, _capabilities string, logger logr.Logger) (int64, int64, error) {
 	// Track number of available slots of existing Nodes in the Grid can be reserved for the matched requests
 	var availableSlots int64
 	// Track number of matched requests in the sessions queue will be served by this scaler
@@ -380,12 +412,13 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	if err := json.Unmarshal(b, &seleniumResponse); err != nil {
 		return 0, 0, err
 	}
-	capabilities := map[string]interface{}{}
-	if _capabilities != "" {
-		if err := json.Unmarshal([]byte(_capabilities), &capabilities); err != nil {
-			logger.Error(err, fmt.Sprintf("Error when unmarshaling trigger metadata 'capabilities': %s", err))
-			return 0, 0, err
-		}
+
+	capabilities, err := parseCapabilitiesToMap(_capabilities)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Error when unmarshaling trigger metadata 'capabilities': %s", err))
+	}
+	if enableManagedDownloads {
+		capabilities[EnableManagedDownloadsCapability] = true
 	}
 
 	var sessionQueueRequests = seleniumResponse.Data.SessionsInfo.SessionQueueRequests
@@ -458,4 +491,108 @@ func getCountFromSeleniumResponse(b []byte, browserName string, browserVersion s
 	}
 
 	return int64(len(newRequestNodes)), onGoingSessions, nil
+}
+
+// Mapping of platform name enum used in the Selenium Grid core
+// https://github.com/SeleniumHQ/selenium/blob/trunk/java/src/org/openqa/selenium/Platform.java
+var (
+	Windows      = Platform{"windows", nil}
+	XP           = Platform{"Windows XP", &Windows}
+	Vista        = Platform{"Windows Vista", &Windows}
+	Win7         = Platform{"Windows 7", &Windows}
+	Win8         = Platform{"Windows 8", &Windows}
+	Win8_1       = Platform{"Windows 8.1", &Windows}
+	Win10        = Platform{"Windows 10", &Windows}
+	Win11        = Platform{"Windows 11", &Windows}
+	Mac          = Platform{"mac", nil}
+	SnowLeopard  = Platform{"OS X 10.6", &Mac}
+	MountainLion = Platform{"OS X 10.8", &Mac}
+	Mavericks    = Platform{"OS X 10.9", &Mac}
+	Yosemite     = Platform{"OS X 10.10", &Mac}
+	ElCapitan    = Platform{"OS X 10.11", &Mac}
+	Sierra       = Platform{"macOS 10.12", &Mac}
+	HighSierra   = Platform{"macOS 10.13", &Mac}
+	Mojave       = Platform{"macOS 10.14", &Mac}
+	Catalina     = Platform{"macOS 10.15", &Mac}
+	BigSur       = Platform{"macOS 11.0", &Mac}
+	Monterey     = Platform{"macOS 12.0", &Mac}
+	Ventura      = Platform{"macOS 13.0", &Mac}
+	Sonoma       = Platform{"macOS 14.0", &Mac}
+	Sequoia      = Platform{"macOS 15.0", &Mac}
+	Unix         = Platform{"unix", nil}
+	Linux        = Platform{"linux", &Unix}
+	Bsd          = Platform{"bsd", &Unix}
+	Solaris      = Platform{"solaris", &Unix}
+	Android      = Platform{"android", nil}
+	IOS          = Platform{"iOS", nil}
+	Any          = Platform{"any", nil}
+)
+
+func isSameFamily(p1, p2 Platform) bool {
+	return p1.family != nil && p2.family != nil && p1.family == p2.family
+}
+
+func GetPlatform(input string) Platform {
+	switch strings.ToLower(input) {
+	case "windows":
+		return Windows
+	case "windows server 2003", "xp", "winnt", "windows_nt", "windows nt":
+		return XP
+	case "windows server 2008", "windows vista":
+		return Vista
+	case "windows 7", "win7":
+		return Win7
+	case "windows server 2012", "windows 8", "win8":
+		return Win8
+	case "windows 8.1", "win8.1":
+		return Win8_1
+	case "windows 10", "win10":
+		return Win10
+	case "windows 11", "win11":
+		return Win11
+	case "mac", "darwin", "macos", "mac os x", "os x":
+		return Mac
+	case "os x 10.6", "macos 10.6", "snow leopard":
+		return SnowLeopard
+	case "os x 10.8", "macos 10.8", "mountain lion":
+		return MountainLion
+	case "os x 10.9", "macos 10.9", "mavericks":
+		return Mavericks
+	case "os x 10.10", "macos 10.10", "yosemite":
+		return Yosemite
+	case "os x 10.11", "macos 10.11", "el capitan":
+		return ElCapitan
+	case "os x 10.12", "macos 10.12", "sierra":
+		return Sierra
+	case "os x 10.13", "macos 10.13", "high sierra":
+		return HighSierra
+	case "os x 10.14", "macos 10.14", "mojave":
+		return Mojave
+	case "os x 10.15", "macos 10.15", "catalina":
+		return Catalina
+	case "os x 11.0", "macos 11.0", "big sur":
+		return BigSur
+	case "os x 12.0", "macos 12.0", "monterey":
+		return Monterey
+	case "os x 13.0", "macos 13.0", "ventura":
+		return Ventura
+	case "os x 14.0", "macos 14.0", "sonoma":
+		return Sonoma
+	case "os x 15.0", "macos 15.0", "sequoia":
+		return Sequoia
+	case "linux":
+		return Linux
+	case "bsd":
+		return Bsd
+	case "solaris":
+		return Solaris
+	case "android", "dalvik":
+		return Android
+	case "ios":
+		return IOS
+	case "any", "":
+		return Any
+	default:
+		return Platform{strings.ToLower(input), nil}
+	}
 }
