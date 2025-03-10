@@ -79,7 +79,7 @@ func Reconcile(ctx context.Context, reqLogger logr.Logger, r cloudEventSourceRec
 	}
 
 	if eventSourceChanged {
-		if RequestEventLoop(ctx, reqLogger, r, cloudEventSource) != nil {
+		if err = RequestEventLoop(ctx, reqLogger, r, cloudEventSource); err != nil {
 			return ctrl.Result{}, err
 		}
 	}

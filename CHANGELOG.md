@@ -78,9 +78,11 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **General**: Add SecretKey to AWS SecretsManager TriggerAuthentication to allow parsing JSON / Key/Value Pairs in secrets ([#5940](https://github.com/kedacore/keda/issues/5940))
+- **Elasticsearch Scaler**: Support IgnoreNullValues at Elasticsearch scaler ([#6599](https://github.com/kedacore/keda/pull/6599))
 - **GitHub Scaler**: Add support to use ETag for conditional requests against the Github API ([#6503](https://github.com/kedacore/keda/issues/6503))
 - **GitHub Scaler**: Filter workflows via query parameter for improved queue count accuracy ([#6519](https://github.com/kedacore/keda/pull/6519))
 - **IBMMQ Scaler**: Handling StatusNotFound in IBMMQ scaler ([#6472](https://github.com/kedacore/keda/pull/6472))
+- **MongoDB Scaler**: Support float queryValue for MongoDB scaler ([#6574](https://github.com/kedacore/keda/issues/6574))
 - **RabbitMQ Scaler**: Support use of the ‘vhostName’ parameter in the ‘TriggerAuthentication’ resource ([#6369](https://github.com/kedacore/keda/issues/6369))
 - **Selenium Grid**: Add trigger param for Node enables managed downloads capability ([#6570](https://github.com/kedacore/keda/pull/6570))
 - **Selenium Grid**: Add trigger param to set custom capabilities for matching specific Nodes ([#6536](https://github.com/kedacore/keda/issues/6536))
@@ -92,6 +94,7 @@ Here is an overview of all new **experimental** features:
 - **General**: Paused ScaledObject count is reported correctly after operator restart ([#6321](https://github.com/kedacore/keda/issues/6321))
 - **General**: ScaledJobs ready status set to true when recoverred problem ([#6329](https://github.com/kedacore/keda/pull/6329))
 - **AWS Scalers**: Add AWS region to the AWS Config Cache key ([#6128](https://github.com/kedacore/keda/issues/6128))
+- **External Scaler**: Support server TLS without custom CA ([#6606](https://github.com/kedacore/keda/pull/6606))
 - **Redis Streams**: Allow default value of 0 for activationLagCount ([#6478](https://github.com/kedacore/keda/issues/6478))
 - **Selenium Grid**: Scaler logic on platformName is set empty or `any` ([#6477](https://github.com/kedacore/keda/issues/6477))
 
