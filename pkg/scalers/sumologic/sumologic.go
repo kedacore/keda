@@ -13,16 +13,6 @@ import (
 )
 
 func NewClient(c *Config, sc *scalersconfig.ScalerConfig) (*Client, error) {
-	if c.Host == "" {
-		return nil, errors.New("host is required")
-	}
-	if c.AccessID == "" {
-		return nil, errors.New("accessID is required")
-	}
-	if c.AccessKey == "" {
-		return nil, errors.New("accessKey is required")
-	}
-
 	httpClient := kedautil.CreateHTTPClient(sc.GlobalHTTPTimeout, c.UnsafeSsl)
 
 	client := &Client{
@@ -159,4 +149,28 @@ func (c *Client) GetMetricsSearchResult(query string, quantization, timerange ti
 	}
 
 	return result, nil
+}
+
+func (c *Client) Close() error {
+	if closer, ok := c.client.Transport.(io.Closer); ok {
+		return closer.Close()
+	}
+	return nil
+}
+
+func (c *Client) GetQueryResult(queryType, query string, quantization, timerange time.Duration, dimension, timezone string) (float64, error) {
+	var result *float64
+	var err error
+
+	if queryType == "logs" {
+		result, err = c.GetLogSearchResult(query, timerange, dimension, timezone)
+	} else {
+		result, err = c.GetMetricsSearchResult(query, quantization, timerange, dimension, timezone)
+	}
+
+	if err != nil {
+		return 0, err
+	}
+
+	return *result, nil
 }
