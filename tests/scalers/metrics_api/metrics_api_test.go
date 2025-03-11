@@ -264,7 +264,8 @@ func getSplitArrayFromAverage(t *testing.T, average, splitInNValues int) []int {
 	return result
 }
 
-func getUpdateUrlsForAllMetricAllMetricsServerReplicas(t *testing.T, kc *kubernetes.Clientset, expectedAverageMetric int, nbReplicasForMetricsServer int) map[string]string {
+func getUpdateUrlsForAllMetricAllMetricsServerReplicas(t *testing.T, kc *kubernetes.Clientset, expectedAverageMetric int, nbReplicasForMetricsServer int, nbRetry int) map[string]string {
+	nbRetriesMax := 5
 	// get an array for which all elements' average would give expectedAverageMetric without any of its elements being exactly expectedAverageMetric
 	individualMetrics := getSplitArrayFromAverage(t, expectedAverageMetric, nbReplicasForMetricsServer)
 	// use kc to curl all metrics-server replicas
@@ -277,22 +278,27 @@ func getUpdateUrlsForAllMetricAllMetricsServerReplicas(t *testing.T, kc *kuberne
 		return nil
 	}
 
+	retryFunc := func(message string) map[string]string {
+		if nbRetry >= nbRetriesMax {
+			t.Fatal(message)
+			return nil
+		}
+		t.Logf("%s. Retry calling getUpdateUrlsForAllMetricAllMetricsServerReplicas() after 1 second", message)
+		time.Sleep(1 * time.Second)
+		return getUpdateUrlsForAllMetricAllMetricsServerReplicas(t, kc, expectedAverageMetric, nbReplicasForMetricsServer, nbRetry+1)
+	}
 	if len(pods.Items) == 0 {
-		t.Fatalf("No pods found with the given selector.")
-		return nil
+		return retryFunc("No pods found with the given selector.")
 	}
 
 	if len(pods.Items) != nbReplicasForMetricsServer {
-		t.Fatalf("Number of replicas of metrics server (%d) does not match expected value (%d).", len(pods.Items), nbReplicasForMetricsServer)
-		return nil
+		return retryFunc(fmt.Sprintf("Number of replicas of metrics server (%d) does not match expected value (%d).", len(pods.Items), nbReplicasForMetricsServer))
 	}
 	postUrls := make(map[string]string, nbReplicasForMetricsServer)
 	// Iterate through the pods and send HTTP requests
 	for nbPod, pod := range pods.Items {
 		if pod.Status.Phase != v1.PodRunning || pod.Status.PodIP == "" {
-			t.Logf("Pod %s was expected to be running and to have an IP. Retry calling getUpdateUrlsForAllMetricAllMetricsServerReplicas() after 1 second", pod.Name)
-			time.Sleep(1 * time.Second)
-			return getUpdateUrlsForAllMetricAllMetricsServerReplicas(t, kc, expectedAverageMetric, nbReplicasForMetricsServer)
+			return retryFunc(fmt.Sprintf("Pod %s was expected to be running and to have an IP.", pod.Name))
 		}
 		url := fmt.Sprintf("http://%s:8080/api/value/%d", pod.Status.PodIP, individualMetrics[nbPod])
 		postUrls[pod.Name] = url
@@ -301,7 +307,7 @@ func getUpdateUrlsForAllMetricAllMetricsServerReplicas(t *testing.T, kc *kuberne
 }
 
 func updateAllMetricsServerReplicas(t *testing.T, kc *kubernetes.Clientset, data templateData, metricValue int, nbReplicasForMetricsServer int) {
-	for targetPodName, urlToPost := range getUpdateUrlsForAllMetricAllMetricsServerReplicas(t, kc, metricValue, nbReplicasForMetricsServer) {
+	for targetPodName, urlToPost := range getUpdateUrlsForAllMetricAllMetricsServerReplicas(t, kc, metricValue, nbReplicasForMetricsServer, 0) {
 		if urlToPost == "" {
 			t.Fatalf("target pod %s should have non emoty url but got one", targetPodName)
 			return
