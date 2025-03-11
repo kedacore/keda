@@ -35,19 +35,19 @@ type natsJetStreamScaler struct {
 }
 
 type natsJetStreamMetadata struct {
-  Account                string `keda:"name=account, order=authParams;triggerMetadata"`
-  AccountID              string `keda:"name=accountID, order=authParams;triggerMetadata, optional"`
-  Stream                 string `keda:"name=stream, order=triggerMetadata"`
+	Account                string `keda:"name=account, order=authParams;triggerMetadata"`
+	AccountID              string `keda:"name=accountID, order=authParams;triggerMetadata, optional"`
+	Stream                 string `keda:"name=stream, order=triggerMetadata"`
 	Consumer               string `keda:"name=consumer, order=triggerMetadata"`
-  LagThreshold           int64 `keda:"name=lagThreshold, order=triggerMetadata, default=10"`
-  ActivationLagThreshold int64 `keda:"name=activationLagThreshold, order=triggerMetadata, default=0"`
-  UseHTTPS               bool `keda:"name=useHttps, optional, order=triggerMetadata, default=false"`
-  NatsServerEndpoint string `keda:"name=natsServerMonitoringEndpoint, order=authParams;triggerMetadata"`
-  monitoringURL          string
-  consumerLeader         string 
-  monitoringLeaderURL    string 
-  clusterSize            int
-  triggerIndex           int
+	LagThreshold           int64  `keda:"name=lagThreshold, order=triggerMetadata, default=10"`
+	ActivationLagThreshold int64  `keda:"name=activationLagThreshold, order=triggerMetadata, default=0"`
+	UseHTTPS               bool   `keda:"name=useHttps, optional, order=triggerMetadata, default=false"`
+	NatsServerEndpoint     string `keda:"name=natsServerMonitoringEndpoint, order=authParams;triggerMetadata"`
+	monitoringURL          string
+	consumerLeader         string
+	monitoringLeaderURL    string
+	clusterSize            int
+	triggerIndex           int
 }
 
 type jetStreamEndpointResponse struct {
@@ -138,12 +138,12 @@ func NewNATSJetStreamScaler(config *scalersconfig.ScalerConfig) (Scaler, error) 
 
 func parseNATSJetStreamMetadata(config *scalersconfig.ScalerConfig) (natsJetStreamMetadata, error) {
 	meta := natsJetStreamMetadata{}
-  if err := config.TypedConfig(&meta); err != nil {
-    return natsJetStreamMetadata{}, fmt.Errorf("error parsing nats metadata: %w", err)
-  }
-  if meta.AccountID == `` {
-    meta.AccountID = meta.Account
-  }
+	if err := config.TypedConfig(&meta); err != nil {
+		return natsJetStreamMetadata{}, fmt.Errorf("error parsing nats metadata: %w", err)
+	}
+	if meta.AccountID == `` {
+		meta.AccountID = meta.Account
+	}
 
 	meta.triggerIndex = config.TriggerIndex
 	meta.monitoringURL = getNATSJetStreamMonitoringURL(meta.UseHTTPS, meta.NatsServerEndpoint, meta.AccountID)
@@ -438,5 +438,5 @@ func (s *natsJetStreamScaler) Close(context.Context) error {
 }
 
 func (metadata natsJetStreamMetadata) IsAccount(account accountDetail) bool {
-  return account.ID == metadata.AccountID || account.Name == metadata.Account
+	return account.ID == metadata.AccountID || account.Name == metadata.Account
 }
