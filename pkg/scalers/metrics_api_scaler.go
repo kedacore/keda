@@ -500,7 +500,7 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 			}
 			for _, address := range subset.Addresses {
 				if address.NodeName != nil {
-					endpointUrls = append(endpointUrls, fmt.Sprintf("%s://%s%s/%s", url.Scheme, address.IP, foundPort, url.Path))
+					endpointUrls = append(endpointUrls, fmt.Sprintf("%s://%s%s%s", url.Scheme, address.IP, foundPort, url.Path))
 				}
 			}
 		}
