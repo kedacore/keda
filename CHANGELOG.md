@@ -96,7 +96,7 @@ Here is an overview of all new **experimental** features:
 - **External Scaler**: Support server TLS without custom CA ([#6606](https://github.com/kedacore/keda/pull/6606))
 - **Redis Streams**: Allow default value of 0 for activationLagCount ([#6478](https://github.com/kedacore/keda/issues/6478))
 - **Selenium Grid**: Scaler logic on platformName is set empty or `any` ([#6477](https://github.com/kedacore/keda/issues/6477))
-- **NATS JetStream**: Support for looking up account using an ID ([#6611]())
+- **NATS JetStream**: Support for looking up account using an ID ([#6611](https://github.com/kedacore/keda/pull/6611))
 
 ### Deprecations
 
