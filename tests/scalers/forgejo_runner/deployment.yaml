@@ -1,0 +1,204 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    stackit-git/created-by: stackit-git-operator
+    stackit-git/generation: "1"
+    stackit-git/timestamp: "1738552153"
+    stackit-git/version: "2"
+  labels:
+    app: stackit-git
+  name: stackit-git
+  namespace: stackit-git-16dcf586-c3cc-450e-a4a4-e2be7b284fe6
+  ownerReferences:
+    - apiVersion: forgejo.stackit.cloud/v1beta1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Forgejo
+      name: stackit-git
+      uid: 8a49bd67-55c5-444e-b187-91eb97c9196c
+  resourceVersion: "9733540"
+  uid: cd0615c5-fc2b-4f6e-803b-347eeb986488
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: stackit-git
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: stackit-git
+    spec:
+      containers:
+        - envFrom:
+            - secretRef:
+                name: stackit-git-env
+          image: schwarzit-xx-sit-stackit-dev-exp-docker-local.jfrog.io/stackit-git:v1.5.0
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 10
+            httpGet:
+              path: /
+              port: 3000
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+          name: stackit-git
+          ports:
+            - containerPort: 3000
+              name: http
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 10
+            httpGet:
+              path: /
+              port: 3000
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 5
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /var/lib/gitea
+              name: stackit-git-pvc
+              subPath: forgejo/var/lib/gitea
+            - mountPath: /tmp
+              name: stackit-git-tmp
+            - mountPath: /stackit-git-backups
+              name: stackit-git-backups
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+        - name: stackit-git-image-registry-auth
+      initContainers:
+        - args:
+            - /stackit-git-init-postgres/entrypoint.sh
+          command:
+            - /bin/sh
+          envFrom:
+            - secretRef:
+                name: stackit-git-init-postgres-env
+          image: andreswebs/postgresql-client@sha256:fa85f600a97b24521a980f7ab64417589007e687ad3c8ce69f06a47302f0a7ac
+          imagePullPolicy: IfNotPresent
+          name: stackit-git-init-postgres
+          resources:
+            limits:
+              cpu: 50m
+              memory: 64Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /stackit-git-init-postgres
+              name: stackit-git-init-postgres
+              readOnly: true
+        - args:
+            - /stackit-git-init/entrypoint.sh
+          command:
+            - /bin/bash
+          envFrom:
+            - secretRef:
+                name: stackit-git-init-env
+          image: schwarzit-xx-sit-stackit-dev-exp-docker-local.jfrog.io/stackit-git:v1.5.0
+          imagePullPolicy: IfNotPresent
+          name: stackit-git-init
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /var/lib/gitea
+              name: stackit-git-pvc
+              subPath: forgejo/var/lib/gitea
+            - mountPath: /tmp
+              name: stackit-git-tmp
+            - mountPath: /stackit-git-backups
+              name: stackit-git-backups
+            - mountPath: /stackit-git-init
+              name: stackit-git-init
+              readOnly: true
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccount: stackit-git-service-account
+      serviceAccountName: stackit-git-service-account
+      terminationGracePeriodSeconds: 180
+      volumes:
+        - name: stackit-git-pvc
+          persistentVolumeClaim:
+            claimName: stackit-git-pvc
+        - configMap:
+            defaultMode: 420
+            name: stackit-git-init
+          name: stackit-git-init
+        - configMap:
+            defaultMode: 420
+            name: stackit-git-init-postgres
+          name: stackit-git-init-postgres
+        - emptyDir: {}
+          name: stackit-git-tmp
+        - emptyDir: {}
+          name: stackit-git-backups
+status:
+  availableReplicas: 1
+  conditions:
+    - lastTransitionTime: "2025-02-03T03:09:13Z"
+      lastUpdateTime: "2025-02-03T03:10:33Z"
+      message: ReplicaSet "stackit-git-6d8995bdf6" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2025-02-17T13:55:58Z"
+      lastUpdateTime: "2025-02-17T13:55:58Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+  observedGeneration: 1
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1

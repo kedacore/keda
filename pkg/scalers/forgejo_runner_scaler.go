@@ -44,10 +44,6 @@ type ForgejoJob struct {
 	Status string `json:"status"`
 }
 
-type JobsListResponse struct {
-	Jobs []ForgejoJob `json:"body"`
-}
-
 type forgejoRunnerScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *forgejoRunnerMetadata
@@ -112,15 +108,15 @@ func (s *forgejoRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricN
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(len(jobList.Jobs)))
+	metric := GenerateMetricInMili(metricName, float64(len(jobList)))
 
 	metric.Value.Add(resource.Quantity{})
 
 	return []external_metrics.ExternalMetricValue{metric}, true, nil
 }
 
-func (s *forgejoRunnerScaler) getJobsList(ctx context.Context) (JobsListResponse, error) {
-	jobList := JobsListResponse{}
+func (s *forgejoRunnerScaler) getJobsList(ctx context.Context) ([]ForgejoJob, error) {
+	var jobList []ForgejoJob
 
 	uri, err := s.getRunnerJobURL()
 	if err != nil {
