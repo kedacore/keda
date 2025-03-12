@@ -148,27 +148,29 @@ func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
 func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.Warnings, error) {
 	metricscollector.RecordScaledObjectValidatingTotal(so.Namespace, action)
 
-	verifyFunctions := []func(*ScaledObject, string, bool) error{
-		verifyCPUMemoryScalers,
-		verifyScaledObjects,
-		verifyHpas,
-		verifyReplicaCount,
-		verifyFallback,
+	verifyFunctions := map[string]func(*ScaledObject, string, bool) error{
+		"verifyCPUMemoryScalers": verifyCPUMemoryScalers,
+		"verifyScaledObjects":    verifyScaledObjects,
+		"verifyHpas":             verifyHpas,
+		"verifyReplicaCount":     verifyReplicaCount,
+		"verifyFallback":         verifyFallback,
 	}
 
-	for i := range verifyFunctions {
-		err := verifyFunctions[i](so, action, dryRun)
+	for functionName, function := range verifyFunctions {
+		scaledobjectlog.V(1).Info(fmt.Sprintf("calling %s to validate %s", functionName, so.Name))
+		err := function(so, action, dryRun)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	verifyCommonFunctions := []func(interface{}, string, bool) error{
-		verifyTriggers,
+	verifyCommonFunctions := map[string]func(interface{}, string, bool) error{
+		"verifyTriggers": verifyTriggers,
 	}
 
-	for i := range verifyCommonFunctions {
-		err := verifyCommonFunctions[i](so, action, dryRun)
+	for functionName, function := range verifyCommonFunctions {
+		scaledobjectlog.V(1).Info(fmt.Sprintf("calling %s to validate %s", functionName, so.Name))
+		err := function(so, action, dryRun)
 		if err != nil {
 			return nil, err
 		}
@@ -178,6 +180,7 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 	return nil, nil
 }
 
+//nolint:unparam
 func verifyReplicaCount(incomingSo *ScaledObject, action string, _ bool) error {
 	err := CheckReplicaCountBoundsAreValid(incomingSo)
 	if err != nil {
@@ -193,7 +196,7 @@ func verifyFallback(incomingSo *ScaledObject, action string, _ bool) error {
 		scaledobjectlog.WithValues("name", incomingSo.Name).Error(err, "validation error")
 		metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "incorrect-fallback")
 	}
-	return nil
+	return err
 }
 
 func verifyTriggers(incomingObject interface{}, action string, _ bool) error {
@@ -231,8 +234,8 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 		return err
 	}
 
-	var incomingSoGckr GroupVersionKindResource
-	incomingSoGckr, err = ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
+	var incomingSoGvkr GroupVersionKindResource
+	incomingSoGvkr, err = ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
 	if err != nil {
 		scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from incoming ScaledObject", "apiVersion", incomingSo.Spec.ScaleTargetRef.APIVersion, "kind", incomingSo.Spec.ScaleTargetRef.Kind)
 		return err
@@ -245,13 +248,13 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 		val, _ := json.MarshalIndent(hpa, "", "  ")
 		scaledobjectlog.V(1).Info(fmt.Sprintf("checking hpa %s: %v", hpa.Name, string(val)))
 
-		hpaGckr, err := ParseGVKR(restMapper, hpa.Spec.ScaleTargetRef.APIVersion, hpa.Spec.ScaleTargetRef.Kind)
+		hpaGvkr, err := ParseGVKR(restMapper, hpa.Spec.ScaleTargetRef.APIVersion, hpa.Spec.ScaleTargetRef.Kind)
 		if err != nil {
 			scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from HPA", "hpaName", hpa.Name, "apiVersion", hpa.Spec.ScaleTargetRef.APIVersion, "kind", hpa.Spec.ScaleTargetRef.Kind)
 			return err
 		}
 
-		if hpaGckr.GVKString() == incomingSoGckr.GVKString() &&
+		if hpaGvkr.GVKString() == incomingSoGvkr.GVKString() &&
 			hpa.Spec.ScaleTargetRef.Name == incomingSo.Spec.ScaleTargetRef.Name {
 			owned := false
 			for _, owner := range hpa.OwnerReferences {
@@ -268,7 +271,7 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 					incomingSo.Spec.Advanced.HorizontalPodAutoscalerConfig.Name == hpa.Name {
 					scaledobjectlog.Info(fmt.Sprintf("%s hpa ownership being transferred to %s", hpa.Name, incomingSo.Name))
 				} else {
-					err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSoGckr.GVKString(), hpa.Name)
+					err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSoGvkr.GVKString(), hpa.Name)
 					scaledobjectlog.Error(err, "validation error")
 					metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "other-hpa")
 					return err
@@ -363,13 +366,13 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool
 					Namespace: incomingSo.Namespace,
 					Name:      incomingSo.Spec.ScaleTargetRef.Name,
 				}
-				incomingSoGckr, err := ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
+				incomingSoGvkr, err := ParseGVKR(restMapper, incomingSo.Spec.ScaleTargetRef.APIVersion, incomingSo.Spec.ScaleTargetRef.Kind)
 				if err != nil {
 					scaledobjectlog.Error(err, "Failed to parse Group, Version, Kind, Resource from incoming ScaledObject", "apiVersion", incomingSo.Spec.ScaleTargetRef.APIVersion, "kind", incomingSo.Spec.ScaleTargetRef.Kind)
 					return err
 				}
 
-				switch incomingSoGckr.GVKString() {
+				switch incomingSoGvkr.GVKString() {
 				case "apps/v1.Deployment":
 					deployment := &appsv1.Deployment{}
 					if err := getFromCacheOrDirect(context.Background(), key, deployment); err != nil {

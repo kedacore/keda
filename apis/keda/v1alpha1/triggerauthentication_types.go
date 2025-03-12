@@ -379,6 +379,8 @@ type AwsSecretManagerSecret struct {
 	VersionID string `json:"versionId,omitempty"`
 	// +optional
 	VersionStage string `json:"versionStage,omitempty"`
+	// +optional
+	SecretKey string `json:"secretKey,omitempty"`
 }
 
 func init() {

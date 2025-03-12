@@ -197,7 +197,7 @@ var testQueueDepthResults = []queueDepthResultTestData{
 			"message": "MQWB0009E: Could not query the queue manager 'testqmgR'.",
 			"explanation": "The REST API was invoked specifying a queue manager name which cannot be located."}]
 		}`,
-		responseStatus: http.StatusOK,
+		responseStatus: http.StatusNotFound,
 		expectedValue:  0,
 		isError:        true,
 	},

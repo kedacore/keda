@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.16.1](#v2161)
 - [v2.16.0](#v2160)
 - [v2.15.1](#v2151)
 - [v2.15.0](#v2150)
@@ -56,12 +57,18 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
+- **General**: Fix the check whether Fallback is enabled when using ScalingModifiers ([#6521](https://github.com/kedacore/keda/pull/6521))
+- **General**: Fix waiting to reach `failureThreshold` before fallback ([#6520](https://github.com/kedacore/keda/pull/6520))
+- **General**: Introduce new Temporal scaler ([#4724](https://github.com/kedacore/keda/issues/4724))
+
 ### New
 
+- **General**: Add Fallback option `behavior` for dynamic fallback calculation ([#6450](https://github.com/kedacore/keda/issues/6450))
 - **General**: Enable OpenSSF Scorecard to enhance security practices across the project ([#5913](https://github.com/kedacore/keda/issues/5913))
 - **General**: Introduce new NSQ scaler ([#3281](https://github.com/kedacore/keda/issues/3281))
 - **General**: Operator flag to control patching of webhook resources certificates ([#6184](https://github.com/kedacore/keda/issues/6184))
 - **General**: Vault authentication via cross-namespace service accounts ([#6153](https://github.com/kedacore/keda/issues/6153))
+- **Azure Pipelines Scaler**: Introduce requireAllDemandsAndIgnoreOthers to match job demands while ignoring extras ([#5579](https://github.com/kedacore/keda/issues/5579))
 
 #### Experimental
 
@@ -71,16 +78,27 @@ Here is an overview of all new **experimental** features:
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Add SecretKey to AWS SecretsManager TriggerAuthentication to allow parsing JSON / Key/Value Pairs in secrets ([#5940](https://github.com/kedacore/keda/issues/5940))
+- **Elasticsearch Scaler**: Support IgnoreNullValues at Elasticsearch scaler ([#6599](https://github.com/kedacore/keda/pull/6599))
+- **GitHub Scaler**: Add support to use ETag for conditional requests against the Github API ([#6503](https://github.com/kedacore/keda/issues/6503))
+- **GitHub Scaler**: Filter workflows via query parameter for improved queue count accuracy ([#6519](https://github.com/kedacore/keda/pull/6519))
+- **IBMMQ Scaler**: Handling StatusNotFound in IBMMQ scaler ([#6472](https://github.com/kedacore/keda/pull/6472))
+- **MongoDB Scaler**: Support float queryValue for MongoDB scaler ([#6574](https://github.com/kedacore/keda/issues/6574))
+- **RabbitMQ Scaler**: Support use of the ‘vhostName’ parameter in the ‘TriggerAuthentication’ resource ([#6369](https://github.com/kedacore/keda/issues/6369))
+- **Selenium Grid**: Add trigger param for Node enables managed downloads capability ([#6570](https://github.com/kedacore/keda/pull/6570))
+- **Selenium Grid**: Add trigger param to set custom capabilities for matching specific Nodes ([#6536](https://github.com/kedacore/keda/issues/6536))
 
 ### Fixes
 
 - **General**: Centralize and improve automaxprocs configuration with proper structured logging ([#5970](https://github.com/kedacore/keda/issues/5970))
+- **General**: Fix CVE-2025-27144 and CVE-2025-22868 ([#6613](https://github.com/kedacore/keda/issues/6613))
+- **General**: Fix event text when deactivation fails ([#6469](https://github.com/kedacore/keda/issues/6469))
 - **General**: Paused ScaledObject count is reported correctly after operator restart ([#6321](https://github.com/kedacore/keda/issues/6321))
 - **General**: ScaledJobs ready status set to true when recoverred problem ([#6329](https://github.com/kedacore/keda/pull/6329))
 - **AWS Scalers**: Add AWS region to the AWS Config Cache key ([#6128](https://github.com/kedacore/keda/issues/6128))
-- **Selenium Grid Scaler**: Exposes sum of pending and ongoing sessions to KDEA ([#6368](https://github.com/kedacore/keda/pull/6368))
-- **Selenium Grid Scaler**: Selenium Grid in case multiple scaler triggers are activate ([#6437](https://github.com/kedacore/keda/pull/6437))
+- **External Scaler**: Support server TLS without custom CA ([#6606](https://github.com/kedacore/keda/pull/6606))
+- **Redis Streams**: Allow default value of 0 for activationLagCount ([#6478](https://github.com/kedacore/keda/issues/6478))
+- **Selenium Grid**: Scaler logic on platformName is set empty or `any` ([#6477](https://github.com/kedacore/keda/issues/6477))
 
 ### Deprecations
 
@@ -92,12 +110,29 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- Change `InitialCooldownPeriod` from `int32` to `*int32` ([#6423](https://github.com/kedacore/keda/issues/6423))
+- **General**: Change `InitialCooldownPeriod` from `int32` to `*int32` ([#6423](https://github.com/kedacore/keda/issues/6423))
+- **General**: Remove Prometheus metric deprecations ([#6339](https://github.com/kedacore/keda/pull/6339))
+- **External Scaler**: Remove deprecated tlsCertFile from External scaler ([#4549](https://github.com/kedacore/keda/issues/4549))
+
+### Other
+
+- **General**: Add debug logs tracking validation of ScaledObjects on webhook ([#6498](https://github.com/kedacore/keda/pull/6498))
+- **General**: Fix fallback validation check bug ([#6407](https://github.com/kedacore/keda/pull/6407))
+- **General**: New eventreason KEDAScalersInfo to display important information ([#6328](https://github.com/kedacore/keda/issues/6328))
+- **External Scalers**: Allow `float64` values in externalmetrics' `MetricValue` & `TargetSize`. The old fields are still there because of backward compatibility. ([#5159](https://github.com/kedacore/keda/issues/5159))
+
+## v2.16.1
+
+### Fixes
+
+- **General**: Centralize and improve automaxprocs configuration with proper structured logging ([#5970](https://github.com/kedacore/keda/issues/5970))
+- **General**: Paused ScaledObject count is reported correctly after operator restart ([#6321](https://github.com/kedacore/keda/issues/6321))
+- **General**: ScaledJobs ready status set to true when recoverred problem ([#6329](https://github.com/kedacore/keda/pull/6329))
+- **Selenium Grid Scaler**: Exposes sum of pending and ongoing sessions to KDEA ([#6368](https://github.com/kedacore/keda/pull/6368))
 
 ### Other
 
 - **General**: Bump newrelic-client-go deps to 2.51.2 (latest) ([#6325](https://github.com/kedacore/keda/pull/6325))
-- **General**: New eventreason KEDAScalersInfo to display important information ([#6328](https://github.com/kedacore/keda/issues/6328))
 - **General**: refactor: replace experimental `maps` and `slices` with stdlib ([#6372](https://github.com/kedacore/keda/pull/6372))
 
 ## v2.16.0
