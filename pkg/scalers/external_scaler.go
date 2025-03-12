@@ -40,6 +40,7 @@ type externalScalerMetadata struct {
 	caCert           string
 	tlsClientCert    string
 	tlsClientKey     string
+	enableTLS        bool
 	unsafeSsl        bool
 }
 
@@ -135,6 +136,13 @@ func parseExternalScalerMetadata(config *scalersconfig.ScalerConfig) (externalSc
 			return meta, fmt.Errorf("failed to parse insecureSkipVerify value. Must be either true or false")
 		}
 		meta.unsafeSsl = boolVal
+	}
+	if val, ok := config.TriggerMetadata["enableTLS"]; ok && val != "" {
+		boolVal, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("failed to parse enableTLS value. Must be either true or false")
+		}
+		meta.enableTLS = boolVal
 	}
 	// Add elements to metadata
 	for key, value := range config.TriggerMetadata {
@@ -314,7 +322,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalSca
 			return nil, err
 		}
 
-		if len(tlsConfig.Certificates) > 0 || metadata.caCert != "" {
+		if metadata.enableTLS || len(tlsConfig.Certificates) > 0 || metadata.caCert != "" {
 			// nosemgrep: go.grpc.ssrf.grpc-tainted-url-host.grpc-tainted-url-host
 			return grpc.NewClient(metadata.scalerAddress,
 				grpc.WithDefaultServiceConfig(grpcConfig),
