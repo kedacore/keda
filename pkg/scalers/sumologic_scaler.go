@@ -121,7 +121,7 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 		if err != nil {
 			return nil, fmt.Errorf("invalid quantization: %w", err)
 		}
-		meta.Quantization = time.Duration(quantization)
+		meta.Quantization = time.Duration(quantization) * time.Second
 	}
 
 	if val, ok := config.TriggerMetadata["type"]; ok {
