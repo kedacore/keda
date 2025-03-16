@@ -16,6 +16,16 @@ import (
 )
 
 func NewClient(c *Config, sc *scalersconfig.ScalerConfig) (*Client, error) {
+	if c.Host == "" {
+		return nil, errors.New("host is required")
+	}
+	if c.AccessID == "" {
+		return nil, errors.New("accessID is required")
+	}
+	if c.AccessKey == "" {
+		return nil, errors.New("accessKey is required")
+	}
+
 	httpClient := kedautil.CreateHTTPClient(sc.GlobalHTTPTimeout, c.UnsafeSsl)
 
 	logger, err := getLogger(c.LogLevel)
