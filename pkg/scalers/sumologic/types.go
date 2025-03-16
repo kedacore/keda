@@ -2,6 +2,8 @@ package sumologic
 
 import (
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 type Config struct {
@@ -9,11 +11,13 @@ type Config struct {
 	AccessID  string
 	AccessKey string
 	UnsafeSsl bool
+	LogLevel  string
 }
 
 type Client struct {
 	config *Config
 	client *http.Client
+	logger *zap.Logger
 }
 
 type LogSearchRequest struct {
