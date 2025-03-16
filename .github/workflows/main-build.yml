@@ -85,7 +85,7 @@ jobs:
   validate-arm64:
     needs: build
     uses: kedacore/keda/.github/workflows/template-arm64-smoke-tests.yml@main
-  
+
   validate-s390x:
     needs: build
     uses: kedacore/keda/.github/workflows/template-s390x-smoke-tests.yml@main
