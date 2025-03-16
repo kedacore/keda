@@ -15,6 +15,11 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
+const (
+	DefaultQueryAggregator = "Avg"
+	DefaultRollup          = "Avg"
+)
+
 func NewClient(c *Config, sc *scalersconfig.ScalerConfig) (*Client, error) {
 	if c.Host == "" {
 		return nil, errors.New("host is required")
@@ -147,7 +152,7 @@ func (c *Client) GetLogSearchResult(query string, timerange time.Duration, dimen
 		return nil, errors.New("only agg queries are supported, please check your query")
 	}
 
-	records, err := c.getLogSearchRecords(jobID, jobStatus.RecordCount)
+	records, err := c.getLogSearchRecords(jobID, jobStatus.RecordCount, resultField)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +176,7 @@ func (c *Client) GetMetricsSearchResult(query string, quantization, timerange ti
 		return nil, fmt.Errorf("failed to parse time range: %w", err)
 	}
 
-	resp, err := c.createMetricsQuery(query, quantization, from, to)
+	resp, err := c.createMetricsQuery(query, quantization, from, to, rollup)
 	if err != nil {
 		return nil, fmt.Errorf("error executing metrics query: %w", err)
 	}

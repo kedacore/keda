@@ -46,6 +46,7 @@ type MetricsQuery struct {
 	RowID        string `json:"rowId"`
 	Query        string `json:"query"`
 	Quantization int64  `json:"quantization"`
+	Rollup       string `json:"rollup"`
 }
 
 type TimeRangeBoundary struct {

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -14,10 +13,6 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-)
-
-const (
-	defaultQueryAggregator = "average"
 )
 
 type sumologicScaler struct {
@@ -45,18 +40,9 @@ type sumologicMetadata struct {
 	triggerIndex        int
 }
 
-var validRollupValues = map[string]bool{
-	"Avg":   true,
-	"Sum":   true,
-	"Min":   true,
-	"Max":   true,
-	"Count": true,
-	"None":  true,
-}
-
 func NewSumologicScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "sumologic_scaler")
-	meta, err := parseSumoMetadata(config, logger)
+	meta, err := parseSumoMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing metadata: %w", err)
 	}
@@ -84,9 +70,8 @@ func NewSumologicScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*sumologicMetadata, error) {
+func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, error) {
 	meta := sumologicMetadata{}
-
 	meta.triggerIndex = config.TriggerIndex
 
 	if config.TriggerMetadata["host"] == "" {
@@ -113,19 +98,26 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 		return nil, errors.New("missing required metadata: type (must be 'logs' or 'metrics')")
 	}
 	meta.queryType = config.TriggerMetadata["queryType"]
+
 	if meta.queryType != "logs" && meta.queryType != "metrics" {
 		return nil, fmt.Errorf("invalid type: %s, must be 'logs' or 'metrics'", meta.queryType)
 	}
+
 	if meta.queryType == "logs" {
 		if resultField, exists := config.TriggerMetadata["resultField"]; !exists || resultField == "" {
 			return nil, fmt.Errorf("resultField is required when queryType is 'logs'")
 		}
+		meta.resultField = config.TriggerMetadata["resultField"]
 	}
+
 	if meta.queryType == "metrics" {
 		if rollup, exists := config.TriggerMetadata["rollup"]; exists {
-			if !validRollupValues[rollup] {
-				return nil, fmt.Errorf("invalid rollup value: %s, must be one of Avg, Sum, Min, Max, Count, None", rollup)
+			if err := sumologic.IsValidRollupType(rollup); err != nil {
+				return nil, err
 			}
+			meta.rollup = rollup
+		} else {
+			meta.rollup = sumologic.DefaultRollup
 		}
 	}
 
@@ -159,16 +151,18 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
 		activationThreshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %w", err)
+			return nil, fmt.Errorf("activationThreshold parsing error %w", err)
 		}
 		meta.activationThreshold = activationThreshold
 	}
 
-	if val, ok := config.TriggerMetadata["queryAggregator"]; ok && val != "" {
-		queryAggregator := strings.ToLower(val)
+	if queryAggregator, ok := config.TriggerMetadata["queryAggregator"]; ok && queryAggregator != "" {
+		if err := sumologic.IsValidQueryAggregation(queryAggregator); err != nil {
+			return nil, err
+		}
 		meta.queryAggregator = queryAggregator
 	} else {
-		meta.queryAggregator = defaultQueryAggregator
+		meta.queryAggregator = sumologic.DefaultQueryAggregator
 	}
 
 	if val, ok := config.TriggerMetadata["threshold"]; ok {

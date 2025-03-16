@@ -81,12 +81,13 @@ func TestGetLogSearchResult(t *testing.T) {
 		query             string
 		timerange         time.Duration
 		tz                string
-		dimension         string
+		aggregation       string
 		expectErr         bool
 		createJobResponse LogSearchJobResponse
 		jobStatusResponse LogSearchJobStatus
 		recordsResponse   LogSearchRecordsResponse
 		statusCode        int
+		resultField       string
 	}{
 		{
 			name: "Successful Log Search",
@@ -96,10 +97,10 @@ func TestGetLogSearchResult(t *testing.T) {
 				AccessKey: "fake",
 				UnsafeSsl: true,
 			},
-			query:     "test query | count as result",
-			timerange: 10,
-			tz:        "Asia/Kolkata",
-			dimension: "latest",
+			query:       "test query | count as result",
+			timerange:   10,
+			tz:          "Asia/Kolkata",
+			aggregation: "Latest",
 			createJobResponse: LogSearchJobResponse{
 				ID: "fake",
 			},
@@ -116,7 +117,8 @@ func TestGetLogSearchResult(t *testing.T) {
 					},
 				},
 			},
-			statusCode: http.StatusOK,
+			statusCode:  http.StatusOK,
+			resultField: "result",
 		},
 		{
 			name: "Failed Log Search",
@@ -126,10 +128,10 @@ func TestGetLogSearchResult(t *testing.T) {
 				AccessKey: "fake",
 				UnsafeSsl: true,
 			},
-			query:     "test query",
-			timerange: 10,
-			tz:        "UTC",
-			dimension: "latest",
+			query:       "test query",
+			timerange:   10,
+			tz:          "UTC",
+			aggregation: "Latest",
 			createJobResponse: LogSearchJobResponse{
 				ID: "fake",
 			},
@@ -137,8 +139,9 @@ func TestGetLogSearchResult(t *testing.T) {
 				State:       "CANCELLED",
 				RecordCount: 0,
 			},
-			expectErr:  true,
-			statusCode: http.StatusOK,
+			expectErr:   true,
+			statusCode:  http.StatusOK,
+			resultField: "result",
 		},
 		{
 			name: "Non-Aggregate Query",
@@ -148,10 +151,10 @@ func TestGetLogSearchResult(t *testing.T) {
 				AccessKey: "fake",
 				UnsafeSsl: true,
 			},
-			query:     "test non-agg query",
-			timerange: 10,
-			tz:        "UTC",
-			dimension: "latest",
+			query:       "test non-agg query",
+			timerange:   10,
+			tz:          "UTC",
+			aggregation: "Latest",
 			createJobResponse: LogSearchJobResponse{
 				ID: "fake",
 			},
@@ -159,8 +162,9 @@ func TestGetLogSearchResult(t *testing.T) {
 				State:       "DONE GATHERING RESULTS",
 				RecordCount: 0,
 			},
-			expectErr:  true,
-			statusCode: http.StatusOK,
+			expectErr:   true,
+			statusCode:  http.StatusOK,
+			resultField: "result",
 		},
 	}
 
@@ -208,7 +212,7 @@ func TestGetLogSearchResult(t *testing.T) {
 				t.Fatalf("Expected no error, got %s", err.Error())
 			}
 
-			result, err := client.GetLogSearchResult(test.query, test.timerange, test.dimension, test.tz)
+			result, err := client.GetLogSearchResult(test.query, test.timerange, test.aggregation, test.tz, test.resultField)
 
 			if test.expectErr && err != nil {
 				return
@@ -236,12 +240,13 @@ func TestGetMetricsSearchResult(t *testing.T) {
 		query          string
 		quantization   time.Duration
 		timerange      time.Duration
-		dimension      string
+		aggregation    string
 		tz             string
 		expectErr      bool
 		response       MetricsQueryResponse
 		statusCode     int
 		expectedResult float64
+		rollup         string
 	}{
 		{
 			name: "Successful Metrics Query - Sum",
@@ -254,7 +259,7 @@ func TestGetMetricsSearchResult(t *testing.T) {
 			query:        "test query",
 			quantization: 1 * time.Minute,
 			timerange:    10 * time.Minute,
-			dimension:    "sum",
+			aggregation:  "Sum",
 			tz:           "UTC",
 			response: MetricsQueryResponse{
 				QueryResult: []QueryResult{
@@ -274,6 +279,7 @@ func TestGetMetricsSearchResult(t *testing.T) {
 			},
 			statusCode:     http.StatusOK,
 			expectedResult: 60,
+			rollup:         "Avg",
 		},
 		{
 			name: "Successful Metrics Query - Latest",
@@ -286,7 +292,7 @@ func TestGetMetricsSearchResult(t *testing.T) {
 			query:        "test query",
 			quantization: 1 * time.Minute,
 			timerange:    10 * time.Minute,
-			dimension:    "latest",
+			aggregation:  "Latest",
 			tz:           "UTC",
 			response: MetricsQueryResponse{
 				QueryResult: []QueryResult{
@@ -306,6 +312,7 @@ func TestGetMetricsSearchResult(t *testing.T) {
 			},
 			statusCode:     http.StatusOK,
 			expectedResult: 30,
+			rollup:         "Avg",
 		},
 		{
 			name: "Failed Metrics Query",
@@ -318,7 +325,7 @@ func TestGetMetricsSearchResult(t *testing.T) {
 			query:        "test query",
 			quantization: 1 * time.Minute,
 			timerange:    10 * time.Minute,
-			dimension:    "sum",
+			aggregation:  "Sum",
 			tz:           "UTC",
 			expectErr:    true,
 			response: MetricsQueryResponse{
@@ -332,6 +339,7 @@ func TestGetMetricsSearchResult(t *testing.T) {
 				},
 			},
 			statusCode: http.StatusBadRequest,
+			rollup:     "Avg",
 		},
 	}
 
@@ -358,7 +366,7 @@ func TestGetMetricsSearchResult(t *testing.T) {
 				t.Fatalf("Expected no error, got %s", err.Error())
 			}
 
-			result, err := client.GetMetricsSearchResult(test.query, test.quantization, test.timerange, test.dimension, test.tz)
+			result, err := client.GetMetricsSearchResult(test.query, test.quantization, test.timerange, test.aggregation, test.tz, test.rollup)
 
 			if test.expectErr && err != nil {
 				return
