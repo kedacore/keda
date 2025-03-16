@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"time"
 
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -15,12 +18,54 @@ import (
 func NewClient(c *Config, sc *scalersconfig.ScalerConfig) (*Client, error) {
 	httpClient := kedautil.CreateHTTPClient(sc.GlobalHTTPTimeout, c.UnsafeSsl)
 
+	logger, err := getLogger(c.LogLevel)
+	if err != nil {
+		return nil, err
+	}
+
 	client := &Client{
-		c,
-		httpClient,
+		config: c,
+		client: httpClient,
+		logger: logger,
 	}
 
 	return client, nil
+}
+
+func getLogger(logLevel string) (*zap.Logger, error) {
+	config := zap.NewProductionConfig()
+	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	config.EncoderConfig.TimeKey = "timestamp"
+	config.EncoderConfig.MessageKey = "message"
+	config.EncoderConfig.LevelKey = "level"
+	config.EncoderConfig.CallerKey = "caller"
+	config.EncoderConfig.StacktraceKey = "stacktrace"
+
+	switch logLevel {
+	case "DEBUG":
+		config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+	case "INFO":
+		config.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
+	case "WARN":
+		config.Level = zap.NewAtomicLevelAt(zapcore.WarnLevel)
+	case "ERROR":
+		config.Level = zap.NewAtomicLevelAt(zapcore.ErrorLevel)
+	case "DPANIC":
+		config.Level = zap.NewAtomicLevelAt(zapcore.DPanicLevel)
+	case "PANIC":
+		config.Level = zap.NewAtomicLevelAt(zapcore.PanicLevel)
+	case "FATAL":
+		config.Level = zap.NewAtomicLevelAt(zapcore.FatalLevel)
+	default:
+		config.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel) // Default to INFO
+	}
+
+	logger, err := config.Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize zap logger: %v", err)
+	}
+
+	return logger, nil
 }
 
 func (c *Client) getTimerange(tz string, timerange time.Duration) (string, string, error) {
@@ -81,7 +126,7 @@ func (c *Client) GetLogSearchResult(query string, timerange time.Duration, dimen
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("log search job created, id: %s\n", jobID)
+	c.logger.Debug("log search job created", zap.String("jobID", jobID))
 
 	jobStatus, err := c.waitForLogSearchJobCompletion(jobID)
 	if err != nil {

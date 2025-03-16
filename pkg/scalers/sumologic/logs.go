@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -52,7 +54,7 @@ func (c *Client) waitForLogSearchJobCompletion(jobID string) (*LogSearchJobStatu
 			return nil, err
 		}
 
-		fmt.Printf("log search job state: %s, record count: %d\n", status.State, status.RecordCount)
+		c.logger.Debug("log search job state", zap.String("state", status.State), zap.Int("recordCount", status.RecordCount))
 
 		if status.State == "DONE GATHERING RESULTS" {
 			return &status, nil
@@ -102,7 +104,7 @@ func (c *Client) getLogSearchRecords(jobID string, totalRecords int) ([]float64,
 		offset += limit
 	}
 
-	fmt.Printf("log search total records fetched: %d\n", len(allRecords))
+	c.logger.Debug("log search total records fetched", zap.Int("totalRecords", len(allRecords)))
 
 	return allRecords, nil
 }
@@ -112,7 +114,7 @@ func (c *Client) deleteLogSearchJob(jobID string) error {
 
 	_, err := c.makeRequest("DELETE", url, nil)
 	if err == nil {
-		fmt.Printf("log search job deleted, id: %s\n", jobID)
+		c.logger.Debug("log search job deleted", zap.String("jobID", jobID))
 	}
 
 	return err
