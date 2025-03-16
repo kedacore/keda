@@ -16,6 +16,10 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
+const (
+	defaultQueryAggregator = "average"
+)
+
 type sumologicScaler struct {
 	client     *sumologic.Client
 	metricType v2.MetricTargetType
@@ -24,24 +28,31 @@ type sumologicScaler struct {
 }
 
 type sumologicMetadata struct {
-	accessID            string `keda:"name=access_id,       order=authParams"`
-	accessKey           string `keda:"name=access_key,      order=authParams"`
-	host                string `keda:"name=host,            order=triggerMetadata"`
-	unsafeSsl           bool   `keda:"name=unsafeSsl,       order=triggerMetadata, optional"`
-	query               string
-	queryType           string
-	quantization        time.Duration // Only for metrics queries
-	timerange           time.Duration
-	timezone            string
-	activationThreshold float64
-	queryAggregator     string
-	threshold           float64
+	accessID            string        `keda:"name=access_id,       order=authParams"`
+	accessKey           string        `keda:"name=access_key,      order=authParams"`
+	host                string        `keda:"name=host,            order=triggerMetadata"`
+	unsafeSsl           bool          `keda:"name=unsafeSsl,       order=triggerMetadata, optional"`
+	query               string        `keda:"name=query,           order=triggerMetadata"`
+	queryType           string        `keda:"name=queryType,       order=triggerMetadata"`
+	resultField         string        `keda:"name=resultField,     order=triggerMetadata"`           // Only for logs queries
+	rollup              string        `keda:"name=rollup,          order=triggerMetadata, optional"` // Only for metrics queries
+	quantization        time.Duration `keda:"name=quantization,     order=triggerMetadata"`          // Only for metrics queries
+	timerange           time.Duration `keda:"name=timerange,       order=triggerMetadata"`
+	timezone            string        `keda:"name=timezone,        order=triggerMetadata, optional"`
+	activationThreshold float64       `keda:"name=activationThreshold, order=triggerMetadata, default=0"`
+	queryAggregator     string        `keda:"name=queryAggregator, order=triggerMetadata, optional"`
+	threshold           float64       `keda:"name=threshold,       order=triggerMetadata"`
 	triggerIndex        int
 }
 
-const (
-	defaultQueryAggregator = "average"
-)
+var validRollupValues = map[string]bool{
+	"Avg":   true,
+	"Sum":   true,
+	"Min":   true,
+	"Max":   true,
+	"Count": true,
+	"None":  true,
+}
 
 func NewSumologicScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "sumologic_scaler")
@@ -104,6 +115,18 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 	meta.queryType = config.TriggerMetadata["queryType"]
 	if meta.queryType != "logs" && meta.queryType != "metrics" {
 		return nil, fmt.Errorf("invalid type: %s, must be 'logs' or 'metrics'", meta.queryType)
+	}
+	if meta.queryType == "logs" {
+		if resultField, exists := config.TriggerMetadata["resultField"]; !exists || resultField == "" {
+			return nil, fmt.Errorf("resultField is required when queryType is 'logs'")
+		}
+	}
+	if meta.queryType == "metrics" {
+		if rollup, exists := config.TriggerMetadata["rollup"]; exists {
+			if !validRollupValues[rollup] {
+				return nil, fmt.Errorf("invalid rollup value: %s, must be one of Avg, Sum, Min, Max, Count, None", rollup)
+			}
+		}
 	}
 
 	if config.TriggerMetadata["timerange"] == "" {
@@ -186,7 +209,7 @@ func (s *sumologicScaler) GetMetricsAndActivity(ctx context.Context, metricName 
 	var num float64
 	var err error
 
-	num, err = s.client.GetQueryResult(s.metadata.queryType, s.metadata.query, s.metadata.quantization, s.metadata.timerange, s.metadata.queryAggregator, s.metadata.timezone)
+	num, err = s.client.GetQueryResult(s.metadata.queryType, s.metadata.query, s.metadata.quantization, s.metadata.timerange, s.metadata.queryAggregator, s.metadata.timezone, s.metadata.resultField, s.metadata.rollup)
 	if err != nil {
 		s.logger.Error(err, "error getting metrics from sumologic")
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metrics from sumologic: %w", err)
