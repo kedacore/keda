@@ -129,7 +129,7 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 		if err != nil {
 			return nil, fmt.Errorf("invalid quantization: %w", err)
 		}
-		meta.quantization = time.Duration(quantization) * time.Minute
+		meta.quantization = time.Duration(quantization) * time.Second
 	}
 
 	meta.activationQueryValue = 0
