@@ -160,7 +160,7 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 }
 
 func (s *sumologicScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(scalerName)
+	metricName := kedautil.NormalizeString(fmt.Sprintf("sumologic-%s", s.metadata.queryType))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
