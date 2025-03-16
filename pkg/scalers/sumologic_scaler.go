@@ -11,14 +11,16 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/scalers/sumologic"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
 type sumologicScaler struct {
-	client   *sumologic.Client
-	metadata *sumologicMetadata
-	logger   logr.Logger
+	client     *sumologic.Client
+	metricType v2.MetricTargetType
+	metadata   *sumologicMetadata
+	logger     logr.Logger
 }
 
 type sumologicMetadata struct {
@@ -31,17 +33,14 @@ type sumologicMetadata struct {
 	Quantization         time.Duration // Only for metrics queries
 	Timerange            time.Duration
 	Timezone             string
-	activationQueryValue float64
-	queryAggregator      string
-	fillValue            float64
-	targetValue          float64
-	vType                v2.MetricTargetType
+	ActivationQueryValue float64
+	QueryAggregator      string
+	TargetValue          float64
+	TriggerIndex         int
 }
 
 const max = "max"
 const avg = "average"
-const logsQueryType = "logs"
-const metricsQueryType = "metrics"
 
 func NewSumologicScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "sumologic_scaler")
@@ -60,15 +59,23 @@ func NewSumologicScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("failed to create sumologic client: %w", err)
 	}
 
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
+	}
+
 	return &sumologicScaler{
-		client:   client,
-		metadata: meta,
-		logger:   logger,
+		client:     client,
+		metricType: metricType,
+		metadata:   meta,
+		logger:     logger,
 	}, nil
 }
 
 func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*sumologicMetadata, error) {
 	meta := sumologicMetadata{}
+
+	meta.TriggerIndex = config.TriggerIndex
 
 	if config.TriggerMetadata["host"] == "" {
 		return nil, errors.New("missing required metadata: host")
@@ -95,7 +102,7 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 	}
 	meta.QueryType = config.TriggerMetadata["queryType"]
 	if meta.QueryType != "logs" && meta.QueryType != "metrics" {
-		return nil, fmt.Errorf("invalid type: %s, must be '%s' or '%s'", meta.QueryType, logsQueryType, metricsQueryType)
+		return nil, fmt.Errorf("invalid type: %s, must be 'logs' or 'metrics'", meta.QueryType)
 	}
 
 	if config.TriggerMetadata["timerange"] == "" {
@@ -113,7 +120,7 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 		meta.Timezone = config.TriggerMetadata["timezone"]
 	}
 
-	if meta.QueryType == metricsQueryType {
+	if meta.QueryType == "metrics" {
 		if config.TriggerMetadata["quantization"] == "" {
 			return nil, errors.New("missing required metadata: quantization (only for metrics queries)")
 		}
@@ -121,78 +128,40 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 		if err != nil {
 			return nil, fmt.Errorf("invalid quantization: %w", err)
 		}
-		meta.Quantization = time.Duration(quantization) * time.Second
+		meta.Quantization = time.Duration(quantization) * time.Minute
 	}
 
-	if val, ok := config.TriggerMetadata["type"]; ok {
-		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
-		if config.MetricType != "" {
-			return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
-		}
-		val = strings.ToLower(val)
-		switch val {
-		case avg:
-			meta.vType = v2.AverageValueMetricType
-		case "global":
-			meta.vType = v2.ValueMetricType
-		default:
-			return nil, fmt.Errorf("type has to be 'global' or 'average'")
-		}
-	} else {
-		// Default to using config.MetricType
-		metricType, err := GetMetricTargetType(config)
-		if err != nil {
-			return nil, fmt.Errorf("error getting scaler metric type: %w", err)
-		}
-		meta.vType = metricType
-	}
-
-	meta.activationQueryValue = 0
-	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
-		activationQueryValue, err := strconv.ParseFloat(val, 64)
+	meta.ActivationQueryValue = 0
+	if val, ok := config.TriggerMetadata["ActivationQueryValue"]; ok {
+		ActivationQueryValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %w", err)
 		}
-		meta.activationQueryValue = activationQueryValue
-	}
-
-	if val, ok := config.TriggerMetadata["fillValue"]; ok {
-		fillValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("fillValue parsing error %w", err)
-		}
-		meta.fillValue = fillValue
-	}
-
-	if val, ok := config.TriggerMetadata["targetValue"]; ok {
-		targetValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("targetValue parsing error %w", err)
-		}
-		meta.targetValue = targetValue
+		meta.ActivationQueryValue = ActivationQueryValue
 	}
 
 	if val, ok := config.TriggerMetadata["queryAggregator"]; ok && val != "" {
 		queryAggregator := strings.ToLower(val)
 		switch queryAggregator {
 		case avg, max:
-			meta.queryAggregator = queryAggregator
+			meta.QueryAggregator = queryAggregator
 		default:
 			return nil, fmt.Errorf("queryAggregator value %s has to be one of '%s, %s'", queryAggregator, avg, max)
 		}
 	} else {
-		meta.queryAggregator = ""
+		meta.QueryAggregator = ""
 	}
 
 	return &meta, nil
 }
 
 func (s *sumologicScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+	metricName := kedautil.NormalizeString(scalerName)
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: fmt.Sprintf("sumologic-%s", s.metadata.QueryType),
+			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, metricName),
 		},
-		Target: GetMetricTargetMili(s.metadata.vType, s.metadata.targetValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.TargetValue),
 	}
 	return []v2.MetricSpec{{
 		External: externalMetric,
@@ -213,14 +182,14 @@ func (s *sumologicScaler) GetMetricsAndActivity(ctx context.Context, metricName 
 	var num float64
 	var err error
 
-	num, err = s.client.GetQueryResult(s.metadata.QueryType, s.metadata.Query, s.metadata.Quantization, s.metadata.Timerange, s.metadata.queryAggregator, s.metadata.Timezone)
+	num, err = s.client.GetQueryResult(s.metadata.QueryType, s.metadata.Query, s.metadata.Quantization, s.metadata.Timerange, s.metadata.QueryAggregator, s.metadata.Timezone)
 	if err != nil {
 		s.logger.Error(err, "error getting metrics from Sumologic")
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metrics from Sumologic: %w", err)
 	}
 
 	metric = GenerateMetricInMili(metricName, num)
-	isActive := num > s.metadata.activationQueryValue
+	isActive := num > s.metadata.ActivationQueryValue
 
 	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
 }
