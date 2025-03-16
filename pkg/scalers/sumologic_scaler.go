@@ -24,19 +24,19 @@ type sumologicScaler struct {
 }
 
 type sumologicMetadata struct {
-	accessID             string `keda:"name=access_id,       order=authParams"`
-	accessKey            string `keda:"name=access_key,      order=authParams"`
-	host                 string `keda:"name=host,            order=triggerMetadata"`
-	unsafeSsl            bool   `keda:"name=unsafeSsl,       order=triggerMetadata, optional"`
-	query                string
-	queryType            string
-	quantization         time.Duration // Only for metrics queries
-	timerange            time.Duration
-	timezone             string
-	activationQueryValue float64
-	queryAggregator      string
-	targetValue          float64
-	triggerIndex         int
+	accessID            string `keda:"name=access_id,       order=authParams"`
+	accessKey           string `keda:"name=access_key,      order=authParams"`
+	host                string `keda:"name=host,            order=triggerMetadata"`
+	unsafeSsl           bool   `keda:"name=unsafeSsl,       order=triggerMetadata, optional"`
+	query               string
+	queryType           string
+	quantization        time.Duration // Only for metrics queries
+	timerange           time.Duration
+	timezone            string
+	activationThreshold float64
+	queryAggregator     string
+	targetThreshold     float64
+	triggerIndex        int
 }
 
 const (
@@ -132,13 +132,13 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 		meta.quantization = time.Duration(quantization) * time.Second
 	}
 
-	meta.activationQueryValue = 0
-	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
-		activationQueryValue, err := strconv.ParseFloat(val, 64)
+	meta.activationThreshold = 0
+	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
+		activationThreshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return nil, fmt.Errorf("queryValue parsing error %w", err)
 		}
-		meta.activationQueryValue = activationQueryValue
+		meta.activationThreshold = activationThreshold
 	}
 
 	if val, ok := config.TriggerMetadata["queryAggregator"]; ok && val != "" {
@@ -146,6 +146,14 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 		meta.queryAggregator = queryAggregator
 	} else {
 		meta.queryAggregator = defaultQueryAggregator
+	}
+
+	if val, ok := config.TriggerMetadata["targetThreshold"]; ok {
+		targetThreshold, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("targetThreshold parsing error %w", err)
+		}
+		meta.targetThreshold = targetThreshold
 	}
 
 	return &meta, nil
@@ -157,7 +165,7 @@ func (s *sumologicScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metr
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.targetThreshold),
 	}
 	return []v2.MetricSpec{{
 		External: externalMetric,
@@ -185,7 +193,7 @@ func (s *sumologicScaler) GetMetricsAndActivity(ctx context.Context, metricName 
 	}
 
 	metric = GenerateMetricInMili(metricName, num)
-	isActive := num > s.metadata.activationQueryValue
+	isActive := num > s.metadata.activationThreshold
 
 	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
 }
