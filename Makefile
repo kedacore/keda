@@ -26,7 +26,7 @@ ARCH       ?=amd64
 CGO        ?=0
 TARGET_OS  ?=linux
 
-BUILD_PLATFORMS ?= linux/amd64,linux/arm64
+BUILD_PLATFORMS ?= linux/amd64,linux/arm64,linux/s390x
 OUTPUT_TYPE     ?= registry
 
 GIT_VERSION ?= $(shell git describe --always --abbrev=7)
