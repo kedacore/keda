@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"time"
 
 	"go.uber.org/zap"
@@ -31,7 +32,13 @@ func NewClient(c *Config, sc *scalersconfig.ScalerConfig) (*Client, error) {
 		return nil, errors.New("accessKey is required")
 	}
 
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cookie jar: %v", err)
+	}
+
 	httpClient := kedautil.CreateHTTPClient(sc.GlobalHTTPTimeout, c.UnsafeSsl)
+	httpClient.Jar = jar
 
 	logger, err := getLogger(c.LogLevel)
 	if err != nil {
