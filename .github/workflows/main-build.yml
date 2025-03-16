@@ -16,7 +16,7 @@ jobs:
       id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
 
     # keda-tools is built from github.com/test-tools/tools/Dockerfile
-    container: ghcr.io/kedacore/keda-tools:1.23.6
+    container: ghcr.io/kedacore/keda-tools:1.23.7
     steps:
       - name: Check out code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -86,6 +86,10 @@ jobs:
     needs: build
     uses: kedacore/keda/.github/workflows/template-arm64-smoke-tests.yml@main
 
+  validate-s390x:
+    needs: build
+    uses: kedacore/keda/.github/workflows/template-s390x-smoke-tests.yml@main
+
   validate-k8s-versions:
     needs: build
     uses: kedacore/keda/.github/workflows/template-versions-smoke-tests.yml@main
@@ -110,7 +114,7 @@ jobs:
       security-events: write
     strategy:
       matrix:
-        runner: [ARM64, ubuntu-latest]
+        runner: [ARM64, ubuntu-latest, s390x]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
@@ -127,7 +131,7 @@ jobs:
       security-events: write
     strategy:
       matrix:
-        runner: [ARM64, ubuntu-latest]
+        runner: [ARM64, ubuntu-latest, s390x]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
