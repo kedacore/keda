@@ -24,16 +24,15 @@ type sumologicScaler struct {
 type sumologicMetadata struct {
 	AccessID             string `keda:"name=access_id,       order=authParams"`
 	AccessKey            string `keda:"name=access_key,      order=authParams"`
-	Host                 string `keda:"name=host,            order=authParams"`
+	Host                 string `keda:"name=host,            order=triggerMetadata"`
 	UnsafeSsl            bool   `keda:"name=unsafeSsl,       order=triggerMetadata, optional"`
 	Query                string
 	QueryType            string
-	Dimension            string
 	Quantization         time.Duration // Only for metrics queries
 	Timerange            time.Duration
 	Timezone             string
 	activationQueryValue float64
-	queryAggegrator      string
+	queryAggregator      string
 	fillValue            float64
 	targetValue          float64
 	vType                v2.MetricTargetType
@@ -44,7 +43,7 @@ const avg = "average"
 const logsQueryType = "logs"
 const metricsQueryType = "metrics"
 
-func NewSumoScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewSumologicScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "sumologic_scaler")
 	meta, err := parseSumoMetadata(config, logger)
 	if err != nil {
@@ -71,7 +70,7 @@ func NewSumoScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*sumologicMetadata, error) {
 	meta := sumologicMetadata{}
 
-	if config.AuthParams["host"] == "" {
+	if config.TriggerMetadata["host"] == "" {
 		return nil, errors.New("missing required metadata: host")
 	}
 	meta.Host = config.TriggerMetadata["host"]
@@ -79,12 +78,12 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 	if config.AuthParams["accessID"] == "" {
 		return nil, errors.New("missing required metadata: accessID")
 	}
-	meta.AccessID = config.TriggerMetadata["accessID"]
+	meta.AccessID = config.AuthParams["accessID"]
 
 	if config.AuthParams["accessKey"] == "" {
 		return nil, errors.New("missing required metadata: accessKey")
 	}
-	meta.AccessKey = config.TriggerMetadata["accessKey"]
+	meta.AccessKey = config.AuthParams["accessKey"]
 
 	if config.TriggerMetadata["query"] == "" {
 		return nil, errors.New("missing required metadata: query")
@@ -106,12 +105,7 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 	if err != nil {
 		return nil, fmt.Errorf("invalid timerange: %w", err)
 	}
-	meta.Timerange = time.Duration(timerange) * time.Minute
-
-	if config.TriggerMetadata["dimension"] == "" {
-		return nil, errors.New("missing required metadata: dimension")
-	}
-	meta.Dimension = config.TriggerMetadata["dimension"]
+	meta.Timerange = time.Duration(timerange)
 
 	if config.TriggerMetadata["timezone"] == "" {
 		meta.Timezone = "UTC" // Default to UTC if not provided
@@ -127,7 +121,7 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 		if err != nil {
 			return nil, fmt.Errorf("invalid quantization: %w", err)
 		}
-		meta.Quantization = time.Duration(quantization) * time.Minute
+		meta.Quantization = time.Duration(quantization)
 	}
 
 	if val, ok := config.TriggerMetadata["type"]; ok {
@@ -162,24 +156,32 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 		meta.activationQueryValue = activationQueryValue
 	}
 
-	if val, ok := config.TriggerMetadata["metricUnavailableValue"]; ok {
+	if val, ok := config.TriggerMetadata["fillValue"]; ok {
 		fillValue, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("metricUnavailableValue parsing error %w", err)
+			return nil, fmt.Errorf("fillValue parsing error %w", err)
 		}
 		meta.fillValue = fillValue
+	}
+
+	if val, ok := config.TriggerMetadata["targetValue"]; ok {
+		targetValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("targetValue parsing error %w", err)
+		}
+		meta.targetValue = targetValue
 	}
 
 	if val, ok := config.TriggerMetadata["queryAggregator"]; ok && val != "" {
 		queryAggregator := strings.ToLower(val)
 		switch queryAggregator {
 		case avg, max:
-			meta.queryAggegrator = queryAggregator
+			meta.queryAggregator = queryAggregator
 		default:
 			return nil, fmt.Errorf("queryAggregator value %s has to be one of '%s, %s'", queryAggregator, avg, max)
 		}
 	} else {
-		meta.queryAggegrator = ""
+		meta.queryAggregator = ""
 	}
 
 	return &meta, nil
@@ -211,7 +213,7 @@ func (s *sumologicScaler) GetMetricsAndActivity(ctx context.Context, metricName 
 	var num float64
 	var err error
 
-	num, err = s.client.GetQueryResult(s.metadata.QueryType, s.metadata.Query, s.metadata.Quantization, s.metadata.Timerange, s.metadata.Dimension, s.metadata.Timezone)
+	num, err = s.client.GetQueryResult(s.metadata.QueryType, s.metadata.Query, s.metadata.Quantization, s.metadata.Timerange, s.metadata.queryAggregator, s.metadata.Timezone)
 	if err != nil {
 		s.logger.Error(err, "error getting metrics from Sumologic")
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metrics from Sumologic: %w", err)
