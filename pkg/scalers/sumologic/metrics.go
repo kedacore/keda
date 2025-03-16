@@ -11,11 +11,29 @@ const (
 	metricsQueryPath = "api/v1/metricsQueries"
 )
 
-func (c *Client) createMetricsQuery(query string, quantization time.Duration, from, to string) ([]byte, error) {
+var validRollupTypes = map[string]bool{
+	"Avg":   true,
+	"Sum":   true,
+	"Min":   true,
+	"Max":   true,
+	"Count": true,
+}
+
+var validQueryAggregations = map[string]bool{
+	"Latest": true,
+	"Avg":    true,
+	"Sum":    true,
+	"Min":    true,
+	"Max":    true,
+	"Count":  true,
+}
+
+func (c *Client) createMetricsQuery(query string, quantization time.Duration, from, to, rollup string) ([]byte, error) {
 	metricsQuery := MetricsQuery{
 		RowID:        "A",
 		Query:        query,
 		Quantization: int64(quantization / time.Millisecond),
+		Rollup:       rollup,
 	}
 
 	timeRange := TimeRange{
@@ -64,21 +82,21 @@ func (c *Client) metricsStats(values []float64, dimension string) (*float64, err
 
 	var result float64
 	switch dimension {
-	case "latest":
+	case "Latest":
 		result = values[len(values)-1]
-	case "sum":
+	case "Sum":
 		for _, v := range values {
 			result += v
 		}
-	case "count":
+	case "Count":
 		result = float64(len(values))
-	case "avg":
+	case "Avg":
 		var sum float64
 		for _, v := range values {
 			sum += v
 		}
 		result = sum / float64(len(values))
-	case "min":
+	case "Min":
 		minVal := values[0]
 		for _, v := range values[1:] {
 			if v < minVal {
@@ -86,7 +104,7 @@ func (c *Client) metricsStats(values []float64, dimension string) (*float64, err
 			}
 		}
 		result = minVal
-	case "max":
+	case "Max":
 		maxVal := values[0]
 		for _, v := range values[1:] {
 			if v > maxVal {
@@ -95,8 +113,22 @@ func (c *Client) metricsStats(values []float64, dimension string) (*float64, err
 		}
 		result = maxVal
 	default:
-		return nil, fmt.Errorf("invalid dimension '%s', supported values: latest, avg, sum, count, min, max", dimension)
+		return nil, fmt.Errorf("invalid aggregation '%s', supported values: Latest, Avg, Sum, Count, Min, Max", dimension)
 	}
 
 	return &result, nil
+}
+
+func IsValidRollupType(rollup string) error {
+	if !validRollupTypes[rollup] {
+		return fmt.Errorf("invalid rollup value: %s, must be one of Avg, Sum, Min, Max, Count", rollup)
+	}
+	return nil
+}
+
+func IsValidQueryAggregation(aggregation string) error {
+	if !validQueryAggregations[aggregation] {
+		return fmt.Errorf("invalid aggregation '%s', supported values: Latest, Avg, Sum, Count, Min, Max", aggregation)
+	}
+	return nil
 }

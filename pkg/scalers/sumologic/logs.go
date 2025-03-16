@@ -66,7 +66,7 @@ func (c *Client) waitForLogSearchJobCompletion(jobID string) (*LogSearchJobStatu
 	}
 }
 
-func (c *Client) getLogSearchRecords(jobID string, totalRecords int) ([]float64, error) {
+func (c *Client) getLogSearchRecords(jobID string, totalRecords int, resultField string) ([]float64, error) {
 	var allRecords []float64
 	offset := 0
 	limit := 10000
@@ -93,10 +93,10 @@ func (c *Client) getLogSearchRecords(jobID string, totalRecords int) ([]float64,
 		}
 
 		for _, record := range recordsResponse.Records {
-			if result, exists := record.Map["result"]; exists {
+			if result, exists := record.Map[resultField]; exists {
 				val, err := strconv.ParseFloat(result, 64)
 				if err != nil {
-					return nil, fmt.Errorf("failed to parse result value %w", err)
+					return nil, fmt.Errorf("failed to parse resultField: %s value %w", resultField, err)
 				}
 				allRecords = append(allRecords, val)
 			}
