@@ -35,7 +35,7 @@ type sumologicMetadata struct {
 	timezone            string
 	activationThreshold float64
 	queryAggregator     string
-	targetThreshold     float64
+	threshold           float64
 	triggerIndex        int
 }
 
@@ -148,12 +148,12 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (
 		meta.queryAggregator = defaultQueryAggregator
 	}
 
-	if val, ok := config.TriggerMetadata["targetThreshold"]; ok {
-		targetThreshold, err := strconv.ParseFloat(val, 64)
+	if val, ok := config.TriggerMetadata["threshold"]; ok {
+		threshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("targetThreshold parsing error %w", err)
+			return nil, fmt.Errorf("threshold parsing error %w", err)
 		}
-		meta.targetThreshold = targetThreshold
+		meta.threshold = threshold
 	}
 
 	return &meta, nil
@@ -165,7 +165,7 @@ func (s *sumologicScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metr
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.targetThreshold),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
 	}
 	return []v2.MetricSpec{{
 		External: externalMetric,
