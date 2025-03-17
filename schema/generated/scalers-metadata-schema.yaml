@@ -1199,6 +1199,9 @@ scalers:
         - name: nodeMaxSessions
           type: string
           default: "1"
+        - name: enableManagedDownloads
+          type: string
+          optional: true
         - name: capabilities
           type: string
           optional: true
