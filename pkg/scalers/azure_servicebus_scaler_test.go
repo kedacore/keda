@@ -133,22 +133,22 @@ var azServiceBusMetricIdentifiers = []azServiceBusMetricIdentifier{
 var getServiceBusLengthTestScalers = []azureServiceBusScaler{
 	{
 		metadata: &azureServiceBusMetadata{
-			entityType: queue,
-			queueName:  queueName,
+			EntityType: queue,
+			QueueName:  queueName,
 		},
 	},
 	{
 		metadata: &azureServiceBusMetadata{
-			entityType:       subscription,
-			topicName:        topicName,
-			subscriptionName: subscriptionName,
+			EntityType:       subscription,
+			TopicName:        topicName,
+			SubscriptionName: subscriptionName,
 		},
 	},
 	{
 		metadata: &azureServiceBusMetadata{
-			entityType:       subscription,
-			topicName:        topicName,
-			subscriptionName: subscriptionName,
+			EntityType:       subscription,
+			TopicName:        topicName,
+			SubscriptionName: subscriptionName,
 		},
 		podIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
 	},
@@ -169,11 +169,11 @@ func TestParseServiceBusMetadata(t *testing.T) {
 		}
 		fmt.Print(index)
 		if meta != nil {
-			if meta.entityType != testData.entityType {
-				t.Errorf("Expected entity type %v but got %v\n", testData.entityType, meta.entityType)
+			if meta.EntityType != testData.entityType {
+				t.Errorf("Expected entity type %v but got %v\n", testData.entityType, meta.EntityType)
 			}
-			if testData.podIdentity != "" && meta.fullyQualifiedNamespace != testData.fullyQualifiedNamespace {
-				t.Errorf("Expected endpoint suffix %v but got %v\n", testData.fullyQualifiedNamespace, meta.fullyQualifiedNamespace)
+			if testData.podIdentity != "" && meta.FullyQualifiedNamespace != testData.fullyQualifiedNamespace {
+				t.Errorf("Expected endpoint suffix %v but got %v\n", testData.fullyQualifiedNamespace, meta.FullyQualifiedNamespace)
 			}
 		}
 	}
@@ -208,7 +208,7 @@ func TestGetServiceBusLength(t *testing.T) {
 	for _, scaler := range getServiceBusLengthTestScalers {
 		if connectionString != "" {
 			// Can actually test that numbers return
-			scaler.metadata.connection = connectionString
+			scaler.metadata.Connection = connectionString
 			length, err := scaler.getAzureServiceBusLength(context.TODO())
 
 			if err != nil {
