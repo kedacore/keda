@@ -615,18 +615,6 @@ func (s *githubRunnerScaler) getRateLimits(header http.Header) RateLimits {
 }
 
 func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, metadata *githubRunnerMetadata, httpClient *http.Client) ([]byte, int, error) {
-
-	if s.metadata.enableBackoff {
-		if s.rateLimits.Remaining == 0 && !s.rateLimits.ResetTime.IsZero() && time.Now().Before(s.rateLimits.ResetTime) {
-			return []byte{}, http.StatusForbidden, fmt.Errorf("GitHub API rate limit exceeded, will backoff until reset time %s", s.rateLimits.ResetTime)
-		}
-
-		if !s.rateLimits.RetryAfterTime.IsZero() && time.Now().Before(s.rateLimits.RetryAfterTime) {
-			return []byte{}, http.StatusForbidden, fmt.Errorf("GitHub API rate limit exceeded, will backoff until retry after time %s", s.rateLimits.RetryAfterTime)
-		}
-
-	}
-
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return []byte{}, -1, err
@@ -838,8 +826,36 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 }
 
 func (s *githubRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	queueLen, err := s.GetWorkflowQueueLength(ctx)
+	if s.metadata.enableBackoff {
+		if s.rateLimits.Remaining == 0 && !s.rateLimits.ResetTime.IsZero() && time.Now().Before(s.rateLimits.ResetTime) {
+			reset := time.Until(s.rateLimits.ResetTime)
+			s.logger.V(0).Info(fmt.Sprintf("Rate limit exceeded, resets at %s, waiting for %s", s.rateLimits.ResetTime, reset))
 
+			// Use context-aware delay
+			select {
+			case <-ctx.Done():
+				return nil, false, ctx.Err() // Return if the context is canceled
+			case <-time.After(reset):
+				// Wait for reset time, then proceed
+			}
+		}
+
+		if !s.rateLimits.RetryAfterTime.IsZero() && time.Now().Before(s.rateLimits.RetryAfterTime) {
+			retry := time.Until(s.rateLimits.RetryAfterTime)
+			s.logger.V(0).Info(fmt.Sprintf("Rate limit exceeded, retry after %s, waiting for %s", s.rateLimits.ResetTime, retry))
+
+			// Use context-aware delay
+			select {
+			case <-ctx.Done():
+				return nil, false, ctx.Err() // Return if the context is canceled
+			case <-time.After(retry):
+				// Wait for retry time, then proceed
+			}
+		}
+
+	}
+
+	queueLen, err := s.GetWorkflowQueueLength(ctx)
 	if err != nil {
 		s.logger.Error(err, "error getting workflow queue length")
 		return []external_metrics.ExternalMetricValue{}, false, err
