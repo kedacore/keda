@@ -35,7 +35,7 @@ type natsJetStreamScaler struct {
 }
 
 type natsJetStreamMetadata struct {
-	Account                string `keda:"name=account, order=authParams;triggerMetadata"`
+	Account                string `keda:"name=account, order=authParams;triggerMetadata, optional"`
 	AccountID              string `keda:"name=accountID, order=authParams;triggerMetadata, optional"`
 	Stream                 string `keda:"name=stream, order=triggerMetadata"`
 	Consumer               string `keda:"name=consumer, order=triggerMetadata"`
@@ -141,6 +141,11 @@ func parseNATSJetStreamMetadata(config *scalersconfig.ScalerConfig) (natsJetStre
 	if err := config.TypedConfig(&meta); err != nil {
 		return natsJetStreamMetadata{}, fmt.Errorf("error parsing nats metadata: %w", err)
 	}
+
+	if meta.Account == `` && meta.AccountID == `` {
+		return natsJetStreamMetadata{}, fmt.Errorf(`no account name or id given`)
+	}
+
 	if meta.AccountID == `` {
 		meta.AccountID = meta.Account
 	}

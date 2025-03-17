@@ -41,9 +41,11 @@ var testNATSJetStreamMetadata = []parseNATSJetStreamMetadataTestData{
 	{map[string]string{"natsServerMonitoringEndpoint": "localhost:8222", "account": "$G", "accountID": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "false"}, map[string]string{}, false},
 	// All good url.
 	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "true"}, map[string]string{}, false},
+	// All good uses ID over name
+	{map[string]string{"natsServerMonitoringEndpoint": "localhost:8222", "accountID": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "false"}, map[string]string{}, false},
 	// nothing passed
 	{map[string]string{}, map[string]string{}, true},
-	// Missing account name, should fail
+	// Missing account name and ID, should fail
 	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "stream": "mystream", "consumer": "pull_consumer"}, map[string]string{}, true},
 	// Missing stream name, should fail
 	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "consumer": "pull_consumer"}, map[string]string{}, true},
