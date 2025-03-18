@@ -130,7 +130,7 @@ func NewAzureServiceBusScaler(ctx context.Context, config *scalersconfig.ScalerC
 
 	logger := InitializeLogger(config, "azure_servicebus_scaler")
 
-	meta, err := parseAzureServiceBusMetadata(config, logger)
+	meta, err := parseAzureServiceBusMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure service bus metadata: %w", err)
 	}
@@ -145,7 +145,7 @@ func NewAzureServiceBusScaler(ctx context.Context, config *scalersconfig.ScalerC
 }
 
 // Creates an azureServiceBusMetadata struct from input metadata/env variables
-func parseAzureServiceBusMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azureServiceBusMetadata, error) {
+func parseAzureServiceBusMetadata(config *scalersconfig.ScalerConfig) (*azureServiceBusMetadata, error) {
 	meta := &azureServiceBusMetadata{}
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing azure service bus metadata: %w", err)

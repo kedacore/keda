@@ -22,7 +22,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -158,8 +157,7 @@ func TestParseServiceBusMetadata(t *testing.T) {
 	for index, testData := range parseServiceBusMetadataDataset {
 		meta, err := parseAzureServiceBusMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleResolvedEnv,
 			TriggerMetadata: testData.metadata, AuthParams: testData.authParams,
-			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity}, TriggerIndex: 0},
-			logr.Discard())
+			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity}, TriggerIndex: 0})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -183,8 +181,7 @@ func TestGetServiceBusAdminClientIsCached(t *testing.T) {
 	testData := azServiceBusMetricIdentifiers[0]
 	meta, err := parseAzureServiceBusMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: connectionResolvedEnv,
 		TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams,
-		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, TriggerIndex: testData.triggerIndex},
-		logr.Discard())
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, TriggerIndex: testData.triggerIndex})
 	if err != nil {
 		t.Fatal("Could not parse metadata:", err)
 	}
@@ -233,8 +230,7 @@ func TestAzServiceBusGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azServiceBusMetricIdentifiers {
 		meta, err := parseAzureServiceBusMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: connectionResolvedEnv,
 			TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams,
-			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, TriggerIndex: testData.triggerIndex},
-			logr.Discard())
+			PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: testData.metadataTestData.podIdentity}, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
