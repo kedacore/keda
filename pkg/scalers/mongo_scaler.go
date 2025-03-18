@@ -28,17 +28,17 @@ type mongoDBScaler struct {
 }
 
 type mongoDBMetadata struct {
-	ConnectionString     string `keda:"name=connectionString,     order=authParams;triggerMetadata;resolvedEnv,optional"`
-	Scheme               string `keda:"name=scheme,               order=authParams;triggerMetadata,default=mongodb"`
-	Host                 string `keda:"name=host,                 order=authParams;triggerMetadata,optional"`
-	Port                 string `keda:"name=port,                 order=authParams;triggerMetadata,optional"`
-	Username             string `keda:"name=username,             order=authParams;triggerMetadata,optional"`
-	Password             string `keda:"name=password,             order=authParams;triggerMetadata;resolvedEnv,optional"`
-	DBName               string `keda:"name=dbName,               order=authParams;triggerMetadata"`
-	Collection           string `keda:"name=collection,           order=triggerMetadata"`
-	Query                string `keda:"name=query,                order=triggerMetadata"`
-	QueryValue           int64  `keda:"name=queryValue,           order=triggerMetadata"`
-	ActivationQueryValue int64  `keda:"name=activationQueryValue, order=triggerMetadata,default=0"`
+	ConnectionString     string  `keda:"name=connectionString,     order=authParams;triggerMetadata;resolvedEnv,optional"`
+	Scheme               string  `keda:"name=scheme,               order=authParams;triggerMetadata,default=mongodb"`
+	Host                 string  `keda:"name=host,                 order=authParams;triggerMetadata,optional"`
+	Port                 string  `keda:"name=port,                 order=authParams;triggerMetadata,optional"`
+	Username             string  `keda:"name=username,             order=authParams;triggerMetadata,optional"`
+	Password             string  `keda:"name=password,             order=authParams;triggerMetadata;resolvedEnv,optional"`
+	DBName               string  `keda:"name=dbName,               order=authParams;triggerMetadata"`
+	Collection           string  `keda:"name=collection,           order=triggerMetadata"`
+	Query                string  `keda:"name=query,                order=triggerMetadata"`
+	QueryValue           float64 `keda:"name=queryValue,           order=triggerMetadata"`
+	ActivationQueryValue float64 `keda:"name=activationQueryValue, order=triggerMetadata,default=0"`
 	TriggerIndex         int
 }
 
@@ -141,7 +141,7 @@ func (s *mongoDBScaler) Close(ctx context.Context) error {
 	return nil
 }
 
-func (s *mongoDBScaler) getQueryResult(ctx context.Context) (int64, error) {
+func (s *mongoDBScaler) getQueryResult(ctx context.Context) (float64, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -157,7 +157,7 @@ func (s *mongoDBScaler) getQueryResult(ctx context.Context) (int64, error) {
 		return 0, fmt.Errorf("failed to execute query: %w", err)
 	}
 
-	return count, nil
+	return float64(count), nil
 }
 
 func (s *mongoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
@@ -166,7 +166,7 @@ func (s *mongoDBScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("failed to inspect mongodb: %w", err)
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(num))
+	metric := GenerateMetricInMili(metricName, num)
 
 	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.ActivationQueryValue, nil
 }
@@ -177,7 +177,7 @@ func (s *mongoDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, metricName),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.QueryValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.QueryValue),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
