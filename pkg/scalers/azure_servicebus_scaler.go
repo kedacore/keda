@@ -56,7 +56,7 @@ type azureServiceBusScaler struct {
 }
 
 type azureServiceBusMetadata struct {
-	TargetLength            int64  `keda:"name=messageCount,          order=triggerMetadata, optional, default=5"`
+	TargetLength            int64  `keda:"name=messageCount,          order=triggerMetadata, default=5"`
 	ActivationTargetLength  int64  `keda:"name=activationMessageCount,          order=triggerMetadata, optional"`
 	QueueName               string `keda:"name=queueName,          order=triggerMetadata, optional"`
 	TopicName               string `keda:"name=topicName,          order=triggerMetadata, optional"`
