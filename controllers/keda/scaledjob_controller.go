@@ -372,6 +372,7 @@ func (r *ScaledJobReconciler) updatePromMetrics(scaledJob *kedav1alpha1.ScaledJo
 	metricscollector.IncrementCRDTotal(metricscollector.ScaledJobResource, scaledJob.Namespace)
 	metricsData.namespace = scaledJob.Namespace
 
+	metricscollector.DeleteScalerMetrics(scaledJob.Namespace, scaledJob.Name, false)
 	triggerTypes := make([]string, 0, len(scaledJob.Spec.Triggers))
 	for _, trigger := range scaledJob.Spec.Triggers {
 		metricscollector.IncrementTriggerTotal(trigger.Type)
