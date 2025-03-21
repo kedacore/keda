@@ -188,9 +188,12 @@ func (p *PromMetrics) RecordScalerMetric(namespace string, scaledResource string
 	scalerMetricsValue.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(value)
 }
 
-// DeleteScalerMetrics deletes the metric so that we don't report stale metrics
+// DeleteScalerMetrics deletes the scaler-related metrics so that we don't report stale values when trigger is gone
 func (p *PromMetrics) DeleteScalerMetrics(namespace string, scaledResource string, isScaledObject bool) {
 	scalerMetricsValue.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
+	scalerActive.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
+	scalerErrors.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
+	scalerMetricsLatency.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
 }
 
 // RecordScalerLatency create a measurement of the latency to external metric
