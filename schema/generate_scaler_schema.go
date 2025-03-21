@@ -81,11 +81,11 @@ type Metadata struct {
 	// RangeSeparator is the symbol that indicates the range of the field
 	RangeSeparator string `json:"rangeSeparator,omitempty" yaml:"rangeSeparator,omitempty"`
 
-	// CanReadFromEnv is a boolean that indicates if the field can be read from the environment
-	CanReadFromEnv bool `json:"canReadFromEnv,omitempty" yaml:"canReadFromEnv,omitempty"`
+	// EnvVariableReadable is a boolean that indicates if the field can be read from the environment
+	EnvVariableReadable bool `json:"envVariableReadable,omitempty" yaml:"envVariableReadable,omitempty"`
 
-	// CanReadFromAuth is a boolean that indicates if the field can be read from the TriggerAuthentication
-	CanReadFromAuth bool `json:"canReadFromAuth,omitempty" yaml:"canReadFromAuth,omitempty"`
+	// TriggerAuthenticationVariableReadable is a boolean that indicates if the field can be read from the TriggerAuthentication
+	TriggerAuthenticationVariableReadable bool `json:"triggerAuthenticationVariableReadable,omitempty" yaml:"triggerAuthenticationVariableReadable,omitempty"`
 }
 
 // ScalerMetadataSchema is a struct that represents the metadata of a scler
@@ -284,8 +284,8 @@ func generateMetadatas(tag string) ([]Metadata, bool, error) {
 				if err != nil {
 					return nil, false, err
 				}
-				metadata.CanReadFromEnv = canReadFromEnv
-				metadata.CanReadFromAuth = canReadFromAuth
+				metadata.EnvVariableReadable = canReadFromEnv
+				metadata.TriggerAuthenticationVariableReadable = canReadFromAuth
 			}
 		case scalersconfig.NameTag:
 			if len(tsplit) > 1 {

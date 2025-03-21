@@ -14,12 +14,12 @@ scalers:
           optional: true
         - name: username
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: corsHeader
           type: string
           optional: true
@@ -36,14 +36,14 @@ scalers:
       metadata:
         - name: bootstrapServers
           type: string
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: consumerGroup
           type: string
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: topic
           type: string
           optional: true
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: partitionLimitation
           type: string
           optional: true
@@ -82,15 +82,15 @@ scalers:
             - scram_sha512
             - gssapi
             - aws_msk_iam
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: username
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: awsRegion
           type: string
           optional: true
@@ -103,28 +103,28 @@ scalers:
           allowedValue:
             - enable
             - disable
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: cert
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: key
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: keyPassword
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: ca
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
     - type: arangodb
       metadata:
         - name: endpoints
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: collection
           type: string
         - name: query
@@ -187,7 +187,7 @@ scalers:
           default: "0"
         - name: awsRegion
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: awsEndpoint
           type: string
           optional: true
@@ -197,7 +197,7 @@ scalers:
           type: string
         - name: awsRegion
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: awsEndpoint
           type: string
           optional: true
@@ -225,7 +225,7 @@ scalers:
           type: string
         - name: awsRegion
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: awsEndpoint
           type: string
           optional: true
@@ -241,7 +241,7 @@ scalers:
           type: string
         - name: awsRegion
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: awsEndpoint
           type: string
           optional: true
@@ -255,13 +255,13 @@ scalers:
           default: "0"
         - name: queueURL
           type: string
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: queueURLFromEnv
           type: string
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: awsRegion
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: awsEndpoint
           type: string
           optional: true
@@ -288,33 +288,33 @@ scalers:
         - name: username
           type: string
           optional: true
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
           optional: true
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: tls
           type: string
           default: disable
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: cert
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: key
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: keyPassword
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: ca
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
     - type: gcp-cloudtasks
       metadata:
         - name: value
@@ -355,12 +355,12 @@ scalers:
             - sum
         - name: username
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: unsafeSsl
           type: string
           default: "false"
@@ -371,34 +371,34 @@ scalers:
         - name: ca
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: cert
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: key
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: keyPassword
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
     - type: influxdb
       metadata:
         - name: authToken
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: organizationName
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: query
           type: string
         - name: serverURL
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: unsafeSsl
           type: string
           optional: true
@@ -439,29 +439,29 @@ scalers:
       metadata:
         - name: nsqLookupdHTTPAddresses
           type: string
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: topic
           type: string
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: channel
           type: string
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: depthThreshold
           type: string
           default: "10"
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: activationDepthThreshold
           type: string
           default: "0"
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: useHttps
           type: string
           default: "false"
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: unsafeSsl
           type: string
           default: "false"
-          canReadFromEnv: true
+          envVariableReadable: true
     - type: postgresql
       metadata:
         - name: targetQueryValue
@@ -473,35 +473,35 @@ scalers:
         - name: connection
           type: string
           optional: true
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: query
           type: string
         - name: host
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: port
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: userName
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: dbName
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: sslmode
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
           optional: true
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
     - type: predictkube
       metadata:
         - name: prometheusAddress
@@ -516,7 +516,7 @@ scalers:
           type: string
         - name: apiKey
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: threshold
           type: string
           optional: true
@@ -552,7 +552,7 @@ scalers:
         - name: awsRegion
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
     - type: rabbitmq
       metadata:
         - name: queueName
@@ -572,16 +572,16 @@ scalers:
           optional: true
         - name: host
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: protocol
           type: string
           default: auto
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: vhostName
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: useRegex
           type: string
           optional: true
@@ -600,40 +600,40 @@ scalers:
         - name: username
           type: string
           optional: true
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
           optional: true
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: ca
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: cert
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: key
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: keyPassword
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: tls
           type: string
           default: disable
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: unsafeSsl
           type: string
           optional: true
         - name: workloadIdentityResource
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
     - type: redis
       metadata:
         - name: listLength
@@ -653,69 +653,69 @@ scalers:
         - name: tls
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: address
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: addresses
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: username
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelUsername
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelPassword
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelMaster
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: host
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: hosts
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: port
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: ports
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: unsafeSsl
           type: string
           default: "false"
         - name: Cert
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: cert
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: key
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: keyPassword
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: ca
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
     - type: redis-cluster
       metadata:
         - name: listLength
@@ -735,69 +735,69 @@ scalers:
         - name: tls
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: address
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: addresses
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: username
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelUsername
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelPassword
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelMaster
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: host
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: hosts
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: port
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: ports
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: unsafeSsl
           type: string
           default: "false"
         - name: Cert
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: cert
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: key
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: keyPassword
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: ca
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
     - type: redis-sentinel
       metadata:
         - name: listLength
@@ -817,69 +817,69 @@ scalers:
         - name: tls
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: address
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: addresses
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: username
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelUsername
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelPassword
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelMaster
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: host
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: hosts
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: port
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: ports
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: unsafeSsl
           type: string
           default: "false"
         - name: Cert
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: cert
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: key
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: keyPassword
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: ca
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
     - type: redis-cluster-streams
       metadata:
         - name: pendingEntriesCount
@@ -901,66 +901,66 @@ scalers:
           optional: true
         - name: address
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: addresses
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: username
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelUsername
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelPassword
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelMaster
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: host
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: hosts
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: port
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: ports
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: unsafeSsl
           type: string
           default: "false"
         - name: Cert
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: cert
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: key
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: keyPassword
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: ca
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: activationLagCount
           type: string
           default: "0"
@@ -970,7 +970,7 @@ scalers:
         - name: tls
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
     - type: redis-sentinel-streams
       metadata:
         - name: pendingEntriesCount
@@ -992,66 +992,66 @@ scalers:
           optional: true
         - name: address
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: addresses
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: username
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelUsername
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelPassword
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelMaster
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: host
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: hosts
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: port
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: ports
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: unsafeSsl
           type: string
           default: "false"
         - name: Cert
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: cert
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: key
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: keyPassword
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: ca
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: activationLagCount
           type: string
           default: "0"
@@ -1061,7 +1061,7 @@ scalers:
         - name: tls
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
     - type: redis-streams
       metadata:
         - name: pendingEntriesCount
@@ -1083,66 +1083,66 @@ scalers:
           optional: true
         - name: address
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: addresses
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: username
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelUsername
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelPassword
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: sentinelMaster
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: host
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: hosts
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: port
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: ports
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: unsafeSsl
           type: string
           default: "false"
         - name: Cert
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: cert
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: key
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: keyPassword
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: ca
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: activationLagCount
           type: string
           default: "0"
@@ -1152,32 +1152,32 @@ scalers:
         - name: tls
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
     - type: selenium-grid
       metadata:
         - name: url
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: authType
           type: string
           optional: true
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: username
           type: string
           optional: true
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
           optional: true
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: accessToken
           type: string
           optional: true
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: browserName
           type: string
           optional: true
@@ -1215,12 +1215,12 @@ scalers:
           type: string
         - name: username
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: messageCountTarget
           type: string
           optional: true
@@ -1255,23 +1255,23 @@ scalers:
           optional: true
         - name: username
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
     - type: splunk
       metadata:
         - name: apiToken
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: password
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: username
           type: string
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: host
           type: string
         - name: unsafeSsl
@@ -1289,11 +1289,11 @@ scalers:
       metadata:
         - name: endpoint
           type: string
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: namespace
           type: string
           default: default
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: activationTargetQueueSize
           type: string
           default: "0"
@@ -1302,14 +1302,14 @@ scalers:
           default: "5"
         - name: taskQueue
           type: string
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: queueTypes
           type: string
           optional: true
         - name: buildId
           type: string
           optional: true
-          canReadFromEnv: true
+          envVariableReadable: true
         - name: selectAllActive
           type: string
           default: "false"
@@ -1319,8 +1319,8 @@ scalers:
         - name: apiKey
           type: string
           optional: true
-          canReadFromEnv: true
-          canReadFromAuth: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: minConnectTimeout
           type: string
           default: "5"
@@ -1330,16 +1330,16 @@ scalers:
         - name: cert
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: key
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: keyPassword
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true
         - name: ca
           type: string
           optional: true
-          canReadFromAuth: true
+          triggerAuthenticationVariableReadable: true

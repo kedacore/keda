@@ -23,14 +23,14 @@
                 {
                     "name": "username",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "corsHeader",
@@ -60,18 +60,18 @@
                 {
                     "name": "bootstrapServers",
                     "type": "string",
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "consumerGroup",
                     "type": "string",
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "topic",
                     "type": "string",
                     "optional": true,
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "partitionLimitation",
@@ -130,19 +130,19 @@
                         "gssapi",
                         "aws_msk_iam"
                     ],
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "username",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "awsRegion",
@@ -162,31 +162,31 @@
                         "enable",
                         "disable"
                     ],
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "key",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -196,7 +196,7 @@
                 {
                     "name": "endpoints",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "collection",
@@ -304,7 +304,7 @@
                 {
                     "name": "awsRegion",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "awsEndpoint",
@@ -323,7 +323,7 @@
                 {
                     "name": "awsRegion",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "awsEndpoint",
@@ -372,7 +372,7 @@
                 {
                     "name": "awsRegion",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "awsEndpoint",
@@ -401,7 +401,7 @@
                 {
                     "name": "awsRegion",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "awsEndpoint",
@@ -426,17 +426,17 @@
                 {
                     "name": "queueURL",
                     "type": "string",
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "queueURLFromEnv",
                     "type": "string",
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "awsRegion",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "awsEndpoint",
@@ -484,45 +484,45 @@
                     "name": "username",
                     "type": "string",
                     "optional": true,
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "optional": true,
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "tls",
                     "type": "string",
                     "default": "disable",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "key",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -594,14 +594,14 @@
                 {
                     "name": "username",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -618,25 +618,25 @@
                     "name": "ca",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "key",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -646,14 +646,14 @@
                 {
                     "name": "authToken",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "organizationName",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "query",
@@ -662,7 +662,7 @@
                 {
                     "name": "serverURL",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -738,41 +738,41 @@
                 {
                     "name": "nsqLookupdHTTPAddresses",
                     "type": "string",
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "topic",
                     "type": "string",
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "channel",
                     "type": "string",
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "depthThreshold",
                     "type": "string",
                     "default": "10",
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "activationDepthThreshold",
                     "type": "string",
                     "default": "0",
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "useHttps",
                     "type": "string",
                     "default": "false",
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "unsafeSsl",
                     "type": "string",
                     "default": "false",
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 }
             ]
         },
@@ -793,8 +793,8 @@
                     "name": "connection",
                     "type": "string",
                     "optional": true,
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "query",
@@ -804,38 +804,38 @@
                     "name": "host",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "port",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "userName",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "dbName",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sslmode",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "optional": true,
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -865,7 +865,7 @@
                 {
                     "name": "apiKey",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "threshold",
@@ -928,7 +928,7 @@
                     "name": "awsRegion",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -963,20 +963,20 @@
                 {
                     "name": "host",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "protocol",
                     "type": "string",
                     "default": "auto",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "vhostName",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "useRegex",
@@ -1007,45 +1007,45 @@
                     "name": "username",
                     "type": "string",
                     "optional": true,
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "optional": true,
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "key",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "tls",
                     "type": "string",
                     "default": "disable",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -1056,7 +1056,7 @@
                     "name": "workloadIdentityResource",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -1091,73 +1091,73 @@
                     "name": "tls",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "address",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "addresses",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "username",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelUsername",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelPassword",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelMaster",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "host",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "hosts",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "port",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ports",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -1167,27 +1167,27 @@
                 {
                     "name": "Cert",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "key",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -1222,73 +1222,73 @@
                     "name": "tls",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "address",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "addresses",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "username",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelUsername",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelPassword",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelMaster",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "host",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "hosts",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "port",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ports",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -1298,27 +1298,27 @@
                 {
                     "name": "Cert",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "key",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -1353,73 +1353,73 @@
                     "name": "tls",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "address",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "addresses",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "username",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelUsername",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelPassword",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelMaster",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "host",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "hosts",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "port",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ports",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -1429,27 +1429,27 @@
                 {
                     "name": "Cert",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "key",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -1488,68 +1488,68 @@
                 {
                     "name": "address",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "addresses",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "username",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelUsername",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelPassword",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelMaster",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "host",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "hosts",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "port",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ports",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -1559,27 +1559,27 @@
                 {
                     "name": "Cert",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "key",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "activationLagCount",
@@ -1595,7 +1595,7 @@
                     "name": "tls",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -1634,68 +1634,68 @@
                 {
                     "name": "address",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "addresses",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "username",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelUsername",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelPassword",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelMaster",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "host",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "hosts",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "port",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ports",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -1705,27 +1705,27 @@
                 {
                     "name": "Cert",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "key",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "activationLagCount",
@@ -1741,7 +1741,7 @@
                     "name": "tls",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -1780,68 +1780,68 @@
                 {
                     "name": "address",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "addresses",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "username",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelUsername",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelPassword",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "sentinelMaster",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "host",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "hosts",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "port",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ports",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "unsafeSsl",
@@ -1851,27 +1851,27 @@
                 {
                     "name": "Cert",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "cert",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "key",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "activationLagCount",
@@ -1887,7 +1887,7 @@
                     "name": "tls",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -1897,35 +1897,35 @@
                 {
                     "name": "url",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "authType",
                     "type": "string",
                     "optional": true,
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "username",
                     "type": "string",
                     "optional": true,
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "optional": true,
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "accessToken",
                     "type": "string",
                     "optional": true,
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "browserName",
@@ -1992,14 +1992,14 @@
                 {
                     "name": "username",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "messageCountTarget",
@@ -2061,12 +2061,12 @@
                 {
                     "name": "username",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
@@ -2077,18 +2077,18 @@
                     "name": "apiToken",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "password",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "username",
                     "type": "string",
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "host",
@@ -2123,13 +2123,13 @@
                 {
                     "name": "endpoint",
                     "type": "string",
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "namespace",
                     "type": "string",
                     "default": "default",
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "activationTargetQueueSize",
@@ -2144,7 +2144,7 @@
                 {
                     "name": "taskQueue",
                     "type": "string",
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "queueTypes",
@@ -2155,7 +2155,7 @@
                     "name": "buildId",
                     "type": "string",
                     "optional": true,
-                    "canReadFromEnv": true
+                    "envVariableReadable": true
                 },
                 {
                     "name": "selectAllActive",
@@ -2171,8 +2171,8 @@
                     "name": "apiKey",
                     "type": "string",
                     "optional": true,
-                    "canReadFromEnv": true,
-                    "canReadFromAuth": true
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "minConnectTimeout",
@@ -2188,25 +2188,25 @@
                     "name": "cert",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "key",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "keyPassword",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "ca",
                     "type": "string",
                     "optional": true,
-                    "canReadFromAuth": true
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         }
