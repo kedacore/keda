@@ -23,10 +23,6 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-const (
-	defaultTargetPipelinesQueueLength = 1
-)
-
 type JobRequests struct {
 	Count int          `json:"count"`
 	Value []JobRequest `json:"value"`
@@ -160,7 +156,6 @@ type authContext struct {
 }
 
 func (a *azurePipelinesMetadata) Validate() error {
-
 	if val := a.OrganizationURL[strings.LastIndex(a.OrganizationURL, "/")+1:]; val != "" {
 		a.OrganizationName = a.OrganizationURL[strings.LastIndex(a.OrganizationURL, "/")+1:]
 	} else {
