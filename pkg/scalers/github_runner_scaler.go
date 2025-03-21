@@ -644,14 +644,9 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 	}
 	_ = r.Body.Close()
 
-	var rateLimits RateLimits
 	if r.Header.Get("X-RateLimit-Remaining") != "" {
-		rateLimits := s.getRateLimits(r.Header)
-		s.logger.V(0).Info(fmt.Sprintf("GitHub API rate limits: remaining %d, retry after %s, reset time %s", rateLimits.Remaining, rateLimits.RetryAfterTime, rateLimits.ResetTime))
-
-		if s.metadata.enableBackoff {
-			s.rateLimits = rateLimits
-		}
+		s.rateLimits = s.getRateLimits(r.Header)
+		s.logger.V(0).Info(fmt.Sprintf("GitHub API rate limits: remaining %d, retry after %s, reset time %s", s.rateLimits.Remaining, s.rateLimits.RetryAfterTime, s.rateLimits.ResetTime))
 	}
 
 	if r.StatusCode != 200 {
@@ -661,12 +656,12 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 			return []byte{}, r.StatusCode, nil
 		}
 
-		if rateLimits.Remaining == 0 && !rateLimits.ResetTime.IsZero() {
-			return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, reset time %s", rateLimits.ResetTime)
+		if s.rateLimits.Remaining == 0 && !s.rateLimits.ResetTime.IsZero() {
+			return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, reset time %s", s.rateLimits.ResetTime)
 		}
 
-		if !rateLimits.RetryAfterTime.IsZero() && time.Now().Before(rateLimits.RetryAfterTime) {
-			return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, retry after %s", rateLimits.RetryAfterTime)
+		if !s.rateLimits.RetryAfterTime.IsZero() && time.Now().Before(s.rateLimits.RetryAfterTime) {
+			return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, retry after %s", s.rateLimits.RetryAfterTime)
 		}
 
 		return []byte{}, r.StatusCode, fmt.Errorf("the GitHub REST API returned error. url: %s status: %d response: %s", url, r.StatusCode, string(b))
@@ -825,32 +820,38 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	return queueCount, nil
 }
 
+// waitForRateLimitReset waits until the rate limit reset time or retry-after time is reached.
+func (s *githubRunnerScaler) waitForRateLimitReset(ctx context.Context) error {
+	if s.rateLimits.Remaining == 0 && !s.rateLimits.ResetTime.IsZero() && time.Now().Before(s.rateLimits.ResetTime) {
+		reset := time.Until(s.rateLimits.ResetTime)
+		s.logger.V(0).Info(fmt.Sprintf("Rate limit exceeded, resets at %s, waiting for %s", s.rateLimits.ResetTime, reset))
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err() // Return if the context is canceled
+		case <-time.After(reset):
+		}
+	}
+
+	if !s.rateLimits.RetryAfterTime.IsZero() && time.Now().Before(s.rateLimits.RetryAfterTime) {
+		retry := time.Until(s.rateLimits.RetryAfterTime)
+		s.logger.V(0).Info(fmt.Sprintf("Rate limit exceeded, retry after %s, waiting for %s", s.rateLimits.ResetTime, retry))
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err() // Return if the context is canceled
+		case <-time.After(retry):
+		}
+	}
+
+	return nil
+}
+
 func (s *githubRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	if s.metadata.enableBackoff {
-		if s.rateLimits.Remaining == 0 && !s.rateLimits.ResetTime.IsZero() && time.Now().Before(s.rateLimits.ResetTime) {
-			reset := time.Until(s.rateLimits.ResetTime)
-			s.logger.V(0).Info(fmt.Sprintf("Rate limit exceeded, resets at %s, waiting for %s", s.rateLimits.ResetTime, reset))
-
-			select {
-			case <-ctx.Done():
-				return nil, false, ctx.Err() // Return if the context is canceled
-			case <-time.After(reset):
-				// Wait for reset time, then proceed
-			}
+		if err := s.waitForRateLimitReset(ctx); err != nil {
+			return nil, false, err
 		}
-
-		if !s.rateLimits.RetryAfterTime.IsZero() && time.Now().Before(s.rateLimits.RetryAfterTime) {
-			retry := time.Until(s.rateLimits.RetryAfterTime)
-			s.logger.V(0).Info(fmt.Sprintf("Rate limit exceeded, retry after %s, waiting for %s", s.rateLimits.ResetTime, retry))
-
-			select {
-			case <-ctx.Done():
-				return nil, false, ctx.Err() // Return if the context is canceled
-			case <-time.After(retry):
-				// Wait for retry time, then proceed
-			}
-		}
-
 	}
 
 	queueLen, err := s.GetWorkflowQueueLength(ctx)
