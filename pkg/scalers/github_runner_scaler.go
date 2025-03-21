@@ -820,6 +820,9 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	return queueCount, nil
 }
 
+// func (s *githubRunnerScaler) shouldWaitForRateLimit(ctx context.Context) (bool, time.Duration)
+// Function should return boolean and how long to wait in time
+
 // waitForRateLimitReset waits until the rate limit reset time or retry-after time is reached.
 func (s *githubRunnerScaler) waitForRateLimitReset(ctx context.Context) error {
 	if s.rateLimits.Remaining == 0 && !s.rateLimits.ResetTime.IsZero() && time.Now().Before(s.rateLimits.ResetTime) {
