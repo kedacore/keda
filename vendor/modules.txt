@@ -647,12 +647,13 @@ github.com/envoyproxy/protoc-gen-validate/validate
 ## explicit; go 1.18
 github.com/evanphx/json-patch/v5
 github.com/evanphx/json-patch/v5/internal/json
-# github.com/expr-lang/expr v1.16.9
+# github.com/expr-lang/expr v1.17.0
 ## explicit; go 1.18
 github.com/expr-lang/expr
 github.com/expr-lang/expr/ast
 github.com/expr-lang/expr/builtin
 github.com/expr-lang/expr/checker
+github.com/expr-lang/expr/checker/nature
 github.com/expr-lang/expr/compiler
 github.com/expr-lang/expr/conf
 github.com/expr-lang/expr/file
@@ -663,6 +664,7 @@ github.com/expr-lang/expr/parser/lexer
 github.com/expr-lang/expr/parser/operator
 github.com/expr-lang/expr/parser/utils
 github.com/expr-lang/expr/patcher
+github.com/expr-lang/expr/types
 github.com/expr-lang/expr/vm
 github.com/expr-lang/expr/vm/runtime
 # github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a

@@ -13,7 +13,7 @@ func (*sumMap) Visit(node *Node) {
 		if mapBuiltin, ok := sumBuiltin.Arguments[0].(*BuiltinNode); ok &&
 			mapBuiltin.Name == "map" &&
 			len(mapBuiltin.Arguments) == 2 {
-			Patch(node, &BuiltinNode{
+			patchCopyType(node, &BuiltinNode{
 				Name: "sum",
 				Arguments: []Node{
 					mapBuiltin.Arguments[0],

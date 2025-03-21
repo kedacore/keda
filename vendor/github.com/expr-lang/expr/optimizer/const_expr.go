@@ -30,11 +30,6 @@ func (c *constExpr) Visit(node *Node) {
 		}
 	}()
 
-	patch := func(newNode Node) {
-		c.applied = true
-		Patch(node, newNode)
-	}
-
 	if call, ok := (*node).(*CallNode); ok {
 		if name, ok := call.Callee.(*IdentifierNode); ok {
 			fn, ok := c.fns[name.Value]
@@ -78,7 +73,8 @@ func (c *constExpr) Visit(node *Node) {
 					return
 				}
 				constNode := &ConstantNode{Value: value}
-				patch(constNode)
+				patchWithType(node, constNode)
+				c.applied = true
 			}
 		}
 	}
