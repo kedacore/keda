@@ -596,7 +596,7 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 }
 
 func (s *githubRunnerScaler) getRateLimits(header http.Header) RateLimits {
-	retryAfterTime := time.Time{}
+	retryAfterTime := time.Now()
 
 	remaining, _ := strconv.Atoi(header.Get("X-RateLimit-Remaining"))
 	reset, _ := strconv.ParseInt(header.Get("X-RateLimit-Reset"), 10, 64)
@@ -647,7 +647,7 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 	var rateLimits RateLimits
 	if r.Header.Get("X-RateLimit-Remaining") != "" {
 		rateLimits := s.getRateLimits(r.Header)
-		s.logger.V(0).Info(fmt.Sprintf("GitHub API rate limits: remaining %d, reset at %s, retry after %s", rateLimits.Remaining, rateLimits.ResetTime, rateLimits.RetryAfterTime))
+		s.logger.V(0).Info(fmt.Sprintf("GitHub API rate limits: remaining %d, retry after %s, reset time %s", rateLimits.Remaining, rateLimits.RetryAfterTime, rateLimits.ResetTime))
 
 		if s.metadata.enableBackoff {
 			s.rateLimits = rateLimits
@@ -665,7 +665,7 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 			return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, reset time %s", rateLimits.ResetTime)
 		}
 
-		if time.Now().Before(rateLimits.RetryAfterTime) && !rateLimits.RetryAfterTime.IsZero() {
+		if !rateLimits.RetryAfterTime.IsZero() && time.Now().Before(rateLimits.RetryAfterTime) {
 			return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, retry after %s", rateLimits.RetryAfterTime)
 		}
 
@@ -831,7 +831,6 @@ func (s *githubRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricNa
 			reset := time.Until(s.rateLimits.ResetTime)
 			s.logger.V(0).Info(fmt.Sprintf("Rate limit exceeded, resets at %s, waiting for %s", s.rateLimits.ResetTime, reset))
 
-			// Use context-aware delay
 			select {
 			case <-ctx.Done():
 				return nil, false, ctx.Err() // Return if the context is canceled
@@ -844,7 +843,6 @@ func (s *githubRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricNa
 			retry := time.Until(s.rateLimits.RetryAfterTime)
 			s.logger.V(0).Info(fmt.Sprintf("Rate limit exceeded, retry after %s, waiting for %s", s.rateLimits.ResetTime, retry))
 
-			// Use context-aware delay
 			select {
 			case <-ctx.Done():
 				return nil, false, ctx.Err() // Return if the context is canceled
