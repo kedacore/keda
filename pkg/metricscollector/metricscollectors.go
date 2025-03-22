@@ -40,6 +40,8 @@ var (
 type MetricsCollector interface {
 	RecordScalerMetric(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64)
 
+	DeleteScalerMetrics(namespace string, scaledResource string, isScaledObject bool)
+
 	// RecordScalerLatency create a measurement of the latency to external metric
 	RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration)
 
@@ -99,6 +101,13 @@ func NewMetricsCollectors(enablePrometheusMetrics bool, enableOpenTelemetryMetri
 func RecordScalerMetric(namespace string, scaledObject string, scaler string, triggerIndex int, metric string, isScaledObject bool, value float64) {
 	for _, element := range collectors {
 		element.RecordScalerMetric(namespace, scaledObject, scaler, triggerIndex, metric, isScaledObject, value)
+	}
+}
+
+// DeleteScalerMetric create a measurement of the external metric used by the HPA
+func DeleteScalerMetrics(namespace string, scaledObject string, isScaledObject bool) {
+	for _, element := range collectors {
+		element.DeleteScalerMetrics(namespace, scaledObject, isScaledObject)
 	}
 }
 
