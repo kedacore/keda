@@ -35,6 +35,7 @@ var (
 	maxReplicaCount     = 3
 	activationThreshold = 5
 	gsPrefix            = fmt.Sprintf("kubectl exec --namespace %s deploy/gcp-sdk -- ", testNamespace)
+	blobPrefix          = "test/"
 )
 
 type templateData struct {
@@ -46,6 +47,7 @@ type templateData struct {
 	BucketName          string
 	MaxReplicaCount     int
 	ActivationThreshold int
+	BlobPrefix          string
 }
 
 const (
@@ -108,6 +110,7 @@ spec:
       metadata:
         bucketName: {{.BucketName}}
         targetObjectCount: '5'
+        blobPrefix: {{.BlobPrefix}}
         activationTargetObjectCount: '{{.ActivationThreshold}}'
         credentialsFromEnv: GOOGLE_APPLICATION_CREDENTIALS_JSON
 `
@@ -213,6 +216,7 @@ func getTemplateData() (templateData, []Template) {
 			BucketName:          bucketName,
 			MaxReplicaCount:     maxReplicaCount,
 			ActivationThreshold: activationThreshold,
+			BlobPrefix:          blobPrefix,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
@@ -225,7 +229,7 @@ func uploadFiles(t *testing.T, prefix string, count int) {
 	t.Logf("--- uploading %d files ---", count)
 
 	for i := 0; i < count; i++ {
-		cmd := fmt.Sprintf("%sgsutil cp -n /usr/lib/google-cloud-sdk/bin/gsutil gs://%s/gsutil-%s%d", gsPrefix, bucketName, prefix, i)
+		cmd := fmt.Sprintf("%sgsutil cp -n /usr/lib/google-cloud-sdk/bin/gsutil gs://%s/%sgsutil-%s%d", gsPrefix, bucketName, blobPrefix, prefix, i)
 		_, err := ExecuteCommand(cmd)
 		assert.NoErrorf(t, err, "cannot upload file to bucket - %s", err)
 	}
@@ -255,7 +259,7 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 	// Delete files so we are still left with activationThreshold number of files which should be enough
 	// to scale in to 0.
-	cmd := fmt.Sprintf("%sgsutil -m rm -a gs://%s/gsutil*", gsPrefix, bucketName)
+	cmd := fmt.Sprintf("%sgsutil -m rm -a  gs://%s/%sgsutil*", gsPrefix, bucketName, blobPrefix)
 	_, err := ExecuteCommand(cmd)
 	assert.NoErrorf(t, err, "cannot clear bucket - %s", err)
 

@@ -193,7 +193,7 @@ func (s *gcsScaler) GetMetricsAndActivity(ctx context.Context, metricName string
 // getItemCount gets the number of items in the bucket, up to maxCount
 func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int64) (int64, error) {
 	query := &storage.Query{Delimiter: s.metadata.blobDelimiter, Prefix: s.metadata.blobPrefix}
-	err := query.SetAttrSelection([]string{"Name"})
+	err := query.SetAttrSelection([]string{"Size"})
 	if err != nil {
 		s.logger.Error(err, "failed to set attribute selection")
 		return 0, err
@@ -203,9 +203,14 @@ func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int64) (int64, er
 	var count int64
 
 	for count < maxCount {
-		_, err := it.Next()
+		item, err := it.Next()
 		if err == iterator.Done {
 			break
+		}
+		// The folder is retrieved as an entity, so if size is 0
+		// we can skip it
+		if item.Size == 0 {
+			continue
 		}
 		if err != nil {
 			if errors.Is(err, storage.ErrBucketNotExist) {
