@@ -13,7 +13,7 @@ func (*filterLen) Visit(node *Node) {
 		if filter, ok := ln.Arguments[0].(*BuiltinNode); ok &&
 			filter.Name == "filter" &&
 			len(filter.Arguments) == 2 {
-			Patch(node, &BuiltinNode{
+			patchCopyType(node, &BuiltinNode{
 				Name:      "count",
 				Arguments: filter.Arguments,
 			})

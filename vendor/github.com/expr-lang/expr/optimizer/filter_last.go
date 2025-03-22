@@ -12,7 +12,7 @@ func (*filterLast) Visit(node *Node) {
 			if filter, ok := member.Node.(*BuiltinNode); ok &&
 				filter.Name == "filter" &&
 				len(filter.Arguments) == 2 {
-				Patch(node, &BuiltinNode{
+				patchCopyType(node, &BuiltinNode{
 					Name:      "findLast",
 					Arguments: filter.Arguments,
 					Throws:    true, // to match the behavior of filter()[-1]
@@ -27,7 +27,7 @@ func (*filterLast) Visit(node *Node) {
 		if filter, ok := first.Arguments[0].(*BuiltinNode); ok &&
 			filter.Name == "filter" &&
 			len(filter.Arguments) == 2 {
-			Patch(node, &BuiltinNode{
+			patchCopyType(node, &BuiltinNode{
 				Name:      "findLast",
 				Arguments: filter.Arguments,
 				Throws:    false, // as last() will return nil if not found

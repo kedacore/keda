@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"reflect"
 	"time"
+
+	"github.com/expr-lang/expr/internal/deref"
 )
 
 var (
@@ -20,6 +22,7 @@ func kind(t reflect.Type) reflect.Kind {
 	if t == nil {
 		return reflect.Invalid
 	}
+	t = deref.Type(t)
 	return t.Kind()
 }
 
