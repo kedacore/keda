@@ -6,13 +6,14 @@ import (
 
 	"github.com/expr-lang/expr/ast"
 	"github.com/expr-lang/expr/builtin"
+	"github.com/expr-lang/expr/checker/nature"
 	"github.com/expr-lang/expr/conf"
 )
 
 type OperatorOverloading struct {
 	Operator  string              // Operator token to overload.
 	Overloads []string            // List of function names to replace operator with.
-	Types     conf.TypesTable     // Env types.
+	Env       *nature.Nature      // Env type.
 	Functions conf.FunctionsTable // Env functions.
 	applied   bool                // Flag to indicate if any changes were made to the tree.
 }
@@ -42,6 +43,11 @@ func (p *OperatorOverloading) Visit(node *ast.Node) {
 	}
 }
 
+// Tracking must be reset before every walk over the AST tree
+func (p *OperatorOverloading) Reset() {
+	p.applied = false
+}
+
 func (p *OperatorOverloading) ShouldRepeat() bool {
 	return p.applied
 }
@@ -56,7 +62,7 @@ func (p *OperatorOverloading) FindSuitableOperatorOverload(l, r reflect.Type) (r
 
 func (p *OperatorOverloading) findSuitableOperatorOverloadInTypes(l, r reflect.Type) (reflect.Type, string, bool) {
 	for _, fn := range p.Overloads {
-		fnType, ok := p.Types[fn]
+		fnType, ok := p.Env.Get(fn)
 		if !ok {
 			continue
 		}
@@ -103,7 +109,7 @@ func checkTypeSuits(t reflect.Type, l reflect.Type, r reflect.Type, firstInIndex
 
 func (p *OperatorOverloading) Check() {
 	for _, fn := range p.Overloads {
-		fnType, foundType := p.Types[fn]
+		fnType, foundType := p.Env.Get(fn)
 		fnFunc, foundFunc := p.Functions[fn]
 		if !foundFunc && (!foundType || fnType.Type.Kind() != reflect.Func) {
 			panic(fmt.Errorf("function %s for %s operator does not exist in the environment", fn, p.Operator))
@@ -119,7 +125,7 @@ func (p *OperatorOverloading) Check() {
 	}
 }
 
-func checkType(fnType conf.Tag, fn string, operator string) {
+func checkType(fnType nature.Nature, fn string, operator string) {
 	requiredNumIn := 2
 	if fnType.Method {
 		requiredNumIn = 3 // As first argument of method is receiver.
