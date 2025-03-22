@@ -70,7 +70,6 @@ type apacheKafkaMetadata struct {
 
 	// MSK
 	AWSRegion        string `keda:"name=awsRegion,     order=triggerMetadata, optional"`
-	AWSEndpoint      string `keda:"name=awsEndpoint,   order=triggerMetadata, optional"`
 	AWSAuthorization awsutils.AuthorizationMetadata
 
 	// TLS

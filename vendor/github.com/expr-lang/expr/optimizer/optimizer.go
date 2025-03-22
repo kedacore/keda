@@ -1,6 +1,9 @@
 package optimizer
 
 import (
+	"fmt"
+	"reflect"
+
 	. "github.com/expr-lang/expr/ast"
 	"github.com/expr-lang/expr/conf"
 )
@@ -40,4 +43,37 @@ func Optimize(node *Node, config *conf.Config) error {
 	Walk(node, &sumArray{})
 	Walk(node, &sumMap{})
 	return nil
+}
+
+var (
+	boolType    = reflect.TypeOf(true)
+	integerType = reflect.TypeOf(0)
+	floatType   = reflect.TypeOf(float64(0))
+	stringType  = reflect.TypeOf("")
+)
+
+func patchWithType(node *Node, newNode Node) {
+	switch n := newNode.(type) {
+	case *BoolNode:
+		newNode.SetType(boolType)
+	case *IntegerNode:
+		newNode.SetType(integerType)
+	case *FloatNode:
+		newNode.SetType(floatType)
+	case *StringNode:
+		newNode.SetType(stringType)
+	case *ConstantNode:
+		newNode.SetType(reflect.TypeOf(n.Value))
+	case *BinaryNode:
+		newNode.SetType(n.Type())
+	default:
+		panic(fmt.Sprintf("unknown type %T", newNode))
+	}
+	Patch(node, newNode)
+}
+
+func patchCopyType(node *Node, newNode Node) {
+	t := (*node).Type()
+	newNode.SetType(t)
+	Patch(node, newNode)
 }

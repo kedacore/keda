@@ -162,9 +162,15 @@ func main() {
 * [Visually.io](https://visually.io) employs Expr as a business rule engine for its personalization targeting algorithm.
 * [Akvorado](https://github.com/akvorado/akvorado) utilizes Expr to classify exporters and interfaces in network flows.
 * [keda.sh](https://keda.sh) uses Expr to allow customization of its Kubernetes-based event-driven autoscaling.
-* [Span Digital](https://spandigital.com/) uses Expr in it's Knowledge Management products.
+* [Span Digital](https://spandigital.com/) uses Expr in its Knowledge Management products.
 * [Xiaohongshu](https://www.xiaohongshu.com/) combining yaml with Expr for dynamically policies delivery.
 * [Melrōse](https://melrōse.org) uses Expr to implement its music programming language.
+* [Tork](https://www.tork.run/) integrates Expr into its workflow execution.
+* [Critical Moments](https://criticalmoments.io) uses Expr for its mobile realtime conditional targeting system.
+* [WoodpeckerCI](https://woodpecker-ci.org) uses Expr for [filtering workflows/steps](https://woodpecker-ci.org/docs/usage/workflow-syntax#evaluate).
+* [FastSchema](https://github.com/fastschema/fastschema) - A BaaS leveraging Expr for its customizable and dynamic Access Control system.
+* [WunderGraph Cosmo](https://github.com/wundergraph/cosmo) - GraphQL Federeration Router uses Expr to customize Middleware behaviour
+* [SOLO](https://solo.one) uses Expr interally to allow dynamic code execution with custom defined functions.
 
 [Add your company too](https://github.com/expr-lang/expr/edit/master/README.md)
 

@@ -91,6 +91,7 @@ Here is an overview of all new **experimental** features:
 
 - **General**: Centralize and improve automaxprocs configuration with proper structured logging ([#5970](https://github.com/kedacore/keda/issues/5970))
 - **General**: Fix CVE-2025-27144 and CVE-2025-22868 ([#6613](https://github.com/kedacore/keda/issues/6613))
+- **General**: Fix CVE-2025-29786 ([#6637](https://github.com/kedacore/keda/issues/6637))
 - **General**: Fix event text when deactivation fails ([#6469](https://github.com/kedacore/keda/issues/6469))
 - **General**: Make sure the exposed metrics (from KEDA operator) are updated when there is a change to triggers ([#6618](https://github.com/kedacore/keda/pull/6618))
 - **General**: Paused ScaledObject count is reported correctly after operator restart ([#6321](https://github.com/kedacore/keda/issues/6321))
@@ -119,6 +120,7 @@ New deprecation(s):
 - **General**: Add debug logs tracking validation of ScaledObjects on webhook ([#6498](https://github.com/kedacore/keda/pull/6498))
 - **General**: Fix fallback validation check bug ([#6407](https://github.com/kedacore/keda/pull/6407))
 - **General**: New eventreason KEDAScalersInfo to display important information ([#6328](https://github.com/kedacore/keda/issues/6328))
+- **Apache Kafka Scaler**: Remove unused awsEndpoint in Apache Kafka scaler ([#6627](https://github.com/kedacore/keda/pull/6627))
 - **External Scalers**: Allow `float64` values in externalmetrics' `MetricValue` & `TargetSize`. The old fields are still there because of backward compatibility. ([#5159](https://github.com/kedacore/keda/issues/5159))
 
 ## v2.16.1
