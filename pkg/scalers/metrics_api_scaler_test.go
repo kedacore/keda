@@ -133,8 +133,9 @@ func TestGetValueFromResponse(t *testing.T) {
 	backend_queue_size{queueName="two", instance="zero"} 20
 	# HELP random_metric Random metric generate to include noise
 	# TYPE random_metric counter
-	random_metric 10
-	`)
+	random_metric 10`)
+	// Ending the file without new line is intended to verify
+	// https://github.com/kedacore/keda/issues/6559
 
 	testCases := []struct {
 		name      string
