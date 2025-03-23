@@ -159,9 +159,6 @@ replace (
 	// we need a version with a proper license
 	github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
 
-	// https://github.com/advisories/GHSA-29wx-vh33-7x7r
-	github.com/golang-jwt/jwt/v4 => github.com/golang-jwt/jwt/v4 v4.5.1
-
 	// we use an updated package to avoid other vulnerabilities on its deps (like github.com/dgrijalva/jwt-go)
 	github.com/spf13/viper => github.com/spf13/viper v1.19.0
 
