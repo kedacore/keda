@@ -57,9 +57,9 @@ spec:
           args:
           - /usr/local/bin/keda-adapter
           - --secure-port=6443
-          - --logtostderr=true
-          - --stderrthreshold=ERROR
-          - --v=0
+          - --zap-log-level=info
+          - --zap-encoder=console
+          - --zap-time-encoding=rfc3339
           - --client-ca-file=/certs/ca.crt
           - --tls-cert-file=/certs/tls.crt
           - --tls-private-key-file=/certs/tls.key
