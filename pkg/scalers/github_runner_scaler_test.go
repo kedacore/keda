@@ -501,6 +501,48 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithNotModified(t *testing
 	}
 }
 
+func TestNewGitHubRunnerScaler_ShouldWait_ResetTime(t *testing.T) {
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		rateLimit: RateLimit{
+			Remaining:      0,
+			ResetTime:      time.Now().Add(15 * time.Second),
+			RetryAfterTime: time.Now(),
+		},
+	}
+
+	wait, waitDuration := mockGitHubRunnerScaler.shouldWaitForRateLimit()
+
+	if !wait {
+		t.Fail()
+	}
+
+	expectedWait := 15 * time.Second
+	if waitDuration < expectedWait-1*time.Second || waitDuration > expectedWait+1*time.Second {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_ShouldWait_RetryAfterTime(t *testing.T) {
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		rateLimit: RateLimit{
+			Remaining:      0,
+			ResetTime:      time.Now(),
+			RetryAfterTime: time.Now().Add(15 * time.Second),
+		},
+	}
+
+	wait, waitDuration := mockGitHubRunnerScaler.shouldWaitForRateLimit()
+
+	if !wait {
+		t.Fail()
+	}
+
+	expectedWait := 15 * time.Second
+	if waitDuration < expectedWait-1*time.Second || waitDuration > expectedWait+1*time.Second {
+		t.Fail()
+	}
+}
+
 func TestNewGitHubRunnerScaler_404(t *testing.T) {
 	var apiStub = apiStubHandler404()
 
