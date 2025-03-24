@@ -11,9 +11,6 @@ type (
 )
 
 var (
-	// MemoryBudget represents an upper limit of memory usage.
-	MemoryBudget uint = 1e6
-
 	errorType = reflect.TypeOf((*error)(nil)).Elem()
 )
 

@@ -14,7 +14,7 @@ func (*sumArray) Visit(node *Node) {
 		len(sumBuiltin.Arguments) == 1 {
 		if array, ok := sumBuiltin.Arguments[0].(*ArrayNode); ok &&
 			len(array.Nodes) >= 2 {
-			Patch(node, sumArrayFold(array))
+			patchCopyType(node, sumArrayFold(array))
 		}
 	}
 }

@@ -45,7 +45,7 @@ require (
 	github.com/dysnix/predictkube-libs v0.0.4-0.20230109175007-5a82fccd31c7
 	github.com/dysnix/predictkube-proto v0.0.0-20241017230806-4c74c627f2bb
 	github.com/elastic/go-elasticsearch/v7 v7.17.10
-	github.com/expr-lang/expr v1.16.9
+	github.com/expr-lang/expr v1.17.0
 	github.com/go-kivik/couchdb/v3 v3.4.1
 	github.com/go-kivik/kivik/v3 v3.2.4
 	github.com/go-logr/logr v1.4.2
@@ -95,7 +95,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.33.0
 	go.temporal.io/sdk v1.31.0
 	go.uber.org/mock v0.5.0
-	golang.org/x/oauth2 v0.24.0
+	golang.org/x/oauth2 v0.27.0
 	golang.org/x/sync v0.10.0
 	google.golang.org/api v0.214.0
 	google.golang.org/grpc v1.69.2
@@ -158,9 +158,6 @@ replace (
 replace (
 	// we need a version with a proper license
 	github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
-
-	// https://github.com/advisories/GHSA-29wx-vh33-7x7r
-	github.com/golang-jwt/jwt/v4 => github.com/golang-jwt/jwt/v4 v4.5.1
 
 	// we use an updated package to avoid other vulnerabilities on its deps (like github.com/dgrijalva/jwt-go)
 	github.com/spf13/viper => github.com/spf13/viper v1.19.0
@@ -240,7 +237,7 @@ require (
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.1 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -255,8 +252,8 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -369,7 +366,7 @@ require (
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.31.0
+	golang.org/x/crypto v0.32.0
 	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/net v0.33.0 // indirect
