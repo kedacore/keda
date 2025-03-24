@@ -522,19 +522,12 @@ func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (float64, error) 
 	if s.metadata.aggregateFromKubeServiceEndpoints {
 		endpointsUrls, err := s.getEndpointsUrlsFromServiceURL(ctx, s.metadata.url)
 		if err != nil {
-			s.logger.Error(err, "Failed to get kubernetes endpoints urls from configured service URL. Falling back to querying url configured in metadata")
-		} else {
-			if len(endpointsUrls) == 0 {
-				s.logger.Error(err, "No endpoints URLs were given for the service name. Falling back to querying url configured in metadata")
-			} else {
-				aggregatedMetric, err := s.aggregateMetricsFromMultipleEndpoints(ctx, endpointsUrls)
-				if err != nil {
-					s.logger.Error(err, "No aggregated metrics could be computed from service endpoints. Falling back to querying url configured in metadata")
-				} else {
-					return aggregatedMetric, err
-				}
-			}
+			return 0, fmt.Errorf("failed to get kubernetes endpoints urls from configured service URL")
 		}
+		if len(endpointsUrls) == 0 {
+			return 0, fmt.Errorf("no endpoints URLs were given for the service name")
+		}
+		return s.aggregateMetricsFromMultipleEndpoints(ctx, endpointsUrls)
 	}
 	// get single/unaggregated metric
 	metric, err := s.getMetricValueFromURL(ctx, nil)
