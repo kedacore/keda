@@ -596,15 +596,22 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 }
 
 func (s *githubRunnerScaler) getRateLimit(header http.Header) RateLimit {
-	retryAfterTime := time.Now()
+	var retryAfterTime time.Time
 
 	remaining, _ := strconv.Atoi(header.Get("X-RateLimit-Remaining"))
 	reset, _ := strconv.ParseInt(header.Get("X-RateLimit-Reset"), 10, 64)
 	resetTime := time.Unix(reset, 0)
 
-	if header.Get("retry-after") != "" {
-		retryAfter, _ := strconv.Atoi(header.Get("retry-after"))
-		retryAfterTime = time.Now().Add(time.Duration(retryAfter) * time.Second)
+	if retryAfterStr := header.Get("Retry-After"); retryAfterStr != "" {
+		if retrySeconds, err := strconv.Atoi(retryAfterStr); err == nil {
+			retryAfterTime = time.Now().Add(time.Duration(retrySeconds) * time.Second)
+		}
+	}
+
+	if retryAfterTime.IsZero() {
+		s.logger.V(1).Info(fmt.Sprintf("Github API rate limit: Remaining: %d, ResetTime: %s", remaining, resetTime))
+	} else {
+		s.logger.V(1).Info(fmt.Sprintf("Github API rate limit: Remaining: %d, ResetTime: %s, Retry-After: %s", remaining, resetTime, retryAfterTime))
 	}
 
 	return RateLimit{
@@ -646,7 +653,6 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 
 	if r.Header.Get("X-RateLimit-Remaining") != "" {
 		s.rateLimit = s.getRateLimit(r.Header)
-		s.logger.V(0).Info(fmt.Sprintf("GitHub API rate limits: remaining %d, retry after %s, reset time %s", s.rateLimit.Remaining, s.rateLimit.RetryAfterTime, s.rateLimit.ResetTime))
 	}
 
 	if r.StatusCode != 200 {
@@ -822,13 +828,13 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 func (s *githubRunnerScaler) shouldWaitForRateLimit() (bool, time.Duration) {
 	if s.rateLimit.Remaining == 0 && !s.rateLimit.ResetTime.IsZero() && time.Now().Before(s.rateLimit.ResetTime) {
 		reset := time.Until(s.rateLimit.ResetTime)
-		s.logger.V(0).Info(fmt.Sprintf("Rate limit exceeded, resets at %s, waiting for %s", s.rateLimit.ResetTime, reset))
+		s.logger.V(1).Info(fmt.Sprintf("Rate limit exceeded, resets at %s, waiting for %s", s.rateLimit.ResetTime, reset))
 		return true, reset
 	}
 
 	if !s.rateLimit.RetryAfterTime.IsZero() && time.Now().Before(s.rateLimit.RetryAfterTime) {
 		retry := time.Until(s.rateLimit.RetryAfterTime)
-		s.logger.V(0).Info(fmt.Sprintf("Rate limit exceeded, retry after %s, waiting for %s", s.rateLimit.RetryAfterTime, retry))
+		s.logger.V(1).Info(fmt.Sprintf("Rate limit exceeded, retry after %s, waiting for %s", s.rateLimit.RetryAfterTime, retry))
 		return true, retry
 	}
 
