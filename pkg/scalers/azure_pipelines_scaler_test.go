@@ -188,12 +188,12 @@ func TestAzurePipelinesGetMetricSpecForScaling(t *testing.T) {
 
 func getMatchedAgentMetaData(url string) *azurePipelinesMetadata {
 	meta := azurePipelinesMetadata{}
-	meta.organizationName = "testOrg"
-	meta.organizationURL = url
-	meta.parent = "dotnet60-keda-template"
+	meta.OrganizationName = "testOrg"
+	meta.OrganizationURL = url
+	meta.Parent = "dotnet60-keda-template"
 	meta.authContext.pat = "testPAT"
-	meta.poolID = 1
-	meta.targetPipelinesQueueLength = 1
+	meta.PoolID = 1
+	meta.TargetPipelinesQueueLength = 1
 
 	return &meta
 }
@@ -252,24 +252,24 @@ func TestAzurePipelinesDelayed(t *testing.T) {
 
 func getDemandJobMetaData(url string) *azurePipelinesMetadata {
 	meta := getMatchedAgentMetaData(url)
-	meta.parent = ""
-	meta.demands = "dotnet60,java,cmake"
+	meta.Parent = ""
+	meta.Demands = "dotnet60,java,cmake"
 
 	return meta
 }
 
 func getDemandJobSubsetMetadata(url string) *azurePipelinesMetadata {
 	meta := getMatchedAgentMetaData(url)
-	meta.parent = ""
-	meta.demands = "dotnet60,java"
+	meta.Parent = ""
+	meta.Demands = "dotnet60,java"
 
 	return meta
 }
 
 func getMismatchDemandJobMetaData(url string) *azurePipelinesMetadata {
 	meta := getMatchedAgentMetaData(url)
-	meta.parent = ""
-	meta.demands = "testDemand,iamnotademand"
+	meta.Parent = ""
+	meta.Demands = "testDemand,iamnotademand"
 
 	return meta
 }
@@ -305,7 +305,7 @@ func TestAzurePipelinesNonMatchedDemandAgent(t *testing.T) {
 	}))
 
 	meta := getMismatchDemandJobMetaData(apiStub.URL)
-	meta.requireAllDemands = true
+	meta.RequireAllDemands = true
 
 	mockAzurePipelinesScaler := azurePipelinesScaler{
 		metadata:   meta,
@@ -330,7 +330,7 @@ func TestAzurePipelinesMatchedDemandAgentWithRequireAllDemands(t *testing.T) {
 	}))
 
 	meta := getDemandJobMetaData(apiStub.URL)
-	meta.requireAllDemands = true
+	meta.RequireAllDemands = true
 
 	mockAzurePipelinesScaler := azurePipelinesScaler{
 		metadata:   meta,
@@ -356,7 +356,7 @@ func TestAzurePipelinesMatchedDemandAgentWithRequireAllDemandsAndIgnoreOthers(t 
 	}))
 
 	meta := getDemandJobSubsetMetadata(apiStub.URL)
-	meta.requireAllDemandsAndIgnoreOthers = true
+	meta.RequireAllDemandsAndIgnoreOthers = true
 
 	mockAzurePipelinesScaler := azurePipelinesScaler{
 		metadata:   meta,
@@ -383,8 +383,8 @@ func TestAzurePipelinesNotMatchedPartialRequiredTriggerDemands(t *testing.T) {
 	}))
 
 	meta := getDemandJobMetaData(apiStub.URL)
-	meta.requireAllDemands = true
-	meta.demands = "kubectl,someOtherDemand" // the build demands only kubectl
+	meta.RequireAllDemands = true
+	meta.Demands = "kubectl,someOtherDemand" // the build demands only kubectl
 
 	mockAzurePipelinesScaler := azurePipelinesScaler{
 		metadata:   meta,
