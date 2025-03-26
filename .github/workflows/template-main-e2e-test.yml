@@ -8,7 +8,7 @@ jobs:
     name: Run e2e test
     runs-on: ARM64
     # keda-tools is built from github.com/test-tools/tools/Dockerfile
-    container: ghcr.io/kedacore/keda-tools:1.23.6
+    container: ghcr.io/kedacore/keda-tools:1.23.7
     concurrency: e2e-tests
     steps:
       - name: Check out code
