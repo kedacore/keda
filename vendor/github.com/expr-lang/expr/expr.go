@@ -45,7 +45,7 @@ func Operator(operator string, fn ...string) Option {
 		p := &patcher.OperatorOverloading{
 			Operator:  operator,
 			Overloads: fn,
-			Types:     c.Types,
+			Env:       &c.Env,
 			Functions: c.Functions,
 		}
 		c.Visitors = append(c.Visitors, p)

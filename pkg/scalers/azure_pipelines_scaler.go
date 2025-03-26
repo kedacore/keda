@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -22,10 +21,6 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
-)
-
-const (
-	defaultTargetPipelinesQueueLength = 1
 )
 
 type JobRequests struct {
@@ -139,24 +134,34 @@ type azurePipelinesScaler struct {
 }
 
 type azurePipelinesMetadata struct {
-	organizationURL                      string
-	organizationName                     string
+	OrganizationURL                      string `keda:"name=organizationURL,          order=resolvedEnv;authParams"`
+	OrganizationName                     string
 	authContext                          authContext
-	parent                               string
-	demands                              string
-	poolID                               int
-	targetPipelinesQueueLength           int64
-	activationTargetPipelinesQueueLength int64
-	jobsToFetch                          int64
+	Parent                               string `keda:"name=parent,          order=triggerMetadata, optional"`
+	Demands                              string `keda:"name=demands,          order=triggerMetadata, optional"`
+	PoolName                             string `keda:"name=poolName,          order=triggerMetadata, optional"`
+	PoolID                               int    `keda:"name=poolID,          order=triggerMetadata, optional"`
+	TargetPipelinesQueueLength           int64  `keda:"name=targetPipelinesQueueLength,          order=triggerMetadata, default=1, optional"`
+	ActivationTargetPipelinesQueueLength int64  `keda:"name=activationTargetPipelinesQueueLength,          order=triggerMetadata, default=0, optional"`
+	JobsToFetch                          int64  `keda:"name=jobsToFetch,          order=triggerMetadata, default=250, optional"`
 	triggerIndex                         int
-	requireAllDemands                    bool
-	requireAllDemandsAndIgnoreOthers     bool
+	RequireAllDemands                    bool `keda:"name=requireAllDemands,          order=triggerMetadata, default=false, optional"`
+	RequireAllDemandsAndIgnoreOthers     bool `keda:"name=requireAllDemandsAndIgnoreOthers,          order=triggerMetadata, default=false, optional"`
 }
 
 type authContext struct {
 	cred  *azidentity.ChainedTokenCredential
 	pat   string
 	token *azcore.AccessToken
+}
+
+func (a *azurePipelinesMetadata) Validate() error {
+	if val := a.OrganizationURL[strings.LastIndex(a.OrganizationURL, "/")+1:]; val != "" {
+		a.OrganizationName = a.OrganizationURL[strings.LastIndex(a.OrganizationURL, "/")+1:]
+	} else {
+		return fmt.Errorf("failed to extract organization name from organizationURL")
+	}
+	return nil
 }
 
 // NewAzurePipelinesScaler creates a new AzurePipelinesScaler
@@ -208,42 +213,12 @@ func getAuthMethod(logger logr.Logger, config *scalersconfig.ScalerConfig) (stri
 }
 
 func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config *scalersconfig.ScalerConfig, httpClient *http.Client) (*azurePipelinesMetadata, kedav1alpha1.AuthPodIdentity, error) {
-	meta := azurePipelinesMetadata{}
-	meta.targetPipelinesQueueLength = defaultTargetPipelinesQueueLength
-
-	if val, ok := config.TriggerMetadata["targetPipelinesQueueLength"]; ok {
-		queueLength, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure pipelines metadata targetPipelinesQueueLength: %w", err)
-		}
-
-		meta.targetPipelinesQueueLength = queueLength
+	meta := &azurePipelinesMetadata{}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure pipeline metadata: %w", err)
 	}
 
-	meta.activationTargetPipelinesQueueLength = 0
-	if val, ok := config.TriggerMetadata["activationTargetPipelinesQueueLength"]; ok {
-		activationQueueLength, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure pipelines metadata activationTargetPipelinesQueueLength: %w", err)
-		}
-
-		meta.activationTargetPipelinesQueueLength = activationQueueLength
-	}
-
-	if val, ok := config.AuthParams["organizationURL"]; ok && val != "" {
-		// Found the organizationURL in a parameter from TriggerAuthentication
-		meta.organizationURL = val
-	} else if val, ok := config.TriggerMetadata["organizationURLFromEnv"]; ok && val != "" {
-		meta.organizationURL = config.ResolvedEnv[val]
-	} else {
-		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no organizationURL given")
-	}
-
-	if val := meta.organizationURL[strings.LastIndex(meta.organizationURL, "/")+1:]; val != "" {
-		meta.organizationName = meta.organizationURL[strings.LastIndex(meta.organizationURL, "/")+1:]
-	} else {
-		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("failed to extract organization name from organizationURL")
-	}
+	meta.triggerIndex = config.TriggerIndex
 
 	pat, cred, podIdentity, err := getAuthMethod(logger, config)
 	if err != nil {
@@ -256,63 +231,30 @@ func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config
 		token: nil,
 	}
 
-	if val, ok := config.TriggerMetadata["parent"]; ok && val != "" {
-		meta.parent = config.TriggerMetadata["parent"]
-	} else {
-		meta.parent = ""
-	}
-
-	if val, ok := config.TriggerMetadata["demands"]; ok && val != "" {
-		meta.demands = config.TriggerMetadata["demands"]
-	} else {
-		meta.demands = ""
-	}
-
-	meta.jobsToFetch = 250
-	if val, ok := config.TriggerMetadata["jobsToFetch"]; ok && val != "" {
-		jobsToFetch, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing jobsToFetch: %w", err)
-		}
-		meta.jobsToFetch = jobsToFetch
-	}
-
-	meta.requireAllDemands = false
-	if val, ok := config.TriggerMetadata["requireAllDemands"]; ok && val != "" {
-		requireAllDemands, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, kedav1alpha1.AuthPodIdentity{}, err
-		}
-		meta.requireAllDemands = requireAllDemands
-	}
-
-	if val, ok := config.TriggerMetadata["poolName"]; ok && val != "" {
+	if meta.PoolName != "" {
 		var err error
-		poolID, err := getPoolIDFromName(ctx, logger, val, &meta, podIdentity, httpClient)
+		poolID, err := getPoolIDFromName(ctx, logger, meta.PoolName, meta, podIdentity, httpClient)
 		if err != nil {
 			return nil, kedav1alpha1.AuthPodIdentity{}, err
 		}
-		meta.poolID = poolID
-	} else {
-		if val, ok := config.TriggerMetadata["poolID"]; ok && val != "" {
-			var err error
-			poolID, err := validatePoolID(ctx, logger, val, &meta, podIdentity, httpClient)
-			if err != nil {
-				return nil, kedav1alpha1.AuthPodIdentity{}, err
-			}
-			meta.poolID = poolID
-		} else {
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no poolName or poolID given")
+		meta.PoolID = poolID
+	} else if meta.PoolID != 0 {
+		var err error
+		_, err = validatePoolID(ctx, logger, meta.PoolID, meta, podIdentity, httpClient)
+		if err != nil {
+			return nil, kedav1alpha1.AuthPodIdentity{}, err
 		}
+	} else {
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no poolName or poolID given")
 	}
 
 	meta.triggerIndex = config.TriggerIndex
 
-	return &meta, podIdentity, nil
+	return meta, podIdentity, nil
 }
 
 func getPoolIDFromName(ctx context.Context, logger logr.Logger, poolName string, metadata *azurePipelinesMetadata, podIdentity kedav1alpha1.AuthPodIdentity, httpClient *http.Client) (int, error) {
-	urlString := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.organizationURL, url.QueryEscape(poolName))
+	urlString := fmt.Sprintf("%s/_apis/distributedtask/pools?poolName=%s", metadata.OrganizationURL, url.QueryEscape(poolName))
 	body, err := getAzurePipelineRequest(ctx, logger, urlString, metadata, podIdentity, httpClient)
 
 	if err != nil {
@@ -337,12 +279,12 @@ func getPoolIDFromName(ctx context.Context, logger logr.Logger, poolName string,
 	return result.Value[0].ID, nil
 }
 
-func validatePoolID(ctx context.Context, logger logr.Logger, poolID string, metadata *azurePipelinesMetadata, podIdentity kedav1alpha1.AuthPodIdentity, httpClient *http.Client) (int, error) {
-	urlString := fmt.Sprintf("%s/_apis/distributedtask/pools?poolID=%s", metadata.organizationURL, poolID)
+func validatePoolID(ctx context.Context, logger logr.Logger, poolID int, metadata *azurePipelinesMetadata, podIdentity kedav1alpha1.AuthPodIdentity, httpClient *http.Client) (int, error) {
+	urlString := fmt.Sprintf("%s/_apis/distributedtask/pools?poolID=%d", metadata.OrganizationURL, poolID)
 	body, err := getAzurePipelineRequest(ctx, logger, urlString, metadata, podIdentity, httpClient)
 
 	if err != nil {
-		return -1, fmt.Errorf("agent pool with id `%s` not found: %w", poolID, err)
+		return -1, fmt.Errorf("agent pool with id `%d` not found: %w", poolID, err)
 	}
 
 	var result azurePipelinesPoolIDResponse
@@ -429,10 +371,10 @@ func getAzurePipelineRequest(ctx context.Context, logger logr.Logger, urlString 
 func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int64, error) {
 	// HotFix Issue (#4387), $top changes the format of the returned JSON
 	var urlString string
-	if s.metadata.parent != "" {
-		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.organizationURL, s.metadata.poolID)
+	if s.metadata.Parent != "" {
+		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.OrganizationURL, s.metadata.PoolID)
 	} else {
-		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?$top=%d", s.metadata.organizationURL, s.metadata.poolID, s.metadata.jobsToFetch)
+		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?$top=%d", s.metadata.OrganizationURL, s.metadata.PoolID, s.metadata.JobsToFetch)
 	}
 	body, err := getAzurePipelineRequest(ctx, s.logger, urlString, s.metadata, s.podIdentity, s.httpClient)
 	if err != nil {
@@ -449,11 +391,11 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 	// for each job check if its parent fulfilled, then demand fulfilled, then finally pool fulfilled
 	var count int64
 	for _, job := range stripDeadJobs(jrs.Value) {
-		if s.metadata.parent == "" && s.metadata.demands == "" {
+		if s.metadata.Parent == "" && s.metadata.Demands == "" {
 			// no plan defined, just add a count
 			count++
 		} else {
-			if s.metadata.parent == "" {
+			if s.metadata.Parent == "" {
 				// doesn't use parent, switch to demand
 				if getCanAgentDemandFulfilJob(job, s.metadata) {
 					count++
@@ -495,7 +437,7 @@ func stripAgentVFromArray(array []string) []string {
 func getCanAgentDemandFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata) bool {
 	countDemands := 0
 	demandsInJob := stripAgentVFromArray(jr.Demands)
-	demandsInScaler := stripAgentVFromArray(strings.Split(metadata.demands, ","))
+	demandsInScaler := stripAgentVFromArray(strings.Split(metadata.Demands, ","))
 
 	for _, demandInJob := range demandsInJob {
 		for _, demandInScaler := range demandsInScaler {
@@ -505,9 +447,9 @@ func getCanAgentDemandFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 		}
 	}
 
-	if metadata.requireAllDemands {
+	if metadata.RequireAllDemands {
 		return countDemands == len(demandsInJob) && countDemands == len(demandsInScaler)
-	} else if metadata.requireAllDemandsAndIgnoreOthers {
+	} else if metadata.RequireAllDemandsAndIgnoreOthers {
 		return countDemands == len(demandsInScaler)
 	}
 	return countDemands == len(demandsInJob)
@@ -522,7 +464,7 @@ func getCanAgentParentFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 	}
 
 	for _, m := range *matchedAgents {
-		if metadata.parent == m.Name {
+		if metadata.Parent == m.Name {
 			return true
 		}
 	}
@@ -532,9 +474,9 @@ func getCanAgentParentFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 func (s *azurePipelinesScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-pipelines-%d", s.metadata.poolID))),
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-pipelines-%d", s.metadata.PoolID))),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetPipelinesQueueLength),
+		Target: GetMetricTarget(s.metricType, s.metadata.TargetPipelinesQueueLength),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
@@ -550,7 +492,7 @@ func (s *azurePipelinesScaler) GetMetricsAndActivity(ctx context.Context, metric
 
 	metric := GenerateMetricInMili(metricName, float64(queueLen))
 
-	return []external_metrics.ExternalMetricValue{metric}, queueLen > s.metadata.activationTargetPipelinesQueueLength, nil
+	return []external_metrics.ExternalMetricValue{metric}, queueLen > s.metadata.ActivationTargetPipelinesQueueLength, nil
 }
 
 func (s *azurePipelinesScaler) Close(context.Context) error {

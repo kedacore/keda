@@ -587,6 +587,7 @@ func (r *ScaledObjectReconciler) updatePromMetrics(scaledObject *kedav1alpha1.Sc
 	metricscollector.IncrementCRDTotal(metricscollector.ScaledObjectResource, scaledObject.Namespace)
 	metricsData.namespace = scaledObject.Namespace
 
+	metricscollector.DeleteScalerMetrics(scaledObject.Namespace, scaledObject.Name, true)
 	triggerTypes := make([]string, 0, len(scaledObject.Spec.Triggers))
 	for _, trigger := range scaledObject.Spec.Triggers {
 		metricscollector.IncrementTriggerTotal(trigger.Type)
