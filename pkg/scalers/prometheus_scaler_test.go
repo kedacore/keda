@@ -64,6 +64,12 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "queryParameters": "key1=value1,key2=value2"}, false},
 	// queryParameters with wrong format
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "queryParameters": "key1=value1,key2"}, true},
+	// valid custom http client timeout
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "timeout": "1000"}, false},
+	// invalid - negative - custom http client timeout
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "timeout": "-1"}, true},
+	// invalid - not a number - custom http client timeout with milliseconds
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "timeout": "a"}, true},
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{

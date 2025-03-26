@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	azcloud "github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
@@ -58,6 +59,7 @@ type azureLogAnalyticsMetadata struct {
 	triggerIndex        int
 	cloud               azcloud.Configuration
 	unsafeSsl           bool
+	timeout             time.Duration // custom HTTP client timeout
 }
 
 // NewAzureLogAnalyticsScaler creates a new Azure Log Analytics Scaler
@@ -105,7 +107,7 @@ func CreateAzureLogsClient(config *scalersconfig.ScalerConfig, meta *azureLogAna
 	}
 	client, err := azquery.NewLogsClient(creds, &azquery.LogsClientOptions{
 		ClientOptions: policy.ClientOptions{
-			Transport: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl),
+			Transport: kedautil.CreateHTTPClient(meta.timeout, meta.unsafeSsl),
 			Cloud:     meta.cloud,
 		},
 	})
@@ -215,6 +217,22 @@ func parseAzureLogAnalyticsMetadata(config *scalersconfig.ScalerConfig) (*azureL
 			return nil, fmt.Errorf("error parsing metadata. Details: can't parse unsafeSsl. Inner Error: %w", err)
 		}
 		meta.unsafeSsl = unsafeSsl
+	}
+
+	// Resolve HTTP client timeout
+	meta.timeout = config.GlobalHTTPTimeout
+	timeoutVal, err := getParameterFromConfig(config, "timeout", false)
+	if err == nil {
+		timeout, err := strconv.Atoi(timeoutVal)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse timeout: %w", err)
+		}
+
+		if timeout <= 0 {
+			return nil, fmt.Errorf("timeout must be greater than 0: %w", err)
+		}
+
+		meta.timeout = time.Duration(timeout) * time.Millisecond
 	}
 
 	return &meta, nil
