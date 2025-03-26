@@ -42,15 +42,17 @@ import (
 // monitorInfo to create metric request
 type azureMonitorMetadata struct {
 	triggerIndex                 int
-	TargetValue                  float64                 `keda:"name=targetValue, order=triggerMetadata"`
-	ActivationTargetValue        float64                 `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
-	ResourceURI                  string                  `keda:"name=resourceURI, order=triggerMetadata"`
-	TenantID                     string                  `keda:"name=tenantId, order=triggerMetadata"`
-	SubscriptionID               string                  `keda:"name=subscriptionId, order=triggerMetadata"`
-	ResourceGroupName            string                  `keda:"name=resourceGroupName, order=triggerMetadata"`
-	Name                         string                  `keda:"name=metricName, order=triggerMetadata"`
-	Namespace                    string                  `keda:"name=metricNamespace, order=triggerMetadata, optional"`
-	Filter                       string                  `keda:"name=metricFilter, order=triggerMetadata, optional"`
+	TargetValue                  float64 `keda:"name=targetValue, order=triggerMetadata"`
+	ActivationTargetValue        float64 `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
+	ResourceURI                  string  `keda:"name=resourceURI, order=triggerMetadata"`
+	TenantID                     string  `keda:"name=tenantId, order=triggerMetadata"`
+	SubscriptionID               string  `keda:"name=subscriptionId, order=triggerMetadata"`
+	ResourceGroupName            string  `keda:"name=resourceGroupName, order=triggerMetadata"`
+	Name                         string  `keda:"name=metricName, order=triggerMetadata"`
+	Namespace                    string  `keda:"name=metricNamespace, order=triggerMetadata, optional"`
+	NamespaceRef                 *string
+	Filter                       string `keda:"name=metricFilter, order=triggerMetadata, optional"`
+	FilterRef                    *string
 	AggregationInterval          string                  `keda:"name=metricAggregationInterval, order=triggerMetadata, optional"`
 	AggregationType              azquery.AggregationType `keda:"name=metricAggregationType, order=triggerMetadata"`
 	ClientID                     string                  `keda:"name=activeDirectoryClientId, order=triggerMetadata;resolvedEnv;authParams, optional"`
@@ -61,6 +63,14 @@ type azureMonitorMetadata struct {
 }
 
 func (m *azureMonitorMetadata) Validate() error {
+	if m.Namespace != "" {
+		m.NamespaceRef = &m.Namespace
+	}
+
+	if m.Filter != "" {
+		m.FilterRef = &m.Filter
+	}
+
 	resourceURI := strings.Split(m.ResourceURI, "/")
 	if len(resourceURI) != 3 {
 		return fmt.Errorf("resourceURI not in the correct format. Should be namespace/resource_type/resource_name")
@@ -255,8 +265,8 @@ func (s *azureMonitorScaler) requestMetric(ctx context.Context) (float64, error)
 	}
 	opts := &azquery.MetricsClientQueryResourceOptions{
 		MetricNames:     &s.metadata.Name,
-		MetricNamespace: &s.metadata.Namespace,
-		Filter:          &s.metadata.Filter,
+		MetricNamespace: s.metadata.NamespaceRef,
+		Filter:          s.metadata.FilterRef,
 		Interval:        nil,
 		Top:             nil,
 		ResultType:      nil,
