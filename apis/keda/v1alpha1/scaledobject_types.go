@@ -23,10 +23,7 @@ import (
 
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
-
-var scaledobjecttypeslog = logf.Log.WithName("scaledobject-types")
 
 // +genclient
 // +kubebuilder:object:root=true
@@ -297,12 +294,25 @@ func CheckFallbackValid(scaledObject *ScaledObject) error {
 			scaledObject.Spec.Fallback.FailureThreshold, scaledObject.Spec.Fallback.Replicas)
 	}
 
-	for _, trigger := range scaledObject.Spec.Triggers {
-		if trigger.Type == cpuString || trigger.Type == memoryString {
-			scaledobjecttypeslog.Error(nil, fmt.Sprintf("type is %s , but fallback it is not supported by the CPU & memory scalers", trigger.Type))
+	if scaledObject.IsUsingModifiers() {
+		if scaledObject.Spec.Advanced.ScalingModifiers.MetricType != autoscalingv2.AverageValueMetricType {
+			return fmt.Errorf("when using ScalingModifiers, ScaledObject.Spec.Advanced.ScalingModifiers.MetricType must be AverageValue to have fallback enabled")
 		}
-		if trigger.MetricType != autoscalingv2.AverageValueMetricType {
-			return fmt.Errorf("MetricType=%s, but fallback can only be enabled for triggers with metric of type AverageValue", trigger.MetricType)
+	} else {
+		fallbackValid := false
+		for _, trigger := range scaledObject.Spec.Triggers {
+			if trigger.Type == cpuString || trigger.Type == memoryString {
+				continue
+			}
+			// If at least one trigger is of the type `AverageValue`, then having fallback is valid.
+			if trigger.MetricType == autoscalingv2.AverageValueMetricType {
+				fallbackValid = true
+				break
+			}
+		}
+
+		if !fallbackValid {
+			return fmt.Errorf("at least one trigger (that is not cpu or memory) has to have the `AverageValue` type for the fallback to be enabled")
 		}
 	}
 	return nil

@@ -97,8 +97,10 @@ Here is an overview of all new **experimental** features:
 - **General**: Fix CVE-2025-29786 ([#6637](https://github.com/kedacore/keda/issues/6637))
 - **General**: Fix CVE-2025-30204 ([#6641](https://github.com/kedacore/keda/pull/6641))
 - **General**: Fix event text when deactivation fails ([#6469](https://github.com/kedacore/keda/issues/6469))
+- **General**: Fix fallback validation check bug ([#6407](https://github.com/kedacore/keda/pull/6407))
 - **General**: Make sure the exposed metrics (from KEDA operator) are updated when there is a change to triggers ([#6618](https://github.com/kedacore/keda/pull/6618))
 - **General**: Paused ScaledObject count is reported correctly after operator restart ([#6321](https://github.com/kedacore/keda/issues/6321))
+- **General**: Reiterate fix (after [#6407](https://github.com/kedacore/keda/pull/6407)) for fallback validation in admission webhook. ([#6538](https://github.com/kedacore/keda/pull/6538))
 - **General**: ScaledJobs ready status set to true when recoverred problem ([#6329](https://github.com/kedacore/keda/pull/6329))
 - **AWS Scalers**: Add AWS region to the AWS Config Cache key ([#6128](https://github.com/kedacore/keda/issues/6128))
 - **External Scaler**: Support server TLS without custom CA ([#6606](https://github.com/kedacore/keda/pull/6606))
@@ -125,7 +127,6 @@ New deprecation(s):
 ### Other
 
 - **General**: Add debug logs tracking validation of ScaledObjects on webhook ([#6498](https://github.com/kedacore/keda/pull/6498))
-- **General**: Fix fallback validation check bug ([#6407](https://github.com/kedacore/keda/pull/6407))
 - **General**: New eventreason KEDAScalersInfo to display important information ([#6328](https://github.com/kedacore/keda/issues/6328))
 - **Apache Kafka Scaler**: Remove unused awsEndpoint in Apache Kafka scaler ([#6627](https://github.com/kedacore/keda/pull/6627))
 - **External Scalers**: Allow `float64` values in externalmetrics' `MetricValue` & `TargetSize`. The old fields are still there because of backward compatibility. ([#5159](https://github.com/kedacore/keda/issues/5159))
