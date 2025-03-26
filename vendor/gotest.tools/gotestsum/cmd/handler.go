@@ -26,7 +26,7 @@ type writeSyncer interface {
 	Sync() error
 }
 
-// nolint:errcheck
+//nolint:errcheck
 func (h *eventHandler) Err(text string) error {
 	h.err.WriteString(text)
 	h.err.WriteRune('\n')

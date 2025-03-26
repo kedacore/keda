@@ -176,7 +176,7 @@ gotestsum --post-run-command notify
 
 **Example: command with flags**
 
-Possitional arguments or command line flags can be passed to the `--post-run-command` by
+Positional arguments or command line flags can be passed to the `--post-run-command` by
 quoting the whole command.
 
 ```
@@ -273,11 +273,11 @@ stdout and stderr output:
   non-JSON output, you can use `--ignore-non-json-output-lines` (added in version 1.7.0)
   to ignore non-JSON lines and write them to `gotestsum`'s stderr instead.
 * Any stderr produced by the script will be considered an error (this behaviour
-  is necessary because package build errors are only reported by writting to
+  is necessary because package build errors are only reported by writing to
   stderr, not the `test2json` stdout). Any stderr produced by tests is not
   considered an error (it will be in the `test2json` stdout).
 
-**Example: accept intput from stdin**
+**Example: accept input from stdin**
 ```
 cat out.json | gotestsum --raw-command -- cat
 ```

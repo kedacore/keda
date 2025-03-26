@@ -183,7 +183,7 @@ func (c *Controller[request]) Start(ctx context.Context) error {
 		c.LogConstructor(nil).Info("Starting Controller")
 
 		for _, watch := range c.startWatches {
-			syncingSource, ok := watch.(source.SyncingSource)
+			syncingSource, ok := watch.(source.TypedSyncingSource[request])
 			if !ok {
 				continue
 			}

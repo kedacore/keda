@@ -62,9 +62,9 @@ type (
 		// The waitLocalActivity is used to control if we should wait for outstanding local activities.
 		// If there is no outstanding local activities or if waitLocalActivity is false, the complete will return response
 		// which will be one of following:
-		// - RespondWorkflowTaskCompletedRequest
-		// - RespondWorkflowTaskFailedRequest
-		// - RespondQueryTaskCompletedRequest
+		//  - RespondWorkflowTaskCompletedRequest
+		//  - RespondWorkflowTaskFailedRequest
+		//  - RespondQueryTaskCompletedRequest
 		// If waitLocalActivity is true, and there is outstanding local activities, this call will return nil.
 		CompleteWorkflowTask(workflowTask *workflowTask, waitLocalActivity bool) interface{}
 		// GetWorkflowTaskTimeout returns the WorkflowTaskTimeout
@@ -82,9 +82,9 @@ type (
 
 		// Processes the workflow task
 		// The response could be:
-		// - RespondWorkflowTaskCompletedRequest
-		// - RespondWorkflowTaskFailedRequest
-		// - RespondQueryTaskCompletedRequest
+		//  - RespondWorkflowTaskCompletedRequest
+		//  - RespondWorkflowTaskFailedRequest
+		//  - RespondQueryTaskCompletedRequest
 		ProcessWorkflowTask(
 			task *workflowTask,
 			ctx *workflowExecutionContextImpl,
@@ -108,9 +108,9 @@ type (
 	ActivityTaskHandler interface {
 		// Executes the activity task
 		// The response is one of the types:
-		// - RespondActivityTaskCompletedRequest
-		// - RespondActivityTaskFailedRequest
-		// - RespondActivityTaskCanceledRequest
+		//  - RespondActivityTaskCompletedRequest
+		//  - RespondActivityTaskFailedRequest
+		//  - RespondActivityTaskCanceledRequest
 		Execute(taskQueue string, task *workflowservice.PollActivityTaskQueueResponse) (interface{}, error)
 	}
 )

@@ -3,7 +3,6 @@ package testjson
 import (
 	"bytes"
 	"go/build"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -63,7 +62,7 @@ func getPkgPathPrefixFromGoModule(cwd string) string {
 	if filename == "" {
 		return ""
 	}
-	raw, err := ioutil.ReadFile(filename)
+	raw, err := os.ReadFile(filename)
 	if err != nil {
 		// TODO: log.Warn
 		return ""

@@ -43,6 +43,12 @@ type ListContributorInsightsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *ListContributorInsightsInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 type ListContributorInsightsOutput struct {
 
 	// A list of ContributorInsightsSummary.
@@ -119,6 +125,12 @@ func (c *Client) addOperationListContributorInsightsMiddlewares(stack *middlewar
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListContributorInsights(options.Region), middleware.Before); err != nil {

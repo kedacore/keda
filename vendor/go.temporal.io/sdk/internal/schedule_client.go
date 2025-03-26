@@ -294,6 +294,14 @@ type (
 		// Deprecated - This is only for update of older search attributes. This may be removed in a future version.
 		UntypedSearchAttributes map[string]*commonpb.Payload
 
+		// VersioningOverride - Sets the versioning configuration of a specific workflow execution, ignoring current
+		// server or worker default policies. This enables running canary tests without affecting existing workflows.
+		// To unset the override after the workflow is running, use [Client.UpdateWorkflowExecutionOptions].
+		// Optional: defaults to no override.
+		//
+		// NOTE: Experimental
+		VersioningOverride VersioningOverride
+
 		// TODO(cretz): Expose once https://github.com/temporalio/temporal/issues/6412 is fixed
 		staticSummary string
 		staticDetails string
