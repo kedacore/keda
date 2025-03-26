@@ -48,7 +48,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 
 		factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 			if podTemplateSpec != nil {
-				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.secretsLister)
+				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.authClientSet.SecretLister)
 				if err != nil {
 					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %w", err)
 				}
@@ -72,7 +72,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				TriggerUniqueKey:        fmt.Sprintf("%s-%s-%s-%d", withTriggers.Kind, withTriggers.Namespace, withTriggers.Name, triggerIndex),
 			}
 
-			authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.secretsLister)
+			authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.authClientSet)
 			switch podIdentity.Provider {
 			case kedav1alpha1.PodIdentityProviderAwsEKS:
 				// FIXME: Delete this for v3
