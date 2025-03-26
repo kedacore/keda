@@ -53,6 +53,12 @@ type UpdateTableReplicaAutoScalingInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *UpdateTableReplicaAutoScalingInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 type UpdateTableReplicaAutoScalingOutput struct {
 
 	// Returns information about the auto scaling settings of a table with replicas.
@@ -126,6 +132,12 @@ func (c *Client) addOperationUpdateTableReplicaAutoScalingMiddlewares(stack *mid
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateTableReplicaAutoScalingValidationMiddleware(stack); err != nil {

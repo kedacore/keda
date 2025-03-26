@@ -1,5 +1,7 @@
 # Azure Event Grid Publisher Client Module for Go
 
+**Please note this package has been moved to: [azeventgrid](https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/messaging/eventgrid/azeventgrid).**
+
 [Azure Event Grid](https://learn.microsoft.com/azure/event-grid/overview) is a highly scalable, fully managed Pub Sub message distribution service that offers flexible message consumption patterns. For more information about Event Grid see: [link](https://learn.microsoft.com/azure/event-grid/overview).
 
 The client in this package can publish events to [Event Grid topics](https://learn.microsoft.com/azure/event-grid/concepts).

@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2023 ArangoDB GmbH, Cologne, Germany
+// Copyright 2023-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,8 +25,9 @@ import (
 	"time"
 )
 
+// Deprecated: It will be removed in version 3.12
+//
 // DatabasePregels provides access to all Pregel Jobs in a single database.
-// @deprecated It will be removed in version 3.12
 type DatabasePregels interface {
 	// StartJob - Start the execution of a Pregel algorithm
 	StartJob(ctx context.Context, options PregelJobOptions) (string, error)

@@ -95,6 +95,12 @@ type PutResourcePolicyInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *PutResourcePolicyInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.ResourceArn
+
+}
+
 type PutResourcePolicyOutput struct {
 
 	// A unique string that represents the revision ID of the policy. If you're
@@ -172,6 +178,12 @@ func (c *Client) addOperationPutResourcePolicyMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpPutResourcePolicyValidationMiddleware(stack); err != nil {

@@ -12,7 +12,6 @@ import (
 	smithytime "github.com/aws/smithy-go/time"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	smithywaiter "github.com/aws/smithy-go/waiter"
-	jmespath "github.com/jmespath/go-jmespath"
 	"time"
 )
 
@@ -119,6 +118,9 @@ func (c *Client) addOperationDescribeWorkspaceMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeWorkspaceValidationMiddleware(stack); err != nil {
@@ -317,56 +319,68 @@ func (w *WorkspaceActiveWaiter) WaitForOutput(ctx context.Context, params *Descr
 func workspaceActiveStateRetryable(ctx context.Context, input *DescribeWorkspaceInput, output *DescribeWorkspaceOutput, err error) (bool, error) {
 
 	if err == nil {
-		pathValue, err := jmespath.Search("workspace.status.statusCode", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Workspace
+		var v2 *types.WorkspaceStatus
+		if v1 != nil {
+			v3 := v1.Status
+			v2 = v3
 		}
-
+		var v4 types.WorkspaceStatusCode
+		if v2 != nil {
+			v5 := v2.StatusCode
+			v4 = v5
+		}
 		expectedValue := "ACTIVE"
-		value, ok := pathValue.(types.WorkspaceStatusCode)
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected types.WorkspaceStatusCode value, got %T", pathValue)
-		}
-
-		if string(value) == expectedValue {
+		var pathValue string
+		pathValue = string(v4)
+		if pathValue == expectedValue {
 			return false, nil
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("workspace.status.statusCode", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Workspace
+		var v2 *types.WorkspaceStatus
+		if v1 != nil {
+			v3 := v1.Status
+			v2 = v3
 		}
-
+		var v4 types.WorkspaceStatusCode
+		if v2 != nil {
+			v5 := v2.StatusCode
+			v4 = v5
+		}
 		expectedValue := "UPDATING"
-		value, ok := pathValue.(types.WorkspaceStatusCode)
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected types.WorkspaceStatusCode value, got %T", pathValue)
-		}
-
-		if string(value) == expectedValue {
+		var pathValue string
+		pathValue = string(v4)
+		if pathValue == expectedValue {
 			return true, nil
 		}
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("workspace.status.statusCode", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Workspace
+		var v2 *types.WorkspaceStatus
+		if v1 != nil {
+			v3 := v1.Status
+			v2 = v3
 		}
-
+		var v4 types.WorkspaceStatusCode
+		if v2 != nil {
+			v5 := v2.StatusCode
+			v4 = v5
+		}
 		expectedValue := "CREATING"
-		value, ok := pathValue.(types.WorkspaceStatusCode)
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected types.WorkspaceStatusCode value, got %T", pathValue)
-		}
-
-		if string(value) == expectedValue {
+		var pathValue string
+		pathValue = string(v4)
+		if pathValue == expectedValue {
 			return true, nil
 		}
 	}
 
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
@@ -537,22 +551,28 @@ func workspaceDeletedStateRetryable(ctx context.Context, input *DescribeWorkspac
 	}
 
 	if err == nil {
-		pathValue, err := jmespath.Search("workspace.status.statusCode", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Workspace
+		var v2 *types.WorkspaceStatus
+		if v1 != nil {
+			v3 := v1.Status
+			v2 = v3
 		}
-
+		var v4 types.WorkspaceStatusCode
+		if v2 != nil {
+			v5 := v2.StatusCode
+			v4 = v5
+		}
 		expectedValue := "DELETING"
-		value, ok := pathValue.(types.WorkspaceStatusCode)
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected types.WorkspaceStatusCode value, got %T", pathValue)
-		}
-
-		if string(value) == expectedValue {
+		var pathValue string
+		pathValue = string(v4)
+		if pathValue == expectedValue {
 			return true, nil
 		}
 	}
 
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 

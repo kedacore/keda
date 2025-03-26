@@ -15,16 +15,31 @@ type OperationHandle[T any] struct {
 	// Name of the Operation this handle represents.
 	Operation string
 	// Handler generated ID for this handle's operation.
-	ID     string
+	//
+	// Deprecated: Use Token instead.
+	ID string
+	// Handler generated token for this handle's operation.
+	Token string
+
 	client *HTTPClient
 }
 
 // GetInfo gets operation information, issuing a network request to the service handler.
+//
+// NOTE: Experimental
 func (h *OperationHandle[T]) GetInfo(ctx context.Context, options GetOperationInfoOptions) (*OperationInfo, error) {
-	url := h.client.serviceBaseURL.JoinPath(url.PathEscape(h.client.options.Service), url.PathEscape(h.Operation), url.PathEscape(h.ID))
-	request, err := http.NewRequestWithContext(ctx, "GET", url.String(), nil)
+	var u *url.URL
+	if h.client.options.UseOperationID {
+		u = h.client.serviceBaseURL.JoinPath(url.PathEscape(h.client.options.Service), url.PathEscape(h.Operation), url.PathEscape(h.ID))
+	} else {
+		u = h.client.serviceBaseURL.JoinPath(url.PathEscape(h.client.options.Service), url.PathEscape(h.Operation))
+	}
+	request, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+	if !h.client.options.UseOperationID {
+		request.Header.Set(HeaderOperationToken, h.Token)
 	}
 	addContextTimeoutToHTTPHeader(ctx, request.Header)
 	addNexusHeaderToHTTPHeader(options.Header, request.Header)
@@ -64,12 +79,22 @@ func (h *OperationHandle[T]) GetInfo(ctx context.Context, options GetOperationIn
 // context deadline to the max allowed wait period to ensure this call returns in a timely fashion.
 //
 // ⚠️ If a [LazyValue] is returned (as indicated by T), it must be consumed to free up the underlying connection.
+//
+// NOTE: Experimental
 func (h *OperationHandle[T]) GetResult(ctx context.Context, options GetOperationResultOptions) (T, error) {
 	var result T
-	url := h.client.serviceBaseURL.JoinPath(url.PathEscape(h.client.options.Service), url.PathEscape(h.Operation), url.PathEscape(h.ID), "result")
-	request, err := http.NewRequestWithContext(ctx, "GET", url.String(), nil)
+	var u *url.URL
+	if h.client.options.UseOperationID {
+		u = h.client.serviceBaseURL.JoinPath(url.PathEscape(h.client.options.Service), url.PathEscape(h.Operation), url.PathEscape(h.ID), "result")
+	} else {
+		u = h.client.serviceBaseURL.JoinPath(url.PathEscape(h.client.options.Service), url.PathEscape(h.Operation), "result")
+	}
+	request, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return result, err
+	}
+	if !h.client.options.UseOperationID {
+		request.Header.Set(HeaderOperationToken, h.Token)
 	}
 	addContextTimeoutToHTTPHeader(ctx, request.Header)
 	request.Header.Set(headerUserAgent, userAgent)
@@ -150,7 +175,7 @@ func (h *OperationHandle[T]) sendGetOperationResultRequest(request *http.Request
 			return nil, err
 		}
 		failureErr := h.client.options.FailureConverter.FailureToError(failure)
-		return nil, &UnsuccessfulOperationError{
+		return nil, &OperationError{
 			State: state,
 			Cause: failureErr,
 		}
@@ -163,11 +188,21 @@ func (h *OperationHandle[T]) sendGetOperationResultRequest(request *http.Request
 //
 // Cancelation is asynchronous and may be not be respected by the operation's implementation.
 func (h *OperationHandle[T]) Cancel(ctx context.Context, options CancelOperationOptions) error {
-	url := h.client.serviceBaseURL.JoinPath(url.PathEscape(h.client.options.Service), url.PathEscape(h.Operation), url.PathEscape(h.ID), "cancel")
-	request, err := http.NewRequestWithContext(ctx, "POST", url.String(), nil)
+	var u *url.URL
+	if h.client.options.UseOperationID {
+		u = h.client.serviceBaseURL.JoinPath(url.PathEscape(h.client.options.Service), url.PathEscape(h.Operation), url.PathEscape(h.ID), "cancel")
+	} else {
+		u = h.client.serviceBaseURL.JoinPath(url.PathEscape(h.client.options.Service), url.PathEscape(h.Operation), "cancel")
+	}
+	request, err := http.NewRequestWithContext(ctx, "POST", u.String(), nil)
 	if err != nil {
 		return err
 	}
+
+	if !h.client.options.UseOperationID {
+		request.Header.Set(HeaderOperationToken, h.Token)
+	}
+
 	addContextTimeoutToHTTPHeader(ctx, request.Header)
 	request.Header.Set(headerUserAgent, userAgent)
 	addNexusHeaderToHTTPHeader(options.Header, request.Header)

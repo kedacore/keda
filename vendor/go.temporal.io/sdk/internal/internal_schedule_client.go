@@ -657,6 +657,7 @@ func convertToPBScheduleAction(
 					SearchAttributes:         searchAttrs,
 					Header:                   header,
 					UserMetadata:             userMetadata,
+					VersioningOverride:       versioningOverrideToProto(action.VersioningOverride),
 				},
 			},
 		}, nil
@@ -708,6 +709,7 @@ func convertFromPBScheduleAction(logger log.Logger, action *schedulepb.ScheduleA
 			Memo:                     memos,
 			TypedSearchAttributes:    searchAttrs,
 			UntypedSearchAttributes:  untypedSearchAttrs,
+			VersioningOverride:       versioningOverrideFromProto(workflow.VersioningOverride),
 		}, nil
 	default:
 		// TODO maybe just panic instead?

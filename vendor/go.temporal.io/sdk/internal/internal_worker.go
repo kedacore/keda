@@ -165,8 +165,16 @@ type (
 
 		// The worker's build ID used for versioning, if one was set.
 		WorkerBuildID string
+
 		// If true the worker is opting in to build ID based versioning.
 		UseBuildIDForVersioning bool
+
+		// The worker's deployment series name, an identifier for Worker Versioning that links versions of the same worker
+		// service/application.
+		DeploymentSeriesName string
+
+		// The Versioning Behavior for workflows that do not set one when registering the workflow type.
+		DefaultVersioningBehavior VersioningBehavior
 
 		MetricsHandler metrics.Handler
 
@@ -524,12 +532,13 @@ func (aw *activityWorker) Stop() {
 
 type registry struct {
 	sync.Mutex
-	nexusServices    map[string]*nexus.Service
-	workflowFuncMap  map[string]interface{}
-	workflowAliasMap map[string]string
-	activityFuncMap  map[string]activity
-	activityAliasMap map[string]string
-	interceptors     []WorkerInterceptor
+	nexusServices                 map[string]*nexus.Service
+	workflowFuncMap               map[string]interface{}
+	workflowAliasMap              map[string]string
+	workflowVersioningBehaviorMap map[string]VersioningBehavior
+	activityFuncMap               map[string]activity
+	activityAliasMap              map[string]string
+	interceptors                  []WorkerInterceptor
 }
 
 type registryOptions struct {
@@ -551,6 +560,7 @@ func (r *registry) RegisterWorkflowWithOptions(
 			panic("WorkflowDefinitionFactory must be registered with a name")
 		}
 		r.workflowFuncMap[options.Name] = factory
+		r.workflowVersioningBehaviorMap[options.Name] = options.VersioningBehavior
 		return
 	}
 	// Validate that it is a function
@@ -574,6 +584,8 @@ func (r *registry) RegisterWorkflowWithOptions(
 		}
 	}
 	r.workflowFuncMap[registerName] = wf
+	r.workflowVersioningBehaviorMap[registerName] = options.VersioningBehavior
+
 	if len(alias) > 0 && r.workflowAliasMap != nil {
 		r.workflowAliasMap[fnName] = alias
 	}
@@ -767,6 +779,17 @@ func (r *registry) getWorkflowDefinition(wt WorkflowType) (WorkflowDefinition, e
 	return newSyncWorkflowDefinition(executor), nil
 }
 
+func (r *registry) getWorkflowVersioningBehavior(wt WorkflowType) (VersioningBehavior, bool) {
+	lookup := wt.Name
+	if alias, ok := r.getWorkflowAlias(lookup); ok {
+		lookup = alias
+	}
+	r.Lock()
+	defer r.Unlock()
+	behavior := r.workflowVersioningBehaviorMap[lookup]
+	return behavior, behavior != VersioningBehaviorUnspecified
+}
+
 func (r *registry) getNexusService(service string) *nexus.Service {
 	r.Lock()
 	defer r.Unlock()
@@ -835,9 +858,10 @@ func newRegistry() *registry { return newRegistryWithOptions(registryOptions{}) 
 
 func newRegistryWithOptions(options registryOptions) *registry {
 	r := &registry{
-		workflowFuncMap: make(map[string]interface{}),
-		activityFuncMap: make(map[string]activity),
-		nexusServices:   make(map[string]*nexus.Service),
+		workflowFuncMap:               make(map[string]interface{}),
+		workflowVersioningBehaviorMap: make(map[string]VersioningBehavior),
+		activityFuncMap:               make(map[string]activity),
+		nexusServices:                 make(map[string]*nexus.Service),
 	}
 	if !options.disableAliasing {
 		r.workflowAliasMap = make(map[string]string)
@@ -985,6 +1009,11 @@ func (aw *AggregatedWorker) RegisterWorkflow(w interface{}) {
 	if aw.workflowWorker == nil {
 		panic("workflow worker disabled, cannot register workflow")
 	}
+	if aw.executionParams.UseBuildIDForVersioning &&
+		aw.executionParams.DeploymentSeriesName != "" &&
+		aw.executionParams.DefaultVersioningBehavior == VersioningBehaviorUnspecified {
+		panic("workflow type does not have a versioning behavior")
+	}
 	aw.registry.RegisterWorkflow(w)
 }
 
@@ -992,6 +1021,12 @@ func (aw *AggregatedWorker) RegisterWorkflow(w interface{}) {
 func (aw *AggregatedWorker) RegisterWorkflowWithOptions(w interface{}, options RegisterWorkflowOptions) {
 	if aw.workflowWorker == nil {
 		panic("workflow worker disabled, cannot register workflow")
+	}
+	if options.VersioningBehavior == VersioningBehaviorUnspecified &&
+		aw.executionParams.DeploymentSeriesName != "" &&
+		aw.executionParams.UseBuildIDForVersioning &&
+		aw.executionParams.DefaultVersioningBehavior == VersioningBehaviorUnspecified {
+		panic("workflow type does not have a versioning behavior")
 	}
 	aw.registry.RegisterWorkflowWithOptions(w, options)
 }
@@ -1093,6 +1128,7 @@ func (aw *AggregatedWorker) start() error {
 			client:              aw.client,
 			workflowService:     aw.client.workflowService,
 			handler:             handler,
+			registry:            aw.registry,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to create a nexus worker: %w", err)
@@ -1686,6 +1722,8 @@ func NewAggregatedWorker(client *WorkflowClient, taskQueue string, options Worke
 		Identity:                              client.identity,
 		WorkerBuildID:                         options.BuildID,
 		UseBuildIDForVersioning:               options.UseBuildIDForVersioning,
+		DeploymentSeriesName:                  options.DeploymentOptions.DeploymentSeriesName,
+		DefaultVersioningBehavior:             options.DeploymentOptions.DefaultVersioningBehavior,
 		MetricsHandler:                        client.metricsHandler.WithTags(metrics.TaskQueueTags(taskQueue)),
 		Logger:                                client.logger,
 		EnableLoggingInReplay:                 options.EnableLoggingInReplay,

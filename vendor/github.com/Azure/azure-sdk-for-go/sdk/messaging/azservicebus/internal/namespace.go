@@ -57,6 +57,8 @@ type (
 
 		// newClientFn exists so we can stub out newClient for unit tests.
 		newClientFn func(ctx context.Context) (amqpwrap.AMQPClient, error)
+
+		customEndpoint string
 	}
 
 	// NamespaceOption provides structure for configuring a new Service Bus namespace
@@ -102,6 +104,17 @@ func NamespaceWithConnectionString(connStr string) NamespaceOption {
 		}
 
 		ns.TokenProvider = provider
+		return nil
+	}
+}
+
+// NamespaceWithCustomEndpoint sets a custom endpoint, useful for when you're connecting through a TCP proxy.
+// When establishing a TCP connection we connect to this address. The audience is extracted from the
+// fullyQualifiedNamespace given to NamespaceWithTokenCredential or the endpoint in the connection string passed
+// to NamespaceWithConnectionString.
+func NamespaceWithCustomEndpoint(customEndpoint string) NamespaceOption {
+	return func(ns *Namespace) error {
+		ns.customEndpoint = customEndpoint
 		return nil
 	}
 }
@@ -181,6 +194,7 @@ func (ns *Namespace) newClientImpl(ctx context.Context) (amqpwrap.AMQPClient, er
 			"framework":  runtime.Version(),
 			"user-agent": ns.getUserAgent(),
 		},
+		HostName: ns.FQDN,
 	}
 
 	if ns.tlsConfig != nil {
@@ -208,7 +222,7 @@ func (ns *Namespace) newClientImpl(ctx context.Context) (amqpwrap.AMQPClient, er
 		return &amqpwrap.AMQPClientWrapper{Inner: client, ID: id.String()}, err
 	}
 
-	client, err := amqp.Dial(ctx, ns.getAMQPHostURI(), &connOptions)
+	client, err := amqp.Dial(ctx, ns.getAMQPHostURI(true), &connOptions)
 	return &amqpwrap.AMQPClientWrapper{Inner: client, ID: id.String()}, err
 }
 
@@ -490,11 +504,17 @@ func (ns *Namespace) getWSSHostURI() string {
 	return fmt.Sprintf("wss://%s/", ns.FQDN)
 }
 
-func (ns *Namespace) getAMQPHostURI() string {
+func (ns *Namespace) getAMQPHostURI(useCustomEndpoint bool) string {
+	fqdn := ns.FQDN
+
+	if useCustomEndpoint && ns.customEndpoint != "" {
+		fqdn = ns.customEndpoint
+	}
+
 	if ns.TokenProvider.InsecureDisableTLS {
-		return fmt.Sprintf("amqp://%s/", ns.FQDN)
+		return fmt.Sprintf("amqp://%s/", fqdn)
 	} else {
-		return fmt.Sprintf("amqps://%s/", ns.FQDN)
+		return fmt.Sprintf("amqps://%s/", fqdn)
 	}
 }
 
@@ -503,7 +523,7 @@ func (ns *Namespace) GetHTTPSHostURI() string {
 }
 
 func (ns *Namespace) GetEntityAudience(entityPath string) string {
-	return ns.getAMQPHostURI() + entityPath
+	return ns.getAMQPHostURI(false) + entityPath
 }
 
 func (ns *Namespace) getUserAgent() string {

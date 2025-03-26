@@ -506,7 +506,7 @@ func (wc *WorkflowClient) CompleteActivity(ctx context.Context, taskToken []byte
 	// We do allow canceled error to be passed here
 	cancelAllowed := true
 	request := convertActivityResultToRespondRequest(wc.identity, taskToken,
-		data, err, wc.dataConverter, wc.failureConverter, wc.namespace, cancelAllowed, nil)
+		data, err, wc.dataConverter, wc.failureConverter, wc.namespace, cancelAllowed, nil, nil)
 	return reportActivityComplete(ctx, wc.workflowService, request, wc.metricsHandler)
 }
 
@@ -740,11 +740,11 @@ func (wc *WorkflowClient) DescribeWorkflowExecution(ctx context.Context, workflo
 
 // QueryWorkflow queries a given workflow execution
 // workflowID and queryType are required, other parameters are optional.
-// - workflow ID of the workflow.
-// - runID can be default(empty string). if empty string then it will pick the running execution of that workflow ID.
-// - taskQueue can be default(empty string). If empty string then it will pick the taskQueue of the running execution of that workflow ID.
-// - queryType is the type of the query.
-// - args... are the optional query parameters.
+//  - workflow ID of the workflow.
+//  - runID can be default(empty string). if empty string then it will pick the running execution of that workflow ID.
+//  - taskQueue can be default(empty string). If empty string then it will pick the taskQueue of the running execution of that workflow ID.
+//  - queryType is the type of the query.
+//  - args... are the optional query parameters.
 // The errors it can return:
 //   - serviceerror.InvalidArgument
 //   - serviceerror.Internal
@@ -816,7 +816,6 @@ type UpdateWithStartWorkflowOptions struct {
 // similar to a Future with respect to the outcome of the update. If the update
 // is rejected or returns an error, the Get function on this type will return
 // that error through the output valuePtr.
-// NOTE: Experimental
 type WorkflowUpdateHandle interface {
 	// WorkflowID observes the update's workflow ID.
 	WorkflowID() string
@@ -833,7 +832,6 @@ type WorkflowUpdateHandle interface {
 
 // GetWorkflowUpdateHandleOptions encapsulates the parameters needed to unambiguously
 // refer to a Workflow Update.
-// NOTE: Experimental
 type GetWorkflowUpdateHandleOptions struct {
 	// WorkflowID of the target update
 	WorkflowID string
@@ -945,8 +943,8 @@ func (wc *WorkflowClient) QueryWorkflowWithOptions(ctx context.Context, request 
 
 // DescribeTaskQueue returns information about the target taskqueue, right now this API returns the
 // pollers which polled this taskqueue in last few minutes.
-// - taskqueue name of taskqueue
-// - taskqueueType type of taskqueue, can be workflow or activity
+//  - taskqueue name of taskqueue
+//  - taskqueueType type of taskqueue, can be workflow or activity
 // The errors it can return:
 //   - serviceerror.InvalidArgument
 //   - serviceerror.Internal
@@ -1061,6 +1059,31 @@ func (wc *WorkflowClient) GetWorkerTaskReachability(ctx context.Context, options
 	}
 	converted := workerTaskReachabilityFromProtoResponse(resp)
 	return converted, nil
+}
+
+// UpdateWorkflowExecutionOptions partially overrides the [WorkflowExecutionOptions] of an existing workflow execution,
+// and returns the new [WorkflowExecutionOptions] after applying the changes.
+// It is intended for building tools that can selectively apply ad-hoc workflow configuration changes.
+// NOTE: Experimental
+func (wc *WorkflowClient) UpdateWorkflowExecutionOptions(ctx context.Context, request UpdateWorkflowExecutionOptionsRequest) (WorkflowExecutionOptions, error) {
+	if err := wc.ensureInitialized(ctx); err != nil {
+		return WorkflowExecutionOptions{}, err
+	}
+
+	grpcCtx, cancel := newGRPCContext(ctx, defaultGrpcRetryParameters(ctx))
+	defer cancel()
+
+	requestMsg, err := request.validateAndConvertToProto(wc.namespace)
+	if err != nil {
+		return WorkflowExecutionOptions{}, err
+	}
+
+	resp, err := wc.workflowService.UpdateWorkflowExecutionOptions(grpcCtx, requestMsg)
+	if err != nil {
+		return WorkflowExecutionOptions{}, err
+	}
+
+	return workflowExecutionOptionsFromProtoUpdateResponse(resp), nil
 }
 
 // DescribeTaskQueueEnhanced returns information about the target task queue, broken down by Build Id:
@@ -1299,6 +1322,13 @@ func (wc *WorkflowClient) ensureInitialized(ctx context.Context) error {
 // ScheduleClient implements Client.ScheduleClient.
 func (wc *WorkflowClient) ScheduleClient() ScheduleClient {
 	return &scheduleClient{
+		workflowClient: wc,
+	}
+}
+
+// DeploymentClient implements [Client.DeploymentClient].
+func (wc *WorkflowClient) DeploymentClient() DeploymentClient {
+	return &deploymentClient{
 		workflowClient: wc,
 	}
 }
@@ -1653,6 +1683,7 @@ func (w *workflowClientInterceptor) createStartWorkflowRequest(
 		Header:                   header,
 		CompletionCallbacks:      in.Options.callbacks,
 		Links:                    in.Options.links,
+		VersioningOverride:       versioningOverrideToProto(in.Options.VersioningOverride),
 	}
 
 	startRequest.UserMetadata, err = buildUserMetadata(in.Options.StaticSummary, in.Options.StaticDetails, dataConverter)
@@ -2016,6 +2047,7 @@ func (w *workflowClientInterceptor) SignalWithStartWorkflow(
 		WorkflowIdReusePolicy:    in.Options.WorkflowIDReusePolicy,
 		WorkflowIdConflictPolicy: in.Options.WorkflowIDConflictPolicy,
 		Header:                   header,
+		VersioningOverride:       versioningOverrideToProto(in.Options.VersioningOverride),
 	}
 
 	if in.Options.StartDelay != 0 {
