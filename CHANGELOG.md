@@ -79,7 +79,6 @@ Here is an overview of all new **experimental** features:
 ### Improvements
 
 - **General**: Add SecretKey to AWS SecretsManager TriggerAuthentication to allow parsing JSON / Key/Value Pairs in secrets ([#5940](https://github.com/kedacore/keda/issues/5940))
-- **General**: Add time.Duration in TypedConfig ([#6650](https://github.com/kedacore/keda/pull/6650))
 - **Azure Log Analytics Scaler**: Add custom HTTP client timeout ([#6607](https://github.com/kedacore/keda/pull/6607))
 - **Elasticsearch Scaler**: Support IgnoreNullValues at Elasticsearch scaler ([#6599](https://github.com/kedacore/keda/pull/6599))
 - **GitHub Scaler**: Add support to use ETag for conditional requests against the Github API ([#6503](https://github.com/kedacore/keda/issues/6503))
@@ -126,7 +125,7 @@ New deprecation(s):
 ### Other
 
 - **General**: Add debug logs tracking validation of ScaledObjects on webhook ([#6498](https://github.com/kedacore/keda/pull/6498))
-- **General**: Fix fallback validation check bug ([#6407](https://github.com/kedacore/keda/pull/6407))
+- **General**: Add time.Duration in TypedConfig ([#6650](https://github.com/kedacore/keda/pull/6650))
 - **General**: New eventreason KEDAScalersInfo to display important information ([#6328](https://github.com/kedacore/keda/issues/6328))
 - **Apache Kafka Scaler**: Remove unused awsEndpoint in Apache Kafka scaler ([#6627](https://github.com/kedacore/keda/pull/6627))
 - **External Scalers**: Allow `float64` values in externalmetrics' `MetricValue` & `TargetSize`. The old fields are still there because of backward compatibility. ([#5159](https://github.com/kedacore/keda/issues/5159))
