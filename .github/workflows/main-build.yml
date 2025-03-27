@@ -86,6 +86,10 @@ jobs:
     needs: build
     uses: kedacore/keda/.github/workflows/template-arm64-smoke-tests.yml@main
 
+  validate-s390x:
+    needs: build
+    uses: kedacore/keda/.github/workflows/template-s390x-smoke-tests.yml@main
+
   validate-k8s-versions:
     needs: build
     uses: kedacore/keda/.github/workflows/template-versions-smoke-tests.yml@main
@@ -110,7 +114,7 @@ jobs:
       security-events: write
     strategy:
       matrix:
-        runner: [ARM64, ubuntu-latest]
+        runner: [ARM64, ubuntu-latest, s390x]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
@@ -127,7 +131,7 @@ jobs:
       security-events: write
     strategy:
       matrix:
-        runner: [ARM64, ubuntu-latest]
+        runner: [ARM64, ubuntu-latest, s390x]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
