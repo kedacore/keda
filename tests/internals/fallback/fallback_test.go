@@ -266,6 +266,43 @@ spec:
       name: {{.TriggerAuthName}}
 `
 
+	scaledObjectTemplateWithTriggersOfValueType = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObject}}
+  namespace: {{.Namespace}}
+  labels:
+    app: {{.ScaleTargetName}}
+spec:
+  scaleTargetRef:
+    apiVersion: {{.ScaleTargetAPIVersion}}
+    kind: {{.ScaleTargetKind}}
+    name: {{.ScaleTargetName}}
+  minReplicaCount: {{.MinReplicas}}
+  maxReplicaCount: {{.MaxReplicas}}
+  fallback:
+    failureThreshold: 3
+    replicas: {{.DefaultFallback}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 1
+  cooldownPeriod: 1
+  pollingInterval: 5
+  triggers:
+  - type: metrics-api
+    metricType: Value
+    metadata:
+      targetValue: "5"
+      url: "{{.MetricsServerEndpoint}}"
+      valueLocation: 'value'
+      method: "query"
+    authenticationRef:
+      name: {{.TriggerAuthName}}
+`
+
 	scaledObjectTemplateWithCurrentReplicasIfHigher = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -544,6 +581,33 @@ func TestFallbackWithScaledObjectWithoutMetricType(t *testing.T) {
 
 		// Ensure the replica count remains stable
 		v.AssertReplicaCountNotChangeDuringTimePeriod(t, kc, scaleTargetName, namespace, 4, 30)
+
+		DeleteKubernetesResources(t, namespace, data, templates)
+	}
+}
+
+func TestFallbackForValueMetrics(t *testing.T) {
+	kc := GetKubernetesClient(t)
+	for k, v := range scaleTargetMap {
+		// setup
+		t.Logf("--- setting up ValueMetrics test for %s ---", k)
+		data, templates := getTemplateData(k)
+
+		// Replace the default scaledObject template
+		for i, tmpl := range templates {
+			if tmpl.Name == "scaledObjectTemplate" {
+				templates[i].Config = scaledObjectTemplateWithTriggersOfValueType
+				break
+			}
+		}
+
+		CreateKubernetesResources(t, kc, namespace, data, templates)
+
+		assert.True(t, v.WaitForReplicaReadyCount(t, kc, scaleTargetName, namespace, minReplicas, 180, 3),
+			"replica count should be %d after 9 minutes", minReplicas)
+		testScaleOut(t, kc, k, data)
+		testFallback(t, kc, k, data)
+		testRestoreAfterFallback(t, kc, k, data)
 
 		DeleteKubernetesResources(t, namespace, data, templates)
 	}

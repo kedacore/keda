@@ -82,7 +82,7 @@ func TestCheckFallbackValid(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name: "Value metricType - invalid",
+			name: "Value metricType - valid",
 			scaledObject: &ScaledObject{
 				Spec: ScaledObjectSpec{
 					Fallback: &Fallback{
@@ -97,8 +97,7 @@ func TestCheckFallbackValid(t *testing.T) {
 					},
 				},
 			},
-			expectedError: true,
-			errorContains: "type for the fallback to be enabled",
+			expectedError: false,
 		},
 		{
 			name: "Multiple triggers with one valid AverageValue - valid",
@@ -244,7 +243,7 @@ func TestCheckFallbackValid(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name: "Using ScalingModifiers with Value MetricType - invalid",
+			name: "Using ScalingModifiers with Value MetricType - valid",
 			scaledObject: &ScaledObject{
 				Spec: ScaledObjectSpec{
 					Fallback: &Fallback{
@@ -264,8 +263,7 @@ func TestCheckFallbackValid(t *testing.T) {
 					},
 				},
 			},
-			expectedError: true,
-			errorContains: "ScaledObject.Spec.Advanced.ScalingModifiers.MetricType must be AverageValue",
+			expectedError: false,
 		},
 	}
 
