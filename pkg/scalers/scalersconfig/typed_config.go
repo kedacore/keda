@@ -27,6 +27,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -399,6 +400,27 @@ func setConfigValueHelper(params Params, valFromConfig string, field reflect.Val
 	}
 	if paramValue.Type().ConvertibleTo(field.Type()) {
 		field.Set(paramValue.Convert(field.Type()))
+		return nil
+	}
+	if field.Type() == reflect.TypeOf(time.Duration(0)) {
+		// Try to parse as duration string first
+		duration, err := time.ParseDuration(valFromConfig)
+		if err == nil {
+			if duration < 0 {
+				return fmt.Errorf("duration cannot be negative: %q", valFromConfig)
+			}
+			field.Set(reflect.ValueOf(duration))
+			return nil
+		}
+		// If that fails, interpret as number of seconds
+		seconds, err := strconv.ParseInt(valFromConfig, 10, 64)
+		if err != nil {
+			return fmt.Errorf("unable to parse duration value %q: must be either a duration string (e.g. '30s', '5m') or a number of seconds", valFromConfig)
+		}
+		if seconds < 0 {
+			return fmt.Errorf("duration cannot be negative: %d seconds", seconds)
+		}
+		field.Set(reflect.ValueOf(time.Duration(seconds) * time.Second))
 		return nil
 	}
 	if field.Type() == reflect.TypeOf(url.Values{}) {
