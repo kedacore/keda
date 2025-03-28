@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/expr-lang/expr/builtin"
+	"github.com/expr-lang/expr/conf"
 	"github.com/expr-lang/expr/file"
 	"github.com/expr-lang/expr/internal/deref"
 	"github.com/expr-lang/expr/vm/runtime"
@@ -20,7 +21,6 @@ func Run(program *Program, env any) (any, error) {
 	if program == nil {
 		return nil, fmt.Errorf("program is nil")
 	}
-
 	vm := VM{}
 	return vm.Run(program, env)
 }
@@ -38,9 +38,9 @@ type VM struct {
 	Stack        []any
 	Scopes       []*Scope
 	Variables    []any
+	MemoryBudget uint
 	ip           int
 	memory       uint
-	memoryBudget uint
 	debug        bool
 	step         chan struct{}
 	curr         chan int
@@ -76,7 +76,9 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 		vm.Variables = make([]any, program.variables)
 	}
 
-	vm.memoryBudget = MemoryBudget
+	if vm.MemoryBudget == 0 {
+		vm.MemoryBudget = conf.DefaultMemoryBudget
+	}
 	vm.memory = 0
 	vm.ip = 0
 
@@ -332,10 +334,8 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 			in := make([]reflect.Value, size)
 			for i := int(size) - 1; i >= 0; i-- {
 				param := vm.pop()
-				if param == nil && reflect.TypeOf(param) == nil {
-					// In case of nil value and nil type use this hack,
-					// otherwise reflect.Call will panic on zero value.
-					in[i] = reflect.ValueOf(&param).Elem()
+				if param == nil {
+					in[i] = reflect.Zero(fn.Type().In(i))
 				} else {
 					in[i] = reflect.ValueOf(param)
 				}
@@ -457,7 +457,7 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 
 		case OpDeref:
 			a := vm.pop()
-			vm.push(deref.Deref(a))
+			vm.push(deref.Interface(a))
 
 		case OpIncrementIndex:
 			vm.scope().Index++
@@ -599,7 +599,7 @@ func (vm *VM) pop() any {
 
 func (vm *VM) memGrow(size uint) {
 	vm.memory += size
-	if vm.memory >= vm.memoryBudget {
+	if vm.memory >= vm.MemoryBudget {
 		panic("memory budget exceeded")
 	}
 }

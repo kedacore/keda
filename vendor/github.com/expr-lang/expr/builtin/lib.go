@@ -5,15 +5,19 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+	"unicode/utf8"
 
 	"github.com/expr-lang/expr/internal/deref"
+	"github.com/expr-lang/expr/vm/runtime"
 )
 
 func Len(x any) any {
 	v := reflect.ValueOf(x)
 	switch v.Kind() {
-	case reflect.Array, reflect.Slice, reflect.Map, reflect.String:
+	case reflect.Array, reflect.Slice, reflect.Map:
 		return v.Len()
+	case reflect.String:
+		return utf8.RuneCountInString(v.String())
 	default:
 		panic(fmt.Sprintf("invalid argument for len (type %T)", x))
 	}
@@ -24,15 +28,6 @@ func Type(arg any) any {
 		return "nil"
 	}
 	v := reflect.ValueOf(arg)
-	for {
-		if v.Kind() == reflect.Ptr {
-			v = v.Elem()
-		} else if v.Kind() == reflect.Interface {
-			v = v.Elem()
-		} else {
-			break
-		}
-	}
 	if v.Type().Name() != "" && v.Type().PkgPath() != "" {
 		return fmt.Sprintf("%s.%s", v.Type().PkgPath(), v.Type().Name())
 	}
@@ -261,7 +256,7 @@ func String(arg any) any {
 func minMax(name string, fn func(any, any) bool, args ...any) (any, error) {
 	var val any
 	for _, arg := range args {
-		rv := reflect.ValueOf(deref.Deref(arg))
+		rv := reflect.ValueOf(arg)
 		switch rv.Kind() {
 		case reflect.Array, reflect.Slice:
 			size := rv.Len()
@@ -304,7 +299,7 @@ func mean(args ...any) (int, float64, error) {
 	var count int
 
 	for _, arg := range args {
-		rv := reflect.ValueOf(deref.Deref(arg))
+		rv := reflect.ValueOf(arg)
 		switch rv.Kind() {
 		case reflect.Array, reflect.Slice:
 			size := rv.Len()
@@ -336,7 +331,7 @@ func median(args ...any) ([]float64, error) {
 	var values []float64
 
 	for _, arg := range args {
-		rv := reflect.ValueOf(deref.Deref(arg))
+		rv := reflect.ValueOf(arg)
 		switch rv.Kind() {
 		case reflect.Array, reflect.Slice:
 			size := rv.Len()
@@ -358,4 +353,81 @@ func median(args ...any) ([]float64, error) {
 		}
 	}
 	return values, nil
+}
+
+func flatten(arg reflect.Value) []any {
+	ret := []any{}
+	for i := 0; i < arg.Len(); i++ {
+		v := deref.Value(arg.Index(i))
+		if v.Kind() == reflect.Array || v.Kind() == reflect.Slice {
+			x := flatten(v)
+			ret = append(ret, x...)
+		} else {
+			ret = append(ret, v.Interface())
+		}
+	}
+	return ret
+}
+
+func get(params ...any) (out any, err error) {
+	from := params[0]
+	i := params[1]
+	v := reflect.ValueOf(from)
+
+	if v.Kind() == reflect.Invalid {
+		panic(fmt.Sprintf("cannot fetch %v from %T", i, from))
+	}
+
+	// Methods can be defined on any type.
+	if v.NumMethod() > 0 {
+		if methodName, ok := i.(string); ok {
+			method := v.MethodByName(methodName)
+			if method.IsValid() {
+				return method.Interface(), nil
+			}
+		}
+	}
+
+	switch v.Kind() {
+	case reflect.Array, reflect.Slice, reflect.String:
+		index := runtime.ToInt(i)
+		l := v.Len()
+		if index < 0 {
+			index = l + index
+		}
+		if 0 <= index && index < l {
+			value := v.Index(index)
+			if value.IsValid() {
+				return value.Interface(), nil
+			}
+		}
+
+	case reflect.Map:
+		var value reflect.Value
+		if i == nil {
+			value = v.MapIndex(reflect.Zero(v.Type().Key()))
+		} else {
+			value = v.MapIndex(reflect.ValueOf(i))
+		}
+		if value.IsValid() {
+			return value.Interface(), nil
+		}
+
+	case reflect.Struct:
+		fieldName := i.(string)
+		value := v.FieldByNameFunc(func(name string) bool {
+			field, _ := v.Type().FieldByName(name)
+			if field.Tag.Get("expr") == fieldName {
+				return true
+			}
+			return name == fieldName
+		})
+		if value.IsValid() {
+			return value.Interface(), nil
+		}
+	}
+
+	// Main difference from runtime.Fetch
+	// is that we return `nil` instead of panic.
+	return nil, nil
 }
