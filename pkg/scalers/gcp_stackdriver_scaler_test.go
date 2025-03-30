@@ -37,7 +37,7 @@ var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 	{
 		authParams: nil,
 		metadata: map[string]string{
-			"projectID":             "myProject",
+			"projectId":             "myProject",
 			"filter":                sdFilter,
 			"targetValue":           "7",
 			"credentialsFromEnv":    "SAMPLE_CREDS",
@@ -60,7 +60,7 @@ var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 	{
 		authParams: nil,
 		metadata: map[string]string{
-			"projectID":          "myProject",
+			"projectId":          "myProject",
 			"filter":             sdFilter,
 			"credentialsFromEnv": "SAMPLE_CREDS",
 		},
@@ -127,7 +127,7 @@ var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 	{
 		authParams: nil,
 		metadata: map[string]string{
-			"projectID": "myProject",
+			"projectId": "myProject",
 			"filter":    sdFilter,
 		},
 		isError:  true,
@@ -170,7 +170,7 @@ var gcpStackdriverMetricIdentifiers = []struct {
 		comment:      "basic metric name",
 		triggerIndex: 0,
 		metadata: map[string]string{
-			"projectID":          "myProject",
+			"projectId":          "myProject",
 			"filter":             sdFilter,
 			"credentialsFromEnv": "SAMPLE_CREDS",
 		},
@@ -180,7 +180,7 @@ var gcpStackdriverMetricIdentifiers = []struct {
 		comment:      "metric name with different index",
 		triggerIndex: 1,
 		metadata: map[string]string{
-			"projectID":          "myProject",
+			"projectId":          "myProject",
 			"filter":             sdFilter,
 			"credentialsFromEnv": "SAMPLE_CREDS",
 		},
