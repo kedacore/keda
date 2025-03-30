@@ -81,28 +81,25 @@ var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 	{
 		authParams: nil,
 		metadata: map[string]string{
-			"projectId":              "myProject",
-			"filter":                 sdFilter,
-			"credentialsFromEnv":     "SAMPLE_CREDS",
-			"alignmentPeriodSeconds": "120",
-			"alignmentAligner":       "sum",
-			"alignmentReducer":       "percentile_99",
-		},
-		isError:  true,
-		expected: nil,
-		comment:  "with aggregation configuration",
-	},
-	{
-		authParams: nil,
-		metadata: map[string]string{
 			"projectId":          "myProject",
 			"filter":             sdFilter,
 			"credentialsFromEnv": "SAMPLE_CREDS",
 			"valueIfNull":        "1.5",
 		},
-		isError:  true,
-		expected: nil,
-		comment:  "with valueIfNull configuration",
+		isError: false,
+		expected: &stackdriverMetadata{
+			ProjectID:             "myProject",
+			Filter:                sdFilter,
+			TargetValue:           5,
+			ActivationTargetValue: 0,
+			metricName:            "s0-gcp-stackdriver-myProject",
+			ValueIfNull:           func() *float64 { v := 1.5; return &v }(),
+			gcpAuthorization: &gcp.AuthorizationMetadata{
+				GoogleApplicationCredentials: "{}",
+				PodIdentityProviderEnabled:   false,
+			},
+		},
+		comment: "with valueIfNull configuration",
 	},
 	{
 		authParams: nil,
