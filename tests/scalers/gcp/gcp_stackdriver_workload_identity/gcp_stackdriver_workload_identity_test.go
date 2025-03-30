@@ -137,7 +137,7 @@ spec:
       authenticationRef:
         name: keda-trigger-auth-gcp-credentials
       metadata:
-        projectID: {{.ProjectID}}
+        projectId: {{.ProjectID}}
         filter: 'metric.type="pubsub.googleapis.com/topic/num_unacked_messages_by_region" AND resource.type="pubsub_topic" AND resource.label.topic_id="{{.TopicName}}"'
         metricName: {{.TopicName}}
         targetValue: "5"
