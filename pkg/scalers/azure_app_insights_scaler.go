@@ -189,6 +189,33 @@ func parseAzureAppInsightsMetadata(config *scalersconfig.ScalerConfig, logger lo
 	return &meta, nil
 }
 
+// parseAzurePodIdentityParams gets the activeDirectory clientID and password
+func parseAzurePodIdentityParams(config *scalersconfig.ScalerConfig) (clientID string, clientPassword string, err error) {
+	switch config.PodIdentity.Provider {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		clientID, err = getParameterFromConfig(config, "activeDirectoryClientId", true)
+		if err != nil || clientID == "" {
+			return "", "", fmt.Errorf("no activeDirectoryClientId given")
+		}
+
+		if config.AuthParams["activeDirectoryClientPassword"] != "" {
+			clientPassword = config.AuthParams["activeDirectoryClientPassword"]
+		} else if config.TriggerMetadata["activeDirectoryClientPasswordFromEnv"] != "" {
+			clientPassword = config.ResolvedEnv[config.TriggerMetadata["activeDirectoryClientPasswordFromEnv"]]
+		}
+
+		if len(clientPassword) == 0 {
+			return "", "", fmt.Errorf("no activeDirectoryClientPassword given")
+		}
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		// no params required to be parsed
+	default:
+		return "", "", fmt.Errorf("azure Monitor doesn't support pod identity %s", config.PodIdentity.Provider)
+	}
+
+	return clientID, clientPassword, nil
+}
+
 func (s *azureAppInsightsScaler) Close(context.Context) error {
 	return nil
 }
