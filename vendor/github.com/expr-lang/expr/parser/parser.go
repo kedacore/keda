@@ -56,6 +56,13 @@ type parser struct {
 
 func (p *parser) checkNodeLimit() error {
 	p.nodeCount++
+	if p.config == nil {
+		if p.nodeCount > conf.DefaultMaxNodes {
+			p.error("compilation failed: expression exceeds maximum allowed nodes")
+			return nil
+		}
+		return nil
+	}
 	if p.config.MaxNodes > 0 && p.nodeCount > p.config.MaxNodes {
 		p.error("compilation failed: expression exceeds maximum allowed nodes")
 		return nil
@@ -91,9 +98,7 @@ type Tree struct {
 }
 
 func Parse(input string) (*Tree, error) {
-	return ParseWithConfig(input, &conf.Config{
-		Disabled: map[string]bool{},
-	})
+	return ParseWithConfig(input, nil)
 }
 
 func ParseWithConfig(input string, config *conf.Config) (*Tree, error) {
@@ -323,13 +328,13 @@ func (p *parser) parseConditional(node Node) Node {
 		p.next()
 
 		if !p.current.Is(Operator, ":") {
-			expr1 = p.parseSequenceExpression()
+			expr1 = p.parseExpression(0)
 			p.expect(Operator, ":")
-			expr2 = p.parseSequenceExpression()
+			expr2 = p.parseExpression(0)
 		} else {
 			p.next()
 			expr1 = node
-			expr2 = p.parseSequenceExpression()
+			expr2 = p.parseExpression(0)
 		}
 
 		node = p.createNode(&ConditionalNode{
@@ -515,7 +520,10 @@ func (p *parser) toFloatNode(number float64) Node {
 func (p *parser) parseCall(token Token, arguments []Node, checkOverrides bool) Node {
 	var node Node
 
-	isOverridden := p.config.IsOverridden(token.Value)
+	isOverridden := false
+	if p.config != nil {
+		isOverridden = p.config.IsOverridden(token.Value)
+	}
 	isOverridden = isOverridden && checkOverrides
 
 	if b, ok := predicates[token.Value]; ok && !isOverridden {
@@ -562,7 +570,7 @@ func (p *parser) parseCall(token Token, arguments []Node, checkOverrides bool) N
 		if node == nil {
 			return nil
 		}
-	} else if _, ok := builtin.Index[token.Value]; ok && !p.config.Disabled[token.Value] && !isOverridden {
+	} else if _, ok := builtin.Index[token.Value]; ok && (p.config == nil || !p.config.Disabled[token.Value]) && !isOverridden {
 		node = p.createNode(&BuiltinNode{
 			Name:      token.Value,
 			Arguments: p.parseArguments(arguments),

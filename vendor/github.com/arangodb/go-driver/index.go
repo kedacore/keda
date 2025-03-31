@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017-2024 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,8 +29,8 @@ type IndexType string
 const (
 	PrimaryIndex     = IndexType("primary")
 	FullTextIndex    = IndexType("fulltext") // Deprecated: since 3.10 version. Use ArangoSearch view instead.
-	HashIndex        = IndexType("hash")     // Deprecated use PersistentIndexType instead
-	SkipListIndex    = IndexType("skiplist") // Deprecated use PersistentIndexType instead
+	HashIndex        = IndexType("hash")     // Deprecated: use PersistentIndexType instead
+	SkipListIndex    = IndexType("skiplist") // Deprecated: use PersistentIndexType instead
 	PersistentIndex  = IndexType("persistent")
 	GeoIndex         = IndexType("geo")
 	EdgeIndex        = IndexType("edge")

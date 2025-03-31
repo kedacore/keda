@@ -82,6 +82,12 @@ type ListBackupsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *ListBackupsInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 type ListBackupsOutput struct {
 
 	// List of BackupSummary objects.
@@ -171,6 +177,12 @@ func (c *Client) addOperationListBackupsMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListBackups(options.Region), middleware.Before); err != nil {

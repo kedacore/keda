@@ -48,6 +48,9 @@ type UpdateScraperInput struct {
 	// The new Amazon Managed Service for Prometheus workspace to send metrics to.
 	Destination types.Destination
 
+	// The scraper role configuration for the workspace.
+	RoleConfiguration *types.RoleConfiguration
+
 	// Contains the base-64 encoded YAML configuration for the scraper.
 	//
 	// For more information about configuring a scraper, see [Using an Amazon Web Services managed collector] in the Amazon Managed
@@ -147,6 +150,9 @@ func (c *Client) addOperationUpdateScraperMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opUpdateScraperMiddleware(stack, options); err != nil {

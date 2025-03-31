@@ -55,6 +55,7 @@ type Receiver struct {
 	receiving                bool
 	retryOptions             RetryOptions
 	settler                  *messageSettler
+	defaultReleaserTimeout   time.Duration // defaults to 1min, settable for unit tests.
 }
 
 // ReceiverOptions contains options for the `Client.NewReceiverForQueue` or `Client.NewReceiverForSubscription`
@@ -133,6 +134,7 @@ func newReceiver(args newReceiverArgs, options *ReceiverOptions) (*Receiver, err
 		lastPeekedSequenceNumber: 0,
 		maxAllowedCredits:        defaultLinkRxBuffer,
 		retryOptions:             args.retryOptions,
+		defaultReleaserTimeout:   time.Minute,
 	}
 
 	receiver.cancelReleaser.Store(emptyCancelFn)
@@ -608,32 +610,38 @@ func (r *Receiver) newReleaserFunc(receiver amqpwrap.AMQPReceiver) func() {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
+	releaseLoopDone := make(chan struct{})
 	released := 0
 
 	// this func gets called when a new ReceiveMessages() starts
 	r.cancelReleaser.Store(func() string {
 		cancel()
-		<-done
+		<-releaseLoopDone
 		return receiver.LinkName()
 	})
 
 	return func() {
-		defer close(done)
+		defer close(releaseLoopDone)
 
 		for {
-			// we might not have all the messages we need here.
 			msg, err := receiver.Receive(ctx, nil)
 
 			if err == nil {
-				err = receiver.ReleaseMessage(ctx, msg)
+				releaseCtx, cancelRelease := context.WithTimeout(context.Background(), r.defaultReleaserTimeout)
+
+				// We don't use `ctx` here to avoid cancelling Release(), and leaving this message
+				// in limbo until it expires.
+				err = receiver.ReleaseMessage(releaseCtx, msg)
+				cancelRelease()
+
+				if err == nil {
+					released++
+				}
 			}
 
-			if err == nil {
-				released++
-			}
-
-			if internal.IsCancelError(err) {
+			// We check `ctx.Err()` here, instead of testing the returned err from .Receive(), because Receive()
+			// ignores cancellation if it has any messages in its prefetch queue.
+			if ctx.Err() != nil {
 				if released > 0 {
 					r.amqpLinks.Writef(exported.EventReceiver, "Message releaser pausing. Released %d messages", released)
 				}

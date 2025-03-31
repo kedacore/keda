@@ -26,27 +26,6 @@ extends:
   parameters:
     ServiceDirectory: 'messaging/azservicebus'
     RunLiveTests: true
-    # SupportedClouds: 'Public,UsGov,China'
-    SupportedClouds: 'China'
-    CloudConfig:
-      Public:
-        ServiceConnection: azure-sdk-tests
-        SubscriptionConfigurationFilePaths:
-          - eng/common/TestResources/sub-config/AzurePublicMsft.json
-      UsGov:
-        ServiceConnection: usgov_azure-sdk-tests
-        SubscriptionConfigurationFilePaths:
-          - eng/common/TestResources/sub-config/AzureUsGovMsft.json
-      China:
-        ServiceConnection: china_azure-sdk-tests
-        SubscriptionConfigurationFilePaths:
-          - eng/common/TestResources/sub-config/AzureChinaMsft.json
-        MatrixReplace:
-          # Use dedicated pool with regional affinity to China cloud
-          - Pool=(.*)-general/$1-asia
-        MatrixFilters:
-          - Pool=.*mms-ubuntu-2004.*
-          - GoVersion=1.18.10
     EnvVars:
       AZURE_CLIENT_ID: $(AZSERVICEBUS_CLIENT_ID)
       AZURE_TENANT_ID: $(AZSERVICEBUS_TENANT_ID)

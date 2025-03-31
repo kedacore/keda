@@ -18,7 +18,7 @@ import (
 )
 
 // Package version.
-const version = "v0.1.0"
+const version = "v0.3.0"
 
 const (
 	// Nexus specific headers.
@@ -26,9 +26,16 @@ const (
 	headerRequestID          = "nexus-request-id"
 	headerLink               = "nexus-link"
 	headerOperationStartTime = "nexus-operation-start-time"
+	headerRetryable          = "nexus-request-retryable"
 	// HeaderOperationID is the unique ID returned by the StartOperation response for async operations.
 	// Must be set on callback headers to support completing operations before the start response is received.
+	//
+	// Deprecated: Use HeaderOperationToken instead.
 	HeaderOperationID = "nexus-operation-id"
+
+	// HeaderOperationToken is the unique token returned by the StartOperation response for async operations.
+	// Must be set on callback headers to support completing operations before the start response is received.
+	HeaderOperationToken = "nexus-operation-token"
 
 	// HeaderRequestTimeout is the total time to complete a Nexus HTTP request.
 	HeaderRequestTimeout = "request-timeout"
@@ -77,34 +84,87 @@ func (e *FailureError) Error() string {
 	return e.Failure.Message
 }
 
-// UnsuccessfulOperationError represents "failed" and "canceled" operation results.
-type UnsuccessfulOperationError struct {
+// OperationError represents "failed" and "canceled" operation results.
+type OperationError struct {
 	// State of the operation. Only [OperationStateFailed] and [OperationStateCanceled] are valid.
 	State OperationState
 	// The underlying cause for this error.
 	Cause error
 }
 
-// NewFailedOperationError is shorthand for constructing an [UnsuccessfulOperationError] with State set to
-// [OperationStateFailed] and the given err as the Cause.
-func NewFailedOperationError(err error) *UnsuccessfulOperationError {
-	return &UnsuccessfulOperationError{
+// UnsuccessfulOperationError represents "failed" and "canceled" operation results.
+//
+// Deprecated: Use [OperationError] instead.
+type UnsuccessfulOperationError = OperationError
+
+// NewFailedOperationError is shorthand for constructing an [OperationError] with state set to
+// [OperationStateFailed] and the given err as the cause.
+//
+// Deprecated: Use [NewOperationFailedError] or construct an [OperationError] directly instead.
+func NewFailedOperationError(err error) *OperationError {
+	return &OperationError{
 		State: OperationStateFailed,
 		Cause: err,
 	}
 }
 
-// NewFailedOperationError is shorthand for constructing an [UnsuccessfulOperationError] with State set to
-// [OperationStateCanceled] and the given err as the Cause.
-func NewCanceledOperationError(err error) *UnsuccessfulOperationError {
-	return &UnsuccessfulOperationError{
+// NewOperationFailedError is shorthand for constructing an [OperationError] with state set to
+// [OperationStateFailed] and the given error message as the cause.
+func NewOperationFailedError(message string) *OperationError {
+	return &OperationError{
+		State: OperationStateFailed,
+		Cause: errors.New(message),
+	}
+}
+
+// OperationFailedErrorf creates an [OperationError] with state set to [OperationStateFailed], using [fmt.Errorf] to
+// construct the cause.
+func OperationFailedErrorf(format string, args ...any) *OperationError {
+	return &OperationError{
+		State: OperationStateFailed,
+		Cause: fmt.Errorf(format, args...),
+	}
+}
+
+// NewCanceledOperationError is shorthand for constructing an [OperationError] with state set to
+// [OperationStateCanceled] and the given err as the cause.
+//
+// Deprecated: Use [NewOperationCanceledError] or construct an [OperationError] directly instead.
+func NewCanceledOperationError(err error) *OperationError {
+	return &OperationError{
 		State: OperationStateCanceled,
 		Cause: err,
 	}
 }
 
+// NewOperationCanceledError is shorthand for constructing an [OperationError] with state set to
+// [OperationStateCanceled] and the given error message as the cause.
+func NewOperationCanceledError(message string) *OperationError {
+	return &OperationError{
+		State: OperationStateCanceled,
+		Cause: errors.New(message),
+	}
+}
+
+// OperationCanceledErrorf creates an [OperationError] with state set to [OperationStateCanceled], using [fmt.Errorf] to
+// construct the cause.
+func OperationCanceledErrorf(format string, args ...any) *OperationError {
+	return &OperationError{
+		State: OperationStateCanceled,
+		Cause: fmt.Errorf(format, args...),
+	}
+}
+
+// OperationErrorf creates an [OperationError] with the given state, using [fmt.Errorf] to construct the cause.
+func OperationErrorf(state OperationState, format string, args ...any) *OperationError {
+	return &OperationError{
+		State: state,
+		Cause: fmt.Errorf(format, args...),
+	}
+}
+
 // Error implements the error interface.
-func (e *UnsuccessfulOperationError) Error() string {
+func (e *OperationError) Error() string {
 	if e.Cause == nil {
 		return fmt.Sprintf("operation %s", e.State)
 	}
@@ -112,17 +172,134 @@ func (e *UnsuccessfulOperationError) Error() string {
 }
 
 // Unwrap returns the cause for use with utilities in the errors package.
-func (e *UnsuccessfulOperationError) Unwrap() error {
+func (e *OperationError) Unwrap() error {
+	return e.Cause
+}
+
+// HandlerErrorType is an error type associated with a [HandlerError], defined according to the Nexus specification.
+// Only the types defined as consts in this package are valid. Do not use other values.
+type HandlerErrorType string
+
+const (
+	// The server cannot or will not process the request due to an apparent client error. Clients should not retry
+	// this request unless advised otherwise.
+	HandlerErrorTypeBadRequest HandlerErrorType = "BAD_REQUEST"
+	// The client did not supply valid authentication credentials for this request. Clients should not retry
+	// this request unless advised otherwise.
+	HandlerErrorTypeUnauthenticated HandlerErrorType = "UNAUTHENTICATED"
+	// The caller does not have permission to execute the specified operation. Clients should not retry this
+	// request unless advised otherwise.
+	HandlerErrorTypeUnauthorized HandlerErrorType = "UNAUTHORIZED"
+	// The requested resource could not be found but may be available in the future. Clients should not retry this
+	// request unless advised otherwise.
+	HandlerErrorTypeNotFound HandlerErrorType = "NOT_FOUND"
+	// Some resource has been exhausted, perhaps a per-user quota, or perhaps the entire file system is out of
+	// space. Subsequent requests by the client are permissible.
+	HandlerErrorTypeResourceExhausted HandlerErrorType = "RESOURCE_EXHAUSTED"
+	// An internal error occured. Subsequent requests by the client are permissible.
+	HandlerErrorTypeInternal HandlerErrorType = "INTERNAL"
+	// The server either does not recognize the request method, or it lacks the ability to fulfill the request.
+	// Clients should not retry this request unless advised otherwise.
+	HandlerErrorTypeNotImplemented HandlerErrorType = "NOT_IMPLEMENTED"
+	// The service is currently unavailable. Subsequent requests by the client are permissible.
+	HandlerErrorTypeUnavailable HandlerErrorType = "UNAVAILABLE"
+	// Used by gateways to report that a request to an upstream server has timed out. Subsequent requests by the
+	// client are permissible.
+	HandlerErrorTypeUpstreamTimeout HandlerErrorType = "UPSTREAM_TIMEOUT"
+)
+
+// HandlerErrorRetryBehavior allows handlers to explicity set the retry behavior of a [HandlerError]. If not specified,
+// retry behavior is determined from the error type. For example [HandlerErrorTypeInternal] is not retryable by default
+// unless specified otherwise.
+type HandlerErrorRetryBehavior int
+
+const (
+	// HandlerErrorRetryBehaviorUnspecified indicates that the retry behavior for a [HandlerError] is determined
+	// from the [HandlerErrorType].
+	HandlerErrorRetryBehaviorUnspecified HandlerErrorRetryBehavior = iota
+	// HandlerErrorRetryBehaviorRetryable explicitly indicates that a [HandlerError] should be retried, overriding
+	// the default retry behavior of the [HandlerErrorType].
+	HandlerErrorRetryBehaviorRetryable
+	// HandlerErrorRetryBehaviorNonRetryable explicitly indicates that a [HandlerError] should not be retried,
+	// overriding the default retry behavior of the [HandlerErrorType].
+	HandlerErrorRetryBehaviorNonRetryable
+)
+
+// HandlerError is a special error that can be returned from [Handler] methods for failing a request with a custom
+// status code and failure message.
+type HandlerError struct {
+	// Error Type. Defaults to HandlerErrorTypeInternal.
+	Type HandlerErrorType
+	// The underlying cause for this error.
+	Cause error
+	// RetryBehavior of this error. If not specified, retry behavior is determined from the error type.
+	RetryBehavior HandlerErrorRetryBehavior
+}
+
+// HandlerErrorf creates a [HandlerError] with the given type, using [fmt.Errorf] to construct the cause.
+func HandlerErrorf(typ HandlerErrorType, format string, args ...any) *HandlerError {
+	return &HandlerError{
+		Type:  typ,
+		Cause: fmt.Errorf(format, args...),
+	}
+}
+
+// Retryable returns a boolean indicating whether or not this error is retryable based on the error's RetryBehavior and
+// Type.
+func (e *HandlerError) Retryable() bool {
+	switch e.RetryBehavior {
+	case HandlerErrorRetryBehaviorNonRetryable:
+		return false
+	case HandlerErrorRetryBehaviorRetryable:
+		return true
+	}
+	switch e.Type {
+	case HandlerErrorTypeBadRequest,
+		HandlerErrorTypeUnauthenticated,
+		HandlerErrorTypeUnauthorized,
+		HandlerErrorTypeNotFound,
+		HandlerErrorTypeNotImplemented:
+		return false
+	case HandlerErrorTypeResourceExhausted,
+		HandlerErrorTypeInternal,
+		HandlerErrorTypeUnavailable,
+		HandlerErrorTypeUpstreamTimeout:
+		return true
+	default:
+		return true
+	}
+}
+
+// Error implements the error interface.
+func (e *HandlerError) Error() string {
+	typ := e.Type
+	if len(typ) == 0 {
+		typ = HandlerErrorTypeInternal
+	}
+	if e.Cause == nil {
+		return fmt.Sprintf("handler error (%s)", typ)
+	}
+	return fmt.Sprintf("handler error (%s): %s", typ, e.Cause.Error())
+}
+
+// Unwrap returns the cause for use with utilities in the errors package.
+func (e *HandlerError) Unwrap() error {
 	return e.Cause
 }
 
 // ErrOperationStillRunning indicates that an operation is still running while trying to get its result.
+//
+// NOTE: Experimental
 var ErrOperationStillRunning = errors.New("operation still running")
 
 // OperationInfo conveys information about an operation.
 type OperationInfo struct {
 	// ID of the operation.
+	//
+	// Deprecated: Use Token instead.
 	ID string `json:"id"`
+	// Token for the operation.
+	Token string `json:"token"`
 	// State of the operation.
 	State OperationState `json:"state"`
 }

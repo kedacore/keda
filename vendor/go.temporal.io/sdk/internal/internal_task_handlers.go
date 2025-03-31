@@ -38,6 +38,7 @@ import (
 
 	commandpb "go.temporal.io/api/command/v1"
 	commonpb "go.temporal.io/api/common/v1"
+	deploymentpb "go.temporal.io/api/deployment/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 	historypb "go.temporal.io/api/history/v1"
 	protocolpb "go.temporal.io/api/protocol/v1"
@@ -130,23 +131,25 @@ type (
 
 	// workflowTaskHandlerImpl is the implementation of WorkflowTaskHandler
 	workflowTaskHandlerImpl struct {
-		namespace                string
-		metricsHandler           metrics.Handler
-		ppMgr                    pressurePointMgr
-		logger                   log.Logger
-		identity                 string
-		workerBuildID            string
-		useBuildIDForVersioning  bool
-		enableLoggingInReplay    bool
-		registry                 *registry
-		laTunnel                 *localActivityTunnel
-		workflowPanicPolicy      WorkflowPanicPolicy
-		dataConverter            converter.DataConverter
-		failureConverter         converter.FailureConverter
-		contextPropagators       []ContextPropagator
-		cache                    *WorkerCache
-		deadlockDetectionTimeout time.Duration
-		capabilities             *workflowservice.GetSystemInfoResponse_Capabilities
+		namespace                 string
+		metricsHandler            metrics.Handler
+		ppMgr                     pressurePointMgr
+		logger                    log.Logger
+		identity                  string
+		workerBuildID             string
+		useBuildIDForVersioning   bool
+		deploymentSeriesName      string
+		defaultVersioningBehavior VersioningBehavior
+		enableLoggingInReplay     bool
+		registry                  *registry
+		laTunnel                  *localActivityTunnel
+		workflowPanicPolicy       WorkflowPanicPolicy
+		dataConverter             converter.DataConverter
+		failureConverter          converter.FailureConverter
+		contextPropagators        []ContextPropagator
+		cache                     *WorkerCache
+		deadlockDetectionTimeout  time.Duration
+		capabilities              *workflowservice.GetSystemInfoResponse_Capabilities
 	}
 
 	activityProvider func(name string) activity
@@ -169,6 +172,7 @@ type (
 		defaultHeartbeatThrottleInterval time.Duration
 		maxHeartbeatThrottleInterval     time.Duration
 		versionStamp                     *commonpb.WorkerVersionStamp
+		deployment                       *deploymentpb.Deployment
 	}
 
 	// history wrapper method to help information about events.
@@ -549,22 +553,24 @@ func inferMessageFromAcceptedEvent(attrs *historypb.WorkflowExecutionUpdateAccep
 func newWorkflowTaskHandler(params workerExecutionParameters, ppMgr pressurePointMgr, registry *registry) WorkflowTaskHandler {
 	ensureRequiredParams(&params)
 	return &workflowTaskHandlerImpl{
-		namespace:                params.Namespace,
-		logger:                   params.Logger,
-		ppMgr:                    ppMgr,
-		metricsHandler:           params.MetricsHandler,
-		identity:                 params.Identity,
-		workerBuildID:            params.getBuildID(),
-		useBuildIDForVersioning:  params.UseBuildIDForVersioning,
-		enableLoggingInReplay:    params.EnableLoggingInReplay,
-		registry:                 registry,
-		workflowPanicPolicy:      params.WorkflowPanicPolicy,
-		dataConverter:            params.DataConverter,
-		failureConverter:         params.FailureConverter,
-		contextPropagators:       params.ContextPropagators,
-		cache:                    params.cache,
-		deadlockDetectionTimeout: params.DeadlockDetectionTimeout,
-		capabilities:             params.capabilities,
+		namespace:                 params.Namespace,
+		logger:                    params.Logger,
+		ppMgr:                     ppMgr,
+		metricsHandler:            params.MetricsHandler,
+		identity:                  params.Identity,
+		workerBuildID:             params.getBuildID(),
+		useBuildIDForVersioning:   params.UseBuildIDForVersioning,
+		deploymentSeriesName:      params.DeploymentSeriesName,
+		defaultVersioningBehavior: params.DefaultVersioningBehavior,
+		enableLoggingInReplay:     params.EnableLoggingInReplay,
+		registry:                  registry,
+		workflowPanicPolicy:       params.WorkflowPanicPolicy,
+		dataConverter:             params.DataConverter,
+		failureConverter:          params.FailureConverter,
+		contextPropagators:        params.ContextPropagators,
+		cache:                     params.cache,
+		deadlockDetectionTimeout:  params.DeadlockDetectionTimeout,
+		capabilities:              params.capabilities,
 	}
 }
 
@@ -1907,9 +1913,21 @@ func (wth *workflowTaskHandlerImpl) completeWorkflow(
 			BuildId:       wth.workerBuildID,
 			UseVersioning: wth.useBuildIDForVersioning,
 		},
+		Deployment: &deploymentpb.Deployment{
+			BuildId:    wth.workerBuildID,
+			SeriesName: wth.deploymentSeriesName,
+		},
 	}
 	if wth.capabilities != nil && wth.capabilities.BuildIdBasedVersioning {
 		builtRequest.BinaryChecksum = ""
+	}
+	if wth.useBuildIDForVersioning && wth.deploymentSeriesName != "" {
+		workflowType := workflowContext.workflowInfo.WorkflowType
+		if behavior, ok := wth.registry.getWorkflowVersioningBehavior(workflowType); ok {
+			builtRequest.VersioningBehavior = versioningBehaviorToProto(behavior)
+		} else {
+			builtRequest.VersioningBehavior = versioningBehaviorToProto(wth.defaultVersioningBehavior)
+		}
 	}
 	return builtRequest
 }
@@ -1963,6 +1981,10 @@ func newActivityTaskHandlerWithCustomProvider(
 		versionStamp: &commonpb.WorkerVersionStamp{
 			BuildId:       params.getBuildID(),
 			UseVersioning: params.UseBuildIDForVersioning,
+		},
+		deployment: &deploymentpb.Deployment{
+			BuildId:    params.getBuildID(),
+			SeriesName: params.DeploymentSeriesName,
 		},
 	}
 }
@@ -2172,7 +2194,7 @@ func (ath *activityTaskHandlerImpl) Execute(taskQueue string, t *workflowservice
 		metricsHandler.Counter(metrics.UnregisteredActivityInvocationCounter).Inc(1)
 		return convertActivityResultToRespondRequest(ath.identity, t.TaskToken, nil,
 			NewActivityNotRegisteredError(activityType, ath.getRegisteredActivityNames()),
-			ath.dataConverter, ath.failureConverter, ath.namespace, false, ath.versionStamp), nil
+			ath.dataConverter, ath.failureConverter, ath.namespace, false, ath.versionStamp, ath.deployment), nil
 	}
 
 	// panic handler
@@ -2190,7 +2212,7 @@ func (ath *activityTaskHandlerImpl) Execute(taskQueue string, t *workflowservice
 			metricsHandler.Counter(metrics.ActivityTaskErrorCounter).Inc(1)
 			panicErr := newPanicError(p, st)
 			result = convertActivityResultToRespondRequest(ath.identity, t.TaskToken, nil, panicErr,
-				ath.dataConverter, ath.failureConverter, ath.namespace, false, ath.versionStamp)
+				ath.dataConverter, ath.failureConverter, ath.namespace, false, ath.versionStamp, ath.deployment)
 		}
 	}()
 
@@ -2230,7 +2252,7 @@ func (ath *activityTaskHandlerImpl) Execute(taskQueue string, t *workflowservice
 		)
 	}
 	return convertActivityResultToRespondRequest(ath.identity, t.TaskToken, output, err,
-		ath.dataConverter, ath.failureConverter, ath.namespace, isActivityCancel, ath.versionStamp), nil
+		ath.dataConverter, ath.failureConverter, ath.namespace, isActivityCancel, ath.versionStamp, ath.deployment), nil
 }
 
 func (ath *activityTaskHandlerImpl) getActivity(name string) activity {

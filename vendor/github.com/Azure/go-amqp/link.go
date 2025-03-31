@@ -66,6 +66,9 @@ type link struct {
 	// can independently set this value. The sender endpoint sets this to the last known value seen from the receiver.
 	linkCredit uint32
 
+	// properties returned by the peer
+	peerProperties map[string]any
+
 	senderSettleMode   *SenderSettleMode
 	receiverSettleMode *ReceiverSettleMode
 	maxMessageSize     uint64
@@ -219,6 +222,13 @@ func (l *link) attach(ctx context.Context, beforeAttach func(*frames.PerformAtta
 			return err
 		}
 		return err
+	}
+
+	if len(resp.Properties) > 0 {
+		l.peerProperties = map[string]any{}
+		for k, v := range resp.Properties {
+			l.peerProperties[string(k)] = v
+		}
 	}
 
 	return nil
