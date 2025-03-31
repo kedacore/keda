@@ -267,7 +267,7 @@ func (p *PromMetrics) RecordScaledJobError(namespace string, scaledJob string, e
 	// initialize metric with 0 if not already set
 	_, errscaledjob := scaledJobErrors.GetMetricWith(labels)
 	if errscaledjob != nil {
-		log.Error(err, "Unable to write to metrics to Prometheus Server: %v")
+		log.Error(errscaledjob, "Unable to write to metrics to Prometheus Server: %v")
 		return
 	}
 }
