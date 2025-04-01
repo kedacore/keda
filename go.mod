@@ -1,6 +1,7 @@
 module github.com/kedacore/keda/v2
 
 go 1.23.7
+toolchain go1.24.1
 
 require (
 	cloud.google.com/go/compute/metadata v0.6.0
@@ -53,7 +54,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gobwas/glob v0.2.3
 	github.com/gocql/gocql v1.7.0
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v50 v50.2.0
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud v1.14.1
@@ -89,10 +90,10 @@ require (
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 	go.etcd.io/etcd/client/v3 v3.5.17
 	go.mongodb.org/mongo-driver v1.17.1
-	go.opentelemetry.io/otel v1.33.0
+	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.33.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.33.0
-	go.opentelemetry.io/otel/metric v1.33.0
+	go.opentelemetry.io/otel/metric v1.35.0
 	go.temporal.io/sdk v1.31.0
 	go.uber.org/mock v0.5.0
 	golang.org/x/oauth2 v0.27.0
@@ -360,7 +361,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.27.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.33.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.33.0
-	go.opentelemetry.io/otel/trace v1.33.0 // indirect
+	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.4.0 // indirect
 	go.uber.org/atomic v1.11.0
 	go.uber.org/automaxprocs v1.6.0
