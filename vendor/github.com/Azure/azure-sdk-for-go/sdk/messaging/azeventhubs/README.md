@@ -1,6 +1,6 @@
 # Azure Event Hubs Client Module for Go
 
-[Azure Event Hubs](https://azure.microsoft.com/services/event-hubs/) is a big data streaming platform and event ingestion service from Microsoft. For more information about Event Hubs see: [link](https://docs.microsoft.com/azure/event-hubs/event-hubs-about).
+[Azure Event Hubs](https://azure.microsoft.com/services/event-hubs/) is a big data streaming platform and event ingestion service from Microsoft. For more information about Event Hubs see: [link](https://learn.microsoft.com/azure/event-hubs/event-hubs-about).
 
 Use the client library `github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs` in your application to:
 
@@ -27,8 +27,8 @@ go get github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs
 
 - Go, version 1.18 or higher
 - An [Azure subscription](https://azure.microsoft.com/free/)
-- An [Event Hub namespace](https://docs.microsoft.com/azure/event-hubs/).
-- An Event Hub. You can create an event hub in your Event Hubs Namespace using the [Azure Portal](https://docs.microsoft.com/azure/event-hubs/event-hubs-create), or the [Azure CLI](https://docs.microsoft.com/azure/event-hubs/event-hubs-quickstart-cli).
+- An [Event Hub namespace](https://learn.microsoft.com/azure/event-hubs/).
+- An Event Hub. You can create an event hub in your Event Hubs Namespace using the [Azure Portal](https://learn.microsoft.com/azure/event-hubs/event-hubs-create), or the [Azure CLI](https://learn.microsoft.com/azure/event-hubs/event-hubs-quickstart-cli).
 
 ### Authenticate the client
 
@@ -45,15 +45,15 @@ You can also create a client using a connection string.
 
 # Key concepts
 
-An Event Hub [**namespace**](https://docs.microsoft.com/azure/event-hubs/event-hubs-features#namespace) can have multiple event hubs. Each event hub, in turn, contains [**partitions**](https://docs.microsoft.com/azure/event-hubs/event-hubs-features#partitions) which store events.
+An Event Hub [**namespace**](https://learn.microsoft.com/azure/event-hubs/event-hubs-features#namespace) can have multiple event hubs. Each event hub, in turn, contains [**partitions**](https://learn.microsoft.com/azure/event-hubs/event-hubs-features#partitions) which store events.
 
-Events are published to an event hub using an [event publisher](https://docs.microsoft.com/azure/event-hubs/event-hubs-features#event-publishers). In this package, the event publisher is the [ProducerClient](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs#ProducerClient)
+Events are published to an event hub using an [event publisher](https://learn.microsoft.com/azure/event-hubs/event-hubs-features#event-publishers). In this package, the event publisher is the [ProducerClient](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs#ProducerClient)
 
-Events can be consumed from an event hub using an [event consumer](https://docs.microsoft.com/azure/event-hubs/event-hubs-features#event-consumers). In this package there are two types for consuming events: 
+Events can be consumed from an event hub using an [event consumer](https://learn.microsoft.com/azure/event-hubs/event-hubs-features#event-consumers). In this package there are two types for consuming events: 
 - The basic event consumer is the, in the [ConsumerClient](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs#ConsumerClient). This consumer is useful if you already known which partitions you want to receive from.
 - A distributed event consumer, which uses Azure Blobs for checkpointing and coordination. This is implemented in the [Processor](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs#Processor). This is useful when you want to have the partition assignment be dynamically chosen, and balanced with other Processor instances.
 
-For more information about Event Hubs features and terminology can be found here: [link](https://docs.microsoft.com/azure/event-hubs/event-hubs-features)
+For more information about Event Hubs features and terminology can be found here: [link](https://learn.microsoft.com/azure/event-hubs/event-hubs-features)
 
 # Examples
 
@@ -130,4 +130,4 @@ Azure SDK for Go is licensed under the [MIT](https://github.com/Azure/azure-sdk-
 [godoc]: https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs
 [godoc_examples]: https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs#pkg-examples
 
-![Impressions](https://azure-sdk-impressions.azurewebsites.net/api/impressions/azure-sdk-for-go%2Fsdk%2Fmessaging%2Fazeventhubs%2FREADME.png)
+

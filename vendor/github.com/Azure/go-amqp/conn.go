@@ -149,8 +149,9 @@ type Conn struct {
 	containerID  string                  // set explicitly or randomly generated
 
 	// peer settings
-	peerIdleTimeout  time.Duration // maximum period between sending frames
-	peerMaxFrameSize uint32        // maximum frame size peer will accept
+	peerIdleTimeout  time.Duration  // maximum period between sending frames
+	peerMaxFrameSize uint32         // maximum frame size peer will accept
+	peerProperties   map[string]any // properties returned by the peer
 
 	// conn state
 	done    chan struct{} // indicates the connection has terminated
@@ -333,9 +334,22 @@ func (c *Conn) initTLSConfig() {
 // start establishes the connection and begins multiplexing network IO.
 // It is an error to call Start() on a connection that's been closed.
 func (c *Conn) start(ctx context.Context) (err error) {
+	// only start connWriter and connReader if there was no error
+	// NOTE: this MUST be the first defer in this scope so that the
+	//       defer for the interruptor goroutine executes first
+	defer func() {
+		if err == nil {
+			// we can't create the channel bitmap until the connection has been established.
+			// this is because our peer can tell us the max channels they support.
+			c.channels = bitmap.New(uint32(c.channelMax))
+
+			go c.connWriter()
+			go c.connReader()
+		}
+	}()
+
 	// if the context has a deadline or is cancellable, start the interruptor goroutine.
 	// this will close the underlying net.Conn in response to the context.
-
 	if ctx.Done() != nil {
 		done := make(chan struct{})
 		interruptRes := make(chan error, 1)
@@ -360,15 +374,8 @@ func (c *Conn) start(ctx context.Context) (err error) {
 	}
 
 	if err = c.startImpl(ctx); err != nil {
-		return err
+		return
 	}
-
-	// we can't create the channel bitmap until the connection has been established.
-	// this is because our peer can tell us the max channels they support.
-	c.channels = bitmap.New(uint32(c.channelMax))
-
-	go c.connWriter()
-	go c.connReader()
 
 	return
 }
@@ -399,6 +406,13 @@ func (c *Conn) startImpl(ctx context.Context) error {
 }
 
 // Close closes the connection.
+//
+// Returns nil if there were no errors during shutdown,
+// or a *ConnError. This error is not actionable and is
+// purely for diagnostic purposes.
+//
+// The error returned by subsequent calls to Close is
+// idempotent, so the same value will always be returned.
 func (c *Conn) Close() error {
 	c.close()
 
@@ -408,15 +422,32 @@ func (c *Conn) Close() error {
 	<-c.txDone
 	<-c.rxDone
 
-	var connErr *ConnError
-	if errors.As(c.doneErr, &connErr) && connErr.RemoteErr == nil && connErr.inner == nil {
-		// an empty ConnectionError means the connection was closed by the caller
+	return c.closedErr()
+}
+
+// Done returns a channel that's closed when Conn is closed.
+func (c *Conn) Done() <-chan struct{} {
+	return c.done
+}
+
+// If Done is not yet closed, Err returns nil.
+// If Done is closed, Err returns nil or a *ConnError explaining why.
+// A nil error indicates that [Close] was called and there
+// were no errors during shutdown.
+//
+// A *ConnError indicates one of three things
+//   - there was an error during shutdown from a client-side call to [Close]. the
+//     error is not actionable and is purely for diagnostic purposes.
+//   - a fatal error was encountered that caused [Conn] to close
+//   - the peer closed the connection. [ConnError.RemoteErr] MAY contain an error
+//     from the peer indicating why it closed the connection
+func (c *Conn) Err() error {
+	select {
+	case <-c.done:
+		return c.closedErr()
+	default:
 		return nil
 	}
-
-	// there was an error during shut-down or connReader/connWriter
-	// experienced a terminal error
-	return c.doneErr
 }
 
 // close is called once, either from Close() or when connReader/connWriter exits
@@ -464,6 +495,20 @@ func (c *Conn) closeDuringStart() {
 	})
 }
 
+// returns the error indicating why Conn has closed
+// NOTE: only call this AFTER Conn.done has been closed!
+func (c *Conn) closedErr() error {
+	// an empty ConnError means the connection was closed by the caller
+	var connErr *ConnError
+	if errors.As(c.doneErr, &connErr) && connErr.RemoteErr == nil && connErr.inner == nil {
+		return nil
+	}
+
+	// there was an error during shut-down or connReader/connWriter
+	// experienced a terminal error
+	return c.doneErr
+}
+
 // NewSession starts a new session on the connection.
 //   - ctx controls waiting for the peer to acknowledge the session
 //   - opts contains optional values, pass nil to accept the defaults
@@ -488,6 +533,12 @@ func (c *Conn) NewSession(ctx context.Context, opts *SessionOptions) (*Session, 
 	}
 
 	return session, nil
+}
+
+// Properties returns the peer's connection properties.
+// Returns nil if the peer didn't send any properties.
+func (c *Conn) Properties() map[string]any {
+	return c.peerProperties
 }
 
 func (c *Conn) freeAbandonedSessions(ctx context.Context) error {
@@ -1049,6 +1100,13 @@ func (c *Conn) openAMQP(ctx context.Context) (stateFunc, error) {
 	}
 	if o.ChannelMax < c.channelMax {
 		c.channelMax = o.ChannelMax
+	}
+
+	if len(o.Properties) > 0 {
+		c.peerProperties = map[string]any{}
+		for k, v := range o.Properties {
+			c.peerProperties[string(k)] = v
+		}
 	}
 
 	// connection established, exit state machine
