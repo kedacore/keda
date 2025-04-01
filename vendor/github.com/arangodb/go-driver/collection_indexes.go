@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017-2024 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ type CollectionIndexes interface {
 	Indexes(ctx context.Context) ([]Index, error)
 
 	// Deprecated: since 3.10 version. Use ArangoSearch view instead.
+	//
 	// EnsureFullTextIndex creates a fulltext index in the collection, if it does not already exist.
 	// Fields is a slice of attribute names. Currently, the slice is limited to exactly one attribute.
 	// The index is returned, together with a boolean indicating if the index was newly created (true) or pre-existing (false).
@@ -90,6 +91,7 @@ type CollectionIndexes interface {
 }
 
 // Deprecated: since 3.10 version. Use ArangoSearch view instead.
+//
 // EnsureFullTextIndexOptions contains specific options for creating a full text index.
 type EnsureFullTextIndexOptions struct {
 	// MinLength is the minimum character length of words to index. Will default to a server-defined
