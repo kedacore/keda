@@ -1,5 +1,23 @@
 # Release History
 
+## 1.3.1 (2025-03-11)
+
+### Bugs Fixed
+
+- Removed a memory leak that could occur when the ConsumerClient was unable to open a partition. (PR#24198)
+
+## 1.3.0 (2025-02-11)
+
+### Features Added
+
+- ProducerClient and ConsumerClient allow the endpoint to be overridden with CustomEndpoint, allowing the use of TCP proxies with AMQP.
+
+## 1.3.0-beta.1 (2025-01-13)
+
+### Features Added
+
+- ProducerClient and ConsumerClient allow the endpoint to be overridden with CustomEndpoint, allowing the use of TCP proxies with AMQP.
+
 ## 1.2.3 (2024-10-14)
 
 ### Bugs Fixed
