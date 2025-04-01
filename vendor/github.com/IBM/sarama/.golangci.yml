@@ -1,16 +1,15 @@
+# yaml-language-server: $schema=https://golangci-lint.run/jsonschema/golangci.jsonschema.json
 run:
   timeout: 5m
-  deadline: 10m
 
 linters-settings:
   govet:
-    check-shadowing: false
-  golint:
-    min-confidence: 0
+    enable-all: true
+    disable:
+      - fieldalignment
+      - shadow
   gocyclo:
     min-complexity: 99
-  maligned:
-    suggest-new: true
   dupl:
     threshold: 100
   goconst:
@@ -57,7 +56,7 @@ linters:
   enable:
     - bodyclose
     - depguard
-    - exportloopref
+    # - copyloopvar
     - dogsled
     - errcheck
     - errorlint
@@ -71,7 +70,6 @@ linters:
     - govet
     - misspell
     - nilerr
-    - staticcheck
     - typecheck
     - unconvert
     - unused
@@ -79,6 +77,7 @@ linters:
 
 issues:
   exclude:
+    - "G115: integer overflow conversion"
     - "G404: Use of weak random number generator"
   exclude-rules:
     # exclude some linters from running on certains files.
