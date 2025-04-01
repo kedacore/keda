@@ -94,9 +94,6 @@ scalers:
         - name: awsRegion
           type: string
           optional: true
-        - name: awsEndpoint
-          type: string
-          optional: true
         - name: tls
           type: string
           default: disable
@@ -271,6 +268,123 @@ scalers:
         - name: scaleOnDelayed
           type: string
           default: "false"
+    - type: azure-monitor
+      metadata:
+        - name: targetValue
+          type: string
+        - name: activationTargetValue
+          type: string
+          default: "0"
+        - name: resourceURI
+          type: string
+        - name: tenantId
+          type: string
+        - name: subscriptionId
+          type: string
+        - name: resourceGroupName
+          type: string
+        - name: metricName
+          type: string
+        - name: metricNamespace
+          type: string
+          optional: true
+        - name: metricFilter
+          type: string
+          optional: true
+        - name: metricAggregationInterval
+          type: string
+          optional: true
+        - name: metricAggregationType
+          type: string
+        - name: activeDirectoryClientId
+          type: string
+          optional: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: activeDirectoryClientPassword
+          type: string
+          optional: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: cloud
+          type: string
+          optional: true
+        - name: azureResourceManagerEndpoint
+          type: string
+          optional: true
+    - type: azure-pipelines
+      metadata:
+        - name: organizationURL
+          type: string
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: parent
+          type: string
+          optional: true
+        - name: demands
+          type: string
+          optional: true
+        - name: poolName
+          type: string
+          optional: true
+        - name: poolID
+          type: string
+          optional: true
+        - name: targetPipelinesQueueLength
+          type: string
+          optional: true
+          default: "1"
+        - name: activationTargetPipelinesQueueLength
+          type: string
+          optional: true
+          default: "0"
+        - name: jobsToFetch
+          type: string
+          optional: true
+          default: "250"
+        - name: requireAllDemands
+          type: string
+          optional: true
+          default: "false"
+        - name: requireAllDemandsAndIgnoreOthers
+          type: string
+          optional: true
+          default: "false"
+    - type: azure-servicebus
+      metadata:
+        - name: messageCount
+          type: string
+          default: "5"
+        - name: activationMessageCount
+          type: string
+          optional: true
+        - name: queueName
+          type: string
+          optional: true
+        - name: topicName
+          type: string
+          optional: true
+        - name: subscriptionName
+          type: string
+          optional: true
+        - name: connection
+          type: string
+          optional: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: namespace
+          type: string
+          optional: true
+        - name: useRegex
+          type: string
+          optional: true
+        - name: operation
+          type: string
+          optional: true
+          allowedValue:
+            - sum
+            - max
+            - avg
     - type: etcd
       metadata:
         - name: endpoints
@@ -435,6 +549,33 @@ scalers:
         - name: groupVersion
           type: string
           default: "0"
+    - type: nats-jetstream
+      metadata:
+        - name: account
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: accountID
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: stream
+          type: string
+        - name: consumer
+          type: string
+        - name: lagThreshold
+          type: string
+          default: "10"
+        - name: activationLagThreshold
+          type: string
+          default: "0"
+        - name: useHttps
+          type: string
+          optional: true
+          default: "false"
+        - name: natsServerMonitoringEndpoint
+          type: string
+          triggerAuthenticationVariableReadable: true
     - type: nsq
       metadata:
         - name: nsqLookupdHTTPAddresses
@@ -553,6 +694,9 @@ scalers:
           type: string
           optional: true
           triggerAuthenticationVariableReadable: true
+        - name: timeout
+          type: string
+          optional: true
     - type: rabbitmq
       metadata:
         - name: queueName
