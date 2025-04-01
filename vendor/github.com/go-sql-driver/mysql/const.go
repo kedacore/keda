@@ -11,6 +11,8 @@ package mysql
 import "runtime"
 
 const (
+	debug = false // for debugging. Set true only in development.
+
 	defaultAuthPlugin       = "mysql_native_password"
 	defaultMaxAllowedPacket = 64 << 20 // 64 MiB. See https://github.com/go-sql-driver/mysql/issues/1355
 	minProtocolVersion      = 10
@@ -125,7 +127,10 @@ const (
 	fieldTypeBit
 )
 const (
-	fieldTypeJSON fieldType = iota + 0xf5
+	fieldTypeVector fieldType = iota + 0xf2
+	fieldTypeInvalid
+	fieldTypeBool
+	fieldTypeJSON
 	fieldTypeNewDecimal
 	fieldTypeEnum
 	fieldTypeSet

@@ -1,6 +1,7 @@
 module github.com/kedacore/keda/v2
 
 go 1.23.7
+toolchain go1.24.1
 
 require (
 	cloud.google.com/go/compute/metadata v0.6.0
@@ -50,7 +51,7 @@ require (
 	github.com/go-kivik/kivik/v3 v3.2.4
 	github.com/go-logr/logr v1.4.2
 	github.com/go-playground/validator/v10 v10.23.0
-	github.com/go-sql-driver/mysql v1.8.1
+	github.com/go-sql-driver/mysql v1.9.1
 	github.com/gobwas/glob v0.2.3
 	github.com/gocql/gocql v1.7.0
 	github.com/google/go-cmp v0.6.0
