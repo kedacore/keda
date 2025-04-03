@@ -40,7 +40,7 @@ type seleniumGridScalerMetadata struct {
 	ActivationThreshold    int64  `keda:"name=activationThreshold,      order=triggerMetadata, optional"`
 	UnsafeSsl              bool   `keda:"name=unsafeSsl,                order=triggerMetadata, default=false"`
 	NodeMaxSessions        int64  `keda:"name=nodeMaxSessions,          order=triggerMetadata, default=1"`
-	EnableManagedDownloads bool   `keda:"name=enableManagedDownloads,   order=triggerMetadata, optional"`
+	EnableManagedDownloads bool   `keda:"name=enableManagedDownloads,   order=triggerMetadata, default=true"`
 	Capabilities           string `keda:"name=capabilities,             order=triggerMetadata, optional"`
 
 	TargetValue int64
