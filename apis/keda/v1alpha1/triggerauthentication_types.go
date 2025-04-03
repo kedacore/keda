@@ -95,6 +95,9 @@ type TriggerAuthenticationSpec struct {
 
 	// +optional
 	AwsSecretManager *AwsSecretManager `json:"awsSecretManager,omitempty"`
+
+	// +optional
+	BoundServiceAccountToken []BoundServiceAccountToken `json:"boundServiceAccountToken,omitempty"`
 }
 
 // TriggerAuthenticationStatus defines the observed state of TriggerAuthentication
@@ -381,6 +384,11 @@ type AwsSecretManagerSecret struct {
 	VersionStage string `json:"versionStage,omitempty"`
 	// +optional
 	SecretKey string `json:"secretKey,omitempty"`
+}
+
+type BoundServiceAccountToken struct {
+	Parameter          string `json:"parameter"`
+	ServiceAccountName string `json:"serviceAccountName"`
 }
 
 func init() {

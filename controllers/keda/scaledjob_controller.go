@@ -29,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -45,6 +44,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
 	"github.com/kedacore/keda/v2/pkg/util"
@@ -59,11 +59,10 @@ type ScaledJobReconciler struct {
 	Scheme            *runtime.Scheme
 	GlobalHTTPTimeout time.Duration
 	EventEmitter      eventemitter.EventHandler
+	AuthClientSet     *authentication.AuthClientSet
 
 	scaledJobGenerations *sync.Map
 	scaleHandler         scaling.ScaleHandler
-	SecretsLister        corev1listers.SecretLister
-	SecretsSynced        cache.InformerSynced
 }
 
 type scaledJobMetricsData struct {
@@ -83,7 +82,7 @@ func init() {
 
 // SetupWithManager initializes the ScaledJobReconciler instance and starts a new controller managed by the passed Manager instance.
 func (r *ScaledJobReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
-	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.GlobalHTTPTimeout, mgr.GetEventRecorderFor("scale-handler"), r.SecretsLister)
+	r.scaleHandler = scaling.NewScaleHandler(mgr.GetClient(), nil, mgr.GetScheme(), r.GlobalHTTPTimeout, mgr.GetEventRecorderFor("scale-handler"), r.AuthClientSet)
 	r.scaledJobGenerations = &sync.Map{}
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
@@ -372,6 +371,7 @@ func (r *ScaledJobReconciler) updatePromMetrics(scaledJob *kedav1alpha1.ScaledJo
 	metricscollector.IncrementCRDTotal(metricscollector.ScaledJobResource, scaledJob.Namespace)
 	metricsData.namespace = scaledJob.Namespace
 
+	metricscollector.DeleteScalerMetrics(scaledJob.Namespace, scaledJob.Name, false)
 	triggerTypes := make([]string, 0, len(scaledJob.Spec.Triggers))
 	for _, trigger := range scaledJob.Spec.Triggers {
 		metricscollector.IncrementTriggerTotal(trigger.Type)
