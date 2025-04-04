@@ -629,25 +629,6 @@ func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, 
 
 // GenerateBoundServiceAccountToken creates a Kubernetes token for a namespaced service account with a runtime-configurable expiration time and returns the token string.
 func GenerateBoundServiceAccountToken(ctx context.Context, serviceAccountName, namespace string, acs *authentication.AuthClientSet) string {
-	// First try to get the service account
-	// sa, err := acs.CoreV1Interface.ServiceAccounts(namespace).Get(ctx, serviceAccountName, metav1.GetOptions{})
-	// if err != nil {
-	// 	log.V(1).Error(err, "error trying to get service account", "ServiceAccount.Name", serviceAccountName)
-	// 	return ""
-	// }
-
-	// // If there are legacy secrets, try to use the first one
-	// if len(sa.Secrets) > 0 {
-	// 	secret, err := acs.CoreV1Interface.Secrets(namespace).Get(ctx, sa.Secrets[0].Name, metav1.GetOptions{})
-	// 	if err != nil {
-	// 		log.V(1).Error(err, "error trying to get secret for service account", "ServiceAccount.Name", serviceAccountName)
-	// 	} else if token, exists := secret.Data["token"]; exists {
-	// 		log.V(1).Info("Using legacy service account token", "ServiceAccount.Name", serviceAccountName)
-	// 		return string(token)
-	// 	}
-	// }
-
-	// If no legacy token found or it failed, create a new bound token
 	expirationSeconds := ptr.To(int64(boundServiceAccountTokenExpiry.Seconds()))
 	token, err := acs.CoreV1Interface.ServiceAccounts(namespace).CreateToken(
 		ctx,
