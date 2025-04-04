@@ -43,35 +43,39 @@ var (
 	postgreSQLDatabase         = "test_db"
 	postgreSQLConnectionString = fmt.Sprintf("postgresql://%s:%s@postgresql.%s.svc.cluster.local:5432/%s?sslmode=disable",
 		postgreSQLUsername, postgreSQLPassword, testNamespace, postgreSQLDatabase)
-	prometheusServerName = fmt.Sprintf("%s-prom-server", testName)
-	minReplicaCount      = 0
-	maxReplicaCount      = 1
+	prometheusServerName                   = fmt.Sprintf("%s-prom-server", testName)
+	minReplicaCount                        = 0
+	maxReplicaCount                        = 1
+	serviceAccountTokenCreationRole        = fmt.Sprintf("%s-sa-role", testName)
+	serviceAccountTokenCreationRoleBinding = fmt.Sprintf("%s-sa-role-binding", testName)
 )
 
 type templateData struct {
-	TestNamespace                    string
-	DeploymentName                   string
-	VaultNamespace                   string
-	ScaledObjectName                 string
-	TriggerAuthenticationName        string
-	VaultSecretPath                  string
-	VaultPromDomain                  string
-	SecretName                       string
-	HashiCorpAuthentication          string
-	HashiCorpToken                   string
-	PostgreSQLStatefulSetName        string
-	PostgreSQLConnectionStringBase64 string
-	PostgreSQLUsername               string
-	PostgreSQLPassword               string
-	PostgreSQLDatabase               string
-	MinReplicaCount                  int
-	MaxReplicaCount                  int
-	PublishDeploymentName            string
-	MonitoredAppName                 string
-	PrometheusServerName             string
-	VaultPkiCommonName               string
-	VaultRole                        string
-	VaultServiceAccountName          string
+	TestNamespace                          string
+	DeploymentName                         string
+	VaultNamespace                         string
+	ScaledObjectName                       string
+	TriggerAuthenticationName              string
+	VaultSecretPath                        string
+	VaultPromDomain                        string
+	SecretName                             string
+	HashiCorpAuthentication                string
+	HashiCorpToken                         string
+	PostgreSQLStatefulSetName              string
+	PostgreSQLConnectionStringBase64       string
+	PostgreSQLUsername                     string
+	PostgreSQLPassword                     string
+	PostgreSQLDatabase                     string
+	MinReplicaCount                        int
+	MaxReplicaCount                        int
+	PublishDeploymentName                  string
+	MonitoredAppName                       string
+	PrometheusServerName                   string
+	VaultPkiCommonName                     string
+	VaultRole                              string
+	VaultServiceAccountName                string
+	ServiceAccountTokenCreationRole        string
+	ServiceAccountTokenCreationRoleBinding string
 }
 
 const (
@@ -425,6 +429,37 @@ spec:
 path "secret/metadata/keda" {
     capabilities = ["read", "list"]
 }`
+
+	serviceAccountTokenCreationRoleTemplate = `
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{.ServiceAccountTokenCreationRole}}
+  namespace: {{.TestNamespace}}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts/token
+  verbs:
+  - create
+  - get
+`
+	serviceAccountTokenCreationRoleBindingTemplate = `
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{.ServiceAccountTokenCreationRoleBinding}}
+  namespace: {{.TestNamespace}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{.ServiceAccountTokenCreationRole}}
+subjects:
+- kind: ServiceAccount
+  name: keda-operator
+  namespace: keda
+`
 )
 
 func TestPkiSecretsEngine(t *testing.T) {
@@ -680,24 +715,26 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 }
 
 var data = templateData{
-	TestNamespace:                    testNamespace,
-	PostgreSQLStatefulSetName:        postgreSQLStatefulSetName,
-	DeploymentName:                   deploymentName,
-	ScaledObjectName:                 scaledObjectName,
-	MinReplicaCount:                  minReplicaCount,
-	MaxReplicaCount:                  maxReplicaCount,
-	TriggerAuthenticationName:        triggerAuthenticationName,
-	SecretName:                       secretName,
-	PostgreSQLUsername:               postgreSQLUsername,
-	PostgreSQLPassword:               postgreSQLPassword,
-	PostgreSQLDatabase:               postgreSQLDatabase,
-	PostgreSQLConnectionStringBase64: b64.StdEncoding.EncodeToString([]byte(postgreSQLConnectionString)),
-	PrometheusServerName:             prometheusServerName,
-	MonitoredAppName:                 monitoredAppName,
-	PublishDeploymentName:            publishDeploymentName,
-	VaultNamespace:                   vaultNamespace,
-	VaultPromDomain:                  vaultPromDomain,
-	VaultPkiCommonName:               fmt.Sprintf("keda.%s.svc", testNamespace),
+	TestNamespace:                          testNamespace,
+	PostgreSQLStatefulSetName:              postgreSQLStatefulSetName,
+	DeploymentName:                         deploymentName,
+	ScaledObjectName:                       scaledObjectName,
+	MinReplicaCount:                        minReplicaCount,
+	MaxReplicaCount:                        maxReplicaCount,
+	TriggerAuthenticationName:              triggerAuthenticationName,
+	SecretName:                             secretName,
+	PostgreSQLUsername:                     postgreSQLUsername,
+	PostgreSQLPassword:                     postgreSQLPassword,
+	PostgreSQLDatabase:                     postgreSQLDatabase,
+	PostgreSQLConnectionStringBase64:       b64.StdEncoding.EncodeToString([]byte(postgreSQLConnectionString)),
+	PrometheusServerName:                   prometheusServerName,
+	MonitoredAppName:                       monitoredAppName,
+	PublishDeploymentName:                  publishDeploymentName,
+	VaultNamespace:                         vaultNamespace,
+	VaultPromDomain:                        vaultPromDomain,
+	VaultPkiCommonName:                     fmt.Sprintf("keda.%s.svc", testNamespace),
+	ServiceAccountTokenCreationRole:        serviceAccountTokenCreationRole,
+	ServiceAccountTokenCreationRoleBinding: serviceAccountTokenCreationRoleBinding,
 }
 
 func getPostgreSQLTemplateData() (templateData, []Template) {
@@ -723,5 +760,8 @@ func getTemplateData() (templateData, []Template) {
 		{Name: "deploymentTemplate", Config: deploymentTemplate},
 		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+		// required for the keda to request token creations for the service account
+		//{Name: "serviceAccountTokenCreationRoleTemplate", Config: serviceAccountTokenCreationRoleTemplate},
+		//{Name: "serviceAccountTokenCreationRoleBindingTemplate", Config: serviceAccountTokenCreationRoleBindingTemplate},
 	}
 }

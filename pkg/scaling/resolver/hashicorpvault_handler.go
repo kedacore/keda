@@ -26,28 +26,25 @@ import (
 	"github.com/go-logr/logr"
 	vaultapi "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
-	authenticationv1 "k8s.io/api/authentication/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 )
 
 // HashicorpVaultHandler is specification of Hashi Corp Vault
 type HashicorpVaultHandler struct {
 	vault     *kedav1alpha1.HashiCorpVault
 	client    *vaultapi.Client
-	k8sClient client.Client
+	acs       *authentication.AuthClientSet
 	namespace string
 	stopCh    chan struct{}
 }
 
 // NewHashicorpVaultHandler creates a HashicorpVaultHandler object
-func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault, client client.Client, namespace string) *HashicorpVaultHandler {
+func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault, acs *authentication.AuthClientSet, namespace string) *HashicorpVaultHandler {
 	return &HashicorpVaultHandler{
 		vault:     v,
-		k8sClient: client,
+		acs:       acs,
 		namespace: namespace,
 	}
 }
@@ -132,43 +129,7 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 		}
 
 		if vh.vault.Credential.ServiceAccountName != "" {
-			// generate token from namespace
-			saName := types.NamespacedName{Name: vh.vault.Credential.ServiceAccountName, Namespace: vh.namespace}
-			sa := &corev1.ServiceAccount{}
-			secret := &corev1.Secret{}
-
-			if err = vh.k8sClient.Get(context.Background(), saName, sa); err != nil {
-				return token, errors.Wrap(err, fmt.Sprintf("Failed to retrieve service account name: %s namespace: %s", saName.Name, saName.Namespace))
-			}
-
-			if len(sa.Secrets) > 0 {
-				// using legacy service account secrets
-				secretName := types.NamespacedName{Name: sa.Secrets[0].Name, Namespace: vh.namespace}
-
-				if err = vh.k8sClient.Get(context.Background(), secretName, secret); err != nil {
-					return token, errors.Wrap(err, fmt.Sprintf("Failed to retrieve secret for service account name: %s namespace: %s", secretName.Name, secretName.Namespace))
-				}
-
-				jwt = secret.Data["token"]
-			}
-
-			if len(jwt) == 0 {
-				tokenTTL := int64(600) // min allowed duration is 10 mins
-				// this token is only used once for the initial authentication
-				// renewals happen independently on the vault token
-				tokenRequest := &authenticationv1.TokenRequest{
-					Spec: authenticationv1.TokenRequestSpec{
-						Audiences:         []string{"https://kubernetes.default.svc"},
-						ExpirationSeconds: &tokenTTL,
-					},
-				}
-
-				if err := vh.k8sClient.SubResource("token").Create(context.Background(), sa, tokenRequest); err != nil {
-					return token, errors.Wrap(err, fmt.Sprintf("Failed to create token for service account name: %s namespace: %s", saName.Name, saName.Namespace))
-				}
-
-				jwt = []byte(tokenRequest.Status.Token)
-			}
+			jwt = []byte(GenerateBoundServiceAccountToken(context.Background(), vh.vault.Credential.ServiceAccountName, vh.namespace, vh.acs))
 		} else if len(vh.vault.Credential.ServiceAccount) != 0 {
 			// Get the JWT from POD
 			jwt, err = os.ReadFile(vh.vault.Credential.ServiceAccount)
