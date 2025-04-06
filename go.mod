@@ -34,7 +34,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/amp v1.32.1
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.44.1
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.42.0
-	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.25.1
+	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.25.2
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.33.1
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.35.2
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.38.2
