@@ -138,6 +138,7 @@ type (
 		identity                  string
 		workerBuildID             string
 		useBuildIDForVersioning   bool
+		workerDeploymentVersion   string
 		deploymentSeriesName      string
 		defaultVersioningBehavior VersioningBehavior
 		enableLoggingInReplay     bool
@@ -158,7 +159,7 @@ type (
 	activityTaskHandlerImpl struct {
 		taskQueueName                    string
 		identity                         string
-		service                          workflowservice.WorkflowServiceClient
+		client                           *WorkflowClient
 		metricsHandler                   metrics.Handler
 		logger                           log.Logger
 		userContext                      context.Context
@@ -173,6 +174,7 @@ type (
 		maxHeartbeatThrottleInterval     time.Duration
 		versionStamp                     *commonpb.WorkerVersionStamp
 		deployment                       *deploymentpb.Deployment
+		workerDeploymentOptions          *deploymentpb.WorkerDeploymentOptions
 	}
 
 	// history wrapper method to help information about events.
@@ -492,8 +494,7 @@ OrderEvents:
 				break OrderEvents
 			}
 		case enumspb.EVENT_TYPE_WORKFLOW_TASK_SCHEDULED,
-			enumspb.EVENT_TYPE_WORKFLOW_TASK_TIMED_OUT,
-			enumspb.EVENT_TYPE_WORKFLOW_TASK_FAILED:
+			enumspb.EVENT_TYPE_WORKFLOW_TASK_TIMED_OUT:
 			// Skip
 		default:
 			if event.GetEventType() == enumspb.EVENT_TYPE_WORKFLOW_TASK_COMPLETED {
@@ -560,6 +561,7 @@ func newWorkflowTaskHandler(params workerExecutionParameters, ppMgr pressurePoin
 		identity:                  params.Identity,
 		workerBuildID:             params.getBuildID(),
 		useBuildIDForVersioning:   params.UseBuildIDForVersioning,
+		workerDeploymentVersion:   params.WorkerDeploymentVersion,
 		deploymentSeriesName:      params.DeploymentSeriesName,
 		defaultVersioningBehavior: params.DefaultVersioningBehavior,
 		enableLoggingInReplay:     params.EnableLoggingInReplay,
@@ -744,6 +746,10 @@ func (wth *workflowTaskHandlerImpl) createWorkflowContext(task *workflowservice.
 		Memo:                     attributes.Memo,
 		SearchAttributes:         attributes.SearchAttributes,
 		RetryPolicy:              convertFromPBRetryPolicy(attributes.RetryPolicy),
+		// Use the original execution run ID from the start event as the initial seed.
+		// Original execution run ID stays the same for the entire chain of workflow resets.
+		// This helps us keep child workflow IDs consistent up until a reset-point is encountered.
+		currentRunID: attributes.GetOriginalExecutionRunId(),
 	}
 
 	return newWorkflowExecutionContext(workflowInfo, wth), nil
@@ -1018,16 +1024,19 @@ func (w *workflowExecutionContextImpl) ProcessWorkflowTask(workflowTask *workflo
 	var replayOutbox []outboxEntry
 	var replayCommands []*commandpb.Command
 	var respondEvents []*historypb.HistoryEvent
+	var partialHistory bool
 
 	taskMessages := workflowTask.task.GetMessages()
 	skipReplayCheck := w.skipReplayCheck()
+	isInReplayer := IsReplayNamespace(w.wth.namespace)
 	shouldForceReplayCheck := func() bool {
-		isInReplayer := IsReplayNamespace(w.wth.namespace)
 		// If we are in the replayer we should always check the history replay, even if the workflow is completed
 		// Skip if the workflow panicked to avoid potentially breaking old histories
 		_, wfPanicked := w.err.(*workflowPanicError)
 		return !wfPanicked && isInReplayer
 	}
+
+	curReplayCmdsIndex := -1
 
 	metricsHandler := w.wth.metricsHandler.WithTags(metrics.WorkflowTags(task.WorkflowType.GetName()))
 	start := time.Now()
@@ -1051,6 +1060,17 @@ ProcessEvents:
 		binaryChecksum := nextTask.binaryChecksum
 		nextTaskBuildId := nextTask.buildID
 		admittedUpdates := nextTask.admittedMsgs
+
+		// Peak ahead to confirm there are no more events
+		isLastWFTForPartialWFE := len(reorderedEvents) > 0 &&
+			reorderedEvents[len(reorderedEvents)-1].EventType == enumspb.EVENT_TYPE_WORKFLOW_TASK_STARTED &&
+			len(reorderedHistory.next) == 0 &&
+			isInReplayer
+		if isLastWFTForPartialWFE {
+			partialHistory = true
+			break ProcessEvents
+		}
+
 		// Check if we are replaying so we know if we should use the messages in the WFT or the history
 		isReplay := len(reorderedEvents) > 0 && reorderedHistory.IsReplayEvent(reorderedEvents[len(reorderedEvents)-1])
 		var msgs *eventMsgIndex
@@ -1092,6 +1112,10 @@ ProcessEvents:
 		if len(reorderedEvents) == 0 {
 			break ProcessEvents
 		}
+		// Since replayCommands updates a loop early, keep track of index before the
+		// early update to handle replaying incomplete WFE
+		curReplayCmdsIndex = len(replayCommands)
+
 		if binaryChecksum == "" {
 			w.workflowInfo.BinaryChecksum = w.wth.workerBuildID
 		} else {
@@ -1194,6 +1218,10 @@ ProcessEvents:
 			}
 			eventHandler.outbox = nil
 		}
+	}
+
+	if partialHistory && curReplayCmdsIndex != -1 {
+		replayCommands = replayCommands[:curReplayCmdsIndex]
 	}
 
 	if metricsTimer != nil {
@@ -1913,15 +1941,23 @@ func (wth *workflowTaskHandlerImpl) completeWorkflow(
 			BuildId:       wth.workerBuildID,
 			UseVersioning: wth.useBuildIDForVersioning,
 		},
+		Capabilities: &workflowservice.RespondWorkflowTaskCompletedRequest_Capabilities{
+			DiscardSpeculativeWorkflowTaskWithEvents: true,
+		},
 		Deployment: &deploymentpb.Deployment{
 			BuildId:    wth.workerBuildID,
 			SeriesName: wth.deploymentSeriesName,
 		},
+		DeploymentOptions: workerDeploymentOptionsToProto(
+			wth.useBuildIDForVersioning,
+			wth.workerDeploymentVersion,
+		),
 	}
 	if wth.capabilities != nil && wth.capabilities.BuildIdBasedVersioning {
 		builtRequest.BinaryChecksum = ""
 	}
-	if wth.useBuildIDForVersioning && wth.deploymentSeriesName != "" {
+	if (wth.useBuildIDForVersioning && wth.deploymentSeriesName != "") ||
+		wth.workerDeploymentVersion != "" {
 		workflowType := workflowContext.workflowInfo.WorkflowType
 		if behavior, ok := wth.registry.getWorkflowVersioningBehavior(workflowType); ok {
 			builtRequest.VersioningBehavior = versioningBehaviorToProto(behavior)
@@ -1949,15 +1985,15 @@ func (wth *workflowTaskHandlerImpl) executeAnyPressurePoints(event *historypb.Hi
 }
 
 func newActivityTaskHandler(
-	service workflowservice.WorkflowServiceClient,
+	client *WorkflowClient,
 	params workerExecutionParameters,
 	registry *registry,
 ) ActivityTaskHandler {
-	return newActivityTaskHandlerWithCustomProvider(service, params, registry, nil)
+	return newActivityTaskHandlerWithCustomProvider(client, params, registry, nil)
 }
 
 func newActivityTaskHandlerWithCustomProvider(
-	service workflowservice.WorkflowServiceClient,
+	client *WorkflowClient,
 	params workerExecutionParameters,
 	registry *registry,
 	activityProvider activityProvider,
@@ -1965,7 +2001,7 @@ func newActivityTaskHandlerWithCustomProvider(
 	return &activityTaskHandlerImpl{
 		taskQueueName:                    params.TaskQueue,
 		identity:                         params.Identity,
-		service:                          service,
+		client:                           client,
 		logger:                           params.Logger,
 		metricsHandler:                   params.MetricsHandler,
 		userContext:                      params.UserContext,
@@ -1986,6 +2022,10 @@ func newActivityTaskHandlerWithCustomProvider(
 			BuildId:    params.getBuildID(),
 			SeriesName: params.DeploymentSeriesName,
 		},
+		workerDeploymentOptions: workerDeploymentOptionsToProto(
+			params.UseBuildIDForVersioning,
+			params.WorkerDeploymentVersion,
+		),
 	}
 }
 
@@ -2168,14 +2208,14 @@ func (ath *activityTaskHandlerImpl) Execute(taskQueue string, t *workflowservice
 
 	heartbeatThrottleInterval := ath.getHeartbeatThrottleInterval(t.GetHeartbeatTimeout().AsDuration())
 	invoker := newServiceInvoker(
-		t.TaskToken, ath.identity, ath.service, ath.metricsHandler, cancel, heartbeatThrottleInterval,
+		t.TaskToken, ath.identity, ath.client.workflowService, ath.metricsHandler, cancel, heartbeatThrottleInterval,
 		ath.workerStopCh, ath.namespace)
 
 	workflowType := t.WorkflowType.GetName()
 	activityType := t.ActivityType.GetName()
 	metricsHandler := ath.metricsHandler.WithTags(metrics.ActivityTags(workflowType, activityType, ath.taskQueueName))
 	ctx, err := WithActivityTask(canCtx, t, taskQueue, invoker, ath.logger, metricsHandler,
-		ath.dataConverter, ath.workerStopCh, ath.contextPropagators, ath.registry.interceptors)
+		ath.dataConverter, ath.workerStopCh, ath.contextPropagators, ath.registry.interceptors, ath.client)
 	if err != nil {
 		return nil, err
 	}
@@ -2194,7 +2234,7 @@ func (ath *activityTaskHandlerImpl) Execute(taskQueue string, t *workflowservice
 		metricsHandler.Counter(metrics.UnregisteredActivityInvocationCounter).Inc(1)
 		return convertActivityResultToRespondRequest(ath.identity, t.TaskToken, nil,
 			NewActivityNotRegisteredError(activityType, ath.getRegisteredActivityNames()),
-			ath.dataConverter, ath.failureConverter, ath.namespace, false, ath.versionStamp, ath.deployment), nil
+			ath.dataConverter, ath.failureConverter, ath.namespace, false, ath.versionStamp, ath.deployment, ath.workerDeploymentOptions), nil
 	}
 
 	// panic handler
@@ -2212,7 +2252,7 @@ func (ath *activityTaskHandlerImpl) Execute(taskQueue string, t *workflowservice
 			metricsHandler.Counter(metrics.ActivityTaskErrorCounter).Inc(1)
 			panicErr := newPanicError(p, st)
 			result = convertActivityResultToRespondRequest(ath.identity, t.TaskToken, nil, panicErr,
-				ath.dataConverter, ath.failureConverter, ath.namespace, false, ath.versionStamp, ath.deployment)
+				ath.dataConverter, ath.failureConverter, ath.namespace, false, ath.versionStamp, ath.deployment, ath.workerDeploymentOptions)
 		}
 	}()
 
@@ -2252,7 +2292,7 @@ func (ath *activityTaskHandlerImpl) Execute(taskQueue string, t *workflowservice
 		)
 	}
 	return convertActivityResultToRespondRequest(ath.identity, t.TaskToken, output, err,
-		ath.dataConverter, ath.failureConverter, ath.namespace, isActivityCancel, ath.versionStamp, ath.deployment), nil
+		ath.dataConverter, ath.failureConverter, ath.namespace, isActivityCancel, ath.versionStamp, ath.deployment, ath.workerDeploymentOptions), nil
 }
 
 func (ath *activityTaskHandlerImpl) getActivity(name string) activity {

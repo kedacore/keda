@@ -223,6 +223,8 @@ var AiNotificationsChannelTypeTypes = struct {
 	JIRA_CLASSIC AiNotificationsChannelType
 	// Jira Nextgen channel type
 	JIRA_NEXTGEN AiNotificationsChannelType
+	// Microsoft Teams channel type
+	MICROSOFT_TEAMS AiNotificationsChannelType
 	// Mobile push channel type
 	MOBILE_PUSH AiNotificationsChannelType
 	// PagerDuty channel type
@@ -252,6 +254,8 @@ var AiNotificationsChannelTypeTypes = struct {
 	JIRA_CLASSIC: "JIRA_CLASSIC",
 	// Jira Nextgen channel type
 	JIRA_NEXTGEN: "JIRA_NEXTGEN",
+	// Microsoft Teams channel type
+	MICROSOFT_TEAMS: "MICROSOFT_TEAMS",
 	// Mobile push channel type
 	MOBILE_PUSH: "MOBILE_PUSH",
 	// PagerDuty channel type
@@ -355,6 +359,8 @@ var AiNotificationsDestinationTypeTypes = struct {
 	EVENT_BRIDGE AiNotificationsDestinationType
 	// Jira destination type
 	JIRA AiNotificationsDestinationType
+	// Microsoft Teams destination type
+	MICROSOFT_TEAMS AiNotificationsDestinationType
 	// Mobile push destination type
 	MOBILE_PUSH AiNotificationsDestinationType
 	// PagerDuty destination type
@@ -380,6 +386,8 @@ var AiNotificationsDestinationTypeTypes = struct {
 	EVENT_BRIDGE: "EVENT_BRIDGE",
 	// Jira destination type
 	JIRA: "JIRA",
+	// Microsoft Teams destination type
+	MICROSOFT_TEAMS: "MICROSOFT_TEAMS",
 	// Mobile push destination type
 	MOBILE_PUSH: "MOBILE_PUSH",
 	// PagerDuty destination type
@@ -527,6 +535,8 @@ var AiWorkflowsDestinationTypeTypes = struct {
 	EVENT_BRIDGE AiWorkflowsDestinationType
 	// Jira Destination Configuration type
 	JIRA AiWorkflowsDestinationType
+	// Microsoft Teams Destination Configuration type
+	MICROSOFT_TEAMS AiWorkflowsDestinationType
 	// New Relic Mobile Push Destination Configuration type
 	MOBILE_PUSH AiWorkflowsDestinationType
 	// Pager Duty Destination Configuration type
@@ -552,6 +562,8 @@ var AiWorkflowsDestinationTypeTypes = struct {
 	EVENT_BRIDGE: "EVENT_BRIDGE",
 	// Jira Destination Configuration type
 	JIRA: "JIRA",
+	// Microsoft Teams Destination Configuration type
+	MICROSOFT_TEAMS: "MICROSOFT_TEAMS",
 	// New Relic Mobile Push Destination Configuration type
 	MOBILE_PUSH: "MOBILE_PUSH",
 	// Pager Duty Destination Configuration type
