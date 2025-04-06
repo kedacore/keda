@@ -151,15 +151,6 @@ replace (
 	// we need a version with a proper license
 	github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
 
-	// https://avd.aquasec.com/nvd/cve-2024-45337
-	golang.org/x/crypto => golang.org/x/crypto v0.36.0
-
-	// Needed for CVE-2024-45338 https://avd.aquasec.com/nvd/cve-2024-45338
-	golang.org/x/net => golang.org/x/net v0.37.0
-
-	// https://nvd.nist.gov/vuln/detail/CVE-2022-32149
-	golang.org/x/text => golang.org/x/text v0.23.0
-
 	// https://github.com/kedacore/keda/issues/5124
 	google.golang.org/grpc => google.golang.org/grpc v1.67.2
 )
@@ -361,9 +352,9 @@ require (
 	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/term v0.30.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/term v0.31.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	golang.org/x/tools v0.31.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
