@@ -211,9 +211,13 @@ spec:
                       formula:
                         type: string
                       metricType:
+                        default: AverageValue
                         description: |-
                           MetricTargetType specifies the type of metric being targeted, and should be either
                           "Value", "AverageValue", or "Utilization"
+                        enum:
+                        - AverageValue
+                        - Value
                         type: string
                       target:
                         type: string
