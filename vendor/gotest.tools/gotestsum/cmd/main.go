@@ -159,7 +159,7 @@ Format icons:
 
 Commands:
     %[1]s tool slowest   find or skip the slowest tests
-    %[1]s help           print this help next
+    %[1]s help           print this help text
 `, name)
 }
 
@@ -208,8 +208,10 @@ func (o options) Validate() error {
 			"when go test args are used with --rerun-fails " +
 				"the list of packages to test must be specified by the --packages flag")
 	}
-	if o.rerunFailsMaxAttempts > 0 && boolArgIndex("failfast", o.args) > -1 {
-		return fmt.Errorf("-failfast can not be used with --rerun-fails " +
+	if o.rerunFailsMaxAttempts > 0 &&
+		(boolArgIndex("failfast", o.args) > -1 ||
+			boolArgIndex("test.failfast", o.args) > -1) {
+		return fmt.Errorf("-(test.)failfast can not be used with --rerun-fails " +
 			"because not all test cases will run")
 	}
 	return nil
@@ -273,7 +275,7 @@ func run(opts *options) error {
 	if err != nil {
 		return err
 	}
-	defer handler.Close() // nolint: errcheck
+	defer handler.Close() //nolint:errcheck
 	cfg := testjson.ScanConfig{
 		Stdout:                   goTestProc.stdout,
 		Stderr:                   goTestProc.stderr,

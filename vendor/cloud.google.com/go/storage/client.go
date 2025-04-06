@@ -108,6 +108,8 @@ type storageClient interface {
 	ListNotifications(ctx context.Context, bucket string, opts ...storageOption) (map[string]*Notification, error)
 	CreateNotification(ctx context.Context, bucket string, n *Notification, opts ...storageOption) (*Notification, error)
 	DeleteNotification(ctx context.Context, bucket string, id string, opts ...storageOption) error
+
+	NewMultiRangeDownloader(ctx context.Context, params *newMultiRangeDownloaderParams, opts ...storageOption) (*MultiRangeDownloader, error)
 }
 
 // settings contains transport-agnostic configuration for API calls made via
@@ -261,6 +263,9 @@ type openWriterParams struct {
 	// sendCRC32C - see `Writer.SendCRC32C`.
 	// Optional.
 	sendCRC32C bool
+	// append - Write with appendable object semantics.
+	// Optional.
+	append bool
 
 	// Writer callbacks
 
@@ -276,6 +281,20 @@ type openWriterParams struct {
 	// setObj callback for reporting the resulting object - see `Writer.obj`.
 	// Required.
 	setObj func(*ObjectAttrs)
+	// setFlush callback for providing a Flush function implementation - see `Writer.Flush`.
+	// Required.
+	setFlush func(func() (int64, error))
+	// setPipeWriter callback for reseting `Writer.pw` if needed.
+	setPipeWriter func(*io.PipeWriter)
+}
+
+type newMultiRangeDownloaderParams struct {
+	bucket        string
+	conds         *Conditions
+	encryptionKey []byte
+	gen           int64
+	object        string
+	handle        *ReadHandle
 }
 
 type newRangeReaderParams struct {
@@ -287,6 +306,7 @@ type newRangeReaderParams struct {
 	object         string
 	offset         int64
 	readCompressed bool // Use accept-encoding: gzip. Only works for HTTP currently.
+	handle         *ReadHandle
 }
 
 type getObjectParams struct {

@@ -34,6 +34,12 @@ func (s *Sender) MaxMessageSize() uint64 {
 	return s.l.maxMessageSize
 }
 
+// Properties returns the peer's link properties.
+// Returns nil if the peer didn't send any properties.
+func (s *Sender) Properties() map[string]any {
+	return s.l.peerProperties
+}
+
 // SendOptions contains any optional values for the Sender.Send method.
 type SendOptions struct {
 	// Indicates the message is to be sent as settled when settlement mode is SenderSettleModeMixed.

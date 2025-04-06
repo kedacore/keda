@@ -30,6 +30,27 @@ import (
 )
 
 type (
+	// WorkerDeploymentOptions provides configuration for Worker Versioning.
+	// NOTE: Both [WorkerOptions.BuildID] and [WorkerOptions.UseBuildIDForVersioning] need to be set for enabling
+	//  Worker Versioning.
+	// NOTE: Experimental
+	//
+	// Exposed as: [go.temporal.io/sdk/worker.DeploymentOptions]
+	WorkerDeploymentOptions struct {
+		// Assign a deployment series name to this worker. Different versions of the same worker
+		// service/application are linked together by sharing a series name.
+		// NOTE: Experimental
+		DeploymentSeriesName string
+
+		// Optional: Provides a default Versioning Behavior to workflows that do not set one with the
+		// registration option [RegisterWorkflowOptions.VersioningBehavior].
+		// NOTE: When the new Deployment-based Worker Versioning feature is on,
+		// and [DefaultVersioningBehavior] is unspecified,
+		// workflows that do not set the Versioning Behavior will fail at registration time.
+		// NOTE: Experimental
+		DefaultVersioningBehavior VersioningBehavior
+	}
+
 	// WorkerOptions is used to configure a worker instance.
 	// The current timeout resolution implementation is in seconds and uses math.Ceil(d.Seconds()) as the duration. But is
 	// subjected to change in the future.
@@ -242,16 +263,21 @@ type (
 
 		// Assign a BuildID to this worker. This replaces the deprecated binary checksum concept,
 		// and is used to provide a unique identifier for a set of worker code, and is necessary
-		// to opt in to the Worker Versioning feature. See UseBuildIDForVersioning.
+		// to opt in to the Worker Versioning feature. See [UseBuildIDForVersioning].
 		// NOTE: Experimental
 		BuildID string
 
-		// Optional: If set, opts this worker into the Worker Versioning feature. It will only
+		// If set, opts this worker into the Worker Versioning feature. It will only
 		// operate on workflows it claims to be compatible with. You must set BuildID if this flag
 		// is true.
 		// NOTE: Experimental
-		// Note: Cannot be enabled at the same time as EnableSessionWorker
+		// Note: Cannot be enabled at the same time as [WorkerOptions.EnableSessionWorker]
 		UseBuildIDForVersioning bool
+
+		// Optional: If set it configures Worker Versioning for this worker. See WorkerDeploymentOptions
+		// for more. Both [BuildID] and [UseBuildIDForVersioning] need to be set to enable Worker Versioning.
+		// NOTE: Experimental
+		DeploymentOptions WorkerDeploymentOptions
 
 		// Optional: If set, use a custom tuner for this worker. See WorkerTuner for more.
 		// Mutually exclusive with MaxConcurrentWorkflowTaskExecutionSize,
