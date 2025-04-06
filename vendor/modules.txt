@@ -2177,7 +2177,7 @@ gopkg.in/natefinch/lumberjack.v2
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
-# gopkg.in/yaml.v3 v3.0.1 => gopkg.in/yaml.v3 v3.0.1
+# gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
 # gotest.tools/gotestsum v1.12.1
@@ -3216,9 +3216,7 @@ sigs.k8s.io/yaml/goyaml.v3
 # k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340
 # k8s.io/metrics => k8s.io/metrics v0.31.7
 # github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
-# github.com/spf13/viper => github.com/spf13/viper v1.19.0
 # golang.org/x/crypto => golang.org/x/crypto v0.36.0
 # golang.org/x/net => golang.org/x/net v0.37.0
 # golang.org/x/text => golang.org/x/text v0.23.0
 # google.golang.org/grpc => google.golang.org/grpc v1.67.2
-# gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1

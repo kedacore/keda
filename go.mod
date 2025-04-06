@@ -151,9 +151,6 @@ replace (
 	// we need a version with a proper license
 	github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
 
-	// we use an updated package to avoid other vulnerabilities on its deps (like github.com/dgrijalva/jwt-go)
-	github.com/spf13/viper => github.com/spf13/viper v1.19.0
-
 	// https://avd.aquasec.com/nvd/cve-2024-45337
 	golang.org/x/crypto => golang.org/x/crypto v0.36.0
 
@@ -165,9 +162,6 @@ replace (
 
 	// https://github.com/kedacore/keda/issues/5124
 	google.golang.org/grpc => google.golang.org/grpc v1.67.2
-
-	// Needed for CVE-2022-28948 https://www.cve.org/CVERecord?id=CVE-2022-28948
-	gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
