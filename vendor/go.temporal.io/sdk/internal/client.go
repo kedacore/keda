@@ -102,8 +102,8 @@ type (
 		ExecuteWorkflow(ctx context.Context, options StartWorkflowOptions, workflow interface{}, args ...interface{}) (WorkflowRun, error)
 
 		// GetWorkflow retrieves a workflow execution and return a WorkflowRun instance
-		// - workflow ID of the workflow.
-		// - runID can be default(empty string). if empty string then it will pick the last running execution of that workflow ID.
+		//  - workflow ID of the workflow.
+		//  - runID can be default(empty string). if empty string then it will pick the last running execution of that workflow ID.
 		//
 		// WorkflowRun has three methods:
 		//  - GetID() string: which return workflow ID (which is same as StartWorkflowOptions.ID if provided)
@@ -117,9 +117,9 @@ type (
 		GetWorkflow(ctx context.Context, workflowID string, runID string) WorkflowRun
 
 		// SignalWorkflow sends a signals to a workflow in execution
-		// - workflow ID of the workflow.
-		// - runID can be default(empty string). if empty string then it will pick the running execution of that workflow ID.
-		// - signalName name to identify the signal.
+		//  - workflow ID of the workflow.
+		//  - runID can be default(empty string). if empty string then it will pick the running execution of that workflow ID.
+		//  - signalName name to identify the signal.
 		// The errors it can return:
 		//  - serviceerror.NotFound
 		//  - serviceerror.Internal
@@ -128,9 +128,9 @@ type (
 
 		// SignalWithStartWorkflow sends a signal to a running workflow.
 		// If the workflow is not running or not found, it starts the workflow and then sends the signal in transaction.
-		// - workflowID, signalName, signalArg are same as SignalWorkflow's parameters
-		// - options, workflow, workflowArgs are same as StartWorkflow's parameters
-		// - the workflowID parameter is used instead of options.ID. If the latter is present, it must match the workflowID.
+		//  - workflowID, signalName, signalArg are same as SignalWorkflow's parameters
+		//  - options, workflow, workflowArgs are same as StartWorkflow's parameters
+		//  - the workflowID parameter is used instead of options.ID. If the latter is present, it must match the workflowID.
 		// Note: options.WorkflowIDReusePolicy is default to AllowDuplicate.
 		// The errors it can return:
 		//  - serviceerror.NotFound
@@ -145,8 +145,8 @@ type (
 		NewWithStartWorkflowOperation(options StartWorkflowOptions, workflow interface{}, args ...interface{}) WithStartWorkflowOperation
 
 		// CancelWorkflow cancels a workflow in execution
-		// - workflow ID of the workflow.
-		// - runID can be default(empty string). if empty string then it will pick the running execution of that workflow ID.
+		//  - workflow ID of the workflow.
+		//  - runID can be default(empty string). if empty string then it will pick the running execution of that workflow ID.
 		// The errors it can return:
 		//  - serviceerror.NotFound
 		//  - serviceerror.InvalidArgument
@@ -156,8 +156,8 @@ type (
 
 		// TerminateWorkflow terminates a workflow execution.
 		// workflowID is required, other parameters are optional.
-		// - workflow ID of the workflow.
-		// - runID can be default(empty string). if empty string then it will pick the running execution of that workflow ID.
+		//  - workflow ID of the workflow.
+		//  - runID can be default(empty string). if empty string then it will pick the running execution of that workflow ID.
 		// The errors it can return:
 		//  - serviceerror.NotFound
 		//  - serviceerror.InvalidArgument
@@ -166,12 +166,12 @@ type (
 		TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error
 
 		// GetWorkflowHistory gets history events of a particular workflow
-		// - workflow ID of the workflow.
-		// - runID can be default(empty string). if empty string then it will pick the last running execution of that workflow ID.
-		// - whether use long poll for tracking new events: when the workflow is running, there can be new events generated during iteration
+		//  - workflow ID of the workflow.
+		//  - runID can be default(empty string). if empty string then it will pick the last running execution of that workflow ID.
+		//  - whether use long poll for tracking new events: when the workflow is running, there can be new events generated during iteration
 		//    of HistoryEventIterator, if isLongPoll == true, then iterator will do long poll, tracking new history event, i.e. the iteration
 		//   will not be finished until workflow is finished; if isLongPoll == false, then iterator will only return current history events.
-		// - whether return all history events or just the last event, which contains the workflow execution end result
+		//  - whether return all history events or just the last event, which contains the workflow execution end result
 		// Example:-
 		//  To iterate all events,
 		//    iter := GetWorkflowHistory(ctx, workflowID, runID, isLongPoll, filterType)
@@ -311,10 +311,10 @@ type (
 		// to handle custom query types.
 		// See comments at workflow.SetQueryHandler(ctx Context, queryType string, handler interface{}) for more details
 		// on how to setup query handler within the target workflow.
-		// - workflowID is required.
-		// - runID can be default(empty string). if empty string then it will pick the running execution of that workflow ID.
-		// - queryType is the type of the query.
-		// - args... are the optional query parameters.
+		//  - workflowID is required.
+		//  - runID can be default(empty string). if empty string then it will pick the running execution of that workflow ID.
+		//  - queryType is the type of the query.
+		//  - args... are the optional query parameters.
 		// The errors it can return:
 		//  - serviceerror.InvalidArgument
 		//  - serviceerror.Internal
@@ -340,6 +340,12 @@ type (
 		//  - serviceerror.Unavailable
 		//  - serviceerror.NotFound
 		DescribeWorkflowExecution(ctx context.Context, workflowID, runID string) (*workflowservice.DescribeWorkflowExecutionResponse, error)
+
+		// UpdateWorkflowExecutionOptions partially overrides the [WorkflowExecutionOptions] of an existing workflow execution
+		// and returns the new [WorkflowExecutionOptions] after applying the changes.
+		// It is intended for building tools that can selectively apply ad-hoc workflow configuration changes.
+		// NOTE: Experimental
+		UpdateWorkflowExecutionOptions(ctx context.Context, options UpdateWorkflowExecutionOptionsRequest) (WorkflowExecutionOptions, error)
 
 		// DescribeTaskQueue returns information about the target taskqueue, right now this API returns the
 		// pollers which polled this taskqueue in last few minutes.
@@ -400,7 +406,6 @@ type (
 		// update is requested (e.g. if the required workflow ID field is
 		// missing from the UpdateWorkflowOptions) are returned
 		// directly from this function call.
-		// NOTE: Experimental
 		UpdateWorkflow(ctx context.Context, options UpdateWorkflowOptions) (WorkflowUpdateHandle, error)
 
 		// UpdateWithStartWorkflow issues an update-with-start request. A
@@ -417,7 +422,6 @@ type (
 		// GetWorkflowUpdateHandle creates a handle to the referenced update
 		// which can be polled for an outcome. Note that runID is optional and
 		// if not specified the most recent runID will be used.
-		// NOTE: Experimental
 		GetWorkflowUpdateHandle(GetWorkflowUpdateHandleOptions) WorkflowUpdateHandle
 
 		// WorkflowService provides access to the underlying gRPC service. This should only be used for advanced use cases
@@ -430,6 +434,9 @@ type (
 
 		// Schedule creates a new shedule client with the same gRPC connection as this client.
 		ScheduleClient() ScheduleClient
+
+		// DeploymentClient creates a new deployment client with the same gRPC connection as this client.
+		DeploymentClient() DeploymentClient
 
 		// Close client and clean up underlying resources.
 		Close()
@@ -758,6 +765,14 @@ type (
 		//
 		// NOTE: Experimental
 		StaticDetails string
+
+		// VersioningOverride - Sets the versioning configuration of a specific workflow execution, ignoring current
+		// server or worker default policies. This enables running canary tests without affecting existing workflows.
+		// To unset the override after the workflow is running, use [UpdateWorkflowExecutionOptions].
+		// Optional: defaults to no override.
+		//
+		// NOTE: Experimental
+		VersioningOverride VersioningOverride
 
 		// request ID. Only settable by the SDK - e.g. [temporalnexus.workflowRunOperation].
 		requestID string

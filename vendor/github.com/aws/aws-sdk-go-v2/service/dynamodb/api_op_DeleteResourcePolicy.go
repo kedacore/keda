@@ -63,6 +63,12 @@ type DeleteResourcePolicyInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *DeleteResourcePolicyInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.ResourceArn
+
+}
+
 type DeleteResourcePolicyOutput struct {
 
 	// A unique string that represents the revision ID of the policy. If you're
@@ -143,6 +149,12 @@ func (c *Client) addOperationDeleteResourcePolicyMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDeleteResourcePolicyValidationMiddleware(stack); err != nil {

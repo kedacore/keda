@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2018-2023 ArangoDB GmbH, Cologne, Germany
+// Copyright 2018-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -423,7 +423,7 @@ type ArangoSearchPrimarySortEntry struct {
 	Field     string `json:"field,omitempty"`
 	Ascending *bool  `json:"asc,omitempty"`
 
-	// deprecated, please use Ascending instead
+	// Deprecated: please use Ascending instead
 	Direction *ArangoSearchSortDirection `json:"direction,omitempty"`
 }
 

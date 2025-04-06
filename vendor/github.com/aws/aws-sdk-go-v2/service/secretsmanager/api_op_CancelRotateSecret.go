@@ -149,6 +149,9 @@ func (c *Client) addOperationCancelRotateSecretMiddlewares(stack *middleware.Sta
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpCancelRotateSecretValidationMiddleware(stack); err != nil {
 		return err
 	}

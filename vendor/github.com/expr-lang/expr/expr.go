@@ -13,6 +13,7 @@ import (
 	"github.com/expr-lang/expr/conf"
 	"github.com/expr-lang/expr/file"
 	"github.com/expr-lang/expr/optimizer"
+	"github.com/expr-lang/expr/parser"
 	"github.com/expr-lang/expr/patcher"
 	"github.com/expr-lang/expr/vm"
 )
@@ -240,7 +241,12 @@ func Eval(input string, env any) (any, error) {
 		return nil, fmt.Errorf("misused expr.Eval: second argument (env) should be passed without expr.Env")
 	}
 
-	program, err := Compile(input)
+	tree, err := parser.Parse(input)
+	if err != nil {
+		return nil, err
+	}
+
+	program, err := compiler.Compile(tree, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -36,13 +36,14 @@ type Event struct {
 }
 
 // Watch dirs for filesystem events, and run tests when .go files are saved.
-// nolint: gocyclo
+//
+//nolint:gocyclo
 func Watch(ctx context.Context, dirs []string, run func(Event) error) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return fmt.Errorf("failed to create file watcher: %w", err)
 	}
-	defer watcher.Close() // nolint: errcheck // always returns nil error
+	defer watcher.Close() //nolint:errcheck // always returns nil error
 
 	if err := loadPaths(watcher, dirs); err != nil {
 		return err
@@ -110,7 +111,7 @@ func resetTimer(timer *time.Timer) {
 
 func loadPaths(watcher *fsnotify.Watcher, dirs []string) error {
 	toWatch := findAllDirs(dirs, maxDepth)
-	fmt.Printf("Watching %v directories. Use Ctrl-c to to stop a run or exit.\n", len(toWatch))
+	fmt.Printf("Watching %v directories. Use Ctrl-c to stop a run or exit.\n", len(toWatch))
 	for _, dir := range toWatch {
 		if err := watcher.Add(dir); err != nil {
 			return fmt.Errorf("failed to watch directory %v: %w", dir, err)
@@ -124,7 +125,7 @@ func findAllDirs(dirs []string, maxDepth int) []string {
 		dirs = []string{"./..."}
 	}
 
-	var output []string // nolint: prealloc
+	var output []string //nolint:prealloc
 	for _, dir := range dirs {
 		const recur = "/..."
 		if strings.HasSuffix(dir, recur) {
@@ -160,7 +161,7 @@ func findSubDirs(rootDir string, maxDepth int) []string {
 		output = append(output, path)
 		return nil
 	}
-	// nolint: errcheck // error is handled by walker func
+	//nolint:errcheck // error is handled by walker func
 	filepath.Walk(rootDir, walker)
 	return output
 }
@@ -186,7 +187,7 @@ func hasGoFiles(path string) bool {
 	if err != nil {
 		return false
 	}
-	defer fh.Close() // nolint: errcheck // fh is opened read-only
+	defer fh.Close() //nolint:errcheck // fh is opened read-only
 
 	for {
 		names, err := fh.Readdirnames(20)

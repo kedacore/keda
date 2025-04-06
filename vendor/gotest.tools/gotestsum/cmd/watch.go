@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 
@@ -80,7 +79,7 @@ func runSingle(opts *options, dir string) (*testjson.Execution, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer handler.Close() // nolint: errcheck
+	defer handler.Close() //nolint:errcheck
 	cfg := testjson.ScanConfig{
 		Stdout:  goTestProc.stdout,
 		Stderr:  goTestProc.stderr,
@@ -97,12 +96,12 @@ func runSingle(opts *options, dir string) (*testjson.Execution, error) {
 }
 
 func delveInitFile(exec *testjson.Execution) (string, func(), error) {
-	fh, err := ioutil.TempFile("", "gotestsum-delve-init")
+	fh, err := os.CreateTemp("", "gotestsum-delve-init")
 	if err != nil {
 		return "", nil, err
 	}
 	remove := func() {
-		os.Remove(fh.Name()) // nolint: errcheck
+		os.Remove(fh.Name()) //nolint:errcheck
 	}
 
 	buf := bufio.NewWriter(fh)

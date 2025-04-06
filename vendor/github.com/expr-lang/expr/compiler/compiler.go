@@ -776,12 +776,16 @@ func (c *compiler) CallNode(node *ast.CallNode) {
 	}
 	c.compile(node.Callee)
 
-	isMethod, _, _ := checker.MethodIndex(c.config.Env, node.Callee)
-	if index, ok := checker.TypedFuncIndex(node.Callee.Type(), isMethod); ok {
-		c.emit(OpCallTyped, index)
-		return
-	} else if checker.IsFastFunc(node.Callee.Type(), isMethod) {
-		c.emit(OpCallFast, len(node.Arguments))
+	if c.config != nil {
+		isMethod, _, _ := checker.MethodIndex(c.config.Env, node.Callee)
+		if index, ok := checker.TypedFuncIndex(node.Callee.Type(), isMethod); ok {
+			c.emit(OpCallTyped, index)
+			return
+		} else if checker.IsFastFunc(node.Callee.Type(), isMethod) {
+			c.emit(OpCallFast, len(node.Arguments))
+		} else {
+			c.emit(OpCall, len(node.Arguments))
+		}
 	} else {
 		c.emit(OpCall, len(node.Arguments))
 	}

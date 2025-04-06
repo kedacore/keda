@@ -48,7 +48,6 @@ func ByElapsed(cases []testjson.TestCase, fn func(times []time.Duration) time.Du
 		return cases
 	}
 	pkg := cases[0].Package
-	// nolint: prealloc // size is not predictable
 	m := make(map[testjson.TestName][]time.Duration)
 	for _, tc := range cases {
 		m[tc.Test] = append(m[tc.Test], tc.Elapsed)

@@ -139,6 +139,9 @@ func (c *Client) addOperationListRuleGroupsNamespacesMiddlewares(stack *middlewa
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpListRuleGroupsNamespacesValidationMiddleware(stack); err != nil {
 		return err
 	}

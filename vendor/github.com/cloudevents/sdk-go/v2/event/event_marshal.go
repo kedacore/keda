@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
@@ -179,10 +180,16 @@ func WriteJson(in *Event, writer io.Writer) error {
 		return fmt.Errorf("error while writing the event data: %w", stream.Error)
 	}
 
-	for k, v := range ext {
+	// Add extensions in a deterministic predictable order, similar to how Go maps are serialized in a predictable order.
+	extensionNames := make([]string, 0, len(ext))
+	for extName := range ext {
+		extensionNames = append(extensionNames, extName)
+	}
+	slices.Sort(extensionNames)
+	for _, extName := range extensionNames {
 		stream.WriteMore()
-		stream.WriteObjectField(k)
-		stream.WriteVal(v)
+		stream.WriteObjectField(extName)
+		stream.WriteVal(ext[extName])
 	}
 
 	stream.WriteObjectEnd()

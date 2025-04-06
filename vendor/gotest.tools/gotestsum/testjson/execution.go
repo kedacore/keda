@@ -19,7 +19,6 @@ import (
 // Action of TestEvent
 type Action string
 
-// nolint: unused
 const (
 	ActionRun    Action = "run"
 	ActionPause  Action = "pause"
@@ -29,6 +28,7 @@ const (
 	ActionFail   Action = "fail"
 	ActionOutput Action = "output"
 	ActionSkip   Action = "skip"
+	ActionBuild  Action = "build-output"
 )
 
 // IsTerminal returns true if the Action is one of: pass, fail, skip.
@@ -44,10 +44,11 @@ func (a Action) IsTerminal() bool {
 // TestEvent is a structure output by go tool test2json and go test -json.
 type TestEvent struct {
 	// Time encoded as an RFC3339-format string
-	Time    time.Time
-	Action  Action
-	Package string
-	Test    string
+	Time       time.Time
+	Action     Action
+	Package    string
+	Test       string
+	ImportPath string
 	// Elapsed time in seconds
 	Elapsed float64
 	// Output of test or benchmark
@@ -359,6 +360,10 @@ func (e *Execution) add(event TestEvent) {
 		pkg = newPackage()
 		e.packages[event.Package] = pkg
 	}
+	if event.Action == ActionBuild {
+		e.addError(event.Output)
+		return
+	}
 	if event.PackageEvent() {
 		pkg.addEvent(event)
 		return
@@ -530,7 +535,7 @@ func (e *Execution) Failed() []TestCase {
 	if e == nil {
 		return nil
 	}
-	var failed []TestCase //nolint:prealloc
+	var failed []TestCase
 	for _, name := range sortedKeys(e.packages) {
 		pkg := e.packages[name]
 
@@ -641,7 +646,7 @@ func (e *Execution) HasPanic() bool {
 
 func (e *Execution) end() []TestEvent {
 	e.done = true
-	var result []TestEvent // nolint: prealloc
+	var result []TestEvent
 	for _, pkg := range e.packages {
 		result = append(result, pkg.end()...)
 	}
@@ -749,12 +754,12 @@ func readStdout(config ScanConfig, execution *Execution) error {
 		event, err := parseEvent(raw)
 		switch {
 		case err == errBadEvent:
-			// nolint: errcheck
+			//nolint:errcheck
 			config.Handler.Err(errBadEvent.Error() + ": " + scanner.Text())
 			continue
 		case err != nil:
 			if config.IgnoreNonJSONOutputLines {
-				// nolint: errcheck
+				//nolint:errcheck
 				config.Handler.Err(string(raw))
 				continue
 			}

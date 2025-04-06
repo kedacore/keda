@@ -15,8 +15,9 @@ import (
 
 // Restores the specified table to the specified point in time within
 // EarliestRestorableDateTime and LatestRestorableDateTime . You can restore your
-// table to any point in time during the last 35 days. Any number of users can
-// execute up to 50 concurrent restores (any type of restore) in a given account.
+// table to any point in time in the last 35 days. You can set the recovery period
+// to any value between 1 and 35 days. Any number of users can execute up to 50
+// concurrent restores (any type of restore) in a given account.
 //
 // When you restore using point in time recovery, DynamoDB restores your table
 // data to the state based on the selected date and time (day:hour:minute:second)
@@ -115,6 +116,12 @@ type RestoreTableToPointInTimeInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *RestoreTableToPointInTimeInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TargetTableName
+
+}
+
 type RestoreTableToPointInTimeOutput struct {
 
 	// Represents the properties of a table.
@@ -191,6 +198,12 @@ func (c *Client) addOperationRestoreTableToPointInTimeMiddlewares(stack *middlew
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpRestoreTableToPointInTimeValidationMiddleware(stack); err != nil {

@@ -289,12 +289,13 @@ func (s StackDriverClient) GetMetrics(
 // MQL provides a more expressive query language than
 // the current filtering options of GetMetrics
 func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query string, valueIfNull *float64) (float64, error) {
+	//nolint:staticcheck
 	req := &monitoringpb.QueryTimeSeriesRequest{
 		Query:    query,
 		PageSize: 1,
 	}
 	req.Name = "projects/" + getActualProjectID(&s, projectID)
-
+	//nolint:staticcheck
 	it := s.queryClient.QueryTimeSeries(ctx, req)
 
 	var value float64 = -1

@@ -3,7 +3,6 @@ package slowest
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -139,7 +138,7 @@ func run(opts *options) error {
 func jsonfileReader(v string) (io.ReadCloser, error) {
 	switch v {
 	case "", "-":
-		return ioutil.NopCloser(os.Stdin), nil
+		return io.NopCloser(os.Stdin), nil
 	default:
 		return os.Open(v)
 	}

@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017-2023 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -114,6 +114,7 @@ type ClientConfig struct {
 	Authentication Authentication
 
 	// Deprecated: using non-zero duration causes routine leak. Please create your own implementation using Client.SynchronizeEndpoints2
+	//
 	// SynchronizeEndpointsInterval is the interval between automatic synchronization of endpoints.
 	// If this value is 0, no automatic synchronization is performed.
 	// If this value is > 0, automatic synchronization is started on a go routine.

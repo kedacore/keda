@@ -234,6 +234,7 @@ func (coll *Collection) BulkWrite(ctx context.Context, models []WriteModel,
 		selector:                 selector,
 		writeConcern:             wc,
 		let:                      bwo.Let,
+		bypassEmptyTsReplacement: bwo.BypassEmptyTsReplacement,
 	}
 
 	err = op.execute(ctx)
@@ -307,6 +308,9 @@ func (coll *Collection) insert(ctx context.Context, documents []interface{},
 	if imo.Ordered != nil {
 		op = op.Ordered(*imo.Ordered)
 	}
+	if imo.BypassEmptyTsReplacement != nil {
+		op = op.BypassEmptyTsReplacement(*imo.BypassEmptyTsReplacement)
+	}
 	retry := driver.RetryNone
 	if coll.client.retryWrites {
 		retry = driver.RetryOncePerCommand
@@ -354,6 +358,9 @@ func (coll *Collection) InsertOne(ctx context.Context, document interface{},
 	}
 	if ioOpts.Comment != nil {
 		imOpts.SetComment(ioOpts.Comment)
+	}
+	if ioOpts.BypassEmptyTsReplacement != nil {
+		imOpts.BypassEmptyTsReplacement = ioOpts.BypassEmptyTsReplacement
 	}
 	res, err := coll.insert(ctx, []interface{}{document}, imOpts)
 
@@ -609,6 +616,9 @@ func (coll *Collection) updateOrReplace(ctx context.Context, filter bsoncore.Doc
 		}
 		op = op.Comment(comment)
 	}
+	if uo.BypassEmptyTsReplacement != nil {
+		op.BypassEmptyTsReplacement(*uo.BypassEmptyTsReplacement)
+	}
 	retry := driver.RetryNone
 	// retryable writes are only enabled updateOne/replaceOne operations
 	if !multi && coll.client.retryWrites {
@@ -760,6 +770,7 @@ func (coll *Collection) ReplaceOne(ctx context.Context, filter interface{},
 		uOpts.Hint = opt.Hint
 		uOpts.Let = opt.Let
 		uOpts.Comment = opt.Comment
+		uOpts.BypassEmptyTsReplacement = opt.BypassEmptyTsReplacement
 		updateOptions = append(updateOptions, uOpts)
 	}
 
@@ -1659,6 +1670,9 @@ func (coll *Collection) FindOneAndReplace(ctx context.Context, filter interface{
 		}
 		op = op.Let(let)
 	}
+	if fo.BypassEmptyTsReplacement != nil {
+		op = op.BypassEmptyTsReplacement(*fo.BypassEmptyTsReplacement)
+	}
 
 	return coll.findAndModify(ctx, op)
 }
@@ -1764,6 +1778,9 @@ func (coll *Collection) FindOneAndUpdate(ctx context.Context, filter interface{}
 			return &SingleResult{err: err}
 		}
 		op = op.Let(let)
+	}
+	if fo.BypassEmptyTsReplacement != nil {
+		op = op.BypassEmptyTsReplacement(*fo.BypassEmptyTsReplacement)
 	}
 
 	return coll.findAndModify(ctx, op)

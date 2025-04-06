@@ -7,6 +7,7 @@ package event
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -385,9 +386,14 @@ func consumeData(e *Event, isBase64 bool, iter *jsoniter.Iterator) error {
 		e.DataBase64 = true
 
 		// Allocate payload byte buffer
-		base64Encoded := iter.ReadStringAsSlice()
-		e.DataEncoded = make([]byte, base64.StdEncoding.DecodedLen(len(base64Encoded)))
-		length, err := base64.StdEncoding.Decode(e.DataEncoded, base64Encoded)
+		base64Encoded := iter.ReadString()
+		var base64DeJSON string
+		err := json.Unmarshal([]byte(`"`+base64Encoded+`"`), &base64DeJSON)
+		if err != nil {
+			return err
+		}
+		e.DataEncoded = make([]byte, base64.StdEncoding.DecodedLen(len(base64DeJSON)))
+		length, err := base64.StdEncoding.Decode(e.DataEncoded, []byte(base64DeJSON))
 		if err != nil {
 			return err
 		}

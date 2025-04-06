@@ -95,6 +95,12 @@ type CreateGlobalTableInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *CreateGlobalTableInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.GlobalTableName
+
+}
+
 type CreateGlobalTableOutput struct {
 
 	// Contains the details of the global table.
@@ -171,6 +177,12 @@ func (c *Client) addOperationCreateGlobalTableMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateGlobalTableValidationMiddleware(stack); err != nil {

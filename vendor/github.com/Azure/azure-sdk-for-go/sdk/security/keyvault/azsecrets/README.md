@@ -56,7 +56,7 @@ func main() {
 
 ### Secret
 
-A secret consists of a secret value and its associated metadata and management information. This library handles secret values as strings, but Azure Key Vault doesn't store them as such. For more information about secrets and how Key Vault stores and manages them, see the [Key Vault documentation](https://docs.microsoft.com/azure/key-vault/general/about-keys-secrets-certificates).
+A secret consists of a secret value and its associated metadata and management information. This library handles secret values as strings, but Azure Key Vault doesn't store them as such. For more information about secrets and how Key Vault stores and manages them, see the [Key Vault documentation](https://learn.microsoft.com/azure/key-vault/general/about-keys-secrets-certificates).
 
 `azseecrets.Client` can set secret values in the vault, update secret metadata, and delete secrets, as shown in the examples below.
 
@@ -129,16 +129,16 @@ When you submit a pull request, a CLA-bot will automatically determine whether y
 This project has adopted the [Microsoft Open Source Code of Conduct][code_of_conduct]. For more information, see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact opencode@microsoft.com with any additional questions or comments.
 
 [azure_identity]: https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity
-[azure_keyvault_cli]: https://docs.microsoft.com/azure/key-vault/general/quick-create-cli
-[azure_keyvault_portal]: https://docs.microsoft.com/azure/key-vault/general/quick-create-portal
+[azure_keyvault_cli]: https://learn.microsoft.com/azure/key-vault/general/quick-create-cli
+[azure_keyvault_portal]: https://learn.microsoft.com/azure/key-vault/general/quick-create-portal
 [azure_sub]: https://azure.microsoft.com/free/
 [code_of_conduct]: https://opensource.microsoft.com/codeofconduct/
 [default_cred_ref]: https://github.com/Azure/azure-sdk-for-go/tree/main/sdk/azidentity#defaultazurecredential
-[keyvault_docs]: https://docs.microsoft.com/azure/key-vault/
-[managed_identity]: https://docs.microsoft.com/azure/active-directory/managed-identities-azure-resources/overview
+[keyvault_docs]: https://learn.microsoft.com/azure/key-vault/
+[managed_identity]: https://learn.microsoft.com/azure/active-directory/managed-identities-azure-resources/overview
 [reference_docs]: https://aka.ms/azsdk/go/keyvault-secrets/docs
 [client_docs]: https://aka.ms/azsdk/go/keyvault-secrets/docs#Client
 [module_source]: https://github.com/Azure/azure-sdk-for-go/tree/main/sdk/security/keyvault/azsecrets
 [secrets_samples]: https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets#pkg-examples
 
-![Impressions](https://azure-sdk-impressions.azurewebsites.net/api/impressions/azure-sdk-for-go%2Fsdk%2Fsecurity%2Fkeyvault%2Fazsecrets%2FREADME.png)
+
