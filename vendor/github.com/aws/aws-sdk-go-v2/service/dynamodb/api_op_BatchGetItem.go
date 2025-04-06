@@ -171,6 +171,18 @@ type BatchGetItemInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *BatchGetItemInput) bindEndpointParams(p *EndpointParameters) {
+	func() {
+		v1 := in.RequestItems
+		var v2 []string
+		for k := range v1 {
+			v2 = append(v2, k)
+		}
+		p.ResourceArnList = v2
+	}()
+
+}
+
 // Represents the output of a BatchGetItem operation.
 type BatchGetItemOutput struct {
 
@@ -281,6 +293,12 @@ func (c *Client) addOperationBatchGetItemMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpBatchGetItemValidationMiddleware(stack); err != nil {

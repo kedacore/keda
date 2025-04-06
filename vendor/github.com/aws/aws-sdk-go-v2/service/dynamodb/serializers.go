@@ -4729,6 +4729,11 @@ func awsAwsjson10_serializeDocumentPointInTimeRecoverySpecification(v *types.Poi
 		ok.Boolean(*v.PointInTimeRecoveryEnabled)
 	}
 
+	if v.RecoveryPeriodInDays != nil {
+		ok := object.Key("RecoveryPeriodInDays")
+		ok.Integer(*v.RecoveryPeriodInDays)
+	}
+
 	return nil
 }
 

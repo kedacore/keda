@@ -153,16 +153,12 @@ type WorkflowInboundInterceptor interface {
 	// as part of its optional configuration. The same prohibition against
 	// mutating workflow state that is demanded of UpdateOptions.Validator
 	// functions also applies to this function.
-	//
-	// NOTE: Experimental
 	ValidateUpdate(ctx Context, in *UpdateInput) error
 
 	// ExecuteUpdate is called after ValidateUpdate if and only if the latter
 	// returns nil. interceptor.WorkflowHeader will return a non-nil map for
 	// this context. ExecuteUpdate is allowed to mutate workflow state and
 	// perform workflow actions such as scheduling activities, timers, etc.
-	//
-	// NOTE: Experimental
 	ExecuteUpdate(ctx Context, in *UpdateInput) (interface{}, error)
 
 	mustEmbedWorkflowInboundInterceptorBase()
@@ -289,8 +285,6 @@ type WorkflowOutboundInterceptor interface {
 	GetTypedSearchAttributes(ctx Context) SearchAttributes
 
 	// GetCurrentUpdateInfo intercepts workflow.GetCurrentUpdateInfo.
-	//
-	// NOTE: Experimental
 	GetCurrentUpdateInfo(ctx Context) *UpdateInfo
 
 	// GetLogger intercepts workflow.GetLogger.
@@ -366,8 +360,6 @@ type WorkflowOutboundInterceptor interface {
 	SetQueryHandlerWithOptions(ctx Context, queryType string, handler interface{}, options QueryHandlerOptions) error
 
 	// SetUpdateHandler intercepts workflow.SetUpdateHandler.
-	//
-	// NOTE: Experimental
 	SetUpdateHandler(ctx Context, updateName string, handler interface{}, opts UpdateHandlerOptions) error
 
 	// IsReplaying intercepts workflow.IsReplaying.
@@ -449,8 +441,6 @@ type ClientOutboundInterceptor interface {
 
 	// UpdateWorkflow intercepts client.Client.UpdateWorkflow
 	// interceptor.Header will return a non-nil map for this context.
-	//
-	// NOTE: Experimental
 	UpdateWorkflow(context.Context, *ClientUpdateWorkflowInput) (WorkflowUpdateHandle, error)
 
 	// UpdateWithStartWorkflow intercepts client.Client.UpdateWithStartWorkflow.
@@ -460,8 +450,6 @@ type ClientOutboundInterceptor interface {
 
 	// PollWorkflowUpdate requests the outcome of a specific update from the
 	// server.
-	//
-	// NOTE: Experimental
 	PollWorkflowUpdate(context.Context, *ClientPollWorkflowUpdateInput) (*ClientPollWorkflowUpdateOutput, error)
 
 	mustEmbedClientOutboundInterceptorBase()
@@ -469,10 +457,6 @@ type ClientOutboundInterceptor interface {
 
 // ClientUpdateWorkflowInput is the input to
 // ClientOutboundInterceptor.UpdateWorkflow
-//
-// NOTE: Experimental
-//
-// Exposed as: [go.temporal.io/sdk/interceptor.ClientUpdateWorkflowInput]
 //
 // Exposed as: [go.temporal.io/sdk/interceptor.ClientUpdateWorkflowInput]
 type ClientUpdateWorkflowInput struct {

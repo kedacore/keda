@@ -136,10 +136,10 @@ type (
 		// More details are available at docs.temporal.io.
 		// RetryPolicy is optional. If one is not specified, a default RetryPolicy is provided by the server.
 		// The default RetryPolicy provided by the server specifies:
-		// - InitialInterval of 1 second
-		// - BackoffCoefficient of 2.0
-		// - MaximumInterval of 100 x InitialInterval
-		// - MaximumAttempts of 0 (unlimited)
+		//  - InitialInterval of 1 second
+		//  - BackoffCoefficient of 2.0
+		//  - MaximumInterval of 100 x InitialInterval
+		//  - MaximumAttempts of 0 (unlimited)
 		// To disable retries, set MaximumAttempts to 1.
 		// The default RetryPolicy provided by the server can be overridden by the dynamic config.
 		RetryPolicy *RetryPolicy

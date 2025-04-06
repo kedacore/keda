@@ -14,7 +14,6 @@ import (
 // Summary enumerates the sections which can be printed by PrintSummary
 type Summary int
 
-// nolint: golint
 const (
 	SummarizeNone    Summary = 0
 	SummarizeSkipped Summary = (1 << iota) / 2
