@@ -87,6 +87,8 @@ type (
 		workerBuildID string
 		// Whether the worker has opted in to the build-id based versioning feature
 		useBuildIDVersioning bool
+		// The worker's deployment version identifier.
+		workerDeploymentVersion string
 		// The worker's deployment series name, an identifier in Worker Versioning to link
 		// versions of the same worker service/application.
 		deploymentSeriesName string
@@ -168,6 +170,7 @@ type (
 		dataConverter      converter.DataConverter
 		contextPropagators []ContextPropagator
 		interceptors       []WorkerInterceptor
+		client             *WorkflowClient
 	}
 
 	localActivityResult struct {
@@ -246,9 +249,9 @@ func (bp *basePoller) stopping() bool {
 }
 
 // doPoll runs the given pollFunc in a separate go routine. Returns when any of the conditions are met:
-//  - poll succeeds
-//  - poll fails
-//  - worker is stopping
+//   - poll succeeds
+//   - poll fails
+//   - worker is stopping
 func (bp *basePoller) doPoll(pollFunc func(ctx context.Context) (taskForWorker, error)) (taskForWorker, error) {
 	if bp.stopping() {
 		return nil, errStop
@@ -291,12 +294,13 @@ func newWorkflowTaskPoller(
 ) *workflowTaskPoller {
 	return &workflowTaskPoller{
 		basePoller: basePoller{
-			metricsHandler:       params.MetricsHandler,
-			stopC:                params.WorkerStopChannel,
-			workerBuildID:        params.getBuildID(),
-			useBuildIDVersioning: params.UseBuildIDForVersioning,
-			deploymentSeriesName: params.DeploymentSeriesName,
-			capabilities:         params.capabilities,
+			metricsHandler:          params.MetricsHandler,
+			stopC:                   params.WorkerStopChannel,
+			workerBuildID:           params.getBuildID(),
+			useBuildIDVersioning:    params.UseBuildIDForVersioning,
+			workerDeploymentVersion: params.WorkerDeploymentVersion,
+			deploymentSeriesName:    params.DeploymentSeriesName,
+			capabilities:            params.capabilities,
 		},
 		service:                      service,
 		namespace:                    params.Namespace,
@@ -576,6 +580,10 @@ func (wtp *workflowTaskPoller) errorToFailWorkflowTask(taskToken []byte, err err
 			BuildId:    wtp.workerBuildID,
 			SeriesName: wtp.deploymentSeriesName,
 		},
+		DeploymentOptions: workerDeploymentOptionsToProto(
+			wtp.useBuildIDVersioning,
+			wtp.workerDeploymentVersion,
+		),
 	}
 
 	if wtp.getCapabilities().BuildIdBasedVersioning {
@@ -589,6 +597,7 @@ func newLocalActivityPoller(
 	params workerExecutionParameters,
 	laTunnel *localActivityTunnel,
 	interceptors []WorkerInterceptor,
+	client *WorkflowClient,
 ) *localActivityTaskPoller {
 	handler := &localActivityTaskHandler{
 		userContext:        params.UserContext,
@@ -597,6 +606,7 @@ func newLocalActivityPoller(
 		dataConverter:      params.DataConverter,
 		contextPropagators: params.ContextPropagators,
 		interceptors:       interceptors,
+		client:             client,
 	}
 	return &localActivityTaskPoller{
 		basePoller: basePoller{metricsHandler: params.MetricsHandler, stopC: params.WorkerStopChannel},
@@ -650,7 +660,7 @@ func (lath *localActivityTaskHandler) executeLocalActivityTask(task *localActivi
 		)
 	})
 	ctx, err := WithLocalActivityTask(lath.userContext, task, lath.logger, lath.metricsHandler,
-		lath.dataConverter, lath.interceptors)
+		lath.dataConverter, lath.interceptors, lath.client)
 	if err != nil {
 		return &localActivityResult{task: task, err: fmt.Errorf("failed building context: %w", err)}
 	}
@@ -707,8 +717,9 @@ func (lath *localActivityTaskHandler) executeLocalActivityTask(task *localActivi
 		if time.Now().After(info.deadline) {
 			// If local activity takes longer than expected timeout, the context would already be DeadlineExceeded and
 			// the result would be discarded. Print a warning in this case.
-			lath.logger.Warn("LocalActivity takes too long to complete.",
+			lath.logger.Warn("LocalActivity completed after activity deadline.",
 				"LocalActivityID", task.activityID,
+				"ActivityDeadline", info.deadline,
 				"LocalActivityType", activityType,
 				"ScheduleToCloseTimeout", task.params.ScheduleToCloseTimeout,
 				"StartToCloseTimeout", task.params.StartToCloseTimeout,
@@ -813,6 +824,10 @@ func (wtp *workflowTaskPoller) getNextPollRequest() (request *workflowservice.Po
 			UseVersioning:        wtp.useBuildIDVersioning,
 			DeploymentSeriesName: wtp.deploymentSeriesName,
 		},
+		DeploymentOptions: workerDeploymentOptionsToProto(
+			wtp.useBuildIDVersioning,
+			wtp.workerDeploymentVersion,
+		),
 	}
 	if wtp.getCapabilities().BuildIdBasedVersioning {
 		builtRequest.BinaryChecksum = ""
@@ -979,12 +994,13 @@ func newGetHistoryPageFunc(
 func newActivityTaskPoller(taskHandler ActivityTaskHandler, service workflowservice.WorkflowServiceClient, params workerExecutionParameters) *activityTaskPoller {
 	return &activityTaskPoller{
 		basePoller: basePoller{
-			metricsHandler:       params.MetricsHandler,
-			stopC:                params.WorkerStopChannel,
-			workerBuildID:        params.getBuildID(),
-			useBuildIDVersioning: params.UseBuildIDForVersioning,
-			deploymentSeriesName: params.DeploymentSeriesName,
-			capabilities:         params.capabilities,
+			metricsHandler:          params.MetricsHandler,
+			stopC:                   params.WorkerStopChannel,
+			workerBuildID:           params.getBuildID(),
+			useBuildIDVersioning:    params.UseBuildIDForVersioning,
+			workerDeploymentVersion: params.WorkerDeploymentVersion,
+			deploymentSeriesName:    params.DeploymentSeriesName,
+			capabilities:            params.capabilities,
 		},
 		taskHandler:         taskHandler,
 		service:             service,
@@ -1020,6 +1036,10 @@ func (atp *activityTaskPoller) poll(ctx context.Context) (taskForWorker, error) 
 			UseVersioning:        atp.useBuildIDVersioning,
 			DeploymentSeriesName: atp.deploymentSeriesName,
 		},
+		DeploymentOptions: workerDeploymentOptionsToProto(
+			atp.useBuildIDVersioning,
+			atp.workerDeploymentVersion,
+		),
 	}
 
 	response, err := atp.pollActivityTaskQueue(ctx, request)
@@ -1190,6 +1210,7 @@ func convertActivityResultToRespondRequest(
 	cancelAllowed bool,
 	versionStamp *commonpb.WorkerVersionStamp,
 	deployment *deploymentpb.Deployment,
+	workerDeploymentOptions *deploymentpb.WorkerDeploymentOptions,
 ) interface{} {
 	if err == ErrActivityResultPending {
 		// activity result is pending and will be completed asynchronously.
@@ -1199,12 +1220,13 @@ func convertActivityResultToRespondRequest(
 
 	if err == nil {
 		return &workflowservice.RespondActivityTaskCompletedRequest{
-			TaskToken:     taskToken,
-			Result:        result,
-			Identity:      identity,
-			Namespace:     namespace,
-			WorkerVersion: versionStamp,
-			Deployment:    deployment,
+			TaskToken:         taskToken,
+			Result:            result,
+			Identity:          identity,
+			Namespace:         namespace,
+			WorkerVersion:     versionStamp,
+			Deployment:        deployment,
+			DeploymentOptions: workerDeploymentOptions,
 		}
 	}
 
@@ -1213,21 +1235,23 @@ func convertActivityResultToRespondRequest(
 		var canceledErr *CanceledError
 		if errors.As(err, &canceledErr) {
 			return &workflowservice.RespondActivityTaskCanceledRequest{
-				TaskToken:     taskToken,
-				Details:       convertErrDetailsToPayloads(canceledErr.details, dataConverter),
-				Identity:      identity,
-				Namespace:     namespace,
-				WorkerVersion: versionStamp,
-				Deployment:    deployment,
+				TaskToken:         taskToken,
+				Details:           convertErrDetailsToPayloads(canceledErr.details, dataConverter),
+				Identity:          identity,
+				Namespace:         namespace,
+				WorkerVersion:     versionStamp,
+				Deployment:        deployment,
+				DeploymentOptions: workerDeploymentOptions,
 			}
 		}
 		if errors.Is(err, context.Canceled) {
 			return &workflowservice.RespondActivityTaskCanceledRequest{
-				TaskToken:     taskToken,
-				Identity:      identity,
-				Namespace:     namespace,
-				WorkerVersion: versionStamp,
-				Deployment:    deployment,
+				TaskToken:         taskToken,
+				Identity:          identity,
+				Namespace:         namespace,
+				WorkerVersion:     versionStamp,
+				Deployment:        deployment,
+				DeploymentOptions: workerDeploymentOptions,
 			}
 		}
 	}
@@ -1239,12 +1263,13 @@ func convertActivityResultToRespondRequest(
 	}
 
 	return &workflowservice.RespondActivityTaskFailedRequest{
-		TaskToken:     taskToken,
-		Failure:       failureConverter.ErrorToFailure(err),
-		Identity:      identity,
-		Namespace:     namespace,
-		WorkerVersion: versionStamp,
-		Deployment:    deployment,
+		TaskToken:         taskToken,
+		Failure:           failureConverter.ErrorToFailure(err),
+		Identity:          identity,
+		Namespace:         namespace,
+		WorkerVersion:     versionStamp,
+		Deployment:        deployment,
+		DeploymentOptions: workerDeploymentOptions,
 	}
 }
 

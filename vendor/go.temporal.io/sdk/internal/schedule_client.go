@@ -302,9 +302,22 @@ type (
 		// NOTE: Experimental
 		VersioningOverride VersioningOverride
 
-		// TODO(cretz): Expose once https://github.com/temporalio/temporal/issues/6412 is fixed
-		staticSummary string
-		staticDetails string
+		// StaticSummary is a single-line fixed summary for this child workflow execution that will appear in UI/CLI. This can be
+		// in single-line Temporal Markdown format.
+		//
+		// Optional: defaults to none/empty.
+		//
+		// NOTE: Experimental
+		StaticSummary string
+
+		// Details - General fixed details for this child workflow execution that will appear in UI/CLI. This can be in
+		// Temporal markdown format and can span multiple lines. This is a fixed value on the workflow that cannot be
+		// updated. For details that can be updated, use SetCurrentDetails within the workflow.
+		//
+		// Optional: defaults to none/empty.
+		//
+		// NOTE: Experimental
+		StaticDetails string
 	}
 
 	// ScheduleOptions configure the parameters for creating a schedule.
