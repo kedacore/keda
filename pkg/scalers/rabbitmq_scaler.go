@@ -96,7 +96,7 @@ type rabbitMQMetadata struct {
 	// specify the operation to apply in case of multiples queues
 	Operation string `keda:"name=operation,                       order=triggerMetadata, default=sum"`
 	// custom http timeout for a specific trigger
-	TimeoutMs int `keda:"name=timeout,                            order=triggerMetadata, optional"`
+	Timeout time.Duration `keda:"name=timeout,                  order=triggerMetadata, optional"`
 
 	Username string `keda:"name=username, order=authParams;resolvedEnv, optional"`
 	Password string `keda:"name=password, order=authParams;resolvedEnv, optional"`
@@ -210,13 +210,10 @@ func (r *rabbitMQMetadata) validateTrigger() error {
 		return fmt.Errorf("protocol %s not supported; must be http to use mode %s", r.Protocol, rabbitModeMessageRate)
 	}
 
-	if r.Protocol == amqpProtocol && r.TimeoutMs != 0 {
-		return fmt.Errorf("amqp protocol doesn't support custom timeouts: %d", r.TimeoutMs)
+	if r.Protocol == amqpProtocol && r.Timeout != 0 {
+		return fmt.Errorf("amqp protocol doesn't support custom timeouts: %d", r.Timeout)
 	}
 
-	if r.TimeoutMs < 0 {
-		return fmt.Errorf("timeout must be greater than 0: %d", r.TimeoutMs)
-	}
 	return nil
 }
 
@@ -260,11 +257,9 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	s.metadata = meta
 
-	var timeout time.Duration
-	if s.metadata.TimeoutMs != 0 {
-		timeout = time.Duration(s.metadata.TimeoutMs) * time.Millisecond
-	} else {
-		timeout = config.GlobalHTTPTimeout
+	timeout := config.GlobalHTTPTimeout
+	if s.metadata.Timeout != 0 {
+		timeout = s.metadata.Timeout * time.Millisecond
 	}
 
 	s.httpClient = kedautil.CreateHTTPClient(timeout, meta.UnsafeSsl)
