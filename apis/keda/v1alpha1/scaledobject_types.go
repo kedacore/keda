@@ -294,21 +294,14 @@ func CheckFallbackValid(scaledObject *ScaledObject) error {
 			scaledObject.Spec.Fallback.FailureThreshold, scaledObject.Spec.Fallback.Replicas)
 	}
 
-	if scaledObject.IsUsingModifiers() {
-		if scaledObject.Spec.Advanced.ScalingModifiers.MetricType != autoscalingv2.AverageValueMetricType {
-			return fmt.Errorf("when using ScalingModifiers, ScaledObject.Spec.Advanced.ScalingModifiers.MetricType must be AverageValue to have fallback enabled")
-		}
-	} else {
+	if !scaledObject.IsUsingModifiers() {
 		fallbackValid := false
 		for _, trigger := range scaledObject.Spec.Triggers {
 			if trigger.Type == cpuString || trigger.Type == memoryString {
 				continue
 			}
-			// If at least one trigger is of the type `AverageValue`, then having fallback is valid.
-			if trigger.MetricType == autoscalingv2.AverageValueMetricType {
-				fallbackValid = true
-				break
-			}
+			fallbackValid = true
+			break
 		}
 
 		if !fallbackValid {
