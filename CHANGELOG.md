@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.17.0](#v2161)
 - [v2.16.1](#v2161)
 - [v2.16.0](#v2160)
 - [v2.15.1](#v2151)
@@ -57,9 +58,39 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
-- **General**: Fix the check whether Fallback is enabled when using ScalingModifiers ([#6521](https://github.com/kedacore/keda/pull/6521))
-- **General**: Fix waiting to reach `failureThreshold` before fallback ([#6520](https://github.com/kedacore/keda/pull/6520))
-- **General**: Introduce new Temporal scaler ([#4724](https://github.com/kedacore/keda/issues/4724))
+### New
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+#### Experimental
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Improvements
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Fixes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Deprecations
+
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+New deprecation(s):
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.17.0
 
 ### New
 
@@ -67,6 +98,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Add support for time-bound Kubernetes ServiceAccount tokens as a source for TriggerAuthentication ([#6136](https://github.com/kedacore/keda/issues/6136))
 - **General**: Enable OpenSSF Scorecard to enhance security practices across the project ([#5913](https://github.com/kedacore/keda/issues/5913))
 - **General**: Introduce new NSQ scaler ([#3281](https://github.com/kedacore/keda/issues/3281))
+- **General**: Introduce new Temporal scaler ([#4724](https://github.com/kedacore/keda/issues/4724))
 - **General**: Operator flag to control patching of webhook resources certificates ([#6184](https://github.com/kedacore/keda/issues/6184))
 - **Azure Pipelines Scaler**: Introduce requireAllDemandsAndIgnoreOthers to match job demands while ignoring extras ([#5579](https://github.com/kedacore/keda/issues/5579))
 
@@ -99,6 +131,8 @@ Here is an overview of all new **experimental** features:
 - **General**: Fix CVE-2025-30204 ([#6641](https://github.com/kedacore/keda/pull/6641))
 - **General**: Fix event text when deactivation fails ([#6469](https://github.com/kedacore/keda/issues/6469))
 - **General**: Fix fallback validation check bug ([#6407](https://github.com/kedacore/keda/pull/6407))
+- **General**: Fix the check whether Fallback is enabled when using ScalingModifiers ([#6521](https://github.com/kedacore/keda/pull/6521))
+- **General**: Fix waiting to reach `failureThreshold` before fallback ([#6520](https://github.com/kedacore/keda/pull/6520))
 - **General**: Make sure the exposed metrics (from KEDA operator) are updated when there is a change to triggers ([#6618](https://github.com/kedacore/keda/pull/6618))
 - **General**: Paused ScaledObject count is reported correctly after operator restart ([#6321](https://github.com/kedacore/keda/issues/6321))
 - **General**: Reiterate fix (after [#6407](https://github.com/kedacore/keda/pull/6407)) for fallback validation in admission webhook. ([#6538](https://github.com/kedacore/keda/pull/6538))
