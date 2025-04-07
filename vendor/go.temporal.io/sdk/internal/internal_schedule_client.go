@@ -277,7 +277,8 @@ func (scheduleHandle *scheduleHandleImpl) Update(ctx context.Context, options Sc
 	if err != nil {
 		return err
 	}
-	scheduleDescription, err := scheduleDescriptionFromPB(scheduleHandle.client.logger, describeResponse)
+	scheduleDescription, err := scheduleDescriptionFromPB(
+		scheduleHandle.client.logger, scheduleHandle.client.dataConverter, describeResponse)
 	if err != nil {
 		return err
 	}
@@ -327,7 +328,8 @@ func (scheduleHandle *scheduleHandleImpl) Describe(ctx context.Context) (*Schedu
 	if err != nil {
 		return nil, err
 	}
-	return scheduleDescriptionFromPB(scheduleHandle.client.logger, describeResponse)
+	return scheduleDescriptionFromPB(
+		scheduleHandle.client.logger, scheduleHandle.client.dataConverter, describeResponse)
 }
 
 func (scheduleHandle *scheduleHandleImpl) Trigger(ctx context.Context, options ScheduleTriggerOptions) error {
@@ -469,6 +471,7 @@ func convertFromPBScheduleSpec(scheduleSpec *schedulepb.ScheduleSpec) *ScheduleS
 
 func scheduleDescriptionFromPB(
 	logger log.Logger,
+	dc converter.DataConverter,
 	describeResponse *workflowservice.DescribeScheduleResponse,
 ) (*ScheduleDescription, error) {
 	if describeResponse == nil {
@@ -490,7 +493,7 @@ func scheduleDescriptionFromPB(
 		nextActionTimes[i] = t.AsTime()
 	}
 
-	actionDescription, err := convertFromPBScheduleAction(logger, describeResponse.Schedule.Action)
+	actionDescription, err := convertFromPBScheduleAction(logger, dc, describeResponse.Schedule.Action)
 	if err != nil {
 		return nil, err
 	}
@@ -637,7 +640,7 @@ func convertToPBScheduleAction(
 			return nil, err
 		}
 
-		userMetadata, err := buildUserMetadata(action.staticSummary, action.staticDetails, dataConverter)
+		userMetadata, err := buildUserMetadata(action.StaticSummary, action.StaticDetails, dataConverter)
 		if err != nil {
 			return nil, err
 		}
@@ -667,7 +670,11 @@ func convertToPBScheduleAction(
 	}
 }
 
-func convertFromPBScheduleAction(logger log.Logger, action *schedulepb.ScheduleAction) (ScheduleAction, error) {
+func convertFromPBScheduleAction(
+	logger log.Logger,
+	dc converter.DataConverter,
+	action *schedulepb.ScheduleAction,
+) (ScheduleAction, error) {
 	switch action := action.Action.(type) {
 	case *schedulepb.ScheduleAction_StartWorkflow:
 		workflow := action.StartWorkflow
@@ -697,6 +704,17 @@ func convertFromPBScheduleAction(logger log.Logger, action *schedulepb.ScheduleA
 			}
 		}
 
+		var convertedSummary *string = new(string)
+		err := dc.FromPayload(workflow.GetUserMetadata().GetSummary(), convertedSummary)
+		if err != nil {
+			return nil, fmt.Errorf("could not decode user metadata summary: %w", err)
+		}
+		var convertedDetails *string = new(string)
+		err = dc.FromPayload(workflow.GetUserMetadata().GetDetails(), convertedDetails)
+		if err != nil {
+			return nil, fmt.Errorf("could not decode user metadata details: %w", err)
+		}
+
 		return &ScheduleWorkflowAction{
 			ID:                       workflow.GetWorkflowId(),
 			Workflow:                 workflow.WorkflowType.GetName(),
@@ -710,6 +728,8 @@ func convertFromPBScheduleAction(logger log.Logger, action *schedulepb.ScheduleA
 			TypedSearchAttributes:    searchAttrs,
 			UntypedSearchAttributes:  untypedSearchAttrs,
 			VersioningOverride:       versioningOverrideFromProto(workflow.VersioningOverride),
+			StaticSummary:            *convertedSummary,
+			StaticDetails:            *convertedDetails,
 		}, nil
 	default:
 		// TODO maybe just panic instead?

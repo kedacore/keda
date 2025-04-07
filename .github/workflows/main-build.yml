@@ -16,7 +16,7 @@ jobs:
       id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
 
     # keda-tools is built from github.com/test-tools/tools/Dockerfile
-    container: ghcr.io/kedacore/keda-tools:1.23.7
+    container: ghcr.io/kedacore/keda-tools:1.23.8
     steps:
       - name: Check out code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -50,7 +50,7 @@ jobs:
         run: make test
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}

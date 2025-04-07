@@ -25,15 +25,16 @@
 package internal
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/nexus-rpc/sdk-go/nexus"
-	"golang.org/x/exp/constraints"
-	"golang.org/x/exp/slices"
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
@@ -1280,6 +1281,8 @@ type WorkflowInfo struct {
 	continueAsNewSuggested bool
 	currentHistorySize     int
 	currentHistoryLength   int
+	// currentRunID is the current run ID of the workflow task, deterministic over reset
+	currentRunID string
 }
 
 // UpdateInfo information about a currently running update
@@ -1897,6 +1900,9 @@ func (wc *workflowEnvironmentInterceptor) GetSignalChannelWithOptions(
 	signalName string,
 	options SignalChannelOptions,
 ) ReceiveChannel {
+	if strings.HasPrefix(signalName, temporalPrefix) {
+		panic(temporalPrefixError)
+	}
 	eo := getWorkflowEnvOptions(ctx)
 	ch := eo.getSignalChannel(ctx, signalName)
 	// Add as a requested channel if not already done
@@ -2520,7 +2526,7 @@ func GetLastCompletionResultFromWorkflowInfo(info *WorkflowInfo) *commonpb.Paylo
 
 // DeterministicKeys returns the keys of a map in deterministic (sorted) order. To be used in for
 // loops in workflows for deterministic iteration.
-func DeterministicKeys[K constraints.Ordered, V any](m map[K]V) []K {
+func DeterministicKeys[K cmp.Ordered, V any](m map[K]V) []K {
 	r := make([]K, 0, len(m))
 	for k := range m {
 		r = append(r, k)
@@ -2560,7 +2566,12 @@ type NexusOperationOptions struct {
 type NexusOperationExecution struct {
 	// Operation ID as set by the Operation's handler. May be empty if the operation hasn't started yet or completed
 	// synchronously.
+	//
+	// Deprecated: Use OperationToken instead.
 	OperationID string
+	// Operation token as set by the Operation's handler. May be empty if the operation hasn't started yet or completed
+	// synchronously.
+	OperationToken string
 }
 
 // NexusOperationFuture represents the result of a Nexus Operation.
@@ -2572,15 +2583,13 @@ type NexusOperationFuture interface {
 	// For synchronous operations, this will be resolved at the same as the containing [NexusOperationFuture]. For
 	// asynchronous operations, this future is resolved independently.
 	// If the operation is unsuccessful, this future will contain the same error as the [NexusOperationFuture].
-	// Use this method to extract the Operation ID of an asynchronous operation. OperationID will be empty for
+	// Use this method to extract the Operation token of an asynchronous operation. OperationToken will be empty for
 	// synchronous operations.
-	//
-	// NOTE: Experimental
 	//
 	//  fut := nexusClient.ExecuteOperation(ctx, op, ...)
 	//  var exec workflow.NexusOperationExecution
 	//  if err := fut.GetNexusOperationExecution().Get(ctx, &exec); err == nil {
-	//      // Nexus Operation started, OperationID is optionally set.
+	//      // Nexus Operation started, OperationToken is optionally set.
 	//  }
 	GetNexusOperationExecution() Future
 }
@@ -2589,18 +2598,12 @@ type NexusOperationFuture interface {
 // NOTE to maintainers, this interface definition is duplicated in the workflow package to provide a better UX.
 type NexusClient interface {
 	// The endpoint name this client uses.
-	//
-	// NOTE: Experimental
 	Endpoint() string
 	// The service name this client uses.
-	//
-	// NOTE: Experimental
 	Service() string
 
 	// ExecuteOperation executes a Nexus Operation.
 	// The operation argument can be a string, a [nexus.Operation] or a [nexus.OperationReference].
-	//
-	// NOTE: Experimental
 	ExecuteOperation(ctx Context, operation any, input any, options NexusOperationOptions) NexusOperationFuture
 }
 
@@ -2610,8 +2613,6 @@ type nexusClient struct {
 
 // Create a [NexusClient] from an endpoint name and a service name.
 //
-// NOTE: Experimental
-//
 // Exposed as: [go.temporal.io/sdk/workflow.NewNexusClient]
 func NewNexusClient(endpoint, service string) NexusClient {
 	if endpoint == "" {
@@ -2619,6 +2620,12 @@ func NewNexusClient(endpoint, service string) NexusClient {
 	}
 	if service == "" {
 		panic("service must not be empty")
+	}
+	if strings.HasPrefix(endpoint, temporalPrefix) {
+		panic("endpoint cannot use reserved __temporal_ prefix")
+	}
+	if strings.HasPrefix(service, temporalPrefix) {
+		panic("service cannot use reserved __temporal_ prefix")
 	}
 	return nexusClient{endpoint, service}
 }
@@ -2649,13 +2656,18 @@ func (wc *workflowEnvironmentInterceptor) prepareNexusOperationParams(ctx Contex
 	var ok bool
 	var operationName string
 	if operationName, ok = input.Operation.(string); ok {
-	} else if regOp, ok := input.Operation.(interface{ Name() string }); ok {
+	} else if regOp, ok := input.Operation.(interface {
+		Name() string
+		InputType() reflect.Type
+	}); ok {
 		operationName = regOp.Name()
+		inputType := reflect.TypeOf(input.Input)
+		if inputType != nil && !inputType.AssignableTo(regOp.InputType()) {
+			return executeNexusOperationParams{}, fmt.Errorf("cannot assign argument of type %s to type %s for operation %s", inputType.Name(), regOp.InputType().Name(), operationName)
+		}
 	} else {
 		return executeNexusOperationParams{}, fmt.Errorf("invalid 'operation' parameter, must be an OperationReference or a string")
 	}
-	// TODO(bergundy): Validate operation types against input once there's a good way to extract the generic types from
-	// OperationReference in the Nexus Go SDK.
 
 	payload, err := dc.ToPayload(input.Input)
 	if err != nil {
@@ -2695,7 +2707,7 @@ func (wc *workflowEnvironmentInterceptor) ExecuteNexusOperation(ctx Context, inp
 		return result
 	}
 
-	var operationID string
+	var operationToken string
 	seq := wc.env.ExecuteNexusOperation(params, func(r *commonpb.Payload, e error) {
 		var payloads *commonpb.Payloads
 		if r != nil {
@@ -2706,9 +2718,12 @@ func (wc *workflowEnvironmentInterceptor) ExecuteNexusOperation(ctx Context, inp
 			// future is done, we don't need cancellation anymore
 			ctxDone.removeReceiveCallback(cancellationCallback)
 		}
-	}, func(opID string, e error) {
-		operationID = opID
-		executionSettable.Set(NexusOperationExecution{opID}, e)
+	}, func(token string, e error) {
+		operationToken = token
+		executionSettable.Set(NexusOperationExecution{
+			OperationID:    operationToken,
+			OperationToken: operationToken,
+		}, e)
 	})
 
 	if cancellable {
@@ -2719,7 +2734,7 @@ func (wc *workflowEnvironmentInterceptor) ExecuteNexusOperation(ctx Context, inp
 				getWorkflowOutboundInterceptor(ctx).RequestCancelNexusOperation(ctx, RequestCancelNexusOperationInput{
 					Client:    input.Client,
 					Operation: input.Operation,
-					ID:        operationID,
+					Token:     operationToken,
 					seq:       seq,
 				})
 			}

@@ -69,11 +69,27 @@ type (
 	// See [WorkflowExecutionOptionsChanges] for details.
 	// NOTE: Experimental
 	VersioningOverride struct {
-		// The new Versioning Behavior. This field is required.
+		// Behavior - The new Versioning Behavior. This field is required.
 		Behavior VersioningBehavior
 		// Identifies the Build ID and Deployment Series Name to pin the workflow to. Ignored when Behavior is not
 		// [VersioningBehaviorPinned].
+		//
+		// Deprecated: Use [PinnedVersion]
 		Deployment Deployment
+		// PinnedVersion - Identifies the Worker Deployment Version to pin the workflow to, using the format
+		// "<deployment_name>.<build_id>".
+		// Required if behavior is [VersioningBehaviorPinned]. Must be absent if behavior is not [VersioningBehaviorPinned].
+		PinnedVersion string
+	}
+
+	// OnConflictOptions specifies the actions to be taken when using the workflow ID conflict policy
+	// USE_EXISTING.
+	//
+	// NOTE: Experimental
+	OnConflictOptions struct {
+		AttachRequestID           bool
+		AttachCompletionCallbacks bool
+		AttachLinks               bool
 	}
 )
 
@@ -125,8 +141,9 @@ func versioningOverrideToProto(versioningOverride VersioningOverride) *workflowp
 		return nil
 	}
 	return &workflowpb.VersioningOverride{
-		Behavior:   versioningBehaviorToProto(versioningOverride.Behavior),
-		Deployment: workerDeploymentToProto(versioningOverride.Deployment),
+		Behavior:      versioningBehaviorToProto(versioningOverride.Behavior),
+		Deployment:    workerDeploymentToProto(versioningOverride.Deployment),
+		PinnedVersion: versioningOverride.PinnedVersion,
 	}
 }
 
@@ -138,9 +155,12 @@ func versioningOverrideFromProto(versioningOverride *workflowpb.VersioningOverri
 	return VersioningOverride{
 		Behavior: VersioningBehavior(versioningOverride.GetBehavior()),
 		Deployment: Deployment{
+			//lint:ignore SA1019 ignore deprecated versioning APIs
 			SeriesName: versioningOverride.GetDeployment().GetSeriesName(),
-			BuildID:    versioningOverride.GetDeployment().GetBuildId(),
+			//lint:ignore SA1019 ignore deprecated versioning APIs
+			BuildID: versioningOverride.GetDeployment().GetBuildId(),
 		},
+		PinnedVersion: versioningOverride.GetPinnedVersion(),
 	}
 }
 
@@ -198,4 +218,15 @@ func (r *UpdateWorkflowExecutionOptionsRequest) validateAndConvertToProto(namesp
 	}
 
 	return requestMsg, nil
+}
+
+func (o *OnConflictOptions) ToProto() *workflowpb.OnConflictOptions {
+	if o == nil {
+		return nil
+	}
+	return &workflowpb.OnConflictOptions{
+		AttachRequestId:           o.AttachRequestID,
+		AttachCompletionCallbacks: o.AttachCompletionCallbacks,
+		AttachLinks:               o.AttachLinks,
+	}
 }

@@ -34,7 +34,6 @@ import (
 	"crypto/tls"
 	"io"
 
-	"go.temporal.io/api/cloud/cloudservice/v1"
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 	historypb "go.temporal.io/api/history/v1"
@@ -48,32 +47,90 @@ import (
 
 // DeploymentReachability specifies which category of tasks may reach a worker
 // associated with a deployment, simplifying safe decommission.
-// NOTE: Experimental
+//
+// Deprecated: Use [WorkerDeploymentVersionDrainageStatus]
 type DeploymentReachability = internal.DeploymentReachability
 
 const (
 	// DeploymentReachabilityUnspecified - Reachability level not specified.
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentVersionDrainageStatus]
 	DeploymentReachabilityUnspecified = internal.DeploymentReachabilityUnspecified
 
 	// DeploymentReachabilityReachable - The deployment is reachable by new
 	// and/or open workflows. The deployment cannot be decommissioned safely.
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentVersionDrainageStatus]
 	DeploymentReachabilityReachable = internal.DeploymentReachabilityReachable
 
 	// DeploymentReachabilityClosedWorkflows - The deployment is not reachable
 	// by new or open workflows, but might be still needed by
 	// Queries sent to closed workflows. The deployment can be decommissioned
 	// safely if user does not query closed workflows.
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentVersionDrainageStatus]
 	DeploymentReachabilityClosedWorkflows = internal.DeploymentReachabilityClosedWorkflows
 
 	// DeploymentReachabilityUnreachable - The deployment is not reachable by
 	// any workflow because all the workflows who needed this
 	// deployment are out of the retention period. The deployment can be
 	// decommissioned safely.
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentVersionDrainageStatus]
 	DeploymentReachabilityUnreachable = internal.DeploymentReachabilityUnreachable
+)
+
+// WorkerDeploymentVersionDrainageStatus specifies the drainage status for a Worker
+// Deployment Version enabling users to decide when they can safely decommission this
+// Version.
+// NOTE: Experimental
+type WorkerDeploymentVersionDrainageStatus = internal.WorkerDeploymentVersionDrainageStatus
+
+const (
+	// WorkerDeploymentVersionDrainageStatusUnspecified - Drainage status not specified.
+	// NOTE: Experimental
+	WorkerDeploymentVersionDrainageStatusUnspecified = internal.WorkerDeploymentVersionDrainageStatusUnspecified
+
+	// WorkerDeploymentVersionDrainageStatusDraining - The Worker Deployment Version is not
+	// used by new workflows, but it is still used by open pinned workflows.
+	// This Version cannot be decommissioned safely.
+	// NOTE: Experimental
+	WorkerDeploymentVersionDrainageStatusDraining = internal.WorkerDeploymentVersionDrainageStatusDraining
+
+	// WorkerDeploymentVersionDrainageStatusDrained - The Worker Deployment Version is not
+	// used by new or open workflows, but it might still be needed to execute
+	// Queries sent to closed workflows. This Version can be decommissioned safely if the user
+	// does not expect to query closed workflows. In some cases this requires waiting for some
+	// time after it is drained to guarantee no pending queries.
+	// NOTE: Experimental
+	WorkerDeploymentVersionDrainageStatusDrained = internal.WorkerDeploymentVersionDrainageStatusDrained
+)
+
+// WorkerVersioningMode specifies whether the workflows processed by this
+// worker use the worker's Version. The Temporal Server will use this worker's
+// choice when dispatching tasks to it.
+// NOTE: Experimental
+type WorkerVersioningMode = internal.WorkerVersioningMode
+
+const (
+	// WorkerVersioningModeUnspecified - Versioning mode not reported.
+	// NOTE: Experimental
+	WorkerVersioningModeUnspecified = internal.WorkerVersioningModeUnspecified
+
+	// WorkerVersioningModeUnversioned - Workers with this mode are not
+	// distinguished from each other for task routing, even if they
+	// have different versions.
+	// NOTE: Experimental
+	WorkerVersioningModeUnversioned = internal.WorkerVersioningModeUnversioned
+
+	// WorkerVersioningModeVersioned - Workers with this mode are part of a
+	// Worker Deployment Version which is identified as
+	// "<deployment_name>.<build_id>".
+	// Each Deployment Version is distinguished from other Versions for task
+	// routing, and users can configure the Temporal Server to send tasks to a
+	// particular Version.
+	// NOTE: Experimental
+	WorkerVersioningModeVersioned = internal.WorkerVersioningModeVersioned
 )
 
 // TaskReachability specifies which category of tasks may reach a worker on a versioned task queue.
@@ -112,7 +169,7 @@ const (
 )
 
 // BuildIDTaskReachability specifies which category of tasks may reach a versioned worker of a certain Build ID.
-// Note: future activities who inherit their workflow's Build ID but not its task queue will not be
+// NOTE: future activities who inherit their workflow's Build ID but not its task queue will not be
 // accounted for reachability as server cannot know if they'll happen as they do not use
 // assignment rules of their task queue. Same goes for Child Workflows or Continue-As-New Workflows
 // who inherit the parent/previous workflow's Build ID but not its task queue. In those cases, make
@@ -173,11 +230,6 @@ type (
 	// Options are optional parameters for Client creation.
 	Options = internal.ClientOptions
 
-	// CloudOperationsClientOptions are parameters for CloudOperationsClient creation.
-	//
-	// WARNING: Cloud operations client is currently experimental.
-	CloudOperationsClientOptions = internal.CloudOperationsClientOptions
-
 	// ConnectionOptions are optional parameters that can be specified in ClientOptions
 	ConnectionOptions = internal.ConnectionOptions
 
@@ -188,7 +240,7 @@ type (
 	StartWorkflowOptions = internal.StartWorkflowOptions
 
 	// WithStartWorkflowOperation defines how to start a workflow when using UpdateWithStartWorkflow.
-	// See [Client.NewWithStartWorkflowOperation] and [Client.UpdateWithStartWorkflow].
+	// See [client.Client.NewWithStartWorkflowOperation] and [client.Client.UpdateWithStartWorkflow].
 	// NOTE: Experimental
 	WithStartWorkflowOperation = internal.WithStartWorkflowOperation
 
@@ -299,91 +351,225 @@ type (
 	UpdateWorkflowOptions = internal.UpdateWorkflowOptions
 
 	// UpdateWithStartWorkflowOptions encapsulates the parameters used by UpdateWithStartWorkflow.
-	// See [Client.UpdateWithStartWorkflow] and [Client.NewWithStartWorkflowOperation].
+	// See [client.Client.UpdateWithStartWorkflow] and [client.Client.NewWithStartWorkflowOperation].
 	// NOTE: Experimental
 	UpdateWithStartWorkflowOptions = internal.UpdateWithStartWorkflowOptions
 
+	// WorkerDeploymentDescribeOptions provides options for [WorkerDeploymentHandle.Describe].
+	// NOTE: Experimental
+	WorkerDeploymentDescribeOptions = internal.WorkerDeploymentDescribeOptions
+
+	// WorkerDeploymentVersionSummary provides a brief description of a Version.
+	// NOTE: Experimental
+	WorkerDeploymentVersionSummary = internal.WorkerDeploymentVersionSummary
+
+	// WorkerDeploymentInfo provides information about a Worker Deployment.
+	// NOTE: Experimental
+	WorkerDeploymentInfo = internal.WorkerDeploymentInfo
+
+	// WorkerDeploymentDescribeResponse is the response type for [WorkerDeploymentHandle.Describe].
+	// NOTE: Experimental
+	WorkerDeploymentDescribeResponse = internal.WorkerDeploymentDescribeResponse
+
+	// WorkerDeploymentSetCurrentVersionOptions provides options for
+	// [WorkerDeploymentHandle.SetCurrentVersion].
+	// NOTE: Experimental
+	WorkerDeploymentSetCurrentVersionOptions = internal.WorkerDeploymentSetCurrentVersionOptions
+
+	// WorkerDeploymentSetCurrentVersionResponse is the response for
+	// [WorkerDeploymentHandle.SetCurrentVersion].
+	// NOTE: Experimental
+	WorkerDeploymentSetCurrentVersionResponse = internal.WorkerDeploymentSetCurrentVersionResponse
+
+	// WorkerDeploymentSetRampingVersionOptions provides options for
+	// [WorkerDeploymentHandle.SetRampingVersion].
+	// NOTE: Experimental
+	WorkerDeploymentSetRampingVersionOptions = internal.WorkerDeploymentSetRampingVersionOptions
+
+	// WorkerDeploymentSetRampingVersionResponse is the response for
+	// [WorkerDeploymentHandle.SetRampingVersion].
+	// NOTE: Experimental
+	WorkerDeploymentSetRampingVersionResponse = internal.WorkerDeploymentSetRampingVersionResponse
+
+	// WorkerDeploymentDescribeVersionOptions provides options for
+	// [WorkerDeploymentHandle.DescribeVersion].
+	// NOTE: Experimental
+	WorkerDeploymentDescribeVersionOptions = internal.WorkerDeploymentDescribeVersionOptions
+
+	// WorkerDeploymentTaskQueueInfo describes properties of the Task Queues involved
+	// in a Deployment Version.
+	// NOTE: Experimental
+	WorkerDeploymentTaskQueueInfo = internal.WorkerDeploymentTaskQueueInfo
+
+	// WorkerDeploymentVersionDrainageInfo describes drainage properties of a Deployment Version.
+	// This enables users to safely decide when they can decommission a Version.
+	// NOTE: Experimental
+	WorkerDeploymentVersionDrainageInfo = internal.WorkerDeploymentVersionDrainageInfo
+
+	// WorkerDeploymentVersionInfo provides information about a Worker Deployment Version.
+	// NOTE: Experimental
+	WorkerDeploymentVersionInfo = internal.WorkerDeploymentVersionInfo
+
+	// WorkerDeploymentVersionDescription is the response for
+	// [WorkerDeploymentHandle.DescribeVersion].
+	// NOTE: Experimental
+	WorkerDeploymentVersionDescription = internal.WorkerDeploymentVersionDescription
+
+	// WorkerDeploymentDeleteVersionOptions provides options for
+	// [WorkerDeploymentHandle.DeleteVersion].
+	// NOTE: Experimental
+	WorkerDeploymentDeleteVersionOptions = internal.WorkerDeploymentDeleteVersionOptions
+
+	// WorkerDeploymentDeleteVersionResponse is the response for
+	// [WorkerDeploymentHandle.DeleteVersion].
+	// NOTE: Experimental
+	WorkerDeploymentDeleteVersionResponse = internal.WorkerDeploymentDeleteVersionResponse
+
+	// WorkerDeploymentMetadataUpdate modifies user-defined metadata entries that describe
+	// a Version.
+	// NOTE: Experimental
+	WorkerDeploymentMetadataUpdate = internal.WorkerDeploymentMetadataUpdate
+
+	// WorkerDeploymentUpdateVersionMetadataOptions provides options for
+	// [WorkerDeploymentHandle.UpdateVersionMetadata].
+	// NOTE: Experimental
+	WorkerDeploymentUpdateVersionMetadataOptions = internal.WorkerDeploymentUpdateVersionMetadataOptions
+
+	// WorkerDeploymentUpdateVersionMetadataResponse is the response for
+	// [WorkerDeploymentHandle.UpdateVersionMetadata].
+	// NOTE: Experimental
+	WorkerDeploymentUpdateVersionMetadataResponse = internal.WorkerDeploymentUpdateVersionMetadataResponse
+
+	// WorkerDeploymentHandle is a handle to a Worker Deployment.
+	// NOTE: Experimental
+	WorkerDeploymentHandle = internal.WorkerDeploymentHandle
+
+	// DeploymentListOptions are the parameters for configuring listing Worker Deployments.
+	// NOTE: Experimental
+	WorkerDeploymentListOptions = internal.WorkerDeploymentListOptions
+
+	// WorkerDeploymentRoutingConfig describes when new or existing Workflow Tasks are
+	// executed with this Worker Deployment.
+	// NOTE: Experimental
+	WorkerDeploymentRoutingConfig = internal.WorkerDeploymentRoutingConfig
+
+	// WorkerDeploymentListEntry is a subset of fields from [WorkerDeploymentInfo].
+	// NOTE: Experimental
+	WorkerDeploymentListEntry = internal.WorkerDeploymentListEntry
+
+	// WorkerDeploymentListIterator is an iterator for deployments.
+	// NOTE: Experimental
+	WorkerDeploymentListIterator = internal.WorkerDeploymentListIterator
+
+	// WorkerDeploymentDeleteOptions provides options for [WorkerDeploymentClient.Delete].
+	// NOTE: Experimental
+	WorkerDeploymentDeleteOptions = internal.WorkerDeploymentDeleteOptions
+
+	// WorkerDeploymentDeleteResponse is the response for [WorkerDeploymentClient.Delete].
+	// NOTE: Experimental
+	WorkerDeploymentDeleteResponse = internal.WorkerDeploymentDeleteResponse
+
+	// WorkerDeploymentClient is the client that manages Worker Deployments.
+	// NOTE: Experimental
+	WorkerDeploymentClient = internal.WorkerDeploymentClient
+
 	// Deployment identifies a set of workers. This identifier combines
 	// the deployment series name with their Build ID.
-	// NOTE: Experimental
+	//
+	// Deprecated: Use the new Worker Deployment API
 	Deployment = internal.Deployment
 
 	// DeploymentTaskQueueInfo describes properties of the Task Queues involved
 	// in a deployment.
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentTaskQueueInfo]
 	DeploymentTaskQueueInfo = internal.DeploymentTaskQueueInfo
 
 	// DeploymentInfo holds information associated with
 	// workers in this deployment.
 	// Workers can poll multiple task queues in a single deployment,
 	// which are listed in this message.
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentInfo]
 	DeploymentInfo = internal.DeploymentInfo
 
 	// DeploymentListEntry is a subset of fields from DeploymentInfo.
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentListEntry]
 	DeploymentListEntry = internal.DeploymentListEntry
 
 	// DeploymentListIterator is an iterator for deployments.
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentListIterator]
 	DeploymentListIterator = internal.DeploymentListIterator
 
 	// DeploymentListOptions are the parameters for configuring listing deployments.
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentListOptions]
 	DeploymentListOptions = internal.DeploymentListOptions
 
 	// DeploymentReachabilityInfo extends DeploymentInfo with reachability information.
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentVersionDrainageInfo]
 	DeploymentReachabilityInfo = internal.DeploymentReachabilityInfo
 
 	// DeploymentMetadataUpdate modifies user-defined metadata entries that describe
 	// a deployment.
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentMetadataUpdate]
 	DeploymentMetadataUpdate = internal.DeploymentMetadataUpdate
 
 	// DeploymentDescribeOptions provides options for [DeploymentClient.Describe].
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentDescribeOptions]
 	DeploymentDescribeOptions = internal.DeploymentDescribeOptions
 
 	// DeploymentDescription is the response type for [DeploymentClient.Describe].
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentDescribeResponse]
 	DeploymentDescription = internal.DeploymentDescription
 
 	// DeploymentGetReachabilityOptions provides options for [DeploymentClient.GetReachability].
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentDescribeResponse]
 	DeploymentGetReachabilityOptions = internal.DeploymentGetReachabilityOptions
 
 	// DeploymentGetCurrentOptions provides options for [DeploymentClient.GetCurrent].
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentDescribeOptions]
 	DeploymentGetCurrentOptions = internal.DeploymentGetCurrentOptions
 
 	// DeploymentGetCurrentResponse is the response type for [DeploymentClient.GetCurrent].
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentDescribeResponse]
 	DeploymentGetCurrentResponse = internal.DeploymentGetCurrentResponse
 
 	// DeploymentSetCurrentOptions provides options for [DeploymentClient.SetCurrent].
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentSetCurrentVersionOptions]
 	DeploymentSetCurrentOptions = internal.DeploymentSetCurrentOptions
 
 	// DeploymentSetCurrentResponse is the response type for [DeploymentClient.SetCurrent].
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentSetCurrentVersionResponse]
 	DeploymentSetCurrentResponse = internal.DeploymentSetCurrentResponse
 
 	// DeploymentClient is the server interface to manage deployments.
-	// NOTE: Experimental
+	//
+	// Deprecated: Use [WorkerDeploymentClient]
 	DeploymentClient = internal.DeploymentClient
 
-	// UpdateWorkflowExecutionOptionsRequest is a request for [Client.UpdateWorkflowExecutionOptions].
+	// UpdateWorkflowExecutionOptionsRequest is a request for [client.Client.UpdateWorkflowExecutionOptions].
 	// NOTE: Experimental
 	UpdateWorkflowExecutionOptionsRequest = internal.UpdateWorkflowExecutionOptionsRequest
 
 	// WorkflowExecutionOptions contains a set of properties of an existing workflow
-	// that can be overriden using [UpdateWorkflowExecutionOptions].
+	// that can be overriden using [client.Client.UpdateWorkflowExecutionOptions].
 	// NOTE: Experimental
 	WorkflowExecutionOptions = internal.WorkflowExecutionOptions
 
 	// WorkflowExecutionOptionsChanges describes changes to [WorkflowExecutionOptions]
-	// in the [UpdateWorkflowExecutionOptions] API.
+	// in the [client.Client.UpdateWorkflowExecutionOptions] API.
 	// NOTE: Experimental
 	WorkflowExecutionOptionsChanges = internal.WorkflowExecutionOptionsChanges
 
@@ -461,27 +647,35 @@ type (
 	// Deprecated: Replaced by the new worker versioning api.
 	TaskQueueReachability = internal.TaskQueueReachability
 
-	// DescribeTaskQueueEnhancedOptions is the input to [Client.DescribeTaskQueueEnhanced].
+	// DescribeTaskQueueEnhancedOptions is the input to [client.Client.DescribeTaskQueueEnhanced].
 	DescribeTaskQueueEnhancedOptions = internal.DescribeTaskQueueEnhancedOptions
 
 	// TaskQueueVersionSelection is a task queue filter based on versioning.
-	// It is an optional component of [Client.DescribeTaskQueueEnhancedOptions].
+	// It is an optional component of [DescribeTaskQueueEnhancedOptions].
 	// WARNING: Worker versioning is currently experimental.
 	TaskQueueVersionSelection = internal.TaskQueueVersionSelection
 
-	// TaskQueueDescription is the response to [Client.DescribeTaskQueueEnhanced].
+	// TaskQueueDescription is the response to [client.Client.DescribeTaskQueueEnhanced].
 	TaskQueueDescription = internal.TaskQueueDescription
 
 	// TaskQueueVersionInfo includes task queue information per Build ID.
-	// It is part of [Client.TaskQueueDescription].
+	// It is part of [TaskQueueDescription].
+	//
+	// Deprecated: Use [TaskQueueVersioningInfo]
 	TaskQueueVersionInfo = internal.TaskQueueVersionInfo
 
+	// TaskQueueVersioningInfo provides worker deployment configuration for this
+	// task queue.
+	// It is part of [Client.TaskQueueDescription].
+	// NOTE: Experimental
+	TaskQueueVersioningInfo = internal.TaskQueueVersioningInfo
+
 	// TaskQueueTypeInfo specifies task queue information per task type and Build ID.
-	// It is included in [Client.TaskQueueVersionInfo].
+	// It is included in [TaskQueueVersionInfo].
 	TaskQueueTypeInfo = internal.TaskQueueTypeInfo
 
 	// TaskQueuePollerInfo provides information about a worker/client polling a task queue.
-	// It is used by [Client.TaskQueueTypeInfo].
+	// It is used by [TaskQueueTypeInfo].
 	TaskQueuePollerInfo = internal.TaskQueuePollerInfo
 
 	// TaskQueueStats contains statistics about task queue backlog and activity.
@@ -492,18 +686,18 @@ type (
 
 	// WorkerVersionCapabilities includes a worker's build identifier
 	// and whether it is choosing to use the versioning feature.
-	// It is an optional component of [Client.TaskQueuePollerInfo].
+	// It is an optional component of [TaskQueuePollerInfo].
 	// WARNING: Worker versioning is currently experimental.
 	WorkerVersionCapabilities = internal.WorkerVersionCapabilities
 
-	// UpdateWorkerVersioningRulesOptions is the input to [Client.UpdateWorkerVersioningRules].
+	// UpdateWorkerVersioningRulesOptions is the input to [client.Client.UpdateWorkerVersioningRules].
 	// WARNING: Worker versioning is currently experimental.
 	UpdateWorkerVersioningRulesOptions = internal.UpdateWorkerVersioningRulesOptions
 
-	// VersioningConflictToken is a conflict token to serialize calls to Client.UpdateWorkerVersioningRules.
+	// VersioningConflictToken is a conflict token to serialize calls to [client.Client.UpdateWorkerVersioningRules].
 	// An update with an old token fails with `serviceerror.FailedPrecondition`.
-	// The current token can be obtained with [GetWorkerVersioningRules],
-	// or returned by a successful [UpdateWorkerVersioningRules].
+	// The current token can be obtained with [client.Client.GetWorkerVersioningRules],
+	// or returned by a successful [client.Client.UpdateWorkerVersioningRules].
 	// WARNING: Worker versioning is currently experimental.
 	VersioningConflictToken = internal.VersioningConflictToken
 
@@ -590,11 +784,11 @@ type (
 	// WARNING: Worker versioning is currently experimental.
 	VersioningOperationCommitBuildID = internal.VersioningOperationCommitBuildID
 
-	// GetWorkerVersioningOptions is the input to [Client.GetWorkerVersioningRules].
+	// GetWorkerVersioningOptions is the input to [client.Client.GetWorkerVersioningRules].
 	// WARNING: Worker versioning is currently experimental.
 	GetWorkerVersioningOptions = internal.GetWorkerVersioningOptions
 
-	// WorkerVersioningRules is the response for [Client.GetWorkerVersioningRules].
+	// WorkerVersioningRules is the response for [client.Client.GetWorkerVersioningRules].
 	// WARNING: Worker versioning is currently experimental.
 	WorkerVersioningRules = internal.WorkerVersioningRules
 
@@ -667,7 +861,7 @@ type (
 		//  - workflowID, signalName, signalArg are same as SignalWorkflow's parameters
 		//  - options, workflow, workflowArgs are same as StartWorkflow's parameters
 		//  - the workflowID parameter is used instead of options.ID. If the latter is present, it must match the workflowID.
-		// Note: options.WorkflowIDReusePolicy is default to AllowDuplicate in this API.
+		// NOTE: options.WorkflowIDReusePolicy is default to AllowDuplicate in this API.
 		// The errors it can return:
 		//  - serviceerror.NotFound
 		//  - serviceerror.InvalidArgument
@@ -677,7 +871,7 @@ type (
 			options StartWorkflowOptions, workflow interface{}, workflowArgs ...interface{}) (WorkflowRun, error)
 
 		// NewWithStartWorkflowOperation returns a WithStartWorkflowOperation for use with UpdateWithStartWorkflow.
-		// See [Client.UpdateWithStartWorkflow].
+		// See [client.Client.UpdateWithStartWorkflow].
 		// NOTE: Experimental
 		NewWithStartWorkflowOperation(options StartWorkflowOptions, workflow interface{}, args ...interface{}) WithStartWorkflowOperation
 
@@ -773,7 +967,7 @@ type (
 
 		// ListClosedWorkflow gets closed workflow executions based on request filters.
 		// Retrieved workflow executions are sorted by close time in descending order.
-		// Note: heavy usage of this API may cause huge persistence pressure.
+		// NOTE: heavy usage of this API may cause huge persistence pressure.
 		// The errors it can return:
 		//  - serviceerror.InvalidArgument
 		//  - serviceerror.Internal
@@ -783,7 +977,7 @@ type (
 
 		// ListOpenWorkflow gets open workflow executions based on request filters.
 		// Retrieved workflow executions are sorted by start time in descending order.
-		// Note: heavy usage of this API may cause huge persistence pressure.
+		// NOTE: heavy usage of this API may cause huge persistence pressure.
 		// The errors it can return:
 		//  - serviceerror.InvalidArgument
 		//  - serviceerror.Internal
@@ -824,7 +1018,9 @@ type (
 		//  - serviceerror.InvalidArgument
 		//  - serviceerror.Internal
 		//  - serviceerror.Unavailable
-		ScanWorkflow(ctx context.Context, request *workflowservice.ScanWorkflowExecutionsRequest) (*workflowservice.ScanWorkflowExecutionsResponse, error)
+		//
+		// Deprecated: Use ListWorkflow instead.
+		ScanWorkflow(ctx context.Context, request *workflowservice.ScanWorkflowExecutionsRequest) (*workflowservice.ScanWorkflowExecutionsResponse, error) //lint:ignore SA1019 the server API was deprecated.
 
 		// CountWorkflow gets number of workflow executions based on query. The query is basically the SQL WHERE clause
 		// (see ListWorkflow for query examples).
@@ -911,13 +1107,13 @@ type (
 		// Allows you to update the worker-build-id based version sets for a particular task queue. This is used in
 		// conjunction with workers who specify their build id and thus opt into the feature.
 		//
-		// Deprecated: Use [UpdateWorkerVersioningRules] with the versioning api.
+		// Deprecated: Use [client.Client.UpdateWorkerVersioningRules] with the versioning api.
 		UpdateWorkerBuildIdCompatibility(ctx context.Context, options *UpdateWorkerBuildIdCompatibilityOptions) error
 
 		// GetWorkerBuildIdCompatibility
 		// Returns the worker-build-id based version sets for a particular task queue.
 		//
-		// Deprecated: Use [GetWorkerVersioningRules] with the versioning api.
+		// Deprecated: Use [client.Client.GetWorkerVersioningRules] with the versioning api.
 		GetWorkerBuildIdCompatibility(ctx context.Context, options *GetWorkerBuildIdCompatibilityOptions) (*WorkerBuildIDVersionSets, error)
 
 		// GetWorkerTaskReachability
@@ -996,8 +1192,13 @@ type (
 		ScheduleClient() ScheduleClient
 
 		// DeploymentClient create a new deployment client with the same gRPC connection as this client.
-		// NOTE: Experimental
+		//
+		// Deprecated: use [WorkerDeploymentClient]
 		DeploymentClient() DeploymentClient
+
+		// WorkerDeploymentClient create a new worker deployment client with the same gRPC connections as this client.
+		// NOTE: Experimental
+		WorkerDeploymentClient() WorkerDeploymentClient
 
 		// Close client and clean up underlying resources.
 		//
@@ -1005,17 +1206,6 @@ type (
 		// been used in that call, Close() on may not necessarily close the
 		// underlying connection. Only the final close of all existing clients will
 		// close the underlying connection.
-		Close()
-	}
-
-	// CloudOperationsClient is the client for cloud operations.
-	//
-	// WARNING: Cloud operations client is currently experimental.
-	CloudOperationsClient interface {
-		// CloudService provides access to the underlying gRPC service.
-		CloudService() cloudservice.CloudServiceClient
-
-		// Close client and clean up underlying resources.
 		Close()
 	}
 
@@ -1135,14 +1325,6 @@ func NewClientFromExistingWithContext(ctx context.Context, existingClient Client
 	return internal.NewClientFromExisting(ctx, existingClient, options)
 }
 
-// DialCloudOperationsClient creates a cloud client to perform cloud-management
-// operations. Users should provide Credentials in the options.
-//
-// WARNING: Cloud operations client is currently experimental.
-func DialCloudOperationsClient(ctx context.Context, options CloudOperationsClientOptions) (CloudOperationsClient, error) {
-	return internal.DialCloudOperationsClient(ctx, options)
-}
-
 // NewNamespaceClient creates an instance of a namespace client, to manage
 // lifecycle of namespaces. This will not attempt to connect to the server
 // eagerly and therefore may not fail for an unreachable server until a call is
@@ -1153,16 +1335,14 @@ func NewNamespaceClient(options Options) (NamespaceClient, error) {
 
 // make sure if new methods are added to internal.Client they are also added to public Client.
 var (
-	_ Client                         = internal.Client(nil)
-	_ internal.Client                = Client(nil)
-	_ CloudOperationsClient          = internal.CloudOperationsClient(nil)
-	_ internal.CloudOperationsClient = CloudOperationsClient(nil)
-	_ NamespaceClient                = internal.NamespaceClient(nil)
-	_ internal.NamespaceClient       = NamespaceClient(nil)
+	_ Client                   = internal.Client(nil)
+	_ internal.Client          = Client(nil)
+	_ NamespaceClient          = internal.NamespaceClient(nil)
+	_ internal.NamespaceClient = NamespaceClient(nil)
 )
 
 // NewValue creates a new [converter.EncodedValue] which can be used to decode binary data returned by Temporal.  For example:
-// User had Activity.RecordHeartbeat(ctx, "my-heartbeat") and then got response from calling Client.DescribeWorkflowExecution.
+// User had Activity.RecordHeartbeat(ctx, "my-heartbeat") and then got response from calling [client.Client.DescribeWorkflowExecution].
 // The response contains binary field PendingActivityInfo.HeartbeatDetails,
 // which can be decoded by using:
 //
@@ -1173,7 +1353,7 @@ func NewValue(data *commonpb.Payloads) converter.EncodedValue {
 }
 
 // NewValues creates a new [converter.EncodedValues] which can be used to decode binary data returned by Temporal. For example:
-// User had Activity.RecordHeartbeat(ctx, "my-heartbeat", 123) and then got response from calling Client.DescribeWorkflowExecution.
+// User had Activity.RecordHeartbeat(ctx, "my-heartbeat", 123) and then got response from calling [client.Client.DescribeWorkflowExecution].
 // The response contains binary field PendingActivityInfo.HeartbeatDetails,
 // which can be decoded by using:
 //

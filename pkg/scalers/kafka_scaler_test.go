@@ -650,6 +650,8 @@ func TestGetTopicPartitions(t *testing.T) {
 	}
 }
 
+var _ sarama.ClusterAdmin = (*MockClusterAdmin)(nil)
+
 type MockClusterAdmin struct {
 	partitionIds []int32
 }
@@ -723,6 +725,10 @@ func (m *MockClusterAdmin) DeleteACL(_ sarama.AclFilter, _ bool) ([]sarama.Match
 	return nil, nil
 }
 
+func (m *MockClusterAdmin) ElectLeaders(sarama.ElectionType, map[string][]int32) (map[string]map[int32]*sarama.PartitionResult, error) {
+	return nil, nil
+}
+
 func (m *MockClusterAdmin) ListConsumerGroups() (map[string]string, error) {
 	return nil, nil
 }
@@ -781,4 +787,8 @@ func (m *MockClusterAdmin) RemoveMemberFromConsumerGroup(_ string, _ []string) (
 
 func (m *MockClusterAdmin) Close() error {
 	return nil
+}
+
+func (m *MockClusterAdmin) Coordinator(group string) (*sarama.Broker, error) {
+	return nil, nil
 }

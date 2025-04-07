@@ -10,7 +10,7 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     name: Comment evaluate
-    container: ghcr.io/kedacore/keda-tools:1.23.7
+    container: ghcr.io/kedacore/keda-tools:1.23.8
     outputs:
       run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
       pr_num: ${{ steps.parser.outputs.pr_num }}
@@ -69,7 +69,7 @@ jobs:
     needs: triage
     runs-on: ubuntu-latest
     name: Build images
-    container: ghcr.io/kedacore/keda-tools:1.23.7
+    container: ghcr.io/kedacore/keda-tools:1.23.8
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -131,7 +131,7 @@ jobs:
         run: exit 1
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
@@ -149,7 +149,7 @@ jobs:
     needs: [triage, build-test-images]
     runs-on: e2e
     name: Execute e2e tests
-    container: ghcr.io/kedacore/keda-tools:1.23.7
+    container: ghcr.io/kedacore/keda-tools:1.23.8
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
