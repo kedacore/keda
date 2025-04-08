@@ -136,10 +136,10 @@ type (
 		// More details are available at docs.temporal.io.
 		// RetryPolicy is optional. If one is not specified, a default RetryPolicy is provided by the server.
 		// The default RetryPolicy provided by the server specifies:
-		// - InitialInterval of 1 second
-		// - BackoffCoefficient of 2.0
-		// - MaximumInterval of 100 x InitialInterval
-		// - MaximumAttempts of 0 (unlimited)
+		//  - InitialInterval of 1 second
+		//  - BackoffCoefficient of 2.0
+		//  - MaximumInterval of 100 x InitialInterval
+		//  - MaximumAttempts of 0 (unlimited)
 		// To disable retries, set MaximumAttempts to 1.
 		// The default RetryPolicy provided by the server can be overridden by the dynamic config.
 		RetryPolicy *RetryPolicy
@@ -264,6 +264,14 @@ func RecordActivityHeartbeat(ctx context.Context, details ...interface{}) {
 	getActivityOutboundInterceptor(ctx).RecordHeartbeat(ctx, details...)
 }
 
+// GetClient returns a client that can be used to interact with the Temporal
+// service from an activity.
+//
+// Exposed as: [go.temporal.io/sdk/activity.GetClient]
+func GetClient(ctx context.Context) Client {
+	return getActivityOutboundInterceptor(ctx).GetClient(ctx)
+}
+
 // ServiceInvoker abstracts calls to the Temporal service from an activity implementation.
 // Implement to unit test activities.
 type ServiceInvoker interface {
@@ -286,6 +294,7 @@ func WithActivityTask(
 	workerStopChannel <-chan struct{},
 	contextPropagators []ContextPropagator,
 	interceptors []WorkerInterceptor,
+	client *WorkflowClient,
 ) (context.Context, error) {
 	scheduled := task.GetScheduledTime().AsTime()
 	started := task.GetStartedTime().AsTime()
@@ -327,6 +336,7 @@ func WithActivityTask(
 		workflowNamespace:  task.WorkflowNamespace,
 		workerStopChannel:  workerStopChannel,
 		contextPropagators: contextPropagators,
+		client:             client,
 	})
 }
 
@@ -338,6 +348,7 @@ func WithLocalActivityTask(
 	metricsHandler metrics.Handler,
 	dataConverter converter.DataConverter,
 	interceptors []WorkerInterceptor,
+	client *WorkflowClient,
 ) (context.Context, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -383,6 +394,7 @@ func WithLocalActivityTask(
 		startedTime:       startedTime,
 		dataConverter:     dataConverter,
 		attempt:           task.attempt,
+		client:            client,
 	})
 }
 

@@ -176,8 +176,8 @@ var _ = It("shouldn't validate the so creation when the fallback is wrong", func
 	}).Should(HaveOccurred())
 })
 
-var _ = It("should validate the so creation When the fallback are configured and the scaler is either CPU or memory.", func() {
-	namespaceName := "right-fallback-cpu-memory"
+var _ = It("shouldn't validate the so creation when the fallback is configured and only cpu/memory triggers are used.", func() {
+	namespaceName := "wrong-fallback-cpu-memory"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
@@ -188,6 +188,182 @@ var _ = It("should validate the so creation When the fallback are configured and
 	for index := range so.Spec.Triggers {
 		so.Spec.Triggers[index].MetricType = "AverageValue"
 	}
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("should validate the so creation when the fallback is configured, and at least one trigger (besides cpu/memory) has metricType == AverageValue.", func() {
+	namespaceName := "right-fallback-at-least-one-averagevalue"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+	// Create ScaledObject with cpu and memory triggers.
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig_1",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+			MetricType: v2.ValueMetricType,
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig_2",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+			MetricType: v2.AverageValueMetricType,
+		},
+	}
+	// Append other triggers to the SO, one of them with metricType=AverageValue.
+	so.Spec.Triggers = append(so.Spec.Triggers, triggers...)
+	so.Spec.Fallback = &Fallback{
+		FailureThreshold: 3,
+		Replicas:         6,
+	}
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldn't validate the so creation when the fallback is configured, and NO trigger (besides cpu/memory) has metricType == AverageValue.", func() {
+	namespaceName := "wrong-fallback-none-averagevalue"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+	// Create ScaledObject with cpu and memory triggers.
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig_1",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+			MetricType: v2.ValueMetricType,
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig_2",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+			MetricType: v2.ValueMetricType,
+		},
+	}
+	// Append other triggers to the SO, none of them with metricType=AverageValue.
+	so.Spec.Triggers = append(so.Spec.Triggers, triggers...)
+	so.Spec.Fallback = &Fallback{
+		FailureThreshold: 3,
+		Replicas:         6,
+	}
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("shouldn't validate the so creation when the fallback is configured, and the so uses ScalingModifiers with its metricType != AverageValue.", func() {
+	namespaceName := "wrong-fallback-scalingmodifier"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+	sm := ScalingModifiers{Target: "2", Formula: "workload_trig + cron_trig", MetricType: v2.ValueMetricType}
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+	so.Spec.Fallback = &Fallback{
+		FailureThreshold: 3,
+		Replicas:         6,
+	}
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("should validate the so creation when the fallback is configured, and the so uses ScalingModifiers with its metricType == AverageValue.", func() {
+	namespaceName := "right-fallback-scalingmodifier"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "cron_trig",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "workload_trig",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+	sm := ScalingModifiers{Target: "2", Formula: "workload_trig + cron_trig", MetricType: v2.AverageValueMetricType}
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+	so.Spec.Fallback = &Fallback{
+		FailureThreshold: 3,
+		Replicas:         6,
+	}
+
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 

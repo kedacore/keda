@@ -43,6 +43,7 @@ type Insert struct {
 	result                   InsertResult
 	serverAPI                *driver.ServerAPIOptions
 	timeout                  *time.Duration
+	bypassEmptyTsReplacement *bool
 	logger                   *logger.Logger
 }
 
@@ -130,6 +131,9 @@ func (i *Insert) command(dst []byte, desc description.SelectedServer) ([]byte, e
 	}
 	if i.ordered != nil {
 		dst = bsoncore.AppendBooleanElement(dst, "ordered", *i.ordered)
+	}
+	if i.bypassEmptyTsReplacement != nil {
+		dst = bsoncore.AppendBooleanElement(dst, "bypassEmptyTsReplacement", *i.bypassEmptyTsReplacement)
 	}
 	return dst, nil
 }
@@ -315,5 +319,15 @@ func (i *Insert) Authenticator(authenticator driver.Authenticator) *Insert {
 	}
 
 	i.authenticator = authenticator
+	return i
+}
+
+// BypassEmptyTsReplacement sets the bypassEmptyTsReplacement to use for this operation.
+func (i *Insert) BypassEmptyTsReplacement(bypassEmptyTsReplacement bool) *Insert {
+	if i == nil {
+		i = new(Insert)
+	}
+
+	i.bypassEmptyTsReplacement = &bypassEmptyTsReplacement
 	return i
 }

@@ -4,7 +4,7 @@ SCRIPTDIR := $(shell pwd)
 CURR=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ROOTDIR:=$(CURR)
 
-GOVERSION ?= 1.22.8
+GOVERSION ?= 1.22.11
 GOIMAGE ?= golang:$(GOVERSION)
 GOV2IMAGE ?= $(GOIMAGE)
 ALPINE_IMAGE ?= alpine:3.17
@@ -78,7 +78,7 @@ else ifeq ("$(TEST_AUTH)", "jwt")
 	ARANGOARGS := --server.jwt-secret=/jwtsecret
 endif
 
-TEST_NET := --net=container:$(TESTCONTAINER)-ns
+TEST_NET := --net=host
 
 # By default we run tests against single endpoint to avoid problems with data propagation in Cluster mode
 # e.g. when we create a document in one endpoint, it may not be visible in another endpoint for a while
@@ -118,7 +118,6 @@ ifeq ("$(TEST_BENCHMARK)", "true")
 endif
 
 ifdef TEST_ENDPOINTS_OVERRIDE
-	TEST_NET := --net=host
 	TEST_ENDPOINTS := $(TEST_ENDPOINTS_OVERRIDE)
 endif
 
@@ -391,68 +390,68 @@ run-tests-cluster-vst-1.1-ssl:
 	@echo "Cluster server, Velocystream 1.1, SSL, with authentication"
 	@${MAKE} TEST_MODE="cluster" TEST_AUTH="rootpw" TEST_SSL="auto" TEST_CONNECTION="vst" TEST_CVERSION="1.1" __run_tests
 
+ON_FAILURE_PARAMS = \
+	TESTCONTAINER=$(TESTCONTAINER) \
+	TEST_MODE=$(TEST_MODE) \
+	TEST_SSL=$(TEST_SSL) \
+	TEST_AUTH=$(TEST_AUTH) \
+	TEST_CONNECTION=$(TEST_CONNECTION) \
+	TEST_CONTENT_TYPE=$(TEST_CONTENT_TYPE) \
+	TEST_CVERSION=$(TEST_CVERSION) \
+	TEST_JWTSECRET=$(TEST_JWTSECRET) \
+	DUMP_AGENCY_ON_FAILURE=$(DUMP_AGENCY_ON_FAILURE)
+
+
+COMMON_DOCKER_CMD_PARAMS = \
+	--name=$(TESTCONTAINER) \
+	$(TEST_NET) \
+	-e TEST_ENDPOINTS=$(TEST_ENDPOINTS) \
+	-e TEST_NOT_WAIT_UNTIL_READY=$(TEST_NOT_WAIT_UNTIL_READY) \
+	-e TEST_AUTHENTICATION=$(TEST_AUTHENTICATION) \
+	-e TEST_JWTSECRET=$(TEST_JWTSECRET) \
+	-e TEST_MODE=$(TEST_MODE) \
+	-e TEST_BACKUP_REMOTE_REPO=$(TEST_BACKUP_REMOTE_REPO) \
+	-e TEST_BACKUP_REMOTE_CONFIG='$(TEST_BACKUP_REMOTE_CONFIG)' \
+	-e TEST_DEBUG='$(TEST_DEBUG)' \
+	-e TEST_ENABLE_SHUTDOWN=$(TEST_ENABLE_SHUTDOWN) \
+	-e ENABLE_DATABASE_EXTRA_FEATURES=$(ENABLE_DATABASE_EXTRA_FEATURES) \
+	-e GODEBUG=tls13=1 \
+	-e CGO_ENABLED=$(CGO_ENABLED)
+
+
 # Internal test tasks
 __run_tests: __test_debug__ __test_prepare __test_go_test __test_cleanup
 
+
+DOCKER_V1_CMD_PARAMS=\
+	$(COMMON_DOCKER_CMD_PARAMS) \
+	-e TEST_CONNECTION=$(TEST_CONNECTION) \
+	-e TEST_CVERSION=$(TEST_CVERSION) \
+	-e TEST_CONTENT_TYPE=$(TEST_CONTENT_TYPE) \
+	-e TEST_PPROF=$(TEST_PPROF) \
+	-e TEST_REQUEST_LOG=$(TEST_REQUEST_LOG) \
+	-e TEST_DISALLOW_UNKNOWN_FIELDS=$(TEST_DISALLOW_UNKNOWN_FIELDS) \
+	-v "${ROOTDIR}":/usr/code ${TEST_RESOURCES_VOLUME} \
+	-w /usr/code/
+
 __test_go_test:
-	$(DOCKER_CMD) \
-		--name=$(TESTCONTAINER) \
-		$(TEST_NET) \
-		-v "${ROOTDIR}":/usr/code ${TEST_RESOURCES_VOLUME} \
-		-e TEST_ENDPOINTS=$(TEST_ENDPOINTS) \
-		-e TEST_NOT_WAIT_UNTIL_READY=$(TEST_NOT_WAIT_UNTIL_READY) \
-		-e TEST_AUTHENTICATION=$(TEST_AUTHENTICATION) \
-		-e TEST_JWTSECRET=$(TEST_JWTSECRET) \
-		-e TEST_CONNECTION=$(TEST_CONNECTION) \
-		-e TEST_CVERSION=$(TEST_CVERSION) \
-		-e TEST_CONTENT_TYPE=$(TEST_CONTENT_TYPE) \
-		-e TEST_PPROF=$(TEST_PPROF) \
-		-e TEST_MODE=$(TEST_MODE) \
-		-e TEST_BACKUP_REMOTE_REPO=$(TEST_BACKUP_REMOTE_REPO) \
-		-e TEST_BACKUP_REMOTE_CONFIG='$(TEST_BACKUP_REMOTE_CONFIG)' \
-		-e TEST_DEBUG='$(TEST_DEBUG)' \
-		-e TEST_ENABLE_SHUTDOWN=$(TEST_ENABLE_SHUTDOWN) \
-		-e TEST_REQUEST_LOG=$(TEST_REQUEST_LOG) \
-		-e TEST_DISALLOW_UNKNOWN_FIELDS=$(TEST_DISALLOW_UNKNOWN_FIELDS) \
-		-e ENABLE_DATABASE_EXTRA_FEATURES=$(ENABLE_DATABASE_EXTRA_FEATURES) \
-		-e GODEBUG=tls13=1 \
-		-e CGO_ENABLED=$(CGO_ENABLED) \
-		-w /usr/code/ \
-		$(DOCKER_RUN_CMD) && echo "success!" || ( \
-			echo "failure! \n\nARANGODB-STARTER logs:"; \
-			docker logs ${TESTCONTAINER}-s; \
-			echo "\nARANGODB logs:"; \
-			docker ps -f name=${TESTCONTAINER}-s- -q | xargs -L 1 docker logs; \
-			echo "\nV1 Tests with ARGS: TEST_MODE=${TEST_MODE} TEST_AUTH=${TEST_AUTH} TEST_CONTENT_TYPE=${TEST_CONTENT_TYPE} TEST_SSL=${TEST_SSL} TEST_CONNECTION=${TEST_CONNECTION} TEST_CVERSION=${TEST_CVERSION}\n\n"; \
-			exit 1)
+	$(DOCKER_CMD) $(DOCKER_V1_CMD_PARAMS) $(DOCKER_RUN_CMD) \
+	&& echo "success!" \
+	|| ( $(ON_FAILURE_PARAMS) MAJOR_VERSION=1 . ./test/on_failure.sh)
+
+			
 # Internal test tasks
 __run_v2_tests: __test_v2_debug__ __test_prepare __test_v2_go_test __test_cleanup
 
+DOCKER_CMD_V2_PARAMS=\
+	$(COMMON_DOCKER_CMD_PARAMS) \
+	-v "${ROOTDIR}":/usr/code:ro ${TEST_RESOURCES_VOLUME} \
+	-w /usr/code/v2/
+
 __test_v2_go_test:
-	$(DOCKER_CMD) \
-		--name=$(TESTCONTAINER) \
-		$(TEST_NET) \
-		-v "${ROOTDIR}":/usr/code:ro ${TEST_RESOURCES_VOLUME} \
-		-e TEST_ENDPOINTS=$(TEST_ENDPOINTS) \
-		-e TEST_NOT_WAIT_UNTIL_READY=$(TEST_NOT_WAIT_UNTIL_READY) \
-		-e TEST_AUTHENTICATION=$(TEST_AUTHENTICATION) \
-		-e TEST_JWTSECRET=$(TEST_JWTSECRET) \
-		-e TEST_MODE=$(TEST_MODE) \
-		-e TEST_BACKUP_REMOTE_REPO=$(TEST_BACKUP_REMOTE_REPO) \
-		-e TEST_BACKUP_REMOTE_CONFIG='$(TEST_BACKUP_REMOTE_CONFIG)' \
-		-e TEST_DEBUG='$(TEST_DEBUG)' \
-		-e TEST_ENABLE_SHUTDOWN=$(TEST_ENABLE_SHUTDOWN) \
-		-e ENABLE_DATABASE_EXTRA_FEATURES=$(ENABLE_DATABASE_EXTRA_FEATURES) \
-		-e GODEBUG=tls13=1 \
-		-e CGO_ENABLED=$(CGO_ENABLED) \
-		-w /usr/code/v2/ \
-		$(DOCKER_V2_RUN_CMD) && echo "success!" || ( \
-		    echo "failure! \n\nARANGODB-STARTER logs:"; \
-		    docker logs ${TESTCONTAINER}-s; \
-			echo "\nARANGODB logs:"; \
-			docker ps -f name=${TESTCONTAINER}-s- -q | xargs -L 1 docker logs; \
-			echo "\nV2 Tests with ARGS: TEST_MODE=${TEST_MODE} TEST_AUTH=${TEST_AUTH} TEST_CONTENT_TYPE=${TEST_CONTENT_TYPE} TEST_SSL=${TEST_SSL} TEST_CONNECTION=${TEST_CONNECTION} TEST_CVERSION=${TEST_CVERSION}\n\n"; \
-			exit 1)
+	$(DOCKER_CMD) $(DOCKER_CMD_V2_PARAMS) $(DOCKER_V2_RUN_CMD) \
+	&& echo "success!" \
+	|| ($(ON_FAILURE_PARAMS) MAJOR_VERSION=2 . ./test/on_failure.sh)
 
 __test_debug__:
 ifeq ("$(DEBUG)", "true")
@@ -479,7 +478,7 @@ endif
 	@-docker rm -f -v $(TESTCONTAINER) &> /dev/null
 	@TESTCONTAINER=$(TESTCONTAINER) ARANGODB=$(ARANGODB) ALPINE_IMAGE=$(ALPINE_IMAGE) ENABLE_BACKUP=$(ENABLE_BACKUP) \
 	  ARANGO_LICENSE_KEY=$(ARANGO_LICENSE_KEY) STARTER=$(STARTER) STARTERMODE=$(TEST_MODE) TMPDIR="${TMPDIR}" \
-	  ENABLE_DATABASE_EXTRA_FEATURES=$(ENABLE_DATABASE_EXTRA_FEATURES) DEBUG_PORT=$(DEBUG_PORT) $(CLUSTERENV) "${ROOTDIR}/test/cluster.sh" start
+	  ENABLE_DATABASE_EXTRA_FEATURES=$(ENABLE_DATABASE_EXTRA_FEATURES) DEBUG_PORT=$(DEBUG_PORT) $(CLUSTERENV) DOCKER_NETWORK=${TEST_NET} "${ROOTDIR}/test/cluster.sh" start
 endif
 
 __test_cleanup:
@@ -488,7 +487,7 @@ ifdef TESTCONTAINER
 	@if [ -n "$$TESTCONTAINERS" ]; then docker rm -f -v $$(docker ps -a -q --filter="name=$(TESTCONTAINER)"); fi
 endif
 ifndef TEST_ENDPOINTS_OVERRIDE
-	@TESTCONTAINER=$(TESTCONTAINER) ARANGODB=$(ARANGODB) ALPINE_IMAGE=$(ALPINE_IMAGE) STARTER=$(STARTER) STARTERMODE=$(TEST_MODE) "${ROOTDIR}/test/cluster.sh" cleanup
+	@TESTCONTAINER=$(TESTCONTAINER) ARANGODB=$(ARANGODB) ALPINE_IMAGE=$(ALPINE_IMAGE) STARTER=$(STARTER) STARTERMODE=$(TEST_MODE) DOCKER_NETWORK=${TEST_NET} "${ROOTDIR}/test/cluster.sh" cleanup
 else
 	@-docker rm -f -v $(TESTCONTAINER) &> /dev/null
 endif

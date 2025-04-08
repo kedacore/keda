@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.17.0](#v2161)
 - [v2.16.1](#v2161)
 - [v2.16.0](#v2160)
 - [v2.15.1](#v2151)
@@ -57,40 +58,84 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
-- **General**: Fix the check whether Fallback is enabled when using ScalingModifiers ([#6521](https://github.com/kedacore/keda/pull/6521))
-- **General**: Fix waiting to reach `failureThreshold` before fallback ([#6520](https://github.com/kedacore/keda/pull/6520))
-- **General**: Introduce new Temporal scaler ([#4724](https://github.com/kedacore/keda/issues/4724))
-
 ### New
 
-- **General**: Add Fallback option `behavior` for dynamic fallback calculation ([#6450](https://github.com/kedacore/keda/issues/6450))
-- **General**: Enable OpenSSF Scorecard to enhance security practices across the project ([#5913](https://github.com/kedacore/keda/issues/5913))
-- **General**: Introduce new NSQ scaler ([#3281](https://github.com/kedacore/keda/issues/3281))
-- **General**: Operator flag to control patching of webhook resources certificates ([#6184](https://github.com/kedacore/keda/issues/6184))
-- **Azure Pipelines Scaler**: Introduce requireAllDemandsAndIgnoreOthers to match job demands while ignoring extras ([#5579](https://github.com/kedacore/keda/issues/5579))
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 #### Experimental
-
-Here is an overview of all new **experimental** features:
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Improvements
 
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Fixes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Deprecations
+
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+New deprecation(s):
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Other
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.17.0
+
+### New
+
+- **General**: Add support for time-bound Kubernetes ServiceAccount tokens as a source for TriggerAuthentication ([#6136](https://github.com/kedacore/keda/issues/6136))
+- **General**: Introduce new NSQ scaler ([#3281](https://github.com/kedacore/keda/issues/3281))
+- **General**: Introduce new Temporal scaler ([#4724](https://github.com/kedacore/keda/issues/4724))
+
+### Improvements
+
+- **General**: Add Fallback option `behavior` for dynamic fallback calculation ([#6450](https://github.com/kedacore/keda/issues/6450))
 - **General**: Add SecretKey to AWS SecretsManager TriggerAuthentication to allow parsing JSON / Key/Value Pairs in secrets ([#5940](https://github.com/kedacore/keda/issues/5940))
+- **General**: Enable OpenSSF Scorecard to enhance security practices across the project ([#5913](https://github.com/kedacore/keda/issues/5913))
+- **General**: Operator flag to control patching of webhook resources certificates ([#6184](https://github.com/kedacore/keda/issues/6184))
+- **Azure Log Analytics Scaler**: Add custom HTTP client timeout ([#6607](https://github.com/kedacore/keda/pull/6607))
+- **Azure Pipelines Scaler**: Introduce requireAllDemandsAndIgnoreOthers to match job demands while ignoring extras ([#5579](https://github.com/kedacore/keda/issues/5579))
+- **Elasticsearch Scaler**: Support IgnoreNullValues at Elasticsearch scaler ([#6599](https://github.com/kedacore/keda/pull/6599))
 - **GitHub Scaler**: Add support to use ETag for conditional requests against the Github API ([#6503](https://github.com/kedacore/keda/issues/6503))
 - **GitHub Scaler**: Filter workflows via query parameter for improved queue count accuracy ([#6519](https://github.com/kedacore/keda/pull/6519))
 - **IBMMQ Scaler**: Handling StatusNotFound in IBMMQ scaler ([#6472](https://github.com/kedacore/keda/pull/6472))
+- **MongoDB Scaler**: Support float queryValue for MongoDB scaler ([#6574](https://github.com/kedacore/keda/issues/6574))
+- **Prometheus Scaler**: Add custom HTTP client timeout ([#6607](https://github.com/kedacore/keda/pull/6607))
 - **RabbitMQ Scaler**: Support use of the ‘vhostName’ parameter in the ‘TriggerAuthentication’ resource ([#6369](https://github.com/kedacore/keda/issues/6369))
+- **Selenium Grid**: Add trigger param for Node enables managed downloads capability ([#6570](https://github.com/kedacore/keda/pull/6570))
 - **Selenium Grid**: Add trigger param to set custom capabilities for matching specific Nodes ([#6536](https://github.com/kedacore/keda/issues/6536))
+- **Selenium Grid**: Selenium Grid: Trigger param enableManagedDownloads set as true by default ([#6684](https://github.com/kedacore/keda/pull/6684))
 
 ### Fixes
 
 - **General**: Centralize and improve automaxprocs configuration with proper structured logging ([#5970](https://github.com/kedacore/keda/issues/5970))
+- **General**: Fix CVE-2025-27144 and CVE-2025-22868 ([#6613](https://github.com/kedacore/keda/issues/6613))
+- **General**: Fix CVE-2025-29786 ([#6637](https://github.com/kedacore/keda/issues/6637))
+- **General**: Fix CVE-2025-30204 ([#6641](https://github.com/kedacore/keda/pull/6641))
 - **General**: Fix event text when deactivation fails ([#6469](https://github.com/kedacore/keda/issues/6469))
+- **General**: Fix fallback validation check bug ([#6407](https://github.com/kedacore/keda/pull/6407))
+- **General**: Fix the check whether Fallback is enabled when using ScalingModifiers ([#6521](https://github.com/kedacore/keda/pull/6521))
+- **General**: Fix waiting to reach `failureThreshold` before fallback ([#6520](https://github.com/kedacore/keda/pull/6520))
+- **General**: Make sure the exposed metrics (from KEDA operator) are updated when there is a change to triggers ([#6618](https://github.com/kedacore/keda/pull/6618))
 - **General**: Paused ScaledObject count is reported correctly after operator restart ([#6321](https://github.com/kedacore/keda/issues/6321))
+- **General**: Reiterate fix (after [#6407](https://github.com/kedacore/keda/pull/6407)) for fallback validation in admission webhook. ([#6538](https://github.com/kedacore/keda/pull/6538))
 - **General**: ScaledJobs ready status set to true when recoverred problem ([#6329](https://github.com/kedacore/keda/pull/6329))
 - **AWS Scalers**: Add AWS region to the AWS Config Cache key ([#6128](https://github.com/kedacore/keda/issues/6128))
+- **External Scaler**: Support server TLS without custom CA ([#6606](https://github.com/kedacore/keda/pull/6606))
+- **GCP Storage**: GCP Storage scaler ignores folders ([#6531](https://github.com/kedacore/keda/issues/6531))
+- **Metrics API**: Fix text format parsing error resulting in unexpected end of input stream ([#6559](https://github.com/kedacore/keda/issues/6559))
+- **NATS JetStream**: Support for looking up account using an ID ([#6611](https://github.com/kedacore/keda/pull/6611))
 - **Redis Streams**: Allow default value of 0 for activationLagCount ([#6478](https://github.com/kedacore/keda/issues/6478))
 - **Selenium Grid**: Scaler logic on platformName is set empty or `any` ([#6477](https://github.com/kedacore/keda/issues/6477))
 
@@ -111,8 +156,9 @@ New deprecation(s):
 ### Other
 
 - **General**: Add debug logs tracking validation of ScaledObjects on webhook ([#6498](https://github.com/kedacore/keda/pull/6498))
-- **General**: Fix fallback validation check bug ([#6407](https://github.com/kedacore/keda/pull/6407))
+- **General**: Add time.Duration in TypedConfig ([#6650](https://github.com/kedacore/keda/pull/6650))
 - **General**: New eventreason KEDAScalersInfo to display important information ([#6328](https://github.com/kedacore/keda/issues/6328))
+- **Apache Kafka Scaler**: Remove unused awsEndpoint in Apache Kafka scaler ([#6627](https://github.com/kedacore/keda/pull/6627))
 - **External Scalers**: Allow `float64` values in externalmetrics' `MetricValue` & `TargetSize`. The old fields are still there because of backward compatibility. ([#5159](https://github.com/kedacore/keda/issues/5159))
 
 ## v2.16.1

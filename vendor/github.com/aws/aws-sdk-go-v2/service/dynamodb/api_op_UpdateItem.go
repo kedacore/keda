@@ -286,6 +286,12 @@ type UpdateItemInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *UpdateItemInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 // Represents the output of an UpdateItem operation.
 type UpdateItemOutput struct {
 
@@ -398,6 +404,12 @@ func (c *Client) addOperationUpdateItemMiddlewares(stack *middleware.Stack, opti
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateItemValidationMiddleware(stack); err != nil {

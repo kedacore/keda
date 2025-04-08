@@ -20,6 +20,9 @@ type ConsumerClientOptions struct {
 	// ApplicationID is used as the identifier when setting the User-Agent property.
 	ApplicationID string
 
+	// A custom endpoint address that can be used when establishing the connection to the service.
+	CustomEndpoint string
+
 	// InstanceID is a unique name used to identify the consumer. This can help with
 	// diagnostics as this name will be returned in error messages. By default,
 	// an identifier will be automatically generated.
@@ -230,6 +233,10 @@ func newConsumerClient(args consumerClientArgs, options *ConsumerClientOptions) 
 
 	if options.ApplicationID != "" {
 		nsOptions = append(nsOptions, internal.NamespaceWithUserAgent(options.ApplicationID))
+	}
+
+	if options.CustomEndpoint != "" {
+		nsOptions = append(nsOptions, internal.NamespaceWithCustomEndpoint(options.CustomEndpoint))
 	}
 
 	nsOptions = append(nsOptions, internal.NamespaceWithRetryOptions(options.RetryOptions))

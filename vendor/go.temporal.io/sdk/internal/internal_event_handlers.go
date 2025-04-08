@@ -85,7 +85,7 @@ type (
 	}
 
 	scheduledNexusOperation struct {
-		startedCallback   func(operationID string, err error)
+		startedCallback   func(token string, err error)
 		completedCallback func(result *commonpb.Payload, err error)
 		endpoint          string
 		service           string
@@ -561,7 +561,7 @@ func (wc *workflowEnvironmentImpl) ExecuteChildWorkflow(
 	params ExecuteWorkflowParams, callback ResultHandler, startedHandler func(r WorkflowExecution, e error),
 ) {
 	if params.WorkflowID == "" {
-		params.WorkflowID = wc.workflowInfo.WorkflowExecution.RunID + "_" + wc.GenerateSequenceID()
+		params.WorkflowID = wc.workflowInfo.currentRunID + "_" + wc.GenerateSequenceID()
 	}
 	memo, err := getWorkflowMemo(params.Memo, wc.dataConverter)
 	if err != nil {
@@ -627,7 +627,7 @@ func (wc *workflowEnvironmentImpl) ExecuteChildWorkflow(
 		tagWorkflowType, params.WorkflowType.Name)
 }
 
-func (wc *workflowEnvironmentImpl) ExecuteNexusOperation(params executeNexusOperationParams, callback func(*commonpb.Payload, error), startedHandler func(opID string, e error)) int64 {
+func (wc *workflowEnvironmentImpl) ExecuteNexusOperation(params executeNexusOperationParams, callback func(*commonpb.Payload, error), startedHandler func(token string, e error)) int64 {
 	seq := wc.GenerateSequence()
 	scheduleTaskAttr := &commandpb.ScheduleNexusOperationCommandAttributes{
 		Endpoint:               params.client.Endpoint(),
@@ -1220,7 +1220,11 @@ func (weh *workflowExecutionEventHandlerImpl) ProcessEvent(
 	case enumspb.EVENT_TYPE_WORKFLOW_TASK_TIMED_OUT:
 		// No Operation
 	case enumspb.EVENT_TYPE_WORKFLOW_TASK_FAILED:
-		// No Operation
+		// update the childWorkflowIDSeed if the workflow was reset at this point.
+		attr := event.GetWorkflowTaskFailedEventAttributes()
+		if attr.GetCause() == enumspb.WORKFLOW_TASK_FAILED_CAUSE_RESET_WORKFLOW {
+			weh.workflowInfo.currentRunID = attr.GetNewRunId()
+		}
 	case enumspb.EVENT_TYPE_WORKFLOW_TASK_COMPLETED:
 		// No Operation
 	case enumspb.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED:
@@ -1682,7 +1686,7 @@ func (weh *workflowExecutionEventHandlerImpl) handleLocalActivityMarker(details 
 	if la, ok := weh.pendingLaTasks[lamd.ActivityID]; ok {
 		if len(lamd.ActivityType) > 0 && lamd.ActivityType != la.params.ActivityType {
 			// history marker mismatch to the current code.
-			panicMsg := fmt.Sprintf("[TMPRL1100] code execute local activity %v, but history event found %v, markerData: %v", la.params.ActivityType, lamd.ActivityType, markerData)
+			panicMsg := fmt.Sprintf("[TMPRL1100] code executed local activity %v, but history event found %v, markerData: %v", la.params.ActivityType, lamd.ActivityType, markerData)
 			panicIllegalState(panicMsg)
 		}
 		weh.commandsHelper.recordLocalActivityMarker(lamd.ActivityID, details, failure)
@@ -1918,7 +1922,11 @@ func (weh *workflowExecutionEventHandlerImpl) handleNexusOperationStarted(event 
 	command := weh.commandsHelper.handleNexusOperationStarted(attributes.ScheduledEventId)
 	state := command.getData().(*scheduledNexusOperation)
 	if state.startedCallback != nil {
-		state.startedCallback(attributes.OperationId, nil)
+		token := attributes.OperationToken
+		if token == "" {
+			token = attributes.OperationId //lint:ignore SA1019 this field is sent by servers older than 1.27.0.
+		}
+		state.startedCallback(token, nil)
 		state.startedCallback = nil
 	}
 	return nil

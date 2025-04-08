@@ -59,6 +59,7 @@ const InstallationCreateInstallStatusMutation = `mutation(
 	error {
 		details
 		message
+		optimizedMessage
 	}
 	hostName
 	installId
@@ -136,6 +137,7 @@ const InstallationCreateRecipeEventMutation = `mutation(
 	error {
 		details
 		message
+		optimizedMessage
 	}
 	hostName
 	installId
