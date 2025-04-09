@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -80,7 +81,7 @@ func parseForgejoRunnerMetadata(config *scalersconfig.ScalerConfig) (*forgejoRun
 
 // NewForgejoRunnerScaler creates a new Forgejo Runner Scaler
 func NewForgejoRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
-	c := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+	c := kedautil.CreateHTTPClient(30*time.Second, false)
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
