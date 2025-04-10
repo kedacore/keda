@@ -195,7 +195,7 @@ spec:
     authenticationRef:
       name: {{.TriggerAuthName}}
 `
-	
+
 	scaledObjectTemplateWithoutMetricType = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject

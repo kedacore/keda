@@ -272,19 +272,18 @@ func TestCheckFallbackValid(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			err := CheckFallbackValid(test.scaledObject)
-			
+
 			if test.expectedError && err == nil {
 				t.Error("Expected error but got nil")
 			}
-			
+
 			if !test.expectedError && err != nil {
 				t.Errorf("Expected no error but got: %v", err)
 			}
-			
+
 			if test.expectedError && err != nil && test.errorContains != "" {
 				if !contains(err.Error(), test.errorContains) {
-					t.Errorf("Error message does not contain expected text.\nExpected to contain: %s\nActual: %s", 
-						test.errorContains, err.Error())
+					t.Errorf("Error message does not contain expected text.\nExpected to contain: %s\nActual: %s", test.errorContains, err.Error())
 				}
 			}
 		})
@@ -379,54 +378,54 @@ func TestHasPausedAnnotation(t *testing.T) {
 
 func TestNeedToBePausedByAnnotation(t *testing.T) {
 	pausedReplicaCount := int32(5)
-	
+
 	tests := []struct {
-		name             string
-		annotations      map[string]string
+		name               string
+		annotations        map[string]string
 		pausedReplicaCount *int32
-		expectResult     bool
+		expectResult       bool
 	}{
 		{
-			name:             "No annotations",
-			annotations:      nil,
+			name:               "No annotations",
+			annotations:        nil,
 			pausedReplicaCount: nil,
-			expectResult:     false,
+			expectResult:       false,
 		},
 		{
-			name:             "PausedAnnotation with true value",
-			annotations:      map[string]string{PausedAnnotation: "true"},
+			name:               "PausedAnnotation with true value",
+			annotations:        map[string]string{PausedAnnotation: "true"},
 			pausedReplicaCount: nil,
-			expectResult:     true,
+			expectResult:       true,
 		},
 		{
-			name:             "PausedAnnotation with false value",
-			annotations:      map[string]string{PausedAnnotation: "false"},
+			name:               "PausedAnnotation with false value",
+			annotations:        map[string]string{PausedAnnotation: "false"},
 			pausedReplicaCount: nil,
-			expectResult:     false,
+			expectResult:       false,
 		},
 		{
-			name:             "PausedAnnotation with invalid value",
-			annotations:      map[string]string{PausedAnnotation: "invalid"},
+			name:               "PausedAnnotation with invalid value",
+			annotations:        map[string]string{PausedAnnotation: "invalid"},
 			pausedReplicaCount: nil,
-			expectResult:     true, // Non-boolean values should default to true
+			expectResult:       true, // Non-boolean values should default to true
 		},
 		{
-			name:             "PausedReplicasAnnotation with value and status set",
-			annotations:      map[string]string{PausedReplicasAnnotation: "5"},
+			name:               "PausedReplicasAnnotation with value and status set",
+			annotations:        map[string]string{PausedReplicasAnnotation: "5"},
 			pausedReplicaCount: &pausedReplicaCount,
-			expectResult:     true,
+			expectResult:       true,
 		},
 		{
-			name:             "PausedReplicasAnnotation with value but no status set",
-			annotations:      map[string]string{PausedReplicasAnnotation: "5"},
+			name:               "PausedReplicasAnnotation with value but no status set",
+			annotations:        map[string]string{PausedReplicasAnnotation: "5"},
 			pausedReplicaCount: nil,
-			expectResult:     false,
+			expectResult:       false,
 		},
 		{
-			name:             "Both annotations set",
-			annotations:      map[string]string{PausedAnnotation: "true", PausedReplicasAnnotation: "5"},
+			name:               "Both annotations set",
+			annotations:        map[string]string{PausedAnnotation: "true", PausedReplicasAnnotation: "5"},
 			pausedReplicaCount: &pausedReplicaCount,
-			expectResult:     true, // PausedReplicasAnnotation has precedence
+			expectResult:       true, // PausedReplicasAnnotation has precedence
 		},
 	}
 
@@ -519,7 +518,7 @@ func TestCheckReplicaCountBoundsAreValid(t *testing.T) {
 	idle0 := int32(0)
 	idle1 := int32(1)
 	idle2 := int32(2)
-	
+
 	tests := []struct {
 		name          string
 		scaledObject  *ScaledObject
@@ -530,8 +529,8 @@ func TestCheckReplicaCountBoundsAreValid(t *testing.T) {
 			name: "Valid: min 1, max 5, no idle",
 			scaledObject: &ScaledObject{
 				Spec: ScaledObjectSpec{
-					MinReplicaCount: &min1,
-					MaxReplicaCount: &max5,
+					MinReplicaCount:  &min1,
+					MaxReplicaCount:  &max5,
 					IdleReplicaCount: nil,
 				},
 			},
@@ -541,8 +540,8 @@ func TestCheckReplicaCountBoundsAreValid(t *testing.T) {
 			name: "Valid: min 1, max 5, idle 0",
 			scaledObject: &ScaledObject{
 				Spec: ScaledObjectSpec{
-					MinReplicaCount: &min1,
-					MaxReplicaCount: &max5,
+					MinReplicaCount:  &min1,
+					MaxReplicaCount:  &max5,
 					IdleReplicaCount: &idle0,
 				},
 			},
@@ -563,8 +562,8 @@ func TestCheckReplicaCountBoundsAreValid(t *testing.T) {
 			name: "Invalid: idle 1 == min 1",
 			scaledObject: &ScaledObject{
 				Spec: ScaledObjectSpec{
-					MinReplicaCount: &min1,
-					MaxReplicaCount: &max5,
+					MinReplicaCount:  &min1,
+					MaxReplicaCount:  &max5,
 					IdleReplicaCount: &idle1,
 				},
 			},
@@ -575,8 +574,8 @@ func TestCheckReplicaCountBoundsAreValid(t *testing.T) {
 			name: "Invalid: idle 2 > min 1",
 			scaledObject: &ScaledObject{
 				Spec: ScaledObjectSpec{
-					MinReplicaCount: &min1,
-					MaxReplicaCount: &max5,
+					MinReplicaCount:  &min1,
+					MaxReplicaCount:  &max5,
 					IdleReplicaCount: &idle2,
 				},
 			},
@@ -588,18 +587,18 @@ func TestCheckReplicaCountBoundsAreValid(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			err := CheckReplicaCountBoundsAreValid(test.scaledObject)
-			
+
 			if test.expectedError && err == nil {
 				t.Error("Expected error but got nil")
 			}
-			
+
 			if !test.expectedError && err != nil {
 				t.Errorf("Expected no error but got: %v", err)
 			}
-			
+
 			if test.expectedError && err != nil && test.errorContains != "" {
 				if !strings.Contains(err.Error(), test.errorContains) {
-					t.Errorf("Error message does not contain expected text.\nExpected to contain: %s\nActual: %s", 
+					t.Errorf("Error message does not contain expected text.\nExpected to contain: %s\nActual: %s",
 						test.errorContains, err.Error())
 				}
 			}
@@ -611,7 +610,7 @@ func TestGetHPAReplicas(t *testing.T) {
 	min0 := int32(0)
 	min5 := int32(5)
 	max10 := int32(10)
-	
+
 	tests := []struct {
 		name            string
 		minReplicaCount *int32
@@ -623,8 +622,8 @@ func TestGetHPAReplicas(t *testing.T) {
 			name:            "Default min and max",
 			minReplicaCount: nil,
 			maxReplicaCount: nil,
-			expectedMin:     1,    // default minimum
-			expectedMax:     100,  // default maximum
+			expectedMin:     1,   // default minimum
+			expectedMax:     100, // default maximum
 		},
 		{
 			name:            "Custom min, default max",
@@ -651,7 +650,7 @@ func TestGetHPAReplicas(t *testing.T) {
 			name:            "Zero min, default max",
 			minReplicaCount: &min0,
 			maxReplicaCount: nil,
-			expectedMin:     1,    // should use default for 0 value
+			expectedMin:     1, // should use default for 0 value
 			expectedMax:     100,
 		},
 	}
@@ -664,12 +663,12 @@ func TestGetHPAReplicas(t *testing.T) {
 					MaxReplicaCount: test.maxReplicaCount,
 				},
 			}
-			
+
 			minReplicas := so.GetHPAMinReplicas()
 			if *minReplicas != test.expectedMin {
 				t.Errorf("Expected GetHPAMinReplicas to return %d, got %d", test.expectedMin, *minReplicas)
 			}
-			
+
 			maxReplicas := so.GetHPAMaxReplicas()
 			if maxReplicas != test.expectedMax {
 				t.Errorf("Expected GetHPAMaxReplicas to return %d, got %d", test.expectedMax, maxReplicas)
