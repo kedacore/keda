@@ -19,6 +19,10 @@
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/jobTargetRef/properties/template/properties/metadata/x-kubernetes-preserve-unknown-fields
   value: true
 
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/jobTargetRef/properties/template/properties/spec/properties/volumes/items/properties/ephemeral/properties/volumeClaimTemplate/properties/metadata/x-kubernetes-preserve-unknown-fields
+  value: true
+
 ## triggers are shared by ScaledObjects and ScaledJobs and therefore generated for both, including all properties.
 ## since the metricType property is only supported for ScaledObject, removing it from the generated ScaledJob CRD
 - op: remove
