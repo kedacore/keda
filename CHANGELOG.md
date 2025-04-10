@@ -72,7 +72,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Admission Webhook blocks ScaledObject without metricType with fallback ([#6696](https://github.com/kedacore/keda/issues/6696))
 
 ### Deprecations
 
