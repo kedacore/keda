@@ -38,15 +38,18 @@ type Client interface {
 	// * func()
 	// * func() error
 	// * func(context.Context)
-	// * func(context.Context) protocol.Result
+	// * func(context.Context) error
 	// * func(event.Event)
-	// * func(event.Event) protocol.Result
+	// * func(event.Event) error
 	// * func(context.Context, event.Event)
-	// * func(context.Context, event.Event) protocol.Result
+	// * func(context.Context, event.Event) error
 	// * func(event.Event) *event.Event
-	// * func(event.Event) (*event.Event, protocol.Result)
+	// * func(event.Event) (*event.Event, error)
 	// * func(context.Context, event.Event) *event.Event
-	// * func(context.Context, event.Event) (*event.Event, protocol.Result)
+	// * func(context.Context, event.Event) (*event.Event, error)
+	// The error returned may impact the messages processing made by the protocol
+	// used (example: message acknowledgement). Please refer to each protocol's
+	// package documentation of the function "Finish(err error) error".
 	StartReceiver(ctx context.Context, fn interface{}) error
 }
 

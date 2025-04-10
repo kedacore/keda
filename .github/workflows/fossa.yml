@@ -27,13 +27,13 @@ jobs:
       - run: go version
       - name: Get branch name
         id: branch-name
-        uses: tj-actions/branch-names@6871f53176ad61624f978536bbf089c574dc19a2 # v8.0.1
-      - uses: fossas/fossa-action@09bcf127dc0ccb4b5a023f6f906728878e8610ba # v1.4.0
+        uses: tj-actions/branch-names@f44339b51f74753b57583fbbd124e18a81170ab1 # v8.1.0
+      - uses: fossas/fossa-action@c0a7d013f84c8ee5e910593186598625513cc1e4 # v1.6.0
         name: Scanning with FOSSA
         with:
           api-key: ${{ env.fossa-key }}
           branch: ${{ steps.branch-name.outputs.current_branch }}
-      - uses: fossas/fossa-action@09bcf127dc0ccb4b5a023f6f906728878e8610ba # v1.4.0
+      - uses: fossas/fossa-action@c0a7d013f84c8ee5e910593186598625513cc1e4 # v1.6.0
         name: Executing tests with FOSSA
         with:
           api-key: ${{ env.fossa-key }}

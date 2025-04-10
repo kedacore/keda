@@ -28,4 +28,3 @@ extends:
     ServiceDirectory: 'security/keyvault/azsecrets'
     RunLiveTests: true
     UsePipelineProxy: false
-    SupportedClouds: 'Public,UsGov,China'

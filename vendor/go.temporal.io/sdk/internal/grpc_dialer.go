@@ -78,6 +78,9 @@ const (
 
 	// defaultKeepAliveTimeout is the keep alive timeout if one is not specified.
 	defaultKeepAliveTimeout = 15 * time.Second
+
+	// temporalNamespaceHeaderKey is the header key that should contain the target namespace of the request.
+	temporalNamespaceHeaderKey = "temporal-namespace"
 )
 
 func dial(params dialParameters) (*grpc.ClientConn, error) {
@@ -175,7 +178,21 @@ func requiredInterceptors(
 			interceptors = append(interceptors, interceptor)
 		}
 	}
+	// Add namespace provider interceptor
+	interceptors = append(interceptors, namespaceProviderInterceptor())
 	return interceptors
+}
+
+func namespaceProviderInterceptor() grpc.UnaryClientInterceptor {
+	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		if nsReq, ok := req.(interface{ GetNamespace() string }); ok {
+			// Only add namespace if it doesn't already exist
+			if md, _ := metadata.FromOutgoingContext(ctx); len(md.Get(temporalNamespaceHeaderKey)) == 0 {
+				ctx = metadata.AppendToOutgoingContext(ctx, temporalNamespaceHeaderKey, nsReq.GetNamespace())
+			}
+		}
+		return invoker(ctx, method, req, reply, cc, opts...)
+	}
 }
 
 func trafficControllerInterceptor(controller TrafficController) grpc.UnaryClientInterceptor {

@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Run Trivy
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0 # v0.29.0
+        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5 # v0.30.0
         env:
           TRIVY_DB_REPOSITORY: ghcr.io/kedacore/trivy-db
         with:
@@ -53,7 +53,7 @@ jobs:
           trivy-config: trivy.yml
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@df409f7d9260372bd5f19e5b04e83cb3c43714ae # v3.27.9
+        uses: github/codeql-action/upload-sarif@@1b549b9259bda1cb5ddde3b41741a82a2d15a841 # v3.28.13
         if: ${{ inputs.publish }}
         with:
           sarif_file: ${{ inputs.output }}

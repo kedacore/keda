@@ -170,6 +170,18 @@ type BatchWriteItemInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *BatchWriteItemInput) bindEndpointParams(p *EndpointParameters) {
+	func() {
+		v1 := in.RequestItems
+		var v2 []string
+		for k := range v1 {
+			v2 = append(v2, k)
+		}
+		p.ResourceArnList = v2
+	}()
+
+}
+
 // Represents the output of a BatchWriteItem operation.
 type BatchWriteItemOutput struct {
 
@@ -304,6 +316,12 @@ func (c *Client) addOperationBatchWriteItemMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpBatchWriteItemValidationMiddleware(stack); err != nil {

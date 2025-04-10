@@ -280,8 +280,6 @@ type (
 
 	// NexusOperationError is an error returned when a Nexus Operation has failed.
 	//
-	// NOTE: Experimental
-	//
 	// Exposed as: [go.temporal.io/sdk/temporal.NexusOperationError]
 	NexusOperationError struct {
 		// The raw proto failure object this error was created from.
@@ -297,7 +295,11 @@ type (
 		// Operation name.
 		Operation string
 		// Operation ID - may be empty if the operation completed synchronously.
+		//
+		// Deprecated: Use OperationToken instead.
 		OperationID string
+		// Operation token - may be empty if the operation completed synchronously.
+		OperationToken string
 		// Chained cause - typically an ApplicationError or a CanceledError.
 		Cause error
 	}
@@ -386,7 +388,7 @@ func NewApplicationError(msg string, errType string, nonRetryable bool, cause er
 	)
 }
 
-// Exposed as: [go.temporal.io/sdk/temporal.NewApplicationErrorWithOptions], [go.temporal.io/sdk/temporal.NewApplicationErrorWithCause], [go.temporal.io/sdk/temporal.NewApplicationError], [go.temporal.io/sdk/temporal.NewNonRetryableApplicationError]
+// Exposed as: [go.temporal.io/sdk/temporal.NewApplicationError], [go.temporal.io/sdk/temporal.NewApplicationErrorWithOptions], [go.temporal.io/sdk/temporal.NewApplicationErrorWithCause], [go.temporal.io/sdk/temporal.NewNonRetryableApplicationError]
 func NewApplicationErrorWithOptions(msg string, errType string, options ApplicationErrorOptions) error {
 	applicationErr := &ApplicationError{
 		msg:            msg,
@@ -909,8 +911,8 @@ func (e *ChildWorkflowExecutionError) RetryState() enumspb.RetryState {
 // Error implements the error interface.
 func (e *NexusOperationError) Error() string {
 	msg := fmt.Sprintf(
-		"%s (endpoint: %q, service: %q, operation: %q, operation ID: %q, scheduledEventID: %d)",
-		e.Message, e.Endpoint, e.Service, e.Operation, e.OperationID, e.ScheduledEventID)
+		"%s (endpoint: %q, service: %q, operation: %q, operation token: %q, scheduledEventID: %d)",
+		e.Message, e.Endpoint, e.Service, e.Operation, e.OperationToken, e.ScheduledEventID)
 	if e.Cause != nil {
 		msg = fmt.Sprintf("%s: %v", msg, e.Cause)
 	}

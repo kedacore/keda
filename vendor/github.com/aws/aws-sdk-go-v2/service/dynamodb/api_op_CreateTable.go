@@ -253,6 +253,12 @@ type CreateTableInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *CreateTableInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 // Represents the output of a CreateTable operation.
 type CreateTableOutput struct {
 
@@ -330,6 +336,12 @@ func (c *Client) addOperationCreateTableMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpCreateTableValidationMiddleware(stack); err != nil {

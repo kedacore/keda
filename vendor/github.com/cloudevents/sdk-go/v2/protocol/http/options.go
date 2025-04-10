@@ -72,6 +72,26 @@ func WithHeader(key, value string) Option {
 	}
 }
 
+// WithHost sets the outbound host header for all cloud events when using an HTTP request
+func WithHost(value string) Option {
+	return func(p *Protocol) error {
+		if p == nil {
+			return fmt.Errorf("http host option can not set nil protocol")
+		}
+		value = strings.TrimSpace(value)
+		if value != "" {
+			if p.RequestTemplate == nil {
+				p.RequestTemplate = &nethttp.Request{
+					Method: nethttp.MethodPost,
+				}
+			}
+			p.RequestTemplate.Host = value
+			return nil
+		}
+		return fmt.Errorf("http host option was empty string")
+	}
+}
+
 // WithShutdownTimeout sets the shutdown timeout when the http server is being shutdown.
 func WithShutdownTimeout(timeout time.Duration) Option {
 	return func(p *Protocol) error {
@@ -79,6 +99,38 @@ func WithShutdownTimeout(timeout time.Duration) Option {
 			return fmt.Errorf("http shutdown timeout option can not set nil protocol")
 		}
 		p.ShutdownTimeout = timeout
+		return nil
+	}
+}
+
+// WithReadTimeout overwrites the default read timeout (600s) of the http
+// server. The specified timeout must not be negative. A timeout of 0 disables
+// read timeouts in the http server.
+func WithReadTimeout(timeout time.Duration) Option {
+	return func(p *Protocol) error {
+		if p == nil {
+			return fmt.Errorf("http read timeout option can not set nil protocol")
+		}
+		if timeout < 0 {
+			return fmt.Errorf("http read timeout must not be negative")
+		}
+		p.readTimeout = &timeout
+		return nil
+	}
+}
+
+// WithWriteTimeout overwrites the default write timeout (600s) of the http
+// server. The specified timeout must not be negative. A timeout of 0 disables
+// write timeouts in the http server.
+func WithWriteTimeout(timeout time.Duration) Option {
+	return func(p *Protocol) error {
+		if p == nil {
+			return fmt.Errorf("http write timeout option can not set nil protocol")
+		}
+		if timeout < 0 {
+			return fmt.Errorf("http write timeout must not be negative")
+		}
+		p.writeTimeout = &timeout
 		return nil
 	}
 }
