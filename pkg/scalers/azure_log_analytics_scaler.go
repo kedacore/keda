@@ -47,9 +47,9 @@ type azureLogAnalyticsScaler struct {
 }
 
 type azureLogAnalyticsMetadata struct {
-	TenantID                string `keda:"name=tenantId, order=authParams;triggerMetadata;resolvedEnv"`
-	ClientID                string `keda:"name=clientId, order=authParams;triggerMetadata;resolvedEnv"`
-	ClientSecret            string `keda:"name=clientSecret, order=authParams;triggerMetadata;resolvedEnv"`
+	TenantID                string `keda:"name=tenantId, order=authParams;triggerMetadata;resolvedEnv, optional"`
+	ClientID                string `keda:"name=clientId, order=authParams;triggerMetadata;resolvedEnv, optional"`
+	ClientSecret            string `keda:"name=clientSecret, order=authParams;triggerMetadata;resolvedEnv, optional"`
 	WorkspaceID             string `keda:"name=workspaceId, order=authParams;triggerMetadata;resolvedEnv"`
 	PodIdentity             kedav1alpha1.AuthPodIdentity
 	Query                   string  `keda:"name=query, order=triggerMetadata"`
