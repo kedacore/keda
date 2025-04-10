@@ -77,6 +77,13 @@ var testMONGODBMetadata = []parseMongoDBMetadataTestData{
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: false,
 	},
+	// test float queryValue
+	{
+		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "0.9"},
+		authParams:  map[string]string{"dbName": "test", "scheme": "mongodb+srv", "host": "localhost", "port": "", "username": "sample", "password": "sec@ure"},
+		resolvedEnv: testMongoDBResolvedEnv,
+		raisesError: false,
+	},
 	// wrong activationQueryValue
 	{
 		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "activationQueryValue": "aa", "connectionStringFromEnv": "Mongo_CONN_STR", "dbName": "test"},

@@ -83,7 +83,7 @@ type ConnError struct {
 	inner error
 }
 
-// Error implements the error interface for ConnectionError.
+// Error implements the error interface for ConnError.
 func (e *ConnError) Error() string {
 	if e.RemoteErr == nil && e.inner == nil {
 		return "amqp: connection closed"

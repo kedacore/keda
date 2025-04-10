@@ -43,6 +43,7 @@ import (
 	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling/mock_executor"
 	"github.com/kedacore/keda/v2/pkg/scalers"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache/metricscache"
@@ -336,7 +337,6 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 	for i := 0; i < len(metricNames); i++ {
-		i := i
 		scalerCollection[i].EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecFn(i))
 		scalerCollection[i].EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 			return metricsValueFn(i), true, nil
@@ -351,7 +351,6 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 	expectNoStatusPatch(ctrl)
 
 	for i := 0; i < len(metricNames); i++ {
-		i := i
 		scalerCollection[i].EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecFn(i))
 		scalerCollection[i].EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 			return metricsValueFn(i), true, nil
@@ -538,6 +537,9 @@ func TestCheckScaledObjectScalersWithTriggerAuthError(t *testing.T) {
 		scalerCaches:             map[string]*cache.ScalersCache{},
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		authClientSet: &authentication.AuthClientSet{
+			SecretLister: nil,
+		},
 	}
 
 	isActive, isError, _, activeTriggers, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)

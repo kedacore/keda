@@ -274,13 +274,22 @@ func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64,
 			metricName = v.Value
 		}
 	}
+
 	// Ensure EOL
-	reader := strings.NewReader(strings.ReplaceAll(string(body), "\r\n", "\n"))
+	bodyStr := strings.ReplaceAll(string(body), "\r\n", "\n")
+
+	// Check if newline is present
+	if len(bodyStr) > 0 && !strings.HasSuffix(bodyStr, "\n") {
+		bodyStr += "\n"
+	}
+
+	reader := strings.NewReader(bodyStr)
 	familiesParser := expfmt.TextParser{}
 	families, err := familiesParser.TextToMetricFamilies(reader)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("prometheus format parsing error: %w", err)
 	}
+
 	family, ok := families[metricName]
 	if !ok {
 		return 0, fmt.Errorf("metric '%s' not found", metricName)

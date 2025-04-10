@@ -47,7 +47,6 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 	}
 
 	for _, tc := range testCasesPending {
-		tc := tc
 		t.Run(tc.name, func(te *testing.T) {
 			m, err := parseRedisStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: tc.authParams})
 			assert.Nil(t, err)
@@ -97,7 +96,6 @@ func TestParseRedisStreamsMetadata(t *testing.T) {
 	}
 
 	for _, tc := range testCasesLag {
-		tc := tc
 		t.Run(tc.name, func(te *testing.T) {
 			m, err := parseRedisStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: tc.authParams})
 			assert.Nil(t, err)
@@ -158,7 +156,6 @@ func TestParseRedisStreamsMetadataForInvalidCases(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(te *testing.T) {
 			_, err := parseRedisStreamsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: tc.metadata, ResolvedEnv: tc.resolvedEnv, AuthParams: map[string]string{}})
 			assert.NotNil(t, err)

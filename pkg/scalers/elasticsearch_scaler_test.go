@@ -535,3 +535,47 @@ func TestElasticsearchGetMetricSpecForScaling(t *testing.T) {
 		assert.Equal(t, metricSpec[0].External.Metric.Name, testData.name)
 	}
 }
+
+func TestIgnoreNullValues(t *testing.T) {
+	// Test getValueFromSearch function
+	t.Run("getValueFromSearch handles null values based on ignoreNullValues", func(t *testing.T) {
+		jsonWithNull := []byte(`{
+			"hits": {
+				"total": {
+					"value": null
+				}
+			}
+		}`)
+
+		// Test ignoreNullValues = false
+		_, err := getValueFromSearch(jsonWithNull, "hits.total.value", false)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "valueLocation must point to value of type number but got: 'Null'")
+
+		// Test ignoreNullValues = true
+		val, err := getValueFromSearch(jsonWithNull, "hits.total.value", true)
+		assert.NoError(t, err)
+		assert.Equal(t, float64(0), val)
+	})
+
+	// Test parsing ignoreNullValues parameter
+	t.Run("parseElasticsearchMetadata parses ignoreNullValues", func(t *testing.T) {
+		metadata, err := parseElasticsearchMetadata(&scalersconfig.ScalerConfig{
+			TriggerMetadata: map[string]string{
+				"addresses":        "http://localhost:9200",
+				"index":            "index1",
+				"query":            `{"match": {"field": "value"}}`,
+				"valueLocation":    "hits.total.value",
+				"targetValue":      "12",
+				"ignoreNullValues": "true",
+			},
+			AuthParams: map[string]string{
+				"username": "admin",
+				"password": "password",
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.True(t, metadata.IgnoreNullValues)
+	})
+}

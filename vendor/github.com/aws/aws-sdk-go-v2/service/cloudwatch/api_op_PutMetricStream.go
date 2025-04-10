@@ -230,6 +230,9 @@ func (c *Client) addOperationPutMetricStreamMiddlewares(stack *middleware.Stack,
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpPutMetricStreamValidationMiddleware(stack); err != nil {
 		return err
 	}

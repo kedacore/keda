@@ -190,7 +190,6 @@ func TestBeanstalkdGetMetricSpecForScaling(t *testing.T) {
 
 func TestGetTubeStats(t *testing.T) {
 	for _, testData := range testTubeStatsTestData {
-		testData := testData
 		yamlData, err := yaml.Marshal(testData.response)
 		if err != nil {
 			t.Fatal(err)

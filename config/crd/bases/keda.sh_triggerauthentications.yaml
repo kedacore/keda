@@ -182,6 +182,8 @@ spec:
                           type: string
                         parameter:
                           type: string
+                        secretKey:
+                          type: string
                         versionId:
                           type: string
                         versionStage:
@@ -301,6 +303,18 @@ spec:
                 - secrets
                 - vaultUri
                 type: object
+              boundServiceAccountToken:
+                items:
+                  properties:
+                    parameter:
+                      type: string
+                    serviceAccountName:
+                      type: string
+                  required:
+                  - parameter
+                  - serviceAccountName
+                  type: object
+                type: array
               configMapTargetRef:
                 items:
                   description: AuthConfigMapTargetRef is used to authenticate using

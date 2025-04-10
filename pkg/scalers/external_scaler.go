@@ -40,6 +40,7 @@ type externalScalerMetadata struct {
 	caCert           string
 	tlsClientCert    string
 	tlsClientKey     string
+	enableTLS        bool
 	unsafeSsl        bool
 }
 
@@ -136,6 +137,13 @@ func parseExternalScalerMetadata(config *scalersconfig.ScalerConfig) (externalSc
 		}
 		meta.unsafeSsl = boolVal
 	}
+	if val, ok := config.TriggerMetadata["enableTLS"]; ok && val != "" {
+		boolVal, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("failed to parse enableTLS value. Must be either true or false")
+		}
+		meta.enableTLS = boolVal
+	}
 	// Add elements to metadata
 	for key, value := range config.TriggerMetadata {
 		// Check if key is in resolved environment and resolve
@@ -176,7 +184,11 @@ func (s *externalScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metri
 			Metric: v2.MetricIdentifier{
 				Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, spec.MetricName),
 			},
-			Target: GetMetricTarget(s.metricType, spec.TargetSize),
+		}
+		if spec.TargetSizeFloat > 0 {
+			externalMetric.Target = GetMetricTargetMili(s.metricType, spec.TargetSizeFloat)
+		} else {
+			externalMetric.Target = GetMetricTarget(s.metricType, spec.TargetSize)
 		}
 
 		// Create the metric spec for the HPA
@@ -217,7 +229,11 @@ func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	}
 
 	for _, metricResult := range metricsResponse.MetricValues {
-		metric := GenerateMetricInMili(metricName, float64(metricResult.MetricValue))
+		value := float64(metricResult.MetricValue)
+		if metricResult.MetricValueFloat > 0 {
+			value = metricResult.MetricValueFloat
+		}
+		metric := GenerateMetricInMili(metricName, value)
 		metrics = append(metrics, metric)
 	}
 
@@ -306,7 +322,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalSca
 			return nil, err
 		}
 
-		if len(tlsConfig.Certificates) > 0 || metadata.caCert != "" {
+		if metadata.enableTLS || len(tlsConfig.Certificates) > 0 || metadata.caCert != "" {
 			// nosemgrep: go.grpc.ssrf.grpc-tainted-url-host.grpc-tainted-url-host
 			return grpc.NewClient(metadata.scalerAddress,
 				grpc.WithDefaultServiceConfig(grpcConfig),

@@ -11,12 +11,14 @@ import (
 
 func Test_getCountFromSeleniumResponse(t *testing.T) {
 	type args struct {
-		b                  []byte
-		browserName        string
-		sessionBrowserName string
-		browserVersion     string
-		platformName       string
-		nodeMaxSessions    int64
+		b                      []byte
+		browserName            string
+		sessionBrowserName     string
+		browserVersion         string
+		platformName           string
+		nodeMaxSessions        int64
+		enableManagedDownloads bool
+		capabilities           string
 	}
 	tests := []struct {
 		name                string
@@ -98,10 +100,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				  }
 				}
 				`),
-				browserName:        "chrome",
-				sessionBrowserName: "chrome",
-				browserVersion:     "",
-				platformName:       "linux",
+				browserName:            "chrome",
+				sessionBrowserName:     "chrome",
+				browserVersion:         "",
+				enableManagedDownloads: true,
+				platformName:           "linux",
 			},
 			wantNewRequestNodes: 4,
 			wantOnGoingSessions: 0,
@@ -274,10 +277,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 					  }
 					}
 				`),
-				browserName:        "firefox",
-				sessionBrowserName: "firefox",
-				browserVersion:     "",
-				platformName:       "linux",
+				browserName:            "firefox",
+				sessionBrowserName:     "firefox",
+				browserVersion:         "",
+				enableManagedDownloads: true,
+				platformName:           "linux",
 			},
 			wantNewRequestNodes: 0,
 			wantOnGoingSessions: 4,
@@ -324,10 +328,11 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 				  }
 				}
 				`),
-				browserName:        "chrome",
-				sessionBrowserName: "chrome",
-				browserVersion:     "",
-				platformName:       "linux",
+				browserName:            "chrome",
+				sessionBrowserName:     "chrome",
+				browserVersion:         "",
+				enableManagedDownloads: true,
+				platformName:           "linux",
 			},
 			wantNewRequestNodes: 1,
 			wantOnGoingSessions: 0,
@@ -1907,6 +1912,289 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			wantErr:             false,
 		},
 		{
+			name: "4_sessions_requests_with_matching_browserName_and_platformName_when_set_nodeMaxSessions_2_and_4_requests_match_should_return_count_as_2_and_1_ongoing_session",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 1,
+							"maxSession": 2,
+							"totalSlots": 2
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-1",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 2,
+									"slotCount": 2,
+									"stereotypes": "[{\"slots\": 2, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"se:downloadsEnabled\": true}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"se:downloadsEnabled\": true}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"se:downloadsEnabled\": true}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"se:downloadsEnabled\": true,\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"se:downloadsEnabled\": true,\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"se:downloadsEnabled\": true,\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"]
+						}
+					}
+				}`),
+				browserName:            "chrome",
+				sessionBrowserName:     "chrome",
+				browserVersion:         "",
+				platformName:           "linux",
+				nodeMaxSessions:        2,
+				enableManagedDownloads: true,
+			},
+			wantNewRequestNodes: 2,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
+		},
+		{
+			name: "4_sessions_requests_with_matching_browserName_and_platformName_when_set_nodeMaxSessions_2_disable_managed_downloads_and_1_requests_match_should_return_count_as_1_and_0_ongoing_session",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 1,
+							"maxSession": 2,
+							"totalSlots": 2
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-1",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"se:downloadsEnabled\": true}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"se:downloadsEnabled\": true}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"se:downloadsEnabled\": true}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"se:downloadsEnabled\": true,\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"se:downloadsEnabled\": true,\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"se:downloadsEnabled\": true,\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"]
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "",
+				platformName:       "linux",
+				nodeMaxSessions:    2,
+			},
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantErr:             false,
+		},
+		{
+			name: "4_sessions_requests_with_matching_browserName_and_platformName_when_set_extra_capabilities_and_2_requests_match_should_return_count_as_2_and_ongoing_1",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 1,
+							"maxSession": 1,
+							"totalSlots": 1
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-1",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"myApp:version\": \"beta\", \"myApp:scope\": \"internal\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"myApp:version\": \"beta\", \"myApp:scope\": \"internal\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"myApp:version\": \"beta\", \"myApp:scope\": \"internal\"}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"myApp:version\": \"beta\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"myApp:version\": \"beta\",\n \"myApp:scope\": \"internal\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"myApp:version\": \"beta\",\n \"myApp:scope\": \"internal\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"]
+						}
+					}
+				}`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "",
+				platformName:       "linux",
+				nodeMaxSessions:    1,
+				capabilities:       "{\"myApp:version\": \"beta\", \"myApp:scope\": \"internal\"}",
+			},
+			wantNewRequestNodes: 2,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
+		},
+		{
+			name: "4_sessions_requests_with_matching_browserName_and_platformName_when_set_extra_capabilities_and_mangaged_downloads_and_1_request_match_should_return_count_as_2_and_ongoing_1",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 1,
+							"maxSession": 1,
+							"totalSlots": 1
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-1",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"myApp:version\": \"beta\", \"myApp:scope\": \"internal\", \"se:downloadsEnabled\": true}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"myApp:version\": \"beta\", \"myApp:scope\": \"internal\", \"se:downloadsEnabled\": true}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"myApp:version\": \"beta\", \"myApp:scope\": \"internal\", \"se:downloadsEnabled\": true}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"myApp:version\": \"beta\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"myApp:version\": \"beta\",\n \"myApp:scope\": \"internal\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"se:downloadsEnabled\": true,\n \"myApp:version\": \"beta\",\n \"myApp:scope\": \"internal\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"]
+						}
+					}
+				}`),
+				browserName:            "chrome",
+				sessionBrowserName:     "chrome",
+				browserVersion:         "",
+				platformName:           "linux",
+				nodeMaxSessions:        1,
+				enableManagedDownloads: true,
+				capabilities:           "{\"myApp:version\": \"beta\", \"myApp:scope\": \"internal\"}",
+			},
+			wantNewRequestNodes: 2,
+			wantOnGoingSessions: 1,
+			wantErr:             false,
+		},
+		{
+			name: "4_sessions_requests_with_matching_browserName_and_platformName_when_set_extra_capabilities_and_mangaged_downloads_and_4_request_match_should_return_count_as_4_and_ongoing_2",
+			args: args{
+				b: []byte(`{
+					"data": {
+						"grid": {
+							"sessionCount": 1,
+							"maxSession": 1,
+							"totalSlots": 1
+						},
+						"nodesInfo": {
+							"nodes": [
+								{
+									"id": "node-1",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"myApp:version\": \"beta\", \"myApp:scope\": \"internal\", \"se:downloadsEnabled\": true}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"myApp:version\": \"beta\", \"myApp:scope\": \"internal\", \"se:downloadsEnabled\": true}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"myApp:version\": \"beta\", \"myApp:scope\": \"internal\", \"se:downloadsEnabled\": true}"
+											}
+										}
+									]
+								},
+								{
+									"id": "node-2",
+									"status": "UP",
+									"sessionCount": 1,
+									"maxSession": 1,
+									"slotCount": 1,
+									"stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"myApp:version\": \"beta\", \"myApp:scope\": \"internal\"}}]",
+									"sessions": [
+										{
+											"id": "session-1",
+											"capabilities": "{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"myApp:version\": \"beta\", \"myApp:scope\": \"internal\"}",
+											"slot": {
+												"id": "9ce1edba-72fb-465e-b311-ee473d8d7b64",
+												"stereotype": "{\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\", \"myApp:version\": \"beta\", \"myApp:scope\": \"internal\"}"
+											}
+										}
+									]
+								}
+							]
+						},
+						"sessionsInfo": {
+							"sessionQueueRequests": [
+								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"myApp:version\": \"beta\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"myApp:version\": \"beta\",\n \"myApp:scope\": \"internal\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"myApp:version\": \"beta\",\n \"myApp:scope\": \"internal\",\n \"platformName\": \"linux\"\n}",
+								"{\n  \"browserName\": \"chrome\",\n \"platformName\": \"Windows 11\"\n}"]
+						}
+					}
+				}`),
+				browserName:            "chrome",
+				sessionBrowserName:     "chrome",
+				browserVersion:         "",
+				platformName:           "linux",
+				nodeMaxSessions:        1,
+				enableManagedDownloads: true,
+			},
+			wantNewRequestNodes: 4,
+			wantOnGoingSessions: 2,
+			wantErr:             false,
+		},
+		{
 			name: "Given_2_requests_include_1_without_browserVersion_When_scaler_metadata_explicit_name_version_platform_Then_scaler_should_scale_up_for_1_request_has_browserVersion_and_return_0_ongoing_sessions",
 			args: args{
 				b: []byte(`{
@@ -2865,7 +3153,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			newRequestNodes, onGoingSessions, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion, tt.args.sessionBrowserName, tt.args.platformName, tt.args.nodeMaxSessions, logr.Discard())
+			newRequestNodes, onGoingSessions, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion, tt.args.sessionBrowserName, tt.args.platformName, tt.args.nodeMaxSessions, tt.args.enableManagedDownloads, tt.args.capabilities, logr.Discard())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCountFromSeleniumResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -2919,13 +3207,15 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                "http://selenium-hub:4444/graphql",
-				BrowserName:        "chrome",
-				SessionBrowserName: "chrome",
-				TargetValue:        1,
-				BrowserVersion:     "",
-				PlatformName:       "",
-				NodeMaxSessions:    1,
+				URL:                    "http://selenium-hub:4444/graphql",
+				BrowserName:            "chrome",
+				SessionBrowserName:     "chrome",
+				TargetValue:            1,
+				BrowserVersion:         "",
+				PlatformName:           "",
+				NodeMaxSessions:        1,
+				EnableManagedDownloads: true,
+				Capabilities:           "",
 			},
 		},
 		{
@@ -2941,13 +3231,15 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                "http://selenium-hub:4444/graphql",
-				BrowserName:        "MicrosoftEdge",
-				SessionBrowserName: "msedge",
-				TargetValue:        1,
-				BrowserVersion:     "",
-				PlatformName:       "",
-				NodeMaxSessions:    1,
+				URL:                    "http://selenium-hub:4444/graphql",
+				BrowserName:            "MicrosoftEdge",
+				SessionBrowserName:     "msedge",
+				TargetValue:            1,
+				BrowserVersion:         "",
+				PlatformName:           "",
+				NodeMaxSessions:        1,
+				EnableManagedDownloads: true,
+				Capabilities:           "",
 			},
 		},
 		{
@@ -2962,13 +3254,15 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                "http://selenium-hub:4444/graphql",
-				BrowserName:        "",
-				SessionBrowserName: "",
-				TargetValue:        1,
-				BrowserVersion:     "",
-				PlatformName:       "",
-				NodeMaxSessions:    1,
+				URL:                    "http://selenium-hub:4444/graphql",
+				BrowserName:            "",
+				SessionBrowserName:     "",
+				TargetValue:            1,
+				BrowserVersion:         "",
+				PlatformName:           "",
+				NodeMaxSessions:        1,
+				EnableManagedDownloads: true,
+				Capabilities:           "",
 			},
 		},
 		{
@@ -2988,15 +3282,17 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                "http://selenium-hub:4444/graphql",
-				Username:           "user",
-				Password:           "password",
-				BrowserName:        "MicrosoftEdge",
-				SessionBrowserName: "msedge",
-				TargetValue:        1,
-				BrowserVersion:     "",
-				PlatformName:       "",
-				NodeMaxSessions:    1,
+				URL:                    "http://selenium-hub:4444/graphql",
+				Username:               "user",
+				Password:               "password",
+				BrowserName:            "MicrosoftEdge",
+				SessionBrowserName:     "msedge",
+				TargetValue:            1,
+				BrowserVersion:         "",
+				PlatformName:           "",
+				NodeMaxSessions:        1,
+				EnableManagedDownloads: true,
+				Capabilities:           "",
 			},
 		},
 		{
@@ -3016,15 +3312,49 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                "http://selenium-hub:4444/graphql",
-				BrowserName:        "MicrosoftEdge",
-				SessionBrowserName: "msedge",
-				TargetValue:        1,
-				BrowserVersion:     "",
-				PlatformName:       "",
-				Username:           "username",
-				Password:           "password",
-				NodeMaxSessions:    1,
+				URL:                    "http://selenium-hub:4444/graphql",
+				BrowserName:            "MicrosoftEdge",
+				SessionBrowserName:     "msedge",
+				TargetValue:            1,
+				BrowserVersion:         "",
+				PlatformName:           "",
+				Username:               "username",
+				Password:               "password",
+				NodeMaxSessions:        1,
+				EnableManagedDownloads: true,
+				Capabilities:           "",
+			},
+		},
+		{
+			name: "valid capabilities should return metadata",
+			args: args{
+				config: &scalersconfig.ScalerConfig{
+					AuthParams: map[string]string{
+						"username": "username",
+						"password": "password",
+					},
+					TriggerMetadata: map[string]string{
+						"url":                    "http://selenium-hub:4444/graphql",
+						"browserName":            "MicrosoftEdge",
+						"sessionBrowserName":     "msedge",
+						"enableManagedDownloads": "true",
+						"capabilities":           "{\"myApp:version\": \"beta\"}",
+					},
+				},
+			},
+			wantErr: false,
+			want: &seleniumGridScalerMetadata{
+				URL:                    "http://selenium-hub:4444/graphql",
+				BrowserName:            "MicrosoftEdge",
+				SessionBrowserName:     "msedge",
+				TargetValue:            1,
+				BrowserVersion:         "",
+				PlatformName:           "",
+				Username:               "username",
+				Password:               "password",
+				NodeMaxSessions:        1,
+				EnableManagedDownloads: true,
+				Capabilities:           "{\"myApp:version\": \"beta\"}",
 			},
 		},
 		{
@@ -3041,14 +3371,16 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                "http://selenium-hub:4444/graphql",
-				BrowserName:        "chrome",
-				SessionBrowserName: "chrome",
-				TargetValue:        1,
-				BrowserVersion:     "91.0",
-				UnsafeSsl:          false,
-				PlatformName:       "",
-				NodeMaxSessions:    1,
+				URL:                    "http://selenium-hub:4444/graphql",
+				BrowserName:            "chrome",
+				SessionBrowserName:     "chrome",
+				TargetValue:            1,
+				BrowserVersion:         "91.0",
+				UnsafeSsl:              false,
+				PlatformName:           "",
+				NodeMaxSessions:        1,
+				EnableManagedDownloads: true,
+				Capabilities:           "",
 			},
 		},
 		{
@@ -3066,15 +3398,17 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                 "http://selenium-hub:4444/graphql",
-				BrowserName:         "chrome",
-				SessionBrowserName:  "chrome",
-				TargetValue:         1,
-				ActivationThreshold: 10,
-				BrowserVersion:      "91.0",
-				UnsafeSsl:           true,
-				PlatformName:        "",
-				NodeMaxSessions:     1,
+				URL:                    "http://selenium-hub:4444/graphql",
+				BrowserName:            "chrome",
+				SessionBrowserName:     "chrome",
+				TargetValue:            1,
+				ActivationThreshold:    10,
+				BrowserVersion:         "91.0",
+				UnsafeSsl:              true,
+				PlatformName:           "",
+				NodeMaxSessions:        1,
+				EnableManagedDownloads: true,
+				Capabilities:           "",
 			},
 		},
 		{
@@ -3107,15 +3441,17 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                 "http://selenium-hub:4444/graphql",
-				BrowserName:         "chrome",
-				SessionBrowserName:  "chrome",
-				TargetValue:         1,
-				ActivationThreshold: 10,
-				BrowserVersion:      "91.0",
-				UnsafeSsl:           true,
-				PlatformName:        "",
-				NodeMaxSessions:     1,
+				URL:                    "http://selenium-hub:4444/graphql",
+				BrowserName:            "chrome",
+				SessionBrowserName:     "chrome",
+				TargetValue:            1,
+				ActivationThreshold:    10,
+				BrowserVersion:         "91.0",
+				UnsafeSsl:              true,
+				PlatformName:           "",
+				NodeMaxSessions:        1,
+				EnableManagedDownloads: true,
+				Capabilities:           "",
 			},
 		},
 		{
@@ -3134,15 +3470,17 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                 "http://selenium-hub:4444/graphql",
-				BrowserName:         "chrome",
-				SessionBrowserName:  "chrome",
-				TargetValue:         1,
-				ActivationThreshold: 10,
-				BrowserVersion:      "91.0",
-				UnsafeSsl:           true,
-				PlatformName:        "Windows 11",
-				NodeMaxSessions:     1,
+				URL:                    "http://selenium-hub:4444/graphql",
+				BrowserName:            "chrome",
+				SessionBrowserName:     "chrome",
+				TargetValue:            1,
+				ActivationThreshold:    10,
+				BrowserVersion:         "91.0",
+				UnsafeSsl:              true,
+				PlatformName:           "Windows 11",
+				NodeMaxSessions:        1,
+				EnableManagedDownloads: true,
+				Capabilities:           "",
 			},
 		},
 		{
@@ -3166,17 +3504,19 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                 "http://selenium-hub:4444/graphql",
-				Username:            "user",
-				Password:            "password",
-				BrowserName:         "chrome",
-				SessionBrowserName:  "chrome",
-				TargetValue:         1,
-				ActivationThreshold: 10,
-				BrowserVersion:      "91.0",
-				UnsafeSsl:           true,
-				PlatformName:        "Windows 11",
-				NodeMaxSessions:     3,
+				URL:                    "http://selenium-hub:4444/graphql",
+				Username:               "user",
+				Password:               "password",
+				BrowserName:            "chrome",
+				SessionBrowserName:     "chrome",
+				TargetValue:            1,
+				ActivationThreshold:    10,
+				BrowserVersion:         "91.0",
+				UnsafeSsl:              true,
+				PlatformName:           "Windows 11",
+				NodeMaxSessions:        3,
+				EnableManagedDownloads: true,
+				Capabilities:           "",
 			},
 		},
 		{
@@ -3201,17 +3541,19 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                 "http://selenium-hub:4444/graphql",
-				Username:            "user",
-				Password:            "password",
-				BrowserName:         "chrome",
-				SessionBrowserName:  "chrome",
-				TargetValue:         1,
-				ActivationThreshold: 10,
-				BrowserVersion:      "91.0",
-				UnsafeSsl:           true,
-				PlatformName:        "Windows 11",
-				NodeMaxSessions:     3,
+				URL:                    "http://selenium-hub:4444/graphql",
+				Username:               "user",
+				Password:               "password",
+				BrowserName:            "chrome",
+				SessionBrowserName:     "chrome",
+				TargetValue:            1,
+				ActivationThreshold:    10,
+				BrowserVersion:         "91.0",
+				UnsafeSsl:              true,
+				PlatformName:           "Windows 11",
+				NodeMaxSessions:        3,
+				EnableManagedDownloads: true,
+				Capabilities:           "",
 			},
 		},
 		{
@@ -3236,17 +3578,19 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                 "http://selenium-hub:4444/graphql",
-				AuthType:            "OAuth2",
-				AccessToken:         "my-access-token",
-				BrowserName:         "chrome",
-				SessionBrowserName:  "chrome",
-				TargetValue:         1,
-				ActivationThreshold: 10,
-				BrowserVersion:      "91.0",
-				UnsafeSsl:           true,
-				PlatformName:        "Windows 11",
-				NodeMaxSessions:     3,
+				URL:                    "http://selenium-hub:4444/graphql",
+				AuthType:               "OAuth2",
+				AccessToken:            "my-access-token",
+				BrowserName:            "chrome",
+				SessionBrowserName:     "chrome",
+				TargetValue:            1,
+				ActivationThreshold:    10,
+				BrowserVersion:         "91.0",
+				UnsafeSsl:              true,
+				PlatformName:           "Windows 11",
+				NodeMaxSessions:        3,
+				EnableManagedDownloads: true,
+				Capabilities:           "",
 			},
 		},
 		{
@@ -3270,17 +3614,19 @@ func Test_parseSeleniumGridScalerMetadata(t *testing.T) {
 			},
 			wantErr: false,
 			want: &seleniumGridScalerMetadata{
-				URL:                 "http://selenium-hub:4444/graphql",
-				AuthType:            "Bearer",
-				AccessToken:         "my-access-token",
-				BrowserName:         "chrome",
-				SessionBrowserName:  "chrome",
-				TargetValue:         1,
-				ActivationThreshold: 10,
-				BrowserVersion:      "91.0",
-				UnsafeSsl:           true,
-				PlatformName:        "Windows 11",
-				NodeMaxSessions:     3,
+				URL:                    "http://selenium-hub:4444/graphql",
+				AuthType:               "Bearer",
+				AccessToken:            "my-access-token",
+				BrowserName:            "chrome",
+				SessionBrowserName:     "chrome",
+				TargetValue:            1,
+				ActivationThreshold:    10,
+				BrowserVersion:         "91.0",
+				UnsafeSsl:              true,
+				PlatformName:           "Windows 11",
+				NodeMaxSessions:        3,
+				EnableManagedDownloads: true,
+				Capabilities:           "",
 			},
 		},
 	}

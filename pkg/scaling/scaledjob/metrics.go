@@ -112,14 +112,6 @@ func ceilToInt64(x float64) int64 {
 	return int64(math.Ceil(x))
 }
 
-// min returns the minimum for input float64 values
-func min(x, y float64) float64 {
-	if x > y {
-		return y
-	}
-	return x
-}
-
 // getMaxValue returns maxValue, unless it is exceeding the MaxReplicaCount.
 func getMaxValue(maxValue float64, maxReplicaCount int64) float64 {
 	return min(maxValue, float64(maxReplicaCount))

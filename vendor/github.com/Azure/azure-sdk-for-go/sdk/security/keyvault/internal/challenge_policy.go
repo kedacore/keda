@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
@@ -30,7 +31,12 @@ type KeyVaultChallengePolicyOptions struct {
 type keyVaultAuthorizer struct {
 	// tro is the policy's authentication parameters. These are discovered from an authentication challenge
 	// elicited ahead of the first client request.
-	tro                     policy.TokenRequestOptions
+	//
+	// Protected by troLock.
+	tro policy.TokenRequestOptions
+	// Lock protecting tro in case there are multiple concurrent initial requests.
+	troLock sync.RWMutex
+
 	verifyChallengeResource bool
 }
 
@@ -55,7 +61,8 @@ func NewKeyVaultChallengePolicy(cred azcore.TokenCredential, opts *KeyVaultChall
 }
 
 func (k *keyVaultAuthorizer) authorize(req *policy.Request, authNZ func(policy.TokenRequestOptions) error) error {
-	if len(k.tro.Scopes) == 0 || k.tro.TenantID == "" {
+	tro := k.getTokenRequestOptions()
+	if len(tro.Scopes) == 0 || tro.TenantID == "" {
 		if body := req.Body(); body != nil {
 			// We don't know the scope or tenant ID because we haven't seen a challenge yet. We elicit one now by sending
 			// the request without authorization, first removing its body, if any. authorizeOnChallenge will reattach the
@@ -70,7 +77,7 @@ func (k *keyVaultAuthorizer) authorize(req *policy.Request, authNZ func(policy.T
 		return nil
 	}
 	// else we know the auth parameters and can authorize the request as normal
-	return authNZ(k.tro)
+	return authNZ(tro)
 }
 
 func (k *keyVaultAuthorizer) authorizeOnChallenge(req *policy.Request, res *http.Response, authNZ func(policy.TokenRequestOptions) error) error {
@@ -87,7 +94,7 @@ func (k *keyVaultAuthorizer) authorizeOnChallenge(req *policy.Request, res *http
 		}
 	}
 	// authenticate with the parameters supplied by Key Vault, authorize the request, send it again
-	return authNZ(k.tro)
+	return authNZ(k.getTokenRequestOptions())
 }
 
 // parses Tenant ID from auth challenge
@@ -126,7 +133,6 @@ func (k *keyVaultAuthorizer) updateTokenRequestOptions(resp *http.Response, req 
 		}
 	}
 
-	k.tro.TenantID = parseTenant(vals["authorization"])
 	scope := ""
 	if v, ok := vals["scope"]; ok {
 		scope = v
@@ -149,6 +155,25 @@ func (k *keyVaultAuthorizer) updateTokenRequestOptions(resp *http.Response, req 
 	if !strings.HasSuffix(scope, "/.default") {
 		scope += "/.default"
 	}
-	k.tro.Scopes = []string{scope}
+	k.setTokenRequestOptions(policy.TokenRequestOptions{
+		TenantID: parseTenant(vals["authorization"]),
+		Scopes:   []string{scope},
+	})
 	return nil
+}
+
+// Returns a (possibly-zero) copy of TokenRequestOptions.
+//
+// The returned value's Scopes and other fields must not be modified.
+func (k *keyVaultAuthorizer) getTokenRequestOptions() policy.TokenRequestOptions {
+	k.troLock.RLock()
+	defer k.troLock.RUnlock()
+	return k.tro // Copy.
+}
+
+// After calling this function, tro.Scopes and other fields must not be modified.
+func (k *keyVaultAuthorizer) setTokenRequestOptions(tro policy.TokenRequestOptions) {
+	k.troLock.Lock()
+	defer k.troLock.Unlock()
+	k.tro = tro // Copy.
 }

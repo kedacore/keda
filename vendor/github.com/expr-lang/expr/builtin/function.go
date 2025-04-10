@@ -11,6 +11,7 @@ type Function struct {
 	Safe      func(args ...any) (any, uint, error)
 	Types     []reflect.Type
 	Validate  func(args []reflect.Type) (reflect.Type, error)
+	Deref     func(i int, arg reflect.Type) bool
 	Predicate bool
 }
 

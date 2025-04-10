@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -211,7 +212,7 @@ func calculateDepth(depths []int64, operation string) int64 {
 	case avgOperation:
 		return avgDepths(depths)
 	case maxOperation:
-		return maxDepths(depths)
+		return slices.Max(depths)
 	default:
 		return 0
 	}
@@ -230,19 +231,6 @@ func avgDepths(depths []int64) int64 {
 		return 0
 	}
 	return sumDepths(depths) / int64(len(depths))
-}
-
-func maxDepths(depths []int64) int64 {
-	if len(depths) == 0 {
-		return 0
-	}
-	max := depths[0]
-	for _, depth := range depths[1:] {
-		if depth > max {
-			max = depth
-		}
-	}
-	return max
 }
 
 func (s *ibmmqScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
