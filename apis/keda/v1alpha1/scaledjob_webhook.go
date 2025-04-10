@@ -33,6 +33,7 @@ var scaledjoblog = logf.Log.WithName("scaledjob-validation-webhook")
 
 func (s *ScaledJob) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&ScaledJobCustomValidator{}).
 		For(s).
 		Complete()
 }

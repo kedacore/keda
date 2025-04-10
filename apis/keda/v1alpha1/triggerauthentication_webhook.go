@@ -38,12 +38,14 @@ var triggerauthenticationlog = logf.Log.WithName("triggerauthentication-validati
 
 func (ta *TriggerAuthentication) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&TriggerAuthenticationCustomValidator{}).
 		For(ta).
 		Complete()
 }
 
 func (cta *ClusterTriggerAuthentication) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&ClusterTriggerAuthenticationCustomValidator{}).
 		For(cta).
 		Complete()
 }

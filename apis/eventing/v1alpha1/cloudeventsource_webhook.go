@@ -34,12 +34,14 @@ var cloudeventsourcelog = logf.Log.WithName("cloudeventsource-validation-webhook
 
 func (ces *CloudEventSource) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&CloudEventSourceCustomValidator{}).
 		For(ces).
 		Complete()
 }
 
 func (cces *ClusterCloudEventSource) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&ClusterCloudEventSourceCustomValidator{}).
 		For(cces).
 		Complete()
 }
