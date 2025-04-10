@@ -68,6 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
+- **General**: Allow configuring minimum TLS version for GRPC client via `KEDA_GRPC_MIN_TLS_VERSION` ([#6320](https://github.com/kedacore/keda/pull/6320))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Fixes
