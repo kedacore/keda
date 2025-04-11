@@ -304,7 +304,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		map[string]string{
 			"QUEUE_URL": "",
 		},
-		false,
+		true,
 		"empty QUEUE_URL env value"},
 }
 
@@ -530,6 +530,80 @@ func TestProcessQueueLengthFromSqsQueueAttributesOutput(t *testing.T) {
 			}
 
 			assert.Equal(t, test.expected, result)
+		})
+	}
+}
+
+func TestQueueURLFromEnvResolution(t *testing.T) {
+	testCases := []struct {
+		name        string
+		metadata    map[string]string
+		resolvedEnv map[string]string
+		expectedURL string
+		expectError bool
+	}{
+		{
+			name: "direct queueURL",
+			metadata: map[string]string{
+				"queueURL":  testAWSSQSProperQueueURL,
+				"awsRegion": "eu-west-1",
+			},
+			resolvedEnv: map[string]string{},
+			expectedURL: testAWSSQSProperQueueURL,
+			expectError: false,
+		},
+		{
+			name: "queueURL from environment variable",
+			metadata: map[string]string{
+				"queueURLFromEnv": "QUEUE_URL",
+				"awsRegion":       "eu-west-1",
+			},
+			resolvedEnv: map[string]string{
+				"QUEUE_URL": testAWSSQSProperQueueURL,
+			},
+			expectedURL: testAWSSQSProperQueueURL,
+			expectError: false,
+		},
+		{
+			name: "missing environment variable",
+			metadata: map[string]string{
+				"queueURLFromEnv": "MISSING_ENV_VAR",
+				"awsRegion":       "eu-west-1",
+			},
+			resolvedEnv: map[string]string{
+				"QUEUE_URL": testAWSSQSProperQueueURL,
+			},
+			expectedURL: "",
+			expectError: true,
+		},
+		{
+			name: "empty environment variable value",
+			metadata: map[string]string{
+				"queueURLFromEnv": "EMPTY_ENV_VAR",
+				"awsRegion":       "eu-west-1",
+			},
+			resolvedEnv: map[string]string{
+				"EMPTY_ENV_VAR": "",
+			},
+			expectedURL: "",
+			expectError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			meta, err := parseAwsSqsQueueMetadata(&scalersconfig.ScalerConfig{
+				TriggerMetadata: tc.metadata,
+				ResolvedEnv:     tc.resolvedEnv,
+				AuthParams:      testAWSSQSAuthentication,
+			})
+
+			if tc.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedURL, meta.QueueURL)
+			}
 		})
 	}
 }
