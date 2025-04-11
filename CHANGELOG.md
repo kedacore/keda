@@ -16,7 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
-- [v2.17.0](#v2161)
+- [v2.17.0](#v2170)
 - [v2.16.1](#v2161)
 - [v2.16.0](#v2160)
 - [v2.15.1](#v2151)
@@ -72,7 +72,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+**Temporal Scaler**: Fix Temporal Scaler does not work properly with API Key authentication against Temporal Cloud as TLS is not enabled on the client ([#6703](https://github.com/kedacore/keda/issues/6703))
 
 ### Deprecations
 
