@@ -42,6 +42,9 @@ type Session struct {
 	// frames destined for this session are added to this queue by conn.connReader
 	rxQ *queue.Holder[frames.FrameBody]
 
+	// properties returned by the peer
+	peerProperties map[string]any
+
 	// flow control
 	incomingWindow uint32
 	outgoingWindow uint32
@@ -158,6 +161,13 @@ func (s *Session) begin(ctx context.Context) error {
 			return err
 		}
 		return &ConnError{inner: fmt.Errorf("unexpected begin response: %#v", fr)}
+	}
+
+	if len(begin.Properties) > 0 {
+		s.peerProperties = map[string]any{}
+		for k, v := range begin.Properties {
+			s.peerProperties[string(k)] = v
+		}
 	}
 
 	// start Session multiplexor
@@ -281,6 +291,12 @@ func newReceiverForSession(ctx context.Context, s *Session, source string, opts 
 // created, it will be cleaned up in future calls to NewSender.
 func (s *Session) NewSender(ctx context.Context, target string, opts *SenderOptions) (*Sender, error) {
 	return newSenderForSession(ctx, s, target, opts, senderTestHooks{})
+}
+
+// Properties returns the peer's session properties.
+// Returns nil if the peer didn't send any properties.
+func (s *Session) Properties() map[string]any {
+	return s.peerProperties
 }
 
 // split out so tests can add hooks

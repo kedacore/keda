@@ -32,14 +32,13 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 	"unicode"
-
-	"golang.org/x/exp/slices"
 
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
@@ -215,7 +214,10 @@ type (
 		WorkflowID               string
 		WaitForCancellation      bool
 		WorkflowIDReusePolicy    enumspb.WorkflowIdReusePolicy
+		// WorkflowIDConflictPolicy and OnConflictOptions are only used in test environment for
+		// running Nexus operations as child workflow.
 		WorkflowIDConflictPolicy enumspb.WorkflowIdConflictPolicy
+		OnConflictOptions        *OnConflictOptions
 		DataConverter            converter.DataConverter
 		RetryPolicy              *commonpb.RetryPolicy
 		CronSchedule             string

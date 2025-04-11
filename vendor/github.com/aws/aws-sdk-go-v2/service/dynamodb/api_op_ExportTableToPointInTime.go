@@ -100,6 +100,12 @@ type ExportTableToPointInTimeInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *ExportTableToPointInTimeInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableArn
+
+}
+
 type ExportTableToPointInTimeOutput struct {
 
 	// Contains a description of the table export.
@@ -173,6 +179,12 @@ func (c *Client) addOperationExportTableToPointInTimeMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opExportTableToPointInTimeMiddleware(stack, options); err != nil {

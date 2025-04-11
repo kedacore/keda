@@ -130,6 +130,8 @@ var AiNotificationsChannelTypeTypes = struct {
 	JIRA_CLASSIC AiNotificationsChannelType
 	// Jira Nextgen channel type
 	JIRA_NEXTGEN AiNotificationsChannelType
+	// Microsoft Teams channel type
+	MICROSOFT_TEAMS AiNotificationsChannelType
 	// Mobile push channel type
 	MOBILE_PUSH AiNotificationsChannelType
 	// PagerDuty channel type
@@ -159,6 +161,8 @@ var AiNotificationsChannelTypeTypes = struct {
 	JIRA_CLASSIC: "JIRA_CLASSIC",
 	// Jira Nextgen channel type
 	JIRA_NEXTGEN: "JIRA_NEXTGEN",
+	// Microsoft Teams channel type
+	MICROSOFT_TEAMS: "MICROSOFT_TEAMS",
 	// Mobile push channel type
 	MOBILE_PUSH: "MOBILE_PUSH",
 	// PagerDuty channel type
@@ -305,6 +309,8 @@ var AiNotificationsDestinationTypeTypes = struct {
 	EVENT_BRIDGE AiNotificationsDestinationType
 	// Jira destination type
 	JIRA AiNotificationsDestinationType
+	// Microsoft Teams destination type
+	MICROSOFT_TEAMS AiNotificationsDestinationType
 	// Mobile push destination type
 	MOBILE_PUSH AiNotificationsDestinationType
 	// PagerDuty destination type
@@ -330,6 +336,8 @@ var AiNotificationsDestinationTypeTypes = struct {
 	EVENT_BRIDGE: "EVENT_BRIDGE",
 	// Jira destination type
 	JIRA: "JIRA",
+	// Microsoft Teams destination type
+	MICROSOFT_TEAMS: "MICROSOFT_TEAMS",
 	// Mobile push destination type
 	MOBILE_PUSH: "MOBILE_PUSH",
 	// PagerDuty destination type

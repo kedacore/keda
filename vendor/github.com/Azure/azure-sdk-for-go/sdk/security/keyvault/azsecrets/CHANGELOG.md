@@ -1,5 +1,10 @@
 # Release History
 
+## 1.3.1 (2025-02-13)
+
+### Other Changes
+* Upgraded dependencies
+
 ## 1.3.0 (2024-11-06)
 
 ### Features Added

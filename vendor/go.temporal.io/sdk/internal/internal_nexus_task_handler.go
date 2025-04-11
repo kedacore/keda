@@ -35,6 +35,7 @@ import (
 
 	"github.com/nexus-rpc/sdk-go/nexus"
 	"go.temporal.io/api/common/v1"
+	enumspb "go.temporal.io/api/enums/v1"
 	failurepb "go.temporal.io/api/failure/v1"
 	nexuspb "go.temporal.io/api/nexus/v1"
 	"go.temporal.io/api/workflowservice/v1"
@@ -71,6 +72,7 @@ type nexusTaskHandler struct {
 	failureConverter converter.FailureConverter
 	logger           log.Logger
 	metricsHandler   metrics.Handler
+	registry         *registry
 }
 
 func newNexusTaskHandler(
@@ -83,6 +85,7 @@ func newNexusTaskHandler(
 	failureConverter converter.FailureConverter,
 	logger log.Logger,
 	metricsHandler metrics.Handler,
+	registry *registry,
 ) *nexusTaskHandler {
 	return &nexusTaskHandler{
 		nexusHandler:     nexusHandler,
@@ -94,6 +97,7 @@ func newNexusTaskHandler(
 		taskQueueName:    taskQueueName,
 		client:           client,
 		metricsHandler:   metricsHandler,
+		registry:         registry,
 	}
 }
 
@@ -174,7 +178,7 @@ func (h *nexusTaskHandler) handleStartOperation(
 		}
 		linkURL, err := url.Parse(link.GetUrl())
 		if err != nil {
-			nctx.Log.Error("Failed to parse link url: %s", link.GetUrl(), tagError, err)
+			nctx.log.Error("Failed to parse link url: %s", link.GetUrl(), tagError, err)
 			return nil, nexusHandlerError(nexus.HandlerErrorTypeBadRequest, "failed to parse link url"), nil
 		}
 		nexusLinks = append(nexusLinks, nexus.Link{
@@ -189,6 +193,11 @@ func (h *nexusTaskHandler) handleStartOperation(
 		CallbackHeader: callbackHeader,
 		Links:          nexusLinks,
 	}
+	ctx = nexus.WithHandlerContext(ctx, nexus.HandlerInfo{
+		Service:   req.GetService(),
+		Operation: req.GetOperation(),
+		Header:    header,
+	})
 	var opres nexus.HandlerStartOperationResult[any]
 	var err error
 	var panic bool
@@ -203,22 +212,22 @@ func (h *nexusTaskHandler) handleStartOperation(
 					err = fmt.Errorf("panic: %v", recovered)
 				}
 
-				nctx.Log.Error("Panic captured while handling Nexus task", tagStackTrace, string(debug.Stack()), tagError, err)
+				nctx.log.Error("Panic captured while handling Nexus task", tagStackTrace, string(debug.Stack()), tagError, err)
 			}
 		}()
 		opres, err = h.nexusHandler.StartOperation(ctx, req.GetService(), req.GetOperation(), input, startOptions)
 	}()
 	if ctx.Err() != nil {
 		if !panic {
-			nctx.Log.Error("Context error while processing Nexus task", tagError, ctx.Err())
+			nctx.log.Error("Context error while processing Nexus task", tagError, ctx.Err())
 		}
 		return nil, nil, errNexusTaskTimeout
 	}
 	if err != nil {
 		if !panic {
-			nctx.Log.Error("Handler returned error while processing Nexus task", tagError, err)
+			nctx.log.Error("Handler returned error while processing Nexus task", tagError, err)
 		}
-		var unsuccessfulOperationErr *nexus.UnsuccessfulOperationError
+		var unsuccessfulOperationErr *nexus.OperationError
 		err = convertKnownErrors(err)
 		if errors.As(err, &unsuccessfulOperationErr) {
 			failure, err := h.errorToFailure(unsuccessfulOperationErr.Cause)
@@ -250,31 +259,46 @@ func (h *nexusTaskHandler) handleStartOperation(
 	}
 	switch t := opres.(type) {
 	case *nexus.HandlerStartOperationResultAsync:
-		var links []*nexuspb.Link
-		for _, nexusLink := range t.Links {
-			links = append(links, &nexuspb.Link{
+		nexusLinks := nexus.HandlerLinks(ctx)
+		links := make([]*nexuspb.Link, len(nexusLinks))
+		for i, nexusLink := range nexusLinks {
+			links[i] = &nexuspb.Link{
 				Url:  nexusLink.URL.String(),
 				Type: nexusLink.Type,
-			})
+			}
+		}
+		token := t.OperationToken
+		//lint:ignore SA1019 this field might be set by users of older SDKs.
+		if t.OperationID != "" {
+			token = t.OperationID //lint:ignore SA1019 this field might be set by users of older SDKs.
 		}
 		return &nexuspb.Response{
 			Variant: &nexuspb.Response_StartOperation{
 				StartOperation: &nexuspb.StartOperationResponse{
 					Variant: &nexuspb.StartOperationResponse_AsyncSuccess{
 						AsyncSuccess: &nexuspb.StartOperationResponse_Async{
-							OperationId: t.OperationID,
-							Links:       links,
+							OperationToken: token,
+							OperationId:    token,
+							Links:          links,
 						},
 					},
 				},
 			},
 		}, nil, nil
 	default:
+		nexusLinks := nexus.HandlerLinks(ctx)
+		links := make([]*nexuspb.Link, len(nexusLinks))
+		for i, nexusLink := range nexusLinks {
+			links[i] = &nexuspb.Link{
+				Url:  nexusLink.URL.String(),
+				Type: nexusLink.Type,
+			}
+		}
 		// *nexus.HandlerStartOperationResultSync is generic, we can't type switch unfortunately.
 		value := reflect.ValueOf(t).Elem().FieldByName("Value").Interface()
 		payload, err := h.dataConverter.ToPayload(value)
 		if err != nil {
-			nctx.Log.Error("Cannot convert Nexus sync result", tagError, err)
+			nctx.log.Error("Cannot convert Nexus sync result", tagError, err)
 			protoErr, err := h.internalError(fmt.Errorf("cannot convert nexus sync result: %w", err))
 			return nil, protoErr, err
 		}
@@ -284,6 +308,7 @@ func (h *nexusTaskHandler) handleStartOperation(
 					Variant: &nexuspb.StartOperationResponse_SyncSuccess{
 						SyncSuccess: &nexuspb.StartOperationResponse_Sync{
 							Payload: payload,
+							Links:   links,
 						},
 					},
 				},
@@ -294,6 +319,11 @@ func (h *nexusTaskHandler) handleStartOperation(
 
 func (h *nexusTaskHandler) handleCancelOperation(ctx context.Context, nctx *NexusOperationContext, req *nexuspb.CancelOperationRequest, header nexus.Header) (*nexuspb.Response, *nexuspb.HandlerError, error) {
 	cancelOptions := nexus.CancelOperationOptions{Header: header}
+	ctx = nexus.WithHandlerContext(ctx, nexus.HandlerInfo{
+		Service:   req.GetService(),
+		Operation: req.GetOperation(),
+		Header:    header,
+	})
 	var err error
 	var panic bool
 	func() {
@@ -307,20 +337,25 @@ func (h *nexusTaskHandler) handleCancelOperation(ctx context.Context, nctx *Nexu
 					err = fmt.Errorf("panic: %v", recovered)
 				}
 
-				nctx.Log.Error("Panic captured while handling Nexus task", tagStackTrace, string(debug.Stack()), tagError, err)
+				nctx.log.Error("Panic captured while handling Nexus task", tagStackTrace, string(debug.Stack()), tagError, err)
 			}
 		}()
-		err = h.nexusHandler.CancelOperation(ctx, req.GetService(), req.GetOperation(), req.GetOperationId(), cancelOptions)
+		token := req.GetOperationToken()
+		if token == "" {
+			// Support servers older than 1.27.0.
+			token = req.GetOperationId()
+		}
+		err = h.nexusHandler.CancelOperation(ctx, req.GetService(), req.GetOperation(), token, cancelOptions)
 	}()
 	if ctx.Err() != nil {
 		if !panic {
-			nctx.Log.Error("Context error while processing Nexus task", tagError, ctx.Err())
+			nctx.log.Error("Context error while processing Nexus task", tagError, ctx.Err())
 		}
 		return nil, nil, errNexusTaskTimeout
 	}
 	if err != nil {
 		if !panic {
-			nctx.Log.Error("Handler returned error while processing Nexus task", tagError, err)
+			nctx.log.Error("Handler returned error while processing Nexus task", tagError, err)
 		}
 		err = convertKnownErrors(err)
 		var handlerErr *nexus.HandlerError
@@ -388,11 +423,12 @@ func (h *nexusTaskHandler) newNexusOperationContext(response *workflowservice.Po
 	metricsHandler := h.metricsHandler.WithTags(metrics.NexusTags(service, operation, h.taskQueueName))
 
 	return &NexusOperationContext{
-		Client:         h.client,
+		client:         h.client,
 		Namespace:      h.namespace,
 		TaskQueue:      h.taskQueueName,
-		MetricsHandler: metricsHandler,
-		Log:            logger,
+		metricsHandler: metricsHandler,
+		log:            logger,
+		registry:       h.registry,
 	}, nil
 }
 
@@ -440,9 +476,17 @@ func (h *nexusTaskHandler) nexusHandlerErrorToProto(handlerErr *nexus.HandlerErr
 	if err != nil {
 		return nil, err
 	}
+	var retryBehavior enumspb.NexusHandlerErrorRetryBehavior
+	switch handlerErr.RetryBehavior {
+	case nexus.HandlerErrorRetryBehaviorRetryable:
+		retryBehavior = enumspb.NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_RETRYABLE
+	case nexus.HandlerErrorRetryBehaviorNonRetryable:
+		retryBehavior = enumspb.NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_NON_RETRYABLE
+	}
 	return &nexuspb.HandlerError{
-		ErrorType: string(handlerErr.Type),
-		Failure:   failure,
+		ErrorType:     string(handlerErr.Type),
+		Failure:       failure,
+		RetryBehavior: retryBehavior,
 	}, nil
 }
 
@@ -465,16 +509,13 @@ var emptyReaderNopCloser = io.NopCloser(bytes.NewReader([]byte{}))
 
 // convertKnownErrors converts known errors to corresponding Nexus HandlerError.
 func convertKnownErrors(err error) error {
-	// Handle common errors returned from various client methods.
-	if workflowErr, ok := err.(*WorkflowExecutionError); ok {
-		return nexus.NewFailedOperationError(workflowErr)
-	}
-	if queryRejectedErr, ok := err.(*QueryRejectedError); ok {
-		return nexus.NewFailedOperationError(queryRejectedErr)
-	}
 	// Not using errors.As to be consistent ApplicationError checking with the rest of the SDK.
 	if appErr, ok := err.(*ApplicationError); ok && appErr.NonRetryable() {
-		return nexus.NewFailedOperationError(appErr)
+		return &nexus.HandlerError{
+			Type:          nexus.HandlerErrorTypeInternal,
+			Cause:         appErr,
+			RetryBehavior: nexus.HandlerErrorRetryBehaviorNonRetryable,
+		}
 	}
 	return convertServiceError(err)
 }
@@ -498,8 +539,10 @@ func convertServiceError(err error) error {
 	st = stGetter.Status()
 
 	switch st.Code() {
-	case codes.AlreadyExists, codes.InvalidArgument, codes.FailedPrecondition, codes.OutOfRange:
+	case codes.InvalidArgument:
 		return &nexus.HandlerError{Type: nexus.HandlerErrorTypeBadRequest, Cause: err}
+	case codes.AlreadyExists, codes.FailedPrecondition, codes.OutOfRange:
+		return &nexus.HandlerError{Type: nexus.HandlerErrorTypeInternal, Cause: err, RetryBehavior: nexus.HandlerErrorRetryBehaviorNonRetryable}
 	case codes.Aborted, codes.Unavailable:
 		return &nexus.HandlerError{Type: nexus.HandlerErrorTypeUnavailable, Cause: err}
 	case codes.Canceled, codes.DataLoss, codes.Internal, codes.Unknown, codes.Unauthenticated, codes.PermissionDenied:

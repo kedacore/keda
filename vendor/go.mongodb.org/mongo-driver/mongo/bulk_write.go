@@ -39,6 +39,7 @@ type bulkWrite struct {
 	writeConcern             *writeconcern.WriteConcern
 	result                   BulkWriteResult
 	let                      interface{}
+	bypassEmptyTsReplacement *bool
 }
 
 func (bw *bulkWrite) execute(ctx context.Context) error {
@@ -206,6 +207,10 @@ func (bw *bulkWrite) runInsert(ctx context.Context, batch bulkWriteBatch) (opera
 		retry = driver.RetryOncePerCommand
 	}
 	op = op.Retry(retry)
+
+	if bw.bypassEmptyTsReplacement != nil {
+		op.BypassEmptyTsReplacement(*bw.bypassEmptyTsReplacement)
+	}
 
 	err := op.Execute(ctx)
 
@@ -414,6 +419,10 @@ func (bw *bulkWrite) runUpdate(ctx context.Context, batch bulkWriteBatch) (opera
 		retry = driver.RetryOncePerCommand
 	}
 	op = op.Retry(retry)
+
+	if bw.bypassEmptyTsReplacement != nil {
+		op.BypassEmptyTsReplacement(*bw.bypassEmptyTsReplacement)
+	}
 
 	err := op.Execute(ctx)
 

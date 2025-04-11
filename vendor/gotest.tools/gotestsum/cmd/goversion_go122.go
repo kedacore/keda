@@ -9,5 +9,5 @@ import (
 )
 
 func isGoVersionAtLeast(v string) bool {
-	return goversion.Compare(runtime.Version(), v) < 0
+	return goversion.Compare(v, runtime.Version()) < 0
 }

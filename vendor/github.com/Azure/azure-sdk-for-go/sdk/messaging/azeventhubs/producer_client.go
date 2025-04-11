@@ -31,6 +31,9 @@ type ProducerClientOptions struct {
 	// Application ID that will be passed to the namespace.
 	ApplicationID string
 
+	// A custom endpoint address that can be used when establishing the connection to the service.
+	CustomEndpoint string
+
 	// NewWebSocketConn is a function that can create a net.Conn for use with websockets.
 	// For an example, see ExampleNewClient_usingWebsockets() function in example_client_test.go.
 	NewWebSocketConn func(ctx context.Context, params WebSocketConnParams) (net.Conn, error)
@@ -259,6 +262,10 @@ func newProducerClientImpl(creds producerClientCreds, options *ProducerClientOpt
 
 		if options.ApplicationID != "" {
 			nsOptions = append(nsOptions, internal.NamespaceWithUserAgent(options.ApplicationID))
+		}
+
+		if options.CustomEndpoint != "" {
+			nsOptions = append(nsOptions, internal.NamespaceWithCustomEndpoint(options.CustomEndpoint))
 		}
 
 		nsOptions = append(nsOptions, internal.NamespaceWithRetryOptions(options.RetryOptions))

@@ -77,6 +77,8 @@ var AiWorkflowsDestinationTypeTypes = struct {
 	EVENT_BRIDGE AiWorkflowsDestinationType
 	// Jira Destination Configuration type
 	JIRA AiWorkflowsDestinationType
+	// Microsoft Teams Destination Configuration type
+	MICROSOFT_TEAMS AiWorkflowsDestinationType
 	// New Relic Mobile Push Destination Configuration type
 	MOBILE_PUSH AiWorkflowsDestinationType
 	// Pager Duty Destination Configuration type
@@ -102,6 +104,8 @@ var AiWorkflowsDestinationTypeTypes = struct {
 	EVENT_BRIDGE: "EVENT_BRIDGE",
 	// Jira Destination Configuration type
 	JIRA: "JIRA",
+	// Microsoft Teams Destination Configuration type
+	MICROSOFT_TEAMS: "MICROSOFT_TEAMS",
 	// New Relic Mobile Push Destination Configuration type
 	MOBILE_PUSH: "MOBILE_PUSH",
 	// Pager Duty Destination Configuration type
@@ -173,6 +177,8 @@ type AiWorkflowsNotificationTrigger string
 var AiWorkflowsNotificationTriggerTypes = struct {
 	// Send a notification when the issue is acknowledged
 	ACKNOWLEDGED AiWorkflowsNotificationTrigger
+	// Send a notification when the issue is being investigated
+	INVESTIGATING AiWorkflowsNotificationTrigger
 	// Send a notification when the issue is activated
 	ACTIVATED AiWorkflowsNotificationTrigger
 	// Send a notification when the issue is closed
@@ -184,6 +190,8 @@ var AiWorkflowsNotificationTriggerTypes = struct {
 }{
 	// Send a notification when the issue is acknowledged
 	ACKNOWLEDGED: "ACKNOWLEDGED",
+	// Send a notification when the issue is being investigated
+	INVESTIGATING: "INVESTIGATING",
 	// Send a notification when the issue is activated
 	ACTIVATED: "ACTIVATED",
 	// Send a notification when the issue is closed

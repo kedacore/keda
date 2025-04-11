@@ -281,6 +281,7 @@ func (t *TestActivityEnvironment) SetWorkerStopChannel(c chan struct{}) {
 // SetOnActivityHeartbeatListener sets a listener that will be called when
 // activity heartbeat is called. ActivityInfo is defined in internal package,
 // use public type activity.Info instead.
+// Note: The provided listener may be called concurrently.
 //
 // Note: Due to internal caching by the activity system, this may not get called
 // for every heartbeat recorded. This is only called when the heartbeat would be
@@ -606,14 +607,14 @@ func (e *TestWorkflowEnvironment) OnUpsertMemo(attributes interface{}) *MockCall
 //		mock.Anything, // NexusOperationOptions
 //	).Return(
 //		&nexus.HandlerStartOperationResultAsync{
-//			OperationID: "hello-operation-id",
+//			OperationToken: "hello-operation-token",
 //		},
 //		nil,
 //	)
 //	t.RegisterNexusAsyncOperationCompletion(
 //		"service-name",
 //		"hello-operation",
-//		"hello-operation-id",
+//		"hello-operation-token",
 //		HelloOutput{Message: "Hello Temporal"},
 //		nil,
 //		1*time.Second,
@@ -694,7 +695,7 @@ func (e *TestWorkflowEnvironment) OnNexusOperation(
 func (e *TestWorkflowEnvironment) RegisterNexusAsyncOperationCompletion(
 	service string,
 	operation string,
-	operationID string,
+	token string,
 	result any,
 	err error,
 	delay time.Duration,
@@ -702,7 +703,7 @@ func (e *TestWorkflowEnvironment) RegisterNexusAsyncOperationCompletion(
 	return e.impl.RegisterNexusAsyncOperationCompletion(
 		service,
 		operation,
-		operationID,
+		token,
 		result,
 		err,
 		delay,
@@ -934,6 +935,7 @@ func (e *TestWorkflowEnvironment) SetOnActivityCanceledListener(
 
 // SetOnActivityHeartbeatListener sets a listener that will be called when activity heartbeat.
 // Note: ActivityInfo is defined in internal package, use public type activity.Info instead.
+// Note: The provided listener may be called concurrently.
 //
 // Note: Due to internal caching by the activity system, this may not get called
 // for every heartbeat recorded. This is only called when the heartbeat would be
@@ -1121,10 +1123,12 @@ func (e *TestWorkflowEnvironment) UpdateWorkflow(updateName, updateID string, uc
 }
 
 // UpdateWorkflowByID sends an update to a running workflow by its ID.
-func (e *TestWorkflowEnvironment) UpdateWorkflowByID(workflowID, updateName, updateID string, uc UpdateCallbacks, args interface{}) error {
-	return e.impl.updateWorkflowByID(workflowID, updateName, updateID, uc, args)
+func (e *TestWorkflowEnvironment) UpdateWorkflowByID(workflowID, updateName, updateID string, uc UpdateCallbacks, args ...interface{}) error {
+	return e.impl.updateWorkflowByID(workflowID, updateName, updateID, uc, args...)
 }
 
+// UpdateWorkflowNoRejection is a convenience function that handles a common test scenario of only validating
+// that an update isn't rejected.
 func (e *TestWorkflowEnvironment) UpdateWorkflowNoRejection(updateName string, updateID string, t mock.TestingT, args ...interface{}) {
 	uc := &TestUpdateCallback{
 		OnReject: func(err error) {
@@ -1133,7 +1137,8 @@ func (e *TestWorkflowEnvironment) UpdateWorkflowNoRejection(updateName string, u
 		OnAccept:   func() {},
 		OnComplete: func(interface{}, error) {},
 	}
-	e.UpdateWorkflow(updateName, updateID, uc, args)
+
+	e.UpdateWorkflow(updateName, updateID, uc, args...)
 }
 
 // QueryWorkflowByID queries a child workflow by its ID and returns the result synchronously

@@ -1,0 +1,21 @@
+run:
+  timeout: 10m
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - promlinter
+    - revive
+    - staticcheck
+    - unconvert
+    - unused
