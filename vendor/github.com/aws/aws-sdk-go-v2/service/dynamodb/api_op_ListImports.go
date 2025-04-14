@@ -43,6 +43,12 @@ type ListImportsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *ListImportsInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableArn
+
+}
+
 type ListImportsOutput struct {
 
 	//  A list of ImportSummary objects.
@@ -120,6 +126,12 @@ func (c *Client) addOperationListImportsMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListImports(options.Region), middleware.Before); err != nil {

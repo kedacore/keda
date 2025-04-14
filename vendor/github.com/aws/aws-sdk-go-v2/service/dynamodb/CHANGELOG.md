@@ -1,3 +1,77 @@
+# v1.42.1 (2025-04-03)
+
+* No change notes available for this release.
+
+# v1.42.0 (2025-03-13)
+
+* **Feature**: Generate account endpoints for DynamoDB requests using ARN-sourced account ID when available
+
+# v1.41.1 (2025-03-04.2)
+
+* **Bug Fix**: Add assurance test for operation order.
+
+# v1.41.0 (2025-02-27)
+
+* **Feature**: Track credential providers via User-Agent Feature ids
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.2 (2025-02-18)
+
+* **Bug Fix**: Add missing AccountIDEndpointMode binding to endpoint resolution.
+* **Bug Fix**: Bump go version to 1.22
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.1 (2025-02-11)
+
+* No change notes available for this release.
+
+# v1.40.0 (2025-02-05)
+
+* **Feature**: Track AccountID endpoint mode in user-agent.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.9 (2025-02-04)
+
+* No change notes available for this release.
+
+# v1.39.8 (2025-01-31)
+
+* **Dependency Update**: Switch to code-generated waiter matchers, removing the dependency on go-jmespath.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.7 (2025-01-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.6 (2025-01-24)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.22.2.
+
+# v1.39.5 (2025-01-17)
+
+* **Bug Fix**: Fix bug where credentials weren't refreshed during retry loop.
+
+# v1.39.4 (2025-01-15)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.3 (2025-01-14)
+
+* **Bug Fix**: Fix issue where waiters were not failing on unmatched errors as they should. This may have breaking behavioral changes for users in fringe cases. See [this announcement](https://github.com/aws/aws-sdk-go-v2/discussions/2954) for more information.
+
+# v1.39.2 (2025-01-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.1 (2025-01-08)
+
+* No change notes available for this release.
+
+# v1.39.0 (2025-01-07)
+
+* **Feature**: This release makes Amazon DynamoDB point-in-time-recovery (PITR) to be configurable. You can set PITR recovery period for each table individually to between 1 and 35 days.
+
 # v1.38.1 (2024-12-19)
 
 * **Dependency Update**: Updated to the latest SDK module versions

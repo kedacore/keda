@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,6 +33,12 @@ type HTTPClientOptions struct {
 	// A [FailureConverter] to convert a [Failure] instance to and from an [error]. Defaults to
 	// [DefaultFailureConverter].
 	FailureConverter FailureConverter
+	// UseOperationID instructs the client to use an older format of the protocol where operation ID is sent
+	// as part of the URL path.
+	// This flag will be removed in a future release.
+	//
+	// NOTE: Experimental
+	UseOperationID bool
 }
 
 // User-Agent header set on HTTP requests.
@@ -41,7 +48,7 @@ const headerUserAgent = "User-Agent"
 
 var errEmptyOperationName = errors.New("empty operation name")
 
-var errEmptyOperationID = errors.New("empty operation ID")
+var errEmptyOperationToken = errors.New("empty operation token")
 
 var errOperationWaitTimeout = errors.New("operation wait timeout")
 
@@ -154,7 +161,7 @@ type ClientStartOperationResult[T any] struct {
 //     such as getting its result.
 //
 //  3. The operation was unsuccessful. The returned result will be nil and error will be an
-//     [UnsuccessfulOperationError].
+//     [OperationError].
 //
 //  4. Any other error.
 func (c *HTTPClient) StartOperation(
@@ -219,6 +226,25 @@ func (c *HTTPClient) StartOperation(
 	if err != nil {
 		return nil, err
 	}
+
+	links, err := getLinksFromHeader(response.Header)
+	if err != nil {
+		// Have to read body here to check if it is a Failure.
+		body, err := readAndReplaceBody(response)
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf(
+			"%w: %w",
+			newUnexpectedResponseError(
+				fmt.Sprintf("invalid links header: %q", response.Header.Values(headerLink)),
+				response,
+				body,
+			),
+			err,
+		)
+	}
+
 	// Do not close response body here to allow successful result to read it.
 	if response.StatusCode == http.StatusOK {
 		return &ClientStartOperationResult[*LazyValue]{
@@ -229,6 +255,7 @@ func (c *HTTPClient) StartOperation(
 					prefixStrippedHTTPHeaderToNexusHeader(response.Header, "content-"),
 				},
 			},
+			Links: links,
 		}, nil
 	}
 
@@ -247,25 +274,16 @@ func (c *HTTPClient) StartOperation(
 		if info.State != OperationStateRunning {
 			return nil, newUnexpectedResponseError(fmt.Sprintf("invalid operation state in response info: %q", info.State), response, body)
 		}
-		links, err := getLinksFromHeader(response.Header)
+		if info.Token == "" && info.ID != "" {
+			info.Token = info.ID
+		}
+		handle, err := c.NewHandle(operation, info.Token)
 		if err != nil {
-			return nil, fmt.Errorf(
-				"%w: %w",
-				newUnexpectedResponseError(
-					fmt.Sprintf("invalid links header: %q", response.Header.Values(headerLink)),
-					response,
-					body,
-				),
-				err,
-			)
+			return nil, newUnexpectedResponseError("empty operation token in response", response, body)
 		}
 		return &ClientStartOperationResult[*LazyValue]{
-			Pending: &OperationHandle[*LazyValue]{
-				Operation: operation,
-				ID:        info.ID,
-				client:    c,
-			},
-			Links: links,
+			Pending: handle,
+			Links:   links,
 		}, nil
 	case statusOperationFailed:
 		state, err := getUnsuccessfulStateFromHeader(response, body)
@@ -279,7 +297,7 @@ func (c *HTTPClient) StartOperation(
 		}
 
 		failureErr := c.options.FailureConverter.FailureToError(failure)
-		return nil, &UnsuccessfulOperationError{
+		return nil, &OperationError{
 			State: state,
 			Cause: failureErr,
 		}
@@ -357,16 +375,16 @@ func (c *HTTPClient) ExecuteOperation(ctx context.Context, operation string, inp
 	return handle.GetResult(ctx, gro)
 }
 
-// NewHandle gets a handle to an asynchronous operation by name and ID.
+// NewHandle gets a handle to an asynchronous operation by name and token.
 // Does not incur a trip to the server.
-// Fails if provided an empty operation or ID.
-func (c *HTTPClient) NewHandle(operation string, operationID string) (*OperationHandle[*LazyValue], error) {
+// Fails if provided an empty operation or token.
+func (c *HTTPClient) NewHandle(operation string, token string) (*OperationHandle[*LazyValue], error) {
 	var es []error
 	if operation == "" {
 		es = append(es, errEmptyOperationName)
 	}
-	if operationID == "" {
-		es = append(es, errEmptyOperationID)
+	if token == "" {
+		es = append(es, errEmptyOperationToken)
 	}
 	if len(es) > 0 {
 		return nil, errors.Join(es...)
@@ -374,7 +392,8 @@ func (c *HTTPClient) NewHandle(operation string, operationID string) (*Operation
 	return &OperationHandle[*LazyValue]{
 		client:    c,
 		Operation: operation,
-		ID:        operationID,
+		ID:        token, // Duplicate token as ID for the deprecation period.
+		Token:     token,
 	}, nil
 }
 
@@ -426,34 +445,72 @@ func (c *HTTPClient) failureErrorFromResponseOrDefault(response *http.Response, 
 func (c *HTTPClient) bestEffortHandlerErrorFromResponse(response *http.Response, body []byte) error {
 	switch response.StatusCode {
 	case http.StatusBadRequest:
-		failureErr := c.failureErrorFromResponseOrDefault(response, body, "bad request")
-		return &HandlerError{Type: HandlerErrorTypeBadRequest, Cause: failureErr}
+		return &HandlerError{
+			Type:          HandlerErrorTypeBadRequest,
+			Cause:         c.failureErrorFromResponseOrDefault(response, body, "bad request"),
+			RetryBehavior: retryBehaviorFromHeader(response.Header),
+		}
 	case http.StatusUnauthorized:
-		failureErr := c.failureErrorFromResponseOrDefault(response, body, "unauthenticated")
-		return &HandlerError{Type: HandlerErrorTypeUnauthenticated, Cause: failureErr}
+		return &HandlerError{
+			Type:          HandlerErrorTypeUnauthenticated,
+			Cause:         c.failureErrorFromResponseOrDefault(response, body, "unauthenticated"),
+			RetryBehavior: retryBehaviorFromHeader(response.Header),
+		}
 	case http.StatusForbidden:
-		failureErr := c.failureErrorFromResponseOrDefault(response, body, "unauthorized")
-		return &HandlerError{Type: HandlerErrorTypeUnauthorized, Cause: failureErr}
+		return &HandlerError{
+			Type:          HandlerErrorTypeUnauthorized,
+			Cause:         c.failureErrorFromResponseOrDefault(response, body, "unauthorized"),
+			RetryBehavior: retryBehaviorFromHeader(response.Header),
+		}
 	case http.StatusNotFound:
-		failureErr := c.failureErrorFromResponseOrDefault(response, body, "not found")
-		return &HandlerError{Type: HandlerErrorTypeNotFound, Cause: failureErr}
+		return &HandlerError{
+			Type:          HandlerErrorTypeNotFound,
+			Cause:         c.failureErrorFromResponseOrDefault(response, body, "not found"),
+			RetryBehavior: retryBehaviorFromHeader(response.Header),
+		}
 	case http.StatusTooManyRequests:
-		failureErr := c.failureErrorFromResponseOrDefault(response, body, "resource exhausted")
-		return &HandlerError{Type: HandlerErrorTypeResourceExhausted, Cause: failureErr}
+		return &HandlerError{
+			Type:          HandlerErrorTypeResourceExhausted,
+			Cause:         c.failureErrorFromResponseOrDefault(response, body, "resource exhausted"),
+			RetryBehavior: retryBehaviorFromHeader(response.Header),
+		}
 	case http.StatusInternalServerError:
-		failureErr := c.failureErrorFromResponseOrDefault(response, body, "internal error")
-		return &HandlerError{Type: HandlerErrorTypeInternal, Cause: failureErr}
+		return &HandlerError{
+			Type:          HandlerErrorTypeInternal,
+			Cause:         c.failureErrorFromResponseOrDefault(response, body, "internal error"),
+			RetryBehavior: retryBehaviorFromHeader(response.Header),
+		}
 	case http.StatusNotImplemented:
-		failureErr := c.failureErrorFromResponseOrDefault(response, body, "not implemented")
-		return &HandlerError{Type: HandlerErrorTypeNotImplemented, Cause: failureErr}
+		return &HandlerError{
+			Type:          HandlerErrorTypeNotImplemented,
+			Cause:         c.failureErrorFromResponseOrDefault(response, body, "not implemented"),
+			RetryBehavior: retryBehaviorFromHeader(response.Header),
+		}
 	case http.StatusServiceUnavailable:
-		failureErr := c.failureErrorFromResponseOrDefault(response, body, "unavailable")
-		return &HandlerError{Type: HandlerErrorTypeUnavailable, Cause: failureErr}
+		return &HandlerError{
+			Type:          HandlerErrorTypeUnavailable,
+			Cause:         c.failureErrorFromResponseOrDefault(response, body, "unavailable"),
+			RetryBehavior: retryBehaviorFromHeader(response.Header),
+		}
 	case StatusUpstreamTimeout:
-		failureErr := c.failureErrorFromResponseOrDefault(response, body, "upstream timeout")
-		return &HandlerError{Type: HandlerErrorTypeUpstreamTimeout, Cause: failureErr}
+		return &HandlerError{
+			Type:          HandlerErrorTypeUpstreamTimeout,
+			Cause:         c.failureErrorFromResponseOrDefault(response, body, "upstream timeout"),
+			RetryBehavior: retryBehaviorFromHeader(response.Header),
+		}
 	default:
 		return newUnexpectedResponseError(fmt.Sprintf("unexpected response status: %q", response.Status), response, body)
+	}
+}
+
+func retryBehaviorFromHeader(header http.Header) HandlerErrorRetryBehavior {
+	switch strings.ToLower(header.Get(headerRetryable)) {
+	case "true":
+		return HandlerErrorRetryBehaviorRetryable
+	case "false":
+		return HandlerErrorRetryBehaviorNonRetryable
+	default:
+		return HandlerErrorRetryBehaviorUnspecified
 	}
 }
 
