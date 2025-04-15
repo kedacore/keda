@@ -72,7 +72,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-**Temporal Scaler**: Fix Temporal Scaler does not work properly with API Key authentication against Temporal Cloud as TLS is not enabled on the client ([#6703](https://github.com/kedacore/keda/issues/6703))
+- **General**: Admission Webhook blocks ScaledObject without metricType with fallback ([#6696](https://github.com/kedacore/keda/issues/6696))
+- **Temporal Scaler**: Fix Temporal Scaler does not work properly with API Key authentication against Temporal Cloud as TLS is not enabled on the client ([#6703](https://github.com/kedacore/keda/issues/6703))
 
 ### Deprecations
 
