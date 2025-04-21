@@ -36,7 +36,7 @@ var validSumologicMetadata = map[string]string{
 	"quantization":        "1",
 	"activationThreshold": "5",
 	"threshold":           "1",
-	"queryAggregator":     "average",
+	"queryAggregator":     "Avg",
 }
 
 var validSumologicMetricsMetadata = map[string]string{
@@ -50,7 +50,7 @@ var validSumologicMetricsMetadata = map[string]string{
 	"quantization":        "1",
 	"activationThreshold": "5",
 	"threshold":           "1",
-	"queryAggregator":     "average",
+	"queryAggregator":     "Avg",
 	"rollup":              "Sum",
 }
 
