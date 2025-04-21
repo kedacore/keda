@@ -269,7 +269,7 @@ func (c *Client) GetMultiMetricsSearchResult(
 	}
 
 	if selectedResultSet.RowID == "" {
-		return nil, errors.New("no query result with matching resultQueryRowId found in metrics query response")
+		return nil, fmt.Errorf("no query result with matching resultQueryRowId %s found in metrics query response", resultQueryRowId)
 	}
 
 	if len(selectedResultSet.TimeSeriesList.TimeSeries) == 0 {
