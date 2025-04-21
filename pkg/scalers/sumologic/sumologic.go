@@ -138,7 +138,13 @@ func (c *Client) makeRequest(method, url string, payload []byte) ([]byte, error)
 	return respBody, nil
 }
 
-func (c *Client) GetLogSearchResult(query string, timerange time.Duration, dimension, tz, resultField string) (*float64, error) {
+func (c *Client) GetLogSearchResult(
+	query string,
+	timerange time.Duration,
+	dimension,
+	tz,
+	resultField string,
+) (*float64, error) {
 	from, to, err := c.getTimerange(tz, timerange)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse time range: %v", err)
@@ -177,7 +183,14 @@ func (c *Client) GetLogSearchResult(query string, timerange time.Duration, dimen
 	return result, nil
 }
 
-func (c *Client) GetMetricsSearchResult(query string, quantization, timerange time.Duration, dimension, tz, rollup string) (*float64, error) {
+func (c *Client) GetMetricsSearchResult(
+	query string,
+	quantization time.Duration,
+	rollup string,
+	timerange time.Duration,
+	tz string,
+	dimension string,
+) (*float64, error) {
 	from, to, err := c.getTimerange(tz, timerange)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse time range: %w", err)
@@ -218,6 +231,68 @@ func (c *Client) GetMetricsSearchResult(query string, quantization, timerange ti
 	return result, nil
 }
 
+func (c *Client) GetMultiMetricsSearchResult(
+	queries map[string]string,
+	resultQueryRowId string,
+	quantization time.Duration,
+	rollup string,
+	timerange time.Duration,
+	tz string,
+	dimension string,
+) (*float64, error) {
+	from, to, err := c.getTimerange(tz, timerange)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse time range: %w", err)
+	}
+
+	resp, err := c.createMultiMetricsQuery(queries, quantization, from, to, rollup)
+	if err != nil {
+		return nil, fmt.Errorf("error executing metrics query: %w", err)
+	}
+
+	parsedResp, err := c.parseMetricsQueryResponse(resp)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing metrics query response: %w", err)
+	}
+
+	if parsedResp == nil || len(parsedResp.QueryResult) == 0 {
+		return nil, errors.New("metrics query response is empty")
+	}
+
+	var selectedResultSet QueryResult
+
+	for _, queryResult := range parsedResp.QueryResult {
+		if queryResult.RowID == resultQueryRowId {
+			selectedResultSet = queryResult
+			break
+		}
+	}
+
+	if selectedResultSet.RowID == "" {
+		return nil, errors.New("no query result with matching resultQueryRowId found in metrics query response")
+	}
+
+	if len(selectedResultSet.TimeSeriesList.TimeSeries) == 0 {
+		return nil, errors.New("no time series data found in metrics query response")
+	}
+
+	if len(selectedResultSet.TimeSeriesList.TimeSeries) > 1 {
+		return nil, errors.New("multiple time series results found, only single time series queries are supported")
+	}
+
+	timeseries := selectedResultSet.TimeSeriesList.TimeSeries[0].Points
+	if len(timeseries.Timestamps) == 0 || len(timeseries.Values) == 0 {
+		return nil, errors.New("metrics query returned empty timestamps or values")
+	}
+
+	result, err := c.metricsStats(timeseries.Values, dimension)
+	if err != nil {
+		return nil, fmt.Errorf("error computing metric stats: %w", err)
+	}
+
+	return result, nil
+}
+
 func (c *Client) Close() error {
 	if closer, ok := c.client.Transport.(io.Closer); ok {
 		return closer.Close()
@@ -225,14 +300,51 @@ func (c *Client) Close() error {
 	return nil
 }
 
-func (c *Client) GetQueryResult(queryType, query string, quantization, timerange time.Duration, dimension, timezone, resultField, rollup string) (float64, error) {
+func (c *Client) GetQueryResult(
+	queryType string,
+	query string,
+	queries map[string]string,
+	resultQueryRowId string,
+	quantization time.Duration,
+	rollup string,
+	resultField string,
+	timerange time.Duration,
+	timezone string,
+	queryAggregator string,
+) (float64, error) {
 	var result *float64
 	var err error
 
 	if queryType == "logs" {
-		result, err = c.GetLogSearchResult(query, timerange, dimension, timezone, resultField)
+		result, err = c.GetLogSearchResult(
+			query,
+			timerange,
+			queryAggregator,
+			timezone,
+			resultField,
+		)
 	} else {
-		result, err = c.GetMetricsSearchResult(query, quantization, timerange, dimension, timezone, rollup)
+		if query != "" {
+			result, err = c.GetMetricsSearchResult(
+				query,
+				quantization,
+				rollup,
+				timerange,
+				timezone,
+				queryAggregator,
+			)
+		} else {
+			result, err = c.GetMultiMetricsSearchResult(
+				queries,
+				resultQueryRowId,
+				quantization,
+				rollup,
+				timerange,
+				timezone,
+				queryAggregator,
+			)
+		}
+
 	}
 
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -15,6 +16,11 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
+const (
+	defaultTimezone         = "UTC"
+	multiMetricsQueryPrefix = "query."
+)
+
 type sumologicScaler struct {
 	client     *sumologic.Client
 	metricType v2.MetricTargetType
@@ -23,20 +29,22 @@ type sumologicScaler struct {
 }
 
 type sumologicMetadata struct {
-	accessID            string        `keda:"name=access_id,       order=authParams"`
-	accessKey           string        `keda:"name=access_key,      order=authParams"`
-	host                string        `keda:"name=host,            order=triggerMetadata"`
-	unsafeSsl           bool          `keda:"name=unsafeSsl,       order=triggerMetadata, optional"`
-	query               string        `keda:"name=query,           order=triggerMetadata"`
-	queryType           string        `keda:"name=queryType,       order=triggerMetadata"`
-	resultField         string        `keda:"name=resultField,     order=triggerMetadata"`           // Only for logs queries
-	rollup              string        `keda:"name=rollup,          order=triggerMetadata, optional"` // Only for metrics queries
-	quantization        time.Duration `keda:"name=quantization,     order=triggerMetadata"`          // Only for metrics queries
-	timerange           time.Duration `keda:"name=timerange,       order=triggerMetadata"`
-	timezone            string        `keda:"name=timezone,        order=triggerMetadata, optional"`
-	activationThreshold float64       `keda:"name=activationThreshold, order=triggerMetadata, default=0"`
-	queryAggregator     string        `keda:"name=queryAggregator, order=triggerMetadata, optional"`
-	threshold           float64       `keda:"name=threshold,       order=triggerMetadata"`
+	accessID            string            `keda:"name=access_id,           order=authParams"`
+	accessKey           string            `keda:"name=access_key,          order=authParams"`
+	host                string            `keda:"name=host,                order=triggerMetadata"`
+	unsafeSsl           bool              `keda:"name=unsafeSsl,           order=triggerMetadata, optional"`
+	queryType           string            `keda:"name=queryType,           order=triggerMetadata"`
+	query               string            `keda:"name=query,               order=triggerMetadata"`
+	queries             map[string]string `keda:"name=query.*,             order=triggerMetadata"`           // Only for metrics queries
+	resultQueryRowId    string            `keda:"name=query.*,             order=triggerMetadata"`           // Only for metrics queries
+	quantization        time.Duration     `keda:"name=quantization,        order=triggerMetadata"`           // Only for metrics queries
+	rollup              string            `keda:"name=rollup,              order=triggerMetadata, optional"` // Only for metrics queries
+	resultField         string            `keda:"name=resultField,         order=triggerMetadata"`           // Only for logs queries
+	timerange           time.Duration     `keda:"name=timerange,           order=triggerMetadata"`
+	timezone            string            `keda:"name=timezone,            order=triggerMetadata, optional"`
+	activationThreshold float64           `keda:"name=activationThreshold, order=triggerMetadata, default=0"`
+	queryAggregator     string            `keda:"name=queryAggregator,     order=triggerMetadata, optional"`
+	threshold           float64           `keda:"name=threshold,           order=triggerMetadata"`
 	triggerIndex        int
 }
 
@@ -74,36 +82,45 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, 
 	meta := sumologicMetadata{}
 	meta.triggerIndex = config.TriggerIndex
 
+	if config.AuthParams["accessID"] == "" {
+		return nil, errors.New("missing required auth params: accessID")
+	}
+	meta.accessID = config.AuthParams["accessID"]
+
+	if config.AuthParams["accessKey"] == "" {
+		return nil, errors.New("missing required auth params: accessKey")
+	}
+	meta.accessKey = config.AuthParams["accessKey"]
+
 	if config.TriggerMetadata["host"] == "" {
 		return nil, errors.New("missing required metadata: host")
 	}
 	meta.host = config.TriggerMetadata["host"]
 
-	if config.AuthParams["accessID"] == "" {
-		return nil, errors.New("missing required metadata: accessID")
-	}
-	meta.accessID = config.AuthParams["accessID"]
-
-	if config.AuthParams["accessKey"] == "" {
-		return nil, errors.New("missing required metadata: accessKey")
-	}
-	meta.accessKey = config.AuthParams["accessKey"]
-
-	if config.TriggerMetadata["query"] == "" {
-		return nil, errors.New("missing required metadata: query")
-	}
-	meta.query = config.TriggerMetadata["query"]
-
 	if config.TriggerMetadata["queryType"] == "" {
-		return nil, errors.New("missing required metadata: type (must be 'logs' or 'metrics')")
+		return nil, errors.New("missing required metadata: queryType")
 	}
 	meta.queryType = config.TriggerMetadata["queryType"]
 
 	if meta.queryType != "logs" && meta.queryType != "metrics" {
-		return nil, fmt.Errorf("invalid type: %s, must be 'logs' or 'metrics'", meta.queryType)
+		return nil, fmt.Errorf("invalid queryType: %s, must be 'logs' or 'metrics'", meta.queryType)
+	}
+
+	query := config.TriggerMetadata["query"]
+	queries, err := parseMultiMetricsQueries(config.TriggerMetadata)
+	if err != nil {
+		return nil, err
 	}
 
 	if meta.queryType == "logs" {
+		if query == "" {
+			return nil, errors.New("missing required metadata: query")
+		}
+		if len(queries) != 0 {
+			return nil, errors.New("invalid metadata, query.<RowId> not supported for logs queryType")
+		}
+		meta.query = query
+
 		if resultField, exists := config.TriggerMetadata["resultField"]; !exists || resultField == "" {
 			return nil, fmt.Errorf("resultField is required when queryType is 'logs'")
 		}
@@ -111,6 +128,28 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, 
 	}
 
 	if meta.queryType == "metrics" {
+		if query == "" && len(queries) == 0 {
+			return nil, errors.New("missing metadata, please define either of query or query.<RowId> for metrics queryType")
+		} else if query != "" && len(queries) != 0 {
+			return nil, errors.New("incorrect metadata, please only define either query or query.<RowId> for metrics queryType, not both")
+		} else if query != "" {
+			meta.query = query
+		} else {
+			meta.queries = queries
+			if config.TriggerMetadata["resultQueryRowId"] == "" {
+				return nil, errors.New("missing required metadata: resultQueryRowId")
+			}
+		}
+
+		if config.TriggerMetadata["quantization"] == "" {
+			return nil, errors.New("missing required metadata: quantization for metrics queryType")
+		}
+		quantization, err := strconv.Atoi(config.TriggerMetadata["quantization"])
+		if err != nil {
+			return nil, fmt.Errorf("invalid metadata, quantization: %w", err)
+		}
+		meta.quantization = time.Duration(quantization) * time.Second
+
 		if rollup, exists := config.TriggerMetadata["rollup"]; exists {
 			if err := sumologic.IsValidRollupType(rollup); err != nil {
 				return nil, err
@@ -131,20 +170,9 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, 
 	meta.timerange = time.Duration(timerange)
 
 	if config.TriggerMetadata["timezone"] == "" {
-		meta.timezone = "UTC" // Default to UTC if not provided
+		meta.timezone = defaultTimezone // Default to UTC if not provided
 	} else {
 		meta.timezone = config.TriggerMetadata["timezone"]
-	}
-
-	if meta.queryType == "metrics" {
-		if config.TriggerMetadata["quantization"] == "" {
-			return nil, errors.New("missing required metadata: quantization (only for metrics queries)")
-		}
-		quantization, err := strconv.Atoi(config.TriggerMetadata["quantization"])
-		if err != nil {
-			return nil, fmt.Errorf("invalid quantization: %w", err)
-		}
-		meta.quantization = time.Duration(quantization) * time.Second
 	}
 
 	meta.activationThreshold = 0
@@ -176,6 +204,23 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, 
 	return &meta, nil
 }
 
+func parseMultiMetricsQueries(triggerMetadata map[string]string) (map[string]string, error) {
+	queries := make(map[string]string)
+	for key, value := range triggerMetadata {
+		if strings.HasPrefix(key, multiMetricsQueryPrefix) {
+			rowId := strings.Replace(key, multiMetricsQueryPrefix, "", -1)
+			if rowId == "" {
+				return nil, fmt.Errorf("malformed metadata, unable to parse rowId from key: %s", key)
+			}
+			if value == "" {
+				return nil, fmt.Errorf("malformed metadata, invalid value for key: %s", key)
+			}
+			queries[rowId] = value
+		}
+	}
+	return queries, nil
+}
+
 func (s *sumologicScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("sumologic-%s", s.metadata.queryType))
 	externalMetric := &v2.ExternalMetricSource{
@@ -203,7 +248,18 @@ func (s *sumologicScaler) GetMetricsAndActivity(ctx context.Context, metricName 
 	var num float64
 	var err error
 
-	num, err = s.client.GetQueryResult(s.metadata.queryType, s.metadata.query, s.metadata.quantization, s.metadata.timerange, s.metadata.queryAggregator, s.metadata.timezone, s.metadata.resultField, s.metadata.rollup)
+	num, err = s.client.GetQueryResult(
+		s.metadata.queryType,
+		s.metadata.query,
+		s.metadata.queries,
+		s.metadata.resultQueryRowId,
+		s.metadata.quantization,
+		s.metadata.rollup,
+		s.metadata.resultField,
+		s.metadata.timerange,
+		s.metadata.timezone,
+		s.metadata.queryAggregator,
+	)
 	if err != nil {
 		s.logger.Error(err, "error getting metrics from sumologic")
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting metrics from sumologic: %w", err)

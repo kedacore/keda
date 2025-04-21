@@ -62,6 +62,44 @@ func (c *Client) createMetricsQuery(query string, quantization time.Duration, fr
 	return c.makeRequest("POST", url, payload)
 }
 
+func (c *Client) createMultiMetricsQuery(queries map[string]string, quantization time.Duration, from, to, rollup string) ([]byte, error) {
+	metricsQueries := make([]MetricsQuery, 0)
+	for rowId, query := range queries {
+		metricsQuery := MetricsQuery{
+			RowID:        rowId,
+			Query:        query,
+			Quantization: int64(quantization / time.Millisecond),
+			Rollup:       rollup,
+		}
+		metricsQueries = append(metricsQueries, metricsQuery)
+	}
+
+	timeRange := TimeRange{
+		Type: "BeginBoundedTimeRange",
+		From: TimeRangeBoundary{
+			Type:        "Iso8601TimeRangeBoundary",
+			Iso8601Time: from,
+		},
+		To: TimeRangeBoundary{
+			Type:        "Iso8601TimeRangeBoundary",
+			Iso8601Time: to,
+		},
+	}
+
+	requestPayload := MetricsQueryRequest{
+		Queries:   metricsQueries,
+		TimeRange: timeRange,
+	}
+
+	payload, err := json.Marshal(requestPayload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal metrics query request: %v", err)
+	}
+
+	url := fmt.Sprintf("%s/%s", c.config.Host, metricsQueryPath)
+	return c.makeRequest("POST", url, payload)
+}
+
 func (c *Client) parseMetricsQueryResponse(response []byte) (*MetricsQueryResponse, error) {
 	var metricsResponse MetricsQueryResponse
 	if err := json.Unmarshal(response, &metricsResponse); err != nil {

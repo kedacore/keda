@@ -366,7 +366,198 @@ func TestGetMetricsSearchResult(t *testing.T) {
 				t.Fatalf("Expected no error, got %s", err.Error())
 			}
 
-			result, err := client.GetMetricsSearchResult(test.query, test.quantization, test.timerange, test.aggregation, test.tz, test.rollup)
+			result, err := client.GetMetricsSearchResult(
+				test.query,
+				test.quantization,
+				test.rollup,
+				test.timerange,
+				test.tz,
+				test.aggregation,
+			)
+
+			if test.expectErr && err != nil {
+				return
+			}
+
+			if test.expectErr && err == nil {
+				t.Error("Expected error, got nil")
+			}
+
+			if !test.expectErr && err != nil {
+				t.Errorf("Expected no error, got %s", err.Error())
+			}
+
+			if !test.expectErr && result == nil {
+				t.Error("Expected result to be non-nil")
+			}
+
+			if !test.expectErr && *result != test.expectedResult {
+				t.Errorf("Expected result to be %f, got %f", test.expectedResult, *result)
+			}
+		})
+	}
+}
+
+func TestGetMultiMetricsSearchResult(t *testing.T) {
+	tests := []struct {
+		name             string
+		config           *Config
+		queries          map[string]string
+		resultQueryRowId string
+		quantization     time.Duration
+		rollup           string
+		timerange        time.Duration
+		tz               string
+		dimension        string
+		expectErr        bool
+		response         MetricsQueryResponse
+		statusCode       int
+		expectedResult   float64
+	}{
+		{
+			name: "Successful Multi-Metrics Query - Sum",
+			config: &Config{
+				Host:      "fake",
+				AccessID:  "fake",
+				AccessKey: "fake",
+				UnsafeSsl: true,
+			},
+			queries: map[string]string{
+				"A": "query1",
+				"B": "query2",
+			},
+			resultQueryRowId: "A",
+			quantization:     1 * time.Minute,
+			rollup:           "Avg",
+			timerange:        10 * time.Minute,
+			tz:               "UTC",
+			dimension:        "Sum",
+			response: MetricsQueryResponse{
+				QueryResult: []QueryResult{
+					{
+						RowID: "A",
+						TimeSeriesList: TimeSeriesList{
+							TimeSeries: []TimeSeries{
+								{
+									Points: Points{
+										Timestamps: []int64{1, 2, 3},
+										Values:     []float64{10, 20, 30},
+									},
+								},
+							},
+						},
+					},
+					{
+						RowID: "B",
+						TimeSeriesList: TimeSeriesList{
+							TimeSeries: []TimeSeries{
+								{
+									Points: Points{
+										Timestamps: []int64{1, 2, 3},
+										Values:     []float64{5, 10, 15},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			statusCode:     http.StatusOK,
+			expectedResult: 60,
+		},
+		{
+			name: "Failed Multi-Metrics Query - No Matching Row ID",
+			config: &Config{
+				Host:      "fake",
+				AccessID:  "fake",
+				AccessKey: "fake",
+				UnsafeSsl: true,
+			},
+			queries: map[string]string{
+				"A": "query1",
+				"B": "query2",
+			},
+			resultQueryRowId: "C",
+			quantization:     1 * time.Minute,
+			rollup:           "Avg",
+			timerange:        10 * time.Minute,
+			tz:               "UTC",
+			dimension:        "Sum",
+			response: MetricsQueryResponse{
+				QueryResult: []QueryResult{
+					{
+						RowID: "A",
+						TimeSeriesList: TimeSeriesList{
+							TimeSeries: []TimeSeries{
+								{
+									Points: Points{
+										Timestamps: []int64{1, 2, 3},
+										Values:     []float64{10, 20, 30},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			statusCode: http.StatusOK,
+			expectErr:  true,
+		},
+		{
+			name: "Failed Multi-Metrics Query - Empty Response",
+			config: &Config{
+				Host:      "fake",
+				AccessID:  "fake",
+				AccessKey: "fake",
+				UnsafeSsl: true,
+			},
+			queries: map[string]string{
+				"A": "query1",
+			},
+			resultQueryRowId: "A",
+			quantization:     1 * time.Minute,
+			rollup:           "Avg",
+			timerange:        10 * time.Minute,
+			tz:               "UTC",
+			dimension:        "Sum",
+			response:         MetricsQueryResponse{},
+			statusCode:       http.StatusOK,
+			expectErr:        true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(test.statusCode)
+				w.Header().Set("Content-Type", "application/json")
+
+				err := json.NewEncoder(w).Encode(test.response)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("error building the response, %v", err), http.StatusInternalServerError)
+					return
+				}
+			}))
+
+			defer server.Close()
+
+			test.config.Host = server.URL
+			client, err := NewClient(test.config, &scalersconfig.ScalerConfig{
+				GlobalHTTPTimeout: 10 * time.Second,
+			})
+			if err != nil {
+				t.Fatalf("Expected no error, got %s", err.Error())
+			}
+
+			result, err := client.GetMultiMetricsSearchResult(
+				test.queries,
+				test.resultQueryRowId,
+				test.quantization,
+				test.rollup,
+				test.timerange,
+				test.tz,
+				test.dimension,
+			)
 
 			if test.expectErr && err != nil {
 				return
