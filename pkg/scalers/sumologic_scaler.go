@@ -36,7 +36,7 @@ type sumologicMetadata struct {
 	queryType           string            `keda:"name=queryType,           order=triggerMetadata"`
 	query               string            `keda:"name=query,               order=triggerMetadata"`
 	queries             map[string]string `keda:"name=query.*,             order=triggerMetadata"`           // Only for metrics queries
-	resultQueryRowId    string            `keda:"name=query.*,             order=triggerMetadata"`           // Only for metrics queries
+	resultQueryRowId    string            `keda:"name=resultQueryRowId,    order=triggerMetadata"`           // Only for metrics queries
 	quantization        time.Duration     `keda:"name=quantization,        order=triggerMetadata"`           // Only for metrics queries
 	rollup              string            `keda:"name=rollup,              order=triggerMetadata, optional"` // Only for metrics queries
 	resultField         string            `keda:"name=resultField,         order=triggerMetadata"`           // Only for logs queries
@@ -180,7 +180,7 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, 
 	if val, ok := config.TriggerMetadata["activationThreshold"]; ok {
 		activationThreshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("activationThreshold parsing error %w", err)
+			return nil, fmt.Errorf("activationThreshold parsing error: %w", err)
 		}
 		meta.activationThreshold = activationThreshold
 	}
@@ -197,7 +197,7 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, 
 	if val, ok := config.TriggerMetadata["threshold"]; ok {
 		threshold, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return nil, fmt.Errorf("threshold parsing error %w", err)
+			return nil, fmt.Errorf("threshold parsing error: %w", err)
 		}
 		meta.threshold = threshold
 	}
@@ -209,7 +209,7 @@ func parseMultiMetricsQueries(triggerMetadata map[string]string) (map[string]str
 	queries := make(map[string]string)
 	for key, value := range triggerMetadata {
 		if strings.HasPrefix(key, multiMetricsQueryPrefix) {
-			rowId := strings.Replace(key, multiMetricsQueryPrefix, "", -1)
+			rowId := strings.TrimPrefix(key, multiMetricsQueryPrefix)
 			if rowId == "" {
 				return nil, fmt.Errorf("malformed metadata, unable to parse rowId from key: %s", key)
 			}
