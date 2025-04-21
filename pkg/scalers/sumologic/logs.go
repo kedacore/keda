@@ -10,7 +10,10 @@ import (
 )
 
 const (
-	searchJobPath = "api/v1/search/jobs"
+	searchJobPath  = "api/v1/search/jobs"
+	stateDone      = "DONE GATHERING RESULTS"
+	stateCancelled = "CANCELLED"
+	statePaused    = "FORCE PAUSED"
 )
 
 func (c *Client) createLogSearchJob(query, from, to, tz string) (string, error) {
@@ -23,7 +26,7 @@ func (c *Client) createLogSearchJob(query, from, to, tz string) (string, error) 
 
 	payload, err := json.Marshal(requestPayload)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal log search request: %v", err)
+		return "", fmt.Errorf("failed to marshal log search request: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/%s", c.config.Host, searchJobPath)
@@ -56,9 +59,9 @@ func (c *Client) waitForLogSearchJobCompletion(jobID string) (*LogSearchJobStatu
 
 		c.logger.Debug("log search job state", zap.String("state", status.State), zap.Int("recordCount", status.RecordCount))
 
-		if status.State == "DONE GATHERING RESULTS" {
+		if status.State == stateDone {
 			return &status, nil
-		} else if status.State == "CANCELLED" || status.State == "FORCE PAUSED" {
+		} else if status.State == stateCancelled || status.State == statePaused {
 			return nil, fmt.Errorf("search job failed, state: %s", status.State)
 		}
 
