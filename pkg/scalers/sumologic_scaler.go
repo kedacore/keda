@@ -139,6 +139,7 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, 
 			if config.TriggerMetadata["resultQueryRowId"] == "" {
 				return nil, errors.New("missing required metadata: resultQueryRowId")
 			}
+			meta.resultQueryRowId = config.TriggerMetadata["resultQueryRowId"]
 		}
 
 		if config.TriggerMetadata["quantization"] == "" {
