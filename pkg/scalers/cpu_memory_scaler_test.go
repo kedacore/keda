@@ -63,7 +63,6 @@ func TestGetMetricSpecForScaling(t *testing.T) {
 	assert.Equal(t, metricSpec[0].Resource.Target.Type, v2.UtilizationMetricType)
 }
 
-
 func TestGetContainerMetricSpecForScaling(t *testing.T) {
 	config := &scalersconfig.ScalerConfig{
 		TriggerMetadata: validContainerCPUMemoryMetadata,

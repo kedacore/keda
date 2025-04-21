@@ -194,11 +194,11 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) e
 func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 	valFromConfig, exists := sc.configParamValue(params)
 	if exists && params.IsDeprecated() {
-		return fmt.Errorf("Scaler %s info: %s", sc.TriggerType, params.Deprecated)
+		return fmt.Errorf("scaler %s info: %s", sc.TriggerType, params.Deprecated)
 	}
 	if exists && params.DeprecatedAnnounce != "" {
 		if sc.Recorder != nil {
-			message := fmt.Sprintf("Scaler %s info: %s", sc.TriggerType, params.DeprecatedAnnounce)
+			message := fmt.Sprintf("scaler %s info: %s", sc.TriggerType, params.DeprecatedAnnounce)
 			fmt.Print(message)
 			sc.Recorder.Event(sc.ScaledObject, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, message)
 		}

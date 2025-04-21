@@ -148,7 +148,8 @@ func TestDeprecatedAnnounce(t *testing.T) {
 		TriggerMetadata: map[string]string{
 			"oldParam": "value1",
 		},
-		Recorder: mockRecorder,
+		Recorder:    mockRecorder,
+		TriggerType: "testScaler",
 	}
 
 	type testStruct struct {
@@ -162,7 +163,7 @@ func TestDeprecatedAnnounce(t *testing.T) {
 
 	// Verify that the deprecation event was recorded
 	Expect(mockRecorder.EventCalled).To(BeTrue())
-	Expect(mockRecorder.Message).To(Equal("Scaler  info: This parameter is deprecated and will be removed in - Use newParam instead"))
+	Expect(mockRecorder.Message).To(Equal("scaler testScaler info: This parameter is deprecated and will be removed in - Use newParam instead"))
 }
 
 // TestDeprecated tests the deprecated tag
@@ -175,7 +176,8 @@ func TestDeprecated(t *testing.T) {
 		TriggerMetadata: map[string]string{
 			"oldParam": "value1",
 		},
-		Recorder: mockRecorder,
+		Recorder:    mockRecorder,
+		TriggerType: "testScaler",
 	}
 
 	type testStruct struct {
@@ -184,7 +186,7 @@ func TestDeprecated(t *testing.T) {
 
 	ts := testStruct{}
 	err := sc.TypedConfig(&ts)
-	Expect(err).To(MatchError("Scaler  info: This parameter is deprecated and is removed - Use newParam instead"))
+	Expect(err).To(MatchError("scaler testScaler info: This parameter is deprecated and is removed - Use newParam instead"))
 }
 
 // TestDefaultValue tests the default tag

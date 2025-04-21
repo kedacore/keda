@@ -80,13 +80,13 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
-- **General**: Remove Prometheus webhook prommetrics deprecations ([#6698](https://github.com/kedacore/keda/pull/6698))
-- **CPU Memory scaler**: The 'type' setting is deprecated and removed, use 'metricType' instead ([#6698](https://github.com/kedacore/keda/pull/6698))
-- **IBM MQ scaler**: The 'tls' setting is deprecated and removed, use 'unsafeSsl' instead ([#6698](https://github.com/kedacore/keda/pull/6698))
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Remove Prometheus webhook prommetrics deprecations ([#6698](https://github.com/kedacore/keda/pull/6698))
+- **CPU Memory scaler**: The 'type' setting is deprecated and removed, use 'metricType' instead ([#6698](https://github.com/kedacore/keda/pull/6698))
+- **IBM MQ scaler**: The 'tls' setting is deprecated and removed, use 'unsafeSsl' instead ([#6698](https://github.com/kedacore/keda/pull/6698))
 
 ### Other
 
