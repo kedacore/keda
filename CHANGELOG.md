@@ -73,6 +73,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Fixes
 
 - **General**: Admission Webhook blocks ScaledObject without metricType with fallback ([#6696](https://github.com/kedacore/keda/issues/6696))
+- **AWS SQS Queue Scaler**: Fix AWS SQS Queue queueURLFromEnv not working ([#6712](https://github.com/kedacore/keda/issues/6712))
 
 ### Deprecations
 
