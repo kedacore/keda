@@ -305,8 +305,13 @@ func CheckFallbackValid(scaledObject *ScaledObject) error {
 			if trigger.Type == cpuString || trigger.Type == memoryString {
 				continue
 			}
-			// If at least one trigger is of the type `AverageValue`, then having fallback is valid.
-			if trigger.MetricType == autoscalingv2.AverageValueMetricType {
+
+			effectiveMetricType := trigger.MetricType
+			if effectiveMetricType == "" {
+				effectiveMetricType = autoscalingv2.AverageValueMetricType
+			}
+
+			if effectiveMetricType == autoscalingv2.AverageValueMetricType {
 				fallbackValid = true
 				break
 			}
