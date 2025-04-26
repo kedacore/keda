@@ -224,6 +224,30 @@ func TestParseTemporalMetadata(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "apiKey provided",
+			metadata: map[string]string{
+				"endpoint":  "test:7233",
+				"namespace": "default",
+				"taskQueue": "testxx",
+				"apiKey":    "test-api-key",
+			},
+			wantMeta: &temporalMetadata{
+				Endpoint:                  "test:7233",
+				Namespace:                 "default",
+				TaskQueue:                 "testxx",
+				TargetQueueSize:           5,
+				ActivationTargetQueueSize: 0,
+				AllActive:                 false,
+				Unversioned:               false,
+				APIKey:                    "test-api-key",
+				MinConnectTimeout:         5,
+			},
+			authParams: map[string]string{
+				"apiKey": "test-api-key",
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, testCase := range cases {
