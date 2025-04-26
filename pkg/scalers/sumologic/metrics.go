@@ -64,9 +64,9 @@ func (c *Client) createMetricsQuery(query string, quantization time.Duration, fr
 
 func (c *Client) createMultiMetricsQuery(queries map[string]string, quantization time.Duration, from, to, rollup string) ([]byte, error) {
 	metricsQueries := make([]MetricsQuery, 0)
-	for rowId, query := range queries {
+	for rowID, query := range queries {
 		metricsQuery := MetricsQuery{
-			RowID:        rowId,
+			RowID:        rowID,
 			Query:        query,
 			Quantization: int64(quantization / time.Millisecond),
 			Rollup:       rollup,

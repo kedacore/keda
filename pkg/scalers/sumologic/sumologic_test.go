@@ -403,7 +403,7 @@ func TestGetMultiMetricsSearchResult(t *testing.T) {
 		name             string
 		config           *Config
 		queries          map[string]string
-		resultQueryRowId string
+		resultQueryRowID string
 		quantization     time.Duration
 		rollup           string
 		timerange        time.Duration
@@ -426,7 +426,7 @@ func TestGetMultiMetricsSearchResult(t *testing.T) {
 				"A": "query1",
 				"B": "query2",
 			},
-			resultQueryRowId: "A",
+			resultQueryRowID: "A",
 			quantization:     1 * time.Minute,
 			rollup:           "Avg",
 			timerange:        10 * time.Minute,
@@ -477,7 +477,7 @@ func TestGetMultiMetricsSearchResult(t *testing.T) {
 				"A": "query1",
 				"B": "query2",
 			},
-			resultQueryRowId: "C",
+			resultQueryRowID: "C",
 			quantization:     1 * time.Minute,
 			rollup:           "Avg",
 			timerange:        10 * time.Minute,
@@ -514,7 +514,7 @@ func TestGetMultiMetricsSearchResult(t *testing.T) {
 			queries: map[string]string{
 				"A": "query1",
 			},
-			resultQueryRowId: "A",
+			resultQueryRowID: "A",
 			quantization:     1 * time.Minute,
 			rollup:           "Avg",
 			timerange:        10 * time.Minute,
@@ -551,7 +551,7 @@ func TestGetMultiMetricsSearchResult(t *testing.T) {
 
 			result, err := client.GetMultiMetricsSearchResult(
 				test.queries,
-				test.resultQueryRowId,
+				test.resultQueryRowID,
 				test.quantization,
 				test.rollup,
 				test.timerange,
