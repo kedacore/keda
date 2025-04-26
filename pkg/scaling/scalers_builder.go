@@ -258,8 +258,6 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewSplunkScaler(config)
 	case "stan":
 		return scalers.NewStanScaler(config)
-	case "sumologic":
-		return scalers.NewSumologicScaler(config)
 	case "temporal":
 		return scalers.NewTemporalScaler(ctx, config)
 	default:
