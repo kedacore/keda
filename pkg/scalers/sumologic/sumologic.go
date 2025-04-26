@@ -233,7 +233,7 @@ func (c *Client) GetMetricsSearchResult(
 
 func (c *Client) GetMultiMetricsSearchResult(
 	queries map[string]string,
-	resultQueryRowId string,
+	resultQueryRowID string,
 	quantization time.Duration,
 	rollup string,
 	timerange time.Duration,
@@ -262,14 +262,14 @@ func (c *Client) GetMultiMetricsSearchResult(
 	var selectedResultSet QueryResult
 
 	for _, queryResult := range parsedResp.QueryResult {
-		if queryResult.RowID == resultQueryRowId {
+		if queryResult.RowID == resultQueryRowID {
 			selectedResultSet = queryResult
 			break
 		}
 	}
 
 	if selectedResultSet.RowID == "" {
-		return nil, fmt.Errorf("no query result with matching resultQueryRowId %s found in metrics query response", resultQueryRowId)
+		return nil, fmt.Errorf("no query result with matching resultQueryRowID %s found in metrics query response", resultQueryRowID)
 	}
 
 	if len(selectedResultSet.TimeSeriesList.TimeSeries) == 0 {
@@ -304,7 +304,7 @@ func (c *Client) GetQueryResult(
 	queryType string,
 	query string,
 	queries map[string]string,
-	resultQueryRowId string,
+	resultQueryRowID string,
 	quantization time.Duration,
 	rollup string,
 	resultField string,
@@ -336,7 +336,7 @@ func (c *Client) GetQueryResult(
 		} else {
 			result, err = c.GetMultiMetricsSearchResult(
 				queries,
-				resultQueryRowId,
+				resultQueryRowID,
 				quantization,
 				rollup,
 				timerange,
@@ -344,7 +344,6 @@ func (c *Client) GetQueryResult(
 				queryAggregator,
 			)
 		}
-
 	}
 
 	if err != nil {
