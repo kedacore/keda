@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -75,6 +76,8 @@ var testMetricsAPIAuthMetadata = []metricAPIAuthMetadataTestData{
 	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "unsafeSsl": "false"}, map[string]string{}, false},
 	// failed unsafeSsl non bool
 	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "unsafeSsl": "yes"}, map[string]string{}, true},
+	// success with both apiKey and TLS authentication
+	{map[string]string{"url": "http://dummy:1230/api/v1/", "valueLocation": "metric", "targetValue": "42", "authMode": "apiKey,tls"}, map[string]string{"apiKey": "apiikey", "ca": "caaa", "cert": "ceert", "key": "keey"}, false},
 }
 
 func TestParseMetricsAPIMetadata(t *testing.T) {
@@ -187,14 +190,50 @@ func TestMetricAPIScalerAuthParams(t *testing.T) {
 		}
 
 		if err == nil {
-			if (meta.enableAPIKeyAuth && !(testData.metadata["authMode"] == "apiKey")) ||
-				(meta.enableBaseAuth && !(testData.metadata["authMode"] == "basic")) ||
-				(meta.enableTLS && !(testData.metadata["authMode"] == "tls")) ||
-				(meta.enableBearerAuth && !(testData.metadata["authMode"] == "bearer")) {
-				t.Error("wrong auth mode detected")
+			authModes := strings.Split(testData.metadata["authMode"], ",")
+
+			// Check if each enabled auth method is present in the authModes
+			if meta.enableAPIKeyAuth && !containsAuthMode(authModes, "apiKey") {
+				t.Error("API Key auth enabled but not in authMode")
+			}
+			if meta.enableBaseAuth && !containsAuthMode(authModes, "basic") {
+				t.Error("Basic auth enabled but not in authMode")
+			}
+			if meta.enableTLS && !containsAuthMode(authModes, "tls") {
+				t.Error("TLS auth enabled but not in authMode")
+			}
+			if meta.enableBearerAuth && !containsAuthMode(authModes, "bearer") {
+				t.Error("Bearer auth enabled but not in authMode")
+			}
+
+			// Check if each auth mode in authModes is enabled
+			for _, mode := range authModes {
+				mode = strings.TrimSpace(mode)
+				if mode == "apiKey" && !meta.enableAPIKeyAuth {
+					t.Error("apiKey in authMode but not enabled")
+				}
+				if mode == "basic" && !meta.enableBaseAuth {
+					t.Error("basic in authMode but not enabled")
+				}
+				if mode == "tls" && !meta.enableTLS {
+					t.Error("tls in authMode but not enabled")
+				}
+				if mode == "bearer" && !meta.enableBearerAuth {
+					t.Error("bearer in authMode but not enabled")
+				}
 			}
 		}
 	}
+}
+
+// Helper function to check if an auth mode is in the list
+func containsAuthMode(modes []string, mode string) bool {
+	for _, m := range modes {
+		if strings.TrimSpace(m) == mode {
+			return true
+		}
+	}
+	return false
 }
 
 func TestBearerAuth(t *testing.T) {
