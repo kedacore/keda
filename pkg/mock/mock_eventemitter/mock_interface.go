@@ -24,6 +24,7 @@ import (
 type MockEventHandler struct {
 	ctrl     *gomock.Controller
 	recorder *MockEventHandlerMockRecorder
+	isgomock struct{}
 }
 
 // MockEventHandlerMockRecorder is the mock recorder for MockEventHandler.
@@ -58,15 +59,15 @@ func (mr *MockEventHandlerMockRecorder) DeleteCloudEventSource(cloudEventSource 
 }
 
 // Emit mocks base method.
-func (m *MockEventHandler) Emit(object runtime.Object, namesapce, eventType string, cloudeventType v1alpha1.CloudEventType, reason, message string) {
+func (m *MockEventHandler) Emit(object runtime.Object, namespace, eventType string, cloudeventType v1alpha1.CloudEventType, reason, message string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Emit", object, namesapce, eventType, cloudeventType, reason, message)
+	m.ctrl.Call(m, "Emit", object, namespace, eventType, cloudeventType, reason, message)
 }
 
 // Emit indicates an expected call of Emit.
-func (mr *MockEventHandlerMockRecorder) Emit(object, namesapce, eventType, cloudeventType, reason, message any) *gomock.Call {
+func (mr *MockEventHandlerMockRecorder) Emit(object, namespace, eventType, cloudeventType, reason, message any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Emit", reflect.TypeOf((*MockEventHandler)(nil).Emit), object, namesapce, eventType, cloudeventType, reason, message)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Emit", reflect.TypeOf((*MockEventHandler)(nil).Emit), object, namespace, eventType, cloudeventType, reason, message)
 }
 
 // HandleCloudEventSource mocks base method.
@@ -87,6 +88,7 @@ func (mr *MockEventHandlerMockRecorder) HandleCloudEventSource(ctx, cloudEventSo
 type MockEventDataHandler struct {
 	ctrl     *gomock.Controller
 	recorder *MockEventDataHandlerMockRecorder
+	isgomock struct{}
 }
 
 // MockEventDataHandlerMockRecorder is the mock recorder for MockEventDataHandler.

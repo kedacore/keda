@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017-2021 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -183,7 +183,7 @@ type CollectionProperties struct {
 
 	IsSmartChild bool `json:"isSmartChild,omitempty"`
 
-	InternalValidatorType *int `json:"internalValidatorType, omitempty"`
+	InternalValidatorType *int `json:"internalValidatorType,omitempty"`
 
 	// Set to create a smart edge or vertex collection.
 	// This requires ArangoDB Enterprise Edition.

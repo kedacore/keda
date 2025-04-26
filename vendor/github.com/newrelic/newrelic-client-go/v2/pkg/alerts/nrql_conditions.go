@@ -203,13 +203,19 @@ var (
 	}
 )
 
+type NrqlConditionThresholdPrediction struct {
+	PredictBy                 int  `json:"predictBy,omitempty"`
+	PreferPredictionViolation bool `json:"preferPredictionViolation"`
+}
+
 // NrqlConditionTerm represents the a single term of a New Relic alert condition.
 type NrqlConditionTerm struct {
-	Operator             AlertsNRQLConditionTermsOperator `json:"operator,omitempty"`
-	Priority             NrqlConditionPriority            `json:"priority,omitempty"`
-	Threshold            *float64                         `json:"threshold"`
-	ThresholdDuration    int                              `json:"thresholdDuration,omitempty"`
-	ThresholdOccurrences ThresholdOccurrence              `json:"thresholdOccurrences,omitempty"`
+	Operator             AlertsNRQLConditionTermsOperator  `json:"operator,omitempty"`
+	Priority             NrqlConditionPriority             `json:"priority,omitempty"`
+	Threshold            *float64                          `json:"threshold"`
+	ThresholdDuration    int                               `json:"thresholdDuration,omitempty"`
+	ThresholdOccurrences ThresholdOccurrence               `json:"thresholdOccurrences,omitempty"`
+	Prediction           *NrqlConditionThresholdPrediction `json:"prediction,omitempty"`
 }
 
 // NrqlConditionQuery represents the NRQL query object returned in a NerdGraph response object.
@@ -741,7 +747,7 @@ const (
       closeViolationsOnExpiration
       expirationDuration
       openViolationOnExpiration
-	  ignoreOnExpectedTermination
+      ignoreOnExpectedTermination
     }
     signal {
       aggregationWindow
@@ -762,6 +768,17 @@ const (
 		}
 	`
 
+	graphqlFragmentNrqlStaticConditionFields = `
+		... on AlertsNrqlStaticCondition {
+			terms {
+				prediction {
+					predictBy
+					preferPredictionViolation
+				}
+			}
+		}
+	`
+
 	searchNrqlConditionsQuery = `
 		query($accountId: Int!, $searchCriteria: AlertsNrqlConditionsSearchCriteriaInput, $cursor: String) {
 			actor {
@@ -773,6 +790,7 @@ const (
 							nrqlConditions {` +
 		graphqlNrqlConditionStructFields +
 		graphqlFragmentNrqlBaselineConditionFields +
+		graphqlFragmentNrqlStaticConditionFields +
 		`} } } } } }`
 
 	getNrqlConditionQuery = `
@@ -783,6 +801,7 @@ const (
 						nrqlCondition(id: $id) {` +
 		graphqlNrqlConditionStructFields +
 		graphqlFragmentNrqlBaselineConditionFields +
+		graphqlFragmentNrqlStaticConditionFields +
 		`} } } } }`
 
 	// Baseline
@@ -806,6 +825,7 @@ const (
 		mutation($accountId: Int!, $policyId: ID!, $condition: AlertsNrqlConditionStaticInput!) {
 			alertsNrqlConditionStaticCreate(accountId: $accountId, policyId: $policyId, condition: $condition) {` +
 		graphqlNrqlConditionStructFields +
+		graphqlFragmentNrqlStaticConditionFields +
 		` } }`
 
 	// Static
@@ -813,5 +833,6 @@ const (
 		mutation($accountId: Int!, $id: ID!, $condition: AlertsNrqlConditionUpdateStaticInput!) {
 			alertsNrqlConditionStaticUpdate(accountId: $accountId, id: $id, condition: $condition) {` +
 		graphqlNrqlConditionStructFields +
+		graphqlFragmentNrqlStaticConditionFields +
 		` } }`
 )

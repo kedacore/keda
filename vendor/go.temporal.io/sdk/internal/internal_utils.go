@@ -52,6 +52,9 @@ const (
 	minRPCTimeout = 1 * time.Second
 	// maxRPCTimeout is maximum gRPC call timeout allowed (should not be less than defaultRPCTimeout).
 	maxRPCTimeout = 10 * time.Second
+
+	temporalPrefix      = "__temporal_"
+	temporalPrefixError = "__temporal_ is a reserved prefix"
 )
 
 // grpcContextBuilder stores all gRPC-specific parameters that will

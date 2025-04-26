@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017-2023 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ type BackupCreateOptions struct {
 
 	Timeout time.Duration `json:"timeout,omitempty"`
 
-	// @deprecated - since 3.10.10 it exists only for backwards compatibility
+	// Deprecated: - since 3.10.10 it exists only for backwards compatibility
 	AllowInconsistent bool `json:"allowInconsistent,omitempty"`
 }
 

@@ -188,6 +188,14 @@ func (p *PromMetrics) RecordScalerMetric(namespace string, scaledResource string
 	scalerMetricsValue.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(value)
 }
 
+// DeleteScalerMetrics deletes the scaler-related metrics so that we don't report stale values when trigger is gone
+func (p *PromMetrics) DeleteScalerMetrics(namespace string, scaledResource string, isScaledObject bool) {
+	scalerMetricsValue.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
+	scalerActive.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
+	scalerErrors.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
+	scalerMetricsLatency.DeletePartialMatch(prometheus.Labels{"namespace": namespace, "scaledObject": scaledResource, "type": getResourceType(isScaledObject)})
+}
+
 // RecordScalerLatency create a measurement of the latency to external metric
 func (p *PromMetrics) RecordScalerLatency(namespace string, scaledResource string, scaler string, triggerIndex int, metric string, isScaledObject bool, value time.Duration) {
 	scalerMetricsLatency.With(getLabels(namespace, scaledResource, scaler, triggerIndex, metric, isScaledObject)).Set(value.Seconds())
@@ -259,7 +267,7 @@ func (p *PromMetrics) RecordScaledJobError(namespace string, scaledJob string, e
 	// initialize metric with 0 if not already set
 	_, errscaledjob := scaledJobErrors.GetMetricWith(labels)
 	if errscaledjob != nil {
-		log.Error(err, "Unable to write to metrics to Prometheus Server: %v")
+		log.Error(errscaledjob, "Unable to write to metrics to Prometheus Server: %v")
 		return
 	}
 }

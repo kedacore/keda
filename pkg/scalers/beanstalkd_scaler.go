@@ -34,12 +34,12 @@ type BeanstalkdScaler struct {
 }
 
 type BeanstalkdMetadata struct {
-	Server          string  `keda:"name=server,          order=triggerMetadata"`
-	Tube            string  `keda:"name=tube,            order=triggerMetadata"`
-	Value           float64 `keda:"name=value,           order=triggerMetadata"`
-	ActivationValue float64 `keda:"name=activationValue, order=triggerMetadata, optional"`
-	IncludeDelayed  bool    `keda:"name=includeDelayed,  order=triggerMetadata, optional"`
-	Timeout         uint    `keda:"name=timeout,         order=triggerMetadata, default=30"`
+	Server          string        `keda:"name=server,          order=triggerMetadata"`
+	Tube            string        `keda:"name=tube,            order=triggerMetadata"`
+	Value           float64       `keda:"name=value,           order=triggerMetadata"`
+	ActivationValue float64       `keda:"name=activationValue, order=triggerMetadata, optional"`
+	IncludeDelayed  bool          `keda:"name=includeDelayed,  order=triggerMetadata, optional"`
+	Timeout         time.Duration `keda:"name=timeout,         order=triggerMetadata, default=30"`
 	TriggerIndex    int
 }
 
@@ -70,9 +70,7 @@ func NewBeanstalkdScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 	s.metadata = meta
 
-	timeout := time.Duration(s.metadata.Timeout) * time.Second
-
-	conn, err := beanstalk.DialTimeout(beanstalkdNetworkProtocol, s.metadata.Server, timeout)
+	conn, err := beanstalk.DialTimeout(beanstalkdNetworkProtocol, s.metadata.Server, s.metadata.Timeout)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to beanstalkd: %w", err)
 	}

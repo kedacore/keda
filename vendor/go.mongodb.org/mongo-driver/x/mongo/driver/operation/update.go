@@ -47,6 +47,7 @@ type Update struct {
 	serverAPI                *driver.ServerAPIOptions
 	let                      bsoncore.Document
 	timeout                  *time.Duration
+	bypassEmptyTsReplacement *bool
 	logger                   *logger.Logger
 }
 
@@ -203,6 +204,9 @@ func (u *Update) command(dst []byte, desc description.SelectedServer) ([]byte, e
 	}
 	if u.let != nil {
 		dst = bsoncore.AppendDocumentElement(dst, "let", u.let)
+	}
+	if u.bypassEmptyTsReplacement != nil {
+		dst = bsoncore.AppendBooleanElement(dst, "bypassEmptyTsReplacement", *u.bypassEmptyTsReplacement)
 	}
 
 	return dst, nil
@@ -424,5 +428,15 @@ func (u *Update) Authenticator(authenticator driver.Authenticator) *Update {
 	}
 
 	u.authenticator = authenticator
+	return u
+}
+
+// BypassEmptyTsReplacement sets the bypassEmptyTsReplacement to use for this operation.
+func (u *Update) BypassEmptyTsReplacement(bypassEmptyTsReplacement bool) *Update {
+	if u == nil {
+		u = new(Update)
+	}
+
+	u.bypassEmptyTsReplacement = &bypassEmptyTsReplacement
 	return u
 }
