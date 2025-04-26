@@ -174,30 +174,28 @@ func TestGetLogSearchResult(t *testing.T) {
 				w.WriteHeader(test.statusCode)
 				w.Header().Set("Content-Type", "application/json")
 
-				if r.Method == "POST" && r.URL.Path == "/api/v1/search/jobs" {
+				switch {
+				case r.Method == "POST" && r.URL.Path == "/api/v1/search/jobs":
 					err := json.NewEncoder(w).Encode(test.createJobResponse)
-
 					if err != nil {
 						http.Error(w, fmt.Sprintf("error building the response, %v", err), http.StatusInternalServerError)
 						return
 					}
-				} else if r.Method == "GET" && r.URL.Path == fmt.Sprintf("/api/v1/search/jobs/%s", test.createJobResponse.ID) {
+				case r.Method == "GET" && r.URL.Path == fmt.Sprintf("/api/v1/search/jobs/%s", test.createJobResponse.ID):
 					err := json.NewEncoder(w).Encode(test.jobStatusResponse)
-
 					if err != nil {
 						http.Error(w, fmt.Sprintf("error building the response, %v", err), http.StatusInternalServerError)
 						return
 					}
-				} else if r.Method == "GET" && r.URL.Path == fmt.Sprintf("/api/v1/search/jobs/%s/records", test.createJobResponse.ID) {
+				case r.Method == "GET" && r.URL.Path == fmt.Sprintf("/api/v1/search/jobs/%s/records", test.createJobResponse.ID):
 					err := json.NewEncoder(w).Encode(test.recordsResponse)
-
 					if err != nil {
 						http.Error(w, fmt.Sprintf("error building the response, %v", err), http.StatusInternalServerError)
 						return
 					}
-				} else if r.Method == "DELETE" {
+				case r.Method == "DELETE":
 					// do nothing
-				} else {
+				default:
 					fmt.Println(r.Method, r.URL.Path)
 				}
 			}))

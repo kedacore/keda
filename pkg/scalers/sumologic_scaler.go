@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/metrics/pkg/apis/external_metrics"
+
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/scalers/sumologic"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
-	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
 const (
@@ -36,7 +37,7 @@ type sumologicMetadata struct {
 	queryType           string            `keda:"name=queryType,           order=triggerMetadata"`
 	query               string            `keda:"name=query,               order=triggerMetadata"`
 	queries             map[string]string `keda:"name=query.*,             order=triggerMetadata"`           // Only for metrics queries
-	resultQueryRowId    string            `keda:"name=resultQueryRowId,    order=triggerMetadata"`           // Only for metrics queries
+	resultQueryRowID    string            `keda:"name=resultQueryRowID,    order=triggerMetadata"`           // Only for metrics queries
 	quantization        time.Duration     `keda:"name=quantization,        order=triggerMetadata"`           // Only for metrics queries
 	rollup              string            `keda:"name=rollup,              order=triggerMetadata, optional"` // Only for metrics queries
 	resultField         string            `keda:"name=resultField,         order=triggerMetadata"`           // Only for logs queries
@@ -82,29 +83,17 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, 
 	meta := sumologicMetadata{}
 	meta.triggerIndex = config.TriggerIndex
 
-	if config.AuthParams["accessID"] == "" {
-		return nil, errors.New("missing required auth params: accessID")
+	if err := validateAuthParams(config.AuthParams); err != nil {
+		return nil, err
 	}
 	meta.accessID = config.AuthParams["accessID"]
-
-	if config.AuthParams["accessKey"] == "" {
-		return nil, errors.New("missing required auth params: accessKey")
-	}
 	meta.accessKey = config.AuthParams["accessKey"]
 
-	if config.TriggerMetadata["host"] == "" {
-		return nil, errors.New("missing required metadata: host")
+	if err := validateMetadata(config.TriggerMetadata); err != nil {
+		return nil, err
 	}
 	meta.host = config.TriggerMetadata["host"]
-
-	if config.TriggerMetadata["queryType"] == "" {
-		return nil, errors.New("missing required metadata: queryType")
-	}
 	meta.queryType = config.TriggerMetadata["queryType"]
-
-	if meta.queryType != "logs" && meta.queryType != "metrics" {
-		return nil, fmt.Errorf("invalid queryType: %s, must be 'logs' or 'metrics'", meta.queryType)
-	}
 
 	query := config.TriggerMetadata["query"]
 	queries, err := parseMultiMetricsQueries(config.TriggerMetadata)
@@ -128,18 +117,19 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, 
 	}
 
 	if meta.queryType == "metrics" {
-		if query == "" && len(queries) == 0 {
+		switch {
+		case query == "" && len(queries) == 0:
 			return nil, errors.New("missing metadata, please define either of query or query.<RowId> for metrics queryType")
-		} else if query != "" && len(queries) != 0 {
+		case query != "" && len(queries) != 0:
 			return nil, errors.New("incorrect metadata, please only define either query or query.<RowId> for metrics queryType, not both")
-		} else if query != "" {
+		case query != "":
 			meta.query = query
-		} else {
+		default:
 			meta.queries = queries
-			if config.TriggerMetadata["resultQueryRowId"] == "" {
-				return nil, errors.New("missing required metadata: resultQueryRowId")
+			if config.TriggerMetadata["resultQueryRowID"] == "" {
+				return nil, errors.New("missing required metadata: resultQueryRowID")
 			}
-			meta.resultQueryRowId = config.TriggerMetadata["resultQueryRowId"]
+			meta.resultQueryRowID = config.TriggerMetadata["resultQueryRowID"]
 		}
 
 		if config.TriggerMetadata["quantization"] == "" {
@@ -205,24 +195,47 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, 
 	return &meta, nil
 }
 
+func validateAuthParams(authParams map[string]string) error {
+	if authParams["accessID"] == "" {
+		return errors.New("missing required auth params: accessID")
+	}
+	if authParams["accessKey"] == "" {
+		return errors.New("missing required auth params: accessKey")
+	}
+	return nil
+}
+
+func validateMetadata(metadata map[string]string) error {
+	if metadata["host"] == "" {
+		return errors.New("missing required metadata: host")
+	}
+	if metadata["queryType"] == "" {
+		return errors.New("missing required metadata: queryType")
+	}
+	if metadata["queryType"] != "logs" && metadata["queryType"] != "metrics" {
+		return fmt.Errorf("invalid queryType: %s, must be 'logs' or 'metrics'", metadata["queryType"])
+	}
+	return nil
+}
+
 func parseMultiMetricsQueries(triggerMetadata map[string]string) (map[string]string, error) {
 	queries := make(map[string]string)
 	for key, value := range triggerMetadata {
 		if strings.HasPrefix(key, multiMetricsQueryPrefix) {
-			rowId := strings.TrimPrefix(key, multiMetricsQueryPrefix)
-			if rowId == "" {
-				return nil, fmt.Errorf("malformed metadata, unable to parse rowId from key: %s", key)
+			rowID := strings.TrimPrefix(key, multiMetricsQueryPrefix)
+			if rowID == "" {
+				return nil, fmt.Errorf("malformed metadata, unable to parse rowID from key: %s", key)
 			}
 			if value == "" {
 				return nil, fmt.Errorf("malformed metadata, invalid value for key: %s", key)
 			}
-			queries[rowId] = value
+			queries[rowID] = value
 		}
 	}
 	return queries, nil
 }
 
-func (s *sumologicScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+func (s *sumologicScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
 	metricName := kedautil.NormalizeString(fmt.Sprintf("sumologic-%s", s.metadata.queryType))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
@@ -237,14 +250,14 @@ func (s *sumologicScaler) GetMetricSpecForScaling(ctx context.Context) []v2.Metr
 }
 
 // No need to close connections manually, but we can close idle HTTP connections
-func (s *sumologicScaler) Close(ctx context.Context) error {
+func (s *sumologicScaler) Close(_ context.Context) error {
 	if s.client != nil {
 		return s.client.Close()
 	}
 	return nil
 }
 
-func (s *sumologicScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (s *sumologicScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	var metric external_metrics.ExternalMetricValue
 	var num float64
 	var err error
@@ -253,7 +266,7 @@ func (s *sumologicScaler) GetMetricsAndActivity(ctx context.Context, metricName 
 		s.metadata.queryType,
 		s.metadata.query,
 		s.metadata.queries,
-		s.metadata.resultQueryRowId,
+		s.metadata.resultQueryRowID,
 		s.metadata.quantization,
 		s.metadata.rollup,
 		s.metadata.resultField,

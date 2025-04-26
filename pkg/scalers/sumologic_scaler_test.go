@@ -66,7 +66,7 @@ var validSumologicMultiMetricsMetadata = map[string]string{
 	"query.A":             "fakeQueryA",
 	"query.B":             "fakeQueryB",
 	"query.C":             "fakeQueryC",
-	"resultQueryRowId":    "C",
+	"resultQueryRowID":    "C",
 }
 
 var testSumologicMetadata = []parseSumologicMetadataTestData{
