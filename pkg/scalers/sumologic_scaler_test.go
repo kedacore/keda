@@ -29,7 +29,6 @@ var validSumologicMetadata = map[string]string{
 	"unsafeSsl":           "false",
 	"query":               "fakeQuery",
 	"queryType":           "logs",
-	"dimension":           "fakeDimension",
 	"timerange":           "5",
 	"resultField":         "fakeResultField",
 	"timezone":            "UTC",
@@ -44,7 +43,6 @@ var validSumologicMetricsMetadata = map[string]string{
 	"unsafeSsl":           "false",
 	"query":               "fakeQuery",
 	"queryType":           "metrics",
-	"dimension":           "fakeDimension",
 	"timerange":           "5",
 	"timezone":            "UTC",
 	"quantization":        "1",
@@ -54,11 +52,30 @@ var validSumologicMetricsMetadata = map[string]string{
 	"rollup":              "Sum",
 }
 
+var validSumologicMultiMetricsMetadata = map[string]string{
+	"host":                "https://api.sumologic.com",
+	"unsafeSsl":           "false",
+	"queryType":           "metrics",
+	"timerange":           "5",
+	"timezone":            "UTC",
+	"quantization":        "1",
+	"activationThreshold": "5",
+	"threshold":           "1",
+	"queryAggregator":     "Avg",
+	"rollup":              "Sum",
+	"query.A":             "fakeQueryA",
+	"query.B":             "fakeQueryB",
+	"query.C":             "fakeQueryC",
+	"resultQueryRowId":    "C",
+}
+
 var testSumologicMetadata = []parseSumologicMetadataTestData{
 	// Valid metadata, pass.
 	{validSumologicMetadata, validSumologicAuthParams, false},
 	// Valid metrics metadata with rollup, pass.
 	{validSumologicMetricsMetadata, validSumologicAuthParams, false},
+	// Valid multi-metrics metadata, pass.
+	{validSumologicMultiMetricsMetadata, validSumologicAuthParams, false},
 	// Missing host, fail.
 	{map[string]string{"query": "fakeQuery"}, validSumologicAuthParams, true},
 	// Missing accessID, fail.
@@ -69,8 +86,6 @@ var testSumologicMetadata = []parseSumologicMetadataTestData{
 	{map[string]string{"host": "https://api.sumologic.com", "query": "fakeQuery", "queryType": "invalid"}, validSumologicAuthParams, true},
 	// Missing query, fail.
 	{map[string]string{"host": "https://api.sumologic.com", "queryType": "logs"}, validSumologicAuthParams, true},
-	// Missing query, fail.
-	{map[string]string{"host": "https://api.sumologic.com", "queryType": "metrics"}, validSumologicAuthParams, true},
 	// Missing timerange, fail.
 	{map[string]string{"host": "https://api.sumologic.com", "query": "fakeQuery", "queryType": "logs"}, validSumologicAuthParams, true},
 	// Invalid timerange, fail.
@@ -86,13 +101,14 @@ var testSumologicMetadata = []parseSumologicMetadataTestData{
 var sumologicMetricIdentifiers = []sumologicMetricIdentifier{
 	{&testSumologicMetadata[0], 0, "s0-sumologic-logs"},
 	{&testSumologicMetadata[1], 0, "s0-sumologic-metrics"},
+	{&testSumologicMetadata[2], 0, "s0-sumologic-metrics"},
 }
 
 func TestSumologicParseMetadata(t *testing.T) {
 	for _, testData := range testSumologicMetadata {
 		_, err := parseSumoMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+			t.Errorf("Expected success but got error: %v", err)
 		} else if testData.isError && err == nil {
 			t.Error("Expected error but got success")
 		}
@@ -104,7 +120,7 @@ func TestSumologicGetMetricSpecForScaling(t *testing.T) {
 		ctx := context.Background()
 		meta, err := parseSumoMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validSumologicAuthParams, TriggerIndex: testData.triggerIndex})
 		if err != nil {
-			t.Fatal("Could not parse metadata:", err)
+			t.Fatalf("Could not parse metadata: %v", err)
 		}
 		mockSumologicScaler := sumologicScaler{
 			metadata: meta,
@@ -113,7 +129,7 @@ func TestSumologicGetMetricSpecForScaling(t *testing.T) {
 		metricSpec := mockSumologicScaler.GetMetricSpecForScaling(ctx)
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName)
+			t.Errorf("Wrong External metric source name: got %s, expected %s", metricName, testData.name)
 		}
 	}
 }
