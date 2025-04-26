@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log/slog"
 	"time"
@@ -223,6 +224,9 @@ func getTemporalClient(ctx context.Context, meta *temporalMetadata, log logr.Log
 			},
 		))
 		options.Credentials = sdk.NewAPIKeyStaticCredentials(meta.APIKey)
+		options.ConnectionOptions.TLS = &tls.Config{
+			MinVersion: tls.VersionTLS13,
+		}
 	}
 
 	options.ConnectionOptions = sdk.ConnectionOptions{
