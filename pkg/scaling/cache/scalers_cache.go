@@ -67,12 +67,13 @@ func (c *ScalersCache) GetScalers() ([]scalers.Scaler, []scalersconfig.ScalerCon
 
 // getScalerBuilder returns a ScalerBuilder stored in the cache
 func (c *ScalersCache) getScalerBuilder(index int) (ScalerBuilder, error) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
 	if index < 0 || index >= len(c.Scalers) {
 		return ScalerBuilder{}, fmt.Errorf("scaler with id %d not found. Len = %d", index, len(c.Scalers))
 	}
 
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
 	return c.Scalers[index], nil
 }
 
