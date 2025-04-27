@@ -84,17 +84,17 @@ spec:
   minReplicaCount: {{.MinReplicaCount}}
   maxReplicaCount: {{.MaxReplicaCount}}
   pollingInterval: 3
-  cooldownPeriod:  1
+  cooldownPeriod: 1
   triggers:
     - type: sumologic
       metadata:
         host: "https://api.sumologic.com"
-		queryType: "{{.QueryType}}"
+        queryType: "{{.QueryType}}"
         query: "{{.Query}}"
-		resultField: "{{.ResultField}}"
-		timerange: "{{.TimeRange}}"
+        resultField: "{{.ResultField}}"
+        timerange: "{{.TimeRange}}"
         timezone: "{{.TimeZone}}"
-		queryAggregator: "{{.QueryAggregator}}"
+        queryAggregator: "{{.QueryAggregator}}"
         threshold: "{{.TargetValue}}"
         activationValue: "{{.ActivationValue}}"
       authenticationRef:
