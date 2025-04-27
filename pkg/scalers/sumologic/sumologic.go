@@ -34,7 +34,7 @@ func NewClient(c *Config, sc *scalersconfig.ScalerConfig) (*Client, error) {
 
 	jar, err := cookiejar.New(nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create cookie jar: %v", err)
+		return nil, fmt.Errorf("failed to create cookie jar: %w", err)
 	}
 
 	httpClient := kedautil.CreateHTTPClient(sc.GlobalHTTPTimeout, c.UnsafeSsl)
@@ -84,7 +84,7 @@ func getLogger(logLevel string) (*zap.Logger, error) {
 
 	logger, err := config.Build()
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize zap logger: %v", err)
+		return nil, fmt.Errorf("failed to initialize zap logger: %w", err)
 	}
 
 	return logger, nil
@@ -147,7 +147,7 @@ func (c *Client) GetLogSearchResult(
 ) (*float64, error) {
 	from, to, err := c.getTimerange(tz, timerange)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse time range: %v", err)
+		return nil, fmt.Errorf("failed to parse time range: %w", err)
 	}
 
 	jobID, err := c.createLogSearchJob(query, from, to, tz)

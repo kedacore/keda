@@ -55,7 +55,7 @@ func (c *Client) createMetricsQuery(query string, quantization time.Duration, fr
 
 	payload, err := json.Marshal(requestPayload)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal metrics query request: %v", err)
+		return nil, fmt.Errorf("failed to marshal metrics query request: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/%s", c.config.Host, metricsQueryPath)
@@ -93,7 +93,7 @@ func (c *Client) createMultiMetricsQuery(queries map[string]string, quantization
 
 	payload, err := json.Marshal(requestPayload)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal metrics query request: %v", err)
+		return nil, fmt.Errorf("failed to marshal metrics query request: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/%s", c.config.Host, metricsQueryPath)
@@ -103,7 +103,7 @@ func (c *Client) createMultiMetricsQuery(queries map[string]string, quantization
 func (c *Client) parseMetricsQueryResponse(response []byte) (*MetricsQueryResponse, error) {
 	var metricsResponse MetricsQueryResponse
 	if err := json.Unmarshal(response, &metricsResponse); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal metrics query response: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal metrics query response: %w", err)
 	}
 
 	if metricsResponse.Errors != nil && len(metricsResponse.Errors.Errors) > 0 {
