@@ -1033,3 +1033,87 @@ func expectNoStatusPatch(ctrl *gomock.Controller) {
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 }
+
+func TestHandlingOfNilFactoryInRefreshScaler(t *testing.T) {
+	// Test that GetMetricsAndActivityForScaler correctly handles errors from refreshScaler
+	// when Factory is nil or returns a nil config
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	recorder := record.NewFakeRecorder(1)
+
+	// Create a test metric
+	metricName := "test-metric"
+
+	// Factory is nil, create a scaler that will cause GetMetricsAndActivity to fail
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{
+		createMetricSpec(10, metricName),
+	}).AnyTimes()
+
+	// First call fails, triggering refreshScaler
+	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return(
+		[]external_metrics.ExternalMetricValue{},
+		false,
+		errors.New("initial error"),
+	).AnyTimes()
+
+	scaler.EXPECT().Close(gomock.Any()).AnyTimes()
+
+	// Set up a ScalersCache with nil factory
+	scalerCache := &cache.ScalersCache{
+		Scalers: []cache.ScalerBuilder{{
+			Scaler:       scaler,
+			ScalerConfig: scalersconfig.ScalerConfig{},
+			Factory:      nil,
+		}},
+		Recorder: recorder,
+	}
+
+	// Call GetMetricsAndActivityForScaler, which will try to refresh the scaler
+	ctx := context.Background()
+	metrics, active, latency, err := scalerCache.GetMetricsAndActivityForScaler(ctx, 0, metricName)
+
+	assert.Empty(t, metrics, "Metrics should be empty")
+	assert.False(t, active, "Should not be active")
+	assert.Equal(t, time.Duration(-1), latency, "Latency should be -1 on error")
+	assert.NotNil(t, err, "Error should not be nil")
+	assert.Contains(t, err.Error(), "factory", "Error should mention factory problem")
+
+	// Factory returns nil config
+	factoryReturningNilConfig := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		mockScaler := mock_scalers.NewMockScaler(ctrl)
+		return mockScaler, nil, nil
+	}
+
+	scaler2 := mock_scalers.NewMockScaler(ctrl)
+	scaler2.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return([]v2.MetricSpec{
+		createMetricSpec(10, metricName),
+	}).AnyTimes()
+
+	scaler2.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return(
+		[]external_metrics.ExternalMetricValue{},
+		false,
+		errors.New("initial error"),
+	).AnyTimes()
+
+	scaler2.EXPECT().Close(gomock.Any()).AnyTimes()
+
+	scalerCache2 := &cache.ScalersCache{
+		Scalers: []cache.ScalerBuilder{{
+			Scaler:       scaler2,
+			ScalerConfig: scalersconfig.ScalerConfig{},
+			Factory:      factoryReturningNilConfig,
+		}},
+		Recorder: recorder,
+	}
+
+	// Call GetMetricsAndActivityForScaler again
+	metrics2, active2, latency2, err2 := scalerCache2.GetMetricsAndActivityForScaler(ctx, 0, metricName)
+
+	assert.Empty(t, metrics2, "Metrics should be empty")
+	assert.False(t, active2, "Should not be active")
+	assert.Equal(t, time.Duration(-1), latency2, "Latency should be -1 on error")
+	assert.NotNil(t, err2, "Error should not be nil")
+	assert.Contains(t, err2.Error(), "config", "Error should mention config problem")
+}

@@ -171,9 +171,19 @@ func (c *ScalersCache) refreshScaler(ctx context.Context, index int) (scalers.Sc
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
+	// Check if Factory is nil
+	if oldSb.Factory == nil {
+		return nil, fmt.Errorf("factory function not set for scaler with index %d", index)
+	}
+
 	newScaler, sConfig, err := oldSb.Factory()
 	if err != nil {
 		return nil, err
+	}
+
+	// Check if sConfig is nil
+	if sConfig == nil {
+		return nil, fmt.Errorf("nil scaler config returned for scaler with index %d", index)
 	}
 
 	if index < 0 || index >= len(c.Scalers) {
