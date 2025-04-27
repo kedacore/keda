@@ -79,6 +79,8 @@ func (c *ScalersCache) getScalerBuilder(index int) (ScalerBuilder, error) {
 
 // GetPushScalers returns array of push scalers stored in the cache
 func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 	var result []scalers.PushScaler
 	for _, s := range c.Scalers {
 		if ps, ok := s.Scaler.(scalers.PushScaler); ok {
