@@ -670,10 +670,12 @@ func (s *metricsAPIScaler) GetMetricsAndActivity(ctx context.Context, metricName
 
 func getMetricAPIServerRequest(ctx context.Context, meta *metricsAPIScalerMetadata, url *string) (*http.Request, error) {
 	var requestURL string
-
+	if url == nil {
+		url = &meta.url
+	}
 	// Handle API Key as query parameter if needed
 	if meta.enableAPIKeyAuth && meta.method == methodValueQuery {
-		url, _ := neturl.Parse(meta.url)
+		url, _ := neturl.Parse(*url)
 		queryString := url.Query()
 		if len(meta.keyParamName) == 0 {
 			queryString.Set("api_key", meta.apiKey)
@@ -683,7 +685,7 @@ func getMetricAPIServerRequest(ctx context.Context, meta *metricsAPIScalerMetada
 		url.RawQuery = queryString.Encode()
 		requestURL = url.String()
 	} else {
-		requestURL = meta.url
+		requestURL = *url
 	}
 
 	// Create the request
