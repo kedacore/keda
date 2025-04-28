@@ -149,6 +149,24 @@ func NewMetricsAPIScaler(config *scalersconfig.ScalerConfig, kubeClient client.C
 	}, nil
 }
 
+func parseMetricsAPIAggregateFromKubeMetadata(config *scalersconfig.ScalerConfig) (aggregateFromKubeServiceEndpoints bool, aggregationType AggregationType, err error) {
+	if val, ok := config.TriggerMetadata["aggregateFromKubeServiceEndpoints"]; ok {
+		aggregateFromKubeServiceEndpoints, err = strconv.ParseBool(val)
+		if err != nil {
+			return false, "", fmt.Errorf("error parsing aggregateFromKubeServiceEndpoints: %w", err)
+		}
+	}
+	// default aggregation type is average
+	aggregationType = AverageAggregationType
+	if val, ok := config.TriggerMetadata["aggregationType"]; ok {
+		aggregationType = AggregationType(strings.TrimSpace(val))
+		if !kedautil.Contains(supportedAggregationTypes, aggregationType) {
+			return false, "", fmt.Errorf("aggregation type %s not supported", aggregationType)
+		}
+	}
+	return aggregateFromKubeServiceEndpoints, aggregationType, nil
+}
+
 func parseMetricsAPIMetadata(config *scalersconfig.ScalerConfig) (*metricsAPIScalerMetadata, error) {
 	meta := metricsAPIScalerMetadata{}
 	meta.triggerIndex = config.TriggerIndex
@@ -161,14 +179,10 @@ func parseMetricsAPIMetadata(config *scalersconfig.ScalerConfig) (*metricsAPISca
 		}
 		meta.unsafeSsl = unsafeSsl
 	}
-
-	meta.aggregateFromKubeServiceEndpoints = false
-	if val, ok := config.TriggerMetadata["aggregateFromKubeServiceEndpoints"]; ok {
-		aggregateFromKubeServiceEndpoints, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing aggregateFromKubeServiceEndpoints: %w", err)
-		}
-		meta.aggregateFromKubeServiceEndpoints = aggregateFromKubeServiceEndpoints
+	var err error
+	meta.aggregateFromKubeServiceEndpoints, meta.aggregationType, err = parseMetricsAPIAggregateFromKubeMetadata(config)
+	if err != nil {
+		return nil, err
 	}
 
 	if val, ok := config.TriggerMetadata["targetValue"]; ok {
@@ -208,16 +222,6 @@ func parseMetricsAPIMetadata(config *scalersconfig.ScalerConfig) (*metricsAPISca
 	} else {
 		// default format is JSON for backward compatibility
 		meta.format = JSONFormat
-	}
-
-	if val, ok := config.TriggerMetadata["aggregationType"]; ok {
-		meta.aggregationType = AggregationType(strings.TrimSpace(val))
-		if !kedautil.Contains(supportedAggregationTypes, meta.aggregationType) {
-			return nil, fmt.Errorf("aggregation type %s not supported", meta.aggregationType)
-		}
-	} else {
-		// default aggregation type is average
-		meta.aggregationType = AverageAggregationType
 	}
 
 	if val, ok := config.TriggerMetadata["valueLocation"]; ok {
