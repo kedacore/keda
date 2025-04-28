@@ -70,6 +70,9 @@ type kafkaMetadata struct {
 	// occur or scale to 0 (true). See discussion in https://github.com/kedacore/keda/issues/2612
 	scaleToZeroOnInvalidOffset bool
 	limitToPartitionsWithLag   bool
+	// If an invalid offset is found, and offsetResetPolicy is earliest, scale to number of live
+	// messages in partition (latestOffset - earliestOffset) to account for retention
+	useMessageCountOnInvalidOffset bool
 
 	// SASL
 	saslType kafkaSaslType
@@ -595,6 +598,24 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		}
 	}
 
+	meta.useMessageCountOnInvalidOffset = false
+	if val, ok := config.TriggerMetadata["useMessageCountOnInvalidOffset"]; ok {
+		t, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("error parsing useMessageCountOnInvalidOffset: %w", err)
+		}
+		meta.useMessageCountOnInvalidOffset = t
+
+		if meta.useMessageCountOnInvalidOffset {
+			if meta.offsetResetPolicy == latest {
+				logger.V(1).Info("With offsetResetPolicy: latest useMessageCountOnInvalidOffset has no effect")
+			}
+			if meta.offsetResetPolicy == earliest && meta.scaleToZeroOnInvalidOffset {
+				logger.V(1).Info("useMessageCountOnInvalidOffset takes precedence over scaleToZeroOnInvalidOffset")
+			}
+		}
+	}
+
 	meta.version = sarama.V1_0_0_0
 	if val, ok := config.TriggerMetadata["version"]; ok {
 		val = strings.TrimSpace(val)
@@ -791,7 +812,7 @@ func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*s
 // When excludePersistentLag is set to `false` (default), lag will always be equal to lagWithPersistent
 // When excludePersistentLag is set to `true`, if partition is deemed to have persistent lag, lag will be set to 0 and lagWithPersistent will be latestOffset - consumerOffset
 // These return values will allow proper scaling from 0 -> 1 replicas by the IsActive func.
-func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offsets *sarama.OffsetFetchResponse, topicPartitionOffsets map[string]map[int32]int64) (int64, int64, error) {
+func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offsets *sarama.OffsetFetchResponse, topicPartitionOffsets map[string]map[int32]int64, topicPartitionOldestOffsets map[string]map[int32]int64) (int64, int64, error) {
 	block := offsets.GetBlock(topic, partitionID)
 	if block == nil {
 		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d from offset block: %v", topic, partitionID, offsets.Blocks)
@@ -821,6 +842,13 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 	}
 	latestOffset := topicPartitionOffsets[topic][partitionID]
 	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == earliest {
+		if s.metadata.useMessageCountOnInvalidOffset {
+			if _, found := topicPartitionOldestOffsets[topic]; !found {
+				return 0, 0, fmt.Errorf("error finding oldest partition offset for topic %s", topic)
+			}
+			earliestOffset := topicPartitionOldestOffsets[topic][partitionID]
+			return latestOffset - earliestOffset, latestOffset - earliestOffset, nil
+		}
 		if s.metadata.scaleToZeroOnInvalidOffset {
 			return 0, 0, nil
 		}
@@ -895,35 +923,51 @@ type consumerOffsetResult struct {
 	err             error
 }
 
-type producerOffsetResult struct {
-	producerOffsets map[string]map[int32]int64
-	err             error
+type newestOffsetResult struct {
+	newestOffsets map[string]map[int32]int64
+	err           error
 }
 
-func (s *kafkaScaler) getConsumerAndProducerOffsets(topicPartitions map[string][]int32) (*sarama.OffsetFetchResponse, map[string]map[int32]int64, error) {
+type oldestOffsetResult struct {
+	oldestOffsets map[string]map[int32]int64
+	err           error
+}
+
+func (s *kafkaScaler) getConsumerAndNewestAndOldestOffsets(topicPartitions map[string][]int32) (*sarama.OffsetFetchResponse, map[string]map[int32]int64, map[string]map[int32]int64, error) {
 	consumerChan := make(chan consumerOffsetResult, 1)
 	go func() {
 		consumerOffsets, err := s.getConsumerOffsets(topicPartitions)
 		consumerChan <- consumerOffsetResult{consumerOffsets, err}
 	}()
 
-	producerChan := make(chan producerOffsetResult, 1)
+	newestChan := make(chan newestOffsetResult, 1)
 	go func() {
-		producerOffsets, err := s.getProducerOffsets(topicPartitions)
-		producerChan <- producerOffsetResult{producerOffsets, err}
+		newestOffsets, err := s.getTopicOffsets(topicPartitions, sarama.OffsetNewest)
+		newestChan <- newestOffsetResult{newestOffsets, err}
+	}()
+
+	oldestChan := make(chan oldestOffsetResult, 1)
+	go func() {
+		oldestOffsets, err := s.getTopicOffsets(topicPartitions, sarama.OffsetOldest)
+		oldestChan <- oldestOffsetResult{oldestOffsets, err}
 	}()
 
 	consumerRes := <-consumerChan
 	if consumerRes.err != nil {
-		return nil, nil, consumerRes.err
+		return nil, nil, nil, consumerRes.err
 	}
 
-	producerRes := <-producerChan
-	if producerRes.err != nil {
-		return nil, nil, producerRes.err
+	newestRes := <-newestChan
+	if newestRes.err != nil {
+		return nil, nil, nil, newestRes.err
 	}
 
-	return consumerRes.consumerOffsets, producerRes.producerOffsets, nil
+	oldestRes := <-oldestChan
+	if oldestRes.err != nil {
+		return nil, nil, nil, oldestRes.err
+	}
+
+	return consumerRes.consumerOffsets, newestRes.newestOffsets, oldestRes.oldestOffsets, nil
 }
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
@@ -946,7 +990,7 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 		return 0, 0, err
 	}
 
-	consumerOffsets, producerOffsets, err := s.getConsumerAndProducerOffsets(topicPartitions)
+	consumerOffsets, newestOffsets, oldestOffsets, err := s.getConsumerAndNewestAndOldestOffsets(topicPartitions)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -956,9 +1000,9 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 	totalTopicPartitions := int64(0)
 	partitionsWithLag := int64(0)
 
-	for topic, partitionsOffsets := range producerOffsets {
+	for topic, partitionsOffsets := range newestOffsets {
 		for partition := range partitionsOffsets {
-			lag, lagWithPersistent, err := s.getLagForPartition(topic, partition, consumerOffsets, producerOffsets)
+			lag, lagWithPersistent, err := s.getLagForPartition(topic, partition, consumerOffsets, newestOffsets, oldestOffsets)
 			if err != nil {
 				return 0, 0, err
 			}
@@ -992,7 +1036,7 @@ type brokerOffsetResult struct {
 	err        error
 }
 
-func (s *kafkaScaler) getProducerOffsets(topicPartitions map[string][]int32) (map[string]map[int32]int64, error) {
+func (s *kafkaScaler) getTopicOffsets(topicPartitions map[string][]int32, offsetType int64) (map[string]map[int32]int64, error) {
 	version := int16(0)
 	if s.client.Config().Version.IsAtLeast(sarama.V0_10_1_0) {
 		version = 1
@@ -1012,7 +1056,7 @@ func (s *kafkaScaler) getProducerOffsets(topicPartitions map[string][]int32) (ma
 				request = &sarama.OffsetRequest{Version: version}
 				requests[broker] = request
 			}
-			request.AddBlock(topic, partitionID, sarama.OffsetNewest, 1)
+			request.AddBlock(topic, partitionID, offsetType, 1)
 		}
 	}
 
