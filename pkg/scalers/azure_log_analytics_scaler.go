@@ -60,8 +60,7 @@ type azureLogAnalyticsMetadata struct {
 	CloudName               string `keda:"name=cloud, order=triggerMetadata, default=azurePublicCloud"`
 	Cloud                   azcloud.Configuration
 	UnsafeSsl               bool          `keda:"name=unsafeSsl, order=triggerMetadata, default=false"`
-	MillisecondTimeout      int32         `keda:"name=timeout, order=triggerMetadata, optional"`
-	Timeout                 time.Duration // custom HTTP client timeout
+	Timeout                 time.Duration `keda:"name=timeout, order=triggerMetadata, optional"`
 }
 
 func (m *azureLogAnalyticsMetadata) Validate() error {
@@ -84,13 +83,6 @@ func (m *azureLogAnalyticsMetadata) Validate() error {
 		return fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", m.PodIdentity.Provider)
 	}
 
-	if m.WorkspaceID == "" {
-		missingParameter = "workspaceId"
-	}
-	if m.Query == "" {
-		missingParameter = "query"
-	}
-
 	m.Cloud = azcloud.AzurePublic
 	if strings.EqualFold(m.CloudName, azure.PrivateCloud) {
 		if m.LogAnalyticsResourceURL != "" {
@@ -107,10 +99,8 @@ func (m *azureLogAnalyticsMetadata) Validate() error {
 		return fmt.Errorf("there is no cloud environment matching the name %s", m.CloudName)
 	}
 
-	if m.MillisecondTimeout > 0 {
-		m.Timeout = time.Duration(m.MillisecondTimeout) * time.Millisecond
-	} else if m.MillisecondTimeout < 0 {
-		return fmt.Errorf("timeout must be greater than 0")
+	if m.Timeout > 0 {
+		m.Timeout = m.Timeout * time.Millisecond
 	}
 
 	if missingParameter != "" {
