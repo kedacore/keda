@@ -16,6 +16,7 @@ import (
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/tidwall/gjson"
+	"golang.org/x/sync/semaphore"
 	"gopkg.in/yaml.v3"
 	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -474,8 +475,8 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 	if err != nil {
 		s.logger.Error(err, "Failed parsing url for metrics API")
 		return nil, err
-	} 
-	
+	}
+
 	splittedHost := strings.Split(url.Host, ".")
 	if len(splittedHost) < 2 {
 		return nil, fmt.Errorf("invalid hostname %s : expected at least 2 elements, first being service name and second being the namespace", url.Host)
@@ -494,7 +495,7 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 	// get service serviceEndpoints
 	serviceEndpoints := &corev1.Endpoints{}
 
-	err := s.kubeClient.Get(ctx, client.ObjectKey{
+	err = s.kubeClient.Get(ctx, client.ObjectKey{
 		Namespace: namespace,
 		Name:      serviceName,
 	}, serviceEndpoints)
@@ -519,7 +520,6 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 			}
 		}
 	}
-	
 	return endpointUrls, err
 }
 
@@ -548,7 +548,7 @@ func (s *metricsAPIScaler) aggregateMetricsFromMultipleEndpoints(ctx context.Con
 	const maxGoroutines = 5
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, maxGoroutines)
+	sem := semaphore.NewWeighted(maxGoroutines)
 	expectedNbMetrics := len(endpointsUrls)
 	nbErrors := 0
 	var err error
@@ -556,9 +556,14 @@ func (s *metricsAPIScaler) aggregateMetricsFromMultipleEndpoints(ctx context.Con
 	var aggregation float64
 	for _, endpointURL := range endpointsUrls {
 		wg.Add(1)
-		sem <- struct{}{} // Acquire semaphore slot
+		if err := sem.Acquire(ctx, 1); err != nil {
+			s.logger.Error(err, "Failed to acquire semaphore")
+			wg.Done()
+			continue
+		}
 		go func(url string) {
 			defer wg.Done()
+			defer sem.Release(1)
 			metric, err := s.getMetricValueFromURL(ctx, &endpointURL)
 
 			if err != nil {
@@ -587,7 +592,6 @@ func (s *metricsAPIScaler) aggregateMetricsFromMultipleEndpoints(ctx context.Con
 				}
 				mu.Unlock()
 			}
-			<-sem // Release semaphore slot
 		}(endpointURL)
 	}
 
