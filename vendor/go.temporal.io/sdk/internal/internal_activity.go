@@ -146,6 +146,7 @@ type (
 		workflowNamespace  string
 		workerStopChannel  <-chan struct{}
 		contextPropagators []ContextPropagator
+		client             *WorkflowClient
 	}
 
 	// context.WithValue need this type instead of basic type string to avoid lint error
@@ -426,6 +427,10 @@ func (a *activityEnvironmentInterceptor) GetHeartbeatDetails(ctx context.Context
 
 func (a *activityEnvironmentInterceptor) GetWorkerStopChannel(ctx context.Context) <-chan struct{} {
 	return a.env.workerStopChannel
+}
+
+func (a *activityEnvironmentInterceptor) GetClient(ctx context.Context) Client {
+	return a.env.client
 }
 
 // Needed so this can properly be considered an inbound interceptor

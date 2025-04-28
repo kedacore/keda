@@ -42,7 +42,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	"go.temporal.io/api/cloud/cloudservice/v1"
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 	historypb "go.temporal.io/api/history/v1"
@@ -104,13 +103,6 @@ type (
 		// The pointer value is shared across multiple clients. If non-nil, only
 		// access/mutate atomically.
 		unclosedClients *int32
-	}
-
-	// cloudOperationsClient is the client for managing cloud.
-	cloudOperationsClient struct {
-		conn               *grpc.ClientConn
-		logger             log.Logger
-		cloudServiceClient cloudservice.CloudServiceClient
 	}
 
 	// namespaceClient is the client for managing namespaces.
@@ -506,7 +498,7 @@ func (wc *WorkflowClient) CompleteActivity(ctx context.Context, taskToken []byte
 	// We do allow canceled error to be passed here
 	cancelAllowed := true
 	request := convertActivityResultToRespondRequest(wc.identity, taskToken,
-		data, err, wc.dataConverter, wc.failureConverter, wc.namespace, cancelAllowed, nil)
+		data, err, wc.dataConverter, wc.failureConverter, wc.namespace, cancelAllowed, nil, nil, nil)
 	return reportActivityComplete(ctx, wc.workflowService, request, wc.metricsHandler)
 }
 
@@ -661,6 +653,8 @@ func (wc *WorkflowClient) ListArchivedWorkflow(ctx context.Context, request *wor
 }
 
 // ScanWorkflow implementation
+//
+//lint:ignore SA1019 the server API was deprecated.
 func (wc *WorkflowClient) ScanWorkflow(ctx context.Context, request *workflowservice.ScanWorkflowExecutionsRequest) (*workflowservice.ScanWorkflowExecutionsResponse, error) {
 	if err := wc.ensureInitialized(ctx); err != nil {
 		return nil, err
@@ -671,6 +665,7 @@ func (wc *WorkflowClient) ScanWorkflow(ctx context.Context, request *workflowser
 	}
 	grpcCtx, cancel := newGRPCContext(ctx, defaultGrpcRetryParameters(ctx))
 	defer cancel()
+	//lint:ignore SA1019 the server API was deprecated.
 	response, err := wc.workflowService.ScanWorkflowExecutions(grpcCtx, request)
 	if err != nil {
 		return nil, err
@@ -740,11 +735,12 @@ func (wc *WorkflowClient) DescribeWorkflowExecution(ctx context.Context, workflo
 
 // QueryWorkflow queries a given workflow execution
 // workflowID and queryType are required, other parameters are optional.
-// - workflow ID of the workflow.
-// - runID can be default(empty string). if empty string then it will pick the running execution of that workflow ID.
-// - taskQueue can be default(empty string). If empty string then it will pick the taskQueue of the running execution of that workflow ID.
-// - queryType is the type of the query.
-// - args... are the optional query parameters.
+//   - workflow ID of the workflow.
+//   - runID can be default(empty string). if empty string then it will pick the running execution of that workflow ID.
+//   - taskQueue can be default(empty string). If empty string then it will pick the taskQueue of the running execution of that workflow ID.
+//   - queryType is the type of the query.
+//   - args... are the optional query parameters.
+//
 // The errors it can return:
 //   - serviceerror.InvalidArgument
 //   - serviceerror.Internal
@@ -816,7 +812,6 @@ type UpdateWithStartWorkflowOptions struct {
 // similar to a Future with respect to the outcome of the update. If the update
 // is rejected or returns an error, the Get function on this type will return
 // that error through the output valuePtr.
-// NOTE: Experimental
 type WorkflowUpdateHandle interface {
 	// WorkflowID observes the update's workflow ID.
 	WorkflowID() string
@@ -833,7 +828,6 @@ type WorkflowUpdateHandle interface {
 
 // GetWorkflowUpdateHandleOptions encapsulates the parameters needed to unambiguously
 // refer to a Workflow Update.
-// NOTE: Experimental
 type GetWorkflowUpdateHandleOptions struct {
 	// WorkflowID of the target update
 	WorkflowID string
@@ -945,8 +939,9 @@ func (wc *WorkflowClient) QueryWorkflowWithOptions(ctx context.Context, request 
 
 // DescribeTaskQueue returns information about the target taskqueue, right now this API returns the
 // pollers which polled this taskqueue in last few minutes.
-// - taskqueue name of taskqueue
-// - taskqueueType type of taskqueue, can be workflow or activity
+//   - taskqueue name of taskqueue
+//   - taskqueueType type of taskqueue, can be workflow or activity
+//
 // The errors it can return:
 //   - serviceerror.InvalidArgument
 //   - serviceerror.Internal
@@ -1061,6 +1056,31 @@ func (wc *WorkflowClient) GetWorkerTaskReachability(ctx context.Context, options
 	}
 	converted := workerTaskReachabilityFromProtoResponse(resp)
 	return converted, nil
+}
+
+// UpdateWorkflowExecutionOptions partially overrides the [WorkflowExecutionOptions] of an existing workflow execution,
+// and returns the new [WorkflowExecutionOptions] after applying the changes.
+// It is intended for building tools that can selectively apply ad-hoc workflow configuration changes.
+// NOTE: Experimental
+func (wc *WorkflowClient) UpdateWorkflowExecutionOptions(ctx context.Context, request UpdateWorkflowExecutionOptionsRequest) (WorkflowExecutionOptions, error) {
+	if err := wc.ensureInitialized(ctx); err != nil {
+		return WorkflowExecutionOptions{}, err
+	}
+
+	grpcCtx, cancel := newGRPCContext(ctx, defaultGrpcRetryParameters(ctx))
+	defer cancel()
+
+	requestMsg, err := request.validateAndConvertToProto(wc.namespace)
+	if err != nil {
+		return WorkflowExecutionOptions{}, err
+	}
+
+	resp, err := wc.workflowService.UpdateWorkflowExecutionOptions(grpcCtx, requestMsg)
+	if err != nil {
+		return WorkflowExecutionOptions{}, err
+	}
+
+	return workflowExecutionOptionsFromProtoUpdateResponse(resp), nil
 }
 
 // DescribeTaskQueueEnhanced returns information about the target task queue, broken down by Build Id:
@@ -1303,6 +1323,20 @@ func (wc *WorkflowClient) ScheduleClient() ScheduleClient {
 	}
 }
 
+// DeploymentClient implements [Client.DeploymentClient].
+func (wc *WorkflowClient) DeploymentClient() DeploymentClient {
+	return &deploymentClient{
+		workflowClient: wc,
+	}
+}
+
+// WorkerDeploymentClient implements [Client.WorkerDeploymentClient].
+func (wc *WorkflowClient) WorkerDeploymentClient() WorkerDeploymentClient {
+	return &workerDeploymentClient{
+		workflowClient: wc,
+	}
+}
+
 // Close client and clean up underlying resources.
 func (wc *WorkflowClient) Close() {
 	// If there's a set of unclosed clients, we have to decrement it and then
@@ -1324,16 +1358,6 @@ func (wc *WorkflowClient) Close() {
 		if err := wc.conn.Close(); err != nil {
 			wc.logger.Warn("unable to close connection", tagError, err)
 		}
-	}
-}
-
-func (c *cloudOperationsClient) CloudService() cloudservice.CloudServiceClient {
-	return c.cloudServiceClient
-}
-
-func (c *cloudOperationsClient) Close() {
-	if err := c.conn.Close(); err != nil {
-		c.logger.Warn("unable to close connection", tagError, err)
 	}
 }
 
@@ -1653,6 +1677,8 @@ func (w *workflowClientInterceptor) createStartWorkflowRequest(
 		Header:                   header,
 		CompletionCallbacks:      in.Options.callbacks,
 		Links:                    in.Options.links,
+		VersioningOverride:       versioningOverrideToProto(in.Options.VersioningOverride),
+		OnConflictOptions:        in.Options.onConflictOptions.ToProto(),
 	}
 
 	startRequest.UserMetadata, err = buildUserMetadata(in.Options.StaticSummary, in.Options.StaticDetails, dataConverter)
@@ -1767,13 +1793,6 @@ func (w *workflowClientInterceptor) UpdateWithStartWorkflow(
 		updateReq.WorkflowExecution.WorkflowId = startReq.WorkflowId
 	}
 
-	grpcCtx, cancel := newGRPCContext(
-		ctx,
-		grpcMetricsHandler(w.client.metricsHandler.WithTags(
-			metrics.RPCTags(startOp.input.WorkflowType, metrics.NoneTagValue, startOp.input.Options.TaskQueue))),
-		defaultGrpcRetryParameters(ctx))
-	defer cancel()
-
 	iterFn := func(fnCtx context.Context, fnRunID string) HistoryEventIterator {
 		metricsHandler := w.client.metricsHandler.WithTags(metrics.RPCTags(startOp.input.WorkflowType,
 			metrics.NoneTagValue, startOp.input.Options.TaskQueue))
@@ -1794,10 +1813,14 @@ func (w *workflowClientInterceptor) UpdateWithStartWorkflow(
 		}, nil)
 	}
 
-	updateResp, err := w.updateWithStartWorkflow(grpcCtx, startReq, updateReq, onStart)
+	metricsHandler := w.client.metricsHandler.WithTags(metrics.RPCTags(startOp.input.WorkflowType,
+		metrics.NoneTagValue, startOp.input.Options.TaskQueue))
+
+	updateResp, err := w.updateWithStartWorkflow(ctx, startReq, updateReq, onStart, metricsHandler)
 	if err != nil {
 		return nil, err
 	}
+
 	handle, err := w.updateHandleFromResponse(ctx, updateReq.WaitPolicy.LifecycleStage, updateResp)
 	if err != nil {
 		return nil, err
@@ -1814,6 +1837,7 @@ func (w *workflowClientInterceptor) updateWithStartWorkflow(
 	startRequest *workflowservice.StartWorkflowExecutionRequest,
 	updateRequest *workflowservice.UpdateWorkflowExecutionRequest,
 	onStart func(*workflowservice.StartWorkflowExecutionResponse),
+	rpcMetricsHandler metrics.Handler,
 ) (*workflowservice.UpdateWorkflowExecutionResponse, error) {
 	startOp := &workflowservice.ExecuteMultiOperationRequest_Operation{
 		Operation: &workflowservice.ExecuteMultiOperationRequest_Operation_StartWorkflow{
@@ -1837,7 +1861,12 @@ func (w *workflowClientInterceptor) updateWithStartWorkflow(
 	seenStart := false
 	for {
 		multiResp, err := func() (*workflowservice.ExecuteMultiOperationResponse, error) {
-			grpcCtx, cancel := newGRPCContext(ctx, grpcTimeout(pollUpdateTimeout), grpcLongPoll(true), defaultGrpcRetryParameters(ctx))
+			grpcCtx, cancel := newGRPCContext(
+				ctx,
+				grpcTimeout(pollUpdateTimeout),
+				grpcLongPoll(true),
+				grpcMetricsHandler(rpcMetricsHandler),
+				defaultGrpcRetryParameters(ctx))
 			defer cancel()
 
 			multiResp, err := w.client.workflowService.ExecuteMultiOperation(grpcCtx, &multiRequest)
@@ -1941,9 +1970,10 @@ func (w *workflowClientInterceptor) SignalWorkflow(ctx context.Context, in *Clie
 		return err
 	}
 
+	links, _ := ctx.Value(NexusOperationLinksKey).([]*commonpb.Link)
+
 	request := &workflowservice.SignalWorkflowExecutionRequest{
 		Namespace: w.client.namespace,
-		RequestId: uuid.New(),
 		WorkflowExecution: &commonpb.WorkflowExecution{
 			WorkflowId: in.WorkflowID,
 			RunId:      in.RunID,
@@ -1952,6 +1982,13 @@ func (w *workflowClientInterceptor) SignalWorkflow(ctx context.Context, in *Clie
 		Input:      input,
 		Identity:   w.client.identity,
 		Header:     header,
+		Links:      links,
+	}
+
+	if requestID, ok := ctx.Value(NexusOperationRequestIDKey).(string); ok && requestID != "" {
+		request.RequestId = requestID
+	} else {
+		request.RequestId = uuid.New()
 	}
 
 	grpcCtx, cancel := newGRPCContext(ctx, defaultGrpcRetryParameters(ctx))
@@ -2016,6 +2053,7 @@ func (w *workflowClientInterceptor) SignalWithStartWorkflow(
 		WorkflowIdReusePolicy:    in.Options.WorkflowIDReusePolicy,
 		WorkflowIdConflictPolicy: in.Options.WorkflowIDConflictPolicy,
 		Header:                   header,
+		VersioningOverride:       versioningOverrideToProto(in.Options.VersioningOverride),
 	}
 
 	if in.Options.StartDelay != 0 {
@@ -2158,6 +2196,7 @@ func (w *workflowClientInterceptor) UpdateWorkflow(
 		resp, err = func() (*workflowservice.UpdateWorkflowExecutionResponse, error) {
 			grpcCtx, cancel := newGRPCContext(ctx, grpcTimeout(pollUpdateTimeout), grpcLongPoll(true), defaultGrpcRetryParameters(ctx))
 			defer cancel()
+
 			return w.client.workflowService.UpdateWorkflowExecution(grpcCtx, req)
 		}()
 		if err != nil {

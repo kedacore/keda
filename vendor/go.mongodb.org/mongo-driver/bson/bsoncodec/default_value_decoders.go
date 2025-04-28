@@ -1521,6 +1521,18 @@ func (dvd DefaultValueDecoders) ValueUnmarshalerDecodeValue(_ DecodeContext, vr 
 		return ValueDecoderError{Name: "ValueUnmarshalerDecodeValue", Types: []reflect.Type{tValueUnmarshaler}, Received: val}
 	}
 
+	// If BSON value is null and the go value is a pointer, then don't call
+	// UnmarshalBSONValue. Even if the Go pointer is already initialized (i.e.,
+	// non-nil), encountering null in BSON will result in the pointer being
+	// directly set to nil here. Since the pointer is being replaced with nil,
+	// there is no opportunity (or reason) for the custom UnmarshalBSONValue logic
+	// to be called.
+	if vr.Type() == bsontype.Null && val.Kind() == reflect.Ptr {
+		val.Set(reflect.Zero(val.Type()))
+
+		return vr.ReadNull()
+	}
+
 	if val.Kind() == reflect.Ptr && val.IsNil() {
 		if !val.CanSet() {
 			return ValueDecoderError{Name: "ValueUnmarshalerDecodeValue", Types: []reflect.Type{tValueUnmarshaler}, Received: val}

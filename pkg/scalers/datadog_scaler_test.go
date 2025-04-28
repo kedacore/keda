@@ -107,6 +107,7 @@ var testDatadogClusterAgentMetadata = []datadogAuthMetadataTestData{
 	// Default Datadog service name and port
 	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "type": "global"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "unsafeSsl": "true", "authMode": "bearer"}, false},
 
+	// TODO: Fix this failed test case
 	// both metadata type and trigger type
 	{v2.AverageValueMetricType, map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "type": "global"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "unsafeSsl": "true", "authMode": "bearer"}, true},
 	// missing DatadogMetric name
@@ -167,27 +168,27 @@ var testDatadogAPIMetadata = []datadogAuthMetadataTestData{
 }
 
 func TestDatadogScalerAPIAuthParams(t *testing.T) {
-	for _, testData := range testDatadogAPIMetadata {
+	for idx, testData := range testDatadogAPIMetadata {
 		_, err := parseDatadogAPIMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
 
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+			t.Errorf("Expected success but got error: %s for test case %d", err, idx)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Errorf("Expected error but got success for test case %d", idx)
 		}
 	}
 }
 
 func TestDatadogScalerClusterAgentAuthParams(t *testing.T) {
-	for _, testData := range testDatadogClusterAgentMetadata {
+	for idx, testData := range testDatadogClusterAgentMetadata {
 		_, err := parseDatadogClusterAgentMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
 
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+			t.Errorf("Expected success but got error: %s for test case %d", err, idx)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Errorf("Expected error but got success for test case %d", idx)
 		}
 	}
 }
@@ -198,11 +199,12 @@ var datadogMetricIdentifiers = []datadogMetricIdentifier{
 	{&testDatadogClusterAgentMetadata[1], clusterAgentType, 0, "datadogmetric@default:nginx-hits"},
 }
 
+// TODO: Need to check whether we need to rewrite this test case because vType is long deprecated
 func TestDatadogGetMetricSpecForScaling(t *testing.T) {
 	var err error
 	var meta *datadogMetadata
 
-	for _, testData := range datadogMetricIdentifiers {
+	for idx, testData := range datadogMetricIdentifiers {
 		if testData.typeOfScaler == apiType {
 			meta, err = parseDatadogAPIMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
 		} else {
@@ -221,7 +223,7 @@ func TestDatadogGetMetricSpecForScaling(t *testing.T) {
 		metricSpec := mockDatadogScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName)
+			t.Errorf("Wrong External metric source name:%s for test case %d", metricName, idx)
 		}
 	}
 }

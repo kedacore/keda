@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017-2021 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -158,6 +158,7 @@ func IsForbidden(err error) bool {
 }
 
 // Deprecated: Use IsNotFoundGeneral instead.
+//
 // For ErrArangoDocumentNotFound error there is a chance that we get a different HTTP code if the API requires an existing document as input, which is not found.
 //
 // IsNotFound returns true if the given error is an ArangoError with code 404, indicating an object not found.

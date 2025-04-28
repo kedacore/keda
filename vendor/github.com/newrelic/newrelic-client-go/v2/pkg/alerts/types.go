@@ -3,6 +3,21 @@ package alerts
 
 import "github.com/newrelic/newrelic-client-go/v2/pkg/nrtime"
 
+// AlertsActionOnMutingRuleWindowEnded - Configuration on the action when the muting rule window is ended or disabled
+type AlertsActionOnMutingRuleWindowEnded string
+
+var AlertsActionOnMutingRuleWindowEndedTypes = struct {
+	// Muting Rule closes issues when the muting rule window is ended or disabled to notify users.
+	CLOSE_ISSUES_ON_INACTIVE AlertsActionOnMutingRuleWindowEnded
+	// The currently opened issues will not be notified even if the muting rule window is ended or disabled.
+	DO_NOTHING AlertsActionOnMutingRuleWindowEnded
+}{
+	// Muting Rule closes issues when the muting rule window is ended or disabled to notify users.
+	CLOSE_ISSUES_ON_INACTIVE: "CLOSE_ISSUES_ON_INACTIVE",
+	// The currently opened issues will not be notified even if the muting rule window is ended or disabled.
+	DO_NOTHING: "DO_NOTHING",
+}
+
 // AlertsDayOfWeek - The day of the week used to configure a WEEKLY scheduled MutingRule
 type AlertsDayOfWeek string
 
@@ -221,6 +236,8 @@ type AlertsMutingRuleConditionInput struct {
 
 // AlertsMutingRuleInput - Input for creating MutingRules for New Relic Alerts Violations.
 type AlertsMutingRuleInput struct {
+	// The action when the muting rule window is ended or disabled.
+	ActionOnMutingRuleWindowEnded AlertsActionOnMutingRuleWindowEnded `json:"actionOnMutingRuleWindowEnded,omitempty"`
 	// The condition that defines which violations to target.
 	Condition AlertsMutingRuleConditionGroupInput `json:"condition,omitempty"`
 	// The description of the MutingRule.
