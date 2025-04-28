@@ -253,9 +253,6 @@ scalers:
         - name: queueURL
           type: string
           envVariableReadable: true
-        - name: queueURLFromEnv
-          type: string
-          envVariableReadable: true
         - name: awsRegion
           type: string
           triggerAuthenticationVariableReadable: true
@@ -1345,7 +1342,7 @@ scalers:
           default: "1"
         - name: enableManagedDownloads
           type: string
-          optional: true
+          default: "true"
         - name: capabilities
           type: string
           optional: true

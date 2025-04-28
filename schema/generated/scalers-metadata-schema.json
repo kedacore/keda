@@ -424,11 +424,6 @@
                     "envVariableReadable": true
                 },
                 {
-                    "name": "queueURLFromEnv",
-                    "type": "string",
-                    "envVariableReadable": true
-                },
-                {
                     "name": "awsRegion",
                     "type": "string",
                     "triggerAuthenticationVariableReadable": true
@@ -2206,7 +2201,7 @@
                 {
                     "name": "enableManagedDownloads",
                     "type": "string",
-                    "optional": true
+                    "default": "true"
                 },
                 {
                     "name": "capabilities",
