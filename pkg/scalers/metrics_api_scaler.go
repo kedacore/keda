@@ -473,51 +473,53 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 	url, err := neturl.Parse(serviceURL)
 	if err != nil {
 		s.logger.Error(err, "Failed parsing url for metrics API")
-	} else {
-		splittedHost := strings.Split(url.Host, ".")
-		if len(splittedHost) < 2 {
-			return nil, fmt.Errorf("invalid hostname %s : expected at least 2 elements, first being service name and second being the namespace", url.Host)
+		return nil, err
+	} 
+	
+	splittedHost := strings.Split(url.Host, ".")
+	if len(splittedHost) < 2 {
+		return nil, fmt.Errorf("invalid hostname %s : expected at least 2 elements, first being service name and second being the namespace", url.Host)
+	}
+	serviceName := splittedHost[0]
+	namespace := splittedHost[1]
+	podPort := url.Port()
+	// infer port from service scheme when not set explicitly
+	if podPort == "" {
+		if url.Scheme == secureHTTPScheme {
+			podPort = "443"
+		} else {
+			podPort = "80"
 		}
-		serviceName := splittedHost[0]
-		namespace := splittedHost[1]
-		podPort := url.Port()
-		// infer port from service scheme when not set explicitly
-		if podPort == "" {
-			if url.Scheme == secureHTTPScheme {
-				podPort = "443"
-			} else {
-				podPort = "80"
-			}
-		}
-		// get service serviceEndpoints
-		serviceEndpoints := &corev1.Endpoints{}
+	}
+	// get service serviceEndpoints
+	serviceEndpoints := &corev1.Endpoints{}
 
-		err := s.kubeClient.Get(ctx, client.ObjectKey{
-			Namespace: namespace,
-			Name:      serviceName,
-		}, serviceEndpoints)
-		if err != nil {
-			return nil, err
-		}
+	err := s.kubeClient.Get(ctx, client.ObjectKey{
+		Namespace: namespace,
+		Name:      serviceName,
+	}, serviceEndpoints)
+	if err != nil {
+		return nil, err
+	}
 
-		for _, subset := range serviceEndpoints.Subsets {
-			foundPort := ""
-			for _, port := range subset.Ports {
-				if strconv.Itoa(int(port.Port)) == podPort {
-					foundPort = fmt.Sprintf(":%d", port.Port)
-					break
-				}
+	for _, subset := range serviceEndpoints.Subsets {
+		foundPort := ""
+		for _, port := range subset.Ports {
+			if strconv.Itoa(int(port.Port)) == podPort {
+				foundPort = fmt.Sprintf(":%d", port.Port)
+				break
 			}
-			if foundPort == "" {
-				s.logger.Info(fmt.Sprintf("Warning : could not find port %s in endpoint slice for service %s.%s definition. Will infer port from %s scheme", podPort, serviceName, namespace, url.Scheme))
-			}
-			for _, address := range subset.Addresses {
-				if address.NodeName != nil {
-					endpointUrls = append(endpointUrls, fmt.Sprintf("%s://%s%s%s", url.Scheme, address.IP, foundPort, url.Path))
-				}
+		}
+		if foundPort == "" {
+			s.logger.Info(fmt.Sprintf("Warning : could not find port %s in endpoint slice for service %s.%s definition. Will infer port from %s scheme", podPort, serviceName, namespace, url.Scheme))
+		}
+		for _, address := range subset.Addresses {
+			if address.NodeName != nil {
+				endpointUrls = append(endpointUrls, fmt.Sprintf("%s://%s%s%s", url.Scheme, address.IP, foundPort, url.Path))
 			}
 		}
 	}
+	
 	return endpointUrls, err
 }
 
