@@ -200,7 +200,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	KubectlDeleteWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	t.Log("scaling to 2 replicas")
-	data.MetricValue = "21"
+	data.MetricValue = "20"
 	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
@@ -211,7 +211,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("scaling to 3 replicas using floats in the payload")
 	data.MetricValue = "22.222"
 	data.MetricsServerEndpoint = metricsServerEndpointFloat
-	data.MetricThreshold = "7.111"
+	data.MetricThreshold = "6.111"
 	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 	KubectlReplaceWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 3, 60, 2),
