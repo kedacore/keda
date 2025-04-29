@@ -255,13 +255,13 @@ func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 	runWithLog := func() {
 		grpcClient, err := getClientForConnectionPool(s.metadata)
 		if err != nil {
-			if !errors.Is(err, io.EOF) { //If io.EOF is returned, the stream has terminated with an OK status
+			if !errors.Is(err, io.EOF) { // If io.EOF is returned, the stream has terminated with an OK status
 				s.logger.Error(err, "error running internalRun")
 			}
 			return
 		}
 		if err := handleIsActiveStream(ctx, &s.scaledObjectRef, grpcClient, active); err != nil {
-			if !errors.Is(err, io.EOF) { //If io.EOF is returned, the stream has terminated with an OK status
+			if !errors.Is(err, io.EOF) { // If io.EOF is returned, the stream has terminated with an OK status
 				s.logger.Error(err, "error running internalRun")
 			}
 			return
