@@ -86,6 +86,14 @@ spec:
           ports:
           - containerPort: 6000
           - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+            periodSeconds: 5
 `
 
 	deploymentTemplate = `
