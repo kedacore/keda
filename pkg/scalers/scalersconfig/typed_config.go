@@ -189,8 +189,11 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) (
 			continue
 		}
 		tagParams.Optional = tagParams.Optional || parentOptional
-		if err := sc.setValue(fieldValue, tagParams, &parsedParamNames); err != nil {
+		err, parsed := sc.setValue(fieldValue, tagParams)
+		if err != nil {
 			errs = append(errs, err)
+		} else {
+			parsedParamNames = append(parsedParamNames, parsed...)
 		}
 	}
 	if validator, ok := typedConfig.(CustomValidator); ok {
@@ -201,11 +204,11 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) (
 	return errors.Join(errs...), parsedParamNames
 }
 
-// setValue is a function that sets the value of the field based on the provided params
-func (sc *ScalerConfig) setValue(field reflect.Value, params Params, parsedParamNames *[]string) error {
+// setValue is a function that sets the value of the field based on the provided params, will return error and param names that set value
+func (sc *ScalerConfig) setValue(field reflect.Value, params Params) (error, []string) {
 	valFromConfig, exists := sc.configParamValue(params)
 	if exists && params.IsDeprecated() {
-		return fmt.Errorf("scaler %s info: %s", sc.TriggerType, params.Deprecated)
+		return fmt.Errorf("scaler %s info: %s", sc.TriggerType, params.Deprecated), nil
 	}
 	if exists && params.DeprecatedAnnounce != "" {
 		if sc.Recorder != nil {
@@ -219,14 +222,14 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params, parsedParam
 		valFromConfig = params.Default
 	}
 	if !exists && (params.Optional || params.IsDeprecated()) {
-		return nil
+		return nil, nil
 	}
 	if !exists && !(params.Optional || params.IsDeprecated()) {
 		if len(params.Order) == 0 {
 			apo := slices.Sorted(maps.Keys(allowedParsingOrderMap))
-			return fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name(), apo)
+			return fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name(), apo), nil
 		}
-		return fmt.Errorf("missing required parameter %q in %v", params.Name(), params.Order)
+		return fmt.Errorf("missing required parameter %q in %v", params.Name(), params.Order), nil
 	}
 	if params.Enum != nil {
 		enumMap := make(map[string]bool)
@@ -242,7 +245,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params, parsedParam
 			}
 		}
 		if len(missingMap) > 0 {
-			return fmt.Errorf("parameter %q value %q must be one of %v", params.Name(), valFromConfig, params.Enum)
+			return fmt.Errorf("parameter %q value %q must be one of %v", params.Name(), valFromConfig, params.Enum), nil
 		}
 	}
 	if params.ExclusiveSet != nil {
@@ -259,7 +262,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params, parsedParam
 			}
 		}
 		if exclusiveCount > 1 {
-			return fmt.Errorf("parameter %q value %q must contain only one of %v", params.Name(), valFromConfig, params.ExclusiveSet)
+			return fmt.Errorf("parameter %q value %q must contain only one of %v", params.Name(), valFromConfig, params.ExclusiveSet), nil
 		}
 	}
 	if params.IsNested() {
@@ -268,19 +271,14 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params, parsedParam
 			field = field.Elem()
 		}
 		if field.Kind() != reflect.Struct {
-			return fmt.Errorf("nested parameter %q must be a struct, has kind %q", params.FieldName, field.Kind())
+			return fmt.Errorf("nested parameter %q must be a struct, has kind %q", params.FieldName, field.Kind()), nil
 		}
-		err, nestedParsedParamNames := sc.parseTypedConfig(field.Addr().Interface(), params.Optional)
-		if err == nil && nestedParsedParamNames != nil && len(nestedParsedParamNames) > 0 {
-			*parsedParamNames = append(*parsedParamNames, nestedParsedParamNames...)
-		}
-		return err
+		return sc.parseTypedConfig(field.Addr().Interface(), params.Optional)
 	}
 	if err := setConfigValueHelper(params, valFromConfig, field); err != nil {
-		return fmt.Errorf("unable to set param %q value %q: %w", params.Name(), valFromConfig, err)
+		return fmt.Errorf("unable to set param %q value %q: %w", params.Name(), valFromConfig, err), nil
 	}
-	*parsedParamNames = append(*parsedParamNames, params.Name())
-	return nil
+	return nil, []string{params.Name()}
 }
 
 // setConfigValueURLParams is a function that sets the value of the url.Values field
