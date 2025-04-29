@@ -29,7 +29,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
@@ -150,21 +152,30 @@ func (sc *ScalerConfig) TypedConfig(typedConfig any) (err error) {
 			err = fmt.Errorf("failed to parse typed config %T resulted in panic\n%v", r, string(debug.Stack()))
 		}
 	}()
-	err = sc.parseTypedConfig(typedConfig, false)
+
+	logger := logf.Log.WithName("typed_config").WithValues("type", sc.ScalableObjectType, "namespace", sc.ScalableObjectNamespace, "name", sc.ScalableObjectName)
+
+	err, parsedParamNames := sc.parseTypedConfig(typedConfig, false)
+
+	if err == nil {
+		sc.checkUnexpectedParameterExist(parsedParamNames, logger)
+	}
+
 	return
 }
 
 // parseTypedConfig is a function that is used to unmarshal the TriggerMetadata, ResolvedEnv and AuthParams
 // this can be called recursively to parse nested structures
-func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) error {
+func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) (error, []string) {
 	t := reflect.TypeOf(typedConfig)
 	if t.Kind() != reflect.Pointer {
-		return fmt.Errorf("typedConfig must be a pointer")
+		return fmt.Errorf("typedConfig must be a pointer"), nil
 	}
 	t = t.Elem()
 	v := reflect.ValueOf(typedConfig).Elem()
 
 	errs := []error{}
+	parsedParamNames := []string{}
 	for i := 0; i < t.NumField(); i++ {
 		fieldType := t.Field(i)
 		fieldValue := v.Field(i)
@@ -178,7 +189,7 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) e
 			continue
 		}
 		tagParams.Optional = tagParams.Optional || parentOptional
-		if err := sc.setValue(fieldValue, tagParams); err != nil {
+		if err := sc.setValue(fieldValue, tagParams, &parsedParamNames); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -187,11 +198,11 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) e
 			errs = append(errs, err)
 		}
 	}
-	return errors.Join(errs...)
+	return errors.Join(errs...), parsedParamNames
 }
 
 // setValue is a function that sets the value of the field based on the provided params
-func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
+func (sc *ScalerConfig) setValue(field reflect.Value, params Params, parsedParamNames *[]string) error {
 	valFromConfig, exists := sc.configParamValue(params)
 	if exists && params.IsDeprecated() {
 		return fmt.Errorf("scaler %s info: %s", sc.TriggerType, params.Deprecated)
@@ -259,11 +270,16 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 		if field.Kind() != reflect.Struct {
 			return fmt.Errorf("nested parameter %q must be a struct, has kind %q", params.FieldName, field.Kind())
 		}
-		return sc.parseTypedConfig(field.Addr().Interface(), params.Optional)
+		err, nestedParsedParamNames := sc.parseTypedConfig(field.Addr().Interface(), params.Optional)
+		if err == nil && nestedParsedParamNames != nil && len(nestedParsedParamNames) > 0 {
+			*parsedParamNames = append(*parsedParamNames, nestedParsedParamNames...)
+		}
+		return err
 	}
 	if err := setConfigValueHelper(params, valFromConfig, field); err != nil {
 		return fmt.Errorf("unable to set param %q value %q: %w", params.Name(), valFromConfig, err)
 	}
+	*parsedParamNames = append(*parsedParamNames, params.Name())
 	return nil
 }
 
@@ -468,6 +484,25 @@ func (sc *ScalerConfig) configParamValue(params Params) (string, bool) {
 		}
 	}
 	return "", params.IsNested()
+}
+
+// checkUnexpectedParameterExist is a function that checks if there are any unexpected parameters in the TriggerMetadata
+func (sc *ScalerConfig) checkUnexpectedParameterExist(parsedParamNames []string, logger logr.Logger) {
+	for k := range sc.TriggerMetadata {
+		suffix := "FromEnv"
+		if !strings.HasSuffix(k, "FromEnv") {
+			suffix = ""
+		}
+		key := strings.TrimSuffix(k, suffix)
+		if !slices.Contains(parsedParamNames, key) {
+			if sc.Recorder != nil {
+				message := fmt.Sprintf("Unmatched input property %s in scaler %s", key+suffix, sc.ScalableObjectType)
+				// Just logging as it's optional property checking and should not block the scaling
+				logger.Error(nil, message)
+				sc.Recorder.Event(sc.ScaledObject, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, message)
+			}
+		}
+	}
 }
 
 // paramsFromTag is a function that returns the Params struct based on the field tag
