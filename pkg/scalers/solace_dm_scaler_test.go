@@ -31,6 +31,18 @@ type testSolaceDMConfiguration struct {
 var (
 	solaceDMTestEnvUsernameKey = "SOLACE_DM_TEST_USERNAME_ENV"
 	solaceDMtestEnvPasswordKey = "SOLACE_DM_TEST_PASSWORD_ENV"
+	// Credential Identifiers
+	solaceDMUsername        = "username"
+	solaceDMPassword        = "password"
+	solaceDMUsernameFromEnv = "usernameFromEnv"
+	solaceDMPasswordFromEnv = "passwordFromEnv"
+
+	//
+	solaceDMSempBaseURL          = "solaceSempBaseURL"
+	solaceDMMessageVpn           = "messageVpn"
+	solaceDMClientNamePattern    = "clientNamePattern"
+	solaceDMUnsafeSSL            = "unsafeSSL"
+	solaceDMQueuedMessagesFactor = "queuedMessagesFactor"
 )
 
 // Trigger Auth - Username/Password

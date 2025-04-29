@@ -24,20 +24,6 @@ import (
 const (
 	// Metric Type
 	solaceDMExternalMetricType = "External"
-
-	// Credential Identifiers
-	solaceDMUsername        = "username"
-	solaceDMPassword        = "password"
-	solaceDMUsernameFromEnv = "usernameFromEnv"
-	solaceDMPasswordFromEnv = "passwordFromEnv"
-
-	//
-	solaceDMSempBaseURL          = "solaceSempBaseURL"
-	solaceDMMessageVpn           = "messageVpn"
-	solaceDMClientNamePattern    = "clientNamePattern"
-	solaceDMUnsafeSSL            = "unsafeSSL"
-	solaceDMQueuedMessagesFactor = "queuedMessagesFactor"
-
 	// Target Client TxByteRate
 	aggregatedClientTxByteRateTargetMetricName = "aggregatedClientTxByteRateTarget"
 	// Target Client AverageTxByteRate
@@ -54,8 +40,6 @@ const (
 	d1PriorityQueue = "D-1"
 	// Unit of Work Byte Size
 	unitOfWorkByteSize = 2048
-	// JSON Marshall error
-	marshallError = "marshall error"
 )
 
 // Package level variables
@@ -186,7 +170,7 @@ type SolaceDMScalerMetricValues struct {
 func (c SolaceDMScalerMetricValues) String() string {
 	out, err := json.Marshal(c)
 	if err != nil {
-		return marshallError
+		return err.Error()
 	}
 
 	return fmt.Sprint(string(out))
@@ -241,7 +225,7 @@ type CSStats struct {
 func (c CSClientD) String() string {
 	out, err := json.Marshal(c)
 	if err != nil {
-		return marshallError
+		return err.Error()
 	}
 
 	return fmt.Sprint(string(out))
@@ -299,7 +283,7 @@ type CSQClientQueue struct {
 func (c CSQClientD) String() string {
 	out, err := json.Marshal(c)
 	if err != nil {
-		return marshallError
+		return err.Error()
 	}
 
 	return fmt.Sprint(string(out))
