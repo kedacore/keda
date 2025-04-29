@@ -15,10 +15,6 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-const (
-	defaultStackdriverTargetValue = 5
-)
-
 type stackdriverScaler struct {
 	client     *gcp.StackDriverClient
 	metricType v2.MetricTargetType
@@ -27,13 +23,13 @@ type stackdriverScaler struct {
 }
 
 type stackdriverMetadata struct {
-	projectID             string
-	filter                string
-	targetValue           float64
-	activationTargetValue float64
+	ProjectID             string  `keda:"name=projectId, order=triggerMetadata"`
+	Filter                string  `keda:"name=filter, order=triggerMetadata"`
+	TargetValue           float64 `keda:"name=targetValue, order=triggerMetadata, default=5"`
+	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
 	metricName            string
-	valueIfNull           *float64
-	filterDuration        int64
+	ValueIfNull           *float64 `keda:"name=valueIfNull, order=triggerMetadata, optional"`
+	FilterDuration        int64    `keda:"name=filterDuration, order=triggerMetadata, optional"`
 
 	gcpAuthorization *gcp.AuthorizationMetadata
 	aggregation      *monitoringpb.Aggregation
@@ -68,66 +64,14 @@ func NewStackdriverScaler(ctx context.Context, config *scalersconfig.ScalerConfi
 }
 
 func parseStackdriverMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*stackdriverMetadata, error) {
-	meta := stackdriverMetadata{}
-	meta.targetValue = defaultStackdriverTargetValue
+	meta := &stackdriverMetadata{}
 
-	if val, ok := config.TriggerMetadata["projectId"]; ok {
-		if val == "" {
-			return nil, fmt.Errorf("no projectId name given")
-		}
-
-		meta.projectID = val
-	} else {
-		return nil, fmt.Errorf("no projectId name given")
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing Stackdriver metadata: %w", err)
 	}
 
-	if val, ok := config.TriggerMetadata["filter"]; ok {
-		if val == "" {
-			return nil, fmt.Errorf("no filter given")
-		}
-
-		meta.filter = val
-	} else {
-		return nil, fmt.Errorf("no filter given")
-	}
-
-	name := kedautil.NormalizeString(fmt.Sprintf("gcp-stackdriver-%s", meta.projectID))
+	name := kedautil.NormalizeString(fmt.Sprintf("gcp-stackdriver-%s", meta.ProjectID))
 	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, name)
-
-	if val, ok := config.TriggerMetadata["targetValue"]; ok {
-		targetValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			logger.Error(err, "Error parsing targetValue")
-			return nil, fmt.Errorf("error parsing targetValue: %w", err)
-		}
-
-		meta.targetValue = targetValue
-	}
-
-	meta.activationTargetValue = 0
-	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
-		activationTargetValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("activationTargetValue parsing error %w", err)
-		}
-		meta.activationTargetValue = activationTargetValue
-	}
-
-	if val, ok := config.TriggerMetadata["valueIfNull"]; ok && val != "" {
-		valueIfNull, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("valueIfNull parsing error %w", err)
-		}
-		meta.valueIfNull = &valueIfNull
-	}
-
-	if val, ok := config.TriggerMetadata["filterDuration"]; ok {
-		filterDuration, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("filterDuration parsing error %w", err)
-		}
-		meta.filterDuration = filterDuration
-	}
 
 	auth, err := gcp.GetGCPAuthorization(config)
 	if err != nil {
@@ -141,7 +85,7 @@ func parseStackdriverMetadata(config *scalersconfig.ScalerConfig, logger logr.Lo
 	}
 	meta.aggregation = aggregation
 
-	return &meta, nil
+	return meta, nil
 }
 
 func parseAggregation(config *scalersconfig.ScalerConfig, logger logr.Logger) (*monitoringpb.Aggregation, error) {
@@ -199,7 +143,7 @@ func (s *stackdriverScaler) GetMetricSpecForScaling(context.Context) []v2.Metric
 		Metric: v2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.TargetValue),
 	}
 
 	// Create the metric spec for the HPA
@@ -221,17 +165,17 @@ func (s *stackdriverScaler) GetMetricsAndActivity(ctx context.Context, metricNam
 
 	metric := GenerateMetricInMili(metricName, value)
 
-	return []external_metrics.ExternalMetricValue{metric}, value > s.metadata.activationTargetValue, nil
+	return []external_metrics.ExternalMetricValue{metric}, value > s.metadata.ActivationTargetValue, nil
 }
 
 // getMetrics gets metric type value from stackdriver api
 func (s *stackdriverScaler) getMetrics(ctx context.Context) (float64, error) {
-	val, err := s.client.GetMetrics(ctx, s.metadata.filter, s.metadata.projectID, s.metadata.aggregation, s.metadata.valueIfNull, s.metadata.filterDuration)
+	val, err := s.client.GetMetrics(ctx, s.metadata.Filter, s.metadata.ProjectID, s.metadata.aggregation, s.metadata.ValueIfNull, s.metadata.FilterDuration)
 	if err == nil {
 		s.logger.V(1).Info(
 			fmt.Sprintf("Getting metrics for project %s, filter %s and aggregation %v. Result: %f",
-				s.metadata.projectID,
-				s.metadata.filter,
+				s.metadata.ProjectID,
+				s.metadata.Filter,
 				s.metadata.aggregation,
 				val))
 	}
