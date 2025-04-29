@@ -88,22 +88,22 @@ type SolaceDMScalerConfiguration struct {
 	// to increase weight on queued messages and scale faster
 	QueuedMessagesFactor int64 `keda:"name=queuedMessagesFactor, order=triggerMetadata, default=3"`
 	// Target Client TxByteRate
-	AggregatedClientTxByteRateTarget int64 `keda:"name=aggregatedClientTxByteRateTarget, order=triggerMetadata, optional=true, default=0"`
+	AggregatedClientTxByteRateTarget int64 `keda:"name=aggregatedClientTxByteRateTarget, order=triggerMetadata, default=0"`
 	// Target Client AverageTxByteRate
-	AggregatedClientAverageTxByteRateTarget int64 `keda:"name=aggregatedClientAverageTxByteRateTarget, order=triggerMetadata, optional=true, default=0"`
+	AggregatedClientAverageTxByteRateTarget int64 `keda:"name=aggregatedClientAverageTxByteRateTarget, order=triggerMetadata, default=0"`
 	// Target Client TxMsgRate
-	AggregatedClientTxMsgRateTarget int64 `keda:"name=aggregatedClientTxMsgRateTarget, order=triggerMetadata, optional=true, default=0"`
+	AggregatedClientTxMsgRateTarget int64 `keda:"name=aggregatedClientTxMsgRateTarget, order=triggerMetadata, default=0"`
 	// Target Client AverageTxMsgRate
-	AggregatedClientAverageTxMsgRateTarget int64 `keda:"name=aggregatedClientAverageTxMsgRateTarget, order=triggerMetadata, optional=true, default=0"`
+	AggregatedClientAverageTxMsgRateTarget int64 `keda:"name=aggregatedClientAverageTxMsgRateTarget, order=triggerMetadata, default=0"`
 
 	// Activation Client TxByteRate
-	ActivationAggregatedClientTxByteRateTarget int `keda:"name=activationAggregatedClientTxByteRateTarget, order=triggerMetadata, optional=true, default=0"`
+	ActivationAggregatedClientTxByteRateTarget int `keda:"name=activationAggregatedClientTxByteRateTarget, order=triggerMetadata, default=0"`
 	// Activation Target Average TxByteRate
-	ActivationAggregatedClientAverageTxByteRateTarget int `keda:"name=activationAggregatedClientAverageTxByteRateTarget, order=triggerMetadata=true, optional, default=0"`
+	ActivationAggregatedClientAverageTxByteRateTarget int `keda:"name=activationAggregatedClientAverageTxByteRateTarget, order=triggerMetadata=true, default=0"`
 	// Activation Client TxMsgRate
-	ActivationAggregatedClientTxMsgRateTarget int `keda:"name=activationAggregatedClientTxMsgRateTarget, order=triggerMetadata, optional=true, default=0"`
+	ActivationAggregatedClientTxMsgRateTarget int `keda:"name=activationAggregatedClientTxMsgRateTarget, order=triggerMetadata, default=0"`
 	// Activation Target Average TxMsgRate
-	ActivationAggregatedClientAverageTxMsgRateTarget int `keda:"name=activationAggregatedClientAverageTxMsgRateTarget, order=triggerMetadata, optional=true, default=0"`
+	ActivationAggregatedClientAverageTxMsgRateTarget int `keda:"name=activationAggregatedClientAverageTxMsgRateTarget, order=triggerMetadata, default=0"`
 
 	// Full SEMP URLs to get stats
 	sempURL []string
