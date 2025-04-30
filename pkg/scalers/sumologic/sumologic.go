@@ -97,7 +97,7 @@ func (c *Client) getTimerange(tz string, timerange time.Duration) (string, strin
 	}
 
 	now := time.Now().In(location)
-	from := now.Add(-1 * timerange * time.Minute).Format(time.RFC3339)
+	from := now.Add(-1 * timerange).Format(time.RFC3339)
 	to := now.Format(time.RFC3339)
 
 	return from, to, nil
