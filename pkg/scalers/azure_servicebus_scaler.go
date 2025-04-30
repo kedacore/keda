@@ -67,7 +67,7 @@ type azureServiceBusMetadata struct {
 	FullyQualifiedNamespace string
 	UseRegex                bool `keda:"name=useRegex,          order=triggerMetadata, optional"`
 	EntityNameRegex         *regexp.Regexp
-	Operation               string `keda:"name=operation,          order=triggerMetadata, enum=sum;max;avg, optional"`
+	Operation               string `keda:"name=operation,          order=triggerMetadata, enum=sum;max;avg, default=sum"`
 	triggerIndex            int
 	timeout                 time.Duration
 }
