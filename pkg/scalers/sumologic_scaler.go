@@ -28,22 +28,22 @@ type sumologicScaler struct {
 }
 
 type sumologicMetadata struct {
-	AccessID            string            `keda:"name=accessID,            order=authParams"                                                      mapstructure:"accessID"             validate:"required"`
-	AccessKey           string            `keda:"name=accessKey,           order=authParams"                                                      mapstructure:"accessKey"            validate:"required"`
-	Host                string            `keda:"name=host,                order=triggerMetadata"                                                 mapstructure:"host"                 validate:"required"`
-	UnsafeSsl           bool              `keda:"name=unsafeSsl,           order=triggerMetadata, optional"                                       mapstructure:"unsafeSsl"`
-	QueryType           string            `keda:"name=queryType,           order=triggerMetadata, enum=logs;metrics"                              mapstructure:"queryType"            validate:"required,oneof=logs metrics"`
-	Query               string            `keda:"name=query,               order=triggerMetadata, optional"                                       mapstructure:"query"`
-	Queries             map[string]string `keda:"name=query.*,             order=triggerMetadata, optional"                                       mapstructure:"queries"`          // Only for metrics queries
-	ResultQueryRowID    string            `keda:"name=resultQueryRowID,    order=triggerMetadata, optional"                                       mapstructure:"resultQueryRowID"` // Only for metrics queries
-	Quantization        time.Duration     `keda:"name=quantization,        order=triggerMetadata, optional"                                       mapstructure:"quantization"`     // Only for metrics queries
-	Rollup              string            `keda:"name=rollup,              order=triggerMetadata, enum=Avg;Sum;Count;Min;Max, default=Avg"        mapstructure:"rollup"`           // Only for metrics queries
-	ResultField         string            `keda:"name=resultField,         order=triggerMetadata, optional"                                       mapstructure:"resultField"`      // Only for logs queries
-	Timerange           time.Duration     `keda:"name=timerange,           order=triggerMetadata"                                                 mapstructure:"timerange"            validate:"required"`
-	Timezone            string            `keda:"name=timezone,            order=triggerMetadata, default=UTC"                                    mapstructure:"timezone"`
-	ActivationThreshold float64           `keda:"name=activationThreshold, order=triggerMetadata, default=0"                                      mapstructure:"activationThreshold"`
-	QueryAggregator     string            `keda:"name=queryAggregator,     order=triggerMetadata, enum=Latest;Avg;Sum;Count;Min;Max, default=Avg" mapstructure:"queryAggregator"`
-	Threshold           float64           `keda:"name=threshold,           order=triggerMetadata"                                                 mapstructure:"threshold"            validate:"required"`
+	AccessID            string            `keda:"name=accessID,            order=authParams"`
+	AccessKey           string            `keda:"name=accessKey,           order=authParams"`
+	Host                string            `keda:"name=host,                order=triggerMetadata"`
+	UnsafeSsl           bool              `keda:"name=unsafeSsl,           order=triggerMetadata, optional"`
+	QueryType           string            `keda:"name=queryType,           order=triggerMetadata, enum=logs;metrics"`
+	Query               string            `keda:"name=query,               order=triggerMetadata, optional"`
+	Queries             map[string]string `keda:"name=query.*,             order=triggerMetadata, optional"`                                // Only for metrics queries
+	ResultQueryRowID    string            `keda:"name=resultQueryRowID,    order=triggerMetadata, optional"`                                // Only for metrics queries
+	Quantization        time.Duration     `keda:"name=quantization,        order=triggerMetadata, optional"`                                // Only for metrics queries
+	Rollup              string            `keda:"name=rollup,              order=triggerMetadata, enum=Avg;Sum;Count;Min;Max, default=Avg"` // Only for metrics queries
+	ResultField         string            `keda:"name=resultField,         order=triggerMetadata, optional"`                                // Only for logs queries
+	Timerange           time.Duration     `keda:"name=timerange,           order=triggerMetadata"`
+	Timezone            string            `keda:"name=timezone,            order=triggerMetadata, default=UTC"`
+	ActivationThreshold float64           `keda:"name=activationThreshold, order=triggerMetadata, default=0"`
+	QueryAggregator     string            `keda:"name=queryAggregator,     order=triggerMetadata, enum=Latest;Avg;Sum;Count;Min;Max, default=Avg"`
+	Threshold           float64           `keda:"name=threshold,           order=triggerMetadata"`
 	TriggerIndex        int
 }
 
@@ -80,7 +80,7 @@ func NewSumologicScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, error) {
 	meta := sumologicMetadata{}
 	if err := config.TypedConfig(&meta); err != nil {
-		return nil, fmt.Errorf("error decoding metadata: %w", err)
+		return nil, fmt.Errorf("error parsing metadata: %w", err)
 	}
 	meta.TriggerIndex = config.TriggerIndex
 
