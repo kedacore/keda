@@ -66,11 +66,12 @@ type UpdateTableInput struct {
 	// are estimated based on the consumed read and write capacity of your table and
 	// global secondary indexes over the past 30 minutes.
 	//
-	//   - PROVISIONED - We recommend using PROVISIONED for predictable workloads.
-	//   PROVISIONED sets the billing mode to [Provisioned capacity mode].
-	//
-	//   - PAY_PER_REQUEST - We recommend using PAY_PER_REQUEST for unpredictable
+	//   - PAY_PER_REQUEST - We recommend using PAY_PER_REQUEST for most DynamoDB
 	//   workloads. PAY_PER_REQUEST sets the billing mode to [On-demand capacity mode].
+	//
+	//   - PROVISIONED - We recommend using PROVISIONED for steady workloads with
+	//   predictable growth where capacity requirements can be reliably forecasted.
+	//   PROVISIONED sets the billing mode to [Provisioned capacity mode].
 	//
 	// [Provisioned capacity mode]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/provisioned-capacity-mode.html
 	// [On-demand capacity mode]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/on-demand-capacity-mode.html
@@ -116,7 +117,7 @@ type UpdateTableInput struct {
 	// If you don't specify this parameter, the global table consistency mode defaults
 	// to EVENTUAL .
 	//
-	// [ReplicaUpdates]: https://docs.aws.amazon.com/https:/docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateTable.html#DDB-UpdateTable-request-ReplicaUpdates
+	// [ReplicaUpdates]: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateTable.html#DDB-UpdateTable-request-ReplicaUpdates
 	// [Create]: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_ReplicationGroupUpdate.html#DDB-Type-ReplicationGroupUpdate-Create
 	// [Global tables multi-Region strong consistency]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/PreviewFeatures.html#multi-region-strong-consistency-gt
 	MultiRegionConsistency types.MultiRegionConsistency

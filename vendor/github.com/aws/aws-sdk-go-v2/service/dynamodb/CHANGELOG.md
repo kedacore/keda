@@ -1,3 +1,23 @@
+# v1.43.1 (2025-04-28)
+
+* **Documentation**: Doc only update for GSI descriptions.
+
+# v1.43.0 (2025-04-24)
+
+* **Feature**: Add support for ARN-sourced account endpoint generation for TransactWriteItems. This will generate account endpoints for DynamoDB TransactWriteItems requests using ARN-sourced account ID when available.
+
+# v1.42.4 (2025-04-11)
+
+* **Documentation**: Doc only update for API descriptions.
+
+# v1.42.3 (2025-04-10)
+
+* No change notes available for this release.
+
+# v1.42.2 (2025-04-09)
+
+* **Documentation**: Documentation update for secondary indexes and Create_Table.
+
 # v1.42.1 (2025-04-03)
 
 * No change notes available for this release.

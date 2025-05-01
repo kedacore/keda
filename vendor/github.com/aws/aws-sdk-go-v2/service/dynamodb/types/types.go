@@ -956,7 +956,8 @@ type CreateGlobalSecondaryIndexAction struct {
 
 	// The maximum number of read and write units for the global secondary index being
 	// created. If you use this parameter, you must specify MaxReadRequestUnits ,
-	// MaxWriteRequestUnits , or both.
+	// MaxWriteRequestUnits , or both. You must use either OnDemand Throughput or
+	// ProvisionedThroughput based on your table's capacity mode.
 	OnDemandThroughput *OnDemandThroughput
 
 	// Represents the provisioned throughput settings for the specified global
@@ -1520,11 +1521,13 @@ type GlobalSecondaryIndex struct {
 
 	// The maximum number of read and write units for the specified global secondary
 	// index. If you use this parameter, you must specify MaxReadRequestUnits ,
-	// MaxWriteRequestUnits , or both.
+	// MaxWriteRequestUnits , or both. You must use either OnDemandThroughput or
+	// ProvisionedThroughput based on your table's capacity mode.
 	OnDemandThroughput *OnDemandThroughput
 
 	// Represents the provisioned throughput settings for the specified global
-	// secondary index.
+	// secondary index. You must use either OnDemandThroughput or ProvisionedThroughput
+	// based on your table's capacity mode.
 	//
 	// For current minimum and maximum provisioned throughput values, see [Service, Account, and Table Quotas] in the
 	// Amazon DynamoDB Developer Guide.
@@ -2297,8 +2300,7 @@ type PointInTimeRecoveryDescription struct {
 
 	// The number of preceding days for which continuous backups are taken and
 	// maintained. Your table data is only recoverable to any point-in-time from within
-	// the configured recovery period. This parameter is optional. If no value is
-	// provided, the value will default to 35.
+	// the configured recovery period. This parameter is optional.
 	RecoveryPeriodInDays *int32
 
 	noSmithyDocumentSerde
@@ -2329,10 +2331,13 @@ type Projection struct {
 
 	// Represents the non-key attribute names which will be projected into the index.
 	//
-	// For local secondary indexes, the total count of NonKeyAttributes summed across
-	// all of the local secondary indexes, must not exceed 100. If you project the same
-	// attribute into two different indexes, this counts as two distinct attributes
-	// when determining the total.
+	// For global and local secondary indexes, the total count of NonKeyAttributes
+	// summed across all of the secondary indexes, must not exceed 100. If you project
+	// the same attribute into two different indexes, this counts as two distinct
+	// attributes when determining the total. This limit only applies when you specify
+	// the ProjectionType of INCLUDE . You still can specify the ProjectionType of ALL
+	// to project all attributes from the source table, even if the table has more than
+	// 100 attributes.
 	NonKeyAttributes []string
 
 	// The set of attributes that are projected into the index:
@@ -2350,8 +2355,9 @@ type Projection struct {
 	noSmithyDocumentSerde
 }
 
-// Represents the provisioned throughput settings for a specified table or index.
-// The settings can be modified using the UpdateTable operation.
+// Represents the provisioned throughput settings for the specified global
+// secondary index. You must use ProvisionedThroughput or OnDemandThroughput based
+// on your table’s capacity mode.
 //
 // For current minimum and maximum provisioned throughput values, see [Service, Account, and Table Quotas] in the
 // Amazon DynamoDB Developer Guide.
@@ -3141,8 +3147,9 @@ type TableCreationParameters struct {
 	// MaxWriteRequestUnits , or both.
 	OnDemandThroughput *OnDemandThroughput
 
-	// Represents the provisioned throughput settings for a specified table or index.
-	// The settings can be modified using the UpdateTable operation.
+	// Represents the provisioned throughput settings for the specified global
+	// secondary index. You must use ProvisionedThroughput or OnDemandThroughput based
+	// on your table’s capacity mode.
 	//
 	// For current minimum and maximum provisioned throughput values, see [Service, Account, and Table Quotas] in the
 	// Amazon DynamoDB Developer Guide.
@@ -3241,7 +3248,10 @@ type TableDescription struct {
 	//   projected into the secondary index. The total count of attributes provided in
 	//   NonKeyAttributes , summed across all of the secondary indexes, must not exceed
 	//   100. If you project the same attribute into two different indexes, this counts
-	//   as two distinct attributes when determining the total.
+	//   as two distinct attributes when determining the total. This limit only applies
+	//   when you specify the ProjectionType of INCLUDE . You still can specify the
+	//   ProjectionType of ALL to project all attributes from the source table, even if
+	//   the table has more than 100 attributes.
 	//
 	//   - ProvisionedThroughput - The provisioned throughput settings for the global
 	//   secondary index, consisting of read and write capacity units, along with data
@@ -3334,7 +3344,10 @@ type TableDescription struct {
 	//   projected into the secondary index. The total count of attributes provided in
 	//   NonKeyAttributes , summed across all of the secondary indexes, must not exceed
 	//   100. If you project the same attribute into two different indexes, this counts
-	//   as two distinct attributes when determining the total.
+	//   as two distinct attributes when determining the total. This limit only applies
+	//   when you specify the ProjectionType of INCLUDE . You still can specify the
+	//   ProjectionType of ALL to project all attributes from the source table, even if
+	//   the table has more than 100 attributes.
 	//
 	//   - IndexSizeBytes - Represents the total size of the index, in bytes. DynamoDB
 	//   updates this value approximately every six hours. Recent changes might not be
@@ -3433,13 +3446,15 @@ type TableDescription struct {
 }
 
 // Represents the warm throughput value (in read units per second and write units
-// per second) of the base table.
+// per second) of the table. Warm throughput is applicable for DynamoDB Standard-IA
+// tables and specifies the minimum provisioned capacity maintained for immediate
+// data access.
 type TableWarmThroughputDescription struct {
 
 	// Represents the base table's warm throughput value in read units per second.
 	ReadUnitsPerSecond *int64
 
-	// Represents warm throughput value of the base table..
+	// Represents warm throughput value of the base table.
 	Status TableStatus
 
 	// Represents the base table's warm throughput value in write units per second.

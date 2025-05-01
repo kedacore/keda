@@ -786,8 +786,8 @@ github.com/aws/aws-sdk-go-v2/service/amp v1.32.3 h1:zPc9a1D1TOBhGRH+VQX0YqIGOvxY
 github.com/aws/aws-sdk-go-v2/service/amp v1.32.3/go.mod h1:5NwZKMNRuC5UHuOShamjhZa0lw9vKY8jacSqUegSuYk=
 github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.44.2 h1:VaR7NCUhvDtn14Idz6krMY32gXtq5FtYjHqz90xyYs4=
 github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.44.2/go.mod h1:HJlcOk+S/wjJuR/8jPa8GhnEKdKqqiQ5wjsE1PjuO1o=
-github.com/aws/aws-sdk-go-v2/service/dynamodb v1.42.1 h1:67oYHlAdIoWS65kdTKatf9o1eDNkR2wan6TlBdP3oe4=
-github.com/aws/aws-sdk-go-v2/service/dynamodb v1.42.1/go.mod h1:yYaWRnVSPyAmexW5t7G3TcuYoalYfT+xQwzWsvtUQ7M=
+github.com/aws/aws-sdk-go-v2/service/dynamodb v1.43.1 h1:YYjNTAyPL0425ECmq6Xm48NSXdT6hDVQmLOJZxyhNTM=
+github.com/aws/aws-sdk-go-v2/service/dynamodb v1.43.1/go.mod h1:yYaWRnVSPyAmexW5t7G3TcuYoalYfT+xQwzWsvtUQ7M=
 github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.25.2 h1:D1Af/NlGfG2/8S3EY/hCUlvPcfu2UrX4+XaGeiFzJQM=
 github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.25.2/go.mod h1:lUqWdw5/esjPTkITXhN4C66o1ltwDq2qQ12j3SOzhVg=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.3 h1:eAh2A4b5IzM/lum78bZ590jy36+d/aFLgKF/4Vd1xPE=
