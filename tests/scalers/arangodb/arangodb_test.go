@@ -71,7 +71,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginxinc/nginx-unprivileged
+        image: ghcr.io/nginx/nginx-unprivileged:1.26
         ports:
         - containerPort: 80
 `
@@ -133,7 +133,7 @@ spec:
   template:
     spec:
       containers:
-      - image: nginxinc/nginx-unprivileged
+      - image: ghcr.io/nginx/nginx-unprivileged:1.26
         name: test
         command: ["/bin/sh"]
         args: ["-c", "curl --location --request POST 'https://example-arangodb-cluster-ea.{{.TestNamespace}}.svc.cluster.local:8529/_db/{{.Database}}/_api/document/{{.Collection}}' --header 'Authorization: Basic cm9vdDo=' --data-raw '[{\"Hi\": \"Nathan\"}, {\"Hi\": \"Laura\"}]' -k"]
@@ -158,7 +158,7 @@ spec:
   template:
     spec:
       containers:
-      - image: nginxinc/nginx-unprivileged
+      - image: ghcr.io/nginx/nginx-unprivileged:1.26
         name: test
         command: ["/bin/sh"]
         args: ["-c", "curl --location --request POST 'https://example-arangodb-cluster-ea.{{.TestNamespace}}.svc.cluster.local:8529/_db/{{.Database}}/_api/document/{{.Collection}}' --header 'Authorization: Basic cm9vdDo=' --data-raw '[{\"Hi\": \"Harry\"}, {\"Hi\": \"Neha\"}]' -k"]
@@ -183,7 +183,7 @@ spec:
   template:
     spec:
       containers:
-      - image: nginxinc/nginx-unprivileged
+      - image: ghcr.io/nginx/nginx-unprivileged:1.26
         name: test
         command: ["/bin/sh"]
         args: ["-c", "curl --location --request POST 'https://example-arangodb-cluster-ea.{{.TestNamespace}}.svc.cluster.local:8529/_db/{{.Database}}/_api/cursor' --header 'Authorization: Basic cm9vdDo=' --data-raw '{\"query\": \"FOR doc in {{.Collection}} REMOVE doc in {{.Collection}}\"}' -k"]

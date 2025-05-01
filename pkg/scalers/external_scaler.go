@@ -2,7 +2,9 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"sync"
@@ -249,27 +251,35 @@ func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 // handleIsActiveStream is the only writer to the active channel and will close it on return.
 func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 	defer close(active)
+
+	// retry on error from runWithLog() starting by 2 sec backing off * 2 with a max of 2 minute
+	retryDuration := time.Second * 2
+
 	// It's possible for the connection to get terminated anytime, we need to run this in a retry loop
 	runWithLog := func() {
 		grpcClient, err := getClientForConnectionPool(s.metadata)
 		if err != nil {
-			s.logger.Error(err, "error running internalRun")
+			s.logger.Error(err, "unable to get connection from the pool")
 			return
 		}
 		if err := handleIsActiveStream(ctx, &s.scaledObjectRef, grpcClient, active); err != nil {
-			s.logger.Error(err, "error running internalRun")
+			if !errors.Is(err, io.EOF) { // If io.EOF is returned, the stream has terminated with an OK status
+				s.logger.Error(err, "error running internalRun")
+				return
+			}
+			// if the connection is properly closed, we reset the timer
+			retryDuration = time.Second * 2
 			return
 		}
 	}
 
-	// retry on error from runWithLog() starting by 2 sec backing off * 2 with a max of 2 minute
-	retryDuration := time.Second * 2
 	// the caller of this function needs to ensure that they call Stop() on the resulting
 	// timer, to release background resources.
 	retryBackoff := func() *time.Timer {
 		tmr := time.NewTimer(retryDuration)
+		s.logger.V(1).Info("external push retry backoff", "duration", retryDuration)
 		retryDuration *= 2
-		if retryDuration > time.Minute*1 {
+		if retryDuration > time.Minute {
 			retryDuration = time.Minute * 1
 		}
 		return tmr

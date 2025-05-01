@@ -55,7 +55,7 @@ spec:
     spec:
       containers:
         - name: {{.MonitoredDeploymentName}}
-          image: nginxinc/nginx-unprivileged
+          image: ghcr.io/nginx/nginx-unprivileged:1.26
 `
 
 	deploymentTemplate = `
@@ -78,7 +78,7 @@ spec:
     spec:
       containers:
         - name: {{.DeploymentName}}
-          image: nginxinc/nginx-unprivileged
+          image: ghcr.io/nginx/nginx-unprivileged:1.26
 `
 
 	scaledObjectTemplate = `
