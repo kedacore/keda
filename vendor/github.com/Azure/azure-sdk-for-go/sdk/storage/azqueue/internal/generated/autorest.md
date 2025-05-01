@@ -7,7 +7,7 @@ go: true
 clear-output-folder: false
 version: "^3.0.0"
 license-header: MICROSOFT_MIT_NO_VERSION
-input-file: "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/main/specification/storage/data-plane/Microsoft.QueueStorage/preview/2018-03-28/queue.json"
+input-file: "https://raw.githubusercontent.com/Azure/azure-rest-api-specs/5da3c08b92d05858b728b013b69502dc93485373/specification/storage/data-plane/Microsoft.QueueStorage/preview/2018-03-28/queue.json"
 credential-scope: "https://storage.azure.com/.default"
 output-folder: ../generated
 file-prefix: "zz_"
@@ -20,6 +20,20 @@ modelerfour:
   lenient-model-deduplication: true
 export-clients: true
 use: "@autorest/go@4.0.0-preview.45"
+```
+### Updating service version to 2024-08-04
+```yaml
+directive:
+- from: 
+  - zz_messageid_client.go
+  - zz_messages_client.go
+  - zz_queue_client.go
+  - zz_service_client.go
+
+  where: $
+  transform: >-
+    return $.
+      replaceAll(`[]string{"2018-03-28"}`, `[]string{"2024-08-04"}`);
 ```
 
 ### Remove QueueName from parameter list since it is not needed

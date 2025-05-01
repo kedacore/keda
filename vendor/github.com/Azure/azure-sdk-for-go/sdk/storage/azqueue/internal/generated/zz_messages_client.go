@@ -67,7 +67,7 @@ func (client *MessagesClient) clearCreateRequest(ctx context.Context, options *M
 		reqQP.Set("timeout", strconv.FormatInt(int64(*options.Timeout), 10))
 	}
 	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header["x-ms-version"] = []string{"2018-03-28"}
+	req.Raw().Header["x-ms-version"] = []string{"2024-08-04"}
 	if options != nil && options.RequestID != nil {
 		req.Raw().Header["x-ms-client-request-id"] = []string{*options.RequestID}
 	}
@@ -131,7 +131,7 @@ func (client *MessagesClient) dequeueCreateRequest(ctx context.Context, options 
 		reqQP.Set("timeout", strconv.FormatInt(int64(*options.Timeout), 10))
 	}
 	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header["x-ms-version"] = []string{"2018-03-28"}
+	req.Raw().Header["x-ms-version"] = []string{"2024-08-04"}
 	if options != nil && options.RequestID != nil {
 		req.Raw().Header["x-ms-client-request-id"] = []string{*options.RequestID}
 	}
@@ -202,7 +202,7 @@ func (client *MessagesClient) enqueueCreateRequest(ctx context.Context, queueMes
 		reqQP.Set("timeout", strconv.FormatInt(int64(*options.Timeout), 10))
 	}
 	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header["x-ms-version"] = []string{"2018-03-28"}
+	req.Raw().Header["x-ms-version"] = []string{"2024-08-04"}
 	if options != nil && options.RequestID != nil {
 		req.Raw().Header["x-ms-client-request-id"] = []string{*options.RequestID}
 	}
@@ -268,7 +268,7 @@ func (client *MessagesClient) peekCreateRequest(ctx context.Context, options *Me
 		reqQP.Set("timeout", strconv.FormatInt(int64(*options.Timeout), 10))
 	}
 	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header["x-ms-version"] = []string{"2018-03-28"}
+	req.Raw().Header["x-ms-version"] = []string{"2024-08-04"}
 	if options != nil && options.RequestID != nil {
 		req.Raw().Header["x-ms-client-request-id"] = []string{*options.RequestID}
 	}
