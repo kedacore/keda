@@ -125,8 +125,8 @@ github.com/Azure/azure-sdk-for-go/sdk/internal/uuid
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid/internal
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid/publisher
-# github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.3.1
-## explicit; go 1.18
+# github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.3.2
+## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/amqpwrap
@@ -185,7 +185,7 @@ github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/internal/generated
 github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/internal/shared
 github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/queueerror
 github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/sas
-# github.com/Azure/go-amqp v1.3.0
+# github.com/Azure/go-amqp v1.4.0
 ## explicit; go 1.18
 github.com/Azure/go-amqp
 github.com/Azure/go-amqp/internal/bitmap

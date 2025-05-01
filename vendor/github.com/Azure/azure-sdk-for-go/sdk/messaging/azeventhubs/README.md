@@ -25,7 +25,7 @@ go get github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs
 
 ### Prerequisites
 
-- Go, version 1.18 or higher
+- [Supported](https://aka.ms/azsdk/go/supported-versions) version of Go
 - An [Azure subscription](https://azure.microsoft.com/free/)
 - An [Event Hub namespace](https://learn.microsoft.com/azure/event-hubs/).
 - An Event Hub. You can create an event hub in your Event Hubs Namespace using the [Azure Portal](https://learn.microsoft.com/azure/event-hubs/event-hubs-create), or the [Azure CLI](https://learn.microsoft.com/azure/event-hubs/event-hubs-quickstart-cli).
