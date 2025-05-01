@@ -15,7 +15,7 @@ If you used the pre-release `azure-service-bus-go` module, see the [Migration gu
 ## Getting started
 
 ### Prerequisites
-- Go, version 1.18 or higher - [Install Go](https://go.dev/doc/install)
+- [Supported](https://aka.ms/azsdk/go/supported-versions) version of Go - [Install Go](https://go.dev/doc/install)
 - Azure subscription - [Create a free account](https://azure.microsoft.com/free/)
 - Service Bus namespace - [Create a namespace](https://learn.microsoft.com/azure/service-bus-messaging/service-bus-create-namespace-portal)
 - A Service Bus queue, topic, or subscription - See the Azure Service Bus documentation to create an entity in your Service Bus namespace. For example, create a Service Bus queue using the [Azure portal](https://learn.microsoft.com/azure/service-bus-messaging/service-bus-quickstart-portal), the [Azure CLI](https://learn.microsoft.com/azure/service-bus-messaging/service-bus-quickstart-cli), or other tools.

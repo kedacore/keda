@@ -366,7 +366,7 @@ func newReceivedMessage(amqpMsg *amqp.Message, receiver amqpwrap.AMQPReceiver) *
 			msg.SequenceNumber = to.Ptr(sequenceNumber.(int64))
 		}
 
-		if partitionKey, ok := amqpMsg.Annotations[partitionKeyAnnotation]; ok {
+		if partitionKey, ok := amqpMsg.Annotations[partitionKeyAnnotation]; ok && partitionKey != nil {
 			msg.PartitionKey = to.Ptr(partitionKey.(string))
 		}
 
@@ -375,7 +375,7 @@ func newReceivedMessage(amqpMsg *amqp.Message, receiver amqpwrap.AMQPReceiver) *
 			msg.EnqueuedTime = &t
 		}
 
-		if deadLetterSource, ok := amqpMsg.Annotations[deadLetterSourceAnnotation]; ok {
+		if deadLetterSource, ok := amqpMsg.Annotations[deadLetterSourceAnnotation]; ok && deadLetterSource != nil {
 			msg.DeadLetterSource = to.Ptr(deadLetterSource.(string))
 		}
 

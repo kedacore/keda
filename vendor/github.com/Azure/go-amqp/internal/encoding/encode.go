@@ -269,7 +269,7 @@ func writeDouble(wr *buffer.Buffer, f float64) {
 
 func writeTimestamp(wr *buffer.Buffer, t time.Time) {
 	wr.AppendByte(byte(TypeCodeTimestamp))
-	ms := t.UnixNano() / int64(time.Millisecond)
+	ms := t.UnixMilli()
 	wr.AppendUint64(uint64(ms))
 }
 
