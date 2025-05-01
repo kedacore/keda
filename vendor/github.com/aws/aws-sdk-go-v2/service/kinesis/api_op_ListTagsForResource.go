@@ -6,81 +6,72 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
+	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Adds or updates tags for the specified Kinesis data stream. You can assign up
-// to 50 tags to a data stream.
+// List all tags added to the specified Kinesis resource. Each tag is a label
+// consisting of a user-defined key and value. Tags can help you manage, identify,
+// organize, search for, and filter resources.
 //
-// When invoking this API, you must use either the StreamARN or the StreamName
-// parameter, or both. It is recommended that you use the StreamARN input
-// parameter when you invoke this API.
+// For more information about tagging Kinesis resources, see [Tag your Amazon Kinesis Data Streams resources].
 //
-// If tags have already been assigned to the stream, AddTagsToStream overwrites
-// any existing tags that correspond to the specified tag keys.
-//
-// AddTagsToStreamhas a limit of five transactions per second per account.
-func (c *Client) AddTagsToStream(ctx context.Context, params *AddTagsToStreamInput, optFns ...func(*Options)) (*AddTagsToStreamOutput, error) {
+// [Tag your Amazon Kinesis Data Streams resources]: https://docs.aws.amazon.com/streams/latest/dev/tagging.html
+func (c *Client) ListTagsForResource(ctx context.Context, params *ListTagsForResourceInput, optFns ...func(*Options)) (*ListTagsForResourceOutput, error) {
 	if params == nil {
-		params = &AddTagsToStreamInput{}
+		params = &ListTagsForResourceInput{}
 	}
 
-	result, metadata, err := c.invokeOperation(ctx, "AddTagsToStream", params, optFns, c.addOperationAddTagsToStreamMiddlewares)
+	result, metadata, err := c.invokeOperation(ctx, "ListTagsForResource", params, optFns, c.addOperationListTagsForResourceMiddlewares)
 	if err != nil {
 		return nil, err
 	}
 
-	out := result.(*AddTagsToStreamOutput)
+	out := result.(*ListTagsForResourceOutput)
 	out.ResultMetadata = metadata
 	return out, nil
 }
 
-// Represents the input for AddTagsToStream .
-type AddTagsToStreamInput struct {
+type ListTagsForResourceInput struct {
 
-	// A set of up to 50 key-value pairs to use to create the tags. A tag consists of
-	// a required key and an optional value. You can add up to 50 tags per resource.
-	//
-	// This member is required.
-	Tags map[string]string
-
-	// The ARN of the stream.
-	StreamARN *string
-
-	// The name of the stream.
-	StreamName *string
+	// The Amazon Resource Name (ARN) of the Kinesis resource for which to list tags.
+	ResourceARN *string
 
 	noSmithyDocumentSerde
 }
 
-func (in *AddTagsToStreamInput) bindEndpointParams(p *EndpointParameters) {
+func (in *ListTagsForResourceInput) bindEndpointParams(p *EndpointParameters) {
 
-	p.StreamARN = in.StreamARN
+	p.ResourceARN = in.ResourceARN
 	p.OperationType = ptr.String("control")
 }
 
-type AddTagsToStreamOutput struct {
+type ListTagsForResourceOutput struct {
+
+	// An array of tags associated with the specified Kinesis resource.
+	Tags []types.Tag
+
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
 
 	noSmithyDocumentSerde
 }
 
-func (c *Client) addOperationAddTagsToStreamMiddlewares(stack *middleware.Stack, options Options) (err error) {
+func (c *Client) addOperationListTagsForResourceMiddlewares(stack *middleware.Stack, options Options) (err error) {
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpAddTagsToStream{}, middleware.After)
+	err = stack.Serialize.Add(&awsAwsjson11_serializeOpListTagsForResource{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpAddTagsToStream{}, middleware.After)
+	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpListTagsForResource{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "AddTagsToStream"); err != nil {
+	if err := addProtocolFinalizerMiddlewares(stack, options, "ListTagsForResource"); err != nil {
 		return fmt.Errorf("add protocol finalizers: %v", err)
 	}
 
@@ -135,10 +126,7 @@ func (c *Client) addOperationAddTagsToStreamMiddlewares(stack *middleware.Stack,
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
-	if err = addOpAddTagsToStreamValidationMiddleware(stack); err != nil {
-		return err
-	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opAddTagsToStream(options.Region), middleware.Before); err != nil {
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListTagsForResource(options.Region), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRecursionDetection(stack); err != nil {
@@ -171,10 +159,10 @@ func (c *Client) addOperationAddTagsToStreamMiddlewares(stack *middleware.Stack,
 	return nil
 }
 
-func newServiceMetadataMiddleware_opAddTagsToStream(region string) *awsmiddleware.RegisterServiceMetadata {
+func newServiceMetadataMiddleware_opListTagsForResource(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		OperationName: "AddTagsToStream",
+		OperationName: "ListTagsForResource",
 	}
 }
