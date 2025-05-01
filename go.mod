@@ -32,7 +32,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.29.13
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.66
 	github.com/aws/aws-sdk-go-v2/service/amp v1.32.3
-	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.44.2
+	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.44.3
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.42.1
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.25.2
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.33.2

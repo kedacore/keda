@@ -388,7 +388,7 @@ github.com/aws/aws-sdk-go-v2/internal/ini
 github.com/aws/aws-sdk-go-v2/service/amp
 github.com/aws/aws-sdk-go-v2/service/amp/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/amp/types
-# github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.44.2
+# github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.44.3
 ## explicit; go 1.22
 github.com/aws/aws-sdk-go-v2/service/cloudwatch
 github.com/aws/aws-sdk-go-v2/service/cloudwatch/internal/endpoints
