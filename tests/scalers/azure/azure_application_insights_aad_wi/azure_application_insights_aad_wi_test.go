@@ -86,7 +86,7 @@ spec:
     spec:
       containers:
       - name: app-insights-scaler-test
-        image: nginxinc/nginx-unprivileged
+        image: ghcr.io/nginx/nginx-unprivileged:1.26
 `
 
 	triggerAuthTemplate = `
