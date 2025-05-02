@@ -17,17 +17,23 @@ limitations under the License.
 package utils
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"os"
 	"path"
+	"sync"
 
+	"github.com/fsnotify/fsnotify"
 	"google.golang.org/grpc/credentials"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+var log = logf.Log.WithName("grpc_server_certificates")
+
 // LoadGrpcTLSCredentials reads the certificate from the given path and returns TLS transport credentials
-func LoadGrpcTLSCredentials(certDir string, server bool) (credentials.TransportCredentials, error) {
+func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (credentials.TransportCredentials, error) {
 	// Load certificate of the CA who signed client's certificate
 	pemClientCA, err := os.ReadFile(path.Join(certDir, "ca.crt"))
 	if err != nil {
@@ -43,16 +49,75 @@ func LoadGrpcTLSCredentials(certDir string, server bool) (credentials.TransportC
 		return nil, fmt.Errorf("failed to add client CA's certificate")
 	}
 
-	// Load certificate and private key
-	cert, err := tls.LoadX509KeyPair(path.Join(certDir, "tls.crt"), path.Join(certDir, "tls.key"))
+	// Load initial certificate and private key
+	mTLSCertificate, err := tls.LoadX509KeyPair(path.Join(certDir, "tls.crt"), path.Join(certDir, "tls.key"))
+	if err != nil {
+		return nil, err
+	}
+
+	// Start the watcher for cert updates
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, err
+	}
+	certMutex := sync.RWMutex{}
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					continue
+				}
+				if event.Has(fsnotify.Write) {
+					// Load certificate of the CA who signed client's certificate
+					pemClientCA, err := os.ReadFile(path.Join(certDir, "ca.crt"))
+					if err != nil {
+						log.Error(err, "error reading grpc ca certificate")
+						continue
+					}
+					if !certPool.AppendCertsFromPEM(pemClientCA) {
+						log.Error(err, "failed to add client CA's certificate")
+						continue
+					}
+
+					cert, err := tls.LoadX509KeyPair(path.Join(certDir, "tls.crt"), path.Join(certDir, "tls.key"))
+					if err != nil {
+						log.Error(err, "error reading grpc certificate")
+						continue
+					}
+					certMutex.Lock()
+					mTLSCertificate = cert
+					certMutex.Unlock()
+					log.V(1).Info("grcp mTLS certificate has been updated")
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					continue
+				}
+				log.Error(err, "error reading grpc certificate changes")
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	err = watcher.Add(certDir)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create the credentials and return it
 	config := &tls.Config{
-		MinVersion:   tls.VersionTLS13,
-		Certificates: []tls.Certificate{cert},
+		MinVersion: tls.VersionTLS13,
+		GetCertificate: func(chi *tls.ClientHelloInfo) (*tls.Certificate, error) {
+			certMutex.RLock()
+			defer certMutex.RUnlock()
+			return &mTLSCertificate, nil
+		},
+		GetClientCertificate: func(cri *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			certMutex.RLock()
+			defer certMutex.RUnlock()
+			return &mTLSCertificate, nil
+		},
 	}
 	if server {
 		config.ClientAuth = tls.RequireAndVerifyClientCert
