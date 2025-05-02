@@ -68,7 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Internal gRPC connection's certificates are hot reloaded ([#XXX](https://github.com/kedacore/keda/pull/6756))
 
 ### Fixes
 
