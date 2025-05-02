@@ -108,12 +108,12 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 	// Create the credentials and return it
 	config := &tls.Config{
 		MinVersion: tls.VersionTLS13,
-		GetCertificate: func(chi *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		GetCertificate: func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
 			certMutex.RLock()
 			defer certMutex.RUnlock()
 			return &mTLSCertificate, nil
 		},
-		GetClientCertificate: func(cri *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+		GetClientCertificate: func(_ *tls.CertificateRequestInfo) (*tls.Certificate, error) {
 			certMutex.RLock()
 			defer certMutex.RUnlock()
 			return &mTLSCertificate, nil
