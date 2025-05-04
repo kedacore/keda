@@ -392,7 +392,7 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 	accessSecrets := readSecrets(secretAccessRestricted, namespace)
 	if container.EnvFrom != nil {
 		for _, source := range container.EnvFrom {
-			// prefix is used to prefix the environment variable, prefix is empty string if not set
+			// prefix is used to prefix environment variables, prefix is empty string if not set
 			// if prefix is set, all environment variables will be prefixed with the prefix
 			envPrefix := source.Prefix
 			if source.ConfigMapRef != nil {
