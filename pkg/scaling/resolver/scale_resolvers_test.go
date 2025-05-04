@@ -977,3 +977,66 @@ func TestEnvWithRestrictedNamespace(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveEnvWithPrefix(t *testing.T) {
+	envPrefix := "PREFIX_"
+	tests := []struct {
+		name      string
+		expected  map[string]string
+		container *corev1.Container
+	}{
+		{
+			name: "env reference secret key without prefix",
+			container: &corev1.Container{
+				EnvFrom: []corev1.EnvFromSource{{
+					SecretRef: &corev1.SecretEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+					},
+				}},
+			},
+			expected: map[string]string{envKey: secretData},
+		},
+		{
+			name: "env reference secret key with prefix",
+			container: &corev1.Container{
+				EnvFrom: []corev1.EnvFromSource{{
+					SecretRef: &corev1.SecretEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+					},
+					Prefix: envPrefix,
+				}},
+			},
+			expected: map[string]string{envPrefix + envKey: secretData},
+		},
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: clusterNamespace,
+			Name:      secretName,
+		},
+		Data: map[string][]byte{envKey: []byte(secretData)},
+	}
+
+	ctrl := gomock.NewController(t)
+	mockSecretNamespaceLister := mock_v1.NewMockSecretNamespaceLister(ctrl)
+	mockSecretNamespaceLister.EXPECT().Get(secretName).Return(secret, nil).AnyTimes()
+	mockSecretLister := mock_v1.NewMockSecretLister(ctrl)
+	mockSecretLister.EXPECT().Secrets(clusterNamespace).Return(mockSecretNamespaceLister).AnyTimes()
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			restrictSecretAccess = "true"
+			kedaNamespace = "keda"
+			ctx := context.Background()
+			envMap, _ := resolveEnv(ctx, fake.NewClientBuilder().Build(), logf.Log.WithName("test"), test.container, clusterNamespace, mockSecretLister)
+			if diff := cmp.Diff(envMap, test.expected); diff != "" {
+				t.Errorf("Returned env map is different: %s", diff)
+			}
+		})
+	}
+}
