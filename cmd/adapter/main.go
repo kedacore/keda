@@ -109,7 +109,7 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 	}
 
 	logger.Info("Connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
-	grpcClient, err := metricsservice.NewGrpcClient(metricsServiceAddr, a.SecureServing.ServerCert.CertDirectory, metricsServiceGRPCAuthority, clientMetrics)
+	grpcClient, err := metricsservice.NewGrpcClient(ctx, metricsServiceAddr, a.SecureServing.ServerCert.CertDirectory, metricsServiceGRPCAuthority, clientMetrics)
 	if err != nil {
 		logger.Error(err, "error connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
 		return nil, err
