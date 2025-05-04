@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
@@ -34,8 +35,12 @@ var log = logf.Log.WithName("grpc_server_certificates")
 
 // LoadGrpcTLSCredentials reads the certificate from the given path and returns TLS transport credentials
 func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (credentials.TransportCredentials, error) {
+	caPath := path.Join(certDir, "ca.crt")
+	certPath := path.Join(certDir, "tls.crt")
+	keyPath := path.Join(certDir, "tls.key")
+
 	// Load certificate of the CA who signed client's certificate
-	pemClientCA, err := os.ReadFile(path.Join(certDir, "ca.crt"))
+	pemClientCA, err := os.ReadFile(caPath)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +55,7 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 	}
 
 	// Load initial certificate and private key
-	mTLSCertificate, err := tls.LoadX509KeyPair(path.Join(certDir, "tls.crt"), path.Join(certDir, "tls.key"))
+	mTLSCertificate, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -60,50 +65,64 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 	if err != nil {
 		return nil, err
 	}
-	certMutex := sync.RWMutex{}
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					continue
-				}
-				if event.Has(fsnotify.Write) {
-					// Load certificate of the CA who signed client's certificate
-					pemClientCA, err := os.ReadFile(path.Join(certDir, "ca.crt"))
-					if err != nil {
-						log.Error(err, "error reading grpc ca certificate")
-						continue
-					}
-					if !certPool.AppendCertsFromPEM(pemClientCA) {
-						log.Error(err, "failed to add client CA's certificate")
-						continue
-					}
-
-					cert, err := tls.LoadX509KeyPair(path.Join(certDir, "tls.crt"), path.Join(certDir, "tls.key"))
-					if err != nil {
-						log.Error(err, "error reading grpc certificate")
-						continue
-					}
-					certMutex.Lock()
-					mTLSCertificate = cert
-					certMutex.Unlock()
-					log.V(1).Info("grcp mTLS certificate has been updated")
-				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					continue
-				}
-				log.Error(err, "error reading grpc certificate changes")
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
 	err = watcher.Add(certDir)
 	if err != nil {
 		return nil, err
 	}
+
+	certMutex := sync.RWMutex{}
+	go func() {
+		log.V(1).Info("starting mTLS certificates monitoring")
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok { // Channel was closed (i.e. Watcher.Close() was called).
+					log.Error(err, "watcher stopped")
+					return
+				}
+				// We are only interested on rename changes on ..data dir
+				// as kubernetes creates first a temp folder with the new
+				// cert and then rename the whole folder
+				if !event.Has(fsnotify.Rename) ||
+					strings.HasSuffix(event.Name, "..data") {
+					continue
+				}
+				log.V(1).Info("detected change on certificates, reloading")
+
+				pemClientCA, err := os.ReadFile(caPath)
+				if err != nil {
+					log.Error(err, "error reading grpc ca certificate")
+					continue
+				}
+				if !certPool.AppendCertsFromPEM(pemClientCA) {
+					log.Error(err, "failed to add client CA's certificate")
+					continue
+				}
+				log.V(1).Info("grcp ca certificate has been updated")
+
+				// Load certificate of the CA who signed client's certificate
+				cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+				if err != nil {
+					log.Error(err, "error reading grpc certificate")
+					continue
+				}
+				certMutex.Lock()
+				mTLSCertificate = cert
+				certMutex.Unlock()
+				log.V(1).Info("grcp mTLS certificate has been updated")
+
+			case err, ok := <-watcher.Errors:
+				if !ok { // Channel was closed (i.e. Watcher.Close() was called).
+					log.Error(err, "watcher stopped")
+					return
+				}
+				log.Error(err, "error reading grpc certificate changes")
+			case <-ctx.Done():
+				log.V(1).Info("stopping mTLS certificates monitoring")
+				return
+			}
+		}
+	}()
 
 	// Create the credentials and return it
 	config := &tls.Config{
