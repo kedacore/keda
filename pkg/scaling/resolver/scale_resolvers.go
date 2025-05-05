@@ -392,12 +392,15 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 	accessSecrets := readSecrets(secretAccessRestricted, namespace)
 	if container.EnvFrom != nil {
 		for _, source := range container.EnvFrom {
+			// prefix is used to prefix environment variables, prefix is empty string if not set
+			// if prefix is set, all environment variables will be prefixed with the prefix
+			envPrefix := source.Prefix
 			if source.ConfigMapRef != nil {
 				configMap, err := resolveConfigMap(ctx, client, source.ConfigMapRef, namespace)
 				switch {
 				case err == nil:
 					for k, v := range configMap {
-						resolved[k] = v
+						resolved[envPrefix+k] = v
 					}
 				case source.ConfigMapRef.Optional != nil && *source.ConfigMapRef.Optional:
 					// ignore error when ConfigMap is marked as optional
@@ -410,7 +413,7 @@ func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, c
 				switch {
 				case err == nil:
 					for k, v := range secretsMap {
-						resolved[k] = v
+						resolved[envPrefix+k] = v
 					}
 				case source.SecretRef.Optional != nil && *source.SecretRef.Optional:
 					// ignore error when Secret is marked as optional
