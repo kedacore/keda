@@ -34,7 +34,7 @@ type ibmmqMetadata struct {
 	Username             string   `keda:"name=username,             order=authParams;resolvedEnv;triggerMetadata"`
 	Password             string   `keda:"name=password,             order=authParams;resolvedEnv;triggerMetadata"`
 	UnsafeSsl            bool     `keda:"name=unsafeSsl,            order=triggerMetadata, default=false"`
-	TLS                  bool     `keda:"name=tls,                  order=triggerMetadata, default=false, deprecatedAnnounce=The 'tls' setting is DEPRECATED and will be removed in v2.18 - Use 'unsafeSsl' instead"`
+	TLS                  bool     `keda:"name=tls,                  order=triggerMetadata, default=false, deprecated=The 'tls' setting is DEPRECATED and is removed in v2.18 - Use 'unsafeSsl' instead"`
 	CA                   string   `keda:"name=ca,                   order=authParams, optional"`
 	Cert                 string   `keda:"name=cert,                 order=authParams, optional"`
 	Key                  string   `keda:"name=key,                  order=authParams, optional"`
@@ -76,11 +76,6 @@ func (m *ibmmqMetadata) Validate() error {
 		return fmt.Errorf("both cert and key must be provided when using TLS")
 	}
 
-	// TODO: DEPRECATED to be removed in v2.18
-	if m.TLS && m.UnsafeSsl {
-		return fmt.Errorf("'tls' and 'unsafeSsl' are both specified. Please use only 'unsafeSsl'")
-	}
-
 	return nil
 }
 
@@ -95,11 +90,6 @@ func NewIBMMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	meta, err := parseIBMMQMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing IBM MQ metadata: %w", err)
-	}
-
-	// TODO: DEPRECATED to be removed in v2.18
-	if meta.TLS {
-		meta.UnsafeSsl = meta.TLS
 	}
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.UnsafeSsl)
