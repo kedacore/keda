@@ -27,9 +27,9 @@ import (
 var (
 	concurrentTests        = 25
 	regularTestsTimeout    = "20m"
-	regularTestsRetries    = 3
+	regularTestsRetries    = 1
 	sequentialTestsTimeout = "20m"
-	sequentialTestsRetries = 2
+	sequentialTestsRetries = 1
 )
 
 type TestResult struct {
