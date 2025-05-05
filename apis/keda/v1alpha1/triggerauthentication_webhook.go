@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -37,28 +38,61 @@ var triggerauthenticationlog = logf.Log.WithName("triggerauthentication-validati
 
 func (ta *TriggerAuthentication) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&TriggerAuthenticationCustomValidator{}).
 		For(ta).
 		Complete()
 }
 
 func (cta *ClusterTriggerAuthentication) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&ClusterTriggerAuthenticationCustomValidator{}).
 		For(cta).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-keda-sh-v1alpha1-triggerauthentication,mutating=false,failurePolicy=ignore,sideEffects=None,groups=keda.sh,resources=triggerauthentications,verbs=create;update,versions=v1alpha1,name=vstriggerauthentication.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &TriggerAuthentication{}
+// TriggerAuthenticationCustomValidator is a custom validator for TriggerAuthentication objects
+type TriggerAuthenticationCustomValidator struct{}
+
+func (tacv TriggerAuthenticationCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ta := obj.(*TriggerAuthentication)
+	return ta.ValidateCreate(request.DryRun)
+}
+
+func (tacv TriggerAuthenticationCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ta := newObj.(*TriggerAuthentication)
+	old := oldObj.(*TriggerAuthentication)
+	return ta.ValidateUpdate(old, request.DryRun)
+}
+
+func (tacv TriggerAuthenticationCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ta := obj.(*TriggerAuthentication)
+	return ta.ValidateDelete(request.DryRun)
+}
+
+var _ webhook.CustomValidator = &TriggerAuthenticationCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (ta *TriggerAuthentication) ValidateCreate() (admission.Warnings, error) {
+func (ta *TriggerAuthentication) ValidateCreate(_ *bool) (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(ta, "", "  ")
 	triggerauthenticationlog.Info(fmt.Sprintf("validating triggerauthentication creation for %s", string(val)))
 	return validateSpec(&ta.Spec)
 }
 
-func (ta *TriggerAuthentication) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (ta *TriggerAuthentication) ValidateUpdate(old runtime.Object, _ *bool) (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(ta, "", "  ")
 	scaledobjectlog.V(1).Info(fmt.Sprintf("validating triggerauthentication update for %s", string(val)))
 
@@ -70,22 +104,53 @@ func (ta *TriggerAuthentication) ValidateUpdate(old runtime.Object) (admission.W
 	return validateSpec(&ta.Spec)
 }
 
-func (ta *TriggerAuthentication) ValidateDelete() (admission.Warnings, error) {
+func (ta *TriggerAuthentication) ValidateDelete(_ *bool) (admission.Warnings, error) {
 	return nil, nil
 }
 
 // +kubebuilder:webhook:path=/validate-keda-sh-v1alpha1-clustertriggerauthentication,mutating=false,failurePolicy=ignore,sideEffects=None,groups=keda.sh,resources=clustertriggerauthentications,verbs=create;update,versions=v1alpha1,name=vsclustertriggerauthentication.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &ClusterTriggerAuthentication{}
+// ClusterTriggerAuthenticationCustomValidator is a custom validator for ClusterTriggerAuthentication objects
+type ClusterTriggerAuthenticationCustomValidator struct{}
+
+func (ctacv ClusterTriggerAuthenticationCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cta := obj.(*ClusterTriggerAuthentication)
+	return cta.ValidateCreate(request.DryRun)
+}
+
+func (ctacv ClusterTriggerAuthenticationCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cta := newObj.(*ClusterTriggerAuthentication)
+	old := oldObj.(*ClusterTriggerAuthentication)
+	return cta.ValidateUpdate(old, request.DryRun)
+}
+
+func (ctacv ClusterTriggerAuthenticationCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cta := obj.(*ClusterTriggerAuthentication)
+	return cta.ValidateDelete(request.DryRun)
+}
+
+var _ webhook.CustomValidator = &ClusterTriggerAuthenticationCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (cta *ClusterTriggerAuthentication) ValidateCreate() (admission.Warnings, error) {
+func (cta *ClusterTriggerAuthentication) ValidateCreate(_ *bool) (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(cta, "", "  ")
 	triggerauthenticationlog.Info(fmt.Sprintf("validating clustertriggerauthentication creation for %s", string(val)))
 	return validateSpec(&cta.Spec)
 }
 
-func (cta *ClusterTriggerAuthentication) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (cta *ClusterTriggerAuthentication) ValidateUpdate(old runtime.Object, _ *bool) (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(cta, "", "  ")
 	scaledobjectlog.V(1).Info(fmt.Sprintf("validating clustertriggerauthentication update for %s", string(val)))
 
@@ -98,7 +163,7 @@ func (cta *ClusterTriggerAuthentication) ValidateUpdate(old runtime.Object) (adm
 	return validateSpec(&cta.Spec)
 }
 
-func (cta *ClusterTriggerAuthentication) ValidateDelete() (admission.Warnings, error) {
+func (cta *ClusterTriggerAuthentication) ValidateDelete(_ *bool) (admission.Warnings, error) {
 	return nil, nil
 }
 
