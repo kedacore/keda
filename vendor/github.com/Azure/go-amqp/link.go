@@ -75,6 +75,8 @@ type link struct {
 
 	closeInProgress bool // indicates that the detach performative has been sent
 	dynamicAddr     bool // request a dynamic link address from the server
+
+	desiredCapabilities encoding.MultiSymbol // maps to the ATTACH frame's desired-capabilities field
 }
 
 func newLink(s *Session, r encoding.Role) link {
@@ -130,14 +132,15 @@ func (l *link) attach(ctx context.Context, beforeAttach func(*frames.PerformAtta
 	}
 
 	attach := &frames.PerformAttach{
-		Name:               l.key.name,
-		Handle:             l.outputHandle,
-		ReceiverSettleMode: l.receiverSettleMode,
-		SenderSettleMode:   l.senderSettleMode,
-		MaxMessageSize:     l.maxMessageSize,
-		Source:             l.source,
-		Target:             l.target,
-		Properties:         l.properties,
+		Name:                l.key.name,
+		Handle:              l.outputHandle,
+		ReceiverSettleMode:  l.receiverSettleMode,
+		SenderSettleMode:    l.senderSettleMode,
+		MaxMessageSize:      l.maxMessageSize,
+		Source:              l.source,
+		Target:              l.target,
+		Properties:          l.properties,
+		DesiredCapabilities: l.desiredCapabilities,
 	}
 
 	// link-specific configuration of the attach frame
