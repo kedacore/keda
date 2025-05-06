@@ -81,12 +81,6 @@ func newSessionReceiver(ctx context.Context, args newSessionReceiverArgs, option
 	sessionReceiver.acceptNextTimeout = args.acceptNextTimeout
 	sessionReceiver.inner = r
 
-	// temp workaround until we expose the session expiration time from the receiver in go-amqp
-	if err := sessionReceiver.RenewSessionLock(ctx, nil); err != nil {
-		_ = sessionReceiver.Close(context.Background())
-		return nil, err
-	}
-
 	return sessionReceiver, nil
 }
 
@@ -129,6 +123,13 @@ func (r *SessionReceiver) newLink(ctx context.Context, session amqpwrap.AMQPSess
 	}
 
 	r.sessionID = &receivedSessionIDStr
+
+	if props := link.Properties(); props != nil {
+		if lockTimeTicks, hasLockTime := props["com.microsoft:locked-until-utc"].(int64); hasLockTime {
+			r.lockedUntil = ticksToUnixTime(lockTimeTicks)
+		}
+	}
+
 	return nil, link, nil
 }
 
@@ -276,4 +277,15 @@ func (sr *SessionReceiver) init(ctx context.Context) error {
 	// initialize the links
 	_, err := sr.inner.amqpLinks.Get(ctx)
 	return internal.TransformError(err)
+}
+
+// 1970-01-01, represented in "ticks" (100ns per millisecond) (ie: .NET's time unit for DateTimeOffset)
+const epochTicks = int64(621355968000000000)
+
+func ticksToUnixTime(ticks int64) time.Time {
+	// normalize our time so it starts from the Unix epoch, then convert from ticks
+	// to milliseconds.
+	millisFromTicks := (ticks - epochTicks) / 10000
+
+	return time.UnixMilli(millisFromTicks).UTC()
 }
