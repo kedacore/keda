@@ -27,7 +27,7 @@ require (
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/IBM/sarama v1.45.1
 	github.com/arangodb/go-driver v1.6.6
-	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.1
+	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.3
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.13
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.66
