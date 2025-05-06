@@ -413,7 +413,7 @@ github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery
 # github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.15
 ## explicit; go 1.22
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url
-# github.com/aws/aws-sdk-go-v2/service/kinesis v1.33.2
+# github.com/aws/aws-sdk-go-v2/service/kinesis v1.34.0
 ## explicit; go 1.22
 github.com/aws/aws-sdk-go-v2/service/kinesis
 github.com/aws/aws-sdk-go-v2/service/kinesis/internal/customizations
