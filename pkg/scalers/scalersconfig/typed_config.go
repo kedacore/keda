@@ -155,7 +155,7 @@ func (sc *ScalerConfig) TypedConfig(typedConfig any) (err error) {
 
 	logger := logf.Log.WithName("typed_config").WithValues("type", sc.ScalableObjectType, "namespace", sc.ScalableObjectNamespace, "name", sc.ScalableObjectName)
 
-	err, parsedParamNames := sc.parseTypedConfig(typedConfig, false)
+	parsedParamNames, err := sc.parseTypedConfig(typedConfig, false)
 
 	if err == nil {
 		sc.checkUnexpectedParameterExist(parsedParamNames, logger)
@@ -166,10 +166,10 @@ func (sc *ScalerConfig) TypedConfig(typedConfig any) (err error) {
 
 // parseTypedConfig is a function that is used to unmarshal the TriggerMetadata, ResolvedEnv and AuthParams
 // this can be called recursively to parse nested structures
-func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) (error, []string) {
+func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) ([]string, error) {
 	t := reflect.TypeOf(typedConfig)
 	if t.Kind() != reflect.Pointer {
-		return fmt.Errorf("typedConfig must be a pointer"), nil
+		return nil, fmt.Errorf("typedConfig must be a pointer")
 	}
 	t = t.Elem()
 	v := reflect.ValueOf(typedConfig).Elem()
@@ -189,7 +189,7 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) (
 			continue
 		}
 		tagParams.Optional = tagParams.Optional || parentOptional
-		err, parsed := sc.setValue(fieldValue, tagParams)
+		parsed, err := sc.setValue(fieldValue, tagParams)
 		if err != nil {
 			errs = append(errs, err)
 		} else {
@@ -201,14 +201,14 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) (
 			errs = append(errs, err)
 		}
 	}
-	return errors.Join(errs...), parsedParamNames
+	return parsedParamNames, errors.Join(errs...)
 }
 
 // setValue is a function that sets the value of the field based on the provided params, will return error and param names that set value
-func (sc *ScalerConfig) setValue(field reflect.Value, params Params) (error, []string) {
+func (sc *ScalerConfig) setValue(field reflect.Value, params Params) ([]string, error) {
 	valFromConfig, exists := sc.configParamValue(params)
 	if exists && params.IsDeprecated() {
-		return fmt.Errorf("scaler %s info: %s", sc.TriggerType, params.Deprecated), nil
+		return nil, fmt.Errorf("scaler %s info: %s", sc.TriggerType, params.Deprecated)
 	}
 	if exists && params.DeprecatedAnnounce != "" {
 		if sc.Recorder != nil {
@@ -227,9 +227,9 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) (error, []s
 	if !exists && !(params.Optional || params.IsDeprecated()) {
 		if len(params.Order) == 0 {
 			apo := slices.Sorted(maps.Keys(allowedParsingOrderMap))
-			return fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name(), apo), nil
+			return nil, fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name(), apo)
 		}
-		return fmt.Errorf("missing required parameter %q in %v", params.Name(), params.Order), nil
+		return nil, fmt.Errorf("missing required parameter %q in %v", params.Name(), params.Order)
 	}
 	if params.Enum != nil {
 		enumMap := make(map[string]bool)
@@ -245,7 +245,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) (error, []s
 			}
 		}
 		if len(missingMap) > 0 {
-			return fmt.Errorf("parameter %q value %q must be one of %v", params.Name(), valFromConfig, params.Enum), nil
+			return nil, fmt.Errorf("parameter %q value %q must be one of %v", params.Name(), valFromConfig, params.Enum)
 		}
 	}
 	if params.ExclusiveSet != nil {
@@ -262,7 +262,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) (error, []s
 			}
 		}
 		if exclusiveCount > 1 {
-			return fmt.Errorf("parameter %q value %q must contain only one of %v", params.Name(), valFromConfig, params.ExclusiveSet), nil
+			return nil, fmt.Errorf("parameter %q value %q must contain only one of %v", params.Name(), valFromConfig, params.ExclusiveSet)
 		}
 	}
 	if params.IsNested() {
@@ -271,14 +271,14 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) (error, []s
 			field = field.Elem()
 		}
 		if field.Kind() != reflect.Struct {
-			return fmt.Errorf("nested parameter %q must be a struct, has kind %q", params.FieldName, field.Kind()), nil
+			return nil, fmt.Errorf("nested parameter %q must be a struct, has kind %q", params.FieldName, field.Kind())
 		}
 		return sc.parseTypedConfig(field.Addr().Interface(), params.Optional)
 	}
 	if err := setConfigValueHelper(params, valFromConfig, field); err != nil {
-		return fmt.Errorf("unable to set param %q value %q: %w", params.Name(), valFromConfig, err), nil
+		return nil, fmt.Errorf("unable to set param %q value %q: %w", params.Name(), valFromConfig, err)
 	}
-	return nil, []string{params.Name()}
+	return []string{params.Name()}, nil
 }
 
 // setConfigValueURLParams is a function that sets the value of the url.Values field
