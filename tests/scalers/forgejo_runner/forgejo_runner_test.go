@@ -5,12 +5,13 @@ package forgejo_runner_test
 
 import (
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
-	"os"
-	"testing"
 
 	. "github.com/kedacore/keda/v2/tests/helper" // For helper methods
 )
@@ -28,13 +29,14 @@ var (
 	scaledJobName  = fmt.Sprintf("%s-so", testName)
 	configName     = fmt.Sprintf("%s-configmap", testName)
 
-	forgejoRunnerName  = "forgejo-runner"
-	forgejoToken       = os.Getenv("FORGEJO_TOKEN")
-	forgejoGlobal      = "true"
-	forgejoOwner       = os.Getenv("FORGEJO_OWNER")
-	forgejoRepo        = os.Getenv("FORGEJO_REPO")
-	forgejoLabel       = "ubuntu-latest"
+	forgejoRunnerName = "forgejo-runner"
+	forgejoToken      = os.Getenv("FORGEJO_TOKEN")
+	forgejoGlobal     = "true"
+	//forgejoOwner       = os.Getenv("FORGEJO_OWNER")
+	//forgejoRepo        = os.Getenv("FORGEJO_REPO")
+	forgejoLabel       = "ubuntu-20.04"
 	forgejoAccessToken = os.Getenv("FORGEJO_ACCESS_TOKEN")
+	forgejoAddress     = os.Getenv("FORGEJO_ADDRESS")
 
 	forgejoPodName = "forgejo"
 
@@ -48,13 +50,14 @@ type templateData struct {
 	ScaledObjectName string
 	ConfigName       string
 
-	ForgejoRunnerName  string
-	ForgejoToken       string
-	ForgejoGlobal      string
-	ForgejoOwner       string
-	ForgejoRepo        string
+	ForgejoRunnerName string
+	ForgejoToken      string
+	ForgejoGlobal     string
+	//ForgejoOwner       string
+	//ForgejoRepo        string
 	ForgejoLabel       string
 	ForgejoAccessToken string
+	ForgejoAddress     string
 }
 
 const (
@@ -95,135 +98,31 @@ spec:
         app: forgejo
     spec:
       containers:
-      - image: codeberg.org/forgejo-experimental/forgejo:11
+      - image: localhost:5001/stackit-git-base:6
+        command: ["/usr/local/bin/gitea"]
+        args: ["--config", "/data/app.ini", "web"]
         imagePullPolicy: IfNotPresent
-        livenessProbe:
-          failureThreshold: 10
-          httpGet:
-            path: /
-            port: 3000
-            scheme: HTTP
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 5
         name: forgejo
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
         ports:
         - containerPort: 3000
           name: http
           protocol: TCP
-        readinessProbe:
-          failureThreshold: 10
-          httpGet:
-            path: /
-            port: 3000
-            scheme: HTTP
-          initialDelaySeconds: 30
-          periodSeconds: 30
-          successThreshold: 1
-          timeoutSeconds: 5
-        volumeMounts:
-        - mountPath: /var/lib/gitea
-          name: forgejo
-          subPath: forgejo/var/lib/gitea
+        
       dnsPolicy: ClusterFirst
       restartPolicy: Always
+      
       securityContext:
         fsGroup: 1000
         runAsGroup: 1000
         runAsNonRoot: true
         runAsUser: 1000
-      volumes:
-      - emptyDir: {}
-        name: forgejo
  `
-	forgejoConfigMap = `apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: forgejo-config
-  namespace: {{.TestNamespace}}
-data:
-  app.ini: |
-    APP_NAME = Forgejo: Beyond coding. We Forge.
-    RUN_USER = merino_mora
-    WORK_PATH = /
-    RUN_MODE = prod
-    
-    [database]
-    DB_TYPE = sqlite3
-    HOST = 127.0.0.1:3306
-    NAME = forgejo
-    USER = forgejo
-    PASSWD =
-    SCHEMA =
-    SSL_MODE = disable
-    PATH = /data/forgejo.db
-    LOG_SQL = false
-    
-    [repository]
-    ROOT = /data/forgejo-repositories
-    
-    [server]
-    SSH_DOMAIN = localhost
-    DOMAIN = localhost
-    HTTP_PORT = 3000
-    ROOT_URL = http://localhost:3000/
-    APP_DATA_PATH = /data
-    DISABLE_SSH = false
-    SSH_PORT = 22
-    LFS_START_SERVER = true
-    OFFLINE_MODE = true
-    
-    [lfs]
-    PATH = /data/lfs
-    
-    [mailer]
-    ENABLED = false
-    
-    [service]
-    REGISTER_EMAIL_CONFIRM = false
-    ENABLE_NOTIFY_MAIL = false
-    DISABLE_REGISTRATION = false
-    ALLOW_ONLY_EXTERNAL_REGISTRATION = false
-    ENABLE_CAPTCHA = false
-    REQUIRE_SIGNIN_VIEW = false
-    DEFAULT_KEEP_EMAIL_PRIVATE = false
-    DEFAULT_ALLOW_CREATE_ORGANIZATION = true
-    DEFAULT_ENABLE_TIMETRACKING = true
-    NO_REPLY_ADDRESS = noreply.localhost
-    
-    [openid]
-    ENABLE_OPENID_SIGNIN = true
-    ENABLE_OPENID_SIGNUP = true
-    
-    [cron.update_checker]
-    ENABLED = true
-    
-    [session]
-    PROVIDER = file
-    
-    [log]
-    MODE = console
-    LEVEL = info
-    ROOT_PATH = /log
-    
-    [repository.pull-request]
-    DEFAULT_MERGE_STYLE = merge
-    
-    [repository.signing]
-    DEFAULT_TRUST_MODEL = committer
-    
-    [security]
-    INSTALL_LOCK = true
-    PASSWORD_HASH_ALGO = pbkdf2_hi
-    
-    [actions]
-    ENABLED = true
-    DEFAULT_ACTIONS_URL = https://github.com
-    
-    [stackitgitsettings]
-    ENABLE_USER_PASS_SIGNIN = true
-`
 
 	runnerConfigMap = `apiVersion: v1
 kind: ConfigMap
@@ -234,13 +133,13 @@ data:
   .runner: |
     {
       "WARNING": "This file is automatically generated by act-runner. Do not edit it manually unless you know what you are doing. Removing this file will cause act runner to re-register as a new runner.",
-      "id": 368,
-      "uuid": "ec85849d-bba3-4abc-9303-1445d06943ff",
-      "name": "{{.ForgejoRunnerName}}",
+      "id": 2,
+      "uuid": "bbbed033-ea94-4b44-a3c1-b4e347589a15",
+      "name": "5c61760e58c5",
       "token": "{{.ForgejoToken}}",
-      "address": "http://forgejo.{{.TestNamespace}}.svc.cluster.local",
+      "address": "{{.ForgejoAddress}}",
       "labels": [
-        "{{.ForgejoLabel}}"
+        "ubuntu-20.04:docker://node:20-bookworm"
       ]
     }
 `
@@ -251,24 +150,24 @@ metadata:
   labels:
     app: forgejo-runner
   name: forgejo-runner
-  namespace: runners
+  namespace: {{.TestNamespace}}
 spec:
   jobTargetRef:
     template:
       metadata:
         labels:
-          app: forgejo-runner
+          app: forgejo-job
       spec:
         volumes:
         - name: runner-data
           emptyDir: {}
         - name: runner-config
           configMap:
-            name: runner-config
+            name: {{.ConfigName}}
         containers:
         - name: runner
-          image: localhost:5001/runner:latest
-          command: ["sh", "-c", "forgejo-runner job"]
+          image: data.forgejo.org/forgejo/runner:6.3.1
+          command: ["sh", "-c", "forgejo-runner one-job"]
           volumeMounts:
           - name: runner-data
             mountPath: /data
@@ -276,22 +175,26 @@ spec:
             mountPath: /config
             readOnly: false
   minReplicaCount: 0
-  maxReplicaCount: 20
-  pollingInterval: 30
+  maxReplicaCount: 1
+  pollingInterval: 5
   triggers:
   - type: forgejo-runner
     metadata:
       name: "{{.ForgejoRunnerName}}"
       token: "{{.ForgejoAccessToken}}"
-      address: "http://forgejo.{{.TestNamespace}}.svc.cluster.local"
+      address: "{{.ForgejoAddress}}"
       global: "{{.ForgejoGlobal}}"
       labels: "{{.ForgejoLabel}}"
-      repo: "{{.ForgejoRepo}}"
-      owner: "{{.ForgejoOwner}}"
+
 `
 )
 
 func TestForgejoScaler(t *testing.T) {
+	// setting up
+	t.Log("--- setting up ---")
+	require.NotEmpty(t, forgejoToken, "FORGEJO_TOKEN env variable is required")
+	require.NotEmpty(t, forgejoAccessToken, "FORGEJO_ACCESS_TOKEN env variable is required")
+
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 	t.Cleanup(func() {
@@ -304,30 +207,26 @@ func TestForgejoScaler(t *testing.T) {
 	// setup forgejo
 	setupForgejo(t, kc)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
-
 	// test scaling
-	testActivation(t, kc)
 	testScaleOut(t, kc)
 	testScaleIn(t, kc)
 }
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:      testNamespace,
-			DeploymentName:     deploymentName,
-			ScaledObjectName:   scaledJobName,
-			ConfigName:         configName,
-			ForgejoRunnerName:  forgejoRunnerName,
-			ForgejoToken:       forgejoToken,
-			ForgejoGlobal:      forgejoGlobal,
-			ForgejoOwner:       forgejoOwner,
-			ForgejoRepo:        forgejoRepo,
+			TestNamespace:     testNamespace,
+			DeploymentName:    deploymentName,
+			ScaledObjectName:  scaledJobName,
+			ConfigName:        configName,
+			ForgejoRunnerName: forgejoRunnerName,
+			ForgejoToken:      forgejoToken,
+			ForgejoGlobal:     forgejoGlobal,
+			//ForgejoOwner:       forgejoOwner,
+			//ForgejoRepo:        forgejoRepo,
 			ForgejoLabel:       forgejoLabel,
 			ForgejoAccessToken: forgejoAccessToken,
+			ForgejoAddress:     forgejoAddress,
 		}, []Template{
-			{Name: "forgejoConfigMapTemplate", Config: forgejoConfigMap},
 			{Name: "runnerConfigMapTemplate", Config: runnerConfigMap},
 			{Name: "forgejoDeploymentTemplate", Config: forgejoDeployment},
 			{Name: "forgejoServiceTemplate", Config: forgejoService},
@@ -342,19 +241,15 @@ func setupForgejo(t *testing.T, kc *kubernetes.Clientset) {
 
 }
 
-// add 3 documents to solr -> activation should not happen (activationTargetValue = 5)
-func testActivation(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- testing activation ---")
-
-}
-
-// add 3 more documents to solr, which in total is 6 -> should be scaled up
+// pre-loaded database should scale automatically on label
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
 
+	assert.True(t, WaitForPodCountInNamespace(t, kc, testNamespace, 2, 60, 1), "pods count should be 2 after 1 minute")
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 
+	assert.True(t, WaitForPodCountInNamespace(t, kc, testNamespace, 1, 60, 1), "pods count should be 1 after 1 minute")
 }
