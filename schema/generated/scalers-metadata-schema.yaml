@@ -377,7 +377,7 @@ scalers:
           optional: true
         - name: operation
           type: string
-          optional: true
+          default: sum
           allowedValue:
             - sum
             - max
