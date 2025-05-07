@@ -333,7 +333,6 @@ func TestScaler(t *testing.T) {
 		httpClient := &http.Client{}
 
 		for i := 0; i < 5; i++ {
-
 			// 2. Port-forward: use remote port 3000 and get a random free local port.
 			localPort, err := getFreePortForward(ctx, kc, KubeConfig, testGiteaNamespace, deploymentName, 3000)
 			if err != nil {

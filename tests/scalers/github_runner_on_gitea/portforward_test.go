@@ -113,6 +113,10 @@ func getFreePortForward(ctx context.Context, clientset *kubernetes.Clientset, co
 	localPort := int(fwdPorts[0].Local)
 
 	// Verify this forwarding is functional
-	_, err = http.Get(fmt.Sprintf("http://localhost:%d", fwdPorts[0].Local))
-	return localPort, err
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%d", fwdPorts[0].Local))
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	return localPort, nil
 }
