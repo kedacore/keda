@@ -32,7 +32,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	kubemetrics "k8s.io/component-base/metrics"
 	"k8s.io/component-base/metrics/legacyregistry"
-	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -229,9 +228,6 @@ func main() {
 			setupLog.Error(err, "unable to run external metrics adapter")
 		}
 	}()
-
-	defer klog.Flush()
-	klog.InitFlags(nil)
 
 	cmd := &Adapter{}
 	cmd.Name = "keda-adapter"
