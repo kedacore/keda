@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,48 +29,49 @@ type datadogScaler struct {
 	httpClient           *http.Client
 	logger               logr.Logger
 	useClusterAgentProxy bool
+	metricType           v2.MetricTargetType
 }
 
+// TODO: Need to check whether we can deprecate vType and how should we proceed with it
 type datadogMetadata struct {
-
 	// AuthParams Cluster Agent Proxy
-	datadogNamespace          string
-	datadogMetricsService     string
-	datadogMetricsServicePort int
-	unsafeSsl                 bool
+	DatadogNamespace          string `keda:"name=datadogNamespace,          order=authParams, optional"`
+	DatadogMetricsService     string `keda:"name=datadogMetricsService,     order=authParams, optional"`
+	DatadogMetricsServicePort int    `keda:"name=datadogMetricsServicePort, order=authParams, default=8443"`
+	UnsafeSsl                 bool   `keda:"name=unsafeSsl,                 order=authParams, default=false"`
 
 	// bearer auth Cluster Agent Proxy
-	enableBearerAuth bool
-	bearerToken      string
+	AuthMode         string `keda:"name=authMode,  order=authParams, optional"`
+	EnableBearerAuth bool
+	BearerToken      string `keda:"name=token,     order=authParams,      optional"`
 
 	// TriggerMetadata Cluster Agent Proxy
-	datadogMetricServiceURL string
-	datadogMetricName       string
-	datadogMetricNamespace  string
-	activationTargetValue   float64
+	DatadogMetricServiceURL string
+	DatadogMetricName       string  `keda:"name=datadogMetricName,       order=triggerMetadata, optional"`
+	DatadogMetricNamespace  string  `keda:"name=datadogMetricNamespace,  order=triggerMetadata, optional"`
+	ActivationTargetValue   float64 `keda:"name=activationTargetValue,   order=triggerMetadata, default=0"`
 
 	// AuthParams Datadog API
-	apiKey      string
-	appKey      string
-	datadogSite string
+	APIKey      string `keda:"name=apiKey,      order=authParams, optional"`
+	AppKey      string `keda:"name=appKey,      order=authParams, optional"`
+	DatadogSite string `keda:"name=datadogSite, order=authParams, default=datadoghq.com"`
 
 	// TriggerMetadata Datadog API
-	query                    string
-	queryAggegrator          string
-	activationQueryValue     float64
-	age                      int
-	timeWindowOffset         int
-	lastAvailablePointOffset int
+	Query                    string  `keda:"name=query,                   order=triggerMetadata, optional"`
+	QueryAggegrator          string  `keda:"name=queryAggregator,         order=triggerMetadata, optional, enum=average;max"`
+	ActivationQueryValue     float64 `keda:"name=activationQueryValue,    order=triggerMetadata, default=0"`
+	Age                      int     `keda:"name=age,                     order=triggerMetadata, default=90"`
+	TimeWindowOffset         int     `keda:"name=timeWindowOffset,        order=triggerMetadata, default=0"`
+	LastAvailablePointOffset int     `keda:"name=lastAvailablePointOffset,order=triggerMetadata, default=0"`
 
 	// TriggerMetadata Common
-	hpaMetricName string
-	fillValue     float64
-	targetValue   float64
-	useFiller     bool
+	HpaMetricName string  `keda:"name=hpaMetricName,          order=triggerMetadata, optional"`
+	FillValue     float64 `keda:"name=metricUnavailableValue, order=triggerMetadata, default=0"`
+	UseFiller     bool
+	TargetValue   float64 `keda:"name=targetValue;queryValue, order=triggerMetadata, default=-1"`
 	vType         v2.MetricTargetType
 }
 
-const maxString = "max"
 const avgString = "average"
 
 var filter *regexp.Regexp
@@ -82,11 +82,14 @@ func init() {
 
 // NewDatadogScaler creates a new Datadog scaler
 func NewDatadogScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
+	}
 	logger := InitializeLogger(config, "datadog_scaler")
 
 	var useClusterAgentProxy bool
 	var meta *datadogMetadata
-	var err error
 	var apiClient *datadog.APIClient
 	var httpClient *http.Client
 
@@ -102,7 +105,7 @@ func NewDatadogScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (
 		if err != nil {
 			return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
 		}
-		httpClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl)
+		httpClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.UnsafeSsl)
 	} else {
 		meta, err = parseDatadogAPIMetadata(config, logger)
 		if err != nil {
@@ -115,6 +118,7 @@ func NewDatadogScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (
 	}
 
 	return &datadogScaler{
+		metricType:           metricType,
 		metadata:             meta,
 		apiClient:            apiClient,
 		httpClient:           httpClient,
@@ -144,113 +148,27 @@ func buildMetricURL(datadogClusterAgentURL, datadogMetricNamespace, datadogMetri
 }
 
 func parseDatadogAPIMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*datadogMetadata, error) {
-	meta := datadogMetadata{}
-
-	if val, ok := config.TriggerMetadata["age"]; ok {
-		age, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("age parsing error %w", err)
-		}
-		meta.age = age
-
-		if age < 0 {
-			return nil, fmt.Errorf("age should not be smaller than 0 seconds")
-		}
-		if age < 60 {
-			logger.Info("selecting a window smaller than 60 seconds can cause Datadog not finding a metric value for the query")
-		}
-	} else {
-		meta.age = 90 // Default window 90 seconds
+	meta := &datadogMetadata{}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
 	}
 
-	if val, ok := config.TriggerMetadata["timeWindowOffset"]; ok {
-		timeWindowOffset, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("timeWindowOffset parsing error %w", err)
-		}
-		if timeWindowOffset < 0 {
-			return nil, fmt.Errorf("timeWindowOffset should not be smaller than 0 seconds")
-		}
-		meta.timeWindowOffset = timeWindowOffset
-	} else {
-		meta.timeWindowOffset = 0 // Default delay 0 seconds
+	if meta.Age < 60 {
+		logger.Info("selecting a window smaller than 60 seconds can cause Datadog not finding a metric value for the query")
 	}
-
-	if val, ok := config.TriggerMetadata["lastAvailablePointOffset"]; ok {
-		lastAvailablePointOffset, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("lastAvailablePointOffset parsing error %w", err)
-		}
-
-		if lastAvailablePointOffset < 0 {
-			return nil, fmt.Errorf("lastAvailablePointOffset should not be smaller than 0")
-		}
-		meta.lastAvailablePointOffset = lastAvailablePointOffset
-	} else {
-		meta.lastAvailablePointOffset = 0 // Default use the last point
+	if meta.AppKey == "" {
+		return nil, fmt.Errorf("error parsing Datadog metadata: missing AppKey")
 	}
-
-	if val, ok := config.TriggerMetadata["query"]; ok {
-		_, err := parseDatadogQuery(val)
-
-		if err != nil {
-			return nil, fmt.Errorf("error in query: %w", err)
-		}
-		meta.query = val
-	} else {
-		return nil, fmt.Errorf("no query given")
+	if meta.APIKey == "" {
+		return nil, fmt.Errorf("error parsing Datadog metadata: missing APIKey")
 	}
-
-	if val, ok := config.TriggerMetadata["targetValue"]; ok {
-		targetValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("targetValue parsing error %w", err)
-		}
-		meta.targetValue = targetValue
-	} else if val, ok := config.TriggerMetadata["queryValue"]; ok {
-		targetValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %w", err)
-		}
-		meta.targetValue = targetValue
-	} else {
+	if meta.TargetValue == -1 {
 		if config.AsMetricSource {
-			meta.targetValue = 0
+			meta.TargetValue = 0
 		} else {
 			return nil, fmt.Errorf("no targetValue or queryValue given")
 		}
 	}
-
-	if val, ok := config.TriggerMetadata["queryAggregator"]; ok && val != "" {
-		queryAggregator := strings.ToLower(val)
-		switch queryAggregator {
-		case avgString, maxString:
-			meta.queryAggegrator = queryAggregator
-		default:
-			return nil, fmt.Errorf("queryAggregator value %s has to be one of '%s, %s'", queryAggregator, avgString, maxString)
-		}
-	} else {
-		meta.queryAggegrator = ""
-	}
-
-	meta.activationQueryValue = 0
-	if val, ok := config.TriggerMetadata["activationQueryValue"]; ok {
-		activationQueryValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("queryValue parsing error %w", err)
-		}
-		meta.activationQueryValue = activationQueryValue
-	}
-
-	if val, ok := config.TriggerMetadata["metricUnavailableValue"]; ok {
-		fillValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("metricUnavailableValue parsing error %w", err)
-		}
-		meta.fillValue = fillValue
-		meta.useFiller = true
-	}
-
 	if val, ok := config.TriggerMetadata["type"]; ok {
 		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
 		if config.MetricType != "" {
@@ -272,115 +190,45 @@ func parseDatadogAPIMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 		}
 		meta.vType = metricType
 	}
+	if meta.Query == "" {
+		return nil, fmt.Errorf("error parsing Datadog metadata: missing Query")
+	}
 
-	if val, ok := config.AuthParams["apiKey"]; ok {
-		meta.apiKey = val
+	if meta.Query != "" {
+		meta.HpaMetricName = meta.Query[0:strings.Index(meta.Query, "{")]
+		meta.HpaMetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", meta.HpaMetricName)))
 	} else {
-		return nil, fmt.Errorf("no api key given")
+		meta.HpaMetricName = "datadogmetric@" + meta.DatadogMetricNamespace + ":" + meta.DatadogMetricName
 	}
 
-	if val, ok := config.AuthParams["appKey"]; ok {
-		meta.appKey = val
-	} else {
-		return nil, fmt.Errorf("no app key given")
-	}
-
-	siteVal := "datadoghq.com"
-
-	if val, ok := config.AuthParams["datadogSite"]; ok && val != "" {
-		siteVal = val
-	}
-
-	meta.datadogSite = siteVal
-
-	hpaMetricName := meta.query[0:strings.Index(meta.query, "{")]
-	meta.hpaMetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", hpaMetricName)))
-
-	return &meta, nil
+	return meta, nil
 }
 
 func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*datadogMetadata, error) {
-	meta := datadogMetadata{}
-
-	if val, ok := config.AuthParams["datadogNamespace"]; ok {
-		meta.datadogNamespace = val
-	} else {
-		return nil, fmt.Errorf("no datadogNamespace key given")
+	meta := &datadogMetadata{}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
+	}
+	if meta.DatadogMetricsService == "" {
+		return nil, fmt.Errorf("datadog metrics service is required")
 	}
 
-	if val, ok := config.AuthParams["datadogMetricsService"]; ok {
-		meta.datadogMetricsService = val
-	} else {
-		return nil, fmt.Errorf("no datadogMetricsService key given")
+	if meta.DatadogMetricName == "" {
+		return nil, fmt.Errorf("datadog metric name is required")
 	}
-
-	if val, ok := config.AuthParams["datadogMetricsServicePort"]; ok {
-		port, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("datadogMetricServicePort parsing error %w", err)
-		}
-		meta.datadogMetricsServicePort = port
-	} else {
-		meta.datadogMetricsServicePort = 8443
+	if meta.DatadogNamespace == "" {
+		return nil, fmt.Errorf("datadog namespace is required")
 	}
-
-	meta.datadogMetricServiceURL = buildClusterAgentURL(meta.datadogMetricsService, meta.datadogNamespace, meta.datadogMetricsServicePort)
-
-	meta.unsafeSsl = false
-	if val, ok := config.AuthParams["unsafeSsl"]; ok {
-		unsafeSsl, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing unsafeSsl: %w", err)
-		}
-		meta.unsafeSsl = unsafeSsl
+	if meta.DatadogMetricNamespace == "" {
+		return nil, fmt.Errorf("datadog metric namespace is required")
 	}
-
-	if val, ok := config.TriggerMetadata["datadogMetricName"]; ok {
-		meta.datadogMetricName = val
-	} else {
-		return nil, fmt.Errorf("no datadogMetricName key given")
-	}
-
-	if val, ok := config.TriggerMetadata["datadogMetricNamespace"]; ok {
-		meta.datadogMetricNamespace = val
-	} else {
-		return nil, fmt.Errorf("no datadogMetricNamespace key given")
-	}
-
-	meta.hpaMetricName = "datadogmetric@" + meta.datadogMetricNamespace + ":" + meta.datadogMetricName
-
-	if val, ok := config.TriggerMetadata["targetValue"]; ok {
-		targetValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("targetValue parsing error %w", err)
-		}
-		meta.targetValue = targetValue
-	} else {
+	if meta.TargetValue == -1 {
 		if config.AsMetricSource {
-			meta.targetValue = 0
+			meta.TargetValue = 0
 		} else {
-			return nil, fmt.Errorf("no targetValue given")
+			return nil, fmt.Errorf("no targetValue or queryValue given")
 		}
 	}
-
-	meta.activationTargetValue = 0
-	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
-		activationTargetValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("activationTargetValue parsing error %w", err)
-		}
-		meta.activationTargetValue = activationTargetValue
-	}
-
-	if val, ok := config.TriggerMetadata["metricUnavailableValue"]; ok {
-		fillValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("metricUnavailableValue parsing error %w", err)
-		}
-		meta.fillValue = fillValue
-		meta.useFiller = true
-	}
-
 	if val, ok := config.TriggerMetadata["type"]; ok {
 		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
 		if config.MetricType != "" {
@@ -402,27 +250,11 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 		}
 		meta.vType = metricType
 	}
+	meta.HpaMetricName = "datadogmetric@" + meta.DatadogMetricNamespace + ":" + meta.DatadogMetricName
 
-	authMode, ok := config.AuthParams["authMode"]
-	// no authMode specified
-	if !ok {
-		return &meta, nil
-	}
+	meta.DatadogMetricServiceURL = buildClusterAgentURL(meta.DatadogMetricsService, meta.DatadogMetricNamespace, meta.DatadogMetricsServicePort)
 
-	authType := authentication.Type(strings.TrimSpace(authMode))
-	switch authType {
-	case authentication.BearerAuthType:
-		if len(config.AuthParams["token"]) == 0 {
-			return nil, errors.New("no token provided")
-		}
-
-		meta.bearerToken = config.AuthParams["token"]
-		meta.enableBearerAuth = true
-	default:
-		return nil, fmt.Errorf("err incorrect value for authMode is given: %s", authMode)
-	}
-
-	return &meta, nil
+	return meta, nil
 }
 
 // newDatadogAPIConnection tests a connection to the Datadog API
@@ -432,10 +264,10 @@ func newDatadogAPIConnection(ctx context.Context, meta *datadogMetadata, config 
 		datadog.ContextAPIKeys,
 		map[string]datadog.APIKey{
 			"apiKeyAuth": {
-				Key: meta.apiKey,
+				Key: meta.APIKey,
 			},
 			"appKeyAuth": {
-				Key: meta.appKey,
+				Key: meta.AppKey,
 			},
 		},
 	)
@@ -443,7 +275,7 @@ func newDatadogAPIConnection(ctx context.Context, meta *datadogMetadata, config 
 	ctx = context.WithValue(ctx,
 		datadog.ContextServerVariables,
 		map[string]string{
-			"site": meta.datadogSite,
+			"site": meta.DatadogSite,
 		})
 
 	configuration := datadog.NewConfiguration()
@@ -473,10 +305,10 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		datadog.ContextAPIKeys,
 		map[string]datadog.APIKey{
 			"apiKeyAuth": {
-				Key: s.metadata.apiKey,
+				Key: s.metadata.APIKey,
 			},
 			"appKeyAuth": {
-				Key: s.metadata.appKey,
+				Key: s.metadata.AppKey,
 			},
 		},
 	)
@@ -484,12 +316,12 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	ctx = context.WithValue(ctx,
 		datadog.ContextServerVariables,
 		map[string]string{
-			"site": s.metadata.datadogSite,
+			"site": s.metadata.DatadogSite,
 		})
 
-	timeWindowTo := time.Now().Unix() - int64(s.metadata.timeWindowOffset)
-	timeWindowFrom := timeWindowTo - int64(s.metadata.age)
-	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, timeWindowFrom, timeWindowTo, s.metadata.query) //nolint:bodyclose
+	timeWindowTo := time.Now().Unix() - int64(s.metadata.TimeWindowOffset)
+	timeWindowFrom := timeWindowTo - int64(s.metadata.Age)
+	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, timeWindowFrom, timeWindowTo, s.metadata.Query) //nolint:bodyclose
 
 	if r != nil {
 		if r.StatusCode == 429 {
@@ -522,14 +354,14 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	series := resp.GetSeries()
 
 	if len(series) == 0 {
-		if !s.metadata.useFiller {
+		if !s.metadata.UseFiller {
 			return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 		}
-		return s.metadata.fillValue, nil
+		return s.metadata.FillValue, nil
 	}
 
 	// Require queryAggregator be set explicitly for multi-query
-	if len(series) > 1 && s.metadata.queryAggegrator == "" {
+	if len(series) > 1 && s.metadata.QueryAggegrator == "" {
 		return 0, fmt.Errorf("query returned more than 1 series; modify the query to return only 1 series or add a queryAggregator")
 	}
 
@@ -545,22 +377,22 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 				break
 			}
 		}
-		if index < s.metadata.lastAvailablePointOffset {
+		if index < s.metadata.LastAvailablePointOffset {
 			return 0, fmt.Errorf("index is smaller than the lastAvailablePointOffset")
 		}
-		index -= s.metadata.lastAvailablePointOffset
+		index -= s.metadata.LastAvailablePointOffset
 
 		if len(points) == 0 || len(points[index]) < 2 || points[index][1] == nil {
-			if !s.metadata.useFiller {
+			if !s.metadata.UseFiller {
 				return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 			}
-			return s.metadata.fillValue, nil
+			return s.metadata.FillValue, nil
 		}
 		// Return the last point from the series
 		results[i] = *points[index][1]
 	}
 
-	switch s.metadata.queryAggegrator {
+	switch s.metadata.QueryAggegrator {
 	case avgString:
 		return AvgFloatFromSlice(results), nil
 	default:
@@ -608,12 +440,12 @@ func (s *datadogScaler) getDatadogClusterAgentHTTPRequest(ctx context.Context, u
 	var err error
 
 	switch {
-	case s.metadata.enableBearerAuth:
+	case s.metadata.EnableBearerAuth:
 		req, err = http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
 			return nil, err
 		}
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.bearerToken))
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.BearerToken))
 		if err != nil {
 			return nil, err
 		}
@@ -633,9 +465,9 @@ func (s *datadogScaler) getDatadogClusterAgentHTTPRequest(ctx context.Context, u
 func (s *datadogScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: s.metadata.hpaMetricName,
+			Name: s.metadata.HpaMetricName,
 		},
-		Target: GetMetricTargetMili(s.metadata.vType, s.metadata.targetValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.TargetValue),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -650,7 +482,7 @@ func (s *datadogScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 	var err error
 
 	if s.useClusterAgentProxy {
-		url := buildMetricURL(s.metadata.datadogMetricServiceURL, s.metadata.datadogMetricNamespace, s.metadata.hpaMetricName)
+		url := buildMetricURL(s.metadata.DatadogMetricServiceURL, s.metadata.DatadogMetricNamespace, s.metadata.HpaMetricName)
 
 		req, err := s.getDatadogClusterAgentHTTPRequest(ctx, url)
 		if (err != nil) || (req == nil) {
@@ -663,7 +495,7 @@ func (s *datadogScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 		}
 
 		metric = GenerateMetricInMili(metricName, num)
-		return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationTargetValue, nil
+		return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.ActivationTargetValue, nil
 	}
 	num, err = s.getQueryResult(ctx)
 	if err != nil {
@@ -672,7 +504,7 @@ func (s *datadogScaler) GetMetricsAndActivity(ctx context.Context, metricName st
 	}
 
 	metric = GenerateMetricInMili(metricName, num)
-	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationQueryValue, nil
+	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.ActivationQueryValue, nil
 }
 
 // AvgFloatFromSlice finds the average value in a slice of floats
@@ -682,4 +514,38 @@ func AvgFloatFromSlice(results []float64) float64 {
 		total += result
 	}
 	return total / float64(len(results))
+}
+
+func (s *datadogMetadata) Validate() error {
+	if s.Age < 0 {
+		return fmt.Errorf("age should not be smaller than 0 seconds")
+	}
+
+	if s.TimeWindowOffset < 0 {
+		return fmt.Errorf("timeWindowOffset should not be smaller than 0 seconds")
+	}
+	if s.LastAvailablePointOffset < 0 {
+		return fmt.Errorf("lastAvailablePointOffset should not be smaller than 0")
+	}
+	if s.Query != "" {
+		if _, err := parseDatadogQuery(s.Query); err != nil {
+			return fmt.Errorf("error in query: %w", err)
+		}
+	}
+	if s.FillValue == 0 {
+		s.UseFiller = false
+	}
+	if s.AuthMode != "" {
+		authType := authentication.Type(strings.TrimSpace(s.AuthMode))
+		switch authType {
+		case authentication.BearerAuthType:
+			if s.BearerToken == "" {
+				return fmt.Errorf("BearerToken is required")
+			}
+			s.EnableBearerAuth = true
+		default:
+			return fmt.Errorf("err incorrect value for authMode is given: %s", s.AuthMode)
+		}
+	}
+	return nil
 }

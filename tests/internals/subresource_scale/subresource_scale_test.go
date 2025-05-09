@@ -56,7 +56,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: 'nginxinc/nginx-unprivileged'`
+          image: 'ghcr.io/nginx/nginx-unprivileged:1.26'`
 
 	argoRolloutTemplate = `apiVersion: argoproj.io/v1alpha1
 kind: Rollout
@@ -82,7 +82,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: nginxinc/nginx-unprivileged
+          image: ghcr.io/nginx/nginx-unprivileged:1.26
 `
 
 	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
