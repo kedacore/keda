@@ -168,17 +168,14 @@ func TestForgejoRunnerScalerGetGlobalRunnerJobsUrl(t *testing.T) {
 }
 
 func TestForgejoRunnerScalerGetJobsList(t *testing.T) {
-	jobsList := JobsListResponse{
-		Jobs: []ForgejoJob{
-			{ID: 1},
-			{ID: 2},
-		},
+	jobsList := []ForgejoJob{
+		{ID: 1},
+		{ID: 2},
 	}
-	repoJobList := JobsListResponse{
-		Jobs: []ForgejoJob{
-			{ID: 3},
-			{ID: 4},
-		},
+
+	repoJobList := []ForgejoJob{
+		{ID: 3},
+		{ID: 4},
 	}
 	forgejoServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/api/v1/repos/owner/my-repo/actions/runners/jobs" {
@@ -201,7 +198,7 @@ func TestForgejoRunnerScalerGetJobsList(t *testing.T) {
 	tests := []struct {
 		name    string
 		fields  fields
-		want    JobsListResponse
+		want    []ForgejoJob
 		wantErr assert.ErrorAssertionFunc
 	}{
 		{
@@ -218,11 +215,9 @@ func TestForgejoRunnerScalerGetJobsList(t *testing.T) {
 				logger: logr.Logger{},
 			},
 
-			want: JobsListResponse{
-				Jobs: []ForgejoJob{
-					{ID: 1},
-					{ID: 2},
-				},
+			want: []ForgejoJob{
+				{ID: 1},
+				{ID: 2},
 			},
 			wantErr: assert.NoError,
 		},
@@ -241,11 +236,9 @@ func TestForgejoRunnerScalerGetJobsList(t *testing.T) {
 				logger: logr.Logger{},
 			},
 
-			want: JobsListResponse{
-				Jobs: []ForgejoJob{
-					{ID: 3},
-					{ID: 4},
-				},
+			want: []ForgejoJob{
+				{ID: 3},
+				{ID: 4},
 			},
 			wantErr: assert.NoError,
 		},
