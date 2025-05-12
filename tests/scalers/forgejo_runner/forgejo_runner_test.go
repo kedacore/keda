@@ -107,10 +107,8 @@ spec:
         - containerPort: 3000
           name: http
           protocol: TCP
-        
       dnsPolicy: ClusterFirst
       restartPolicy: Always
-      
       securityContext:
         fsGroup: 1000
         runAsGroup: 1000
