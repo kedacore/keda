@@ -98,7 +98,7 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 					log.Error(err, "failed to add client CA's certificate")
 					continue
 				}
-				log.V(1).Info("grcp ca certificate has been updated")
+				log.V(1).Info("grpc ca certificate has been updated")
 
 				// Load certificate of the CA who signed client's certificate
 				cert, err := tls.LoadX509KeyPair(certPath, keyPath)
@@ -109,7 +109,7 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 				certMutex.Lock()
 				mTLSCertificate = cert
 				certMutex.Unlock()
-				log.V(1).Info("grcp mTLS certificate has been updated")
+				log.V(1).Info("grpc mTLS certificate has been updated")
 
 			case err, ok := <-watcher.Errors:
 				if !ok { // Channel was closed (i.e. Watcher.Close() was called).
