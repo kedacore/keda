@@ -32,16 +32,16 @@ var (
 	forgejoRunnerName = "forgejo-runner"
 	forgejoToken      = os.Getenv("FORGEJO_TOKEN")
 	forgejoGlobal     = "true"
-	//forgejoOwner       = os.Getenv("FORGEJO_OWNER")
-	//forgejoRepo        = os.Getenv("FORGEJO_REPO")
+	// forgejoOwner       = os.Getenv("FORGEJO_OWNER")
+	// forgejoRepo        = os.Getenv("FORGEJO_REPO")
 	forgejoLabel       = "ubuntu-20.04"
 	forgejoAccessToken = os.Getenv("FORGEJO_ACCESS_TOKEN")
 	forgejoAddress     = os.Getenv("FORGEJO_ADDRESS")
 
-	forgejoPodName = "forgejo"
+	// forgejoPodName = "forgejo"
 
-	minReplicaCount = 0
-	maxReplicaCount = 1
+	minReplicaCount = 1
+	maxReplicaCount = 2
 )
 
 type templateData struct {
@@ -238,18 +238,17 @@ func setupForgejo(t *testing.T, kc *kubernetes.Clientset) {
 	require.True(t,
 		WaitForDeploymentReplicaReadyCount(t, kc, "forgejo", testNamespace, 1, 3, 20),
 		"Forgejo should be running after 1 minute")
-
 }
 
 // pre-loaded database should scale automatically on label
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
 
-	assert.True(t, WaitForPodCountInNamespace(t, kc, testNamespace, 2, 60, 1), "pods count should be 2 after 1 minute")
+	assert.True(t, WaitForPodCountInNamespace(t, kc, testNamespace, minReplicaCount, 60, 1), "pods count should be 2 after 1 minute")
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 
-	assert.True(t, WaitForPodCountInNamespace(t, kc, testNamespace, 1, 60, 1), "pods count should be 1 after 1 minute")
+	assert.True(t, WaitForPodCountInNamespace(t, kc, testNamespace, maxReplicaCount, 60, 1), "pods count should be 1 after 1 minute")
 }
