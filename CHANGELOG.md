@@ -69,6 +69,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **Metrics API**: Support multiple auth methods simultaneously in Metrics API scaler ([#6642](https://github.com/kedacore/keda/issues/6642))
+- **Selenium Grid**: Update metric name generated without part of empty ([#6772](https://github.com/kedacore/keda/pull/6772))
 
 ### Fixes
 

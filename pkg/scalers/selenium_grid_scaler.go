@@ -209,8 +209,22 @@ func (s *seleniumGridScaler) GetMetricsAndActivity(ctx context.Context, metricNa
 	return []external_metrics.ExternalMetricValue{metric}, (newRequestNodes + onGoingSessions) > s.metadata.ActivationThreshold, nil
 }
 
+func buildSeleniumGridMetricName(meta *seleniumGridScalerMetadata) string {
+	nameParts := []string{"selenium-grid"}
+	if meta.BrowserName != "" {
+		nameParts = append(nameParts, meta.BrowserName)
+	}
+	if meta.BrowserVersion != "" {
+		nameParts = append(nameParts, meta.BrowserVersion)
+	}
+	if meta.PlatformName != "" {
+		nameParts = append(nameParts, meta.PlatformName)
+	}
+	return strings.Join(nameParts, "-")
+}
+
 func (s *seleniumGridScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(fmt.Sprintf("selenium-grid-%s-%s-%s", s.metadata.BrowserName, s.metadata.BrowserVersion, s.metadata.PlatformName))
+	metricName := kedautil.NormalizeString(buildSeleniumGridMetricName(s.metadata))
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
