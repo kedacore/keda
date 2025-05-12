@@ -80,10 +80,11 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 					log.Error(err, "watcher stopped")
 					return
 				}
-				// We are only interested on rename changes on ..data dir
+				// We are only interested on Create changes on ..data dir
 				// as kubernetes creates first a temp folder with the new
-				// cert and then rename the whole folder
-				if !event.Has(fsnotify.Rename) ||
+				// cert and then rename the whole folder.
+				// This unix.IN_MOVED_TO is treated as fsnotify.Create
+				if !event.Has(fsnotify.Create) ||
 					!strings.HasSuffix(event.Name, "..data") {
 					continue
 				}
