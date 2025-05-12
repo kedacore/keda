@@ -84,7 +84,7 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 				// as kubernetes creates first a temp folder with the new
 				// cert and then rename the whole folder
 				if !event.Has(fsnotify.Rename) ||
-					strings.HasSuffix(event.Name, "..data") {
+					!strings.HasSuffix(event.Name, "..data") {
 					continue
 				}
 				log.V(1).Info("detected change on certificates, reloading")
