@@ -29,16 +29,12 @@ var (
 	scaledJobName  = fmt.Sprintf("%s-so", testName)
 	configName     = fmt.Sprintf("%s-configmap", testName)
 
-	forgejoRunnerName = "forgejo-runner"
-	forgejoToken      = os.Getenv("FORGEJO_TOKEN")
-	forgejoGlobal     = "true"
-	// forgejoOwner       = os.Getenv("FORGEJO_OWNER")
-	// forgejoRepo        = os.Getenv("FORGEJO_REPO")
+	forgejoRunnerName  = "forgejo-runner"
+	forgejoToken       = os.Getenv("FORGEJO_TOKEN")
+	forgejoGlobal      = "true"
 	forgejoLabel       = "ubuntu-20.04"
 	forgejoAccessToken = os.Getenv("FORGEJO_ACCESS_TOKEN")
 	forgejoAddress     = os.Getenv("FORGEJO_ADDRESS")
-
-	// forgejoPodName = "forgejo"
 
 	minReplicaCount = 1
 	maxReplicaCount = 2
@@ -50,11 +46,9 @@ type templateData struct {
 	ScaledObjectName string
 	ConfigName       string
 
-	ForgejoRunnerName string
-	ForgejoToken      string
-	ForgejoGlobal     string
-	//ForgejoOwner       string
-	//ForgejoRepo        string
+	ForgejoRunnerName  string
+	ForgejoToken       string
+	ForgejoGlobal      string
 	ForgejoLabel       string
 	ForgejoAccessToken string
 	ForgejoAddress     string
@@ -185,7 +179,6 @@ spec:
       address: "{{.ForgejoAddress}}"
       global: "{{.ForgejoGlobal}}"
       labels: "{{.ForgejoLabel}}"
-
 `
 )
 
@@ -214,15 +207,13 @@ func TestForgejoScaler(t *testing.T) {
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-			TestNamespace:     testNamespace,
-			DeploymentName:    deploymentName,
-			ScaledObjectName:  scaledJobName,
-			ConfigName:        configName,
-			ForgejoRunnerName: forgejoRunnerName,
-			ForgejoToken:      forgejoToken,
-			ForgejoGlobal:     forgejoGlobal,
-			//ForgejoOwner:       forgejoOwner,
-			//ForgejoRepo:        forgejoRepo,
+			TestNamespace:      testNamespace,
+			DeploymentName:     deploymentName,
+			ScaledObjectName:   scaledJobName,
+			ConfigName:         configName,
+			ForgejoRunnerName:  forgejoRunnerName,
+			ForgejoToken:       forgejoToken,
+			ForgejoGlobal:      forgejoGlobal,
 			ForgejoLabel:       forgejoLabel,
 			ForgejoAccessToken: forgejoAccessToken,
 			ForgejoAddress:     forgejoAddress,
