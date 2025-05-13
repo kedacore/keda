@@ -60,7 +60,7 @@ func (e *BackupNotFoundException) ErrorCode() string {
 }
 func (e *BackupNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
-// A condition specified in the operation could not be evaluated.
+// A condition specified in the operation failed to be evaluated.
 type ConditionalCheckFailedException struct {
 	Message *string
 
@@ -708,9 +708,9 @@ func (e *ReplicatedWriteConflictException) ErrorCode() string {
 func (e *ReplicatedWriteConflictException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // Throughput exceeds the current throughput quota for your account. Please
-// contact [Amazon Web Services Support]to request a quota increase.
+// contact [Amazon Web ServicesSupport]to request a quota increase.
 //
-// [Amazon Web Services Support]: https://aws.amazon.com/support
+// [Amazon Web ServicesSupport]: https://aws.amazon.com/support
 type RequestLimitExceeded struct {
 	Message *string
 
