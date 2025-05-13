@@ -331,17 +331,13 @@ func (p *Processor) initNextClientsCh(ctx context.Context) (EventHubProperties, 
 	return eventHubProperties, nil
 }
 
+type getCheckpoints func() (map[string]Checkpoint, error)
+
 // dispatch uses the checkpoint store to figure out which partitions should be processed by this
 // instance and starts a PartitionClient, if there isn't one.
 // NOTE: due to random number usage in the load balancer, this function is not thread safe.
 func (p *Processor) dispatch(ctx context.Context, eventHubProperties EventHubProperties, consumers *sync.Map) error {
 	ownerships, err := p.lb.LoadBalance(ctx, eventHubProperties.PartitionIDs)
-
-	if err != nil {
-		return err
-	}
-
-	checkpoints, err := p.getCheckpointsMap(ctx)
 
 	if err != nil {
 		return err
@@ -355,13 +351,17 @@ func (p *Processor) dispatch(ctx context.Context, eventHubProperties EventHubPro
 	copy(tmpOwnerships, ownerships)
 	p.currentOwnerships.Store(tmpOwnerships)
 
+	getCheckpoints := sync.OnceValues(func() (map[string]Checkpoint, error) {
+		return p.getCheckpointsMap(ctx)
+	})
+
 	for _, ownership := range ownerships {
 		wg.Add(1)
 
 		go func(o Ownership) {
 			defer wg.Done()
 
-			err := p.addPartitionClient(ctx, o, checkpoints, consumers)
+			err := p.addPartitionClient(ctx, o, getCheckpoints, consumers)
 
 			if err != nil {
 				azlog.Writef(EventConsumer, "failed to create partition client for partition '%s': %s", o.PartitionID, err.Error())
@@ -375,7 +375,7 @@ func (p *Processor) dispatch(ctx context.Context, eventHubProperties EventHubPro
 }
 
 // addPartitionClient creates a ProcessorPartitionClient
-func (p *Processor) addPartitionClient(ctx context.Context, ownership Ownership, checkpoints map[string]Checkpoint, consumers *sync.Map) error {
+func (p *Processor) addPartitionClient(ctx context.Context, ownership Ownership, getCheckpoints getCheckpoints, consumers *sync.Map) error {
 	processorPartClient := &ProcessorPartitionClient{
 		consumerClientDetails: p.consumerClientDetails,
 		checkpointStore:       p.checkpointStore,
@@ -386,20 +386,18 @@ func (p *Processor) addPartitionClient(ctx context.Context, ownership Ownership,
 		},
 	}
 
-	// RP: I don't want to accidentally end up doing this logic because the user was closing it as we
-	// were doing our next load balance.
 	if _, alreadyExists := consumers.LoadOrStore(ownership.PartitionID, processorPartClient); alreadyExists {
 		return nil
 	}
 
-	sp, err := p.getStartPosition(checkpoints, ownership)
+	startPosition, err := p.getStartPosition(getCheckpoints, ownership)
 
 	if err != nil {
 		return err
 	}
 
 	partClient, err := p.consumerClient.NewPartitionClient(ownership.PartitionID, &PartitionClientOptions{
-		StartPosition: sp,
+		StartPosition: startPosition,
 		OwnerLevel:    processorOwnerLevel,
 		Prefetch:      p.prefetch,
 	})
@@ -428,18 +426,29 @@ func (p *Processor) addPartitionClient(ctx context.Context, ownership Ownership,
 	}
 }
 
-func (p *Processor) getStartPosition(checkpoints map[string]Checkpoint, ownership Ownership) (StartPosition, error) {
-	startPosition := p.defaultStartPositions.Default
-	cp, hasCheckpoint := checkpoints[ownership.PartitionID]
+func (p *Processor) getStartPosition(getCheckpoints getCheckpoints, ownership Ownership) (StartPosition, error) {
+	checkpoints, err := getCheckpoints()
 
-	if hasCheckpoint {
-		if cp.Offset != nil {
+	if err != nil {
+		return StartPosition{}, err
+	}
+
+	var checkpoint *Checkpoint
+
+	if tmpCheckpoint, ok := checkpoints[ownership.PartitionID]; ok {
+		checkpoint = &tmpCheckpoint
+	}
+
+	startPosition := p.defaultStartPositions.Default
+
+	if checkpoint != nil {
+		if checkpoint.Offset != nil {
 			startPosition = StartPosition{
-				Offset: cp.Offset,
+				Offset: checkpoint.Offset,
 			}
-		} else if cp.SequenceNumber != nil {
+		} else if checkpoint.SequenceNumber != nil {
 			startPosition = StartPosition{
-				SequenceNumber: cp.SequenceNumber,
+				SequenceNumber: checkpoint.SequenceNumber,
 			}
 		} else {
 			return StartPosition{}, fmt.Errorf("invalid checkpoint for %s, no offset or sequence number", ownership.PartitionID)
