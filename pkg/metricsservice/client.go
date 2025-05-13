@@ -37,7 +37,7 @@ type GrpcClient struct {
 	connection *grpc.ClientConn
 }
 
-func NewGrpcClient(url, certDir, authority string, clientMetrics *grpcprom.ClientMetrics) (*GrpcClient, error) {
+func NewGrpcClient(ctx context.Context, url, certDir, authority string, clientMetrics *grpcprom.ClientMetrics) (*GrpcClient, error) {
 	defaultConfig := `{
 		"methodConfig": [{
 		  "timeout": "3s",
@@ -50,7 +50,7 @@ func NewGrpcClient(url, certDir, authority string, clientMetrics *grpcprom.Clien
 		  }
 		}]}`
 
-	creds, err := utils.LoadGrpcTLSCredentials(certDir, false)
+	creds, err := utils.LoadGrpcTLSCredentials(ctx, certDir, false)
 	if err != nil {
 		return nil, err
 	}

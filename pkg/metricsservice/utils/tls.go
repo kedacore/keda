@@ -17,19 +17,30 @@ limitations under the License.
 package utils
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"os"
 	"path"
+	"strings"
+	"sync"
 
+	"github.com/fsnotify/fsnotify"
 	"google.golang.org/grpc/credentials"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+var log = logf.Log.WithName("grpc_server_certificates")
+
 // LoadGrpcTLSCredentials reads the certificate from the given path and returns TLS transport credentials
-func LoadGrpcTLSCredentials(certDir string, server bool) (credentials.TransportCredentials, error) {
+func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (credentials.TransportCredentials, error) {
+	caPath := path.Join(certDir, "ca.crt")
+	certPath := path.Join(certDir, "tls.crt")
+	keyPath := path.Join(certDir, "tls.key")
+
 	// Load certificate of the CA who signed client's certificate
-	pemClientCA, err := os.ReadFile(path.Join(certDir, "ca.crt"))
+	pemClientCA, err := os.ReadFile(caPath)
 	if err != nil {
 		return nil, err
 	}
@@ -43,16 +54,90 @@ func LoadGrpcTLSCredentials(certDir string, server bool) (credentials.TransportC
 		return nil, fmt.Errorf("failed to add client CA's certificate")
 	}
 
-	// Load certificate and private key
-	cert, err := tls.LoadX509KeyPair(path.Join(certDir, "tls.crt"), path.Join(certDir, "tls.key"))
+	// Load initial certificate and private key
+	mTLSCertificate, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		return nil, err
 	}
 
+	// Start the watcher for cert updates
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, err
+	}
+	err = watcher.Add(certDir)
+	if err != nil {
+		return nil, err
+	}
+
+	certMutex := sync.RWMutex{}
+	go func() {
+		log.V(1).Info("starting mTLS certificates monitoring")
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok { // Channel was closed (i.e. Watcher.Close() was called).
+					log.Error(err, "watcher stopped")
+					return
+				}
+				// We are only interested on Create changes on ..data dir
+				// as kubernetes creates first a temp folder with the new
+				// cert and then rename the whole folder.
+				// This unix.IN_MOVED_TO is treated as fsnotify.Create
+				if !event.Has(fsnotify.Create) ||
+					!strings.HasSuffix(event.Name, "..data") {
+					continue
+				}
+				log.V(1).Info("detected change on certificates, reloading")
+
+				pemClientCA, err := os.ReadFile(caPath)
+				if err != nil {
+					log.Error(err, "error reading grpc ca certificate")
+					continue
+				}
+				if !certPool.AppendCertsFromPEM(pemClientCA) {
+					log.Error(err, "failed to add client CA's certificate")
+					continue
+				}
+				log.V(1).Info("grpc ca certificate has been updated")
+
+				// Load certificate of the CA who signed client's certificate
+				cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+				if err != nil {
+					log.Error(err, "error reading grpc certificate")
+					continue
+				}
+				certMutex.Lock()
+				mTLSCertificate = cert
+				certMutex.Unlock()
+				log.V(1).Info("grpc mTLS certificate has been updated")
+
+			case err, ok := <-watcher.Errors:
+				if !ok { // Channel was closed (i.e. Watcher.Close() was called).
+					log.Error(err, "watcher stopped")
+					return
+				}
+				log.Error(err, "error reading grpc certificate changes")
+			case <-ctx.Done():
+				log.V(1).Info("stopping mTLS certificates monitoring")
+				return
+			}
+		}
+	}()
+
 	// Create the credentials and return it
 	config := &tls.Config{
-		MinVersion:   tls.VersionTLS13,
-		Certificates: []tls.Certificate{cert},
+		MinVersion: tls.VersionTLS13,
+		GetCertificate: func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
+			certMutex.RLock()
+			defer certMutex.RUnlock()
+			return &mTLSCertificate, nil
+		},
+		GetClientCertificate: func(_ *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			certMutex.RLock()
+			defer certMutex.RUnlock()
+			return &mTLSCertificate, nil
+		},
 	}
 	if server {
 		config.ClientAuth = tls.RequireAndVerifyClientCert
