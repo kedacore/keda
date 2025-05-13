@@ -649,7 +649,7 @@ type SubscribeToShardEventStreamMemberSubscribeToShardEvent struct {
 
 func (*SubscribeToShardEventStreamMemberSubscribeToShardEvent) isSubscribeToShardEventStream() {}
 
-// Metadata assigned to the stream, consisting of a key-value pair.
+// Metadata assigned to the stream or consumer, consisting of a key-value pair.
 type Tag struct {
 
 	// A unique identifier for the tag. Maximum length: 128 characters. Valid
