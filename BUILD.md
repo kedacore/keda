@@ -135,7 +135,7 @@ All components inspect the folder `/certs` for any certificates inside it. Argum
 
 ```bash
 mkdir -p /certs
-openssl req -newkey rsa:2048 -subj '/CN=localhost' -nodes -keyout /certs/tls.key -x509 -days 3650 -out /certs/tls.crt
+openssl req -newkey rsa:2048 -subj '/CN=localhost' -addext "subjectAltName = DNS:localhost" -nodes -keyout /certs/tls.key -x509 -days 3650 -out /certs/tls.crt
 cp /certs/tls.crt /certs/ca.crt
 ```
 
