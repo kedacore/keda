@@ -68,10 +68,16 @@ jobs:
       - name: Test
         run: make test
 
+      - name: Test with race detector enabled
+        run: make test-race
+        continue-on-error: true   # there are good number of race conditions currently in KEDA, don't block the development for this
+
       - name: Create test Summary
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86 # v2.4
         with:
-          paths: "report.xml"
+          paths: |
+            report.xml
+            report-race.xml
         if: always()
 
   validate-dockerfiles:
