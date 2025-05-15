@@ -16,7 +16,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
-- [v2.17.0](#v2161)
+- [v2.17.1](#v2171)
+- [v2.17.0](#v2170)
 - [v2.16.1](#v2161)
 - [v2.16.0](#v2160)
 - [v2.15.1](#v2151)
@@ -89,6 +90,20 @@ New deprecation(s):
 ### Other
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.17.1
+
+### Improvements
+
+- **Selenium Grid**: Update metric name generated without part of empty ([#6772](https://github.com/kedacore/keda/pull/6772))
+
+### Fixes
+
+- **General**: Admission Webhook blocks ScaledObject without metricType with fallback ([#6696](https://github.com/kedacore/keda/issues/6696))
+- **General**: ScalerCache gets the lock before operate the scalers to prevent panics ([#6739](https://github.com/kedacore/keda/pull/6739))
+- **AWS SQS Queue Scaler**: Fix AWS SQS Queue queueURLFromEnv not working ([#6712](https://github.com/kedacore/keda/issues/6712))
+- **Azure Service Bus scaler**: Fix Azure Service Bus scaler add default Operation ([#6730](https://github.com/kedacore/keda/issues/6730))
+- **Temporal Scaler**: Fix Temporal Scaler does not work properly with API Key authentication against Temporal Cloud as TLS is not enabled on the client ([#6703](https://github.com/kedacore/keda/issues/6703))
 
 ## v2.17.0
 
