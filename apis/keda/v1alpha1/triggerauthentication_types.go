@@ -142,24 +142,24 @@ type AuthPodIdentity struct {
 	Provider PodIdentityProvider `json:"provider"`
 
 	// +optional
-	IdentityID *string `json:"identityId"`
+	IdentityID *string `json:"identityId,omitempty"`
 
 	// +optional
 	// Set identityTenantId to override the default Azure tenant id. If this is set, then the IdentityID must also be set
-	IdentityTenantID *string `json:"identityTenantId"`
+	IdentityTenantID *string `json:"identityTenantId,omitempty"`
 
 	// +optional
 	// Set identityAuthorityHost to override the default Azure authority host. If this is set, then the IdentityTenantID must also be set
-	IdentityAuthorityHost *string `json:"identityAuthorityHost"`
+	IdentityAuthorityHost *string `json:"identityAuthorityHost,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	// RoleArn sets the AWS RoleArn to be used. Mutually exclusive with IdentityOwner
-	RoleArn *string `json:"roleArn"`
+	RoleArn *string `json:"roleArn,omitempty"`
 
 	// +kubebuilder:validation:Enum=keda;workload
 	// +optional
 	// IdentityOwner configures which identity has to be used during auto discovery, keda or the scaled workload. Mutually exclusive with roleArn
-	IdentityOwner *string `json:"identityOwner"`
+	IdentityOwner *string `json:"identityOwner,omitempty"`
 }
 
 func (a *AuthPodIdentity) GetIdentityID() string {
