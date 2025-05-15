@@ -80,6 +80,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **AWS SQS Queue Scaler**: Fix AWS SQS Queue queueURLFromEnv not working ([#6712](https://github.com/kedacore/keda/issues/6712))
 - **Azure Service Bus scaler**: Fix Azure Service Bus scaler add default Operation ([#6730](https://github.com/kedacore/keda/issues/6730))
 - **Temporal Scaler**: Fix Temporal Scaler does not work properly with API Key authentication against Temporal Cloud as TLS is not enabled on the client ([#6703](https://github.com/kedacore/keda/issues/6703))
+- **AuthPodIdentity**: add missing omitempty json tags in the AuthPodIdentity struct ([#6799](https://github.com/kedacore/keda/issues/6779))
 
 ### Deprecations
 
