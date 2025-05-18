@@ -6,6 +6,7 @@ package sumologic_test
 import (
 	"encoding/base64"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,8 +24,8 @@ var (
 	deploymentName         = fmt.Sprintf("%s-deployment", testName)
 	scaledObjectName       = fmt.Sprintf("%s-so", testName)
 	secretName             = fmt.Sprintf("%s-secret", testName)
-	accessID               = "access-id"
-	accessKey              = "access-key"
+	accessID               = os.Getenv("SUMO_LOGIC_ACCESS_ID")
+	accessKey              = os.Getenv("SUMO_LOGIC_ACCESS_KEY")
 	query                  = "_sourceCategory=prod | count by _sourceHost"
 	queryType              = "logs"
 	resultField            = "_count"
