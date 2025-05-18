@@ -210,7 +210,15 @@ func TestGetLogSearchResult(t *testing.T) {
 				t.Fatalf("Expected no error, got %s", err.Error())
 			}
 
-			result, err := client.GetLogSearchResult(test.query, test.timerange, test.aggregation, test.tz, test.resultField)
+			query := NewQueryBuilder().
+				Query(test.query).
+				ResultField(test.resultField).
+				TimeRange(test.timerange).
+				Timezone(test.tz).
+				Aggregator(test.aggregation).
+				Build()
+
+			result, err := client.GetLogSearchResult(query)
 
 			if test.expectErr && err != nil {
 				return
@@ -364,14 +372,16 @@ func TestGetMetricsSearchResult(t *testing.T) {
 				t.Fatalf("Expected no error, got %s", err.Error())
 			}
 
-			result, err := client.GetMetricsSearchResult(
-				test.query,
-				test.quantization,
-				test.rollup,
-				test.timerange,
-				test.tz,
-				test.aggregation,
-			)
+			query := NewQueryBuilder().
+				Query(test.query).
+				Quantization(test.quantization).
+				Rollup(test.rollup).
+				TimeRange(test.timerange).
+				Timezone(test.tz).
+				Aggregator(test.aggregation).
+				Build()
+
+			result, err := client.GetMetricsSearchResult(query)
 
 			if test.expectErr && err != nil {
 				return
@@ -406,7 +416,7 @@ func TestGetMultiMetricsSearchResult(t *testing.T) {
 		rollup           string
 		timerange        time.Duration
 		tz               string
-		dimension        string
+		aggregation      string
 		expectErr        bool
 		response         MetricsQueryResponse
 		statusCode       int
@@ -429,7 +439,7 @@ func TestGetMultiMetricsSearchResult(t *testing.T) {
 			rollup:           "Avg",
 			timerange:        10 * time.Minute,
 			tz:               "UTC",
-			dimension:        "Sum",
+			aggregation:      "Sum",
 			response: MetricsQueryResponse{
 				QueryResult: []QueryResult{
 					{
@@ -480,7 +490,7 @@ func TestGetMultiMetricsSearchResult(t *testing.T) {
 			rollup:           "Avg",
 			timerange:        10 * time.Minute,
 			tz:               "UTC",
-			dimension:        "Sum",
+			aggregation:      "Sum",
 			response: MetricsQueryResponse{
 				QueryResult: []QueryResult{
 					{
@@ -517,7 +527,7 @@ func TestGetMultiMetricsSearchResult(t *testing.T) {
 			rollup:           "Avg",
 			timerange:        10 * time.Minute,
 			tz:               "UTC",
-			dimension:        "Sum",
+			aggregation:      "Sum",
 			response:         MetricsQueryResponse{},
 			statusCode:       http.StatusOK,
 			expectErr:        true,
@@ -547,15 +557,17 @@ func TestGetMultiMetricsSearchResult(t *testing.T) {
 				t.Fatalf("Expected no error, got %s", err.Error())
 			}
 
-			result, err := client.GetMultiMetricsSearchResult(
-				test.queries,
-				test.resultQueryRowID,
-				test.quantization,
-				test.rollup,
-				test.timerange,
-				test.tz,
-				test.dimension,
-			)
+			query := NewQueryBuilder().
+				Queries(test.queries).
+				ResultQueryRowID(test.resultQueryRowID).
+				Quantization(test.quantization).
+				Rollup(test.rollup).
+				TimeRange(test.timerange).
+				Timezone(test.tz).
+				Aggregator(test.aggregation).
+				Build()
+
+			result, err := client.GetMultiMetricsSearchResult(query)
 
 			if test.expectErr && err != nil {
 				return

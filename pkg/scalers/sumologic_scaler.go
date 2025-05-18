@@ -179,16 +179,18 @@ func (s *sumologicScaler) GetMetricsAndActivity(_ context.Context, metricName st
 }
 
 func (s *sumologicScaler) executeQuery() (float64, error) {
-	return s.client.GetQueryResult(
-		s.metadata.QueryType,
-		s.metadata.Query,
-		s.metadata.Queries,
-		s.metadata.ResultQueryRowID,
-		s.metadata.Quantization,
-		s.metadata.Rollup,
-		s.metadata.ResultField,
-		s.metadata.Timerange,
-		s.metadata.Timezone,
-		s.metadata.QueryAggregator,
-	)
+	query := sumologic.NewQueryBuilder().
+		Type(s.metadata.QueryType).
+		Query(s.metadata.Query).
+		Queries(s.metadata.Queries).
+		ResultQueryRowID(s.metadata.ResultQueryRowID).
+		Quantization(s.metadata.Quantization).
+		Rollup(s.metadata.Rollup).
+		ResultField(s.metadata.ResultField).
+		TimeRange(s.metadata.Timerange).
+		Timezone(s.metadata.Timezone).
+		Aggregator(s.metadata.QueryAggregator).
+		Build()
+
+	return s.client.GetQueryResult(query)
 }
