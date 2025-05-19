@@ -100,7 +100,7 @@ func (m *azureLogAnalyticsMetadata) Validate() error {
 	}
 
 	if m.Timeout > 0 {
-		m.Timeout = m.Timeout * time.Millisecond
+		m.Timeout *= time.Millisecond
 	}
 
 	if missingParameter != "" {
