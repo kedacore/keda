@@ -34,7 +34,6 @@ var (
 	forgejoGlobal      = "true"
 	forgejoLabel       = "ubuntu-20.04"
 	forgejoAccessToken = os.Getenv("FORGEJO_ACCESS_TOKEN")
-	forgejoAddress     = os.Getenv("FORGEJO_ADDRESS")
 
 	minReplicaCount = 1
 	maxReplicaCount = 2
@@ -92,7 +91,7 @@ spec:
         app: forgejo
     spec:
       containers:
-      - image: localhost:5001/stackit-git-base:6
+      - image: ghcr.io/kedacore/tests-forgejo:latest
         command: ["/usr/local/bin/gitea"]
         args: ["--config", "/data/app.ini", "web"]
         imagePullPolicy: IfNotPresent
@@ -214,7 +213,6 @@ func getTemplateData() (templateData, []Template) {
 			ForgejoGlobal:      forgejoGlobal,
 			ForgejoLabel:       forgejoLabel,
 			ForgejoAccessToken: forgejoAccessToken,
-			ForgejoAddress:     forgejoAddress,
 		}, []Template{
 			{Name: "runnerConfigMapTemplate", Config: runnerConfigMap},
 			{Name: "forgejoDeploymentTemplate", Config: forgejoDeployment},
@@ -229,7 +227,7 @@ func setupForgejo(t *testing.T, kc *kubernetes.Clientset) {
 		"Forgejo should be running after 1 minute")
 }
 
-// pre-loaded database should scale automatically on label
+// pre-loaded database should scale automatically on defined label ubuntu-20.04
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
 
