@@ -172,19 +172,22 @@ func TestForgejoRunnerScalerGetJobsList(t *testing.T) {
 		{ID: 1},
 		{ID: 2},
 	}
-
 	repoJobList := []ForgejoJob{
 		{ID: 3},
 		{ID: 4},
 	}
 	forgejoServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/api/v1/repos/owner/my-repo/actions/runners/jobs" {
-			body, _ := json.Marshal(repoJobList)
-			_, _ = rw.Write(body)
+			body, err := json.Marshal(repoJobList)
+			assert.NoError(t, err)
+			_, err = rw.Write(body)
+			assert.NoError(t, err)
 			return
 		}
-		body, _ := json.Marshal(jobsList)
-		_, _ = rw.Write(body)
+		body, err := json.Marshal(jobsList)
+		assert.NoError(t, err)
+		_, err = rw.Write(body)
+		assert.NoError(t, err)
 	}))
 	// Close the server when test finishes
 	defer forgejoServer.Close()
