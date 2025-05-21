@@ -203,6 +203,25 @@ var (
 	}
 )
 
+type NrqlSignalSeasonality string
+
+var (
+	// NrqlSignalSeasonalities enumerates the possible signal seasonality values for a baseline NRQL alert condition.
+	NrqlSignalSeasonalities = struct {
+		NewRelicCalculation NrqlSignalSeasonality
+		Hourly              NrqlSignalSeasonality
+		Daily               NrqlSignalSeasonality
+		Weekly              NrqlSignalSeasonality
+		None                NrqlSignalSeasonality
+	}{
+		NewRelicCalculation: "NEW_RELIC_CALCULATION",
+		Hourly:              "HOURLY",
+		Daily:               "DAILY",
+		Weekly:              "WEEKLY",
+		None:                "NONE",
+	}
+)
+
 type NrqlConditionThresholdPrediction struct {
 	PredictBy                 int  `json:"predictBy,omitempty"`
 	PreferPredictionViolation bool `json:"preferPredictionViolation"`
@@ -294,6 +313,8 @@ type NrqlConditionCreateInput struct {
 
 	// BaselineDirection ONLY applies to NRQL conditions of type BASELINE.
 	BaselineDirection *NrqlBaselineDirection `json:"baselineDirection,omitempty"`
+	// SignalSeasonality ONLY applies to NRQL conditions of type BASELINE.
+	SignalSeasonality *NrqlSignalSeasonality `json:"signalSeasonality,omitempty"`
 }
 
 // NrqlConditionUpdateInput represents the input options for updating a Nrql Condition.
@@ -302,6 +323,8 @@ type NrqlConditionUpdateInput struct {
 
 	// BaselineDirection ONLY applies to NRQL conditions of type BASELINE.
 	BaselineDirection *NrqlBaselineDirection `json:"baselineDirection,omitempty"`
+	// SignalSeasonality ONLY applies to NRQL conditions of type BASELINE.
+	SignalSeasonality *NrqlSignalSeasonality `json:"signalSeasonality,omitempty"`
 }
 
 type NrqlConditionsSearchCriteria struct {
@@ -316,12 +339,13 @@ type NrqlConditionsSearchCriteria struct {
 // NrqlAlertCondition could be a baseline condition or static condition.
 type NrqlAlertCondition struct {
 	NrqlConditionBase
-
 	ID       string `json:"id,omitempty"`
 	PolicyID string `json:"policyId,omitempty"`
 
 	// BaselineDirection exists ONLY for NRQL conditions of type BASELINE.
 	BaselineDirection *NrqlBaselineDirection `json:"baselineDirection,omitempty"`
+	// SignalSeasonality exists ONLY for NRQL conditions of type BASELINE.
+	SignalSeasonality *NrqlSignalSeasonality `json:"signalSeasonality,omitempty"`
 }
 
 // NrqlCondition represents a New Relic NRQL Alert condition.
@@ -765,6 +789,7 @@ const (
 	graphqlFragmentNrqlBaselineConditionFields = `
 		... on AlertsNrqlBaselineCondition {
 			baselineDirection
+			signalSeasonality
 		}
 	`
 
@@ -807,17 +832,17 @@ const (
 	// Baseline
 	createNrqlConditionBaselineMutation = `
 		mutation($accountId: Int!, $policyId: ID!, $condition: AlertsNrqlConditionBaselineInput!) {
-			alertsNrqlConditionBaselineCreate(accountId: $accountId, policyId: $policyId, condition: $condition) {
-				baselineDirection` +
+			alertsNrqlConditionBaselineCreate(accountId: $accountId, policyId: $policyId, condition: $condition) {` +
 		graphqlNrqlConditionStructFields +
+		graphqlFragmentNrqlBaselineConditionFields +
 		` } }`
 
 	// Baseline
 	updateNrqlConditionBaselineMutation = `
 		mutation($accountId: Int!, $id: ID!, $condition: AlertsNrqlConditionUpdateBaselineInput!) {
-			alertsNrqlConditionBaselineUpdate(accountId: $accountId, id: $id, condition: $condition) {
-				baselineDirection` +
+			alertsNrqlConditionBaselineUpdate(accountId: $accountId, id: $id, condition: $condition) { ` +
 		graphqlNrqlConditionStructFields +
+		graphqlFragmentNrqlBaselineConditionFields +
 		` } }`
 
 	// Static
