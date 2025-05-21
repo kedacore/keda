@@ -1,3 +1,11 @@
+# v1.34.0 (2025-04-29)
+
+* **Feature**: Amazon KDS now supports tagging and attribute-based access control (ABAC) for enhanced fan-out consumers.
+
+# v1.33.3 (2025-04-16)
+
+* No change notes available for this release.
+
 # v1.33.2 (2025-04-03)
 
 * No change notes available for this release.
