@@ -60,6 +60,8 @@ type SendOptions struct {
 // If the context's deadline expires or is cancelled before the operation
 // completes, the message is in an unknown state of transmission.
 //
+// If the peer rejects the message, an error is returned.
+//
 // Send is safe for concurrent use. Since only a single message can be
 // sent on a link at a time, this is most useful when settlement confirmation
 // has been requested (receiver settle mode is second). In this case,
@@ -74,38 +76,118 @@ func (s *Sender) Send(ctx context.Context, msg *Message, opts *SendOptions) erro
 	default:
 		// link is still active
 	}
-	done, err := s.send(ctx, msg, opts)
+
+	receipt, err := s.send(ctx, msg, opts)
 	if err != nil {
 		return err
 	}
 
 	// wait for transfer to be confirmed
-	select {
-	case state := <-done:
-		if state, ok := state.(*encoding.StateRejected); ok {
-			if state.Error != nil {
-				return state.Error
-			}
-			return errors.New("the peer rejected the message without specifying an error")
-		}
-		return nil
-	case <-s.l.done:
-		return s.l.doneErr
-	case <-ctx.Done():
-		// TODO: if the message is not settled and we never received a disposition, how can we consider the message as sent?
-		return ctx.Err()
+	state, err := receipt.Wait(ctx)
+	if err != nil {
+		return err
 	}
+
+	if state, ok := state.(*StateRejected); ok {
+		if state.Error != nil {
+			return state.Error
+		}
+		return errors.New("the peer rejected the message without specifying an error")
+	}
+	return nil
+}
+
+// SendReceipt is returned by [Sender.SendWithReceipt] and is used
+// to defer the confirmation of settlement of a [Message].
+type SendReceipt struct {
+	l     *link
+	tag   []byte
+	done  <-chan encoding.DeliveryState
+	state DeliveryState
+}
+
+// DeliveryTag returns the message's delivery tag that's
+// associated with this receipt.
+//
+// Can be used to correlate a message with its receipt.
+func (s SendReceipt) DeliveryTag() []byte {
+	return s.tag
+}
+
+// Wait blocks until the peer confirms message settlement or an error occurs.
+// If the peer is configured for receiver settlement mode second, the call also
+// blocks until the confirmation of settlement is sent.
+//
+// Upon completion, one of the possible [DeliveryState]
+// concrete types is returned, else nil and an error are returned.
+//
+// If the context's deadline expires or is cancelled before the operation
+// completes, the message is in an unknown state of settlement.
+func (s *SendReceipt) Wait(ctx context.Context) (DeliveryState, error) {
+	if s.state != nil {
+		return s.state, nil
+	}
+
+	// wait for transfer to be confirmed
+	select {
+	case state := <-s.done:
+		s.state = state
+		return s.state, nil
+	case <-s.l.done:
+		return nil, s.l.doneErr
+	case <-ctx.Done():
+		// TODO: if we never received a disposition, how can we consider the message as sent?
+		return nil, ctx.Err()
+	}
+}
+
+// SendWithReceiptOptions contains any optional values for the Sender.SendWithReceipt method.
+type SendWithReceiptOptions struct {
+	// for future expansion
+}
+
+// SendWithReceipt sends a Message and returns a [SendReceipt] which is used
+// to defer confirmation of settlement until [SendReceipt.Wait] is called.
+// The [SendReceipt] can also be used to obtain the [DeliveryState] of the sent message.
+// Call this method in order to rapidly send messages on a link without waiting
+// for confirmation of settlement.
+//
+//   - ctx controls waiting for the message to be sent
+//   - msg is the message to send
+//   - opts contains optional values, pass nil to accept the defaults
+//
+// If the context's deadline expires or is cancelled before the operation
+// completes, the message is in an unknown state of transmission.
+//
+// If the Sender has been configured with [SenderSettleModeSettled] an error is returned.
+//
+// SendWithReceipt is safe for concurrent use.
+func (s *Sender) SendWithReceipt(ctx context.Context, msg *Message, opts *SendWithReceiptOptions) (SendReceipt, error) {
+	if senderSettleModeValue(s.l.senderSettleMode) == SenderSettleModeSettled {
+		return SendReceipt{}, errors.New("SendWithReceipt cannot be called from Senders configured with SenderSettleModeSettled")
+	}
+
+	// check if the link is dead.  while it's safe to call s.send
+	// in this case, this will avoid some allocations etc.
+	select {
+	case <-s.l.done:
+		return SendReceipt{}, s.l.doneErr
+	default:
+		// link is still active
+	}
+
+	return s.send(ctx, msg, nil)
 }
 
 // send is separated from Send so that the mutex unlock can be deferred without
 // locking the transfer confirmation that happens in Send.
-func (s *Sender) send(ctx context.Context, msg *Message, opts *SendOptions) (chan encoding.DeliveryState, error) {
+func (s *Sender) send(ctx context.Context, msg *Message, opts *SendOptions) (SendReceipt, error) {
 	const (
 		maxDeliveryTagLength   = 32
 		maxTransferFrameHeader = 66 // determined by calcMaxTransferFrameHeader
 	)
 	if len(msg.DeliveryTag) > maxDeliveryTagLength {
-		return nil, &Error{
+		return SendReceipt{}, &Error{
 			Condition:   ErrCondMessageSizeExceeded,
 			Description: fmt.Sprintf("delivery tag is over the allowed %v bytes, len: %v", maxDeliveryTagLength, len(msg.DeliveryTag)),
 		}
@@ -117,11 +199,11 @@ func (s *Sender) send(ctx context.Context, msg *Message, opts *SendOptions) (cha
 	s.buf.Reset()
 	err := msg.Marshal(&s.buf)
 	if err != nil {
-		return nil, err
+		return SendReceipt{}, err
 	}
 
 	if s.l.maxMessageSize != 0 && uint64(s.buf.Len()) > s.l.maxMessageSize {
-		return nil, &Error{
+		return SendReceipt{}, &Error{
 			Condition:   ErrCondMessageSizeExceeded,
 			Description: fmt.Sprintf("encoded message size exceeds max of %d", s.l.maxMessageSize),
 		}
@@ -130,7 +212,7 @@ func (s *Sender) send(ctx context.Context, msg *Message, opts *SendOptions) (cha
 	senderSettled := senderSettleModeValue(s.l.senderSettleMode) == SenderSettleModeSettled
 	if opts != nil {
 		if opts.Settled && senderSettleModeValue(s.l.senderSettleMode) == SenderSettleModeUnsettled {
-			return nil, errors.New("can't send message as settled when sender settlement mode is unsettled")
+			return SendReceipt{}, errors.New("can't send message as settled when sender settlement mode is unsettled")
 		} else if opts.Settled {
 			senderSettled = true
 		}
@@ -184,9 +266,9 @@ func (s *Sender) send(ctx context.Context, msg *Message, opts *SendOptions) (cha
 		case s.transfers <- transferEnvelope{FrameCtx: &frameCtx, InputHandle: s.l.inputHandle, Frame: fr}:
 			// frame was sent to our mux
 		case <-s.l.done:
-			return nil, s.l.doneErr
+			return SendReceipt{}, s.l.doneErr
 		case <-ctx.Done():
-			return nil, &Error{Condition: ErrCondTransferLimitExceeded, Description: fmt.Sprintf("credit limit exceeded for sending link %s", s.l.key.name)}
+			return SendReceipt{}, &Error{Condition: ErrCondTransferLimitExceeded, Description: fmt.Sprintf("credit limit exceeded for sending link %s", s.l.key.name)}
 		}
 
 		select {
@@ -200,11 +282,11 @@ func (s *Sender) send(ctx context.Context, msg *Message, opts *SendOptions) (cha
 						// the link is going down
 					}
 				}
-				return nil, frameCtx.Err
+				return SendReceipt{}, frameCtx.Err
 			}
 			// frame was written to the network
 		case <-s.l.done:
-			return nil, s.l.doneErr
+			return SendReceipt{}, s.l.doneErr
 		}
 
 		// clear values that are only required on first message
@@ -213,7 +295,11 @@ func (s *Sender) send(ctx context.Context, msg *Message, opts *SendOptions) (cha
 		fr.MessageFormat = nil
 	}
 
-	return fr.Done, nil
+	return SendReceipt{
+		l:    &s.l,
+		tag:  deliveryTag,
+		done: fr.Done,
+	}, nil
 }
 
 // Address returns the link's address.
@@ -255,6 +341,15 @@ func newSender(target string, session *Session, opts *SenderOptions) (*Sender, e
 	if opts.Durability > DurabilityUnsettledState {
 		return nil, fmt.Errorf("invalid Durability %d", opts.Durability)
 	}
+
+	if opts.DesiredCapabilities != nil {
+		s.l.desiredCapabilities = make([]encoding.Symbol, 0, len(opts.DesiredCapabilities))
+
+		for _, capabilityStr := range opts.DesiredCapabilities {
+			s.l.desiredCapabilities = append(s.l.desiredCapabilities, encoding.Symbol(capabilityStr))
+		}
+	}
+
 	s.l.source.Durable = opts.Durability
 	if opts.DynamicAddress {
 		s.l.target.Address = ""
@@ -490,6 +585,7 @@ func (s *Sender) muxHandleFrame(fr frames.FrameBody) error {
 			First:   fr.First,
 			Last:    fr.Last,
 			Settled: true,
+			State:   fr.State,
 		}
 
 		select {
