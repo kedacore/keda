@@ -648,8 +648,8 @@ github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.0 h1:Bg8m3nq/X1DeePkAbCfb6m
 github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.0/go.mod h1:j2chePtV91HrC22tGoRX3sGY42uF13WzmmV80/OdVAA=
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid v0.5.0 h1:ANFaLubuHo9lLoee/1La180t1frTwd+0FcaQh2GTlg8=
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid v0.5.0/go.mod h1:x/yvhJANijv4JJOq6ql0QKMY2pP9zmjeWcSrZsRn9RY=
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.3.1 h1:4mb4mIE2yDkBqvlmZr/xhZ/e0+Bkht6C4wbipLHnh3k=
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.3.1/go.mod h1:QuMSx40eszn65tKXrzlWuGFRmZVCbloLXGXqct1RIoI=
+github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.3.2 h1:Hr35UBihxDesuh4JDMu/PcgAyIEmvoUl1IPfQnrK0YI=
+github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.3.2/go.mod h1:PNuUXQzL07VmB7IR63Qkh0htSOBzmuYYmu2cWVneFDY=
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.8.0 h1:JNgM3Tz592fUHU2vgwgvOgKxo5s9Ki0y2wicBeckn70=
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.8.0/go.mod h1:6vUKmzY17h6dpn9ZLAhM4R/rcrltBeq52qZIkUR7Oro=
 github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.1.0 h1:l+LIDHsZkFBiipIKhOn3m5/2MX4bwNwHYWyNulPaTis=
@@ -670,8 +670,8 @@ github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.0 h1:UXT0o77lXQrikd1kg
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.0/go.mod h1:cTvi54pg19DoT07ekoeMgE/taAwNtCShVeZqA+Iv2xI=
 github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue v1.0.0 h1:lJwNFV+xYjHREUTHJKx/ZF6CJSt9znxmLw9DqSTvyRU=
 github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue v1.0.0/go.mod h1:GfT0aGew8Qj5yiQVqOO5v7N8fanbJGyUoHqXg56qcVY=
-github.com/Azure/go-amqp v1.3.0 h1://1rikYhoIQNXJFXyoO/Rlb4+4EkHYfJceNtLlys2/4=
-github.com/Azure/go-amqp v1.3.0/go.mod h1:vZAogwdrkbyK3Mla8m/CxSc/aKdnTZ4IbPxl51Y5WZE=
+github.com/Azure/go-amqp v1.4.0 h1:Xj3caqi4comOF/L1Uc5iuBxR/pB6KumejC01YQOqOR4=
+github.com/Azure/go-amqp v1.4.0/go.mod h1:vZAogwdrkbyK3Mla8m/CxSc/aKdnTZ4IbPxl51Y5WZE=
 github.com/Azure/go-autorest v14.2.0+incompatible h1:V5VMDjClD3GiElqLWO7mz2MxNAK/vTfRHdAubSIPRgs=
 github.com/Azure/go-autorest v14.2.0+incompatible/go.mod h1:r+4oMnoxhatjLLJ6zxSWATqVooLgysK6ZNox3g/xq24=
 github.com/Azure/go-autorest/autorest v0.11.28/go.mod h1:MrkzG3Y3AH668QyF9KRk5neJnGgmhQ6krbhR8Q5eMvA=
@@ -876,8 +876,8 @@ github.com/cncf/xds/go v0.0.0-20230105202645-06c439db220b/go.mod h1:eXthEFrGJvWH
 github.com/cncf/xds/go v0.0.0-20230310173818-32f1caf87195/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
 github.com/cncf/xds/go v0.0.0-20250121191232-2f005788dc42 h1:Om6kYQYDUk5wWbT0t0q6pvyM49i9XZAv9dDrkDA7gjk=
 github.com/cncf/xds/go v0.0.0-20250121191232-2f005788dc42/go.mod h1:W+zGtBO5Y1IgJhy4+A9GOqVhqLpfZi+vwmdNXUehLA8=
-github.com/coder/websocket v1.8.12 h1:5bUXkEPPIbewrnkU8LTCLVaxi4N4J8ahufH2vlo4NAo=
-github.com/coder/websocket v1.8.12/go.mod h1:LNVeNrXQZfe5qhS9ALED3uA+l5pPqvwXg3CKoDBB2gs=
+github.com/coder/websocket v1.8.13 h1:f3QZdXy7uGVz+4uCJy2nTZyM0yTBj8yANEHhqlXZ9FE=
+github.com/coder/websocket v1.8.13/go.mod h1:LNVeNrXQZfe5qhS9ALED3uA+l5pPqvwXg3CKoDBB2gs=
 github.com/coreos/bbolt v1.3.2/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
 github.com/coreos/etcd v3.3.13+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
 github.com/coreos/go-semver v0.3.0/go.mod h1:nnelYz7RCh+5ahJtPPxZlU+153eP4D4r3EedlOD2RNk=
