@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -32,22 +33,54 @@ var scaledjoblog = logf.Log.WithName("scaledjob-validation-webhook")
 
 func (s *ScaledJob) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&ScaledJobCustomValidator{}).
 		For(s).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-keda-sh-v1alpha1-scaledjob,mutating=false,failurePolicy=ignore,sideEffects=None,groups=keda.sh,resources=scaledjobs,verbs=create;update,versions=v1alpha1,name=vscaledjob.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &ScaledJob{}
+// ScaledJobCustomValidator is a custom validator for ScaledJob objects
+type ScaledJobCustomValidator struct{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (s *ScaledJob) ValidateCreate() (admission.Warnings, error) {
-	val, _ := json.MarshalIndent(s, "", "  ")
-	scaledjoblog.Info(fmt.Sprintf("validating scaledjob creation for %s", string(val)))
-	return nil, verifyTriggers(s, "create", false)
+func (sjcv ScaledJobCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sj := obj.(*ScaledJob)
+	return sj.ValidateCreate(request.DryRun)
 }
 
-func (s *ScaledJob) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (sjcv ScaledJobCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sj := newObj.(*ScaledJob)
+	old := oldObj.(*ScaledJob)
+	return sj.ValidateUpdate(old, request.DryRun)
+}
+
+func (sjcv ScaledJobCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sj := obj.(*ScaledJob)
+	return sj.ValidateDelete(request.DryRun)
+}
+
+var _ webhook.CustomValidator = &ScaledJobCustomValidator{}
+
+// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+func (s *ScaledJob) ValidateCreate(dryRun *bool) (admission.Warnings, error) {
+	val, _ := json.MarshalIndent(s, "", "  ")
+	scaledjoblog.Info(fmt.Sprintf("validating scaledjob creation for %s", string(val)))
+	return nil, verifyTriggers(s, "create", *dryRun)
+}
+
+func (s *ScaledJob) ValidateUpdate(old runtime.Object, dryRun *bool) (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(s, "", "  ")
 	scaledobjectlog.V(1).Info(fmt.Sprintf("validating scaledjob update for %s", string(val)))
 
@@ -56,10 +89,10 @@ func (s *ScaledJob) ValidateUpdate(old runtime.Object) (admission.Warnings, erro
 		scaledjoblog.V(1).Info("finalizer removal, skipping validation")
 		return nil, nil
 	}
-	return nil, verifyTriggers(s, "update", false)
+	return nil, verifyTriggers(s, "update", *dryRun)
 }
 
-func (s *ScaledJob) ValidateDelete() (admission.Warnings, error) {
+func (s *ScaledJob) ValidateDelete(_ *bool) (admission.Warnings, error) {
 	return nil, nil
 }
 
