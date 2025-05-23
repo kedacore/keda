@@ -34,6 +34,7 @@ var (
 	forgejoGlobal      = "true"
 	forgejoLabel       = "ubuntu-20.04"
 	forgejoAccessToken = os.Getenv("FORGEJO_ACCESS_TOKEN")
+	forgejoAddress     = fmt.Sprintf("http://forgejo-service.%s.svc.cluster.local:3000", testNamespace)
 
 	minReplicaCount = 1
 	maxReplicaCount = 2
@@ -213,6 +214,7 @@ func getTemplateData() (templateData, []Template) {
 			ForgejoGlobal:      forgejoGlobal,
 			ForgejoLabel:       forgejoLabel,
 			ForgejoAccessToken: forgejoAccessToken,
+			ForgejoAddress:     forgejoAddress,
 		}, []Template{
 			{Name: "runnerConfigMapTemplate", Config: runnerConfigMap},
 			{Name: "forgejoDeploymentTemplate", Config: forgejoDeployment},
