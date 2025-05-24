@@ -90,7 +90,7 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, 
 	}
 	meta.Queries = queries
 
-	if meta.QueryType == "logs" {
+	if meta.QueryType == sumologic.Logs {
 		if meta.Query == "" {
 			return nil, errors.New("missing required metadata: query")
 		}
@@ -102,7 +102,7 @@ func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, 
 		}
 	}
 
-	if meta.QueryType == "metrics" {
+	if meta.QueryType == sumologic.Metrics {
 		if meta.Query == "" && len(meta.Queries) == 0 {
 			return nil, errors.New("missing metadata: either of query or query.<RowId> must be defined for metrics queryType")
 		}
