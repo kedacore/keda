@@ -21,6 +21,12 @@ const (
 	DefaultRollup          = "Avg"
 )
 
+// query types
+const (
+	Logs    = "logs"
+	Metrics = "metrics"
+)
+
 func NewClient(c *Config, sc *scalersconfig.ScalerConfig) (*Client, error) {
 	if c.Host == "" {
 		return nil, errors.New("host is required")
@@ -283,14 +289,13 @@ func (c *Client) GetQueryResult(query Query) (float64, error) {
 	var result *float64
 	var err error
 
-	if query.Type == "logs" {
+	switch {
+	case query.Type == Logs:
 		result, err = c.GetLogSearchResult(query)
-	} else {
-		if query.Query != "" {
-			result, err = c.GetMetricsSearchResult(query)
-		} else {
-			result, err = c.GetMultiMetricsSearchResult(query)
-		}
+	case query.Query != "":
+		result, err = c.GetMetricsSearchResult(query)
+	default:
+		result, err = c.GetMultiMetricsSearchResult(query)
 	}
 
 	if err != nil {
