@@ -65,7 +65,7 @@ func (c *Client) waitForLogSearchJobCompletion(jobID string) (*LogSearchJobStatu
 			return nil, fmt.Errorf("search job failed, state: %s", status.State)
 		}
 
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 }
 
