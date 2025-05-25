@@ -1,14 +1,53 @@
 name: Reusable workflow to run smoke tests on s390x
 
+# on:
+#   workflow_call:
+
 on:
-  workflow_call:
+  - pull_request
 
 jobs:
   smoke-tests-s390x:
-    name: s390x
-    concurrency: s390x-smoke-tests
-    uses: kedacore/keda/.github/workflows/template-smoke-tests.yml@main
-    with:
-      runs-on: s390x
-      kubernetesVersion: v1.32
-      kindImage: kindest/node:v1.32.0@sha256:c48c62eac5da28cdadcf560d1d8616cfa6783b58f0d94cf63ad1bf49600cb027
+    name: Validate k8s
+    runs-on: s390x-smoke-tests
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5
+        with:
+          go-version: "1.24"
+
+      - name: Install prerequisites
+        run: |
+          sudo apt update
+          sudo apt install curl make ca-certificates gcc libc-dev wget -y
+        env:
+          DEBIAN_FRONTEND: noninteractive
+
+      - name: Install Kubernetes
+        run: |
+          sudo ./hack/s390x_kubernetes_setup.sh
+        env:
+          DEBIAN_FRONTEND: noninteractive
+
+      - name: Check out code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 1
+
+      - name: Run smoke test
+        run: make smoke-test
+
+      - name: Upload test logs
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4
+        if: ${{ always() }}
+        with:
+          name: smoke-test-logs ${{ inputs.runs-on }}-${{ inputs.kubernetesVersion }}
+          path: "${{ github.workspace }}/**/*.log"
+          if-no-files-found: ignore
+
+      - name: Remove Kubernetes
+        run: |
+          sudo ./hack/s390x_kubernetes_destroy.sh
+        if: ${{ always() }}
+        env:
+          DEBIAN_FRONTEND: noninteractive
