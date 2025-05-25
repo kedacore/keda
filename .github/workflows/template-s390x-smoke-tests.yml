@@ -28,9 +28,9 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Install Kubernetes
-        run: |
-          sudo ./hack/s390x_kubernetes_setup.sh
+      # - name: Install Kubernetes
+      #   run: |
+      #     sudo ./hack/s390x_kubernetes_setup.sh
 
       - name: Run smoke test
         run: make smoke-test
@@ -43,9 +43,9 @@ jobs:
           path: "${{ github.workspace }}/**/*.log"
           if-no-files-found: ignore
 
-      - name: Remove Kubernetes
-        run: |
-          sudo ./hack/s390x_kubernetes_destroy.sh
-        if: ${{ always() }}
-        env:
-          DEBIAN_FRONTEND: noninteractive
+      # - name: Remove Kubernetes
+      #   run: |
+      #     sudo ./hack/s390x_kubernetes_destroy.sh
+      #   if: ${{ always() }}
+      #   env:
+      #     DEBIAN_FRONTEND: noninteractive
