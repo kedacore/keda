@@ -9,7 +9,7 @@ on:
 jobs:
   smoke-tests-s390x:
     name: Validate k8s
-    runs-on: s390x-smoke-tests
+    runs-on: s390x
     steps:
       - name: Setup Go
         uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5
