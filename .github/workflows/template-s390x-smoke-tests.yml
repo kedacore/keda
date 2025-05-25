@@ -14,7 +14,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5
         with:
-          go-version: "1.24"
+          go-version: "1.23"
 
       - name: Install prerequisites
         run: |
@@ -23,16 +23,14 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
 
-      - name: Install Kubernetes
-        run: |
-          sudo ./hack/s390x_kubernetes_setup.sh
-        env:
-          DEBIAN_FRONTEND: noninteractive
-
       - name: Check out code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           fetch-depth: 1
+
+      - name: Install Kubernetes
+        run: |
+          sudo ./hack/s390x_kubernetes_setup.sh
 
       - name: Run smoke test
         run: make smoke-test
