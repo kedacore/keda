@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	// "maps" // Not used directly in the provided test code, can be removed if not needed later
 	"net/http" // Not used directly in these initial tests, but good for future GetMetricsAndActivity tests
@@ -25,7 +26,7 @@ func newTestScalerConfig(metadata map[string]string, triggerIndex int, metricTyp
 		TriggerMetadata:         metadata,
 		TriggerIndex:            triggerIndex,
 		MetricType:              metricType,
-		GlobalHTTPTimeout:       30000,                   // Default KEDA global HTTP timeout
+		GlobalHTTPTimeout:       3000 * time.Millisecond, // Default KEDA global HTTP timeout
 		ResolvedEnv:             make(map[string]string), // Populate if API keys from env are tested directly
 		AuthParams:              make(map[string]string),
 		ScalableObjectName:      "test-scaledobject",
