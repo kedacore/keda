@@ -1,0 +1,349 @@
+package scalers
+
+import (
+	"context"
+	"encoding/json" // Added for json operations
+	"fmt"
+	"net/http"
+	"strconv" // Added for string conversions
+	"strings" // Added for string manipulation
+
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/apimachinery/pkg/api/resource" // Added for resource.Quantity
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1" // Added for metav1.Now()
+	"k8s.io/client-go/util/jsonpath"       // For JSONPath parsing
+	"k8s.io/metrics/pkg/apis/external_metrics"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
+)
+
+// weatherAwareDemandScalerMetadata holds the metadata parsed from the ScaledObject
+type weatherAwareDemandScalerMetadata struct {
+	// Weather API Configuration
+	WeatherAPIEndpoint     string `keda:"name=weatherApiEndpoint,order=triggerMetadata,optional"`
+	WeatherAPIKeyFromEnv   string `keda:"name=weatherApiKeyFromEnv,order=triggerMetadata,optional"` // Name of the environment variable
+	WeatherLocation        string `keda:"name=weatherLocation,order=triggerMetadata,optional"`      // e.g., "city,country" or "lat,lon"
+	WeatherUnits           string `keda:"name=weatherUnits,order=triggerMetadata,optional,default=metric"` // "metric" or "imperial"
+	BadWeatherConditions   string `keda:"name=badWeatherConditions,order=triggerMetadata,optional"`   // e.g., "temp_below:0,rain_above:5,wind_above:10" (temp in C, rain mm/hr, wind km/hr if metric)
+
+	// Demand API Configuration
+	DemandAPIEndpoint    string `keda:"name=demandApiEndpoint,order=triggerMetadata,optional"`
+	DemandAPIKeyFromEnv  string `keda:"name=demandApiKeyFromEnv,order=triggerMetadata,optional"` // Name of the environment variable
+	DemandJSONPath       string `keda:"name=demandJsonPath,order=triggerMetadata,optional"`    // JSONPath to extract the demand value, e.g., "{.current_demand}"
+
+	// Scaling Logic
+	TargetDemandPerReplica  int64   `keda:"name=targetDemandPerReplica,order=triggerMetadata,optional,default=100"`
+	ActivationDemandLevel   int64   `keda:"name=activationDemandLevel,order=triggerMetadata,optional,default=10"`
+	WeatherEffectScaleFactor float64 `keda:"name=weatherEffectScaleFactor,order=triggerMetadata,optional,default=1.0"` // e.g., 1.5 for 50% increase in perceived demand during bad weather
+	MetricName              string  `keda:"name=metricName,order=triggerMetadata,optional,default=weather-aware-ride-demand"`
+
+	// Internal fields
+	triggerIndex    int // Stores the trigger index
+	triggerMetadata map[string]string // To store trigger metadata for simplified API key access
+}
+
+// weatherAwareDemandScaler is the scaler implementation
+type weatherAwareDemandScaler struct {
+	metricType v2.MetricTargetType
+	metadata   *weatherAwareDemandScalerMetadata
+	httpClient *http.Client
+	logger     logr.Logger
+	// config *scalersconfig.ScalerConfig // If direct access to ResolvedEnv is needed later
+}
+
+// Ensure weatherAwareDemandScaler implements the Scaler interface
+var _ Scaler = (*weatherAwareDemandScaler)(nil)
+
+// NewWeatherAwareDemandScaler creates a new WeatherAwareDemandScaler
+func NewWeatherAwareDemandScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
+	logger := InitializeLogger(config, "weather_aware_demand_scaler")
+
+	meta := &weatherAwareDemandScalerMetadata{}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing weather aware demand scaler metadata: %w", err)
+	}
+	meta.triggerIndex = config.TriggerIndex
+	// Store the trigger metadata for simplified API key access in fetchJSONData (as per subtask instruction)
+	// In a real KEDA scaler, API keys are usually resolved from config.ResolvedEnv
+	// and stored in dedicated fields within the metadata struct or the scaler struct itself.
+	meta.triggerMetadata = config.TriggerMetadata
+
+	// Basic validation: Check if essential endpoints are provided if they are not optional by design
+	// For this example, we assume WeatherAPIEndpoint and DemandAPIEndpoint are optional as per struct tags.
+	// More specific validation (e.g. if one is set, the other must be too) can be added.
+	if meta.WeatherAPIEndpoint == "" && meta.DemandAPIEndpoint == "" {
+		// This is just an example validation, the actual logic might be more complex
+		// depending on how the scaler is supposed to behave if one source is missing.
+		// For now, we'll allow it, assuming it might operate with only one source or none (becomes a pass-through or fixed metric).
+		logger.Info("WeatherAPIEndpoint and DemandAPIEndpoint are not set. Scaler might not provide meaningful metrics unless this is intended.")
+	}
+
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
+	}
+
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+
+	return &weatherAwareDemandScaler{
+		metadata:   meta,
+		metricType: metricType,
+		httpClient: httpClient,
+		logger:     logger,
+	}, nil
+}
+
+// Helper function to fetch and parse JSON from an HTTP endpoint
+func (s *weatherAwareDemandScaler) fetchJSONData(ctx context.Context, endpoint string, apiKeyFromEnv string, result interface{}) error {
+	if endpoint == "" {
+		return fmt.Errorf("endpoint is not configured")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return fmt.Errorf("error creating request: %w", err)
+	}
+
+	if apiKeyFromEnv != "" {
+		apiKey, found := s.metadata.triggerMetadata[apiKeyFromEnv] // Simplified: Assumes API key is passed directly in triggerMetadata for now
+		if !found || apiKey == "" {
+			// In a real scenario, you'd resolve this from resolvedEnv passed in ScalerConfig
+			// For this subtask, we'll log and proceed if not found, or error out if strictly required.
+			// This part needs to align with how NewWeatherAwareDemandScaler makes env vars available.
+			// For now, let's assume it's directly available or resolved in metadata.
+			// If using resolvedEnv: apiKey = s.config.ResolvedEnv[s.metadata.APIKeyFromEnv]
+			return fmt.Errorf("API key env var %s not found or empty", apiKeyFromEnv)
+		}
+		req.Header.Set("Authorization", "Bearer "+apiKey) // Or other auth mechanism
+	}
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("error making request to %s: %w", endpoint, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("error request to %s returned status %d", endpoint, resp.StatusCode)
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+		return fmt.Errorf("error decoding json response from %s: %w", endpoint, err)
+	}
+	return nil
+}
+
+// Helper to extract a float64 value using JSONPath
+func extractValueWithJSONPath(data interface{}, path string, logger logr.Logger) (float64, error) {
+    if path == "" {
+        // If no path, try to convert data directly if it's a number, or assume it's a simple map[string]interface{} with a "value" field.
+        // This is a simplification. A more robust solution would require a clear contract or error if path is missing.
+        switch v := data.(type) { // Corrected: removed extra {
+        case float64:
+            return v, nil
+        case int64:
+            return float64(v), nil
+        case int:
+            return float64(v), nil
+        case map[string]interface{}:
+            if val, ok := v["value"]; ok {
+                if fVal, okVal := val.(float64); okVal { // Corrected: ok to okVal
+                    return fVal, nil
+                }
+            }
+        }
+        logger.V(1).Info("JSONPath is empty, attempting to use 'value' field or direct conversion, data might not be in expected format", "data", data)
+        return 0, fmt.Errorf("JSONPath is empty and data is not a simple numeric value or map with 'value' field")
+    }
+
+    j := jsonpath.New("parser")
+    j.EnableJSONOutput(true) // Important for parsing numbers correctly
+    if err := j.Parse(fmt.Sprintf("{%s}", strings.Trim(path, "{}"))); err != nil {
+        return 0, fmt.Errorf("failed to parse JSONPath expression '%s': %w", path, err)
+    }
+
+    results, err := j.FindResults(data)
+    if err != nil {
+        return 0, fmt.Errorf("failed to find results for JSONPath '%s': %w", path, err)
+    }
+
+    if len(results) == 0 || len(results[0]) == 0 {
+        return 0, fmt.Errorf("JSONPath '%s' yielded no results", path)
+    }
+
+    // Assuming the result is a single numeric value
+    // The result of FindResults is [][]reflect.Value. We need to extract the actual value.
+    // This part can be tricky and depends on EnableJSONOutput.
+    // For simplicity, assuming it's a string that needs conversion or already a number.
+    firstResult := results[0][0].Interface()
+    
+    var valueStr string
+    if jsonOutput, ok := firstResult.(string); ok { // if EnableJSONOutput(true), numbers might be strings
+        valueStr = jsonOutput
+    } else if numOutput, ok := firstResult.(json.Number); ok { // or json.Number
+        valueStr = string(numOutput)
+    } else if floatOutput, ok := firstResult.(float64); ok {
+         return floatOutput, nil
+    } else if intOutput, ok := firstResult.(int64); ok {
+        return float64(intOutput), nil
+    } else {
+         return 0, fmt.Errorf("unexpected type for JSONPath '%s' result: %T, value: %v", path, firstResult, firstResult)
+    }
+
+
+    val, err := strconv.ParseFloat(valueStr, 64)
+    if err != nil {
+        return 0, fmt.Errorf("failed to parse extracted value '%s' as float64 for JSONPath '%s': %w", valueStr, path, err)
+    }
+    return val, nil
+}
+
+
+// isBadWeather evaluates if current weather conditions are "bad"
+func (s *weatherAwareDemandScaler) isBadWeather(weatherData map[string]interface{}) (bool, error) {
+	if s.metadata.BadWeatherConditions == "" || weatherData == nil {
+		return false, nil // No conditions defined or no data, assume good weather
+	}
+
+	conditions := strings.Split(s.metadata.BadWeatherConditions, ",")
+	for _, cond := range conditions {
+		parts := strings.Split(cond, ":")
+		if len(parts) != 2 {
+			return false, fmt.Errorf("invalid bad weather condition format: %s", cond)
+		}
+		key := strings.TrimSpace(parts[0])
+		valStr := strings.TrimSpace(parts[1])
+		
+		// Example: temp_below:0, rain_above:5 (value from weatherData must be numeric)
+		weatherVal, ok := weatherData[strings.Split(key, "_")[0]] // e.g., "temp" from "temp_below"
+		if !ok {
+			s.logger.V(1).Info("Weather key not found in weather data", "key", strings.Split(key, "_")[0])
+			continue // Key not in weather data, skip this condition
+		}
+
+		weatherNum, ok := weatherVal.(float64) // Assuming weather values are numbers (e.g. temp: -5.0, rain: 10.0)
+		if !ok {
+			return false, fmt.Errorf("weather data for key '%s' is not a number: %v", strings.Split(key, "_")[0], weatherVal)
+		}
+
+		threshold, err := strconv.ParseFloat(valStr, 64)
+		if err != nil {
+			return false, fmt.Errorf("invalid threshold value in bad weather condition '%s': %w", cond, err)
+		}
+
+		if strings.HasSuffix(key, "_below") && weatherNum < threshold {
+			return true, nil
+		}
+		if strings.HasSuffix(key, "_above") && weatherNum > threshold {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (s *weatherAwareDemandScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	s.logger.V(1).Info("Fetching metrics for Weather-Aware Ride Demand Scaler")
+
+	// 1. Fetch Demand Data
+	var currentDemand float64
+	if s.metadata.DemandAPIEndpoint != "" {
+		var demandDataRaw interface{} // Use interface{} for raw JSON data
+		err := s.fetchJSONData(ctx, s.metadata.DemandAPIEndpoint, s.metadata.DemandAPIKeyFromEnv, &demandDataRaw)
+		if err != nil {
+			s.logger.Error(err, "Failed to fetch demand data")
+			return nil, false, fmt.Errorf("error fetching demand data: %w", err)
+		}
+		
+		currentDemand, err = extractValueWithJSONPath(demandDataRaw, s.metadata.DemandJSONPath, s.logger)
+		if err != nil {
+			s.logger.Error(err, "Failed to extract demand value from response", "jsonPath", s.metadata.DemandJSONPath)
+			return nil, false, fmt.Errorf("error extracting demand value: %w", err)
+		}
+		s.logger.V(1).Info("Successfully fetched demand data", "rawDemand", currentDemand)
+	} else {
+		currentDemand = 0 // Default demand if no endpoint
+		s.logger.V(1).Info("DemandAPIEndpoint not configured, using default demand", "demand", currentDemand)
+	}
+
+	// 2. Fetch Weather Data
+	var weatherData map[string]interface{} // Assuming weather API returns a flat JSON object
+	isCriticalWeatherFetchError := false // Decide if weather fetch error is critical
+
+	if s.metadata.WeatherAPIEndpoint != "" {
+		// Construct weather API URL with location and units
+		// This is a simplified example. A real implementation would use url.Values for query params.
+		weatherURL := fmt.Sprintf("%s?location=%s&units=%s", s.metadata.WeatherAPIEndpoint, s.metadata.WeatherLocation, s.metadata.WeatherUnits)
+		
+		err := s.fetchJSONData(ctx, weatherURL, s.metadata.WeatherAPIKeyFromEnv, &weatherData)
+		if err != nil {
+			s.logger.Error(err, "Failed to fetch weather data. Proceeding without weather adjustment or failing based on config.")
+			// Depending on policy, we might want to return an error here or proceed with default weather.
+			// For now, log and proceed, effectively assuming good weather or neutral impact.
+			// If weather data is critical, set isCriticalWeatherFetchError = true
+		} else {
+			s.logger.V(1).Info("Successfully fetched weather data", "data", weatherData)
+		}
+	} else {
+		s.logger.V(1).Info("WeatherAPIEndpoint not configured, assuming good weather conditions.")
+	}
+    
+    if isCriticalWeatherFetchError {
+        return nil, false, fmt.Errorf("critical error fetching weather data")
+    }
+
+	// 3. Apply Weather-Aware Logic
+	adjustedDemand := currentDemand
+	badWeather, err := s.isBadWeather(weatherData)
+	if err != nil {
+		s.logger.Error(err, "Failed to evaluate bad weather conditions, proceeding without weather adjustment.")
+		// Potentially return error here if strict parsing of BadWeatherConditions is required
+	}
+
+	if badWeather {
+		adjustedDemand = currentDemand * s.metadata.WeatherEffectScaleFactor
+		s.logger.V(1).Info("Bad weather detected, adjusting demand", "originalDemand", currentDemand, "scaleFactor", s.metadata.WeatherEffectScaleFactor, "adjustedDemand", adjustedDemand)
+	}
+
+	// 4. Determine Activity
+	isActive := adjustedDemand > float64(s.metadata.ActivationDemandLevel)
+	s.logger.V(1).Info("Scaler activity check", "adjustedDemand", adjustedDemand, "activationDemandLevel", s.metadata.ActivationDemandLevel, "isActive", isActive)
+    
+	// 5. Return Metric
+	metricValue := external_metrics.ExternalMetricValue{
+		MetricName: metricName,
+		Value:      *resource.NewQuantity(int64(adjustedDemand), resource.DecimalSI), // KEDA typically uses whole numbers for metrics
+		Timestamp:  metav1.Now(),
+	}
+    // If you need mili-units, use GenerateMetricInMili(metricName, adjustedDemand)
+
+	return []external_metrics.ExternalMetricValue{metricValue}, isActive, nil
+}
+
+func (s *weatherAwareDemandScaler) GetMetricSpecForScaling(ctx context.Context) []v2.MetricSpec {
+	// Use the MetricName from metadata, normalized and prefixed with trigger index
+	metricIdentifier := GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(s.metadata.MetricName))
+
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
+			Name: metricIdentifier,
+		},
+		Target: GetMetricTarget(s.metricType, s.metadata.TargetDemandPerReplica),
+	}
+
+	metricSpec := v2.MetricSpec{
+		External: externalMetric,
+		Type:     v2.ExternalMetricSourceType, // "External"
+	}
+	return []v2.MetricSpec{metricSpec}
+}
+
+// Close closes the http client
+func (s *weatherAwareDemandScaler) Close(ctx context.Context) error {
+	if s.httpClient != nil {
+		s.httpClient.CloseIdleConnections()
+		s.logger.V(1).Info("Closed idle HTTP connections for Weather-Aware Ride Demand Scaler")
+	}
+	return nil
+}
