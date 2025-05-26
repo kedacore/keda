@@ -8,3 +8,6 @@ config/crd/bases/
 
 # Add .gitignore
 :include .gitignore
+
+# Ignore all Go test files
+*_test.go

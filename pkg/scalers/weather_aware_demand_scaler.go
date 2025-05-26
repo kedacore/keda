@@ -2,19 +2,17 @@ package scalers
 
 import (
 	"context"
-	"encoding/json" // Added for json operations
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv" // Added for string conversions
-	"strings" // Added for string manipulation
+	"strconv"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/tidwall/gjson"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/api/resource"        // Added for resource.Quantity
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1" // Added for metav1.Now()
-
-	// For JSON parsing
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"

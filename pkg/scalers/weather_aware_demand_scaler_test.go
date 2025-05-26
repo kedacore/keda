@@ -1,21 +1,19 @@
+// nosemgrep
 package scalers
 
 import (
 	"context"
 	"fmt"
-	"time"
-
-	// "maps" // Not used directly in the provided test code, can be removed if not needed later
-	"net/http" // Not used directly in these initial tests, but good for future GetMetricsAndActivity tests
+	"net/http"
+	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
-
-	"net/http/httptest" // Import for mock server
-	"strings"           // Import for strings.Contains
+	"time"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/api/resource" // For resource.NewQuantity
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -494,8 +492,10 @@ func TestGetMetricsAndActivity(t *testing.T) {
 					http.Error(w, "demand API unavailable", http.StatusServiceUnavailable)
 					return
 				}
+				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tc.demandAPIStatusCode)
 				if tc.demandAPIResponse != "" {
+					// nosemgrep: no-direct-write-to-responsewriter
 					_, _ = w.Write([]byte(tc.demandAPIResponse))
 				}
 			}))
@@ -507,8 +507,10 @@ func TestGetMetricsAndActivity(t *testing.T) {
 					http.Error(w, "weather API unavailable", http.StatusServiceUnavailable)
 					return
 				}
+				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tc.weatherAPIStatusCode)
 				if tc.weatherAPIResponse != "" {
+					// nosemgrep: no-direct-write-to-responsewriter
 					_, _ = w.Write([]byte(tc.weatherAPIResponse))
 				}
 			}))
