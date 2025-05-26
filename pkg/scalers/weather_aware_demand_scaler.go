@@ -9,10 +9,12 @@ import (
 	"strings" // Added for string manipulation
 
 	"github.com/go-logr/logr"
+	"github.com/tidwall/gjson"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/api/resource" // Added for resource.Quantity
+	"k8s.io/apimachinery/pkg/api/resource"        // Added for resource.Quantity
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1" // Added for metav1.Now()
-	"k8s.io/client-go/util/jsonpath"       // For JSONPath parsing
+
+	// For JSON parsing
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -135,12 +137,11 @@ func (s *weatherAwareDemandScaler) fetchJSONData(ctx context.Context, endpoint s
 	return nil
 }
 
-// Helper to extract a float64 value using JSONPath
+// Helper to extract a float64 value using GJSON
 func extractValueWithJSONPath(data interface{}, path string, logger logr.Logger) (float64, error) {
     if path == "" {
         // If no path, try to convert data directly if it's a number, or assume it's a simple map[string]interface{} with a "value" field.
-        // This is a simplification. A more robust solution would require a clear contract or error if path is missing.
-        switch v := data.(type) { // Corrected: removed extra {
+        switch v := data.(type) {
         case float64:
             return v, nil
         case int64:
@@ -149,55 +150,48 @@ func extractValueWithJSONPath(data interface{}, path string, logger logr.Logger)
             return float64(v), nil
         case map[string]interface{}:
             if val, ok := v["value"]; ok {
-                if fVal, okVal := val.(float64); okVal { // Corrected: ok to okVal
+                if fVal, okVal := val.(float64); okVal {
                     return fVal, nil
                 }
             }
         }
-        logger.V(1).Info("JSONPath is empty, attempting to use 'value' field or direct conversion, data might not be in expected format", "data", data)
-        return 0, fmt.Errorf("JSONPath is empty and data is not a simple numeric value or map with 'value' field")
+        logger.V(1).Info("Path is empty, attempting to use 'value' field or direct conversion, data might not be in expected format", "data", data)
+        return 0, fmt.Errorf("path is empty and data is not a simple numeric value or map with 'value' field")
     }
 
-    j := jsonpath.New("parser")
-    j.EnableJSONOutput(true) // Important for parsing numbers correctly
-    if err := j.Parse(fmt.Sprintf("{%s}", strings.Trim(path, "{}"))); err != nil {
-        return 0, fmt.Errorf("failed to parse JSONPath expression '%s': %w", path, err)
-    }
-
-    results, err := j.FindResults(data)
+    // Convert data to JSON bytes for gjson
+    jsonData, err := json.Marshal(data)
     if err != nil {
-        return 0, fmt.Errorf("failed to find results for JSONPath '%s': %w", path, err)
+        return 0, fmt.Errorf("failed to marshal data to JSON: %w", err)
     }
 
-    if len(results) == 0 || len(results[0]) == 0 {
-        return 0, fmt.Errorf("JSONPath '%s' yielded no results", path)
+    // Use gjson to extract the value
+    // Convert kubectl-style JSONPath {.field.subfield} to gjson style field.subfield
+    gjsonPath := strings.Trim(path, "{}")
+    if strings.HasPrefix(gjsonPath, ".") {
+        gjsonPath = gjsonPath[1:] // Remove leading dot
     }
-
-    // Assuming the result is a single numeric value
-    // The result of FindResults is [][]reflect.Value. We need to extract the actual value.
-    // This part can be tricky and depends on EnableJSONOutput.
-    // For simplicity, assuming it's a string that needs conversion or already a number.
-    firstResult := results[0][0].Interface()
     
-    var valueStr string
-    if jsonOutput, ok := firstResult.(string); ok { // if EnableJSONOutput(true), numbers might be strings
-        valueStr = jsonOutput
-    } else if numOutput, ok := firstResult.(json.Number); ok { // or json.Number
-        valueStr = string(numOutput)
-    } else if floatOutput, ok := firstResult.(float64); ok {
-         return floatOutput, nil
-    } else if intOutput, ok := firstResult.(int64); ok {
-        return float64(intOutput), nil
-    } else {
-         return 0, fmt.Errorf("unexpected type for JSONPath '%s' result: %T, value: %v", path, firstResult, firstResult)
+    result := gjson.GetBytes(jsonData, gjsonPath)
+    if !result.Exists() {
+        return 0, fmt.Errorf("path '%s' yielded no results", path)
     }
 
-
-    val, err := strconv.ParseFloat(valueStr, 64)
-    if err != nil {
-        return 0, fmt.Errorf("failed to parse extracted value '%s' as float64 for JSONPath '%s': %w", valueStr, path, err)
+    // Handle different result types similar to metrics_api_scaler
+    if result.Type == gjson.String {
+        // Try to parse as a quantity first (for K8s-style values)
+        if val, err := resource.ParseQuantity(result.String()); err == nil {
+            return val.AsApproximateFloat64(), nil
+        }
+        // Fall back to regular float parsing
+        return strconv.ParseFloat(result.String(), 64)
     }
-    return val, nil
+    
+    if result.Type != gjson.Number {
+        return 0, fmt.Errorf("path '%s' does not point to a numeric value, got: %s", path, result.Type.String())
+    }
+    
+    return result.Num, nil
 }
 
 
@@ -215,6 +209,11 @@ func (s *weatherAwareDemandScaler) isBadWeather(weatherData map[string]interface
 		}
 		key := strings.TrimSpace(parts[0])
 		valStr := strings.TrimSpace(parts[1])
+		
+		// Validate that the key has the proper format (ends with _below or _above)
+		if !strings.HasSuffix(key, "_below") && !strings.HasSuffix(key, "_above") {
+			return false, fmt.Errorf("invalid bad weather condition format: %s, must end with '_below' or '_above'", key)
+		}
 		
 		// Example: temp_below:0, rain_above:5 (value from weatherData must be numeric)
 		weatherVal, ok := weatherData[strings.Split(key, "_")[0]] // e.g., "temp" from "temp_below"

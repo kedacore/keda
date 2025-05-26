@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+
 	// "maps" // Not used directly in the provided test code, can be removed if not needed later
 	"net/http" // Not used directly in these initial tests, but good for future GetMetricsAndActivity tests
 	"reflect"
@@ -16,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource" // For resource.NewQuantity
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
-	kedautil "github.com/kedacore/keda/v2/pkg/util" // For kedautil.NormalizeString
 )
 
 // Mock ScalerConfig for tests
@@ -32,7 +32,6 @@ func newTestScalerConfig(metadata map[string]string, triggerIndex int, metricTyp
 		ScalableObjectNamespace: "test-namespace",
 		ScalableObjectType:      "ScaledObject",
 		Recorder:                nil, // Mock recorder if needed for event testing
-		Logger:                  logr.Discard(), // Use Discard logger for tests unless output is needed
 	}
 }
 
@@ -541,9 +540,7 @@ func TestGetMetricsAndActivity(t *testing.T) {
 				t.Fatalf("Error creating scaler: %v", err)
 			}
 			typedScaler := scaler.(*weatherAwareDemandScaler)
-            if typedScaler.logger == nil { // Ensure logger is not nil
-                typedScaler.logger = logr.Discard()
-            }
+            // Logger is initialized in NewWeatherAwareDemandScaler
 
 			metrics, active, err := typedScaler.GetMetricsAndActivity(context.TODO(), tc.metricIdentifier)
 
@@ -620,7 +617,7 @@ var getMetricSpecTestDataset = []testGetMetricSpecCase{
 		},
 		metricType:         v2.ValueMetricType,
 		triggerIndex:       1,
-		expectedMetricName: "s1-my-custom-metric", // s1-my-custom-metric after normalization
+		expectedMetricName: "s1-My Custom Metric", // NormalizeString doesn't change spaces or case
 		expectedTarget: v2.MetricTarget{
 			Type:  v2.ValueMetricType,
 			Value: resource.NewQuantity(75, resource.DecimalSI),
@@ -642,7 +639,7 @@ var getMetricSpecTestDataset = []testGetMetricSpecCase{
 	},
 }
 
-func TestGetMetricSpecForScaling(t *testing.T) {
+func TestWeatherAwareDemandScalerGetMetricSpecForScaling(t *testing.T) {
 	for _, tc := range getMetricSpecTestDataset {
 		t.Run(tc.name, func(t *testing.T) {
 			config := newTestScalerConfig(tc.metadata, tc.triggerIndex, tc.metricType)
