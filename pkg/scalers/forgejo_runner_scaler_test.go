@@ -180,13 +180,13 @@ func TestForgejoRunnerScalerGetJobsList(t *testing.T) {
 		if req.URL.Path == "/api/v1/repos/owner/my-repo/actions/runners/jobs" {
 			body, err := json.Marshal(repoJobList)
 			assert.NoError(t, err)
-			_, err = rw.Write(body)
+			_, err = rw.Write(body) // nosemgrep: no-direct-write-to-responsewriter
 			assert.NoError(t, err)
 			return
 		}
 		body, err := json.Marshal(jobsList)
 		assert.NoError(t, err)
-		_, err = rw.Write(body)
+		_, err = rw.Write(body) // nosemgrep: no-direct-write-to-responsewriter
 		assert.NoError(t, err)
 	}))
 	// Close the server when test finishes
