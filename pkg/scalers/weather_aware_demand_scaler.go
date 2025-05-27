@@ -26,7 +26,10 @@ type weatherAwareDemandScalerMetadata struct {
 	WeatherAPIKeyFromEnv string `keda:"name=weatherApiKey,order=resolvedEnv"`
 	WeatherLocation      string `keda:"name=weatherLocation,order=triggerMetadata,optional"`             // e.g., "city,country" or "lat,lon"
 	WeatherUnits         string `keda:"name=weatherUnits,order=triggerMetadata,optional,default=metric"` // "metric" or "imperial"
-	BadWeatherConditions string `keda:"name=badWeatherConditions,order=triggerMetadata,optional"`        // e.g., "temp_below:0,rain_above:5,wind_above:10" (temp in C, rain mm/hr, wind km/hr if metric)
+	// BadWeatherConditions string `keda:"name=badWeatherConditions,order=triggerMetadata,optional"`        // e.g., "temp_below:0,rain_above:5,wind_above:10" (temp in C, rain mm/hr, wind km/hr if metric)
+	WeatherParameter string `keda:"name=weatherParameter,order=triggerMetadata,optional"` // e.g., "temperature", "humidity", "windSpeed"
+	WeatherOperator  string `keda:"name=weatherOperator,order=triggerMetadata,optional"`  // e.g., ">", "<", "==", ">=", "<="
+	WeatherThreshold string `keda:"name=weatherThreshold,order=triggerMetadata,optional"` // e.g., "30", "0.5"
 
 	// Demand API Configuration
 	DemandAPIEndpoint string `keda:"name=demandApiEndpoint,order=triggerMetadata,optional"`
@@ -48,9 +51,28 @@ func (m *weatherAwareDemandScalerMetadata) Validate() error {
 	if m.WeatherAPIEndpoint == "" && m.DemandAPIEndpoint == "" {
 		return fmt.Errorf("at least one of weatherApiEndpoint or demandApiEndpoint must be provided")
 	}
-	if m.WeatherAPIEndpoint != "" && m.WeatherLocation == "" {
-		return fmt.Errorf("weatherLocation is required when weatherApiEndpoint is provided")
+	if m.WeatherAPIEndpoint != "" {
+		if m.WeatherLocation == "" {
+			return fmt.Errorf("weatherLocation is required when weatherApiEndpoint is provided")
+		}
+		if m.WeatherParameter == "" {
+			return fmt.Errorf("weatherParameter is required when weatherApiEndpoint is provided")
+		}
+		if m.WeatherOperator == "" {
+			return fmt.Errorf("weatherOperator is required when weatherApiEndpoint is provided")
+		}
+		allowedOperators := map[string]bool{">": true, "<": true, "==": true, ">=": true, "<=": true, "!=": true}
+		if !allowedOperators[m.WeatherOperator] {
+			return fmt.Errorf("invalid weatherOperator: %s. Allowed operators are >, <, ==, >=, <=, !=", m.WeatherOperator)
+		}
+		if m.WeatherThreshold == "" {
+			return fmt.Errorf("weatherThreshold is required when weatherApiEndpoint is provided")
+		}
+		if _, err := strconv.ParseFloat(m.WeatherThreshold, 64); err != nil {
+			return fmt.Errorf("weatherThreshold must be a valid number: %w", err)
+		}
 	}
+
 	if m.TargetDemandPerReplica <= 0 {
 		return fmt.Errorf("targetDemandPerReplica must be greater than 0")
 	}
@@ -187,109 +209,139 @@ func extractValueWithJSONPath(data interface{}, path string, logger logr.Logger)
 	return result.Num, nil
 }
 
-// isBadWeather evaluates if current weather conditions are "bad"
-func (s *weatherAwareDemandScaler) isBadWeather(weatherData map[string]interface{}) (bool, error) {
-	if s.metadata.BadWeatherConditions == "" || weatherData == nil {
-		return false, nil // No conditions defined or no data, assume good weather
+// evaluateWeatherCondition evaluates if the configured weather condition is met
+func (s *weatherAwareDemandScaler) evaluateWeatherCondition(weatherData map[string]interface{}) (bool, error) {
+	if s.metadata.WeatherAPIEndpoint == "" || s.metadata.WeatherParameter == "" || weatherData == nil {
+		return false, nil // No weather API, parameter, or data, so condition cannot be met.
 	}
 
-	conditions := strings.Split(s.metadata.BadWeatherConditions, ",")
-	for _, cond := range conditions {
-		parts := strings.Split(cond, ":")
-		if len(parts) != 2 {
-			return false, fmt.Errorf("invalid bad weather condition format: %s", cond)
-		}
-		key := strings.TrimSpace(parts[0])
-		valStr := strings.TrimSpace(parts[1])
-
-		// Validate that the key has the proper format (ends with _below or _above)
-		if !strings.HasSuffix(key, "_below") && !strings.HasSuffix(key, "_above") {
-			return false, fmt.Errorf("invalid bad weather condition format: %s, must end with '_below' or '_above'", key)
-		}
-
-		// Example: temp_below:0, rain_above:5 (value from weatherData must be numeric)
-		weatherVal, ok := weatherData[strings.Split(key, "_")[0]] // e.g., "temp" from "temp_below"
-		if !ok {
-			s.logger.V(1).Info("Weather key not found in weather data", "key", strings.Split(key, "_")[0])
-			continue // Key not in weather data, skip this condition
-		}
-
-		weatherNum, ok := weatherVal.(float64) // Assuming weather values are numbers (e.g. temp: -5.0, rain: 10.0)
-		if !ok {
-			return false, fmt.Errorf("weather data for key '%s' is not a number: %v", strings.Split(key, "_")[0], weatherVal)
-		}
-
-		threshold, err := strconv.ParseFloat(valStr, 64)
-		if err != nil {
-			return false, fmt.Errorf("invalid threshold value in bad weather condition '%s': %w", cond, err)
-		}
-
-		if strings.HasSuffix(key, "_below") && weatherNum < threshold {
-			return true, nil
-		}
-		if strings.HasSuffix(key, "_above") && weatherNum > threshold {
-			return true, nil
-		}
+	weatherVal, ok := weatherData[s.metadata.WeatherParameter]
+	if !ok {
+		s.logger.V(1).Info("Weather parameter not found in weather data", "parameter", s.metadata.WeatherParameter)
+		return false, nil // Parameter not in weather data, condition not met.
 	}
-	return false, nil
+
+	weatherNum, ok := weatherVal.(float64)
+	if !ok {
+		return false, fmt.Errorf("weather data for parameter '%s' is not a number: %v", s.metadata.WeatherParameter, weatherVal)
+	}
+
+	threshold, err := strconv.ParseFloat(s.metadata.WeatherThreshold, 64)
+	if err != nil {
+		// This should ideally be caught by metadata validation, but good to have a safeguard.
+		return false, fmt.Errorf("invalid weatherThreshold value '%s': %w", s.metadata.WeatherThreshold, err)
+	}
+
+	s.logger.V(1).Info("Evaluating weather condition", "parameter", s.metadata.WeatherParameter, "operator", s.metadata.WeatherOperator, "threshold", threshold, "actualValue", weatherNum)
+
+	switch s.metadata.WeatherOperator {
+	case ">":
+		return weatherNum > threshold, nil
+	case "<":
+		return weatherNum < threshold, nil
+	case "==":
+		return weatherNum == threshold, nil
+	case ">=":
+		return weatherNum >= threshold, nil
+	case "<=":
+		return weatherNum <= threshold, nil
+	case "!=":
+		return weatherNum != threshold, nil
+	default:
+		// This should also be caught by metadata validation.
+		return false, fmt.Errorf("invalid weatherOperator: %s", s.metadata.WeatherOperator)
+	}
 }
 
 func (s *weatherAwareDemandScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	s.logger.V(1).Info("Fetching metrics for Weather-Aware Ride Demand Scaler")
+	s.logger.V(1).Info("Fetching metrics for Weather-Aware Demand Scaler")
 
-	// 1. Fetch Demand Data
-	var currentDemand float64
+	currentDemand := float64(0)
+	demandFetched := false
+
+	// 1. Fetch Demand Data (if configured)
 	if s.metadata.DemandAPIEndpoint != "" {
-		var demandDataRaw interface{} // Use interface{} for raw JSON data
+		var demandDataRaw interface{}
 		err := s.fetchJSONData(ctx, s.metadata.DemandAPIEndpoint, s.metadata.DemandAPIKey, &demandDataRaw)
 		if err != nil {
 			s.logger.Error(err, "Failed to fetch demand data")
 			return nil, false, fmt.Errorf("error fetching demand data: %w", err)
 		}
 
-		currentDemand, err = extractValueWithJSONPath(demandDataRaw, s.metadata.DemandJSONPath, s.logger)
+		extractedDemand, err := extractValueWithJSONPath(demandDataRaw, s.metadata.DemandJSONPath, s.logger)
 		if err != nil {
 			s.logger.Error(err, "Failed to extract demand value from response", "jsonPath", s.metadata.DemandJSONPath)
 			return nil, false, fmt.Errorf("error extracting demand value: %w", err)
 		}
+		currentDemand = extractedDemand
+		demandFetched = true
 		s.logger.V(1).Info("Successfully fetched demand data", "rawDemand", currentDemand)
 	} else {
-		currentDemand = 0 // Default demand if no endpoint
-		s.logger.V(1).Info("DemandAPIEndpoint not configured, using default demand", "demand", currentDemand)
+		s.logger.V(1).Info("DemandAPIEndpoint not configured.")
 	}
 
-	// 2. Fetch Weather Data
-	var weatherData map[string]interface{} // Assuming weather API returns a flat JSON object
-
+	// 2. Fetch Weather Data (if configured)
+	weatherData := make(map[string]interface{}) // Initialize to avoid nil map if not fetched
+	weatherFetched := false
 	if s.metadata.WeatherAPIEndpoint != "" {
-		// Construct weather API URL with location and units
-		// This is a simplified example. A real implementation would use url.Values for query params.
 		weatherURL := fmt.Sprintf("%s?location=%s&units=%s", s.metadata.WeatherAPIEndpoint, s.metadata.WeatherLocation, s.metadata.WeatherUnits)
-
 		err := s.fetchJSONData(ctx, weatherURL, s.metadata.WeatherAPIKeyFromEnv, &weatherData)
 		if err != nil {
-			s.logger.Error(err, "Failed to fetch weather data. Proceeding without weather adjustment or failing based on config.")
-			// Depending on policy, we might want to return an error here or proceed with default weather.
-			// For now, log and proceed, effectively assuming good weather or neutral impact.
+			s.logger.Error(err, "Failed to fetch weather data. Depending on the mode, this might lead to default behavior or an error.")
+			// If weather-only mode, this is a critical failure.
+			if !demandFetched {
+				return nil, false, fmt.Errorf("failed to fetch weather data in weather-only mode: %w", err)
+			}
+			// In demand+weather mode, we might proceed with no weather adjustment.
 		} else {
+			weatherFetched = true
 			s.logger.V(1).Info("Successfully fetched weather data", "data", weatherData)
 		}
 	} else {
-		s.logger.V(1).Info("WeatherAPIEndpoint not configured, assuming good weather conditions.")
+		s.logger.V(1).Info("WeatherAPIEndpoint not configured.")
 	}
 
-	// 3. Apply Weather-Aware Logic
-	adjustedDemand := currentDemand
-	badWeather, err := s.isBadWeather(weatherData)
-	if err != nil {
-		s.logger.Error(err, "Failed to evaluate bad weather conditions, proceeding without weather adjustment.")
-		// Potentially return error here if strict parsing of BadWeatherConditions is required
-	}
+	// 3. Apply Scaling Logic based on configuration
+	adjustedDemand := float64(0)
+	var scalingMode string
 
-	if badWeather {
-		adjustedDemand = currentDemand * s.metadata.WeatherEffectScaleFactor
-		s.logger.V(1).Info("Bad weather detected, adjusting demand", "originalDemand", currentDemand, "scaleFactor", s.metadata.WeatherEffectScaleFactor, "adjustedDemand", adjustedDemand)
+	if weatherFetched && !demandFetched { // Weather-only mode
+		scalingMode = "weather-only"
+		conditionMet, err := s.evaluateWeatherCondition(weatherData)
+		if err != nil {
+			s.logger.Error(err, "Failed to evaluate weather condition in weather-only mode.")
+			return nil, false, fmt.Errorf("error evaluating weather condition: %w", err)
+		}
+		if conditionMet {
+			adjustedDemand = float64(s.metadata.TargetDemandPerReplica) // Scale up if condition is met
+			s.logger.V(1).Info("Weather condition met in weather-only mode, setting demand to target.", "targetDemand", adjustedDemand)
+		} else {
+			adjustedDemand = 0 // No scaling if condition not met
+			s.logger.V(1).Info("Weather condition not met in weather-only mode.")
+		}
+	} else if weatherFetched && demandFetched { // Demand + Weather mode
+		scalingMode = "demand+weather"
+		adjustedDemand = currentDemand // Start with current demand
+		conditionMet, err := s.evaluateWeatherCondition(weatherData)
+		if err != nil {
+			s.logger.Error(err, "Failed to evaluate weather condition in demand+weather mode, proceeding without weather adjustment.")
+			// Not returning error here, just proceeding without adjustment
+		} else if conditionMet {
+			adjustedDemand = currentDemand * s.metadata.WeatherEffectScaleFactor
+			s.logger.V(1).Info("Weather condition met, adjusting demand", "originalDemand", currentDemand, "scaleFactor", s.metadata.WeatherEffectScaleFactor, "adjustedDemand", adjustedDemand)
+		} else {
+			s.logger.V(1).Info("Weather condition not met, using original demand.", "originalDemand", currentDemand)
+		}
+	} else if demandFetched && !weatherFetched { // Demand-only mode
+		scalingMode = "demand-only"
+		adjustedDemand = currentDemand
+		s.logger.V(1).Info("Operating in demand-only mode.", "currentDemand", adjustedDemand)
+	} else { // Neither configured - this should be caught by Validate, but handle defensively
+		scalingMode = "unconfigured"
+		s.logger.Error(nil, "Neither WeatherAPIEndpoint nor DemandAPIEndpoint are configured. This should be caught by validation.")
+		return nil, false, fmt.Errorf("scaler is not configured with any API endpoint")
 	}
+	s.logger.V(1).Info("Scaling logic applied", "mode", scalingMode, "finalAdjustedDemand", adjustedDemand)
 
 	// 4. Determine Activity
 	isActive := adjustedDemand > float64(s.metadata.ActivationDemandLevel)
