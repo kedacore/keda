@@ -151,7 +151,7 @@ func TestSetupGcpIdentityComponents(t *testing.T) {
 	require.NoErrorf(t, err, "cannot install workload identity webhook - %s", err)
 }
 
-func TesVerifyPodsIdentity(t *testing.T) {
+func TestVerifyPodsIdentity(t *testing.T) {
 	if AzureRunWorkloadIdentityTests == StringTrue {
 		assert.True(t, WaitForDeploymentReplicaReadyCount(t, KubeClient, "azure-wi-webhook-controller-manager", "azure-workload-identity-system", 2, 30, 6),
 			"replica count should be 1 after 3 minutes")
