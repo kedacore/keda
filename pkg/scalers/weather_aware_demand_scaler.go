@@ -23,7 +23,7 @@ import (
 type weatherAwareDemandScalerMetadata struct {
 	// Weather API Configuration
 	WeatherAPIEndpoint   string `keda:"name=weatherApiEndpoint,order=triggerMetadata,optional"`
-	WeatherAPIKeyFromEnv string `keda:"name=weatherApiKeyFromEnv,order=triggerMetadata,optional"`        // Name of the environment variable
+	WeatherAPIKeyFromEnv string `keda:"name=weatherApiKey,order=resolvedEnv"`
 	WeatherLocation      string `keda:"name=weatherLocation,order=triggerMetadata,optional"`             // e.g., "city,country" or "lat,lon"
 	WeatherUnits         string `keda:"name=weatherUnits,order=triggerMetadata,optional,default=metric"` // "metric" or "imperial"
 	BadWeatherConditions string `keda:"name=badWeatherConditions,order=triggerMetadata,optional"`        // e.g., "temp_below:0,rain_above:5,wind_above:10" (temp in C, rain mm/hr, wind km/hr if metric)
