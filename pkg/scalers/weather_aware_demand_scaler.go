@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/tidwall/gjson"
@@ -112,7 +113,8 @@ func NewWeatherAwareDemandScaler(config *scalersconfig.ScalerConfig) (Scaler, er
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+	timeoutDuration := time.Duration(config.GlobalHTTPTimeout) * time.Millisecond
+	httpClient := kedautil.CreateHTTPClient(timeoutDuration, false)
 
 	return &weatherAwareDemandScaler{
 		metadata:   meta,

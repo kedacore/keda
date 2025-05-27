@@ -62,12 +62,15 @@ var weatherAwareDemandScalerTestConfigs = []weatherAwareDemandScalerTestConfig{
 		metadata: map[string]string{
 			"weatherApiEndpoint":     "http://weather.api",
 			"weatherLocation":        "london,uk",
+			"weatherParameter":       "temp",
+			"weatherOperator":        ">",
+			"weatherThreshold":       "10",
 			"demandApiEndpoint":      "http://demand.api",
 			"demandJsonPath":         "{.demand}",
 			"targetDemandPerReplica": "100",
 			"metricName":             "my-metric",
-			"weatherApiKeyFromEnv": "weatherApiKey",
-			"demandApiKeyFromEnv":  "demandApiKey",
+			"weatherApiKeyFromEnv":   "weatherApiKey",
+			"demandApiKeyFromEnv":    "demandApiKey",
 		},
 		resolvedEnv: testWeatherAwareDemandResolvedEnv,
 		isError:     false,
@@ -77,10 +80,13 @@ var weatherAwareDemandScalerTestConfigs = []weatherAwareDemandScalerTestConfig{
 		metadata: map[string]string{
 			"weatherApiEndpoint":     "http://weather.api",
 			"weatherLocation":        "london,uk",
+			"weatherParameter":       "temp",
+			"weatherOperator":        "<",
+			"weatherThreshold":       "0",
 			"targetDemandPerReplica": "100",
 			"metricName":             "my-metric",
-			"weatherApiKeyFromEnv": "weatherApiKey",
-			"demandApiKeyFromEnv":  "demandApiKey",
+			"weatherApiKeyFromEnv":   "weatherApiKey",
+			"demandApiKeyFromEnv":    "demandApiKey",
 		},
 		resolvedEnv: testWeatherAwareDemandResolvedEnv,
 		isError:     false,
@@ -92,8 +98,8 @@ var weatherAwareDemandScalerTestConfigs = []weatherAwareDemandScalerTestConfig{
 			"demandJsonPath":         "{.demand}",
 			"targetDemandPerReplica": "100",
 			"metricName":             "my-metric",
-			"weatherApiKeyFromEnv": "weatherApiKey",
-			"demandApiKeyFromEnv":  "demandApiKey",
+			"weatherApiKeyFromEnv":   "weatherApiKey",
+			"demandApiKeyFromEnv":    "demandApiKey",
 		},
 		resolvedEnv: testWeatherAwareDemandResolvedEnv,
 		isError:     false,
@@ -102,8 +108,8 @@ var weatherAwareDemandScalerTestConfigs = []weatherAwareDemandScalerTestConfig{
 		name: "error - no endpoints",
 		metadata: map[string]string{
 			"targetDemandPerReplica": "100",
-			"weatherApiKeyFromEnv": "weatherApiKey",
-			"demandApiKeyFromEnv":  "demandApiKey",
+			"weatherApiKeyFromEnv":   "weatherApiKey",
+			"demandApiKeyFromEnv":    "demandApiKey",
 		},
 		resolvedEnv:        testWeatherAwareDemandResolvedEnv,
 		isError:            true,
@@ -112,7 +118,7 @@ var weatherAwareDemandScalerTestConfigs = []weatherAwareDemandScalerTestConfig{
 	{
 		name: "error - weather endpoint without location",
 		metadata: map[string]string{
-			"weatherApiEndpoint": "http://weather.api",
+			"weatherApiEndpoint":   "http://weather.api",
 			"weatherApiKeyFromEnv": "weatherApiKey",
 			"demandApiKeyFromEnv":  "demandApiKey",
 		},
@@ -126,8 +132,8 @@ var weatherAwareDemandScalerTestConfigs = []weatherAwareDemandScalerTestConfig{
 			"demandApiEndpoint":      "http://demand.api",
 			"demandJsonPath":         "{.demand}",
 			"targetDemandPerReplica": "0",
-			"weatherApiKeyFromEnv": "weatherApiKey",
-			"demandApiKeyFromEnv":  "demandApiKey",
+			"weatherApiKeyFromEnv":   "weatherApiKey",
+			"demandApiKeyFromEnv":    "demandApiKey",
 		},
 		resolvedEnv:        testWeatherAwareDemandResolvedEnv,
 		isError:            true,
@@ -139,8 +145,8 @@ var weatherAwareDemandScalerTestConfigs = []weatherAwareDemandScalerTestConfig{
 			"demandApiEndpoint":        "http://demand.api",
 			"demandJsonPath":           "{.demand}",
 			"weatherEffectScaleFactor": "0",
-			"weatherApiKeyFromEnv": "weatherApiKey",
-			"demandApiKeyFromEnv":  "demandApiKey",
+			"weatherApiKeyFromEnv":     "weatherApiKey",
+			"demandApiKeyFromEnv":      "demandApiKey",
 		},
 		resolvedEnv:        testWeatherAwareDemandResolvedEnv,
 		isError:            true,
@@ -182,7 +188,9 @@ type testGetMetricsCase struct {
 	expectedErrMessage       string
 	activationDemandLevel    string // Keep as string to test parsing
 	weatherEffectScaleFactor string // Keep as string to test parsing
-	badWeatherConditions     string
+	weatherParameter         string // New field
+	weatherOperator          string // New field
+	weatherThreshold         string // New field
 }
 
 // Helper to create a test server for weather aware demand scaler tests
@@ -269,21 +277,23 @@ var testGetMetricsCases = []testGetMetricsCase{
 		metadata: map[string]string{
 			"weatherApiEndpoint":     "WEATHER_ENDPOINT_VAR",
 			"weatherLocation":        "london,uk",
-			"targetDemandPerReplica": "50",
-			"badWeatherConditions":   "temp_below:0", // Temp is 10, so good weather
+			"targetDemandPerReplica": "50",       // Explicitly set for this test
+			"weatherParameter":       "temp",     // Condition for scaling: temp < 0
+			"weatherOperator":        "<",        // If temp is 10 (good), 10 < 0 is false -> demand 0
+			"weatherThreshold":       "0",
 		},
 		resolvedEnv: map[string]string{
 			"weatherApiKey": "test_weather_key",
-			"demandApiKey":  "unused_demand_key", // Required by resolvedEnv
+			"demandApiKey":  "unused_demand_key",
 		},
 		mockWeatherAPIHandler: func(w http.ResponseWriter, r *http.Request) {
 			if r.Header.Get("Authorization") != "Bearer test_weather_key" {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			fmt.Fprint(w, `{"temp": 10, "rain": 0}`)
+			fmt.Fprint(w, `{"temp": 10, "rain": 0}`) // Good weather: temp = 10
 		},
-		expectedMetricValue:   0,     // Default demand is 0
+		expectedMetricValue:   0,     // Good weather, so demand is 0
 		expectedActivity:      false, // 0 is not > activation (default 10)
 		activationDemandLevel: "10",
 	},
@@ -292,18 +302,21 @@ var testGetMetricsCases = []testGetMetricsCase{
 		metadata: map[string]string{
 			"weatherApiEndpoint":       "WEATHER_ENDPOINT_VAR",
 			"weatherLocation":          "london,uk",
-			"badWeatherConditions":     "temp_below:0", // Temp is -5, so bad weather
-			"weatherEffectScaleFactor": "1.5",          // This will be applied to default demand (0), still results in 0
+			"weatherParameter":         "temp",    // Condition for scaling: temp < 0
+			"weatherOperator":          "<",       // If temp is -5 (bad), -5 < 0 is true -> demand = targetDemandPerReplica
+			"weatherThreshold":         "0",
+			// "targetDemandPerReplica" is not set here, so it defaults to 100 from the struct.
+			// "weatherEffectScaleFactor": "1.5", // Not used in weather-only mode
 		},
 		resolvedEnv: map[string]string{
 			"weatherApiKey": "test_weather_key",
-			"demandApiKey":  "unused_demand_key", // Required by resolvedEnv
+			"demandApiKey":  "unused_demand_key",
 		},
 		mockWeatherAPIHandler: func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprint(w, `{"temp": -5, "rain": 0}`)
+			fmt.Fprint(w, `{"temp": -5, "rain": 0}`) // Bad weather: temp = -5
 		},
-		expectedMetricValue:   0,     // 0 * 1.5 = 0
-		expectedActivity:      false, // 0 not > activation (default 10)
+		expectedMetricValue:   100,   // Bad weather, demand is TargetDemandPerReplica (default 100)
+		expectedActivity:      true,  // 100 > activation (default 10)
 		activationDemandLevel: "10",
 	},
 	{
@@ -314,8 +327,10 @@ var testGetMetricsCases = []testGetMetricsCase{
 			"weatherApiEndpoint":     "WEATHER_ENDPOINT_VAR",
 			"weatherLocation":        "paris,fr",
 			"weatherUnits":           "imperial",
-			"badWeatherConditions":   "temp_below:32", // Temp is 40F (good)
 			"targetDemandPerReplica": "10",
+			"weatherParameter":       "temp",
+			"weatherOperator":        ">",
+			"weatherThreshold":       "32",
 		},
 		resolvedEnv: map[string]string{
 			"demandApiKey":  "test_demand_key",
@@ -338,9 +353,11 @@ var testGetMetricsCases = []testGetMetricsCase{
 			"demandJsonPath":           "{.value}",
 			"weatherApiEndpoint":       "WEATHER_ENDPOINT_VAR",
 			"weatherLocation":          "berlin,de",
-			"badWeatherConditions":     "temp_below:0,rain_above:10", // Temp is -5C (bad)
 			"weatherEffectScaleFactor": "2.0",
 			"targetDemandPerReplica":   "10",
+			"weatherParameter":         "temp",
+			"weatherOperator":          "<",
+			"weatherThreshold":         "0",
 		},
 		resolvedEnv: map[string]string{
 			"demandApiKey":  "test_demand_key",
@@ -363,8 +380,10 @@ var testGetMetricsCases = []testGetMetricsCase{
 			"demandJsonPath":           "{.value}",
 			"weatherApiEndpoint":       "WEATHER_ENDPOINT_VAR",
 			"weatherLocation":          "rome,it",
-			"badWeatherConditions":     "temp_below:0,rain_above:5", // Rain is 12mm (bad)
 			"weatherEffectScaleFactor": "1.5",
+			"weatherParameter":         "rain",
+			"weatherOperator":          ">",
+			"weatherThreshold":         "5",
 		},
 		resolvedEnv: map[string]string{
 			"demandApiKey":  "test_demand_key",
@@ -387,8 +406,10 @@ var testGetMetricsCases = []testGetMetricsCase{
 			"demandJsonPath":           "{.value}",
 			"weatherApiEndpoint":       "WEATHER_ENDPOINT_VAR",
 			"weatherLocation":          "rome,it",
-			"badWeatherConditions":     "wind_above:20",
 			"weatherEffectScaleFactor": "1.2",
+			"weatherParameter":         "wind",
+			"weatherOperator":          ">",
+			"weatherThreshold":         "20",
 		},
 		resolvedEnv: map[string]string{
 			"demandApiKey":  "test_demand_key",
@@ -411,7 +432,9 @@ var testGetMetricsCases = []testGetMetricsCase{
 			"demandJsonPath":       "{.value}",
 			"weatherApiEndpoint":   "WEATHER_ENDPOINT_VAR",
 			"weatherLocation":      "london,uk",
-			"badWeatherConditions": "temp_below:0",
+			"weatherParameter":     "temp",
+			"weatherOperator":      "<",
+			"weatherThreshold":     "0",
 		},
 		resolvedEnv: map[string]string{
 			"demandApiKey":  "test_demand_key",
@@ -434,7 +457,9 @@ var testGetMetricsCases = []testGetMetricsCase{
 			"demandJsonPath":       "{.value}",
 			"weatherApiEndpoint":   "WEATHER_ENDPOINT_VAR",
 			"weatherLocation":      "london,uk",
-			"badWeatherConditions": "temp_is_low:0", // Invalid format
+			"weatherParameter":     "temp",
+			"weatherOperator":      ">",
+			"weatherThreshold":     "0",
 		},
 		resolvedEnv: map[string]string{
 			"demandApiKey":  "test_demand_key",
@@ -485,8 +510,14 @@ func TestGetMetricsAndActivity(t *testing.T) {
 			if tc.weatherEffectScaleFactor != "" {
 				currentMetadata["weatherEffectScaleFactor"] = tc.weatherEffectScaleFactor
 			}
-			if tc.badWeatherConditions != "" {
-				currentMetadata["badWeatherConditions"] = tc.badWeatherConditions
+			if tc.weatherParameter != "" {
+				currentMetadata["weatherParameter"] = tc.weatherParameter
+			}
+			if tc.weatherOperator != "" {
+				currentMetadata["weatherOperator"] = tc.weatherOperator
+			}
+			if tc.weatherThreshold != "" {
+				currentMetadata["weatherThreshold"] = tc.weatherThreshold
 			}
 
 			cfg := &scalersconfig.ScalerConfig{
@@ -532,143 +563,6 @@ func TestGetMetricsAndActivity(t *testing.T) {
 				} else if tc.expectedMetricValue != 0 { // if we expected a metric value but got none
 					t.Errorf("Expected metric value %d, but got no metrics", tc.expectedMetricValue)
 				}
-			}
-		})
-	}
-}
-
-type testIsBadWeatherCase struct {
-	name                 string
-	badWeatherConditions string
-	weatherData          map[string]interface{}
-	expectedIsBad        bool
-	isError              bool
-	expectedErrMessage   string
-}
-
-var testIsBadWeatherCases = []testIsBadWeatherCase{
-	{
-		name:                 "no conditions defined",
-		badWeatherConditions: "",
-		weatherData:          map[string]interface{}{"temp": 10},
-		expectedIsBad:        false,
-	},
-	{
-		name:                 "no weather data",
-		badWeatherConditions: "temp_below:0",
-		weatherData:          nil,
-		expectedIsBad:        false,
-	},
-	{
-		name:                 "temp_below:0, current temp -5 (bad)",
-		badWeatherConditions: "temp_below:0",
-		weatherData:          map[string]interface{}{"temp": -5.0},
-		expectedIsBad:        true,
-	},
-	{
-		name:                 "temp_below:0, current temp 5 (good)",
-		badWeatherConditions: "temp_below:0",
-		weatherData:          map[string]interface{}{"temp": 5.0},
-		expectedIsBad:        false,
-	},
-	{
-		name:                 "rain_above:5, current rain 10 (bad)",
-		badWeatherConditions: "rain_above:5",
-		weatherData:          map[string]interface{}{"rain": 10.0},
-		expectedIsBad:        true,
-	},
-	{
-		name:                 "rain_above:5, current rain 2 (good)",
-		badWeatherConditions: "rain_above:5",
-		weatherData:          map[string]interface{}{"rain": 2.0},
-		expectedIsBad:        false,
-	},
-	{
-		name:                 "wind_above:20, current wind 25 (bad)",
-		badWeatherConditions: "wind_above:20",
-		weatherData:          map[string]interface{}{"wind": 25.0},
-		expectedIsBad:        true,
-	},
-	{
-		name:                 "wind_above:20, current wind 15 (good)",
-		badWeatherConditions: "wind_above:20",
-		weatherData:          map[string]interface{}{"wind": 15.0},
-		expectedIsBad:        false,
-	},
-	{
-		name:                 "multiple conditions - temp_below:0 (bad), rain_above:10 (good)",
-		badWeatherConditions: "temp_below:0,rain_above:10",
-		weatherData:          map[string]interface{}{"temp": -2.0, "rain": 5.0},
-		expectedIsBad:        true, // Temp condition met
-	},
-	{
-		name:                 "multiple conditions - temp_below:0 (good), rain_above:10 (bad)",
-		badWeatherConditions: "temp_below:0,rain_above:10",
-		weatherData:          map[string]interface{}{"temp": 2.0, "rain": 15.0},
-		expectedIsBad:        true, // Rain condition met
-	},
-	{
-		name:                 "multiple conditions - all good",
-		badWeatherConditions: "temp_below:0,rain_above:10,wind_above:30",
-		weatherData:          map[string]interface{}{"temp": 5.0, "rain": 5.0, "wind": 10.0},
-		expectedIsBad:        false,
-	},
-	{
-		name:                 "weather key not found in data",
-		badWeatherConditions: "temp_below:0",
-		weatherData:          map[string]interface{}{"humidity": 50.0}, // "temp" is missing
-		expectedIsBad:        false,                                    // Skips condition
-	},
-	{
-		name:                 "invalid condition format - no colon",
-		badWeatherConditions: "temp_below0",
-		weatherData:          map[string]interface{}{"temp": -5.0},
-		isError:              true,
-		expectedErrMessage:   "invalid bad weather condition format: temp_below0",
-	},
-	{
-		name:                 "invalid condition format - wrong suffix",
-		badWeatherConditions: "temp_is:0",
-		weatherData:          map[string]interface{}{"temp": -5.0},
-		isError:              true,
-		expectedErrMessage:   "invalid bad weather condition format: temp_is, must end with '_below' or '_above'",
-	},
-	{
-		name:                 "weather data for key not a number",
-		badWeatherConditions: "temp_below:0",
-		weatherData:          map[string]interface{}{"temp": "cold"},
-		isError:              true,
-		expectedErrMessage:   "weather data for key 'temp' is not a number: cold",
-	},
-	{
-		name:                 "invalid threshold value in condition",
-		badWeatherConditions: "temp_below:abc",
-		weatherData:          map[string]interface{}{"temp": -5.0},
-		isError:              true,
-		expectedErrMessage:   "invalid threshold value in bad weather condition 'temp_below:abc'",
-	},
-}
-
-func TestIsBadWeather(t *testing.T) {
-	// Create a dummy scaler instance with a logger
-	mockScaler := &weatherAwareDemandScaler{
-		logger:   newSimpleTestLogger(), // Use the new simple logger
-		metadata: &weatherAwareDemandScalerMetadata{},
-	}
-
-	for _, tc := range testIsBadWeatherCases {
-		t.Run(tc.name, func(t *testing.T) {
-			mockScaler.metadata.BadWeatherConditions = tc.badWeatherConditions
-			isBad, err := mockScaler.isBadWeather(tc.weatherData)
-
-			if tc.isError {
-				assert.Error(t, err)
-				if tc.expectedErrMessage != "" {
-					assert.Contains(t, err.Error(), tc.expectedErrMessage)
-				}
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tc.expectedIsBad, isBad)
 			}
 		})
 	}
