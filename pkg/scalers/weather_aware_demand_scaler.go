@@ -23,15 +23,15 @@ import (
 type weatherAwareDemandScalerMetadata struct {
 	// Weather API Configuration
 	WeatherAPIEndpoint   string `keda:"name=weatherApiEndpoint,order=triggerMetadata,optional"`
-	WeatherAPIKeyFromEnv string `keda:"name=weatherApiKey,order=triggerMetadata,optional"`
+	WeatherAPIKeyFromEnv string `keda:"name=weatherApiKey,order=resolvedEnv"`
 	WeatherLocation      string `keda:"name=weatherLocation,order=triggerMetadata,optional"`             // e.g., "city,country" or "lat,lon"
 	WeatherUnits         string `keda:"name=weatherUnits,order=triggerMetadata,optional,default=metric"` // "metric" or "imperial"
 	BadWeatherConditions string `keda:"name=badWeatherConditions,order=triggerMetadata,optional"`        // e.g., "temp_below:0,rain_above:5,wind_above:10" (temp in C, rain mm/hr, wind km/hr if metric)
 
 	// Demand API Configuration
-	DemandAPIEndpoint   string `keda:"name=demandApiEndpoint,order=triggerMetadata,optional"`
-	DemandAPIKeyFromEnv string `keda:"name=demandApiKeyFromEnv,order=triggerMetadata,optional"` // Name of the environment variable
-	DemandJSONPath      string `keda:"name=demandJsonPath,order=triggerMetadata,optional"`      // JSONPath to extract the demand value, e.g., "{.current_demand}"
+	DemandAPIEndpoint string `keda:"name=demandApiEndpoint,order=triggerMetadata,optional"`
+	DemandAPIKey      string `keda:"name=demandApiKey,order=resolvedEnv"`
+	DemandJSONPath    string `keda:"name=demandJsonPath,order=triggerMetadata,optional"` // JSONPath to extract the demand value, e.g., "{.current_demand}"
 
 	// Scaling Logic
 	TargetDemandPerReplica   int64   `keda:"name=targetDemandPerReplica,order=triggerMetadata,optional,default=100"`
@@ -84,10 +84,6 @@ func NewWeatherAwareDemandScaler(config *scalersconfig.ScalerConfig) (Scaler, er
 		return nil, fmt.Errorf("error validating weather aware demand scaler metadata: %w", err)
 	}
 	meta.triggerIndex = config.TriggerIndex
-	// Store the trigger metadata for simplified API key access in fetchJSONData (as per subtask instruction)
-	// In a real KEDA scaler, API keys are usually resolved from config.ResolvedEnv
-	// and stored in dedicated fields within the metadata struct or the scaler struct itself.
-	meta.triggerMetadata = config.TriggerMetadata
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
@@ -105,7 +101,7 @@ func NewWeatherAwareDemandScaler(config *scalersconfig.ScalerConfig) (Scaler, er
 }
 
 // Helper function to fetch and parse JSON from an HTTP endpoint
-func (s *weatherAwareDemandScaler) fetchJSONData(ctx context.Context, endpoint string, apiKeyFromEnv string, result interface{}) error {
+func (s *weatherAwareDemandScaler) fetchJSONData(ctx context.Context, endpoint string, actualAPIKey string, result interface{}) error {
 	if endpoint == "" {
 		return fmt.Errorf("endpoint is not configured")
 	}
@@ -116,18 +112,8 @@ func (s *weatherAwareDemandScaler) fetchJSONData(ctx context.Context, endpoint s
 		return fmt.Errorf("error creating request for %s: %w", endpoint, err)
 	}
 
-	if apiKeyFromEnv != "" {
-		apiKey, found := s.metadata.triggerMetadata[apiKeyFromEnv] // Simplified: Assumes API key is passed directly in triggerMetadata for now
-		if !found || apiKey == "" {
-			// In a real scenario, you'd resolve this from resolvedEnv passed in ScalerConfig
-			// For this subtask, we'll log and proceed if not found, or error out if strictly required.
-			// This part needs to align with how NewWeatherAwareDemandScaler makes env vars available.
-			// For now, let's assume it's directly available or resolved in metadata.
-			// If using resolvedEnv: apiKey = s.config.ResolvedEnv[s.metadata.APIKeyFromEnv]
-			s.logger.V(1).Info("API key env var not found or empty", "apiKeyName", apiKeyFromEnv, "endpoint", endpoint)
-		} else {
-			req.Header.Set("Authorization", "Bearer "+apiKey) // Or other auth mechanism
-		}
+	if actualAPIKey != "" {
+		req.Header.Set("Authorization", "Bearer "+actualAPIKey) // Or other auth mechanism
 	}
 
 	resp, err := s.httpClient.Do(req)
@@ -255,7 +241,7 @@ func (s *weatherAwareDemandScaler) GetMetricsAndActivity(ctx context.Context, me
 	var currentDemand float64
 	if s.metadata.DemandAPIEndpoint != "" {
 		var demandDataRaw interface{} // Use interface{} for raw JSON data
-		err := s.fetchJSONData(ctx, s.metadata.DemandAPIEndpoint, s.metadata.DemandAPIKeyFromEnv, &demandDataRaw)
+		err := s.fetchJSONData(ctx, s.metadata.DemandAPIEndpoint, s.metadata.DemandAPIKey, &demandDataRaw)
 		if err != nil {
 			s.logger.Error(err, "Failed to fetch demand data")
 			return nil, false, fmt.Errorf("error fetching demand data: %w", err)

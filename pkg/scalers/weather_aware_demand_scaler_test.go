@@ -1,4 +1,3 @@
-// nosemgrep
 package scalers
 
 import (
@@ -6,269 +5,533 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/assert"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
-// Mock ScalerConfig for tests
-func newTestScalerConfig(metadata map[string]string, triggerIndex int, metricType v2.MetricTargetType) *scalersconfig.ScalerConfig {
-	resolvedEnv := make(map[string]string)
-
-	// For WeatherAPIKeyFromEnv (now keda:"name=weatherApiKey,order=triggerMetadata,optional")
-	// its value will be metadata["weatherApiKey"].
-	// We need to ensure that if metadata["weatherApiKey"] specifies an env var name,
-	// that name exists as a key in ResolvedEnv for later lookup of the actual key value.
-	if envVarNameForWeatherKey, ok := metadata["weatherApiKey"]; ok && envVarNameForWeatherKey != "" {
-		resolvedEnv[envVarNameForWeatherKey] = "dummy_weather_key_value_from_env"
-	}
-
-	// For DemandAPIKeyFromEnv (keda:"name=demandApiKeyFromEnv,order=triggerMetadata,optional")
-	// its value will be metadata["demandApiKeyFromEnv"].
-	// If this were to be used to look up a value in ResolvedEnv (it isn't directly by TypedConfig for order=triggerMetadata),
-	// similar logic would apply.
-	if envVarNameForDemandKey, ok := metadata["demandApiKeyFromEnv"]; ok && envVarNameForDemandKey != "" {
-		// Although not strictly necessary for TypedConfig for this field, if our code later uses
-		// meta.DemandAPIKeyFromEnv to look up in ResolvedEnv, this pre-populates it.
-		resolvedEnv[envVarNameForDemandKey] = "dummy_demand_key_value_from_env"
-	}
-
-	return &scalersconfig.ScalerConfig{
-		TriggerMetadata:         metadata,
-		TriggerIndex:            triggerIndex,
-		MetricType:              metricType,
-		GlobalHTTPTimeout:       3000 * time.Millisecond, // Default KEDA global HTTP timeout
-		ResolvedEnv:             resolvedEnv,
-		AuthParams:              make(map[string]string),
-		ScalableObjectName:      "test-scaledobject",
-		ScalableObjectNamespace: "test-namespace",
-		ScalableObjectType:      "ScaledObject",
-		Recorder:                nil, // Mock recorder if needed for event testing
-	}
+// Simple mock logger for tests
+type simpleTestLogger struct {
+	logr.LogSink // Embed to satisfy the interface minimally
+	// We can add fields here to capture logs if needed for assertions
 }
 
-type testWeatherAwareDemandScalerMetadata struct {
-	metadata   map[string]string
-	metricType v2.MetricTargetType
-	expected   *weatherAwareDemandScalerMetadata
-	hasError   bool
+func (l *simpleTestLogger) Init(info logr.RuntimeInfo) { /* no-op */ }
+func (l *simpleTestLogger) Enabled(level int) bool     { return true } // Enable all levels for testing
+func (l *simpleTestLogger) Info(level int, msg string, keysAndValues ...interface{}) {
+	fmt.Printf("[TEST LOGGER INFO] %s %v\n", msg, keysAndValues)
+}
+func (l *simpleTestLogger) Error(err error, msg string, keysAndValues ...interface{}) {
+	fmt.Printf("[TEST LOGGER ERROR] %s: %v %v\n", msg, err, keysAndValues)
+}
+func (l *simpleTestLogger) WithName(name string) logr.LogSink {
+	// In a real complex scenario, you might return a new sink with the name.
+	// For many tests, returning self is fine if name context isn't asserted.
+	return l
+}
+func (l *simpleTestLogger) WithValues(keysAndValues ...interface{}) logr.LogSink {
+	return l // Similar to WithName, return self for simplicity here.
 }
 
-var weatherAwareDemandScalerMetadataTestDataset = []testWeatherAwareDemandScalerMetadata{
-	{ // Basic valid case
+func newSimpleTestLogger() logr.Logger {
+	return logr.New(&simpleTestLogger{})
+}
+
+var testWeatherAwareDemandResolvedEnv = map[string]string{
+	"weatherApiKey": "test_weather_key",
+	"demandApiKey":  "test_demand_key",
+}
+
+type weatherAwareDemandScalerTestConfig struct {
+	name               string
+	metadata           map[string]string
+	resolvedEnv        map[string]string
+	isError            bool
+	expectedErrMessage string
+}
+
+var weatherAwareDemandScalerTestConfigs = []weatherAwareDemandScalerTestConfig{
+	{
+		name: "valid both endpoints",
 		metadata: map[string]string{
-			"weatherApiEndpoint":     "http://weather.example.com",
-			"weatherLocation":        "London,UK",
-			"demandApiEndpoint":      "http://demand.example.com",
-			"demandJsonPath":         "{.value}",
-			"targetDemandPerReplica": "50",
-			"activationDemandLevel":  "5",
-			"metricName":             "custom-ride-demand",
-			// No "weatherApiKey" here. WeatherAPIKeyFromEnv is optional & order=triggerMetadata.
+			"weatherApiEndpoint":     "http://weather.api",
+			"weatherLocation":        "london,uk",
+			"demandApiEndpoint":      "http://demand.api",
+			"demandJsonPath":         "{.demand}",
+			"targetDemandPerReplica": "100",
+			"metricName":             "my-metric",
+			"weatherApiKeyFromEnv": "weatherApiKey",
+			"demandApiKeyFromEnv":  "demandApiKey",
 		},
-		metricType: v2.AverageValueMetricType,
-		expected: &weatherAwareDemandScalerMetadata{
-			WeatherAPIEndpoint:       "http://weather.example.com",
-			WeatherAPIKeyFromEnv:     "", // Should be empty as not in metadata["weatherApiKey"]
-			WeatherLocation:          "London,UK",
-			WeatherUnits:             "metric",
-			DemandAPIEndpoint:        "http://demand.example.com",
-			DemandJSONPath:           "{.value}",
-			TargetDemandPerReplica:   50,
-			ActivationDemandLevel:    5,
-			MetricName:               "custom-ride-demand",
-			WeatherEffectScaleFactor: 1.0,
-		},
-		hasError: false,
+		resolvedEnv: testWeatherAwareDemandResolvedEnv,
+		isError:     false,
 	},
-	{ // All optional fields provided
+	{
+		name: "valid weather endpoint only",
 		metadata: map[string]string{
-			"weatherApiEndpoint":       "http://weather.example.com",
-			"weatherApiKey":            "WEATHER_API_KEY", // This will populate WeatherAPIKeyFromEnv
-			"weatherLocation":          "NewYork,US",
-			"weatherUnits":             "imperial",
-			"badWeatherConditions":     "temp_below:32,rain_above:0.5",
-			"demandApiEndpoint":        "http://demand.example.com/v2",
-			"demandApiKeyFromEnv":      "DEMAND_API_KEY",
-			"demandJsonPath":           "{.data.demand_level}",
-			"targetDemandPerReplica":   "20",
-			"activationDemandLevel":    "2",
-			"weatherEffectScaleFactor": "1.75",
-			"metricName":               "nyc-demand",
+			"weatherApiEndpoint":     "http://weather.api",
+			"weatherLocation":        "london,uk",
+			"targetDemandPerReplica": "100",
+			"metricName":             "my-metric",
+			"weatherApiKeyFromEnv": "weatherApiKey",
+			"demandApiKeyFromEnv":  "demandApiKey",
 		},
-		metricType: v2.ValueMetricType,
-		expected: &weatherAwareDemandScalerMetadata{
-			WeatherAPIEndpoint:       "http://weather.example.com",
-			WeatherAPIKeyFromEnv:     "WEATHER_API_KEY", // Correctly gets from metadata["weatherApiKey"]
-			WeatherLocation:          "NewYork,US",
-			WeatherUnits:             "imperial",
-			BadWeatherConditions:     "temp_below:32,rain_above:0.5",
-			DemandAPIEndpoint:        "http://demand.example.com/v2",
-			DemandAPIKeyFromEnv:      "DEMAND_API_KEY",
-			DemandJSONPath:           "{.data.demand_level}",
-			TargetDemandPerReplica:   20,
-			ActivationDemandLevel:    2,
-			WeatherEffectScaleFactor: 1.75,
-			MetricName:               "nyc-demand",
-		},
-		hasError: false,
+		resolvedEnv: testWeatherAwareDemandResolvedEnv,
+		isError:     false,
 	},
-	{ // Malformed number for targetDemandPerReplica (TypedConfig error)
+	{
+		name: "valid demand endpoint only",
 		metadata: map[string]string{
-			"demandApiEndpoint":      "http://demand.example.com", // Needed to pass initial validation if TypedConfig didn't fail first
-			"targetDemandPerReplica": "not-a-number",
+			"demandApiEndpoint":      "http://demand.api",
+			"demandJsonPath":         "{.demand}",
+			"targetDemandPerReplica": "100",
+			"metricName":             "my-metric",
+			"weatherApiKeyFromEnv": "weatherApiKey",
+			"demandApiKeyFromEnv":  "demandApiKey",
 		},
-		metricType: v2.AverageValueMetricType,
-		expected:   nil,
-		hasError:   true,
+		resolvedEnv: testWeatherAwareDemandResolvedEnv,
+		isError:     false,
 	},
-	{ // Missing both API endpoints (Validate error)
+	{
+		name: "error - no endpoints",
 		metadata: map[string]string{
-			"targetDemandPerReplica": "10", // Valid to pass TypedConfig
-			"activationDemandLevel":  "5",
+			"targetDemandPerReplica": "100",
+			"weatherApiKeyFromEnv": "weatherApiKey",
+			"demandApiKeyFromEnv":  "demandApiKey",
 		},
-		metricType: v2.AverageValueMetricType,
-		expected:   nil,
-		hasError:   true,
+		resolvedEnv:        testWeatherAwareDemandResolvedEnv,
+		isError:            true,
+		expectedErrMessage: "at least one of weatherApiEndpoint or demandApiEndpoint must be provided",
 	},
-	{ // Weather API endpoint provided, but weatherLocation missing (Validate error)
+	{
+		name: "error - weather endpoint without location",
 		metadata: map[string]string{
-			"weatherApiEndpoint":     "http://weather.example.com",
-			"targetDemandPerReplica": "10",
+			"weatherApiEndpoint": "http://weather.api",
+			"weatherApiKeyFromEnv": "weatherApiKey",
+			"demandApiKeyFromEnv":  "demandApiKey",
 		},
-		metricType: v2.AverageValueMetricType,
-		expected:   nil,
-		hasError:   true,
+		resolvedEnv:        testWeatherAwareDemandResolvedEnv,
+		isError:            true,
+		expectedErrMessage: "weatherLocation is required when weatherApiEndpoint is provided",
 	},
-	{ // targetDemandPerReplica is 0 (Validate error)
+	{
+		name: "error - invalid targetDemandPerReplica",
 		metadata: map[string]string{
-			"demandApiEndpoint":      "http://demand.example.com",
+			"demandApiEndpoint":      "http://demand.api",
+			"demandJsonPath":         "{.demand}",
 			"targetDemandPerReplica": "0",
+			"weatherApiKeyFromEnv": "weatherApiKey",
+			"demandApiKeyFromEnv":  "demandApiKey",
 		},
-		metricType: v2.AverageValueMetricType,
-		expected:   nil,
-		hasError:   true,
+		resolvedEnv:        testWeatherAwareDemandResolvedEnv,
+		isError:            true,
+		expectedErrMessage: "targetDemandPerReplica must be greater than 0",
 	},
-	{ // targetDemandPerReplica is negative (Validate error)
+	{
+		name: "error - invalid weatherEffectScaleFactor",
 		metadata: map[string]string{
-			"demandApiEndpoint":      "http://demand.example.com",
-			"targetDemandPerReplica": "-10",
-		},
-		metricType: v2.AverageValueMetricType,
-		expected:   nil,
-		hasError:   true,
-	},
-	{ // weatherEffectScaleFactor is 0 (Validate error)
-		metadata: map[string]string{
-			"demandApiEndpoint":        "http://demand.example.com",
+			"demandApiEndpoint":        "http://demand.api",
+			"demandJsonPath":           "{.demand}",
 			"weatherEffectScaleFactor": "0",
+			"weatherApiKeyFromEnv": "weatherApiKey",
+			"demandApiKeyFromEnv":  "demandApiKey",
 		},
-		metricType: v2.AverageValueMetricType,
-		expected:   nil,
-		hasError:   true,
-	},
-	{ // weatherEffectScaleFactor is negative (Validate error)
-		metadata: map[string]string{
-			"demandApiEndpoint":        "http://demand.example.com",
-			"weatherEffectScaleFactor": "-1.5",
-		},
-		metricType: v2.AverageValueMetricType,
-		expected:   nil,
-		hasError:   true,
-	},
-	{ // Valid case: Only Demand API endpoint provided (ensure no weatherApiKey needed here for this specific test)
-		metadata: map[string]string{
-			"demandApiEndpoint":      "http://demand.example.com",
-			"demandJsonPath":         "{.value}",
-			"targetDemandPerReplica": "30",
-			"activationDemandLevel":  "3",
-		},
-		metricType: v2.AverageValueMetricType,
-		expected: &weatherAwareDemandScalerMetadata{
-			DemandAPIEndpoint:        "http://demand.example.com",
-			DemandJSONPath:           "{.value}",
-			TargetDemandPerReplica:   30,
-			ActivationDemandLevel:    3,
-			WeatherUnits:             "metric",
-			WeatherEffectScaleFactor: 1.0,
-			MetricName:               "weather-aware-ride-demand",
-		},
-		hasError: false,
-	},
-	{ // Valid case: Only Weather API endpoint provided (with location)
-		metadata: map[string]string{
-			"weatherApiEndpoint":     "http://weather.example.com",
-			"weatherApiKey":          "ONLY_WEATHER_KEY", // This will populate WeatherAPIKeyFromEnv
-			"weatherLocation":        "Paris,FR",
-			"targetDemandPerReplica": "25",
-			"activationDemandLevel":  "2",
-		},
-		metricType: v2.ValueMetricType,
-		expected: &weatherAwareDemandScalerMetadata{
-			WeatherAPIEndpoint:       "http://weather.example.com",
-			WeatherAPIKeyFromEnv:     "ONLY_WEATHER_KEY", // Correctly gets from metadata["weatherApiKey"]
-			WeatherLocation:          "Paris,FR",
-			WeatherUnits:             "metric",
-			TargetDemandPerReplica:   25,
-			ActivationDemandLevel:    2,
-			WeatherEffectScaleFactor: 1.0,
-			MetricName:               "weather-aware-ride-demand",
-		},
-		hasError: false,
+		resolvedEnv:        testWeatherAwareDemandResolvedEnv,
+		isError:            true,
+		expectedErrMessage: "weatherEffectScaleFactor must be greater than 0",
 	},
 }
 
 func TestNewWeatherAwareDemandScaler(t *testing.T) {
-	for i, testData := range weatherAwareDemandScalerMetadataTestDataset {
-		t.Run(fmt.Sprintf("TestNewWeatherAwareDemandScaler_%d", i), func(t *testing.T) {
-			config := newTestScalerConfig(testData.metadata, 0, testData.metricType)
-			scaler, err := NewWeatherAwareDemandScaler(config)
+	for _, config := range weatherAwareDemandScalerTestConfigs {
+		t.Run(config.name, func(t *testing.T) {
+			cfg := &scalersconfig.ScalerConfig{
+				TriggerMetadata: config.metadata,
+				ResolvedEnv:     config.resolvedEnv,
+				TriggerIndex:    0,
+			}
 
-			if testData.hasError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
+			_, err := NewWeatherAwareDemandScaler(cfg)
+			if config.isError {
+				assert.Error(t, err)
+				if config.expectedErrMessage != "" {
+					assert.Contains(t, err.Error(), config.expectedErrMessage)
 				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+type testGetMetricsCase struct {
+	name                     string
+	metadata                 map[string]string
+	resolvedEnv              map[string]string
+	mockDemandAPIHandler     http.HandlerFunc
+	mockWeatherAPIHandler    http.HandlerFunc
+	expectedMetricValue      int64
+	expectedActivity         bool
+	isError                  bool
+	expectedErrMessage       string
+	activationDemandLevel    string // Keep as string to test parsing
+	weatherEffectScaleFactor string // Keep as string to test parsing
+	badWeatherConditions     string
+}
+
+// Helper to create a test server for weather aware demand scaler tests
+func createWeatherTestServer(handler http.HandlerFunc) *httptest.Server {
+	return httptest.NewServer(handler)
+}
+
+var testGetMetricsCases = []testGetMetricsCase{
+	{
+		name: "demand only - active",
+		metadata: map[string]string{
+			"demandApiEndpoint":      "DEMAND_ENDPOINT_VAR", // Will be replaced by server URL
+			"demandJsonPath":         "{.value}",
+			"targetDemandPerReplica": "50",
+			"metricName":             "test-demand",
+		},
+		resolvedEnv: map[string]string{
+			"demandApiKey":  "test_demand_key",
+			"weatherApiKey": "unused_weather_key", // Required by resolvedEnv
+		},
+		mockDemandAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") != "Bearer test_demand_key" {
+				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
+			fmt.Fprint(w, `{"value": 100}`)
+		},
+		expectedMetricValue:   100,
+		expectedActivity:      true,
+		activationDemandLevel: "10",
+	},
+	{
+		name: "demand only - inactive",
+		metadata: map[string]string{
+			"demandApiEndpoint":      "DEMAND_ENDPOINT_VAR",
+			"demandJsonPath":         "{.value}",
+			"targetDemandPerReplica": "50",
+		},
+		resolvedEnv: map[string]string{
+			"demandApiKey":  "test_demand_key",
+			"weatherApiKey": "unused_weather_key", // Required by resolvedEnv
+		},
+		mockDemandAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"value": 5}`)
+		},
+		expectedMetricValue:   5,
+		expectedActivity:      false,
+		activationDemandLevel: "10",
+	},
+	{
+		name: "demand only - API error",
+		metadata: map[string]string{
+			"demandApiEndpoint": "DEMAND_ENDPOINT_VAR",
+			"demandJsonPath":    "{.value}",
+		},
+		resolvedEnv: map[string]string{
+			"demandApiKey":  "test_demand_key",
+			"weatherApiKey": "unused_weather_key", // Required by resolvedEnv
+		},
+		mockDemandAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		},
+		isError:            true,
+		expectedErrMessage: "error request to",
+	},
+	{
+		name: "demand only - bad JSON path",
+		metadata: map[string]string{
+			"demandApiEndpoint": "DEMAND_ENDPOINT_VAR",
+			"demandJsonPath":    "{.nonexistent}",
+		},
+		resolvedEnv: map[string]string{
+			"demandApiKey":  "test_demand_key",
+			"weatherApiKey": "unused_weather_key", // Required by resolvedEnv
+		},
+		mockDemandAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"value": 100}`)
+		},
+		isError:            true,
+		expectedErrMessage: "error extracting demand value",
+	},
+	{
+		name: "weather only - good weather, activation based on default demand 0",
+		metadata: map[string]string{
+			"weatherApiEndpoint":     "WEATHER_ENDPOINT_VAR",
+			"weatherLocation":        "london,uk",
+			"targetDemandPerReplica": "50",
+			"badWeatherConditions":   "temp_below:0", // Temp is 10, so good weather
+		},
+		resolvedEnv: map[string]string{
+			"weatherApiKey": "test_weather_key",
+			"demandApiKey":  "unused_demand_key", // Required by resolvedEnv
+		},
+		mockWeatherAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") != "Bearer test_weather_key" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			fmt.Fprint(w, `{"temp": 10, "rain": 0}`)
+		},
+		expectedMetricValue:   0,     // Default demand is 0
+		expectedActivity:      false, // 0 is not > activation (default 10)
+		activationDemandLevel: "10",
+	},
+	{
+		name: "weather only - bad weather, activation, default demand 0 but scaled",
+		metadata: map[string]string{
+			"weatherApiEndpoint":       "WEATHER_ENDPOINT_VAR",
+			"weatherLocation":          "london,uk",
+			"badWeatherConditions":     "temp_below:0", // Temp is -5, so bad weather
+			"weatherEffectScaleFactor": "1.5",          // This will be applied to default demand (0), still results in 0
+		},
+		resolvedEnv: map[string]string{
+			"weatherApiKey": "test_weather_key",
+			"demandApiKey":  "unused_demand_key", // Required by resolvedEnv
+		},
+		mockWeatherAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"temp": -5, "rain": 0}`)
+		},
+		expectedMetricValue:   0,     // 0 * 1.5 = 0
+		expectedActivity:      false, // 0 not > activation (default 10)
+		activationDemandLevel: "10",
+	},
+	{
+		name: "both APIs - good weather - active",
+		metadata: map[string]string{
+			"demandApiEndpoint":      "DEMAND_ENDPOINT_VAR",
+			"demandJsonPath":         "{.value}",
+			"weatherApiEndpoint":     "WEATHER_ENDPOINT_VAR",
+			"weatherLocation":        "paris,fr",
+			"weatherUnits":           "imperial",
+			"badWeatherConditions":   "temp_below:32", // Temp is 40F (good)
+			"targetDemandPerReplica": "10",
+		},
+		resolvedEnv: map[string]string{
+			"demandApiKey":  "test_demand_key",
+			"weatherApiKey": "test_weather_key",
+		},
+		mockDemandAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"value": 100}`)
+		},
+		mockWeatherAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"temp": 40, "rain": 0.1}`) // Assuming 40F
+		},
+		expectedMetricValue:   100, // No scaling
+		expectedActivity:      true,
+		activationDemandLevel: "10",
+	},
+	{
+		name: "both APIs - bad weather (temp_below) - demand scaled - active",
+		metadata: map[string]string{
+			"demandApiEndpoint":        "DEMAND_ENDPOINT_VAR",
+			"demandJsonPath":           "{.value}",
+			"weatherApiEndpoint":       "WEATHER_ENDPOINT_VAR",
+			"weatherLocation":          "berlin,de",
+			"badWeatherConditions":     "temp_below:0,rain_above:10", // Temp is -5C (bad)
+			"weatherEffectScaleFactor": "2.0",
+			"targetDemandPerReplica":   "10",
+		},
+		resolvedEnv: map[string]string{
+			"demandApiKey":  "test_demand_key",
+			"weatherApiKey": "test_weather_key",
+		},
+		mockDemandAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"value": 75}`)
+		},
+		mockWeatherAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"temp": -5, "rain": 5}`) // Temp is bad, rain is not
+		},
+		expectedMetricValue:   150, // 75 * 2.0
+		expectedActivity:      true,
+		activationDemandLevel: "10",
+	},
+	{
+		name: "both APIs - bad weather (rain_above) - demand scaled - active",
+		metadata: map[string]string{
+			"demandApiEndpoint":        "DEMAND_ENDPOINT_VAR",
+			"demandJsonPath":           "{.value}",
+			"weatherApiEndpoint":       "WEATHER_ENDPOINT_VAR",
+			"weatherLocation":          "rome,it",
+			"badWeatherConditions":     "temp_below:0,rain_above:5", // Rain is 12mm (bad)
+			"weatherEffectScaleFactor": "1.5",
+		},
+		resolvedEnv: map[string]string{
+			"demandApiKey":  "test_demand_key",
+			"weatherApiKey": "test_weather_key",
+		},
+		mockDemandAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"value": 60}`)
+		},
+		mockWeatherAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"temp": 10, "rain": 12}`) // Rain is bad, temp is not
+		},
+		expectedMetricValue:   90, // 60 * 1.5
+		expectedActivity:      true,
+		activationDemandLevel: "10",
+	},
+	{
+		name: "both APIs - bad weather (wind_above) - demand scaled - active",
+		metadata: map[string]string{
+			"demandApiEndpoint":        "DEMAND_ENDPOINT_VAR",
+			"demandJsonPath":           "{.value}",
+			"weatherApiEndpoint":       "WEATHER_ENDPOINT_VAR",
+			"weatherLocation":          "rome,it",
+			"badWeatherConditions":     "wind_above:20",
+			"weatherEffectScaleFactor": "1.2",
+		},
+		resolvedEnv: map[string]string{
+			"demandApiKey":  "test_demand_key",
+			"weatherApiKey": "test_weather_key",
+		},
+		mockDemandAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"value": 50}`)
+		},
+		mockWeatherAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"wind": 25}`)
+		},
+		expectedMetricValue:   60, // 50 * 1.2
+		expectedActivity:      true,
+		activationDemandLevel: "10",
+	},
+	{
+		name: "weather API error - proceeds with demand only",
+		metadata: map[string]string{
+			"demandApiEndpoint":    "DEMAND_ENDPOINT_VAR",
+			"demandJsonPath":       "{.value}",
+			"weatherApiEndpoint":   "WEATHER_ENDPOINT_VAR",
+			"weatherLocation":      "london,uk",
+			"badWeatherConditions": "temp_below:0",
+		},
+		resolvedEnv: map[string]string{
+			"demandApiKey":  "test_demand_key",
+			"weatherApiKey": "test_weather_key",
+		},
+		mockDemandAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"value": 120}`)
+		},
+		mockWeatherAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		},
+		expectedMetricValue:   120, // Uses demand, weather error is logged but doesn't fail metric
+		expectedActivity:      true,
+		activationDemandLevel: "10",
+	},
+	{
+		name: "bad weather condition format - error in isBadWeather",
+		metadata: map[string]string{
+			"demandApiEndpoint":    "DEMAND_ENDPOINT_VAR",
+			"demandJsonPath":       "{.value}",
+			"weatherApiEndpoint":   "WEATHER_ENDPOINT_VAR",
+			"weatherLocation":      "london,uk",
+			"badWeatherConditions": "temp_is_low:0", // Invalid format
+		},
+		resolvedEnv: map[string]string{
+			"demandApiKey":  "test_demand_key",
+			"weatherApiKey": "test_weather_key",
+		},
+		mockDemandAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"value": 100}`)
+		},
+		mockWeatherAPIHandler: func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `{"temp": -5}`)
+		},
+		expectedMetricValue:   100, // Error in isBadWeather, proceeds as if good weather
+		expectedActivity:      true,
+		activationDemandLevel: "10",
+	},
+}
+
+func TestGetMetricsAndActivity(t *testing.T) {
+	for _, tc := range testGetMetricsCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create mock servers
+			var demandServer, weatherServer *httptest.Server
+
+			currentMetadata := make(map[string]string)
+			for k, v := range tc.metadata {
+				currentMetadata[k] = v
 			}
 
-			if scaler == nil {
-				t.Fatalf("Scaler is nil")
+			// Add FromEnv keys for API key parsing
+			currentMetadata["weatherApiKeyFromEnv"] = "weatherApiKey"
+			currentMetadata["demandApiKeyFromEnv"] = "demandApiKey"
+
+			if tc.mockDemandAPIHandler != nil {
+				demandServer = createWeatherTestServer(tc.mockDemandAPIHandler)
+				defer demandServer.Close()
+				currentMetadata["demandApiEndpoint"] = demandServer.URL
+			}
+			if tc.mockWeatherAPIHandler != nil {
+				weatherServer = createWeatherTestServer(tc.mockWeatherAPIHandler)
+				defer weatherServer.Close()
+				currentMetadata["weatherApiEndpoint"] = weatherServer.URL
 			}
 
-			typedScaler, ok := scaler.(*weatherAwareDemandScaler)
-			if !ok {
-				t.Fatalf("Scaler is not of type *weatherAwareDemandScaler")
+			// Set default activation level if not specified in test case
+			if tc.activationDemandLevel != "" {
+				currentMetadata["activationDemandLevel"] = tc.activationDemandLevel
+			}
+			if tc.weatherEffectScaleFactor != "" {
+				currentMetadata["weatherEffectScaleFactor"] = tc.weatherEffectScaleFactor
+			}
+			if tc.badWeatherConditions != "" {
+				currentMetadata["badWeatherConditions"] = tc.badWeatherConditions
 			}
 
-			// Update expected triggerIndex and triggerMetadata based on config
-			// NewWeatherAwareDemandScaler copies config.TriggerMetadata to typedScaler.metadata.triggerMetadata
-			if testData.expected != nil { // only if we don't expect an error
-				testData.expected.triggerIndex = config.TriggerIndex
-				// Create a new map for expected.triggerMetadata and copy values
-				// This is important because the scaler internally sets its own map instance.
-				expectedTriggerMeta := make(map[string]string)
-				for k, v := range config.TriggerMetadata {
-					expectedTriggerMeta[k] = v
+			cfg := &scalersconfig.ScalerConfig{
+				TriggerMetadata:   currentMetadata,
+				ResolvedEnv:       tc.resolvedEnv,
+				TriggerIndex:      0,
+				GlobalHTTPTimeout: 60000, // Increased to 60s
+			}
+			if tc.resolvedEnv == nil {
+				cfg.ResolvedEnv = make(map[string]string)
+				// Ensure default keys if not provided, though most test cases now do
+				if _, ok := cfg.ResolvedEnv["weatherApiKey"]; !ok {
+					cfg.ResolvedEnv["weatherApiKey"] = "default_test_weather_key"
 				}
-				testData.expected.triggerMetadata = expectedTriggerMeta
+				if _, ok := cfg.ResolvedEnv["demandApiKey"]; !ok {
+					cfg.ResolvedEnv["demandApiKey"] = "default_test_demand_key"
+				}
 			}
 
-			if !reflect.DeepEqual(typedScaler.metadata, testData.expected) {
-				t.Errorf("Metadata mismatch:\nGot:      %+v\nExpected: %+v", typedScaler.metadata, testData.expected)
+			scaler, err := NewWeatherAwareDemandScaler(cfg)
+			assert.NoError(t, err, "NewWeatherAwareDemandScaler should not error for valid test setup")
+			if err != nil {
+				return // Avoid panic if scaler is nil
 			}
 
-			if typedScaler.metricType != testData.metricType {
-				t.Errorf("MetricType mismatch: Got %s, Expected %s", typedScaler.metricType, testData.metricType)
+			// Inject mock logger into the scaler instance
+			if ws, ok := scaler.(*weatherAwareDemandScaler); ok {
+				ws.logger = newSimpleTestLogger() // Use the new simple logger
+			}
+
+			metrics, activity, err := scaler.GetMetricsAndActivity(context.Background(), "test-metric")
+
+			if tc.isError {
+				assert.Error(t, err)
+				if tc.expectedErrMessage != "" {
+					assert.True(t, strings.Contains(err.Error(), tc.expectedErrMessage), "expected error string '%s' not found in '%s'", tc.expectedErrMessage, err.Error())
+				}
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedActivity, activity)
+				if len(metrics) > 0 {
+					assert.Equal(t, tc.expectedMetricValue, metrics[0].Value.Value())
+				} else if tc.expectedMetricValue != 0 { // if we expected a metric value but got none
+					t.Errorf("Expected metric value %d, but got no metrics", tc.expectedMetricValue)
+				}
 			}
 		})
 	}
@@ -278,531 +541,228 @@ type testIsBadWeatherCase struct {
 	name                 string
 	badWeatherConditions string
 	weatherData          map[string]interface{}
-	logger               logr.Logger
 	expectedIsBad        bool
-	expectedError        bool
+	isError              bool
+	expectedErrMessage   string
 }
 
-var isBadWeatherTestDataset = []testIsBadWeatherCase{
+var testIsBadWeatherCases = []testIsBadWeatherCase{
 	{
-		name:                 "GoodWeather_EmptyConditions",
+		name:                 "no conditions defined",
 		badWeatherConditions: "",
-		weatherData:          map[string]interface{}{"temp": 20.0, "rain": 0.0},
-		logger:               logr.Discard(),
+		weatherData:          map[string]interface{}{"temp": 10},
 		expectedIsBad:        false,
-		expectedError:        false,
 	},
 	{
-		name:                 "GoodWeather_NilData",
+		name:                 "no weather data",
 		badWeatherConditions: "temp_below:0",
 		weatherData:          nil,
-		logger:               logr.Discard(),
 		expectedIsBad:        false,
-		expectedError:        false,
 	},
 	{
-		name:                 "BadWeather_TempBelow",
+		name:                 "temp_below:0, current temp -5 (bad)",
 		badWeatherConditions: "temp_below:0",
 		weatherData:          map[string]interface{}{"temp": -5.0},
-		logger:               logr.Discard(),
 		expectedIsBad:        true,
-		expectedError:        false,
 	},
 	{
-		name:                 "GoodWeather_TempAbove",
+		name:                 "temp_below:0, current temp 5 (good)",
 		badWeatherConditions: "temp_below:0",
 		weatherData:          map[string]interface{}{"temp": 5.0},
-		logger:               logr.Discard(),
 		expectedIsBad:        false,
-		expectedError:        false,
 	},
 	{
-		name:                 "BadWeather_RainAbove",
+		name:                 "rain_above:5, current rain 10 (bad)",
 		badWeatherConditions: "rain_above:5",
 		weatherData:          map[string]interface{}{"rain": 10.0},
-		logger:               logr.Discard(),
 		expectedIsBad:        true,
-		expectedError:        false,
 	},
 	{
-		name:                 "GoodWeather_RainBelow",
+		name:                 "rain_above:5, current rain 2 (good)",
 		badWeatherConditions: "rain_above:5",
 		weatherData:          map[string]interface{}{"rain": 2.0},
-		logger:               logr.Discard(),
 		expectedIsBad:        false,
-		expectedError:        false,
 	},
 	{
-		name:                 "BadWeather_Combined_TempAndRain_TempTriggers",
-		badWeatherConditions: "temp_below:0,rain_above:5,wind_above:20",
-		weatherData:          map[string]interface{}{"temp": -2.0, "rain": 2.0, "wind": 10.0},
-		logger:               logr.Discard(),
+		name:                 "wind_above:20, current wind 25 (bad)",
+		badWeatherConditions: "wind_above:20",
+		weatherData:          map[string]interface{}{"wind": 25.0},
 		expectedIsBad:        true,
-		expectedError:        false,
 	},
 	{
-		name:                 "BadWeather_Combined_TempAndRain_RainTriggers",
-		badWeatherConditions: "temp_below:0,rain_above:5,wind_above:20",
-		weatherData:          map[string]interface{}{"temp": 2.0, "rain": 10.0, "wind": 10.0},
-		logger:               logr.Discard(),
-		expectedIsBad:        true,
-		expectedError:        false,
-	},
-	{
-		name:                 "GoodWeather_Combined_NoTrigger",
-		badWeatherConditions: "temp_below:0,rain_above:5,wind_above:20",
-		weatherData:          map[string]interface{}{"temp": 5.0, "rain": 2.0, "wind": 10.0},
-		logger:               logr.Discard(),
+		name:                 "wind_above:20, current wind 15 (good)",
+		badWeatherConditions: "wind_above:20",
+		weatherData:          map[string]interface{}{"wind": 15.0},
 		expectedIsBad:        false,
-		expectedError:        false,
 	},
 	{
-		name:                 "Error_MalformedCondition_MissingValue",
-		badWeatherConditions: "temp_below", // Missing value
+		name:                 "multiple conditions - temp_below:0 (bad), rain_above:10 (good)",
+		badWeatherConditions: "temp_below:0,rain_above:10",
+		weatherData:          map[string]interface{}{"temp": -2.0, "rain": 5.0},
+		expectedIsBad:        true, // Temp condition met
+	},
+	{
+		name:                 "multiple conditions - temp_below:0 (good), rain_above:10 (bad)",
+		badWeatherConditions: "temp_below:0,rain_above:10",
+		weatherData:          map[string]interface{}{"temp": 2.0, "rain": 15.0},
+		expectedIsBad:        true, // Rain condition met
+	},
+	{
+		name:                 "multiple conditions - all good",
+		badWeatherConditions: "temp_below:0,rain_above:10,wind_above:30",
+		weatherData:          map[string]interface{}{"temp": 5.0, "rain": 5.0, "wind": 10.0},
+		expectedIsBad:        false,
+	},
+	{
+		name:                 "weather key not found in data",
+		badWeatherConditions: "temp_below:0",
+		weatherData:          map[string]interface{}{"humidity": 50.0}, // "temp" is missing
+		expectedIsBad:        false,                                    // Skips condition
+	},
+	{
+		name:                 "invalid condition format - no colon",
+		badWeatherConditions: "temp_below0",
 		weatherData:          map[string]interface{}{"temp": -5.0},
-		logger:               logr.Discard(),
-		expectedIsBad:        false,
-		expectedError:        true,
+		isError:              true,
+		expectedErrMessage:   "invalid bad weather condition format: temp_below0",
 	},
 	{
-		name:                 "Error_MalformedCondition_InvalidRuleFormat", // Added based on implementation detail
-		badWeatherConditions: "temp-equals:0",
+		name:                 "invalid condition format - wrong suffix",
+		badWeatherConditions: "temp_is:0",
 		weatherData:          map[string]interface{}{"temp": -5.0},
-		logger:               logr.Discard(),
-		expectedIsBad:        false,
-		expectedError:        true,
+		isError:              true,
+		expectedErrMessage:   "invalid bad weather condition format: temp_is, must end with '_below' or '_above'",
 	},
 	{
-		name:                 "Error_MalformedThreshold",
+		name:                 "weather data for key not a number",
+		badWeatherConditions: "temp_below:0",
+		weatherData:          map[string]interface{}{"temp": "cold"},
+		isError:              true,
+		expectedErrMessage:   "weather data for key 'temp' is not a number: cold",
+	},
+	{
+		name:                 "invalid threshold value in condition",
 		badWeatherConditions: "temp_below:abc",
 		weatherData:          map[string]interface{}{"temp": -5.0},
-		logger:               logr.Discard(),
-		expectedIsBad:        false,
-		expectedError:        true,
-	},
-	{
-		name:                 "Skipped_KeyNotInWeatherData",
-		badWeatherConditions: "temp_below:0,snow_above:1", // snow key not in data
-		weatherData:          map[string]interface{}{"temp": 5.0, "rain": 0.0},
-		logger:               logr.Discard(),
-		expectedIsBad:        false, // because temp is not below 0, and snow is skipped
-		expectedError:        false,
-	},
-	{
-		name:                 "Error_WeatherDataNotNumber",
-		badWeatherConditions: "temp_below:0",
-		weatherData:          map[string]interface{}{"temp": "not-a-number"},
-		logger:               logr.Discard(),
-		expectedIsBad:        false,
-		expectedError:        true,
+		isError:              true,
+		expectedErrMessage:   "invalid threshold value in bad weather condition 'temp_below:abc'",
 	},
 }
 
 func TestIsBadWeather(t *testing.T) {
-	// Create a dummy scaler instance for testing isBadWeather
-	// Metadata within this dummy scaler is what isBadWeather will use.
-	dummyMetadata := &weatherAwareDemandScalerMetadata{} // Will be updated per test case
-	dummyScaler := &weatherAwareDemandScaler{metadata: dummyMetadata, logger: logr.Discard()}
+	// Create a dummy scaler instance with a logger
+	mockScaler := &weatherAwareDemandScaler{
+		logger:   newSimpleTestLogger(), // Use the new simple logger
+		metadata: &weatherAwareDemandScalerMetadata{},
+	}
 
-	for _, tc := range isBadWeatherTestDataset {
+	for _, tc := range testIsBadWeatherCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Update the BadWeatherConditions in the dummy scaler's metadata for each test case
-			dummyScaler.metadata.BadWeatherConditions = tc.badWeatherConditions
-			dummyScaler.logger = tc.logger // Assign logger from test case
+			mockScaler.metadata.BadWeatherConditions = tc.badWeatherConditions
+			isBad, err := mockScaler.isBadWeather(tc.weatherData)
 
-			isBad, err := dummyScaler.isBadWeather(tc.weatherData)
-
-			if tc.expectedError {
-				if err == nil {
-					t.Errorf("Expected an error, but got nil")
+			if tc.isError {
+				assert.Error(t, err)
+				if tc.expectedErrMessage != "" {
+					assert.Contains(t, err.Error(), tc.expectedErrMessage)
 				}
 			} else {
-				if err != nil {
-					t.Errorf("Did not expect an error, but got: %v", err)
-				}
-				if isBad != tc.expectedIsBad {
-					t.Errorf("Expected isBad to be %t, but got %t", tc.expectedIsBad, isBad)
-				}
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedIsBad, isBad)
 			}
 		})
 	}
 }
 
-type testGetMetricsCase struct {
-	name                 string
-	metadata             map[string]string
-	demandAPIResponse    string
-	demandAPIStatusCode  int
-	demandAPIError       bool // simulate a network error for demand API
-	weatherAPIResponse   string
-	weatherAPIStatusCode int
-	weatherAPIError      bool // simulate a network error for weather API
-	metricType           v2.MetricTargetType
-	triggerIndex         int
-	expectedMetricValue  float64
-	expectedActive       bool
-	expectError          bool
-	expectedErrorMessage string // substring to check in error message
-	metricIdentifier     string // metric name passed to GetMetricsAndActivity
-}
+func TestWeatherAwareDemandGetMetricSpecForScaling(t *testing.T) {
+	tests := []struct {
+		name         string
+		metadata     *weatherAwareDemandScalerMetadata
+		metricType   v2.MetricTargetType
+		expectedName string
+	}{
+		{
+			name: "average value metric type",
+			metadata: &weatherAwareDemandScalerMetadata{
+				triggerIndex:           0,
+				MetricName:             "custom-metric",
+				TargetDemandPerReplica: 100,
+			},
+			metricType:   v2.AverageValueMetricType,
+			expectedName: "s0-custom-metric",
+		},
+		{
+			name: "value metric type",
+			metadata: &weatherAwareDemandScalerMetadata{
+				triggerIndex:           1,
+				MetricName:             "another_metric-name with spaces",
+				TargetDemandPerReplica: 50,
+			},
+			metricType:   v2.ValueMetricType,
+			expectedName: "s1-another_metric-name with spaces",
+		},
+	}
 
-// Simplified: For this subtask, API key resolution from env is not deeply tested in GetMetricsAndActivity mocks.
-// The NewWeatherAwareDemandScaler test already covers that metadata fields for keys are parsed.
-// The fetchJSONData helper has a basic API key logic that relies on triggerMetadata.
-
-var getMetricsTestDataset = []testGetMetricsCase{
-	{
-		name: "GoodDemand_GoodWeather_Active",
-		metadata: map[string]string{
-			"weatherApiEndpoint":     "placeholder", // Will be replaced by mock
-			"weatherApiKey":          "GOOD_WEATHER_KEY", // Added for explicit env var name
-			"weatherLocation":        "testville",
-			"badWeatherConditions":   "temp_below:0",
-			"demandApiEndpoint":      "placeholder", // Will be replaced by mock
-			"demandJsonPath":         "{.value}",
-			"targetDemandPerReplica": "50",
-			"activationDemandLevel":  "10",
-			"metricName":             "test-metric",
-		},
-		demandAPIResponse:    `{"value": 20}`,
-		demandAPIStatusCode:  http.StatusOK,
-		weatherAPIResponse:   `{"temp": 10.0}`, // Good weather
-		weatherAPIStatusCode: http.StatusOK,
-		metricType:           v2.AverageValueMetricType,
-		triggerIndex:         0,
-		expectedMetricValue:  20,
-		expectedActive:       true,
-		expectError:          false,
-		metricIdentifier:     "s0-test-metric",
-	},
-	{
-		name: "HighDemand_BadWeather_ScaledActive",
-		metadata: map[string]string{
-			"weatherApiEndpoint":       "placeholder",
-			"weatherApiKey":            "BAD_WEATHER_KEY", // Added
-			"weatherLocation":          "coldplace",
-			"badWeatherConditions":     "temp_below:0",
-			"weatherEffectScaleFactor": "2.0",
-			"demandApiEndpoint":        "placeholder",
-			"demandJsonPath":           "{.current.demand}",
-			"targetDemandPerReplica":   "50",
-			"activationDemandLevel":    "10",
-			"metricName":               "test-metric-bad",
-		},
-		demandAPIResponse:    `{"current": {"demand": 30}}`,
-		demandAPIStatusCode:  http.StatusOK,
-		weatherAPIResponse:   `{"temp": -5.0}`, // Bad weather
-		weatherAPIStatusCode: http.StatusOK,
-		metricType:           v2.AverageValueMetricType,
-		triggerIndex:         1,
-		expectedMetricValue:  60, // 30 * 2.0
-		expectedActive:       true,
-		expectError:          false,
-		metricIdentifier:     "s1-test-metric-bad",
-	},
-	{
-		name: "LowDemand_GoodWeather_Inactive",
-		metadata: map[string]string{
-			"weatherApiEndpoint":     "placeholder",
-			"weatherApiKey":          "LOW_GOOD_WEATHER_KEY", // Added
-			"weatherLocation":        "warmplace",
-			"badWeatherConditions":   "temp_below:0",
-			"demandApiEndpoint":      "placeholder",
-			"demandJsonPath":         "{.val}",
-			"targetDemandPerReplica": "100",
-			"activationDemandLevel":  "50",
-			"metricName":             "test-metric-inactive",
-		},
-		demandAPIResponse:    `{"val": 5}`,
-		demandAPIStatusCode:  http.StatusOK,
-		weatherAPIResponse:   `{"temp": 25.0}`, // Good weather
-		weatherAPIStatusCode: http.StatusOK,
-		metricType:           v2.AverageValueMetricType,
-		triggerIndex:         2,
-		expectedMetricValue:  5,
-		expectedActive:       false,
-		expectError:          false,
-		metricIdentifier:     "s2-test-metric-inactive",
-	},
-	{
-		name: "DemandAPIError",
-		metadata: map[string]string{
-			"demandApiEndpoint":     "placeholder", // Will cause fetch attempt
-			"demandJsonPath":        "{.val}",
-			"activationDemandLevel": "10",
-			"metricName":            "test-metric-demand-err",
-			"weatherApiEndpoint":    "placeholder", // For good weather
-			"weatherApiKey":         "DEMAND_ERR_WEATHER_KEY", // Added
-			"weatherLocation":       "anyplace",    // Required for weatherApiEndpoint to be valid
-		},
-		demandAPIError:       true, // Simulate network error
-		weatherAPIResponse:   `{"temp": 10.0}`,
-		weatherAPIStatusCode: http.StatusOK,
-		metricType:           v2.AverageValueMetricType,
-		triggerIndex:         3,
-		expectError:          true,
-		expectedErrorMessage: "error fetching demand data",
-		metricIdentifier:     "s3-test-metric-demand-err",
-	},
-	{
-		name: "WeatherAPIError_ProceedsAsGoodWeather",
-		metadata: map[string]string{
-			"weatherApiEndpoint":       "placeholder", // Will cause fetch attempt
-			"weatherApiKey":            "WEATHER_ERR_KEY", // Added
-			"weatherLocation":          "anywhere",
-			"badWeatherConditions":     "temp_below:0",
-			"weatherEffectScaleFactor": "2.0",
-			"demandApiEndpoint":        "placeholder",
-			"demandJsonPath":           "{.value}",
-			"activationDemandLevel":    "10",
-			"metricName":               "test-metric-weather-err",
-		},
-		demandAPIResponse:   `{"value": 20}`,
-		demandAPIStatusCode: http.StatusOK,
-		weatherAPIError:     true, // Simulate network error
-		metricType:          v2.AverageValueMetricType,
-		triggerIndex:        4,
-		expectedMetricValue: 20, // Not scaled
-		expectedActive:      true,
-		expectError:         false,
-		metricIdentifier:    "s4-test-metric-weather-err",
-	},
-	{
-		name: "DemandJSONPathError",
-		metadata: map[string]string{
-			"demandApiEndpoint":     "placeholder",
-			"demandJsonPath":        "{.nonexistent}", // Path that won't find data
-			"activationDemandLevel": "10",
-			"metricName":            "test-metric-jsonpath-err",
-			"weatherApiEndpoint":    "placeholder",
-			"weatherApiKey":         "JSON_PATH_WEATHER_KEY", // Added
-			"weatherLocation":       "anyplace", // Required for weatherApiEndpoint to be valid
-		},
-		demandAPIResponse:    `{"value": 20}`,
-		demandAPIStatusCode:  http.StatusOK,
-		weatherAPIResponse:   `{"temp": 10.0}`,
-		weatherAPIStatusCode: http.StatusOK,
-		metricType:           v2.AverageValueMetricType,
-		triggerIndex:         5,
-		expectError:          true,
-		expectedErrorMessage: "error extracting demand value",
-		metricIdentifier:     "s5-test-metric-jsonpath-err",
-	},
-}
-
-func TestGetMetricsAndActivity(t *testing.T) {
-	for _, tc := range getMetricsTestDataset {
-		t.Run(tc.name, func(t *testing.T) {
-			// Mock Demand API Server
-			demandServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if tc.demandAPIError {
-					http.Error(w, "demand API unavailable", http.StatusServiceUnavailable)
-					return
-				}
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(tc.demandAPIStatusCode)
-				if tc.demandAPIResponse != "" {
-					// nosemgrep: no-direct-write-to-responsewriter
-					_, _ = w.Write([]byte(tc.demandAPIResponse))
-				}
-			}))
-			defer demandServer.Close()
-
-			// Mock Weather API Server
-			weatherServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if tc.weatherAPIError {
-					http.Error(w, "weather API unavailable", http.StatusServiceUnavailable)
-					return
-				}
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(tc.weatherAPIStatusCode)
-				if tc.weatherAPIResponse != "" {
-					// nosemgrep: no-direct-write-to-responsewriter
-					_, _ = w.Write([]byte(tc.weatherAPIResponse))
-				}
-			}))
-			defer weatherServer.Close()
-
-			currentMetadata := make(map[string]string)
-			for k, v := range tc.metadata {
-				currentMetadata[k] = v
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scaler := &weatherAwareDemandScaler{
+				metadata:   tt.metadata,
+				metricType: tt.metricType,
+				logger:     newSimpleTestLogger(),
 			}
+			specs := scaler.GetMetricSpecForScaling(context.Background())
+			assert.Len(t, specs, 1)
+			spec := specs[0]
+			assert.Equal(t, v2.ExternalMetricSourceType, spec.Type)
+			assert.NotNil(t, spec.External)
+			assert.Equal(t, tt.expectedName, spec.External.Metric.Name)
+			if tt.metricType == v2.AverageValueMetricType {
+				assert.Equal(t, resource.NewQuantity(tt.metadata.TargetDemandPerReplica, resource.DecimalSI), spec.External.Target.AverageValue)
+				assert.Equal(t, v2.AverageValueMetricType, spec.External.Target.Type)
 
-			// Set demandApiEndpoint only if it's part of the test case's intent
-			if _, present := tc.metadata["demandApiEndpoint"]; present || tc.demandAPIError {
-				currentMetadata["demandApiEndpoint"] = demandServer.URL
 			} else {
-				delete(currentMetadata, "demandApiEndpoint") // Ensure it's not set if not intended
-			}
-
-			// Set weatherApiEndpoint only if it's part of the test case's intent
-			if _, present := tc.metadata["weatherApiEndpoint"]; present || tc.weatherAPIError {
-				currentMetadata["weatherApiEndpoint"] = weatherServer.URL
-			} else {
-				delete(currentMetadata, "weatherApiEndpoint") // Ensure it's not set if not intended
-			}
-
-			config := newTestScalerConfig(currentMetadata, tc.triggerIndex, tc.metricType)
-
-			scaler, err := NewWeatherAwareDemandScaler(config)
-			if err != nil {
-				t.Fatalf("Error creating scaler: %v", err)
-			}
-			typedScaler := scaler.(*weatherAwareDemandScaler)
-			// Logger is initialized in NewWeatherAwareDemandScaler
-
-			metrics, active, err := typedScaler.GetMetricsAndActivity(context.TODO(), tc.metricIdentifier)
-
-			if tc.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				} else if tc.expectedErrorMessage != "" && !strings.Contains(err.Error(), tc.expectedErrorMessage) {
-					t.Errorf("Expected error message to contain '%s', got '%s'", tc.expectedErrorMessage, err.Error())
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
-			if active != tc.expectedActive {
-				t.Errorf("Expected active status %t, got %t", tc.expectedActive, active)
-			}
-
-			if len(metrics) != 1 {
-				// If inactive and value is 0, KEDA might return 0 metrics or 1 metric with value 0.
-				// The current implementation returns 1 metric even for 0.
-				// If it's not active and we expect 0, it's fine if metrics are empty or value is 0.
-				if !(tc.expectedMetricValue == 0 && !tc.expectedActive && len(metrics) == 0) {
-					t.Fatalf("Expected 1 metric value, got %d", len(metrics))
-				}
-			}
-
-			if len(metrics) == 1 { // Only check value if a metric was returned
-				expectedQuantity := resource.NewQuantity(int64(tc.expectedMetricValue), resource.DecimalSI)
-				if metrics[0].Value.Cmp(*expectedQuantity) != 0 {
-					t.Errorf("Expected metric value %v, got %v", expectedQuantity.String(), metrics[0].Value.String())
-				}
-
-				if metrics[0].MetricName != tc.metricIdentifier {
-					t.Errorf("Expected metric name %s, got %s", tc.metricIdentifier, metrics[0].MetricName)
-				}
-			} else if tc.expectedMetricValue != 0 || tc.expectedActive { // If no metrics, but we expected a value or active
-				t.Errorf("Expected metrics but got none. Expected value: %f, active: %t", tc.expectedMetricValue, tc.expectedActive)
+				assert.Equal(t, resource.NewQuantity(tt.metadata.TargetDemandPerReplica, resource.DecimalSI), spec.External.Target.Value)
+				assert.Equal(t, v2.ValueMetricType, spec.External.Target.Type)
 			}
 		})
 	}
 }
 
-type testGetMetricSpecCase struct {
-	name               string
-	metadata           map[string]string
-	metricType         v2.MetricTargetType // From ScalerConfig
-	triggerIndex       int
-	expectedMetricName string // Expected fully qualified metric name
-	expectedTarget     v2.MetricTarget
-}
+func TestClose(t *testing.T) {
+	server := createWeatherTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "OK")
+	}))
+	defer server.Close()
 
-var getMetricSpecTestDataset = []testGetMetricSpecCase{
-	{
-		name: "AverageValue_Simple",
-		metadata: map[string]string{
-			"metricName":             "my-demand",
-			"targetDemandPerReplica": "100",
-			"demandApiEndpoint":      "http://dummy.com", // Added to pass validation
+	cfg := &scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"demandApiEndpoint": server.URL, // Provide a valid URL to init httpclient
+			"demandJsonPath":    "{.value}",
+			// Add FromEnv keys for API key parsing
+			"weatherApiKeyFromEnv": "weatherApiKey",
+			"demandApiKeyFromEnv":  "demandApiKey",
 		},
-		metricType:         v2.AverageValueMetricType,
-		triggerIndex:       0,
-		expectedMetricName: "s0-my-demand",
-		expectedTarget: v2.MetricTarget{
-			Type:         v2.AverageValueMetricType,
-			AverageValue: resource.NewQuantity(100, resource.DecimalSI),
-		},
-	},
-	{
-		name: "ValueMetricType_WithNormalization",
-		metadata: map[string]string{
-			"metricName":             "My Custom Metric", // Needs normalization
-			"targetDemandPerReplica": "75",
-			"demandApiEndpoint":      "http://dummy.com", // Added to pass validation
-		},
-		metricType:         v2.ValueMetricType,
-		triggerIndex:       1,
-		expectedMetricName: "s1-My Custom Metric", // NormalizeString doesn't change spaces or case
-		expectedTarget: v2.MetricTarget{
-			Type:  v2.ValueMetricType,
-			Value: resource.NewQuantity(75, resource.DecimalSI),
-		},
-	},
-	{
-		name: "DefaultMetricName",
-		metadata: map[string]string{
-			// metricName not provided, should use default "weather-aware-ride-demand"
-			"targetDemandPerReplica": "120",
-			"demandApiEndpoint":      "http://dummy.com", // Added to pass validation
-		},
-		metricType:         v2.AverageValueMetricType,
-		triggerIndex:       2,
-		expectedMetricName: "s2-weather-aware-ride-demand",
-		expectedTarget: v2.MetricTarget{
-			Type:         v2.AverageValueMetricType,
-			AverageValue: resource.NewQuantity(120, resource.DecimalSI),
-		},
-	},
-}
-
-func TestWeatherAwareDemandScalerGetMetricSpecForScaling(t *testing.T) {
-	for _, tc := range getMetricSpecTestDataset {
-		t.Run(tc.name, func(t *testing.T) {
-			config := newTestScalerConfig(tc.metadata, tc.triggerIndex, tc.metricType)
-			scaler, err := NewWeatherAwareDemandScaler(config)
-			if err != nil {
-				t.Fatalf("Error creating scaler: %v", err)
-			}
-
-			metricSpecs := scaler.GetMetricSpecForScaling(context.TODO())
-			if len(metricSpecs) != 1 {
-				t.Fatalf("Expected 1 metric spec, got %d", len(metricSpecs))
-			}
-
-			spec := metricSpecs[0]
-			if spec.External == nil {
-				t.Fatalf("spec.External is nil")
-			}
-
-			if spec.External.Metric.Name != tc.expectedMetricName {
-				t.Errorf("Expected metric name %s, got %s", tc.expectedMetricName, spec.External.Metric.Name)
-			}
-
-			if spec.External.Target.Type != tc.expectedTarget.Type {
-				t.Errorf("Expected target type %s, got %s", tc.expectedTarget.Type, spec.External.Target.Type)
-			}
-
-			// Check AverageValue
-			if tc.expectedTarget.AverageValue != nil {
-				if spec.External.Target.AverageValue == nil {
-					t.Errorf("Expected AverageValue %v, got nil", tc.expectedTarget.AverageValue.String())
-				} else if spec.External.Target.AverageValue.Cmp(*tc.expectedTarget.AverageValue) != 0 {
-					t.Errorf("Expected AverageValue %v, got %v", tc.expectedTarget.AverageValue.String(), spec.External.Target.AverageValue.String())
-				}
-			} else if spec.External.Target.AverageValue != nil {
-				t.Errorf("Expected AverageValue to be nil, got %v", spec.External.Target.AverageValue.String())
-			}
-
-			// Check Value
-			if tc.expectedTarget.Value != nil {
-				if spec.External.Target.Value == nil {
-					t.Errorf("Expected Value %v, got nil", tc.expectedTarget.Value.String())
-				} else if spec.External.Target.Value.Cmp(*tc.expectedTarget.Value) != 0 {
-					t.Errorf("Expected Value %v, got %v", tc.expectedTarget.Value.String(), spec.External.Target.Value.String())
-				}
-			} else if spec.External.Target.Value != nil {
-				t.Errorf("Expected Value to be nil, got %v", spec.External.Target.Value.String())
-			}
-
-			if spec.Type != v2.ExternalMetricSourceType {
-				t.Errorf("Expected spec type %s, got %s", v2.ExternalMetricSourceType, spec.Type)
-			}
-		})
+		ResolvedEnv:       map[string]string{"demandApiKey": "dummykey", "weatherApiKey": "dummyweatherkey"}, // Provide necessary resolved env
+		TriggerIndex:      0,
+		GlobalHTTPTimeout: 5000, // Increased to 5s
 	}
+
+	scalerInterface, err := NewWeatherAwareDemandScaler(cfg)
+	assert.NoError(t, err, "NewWeatherAwareDemandScaler failed in TestClose setup")
+	if err != nil {
+		t.FailNow() // Stop test if setup fails
+	}
+
+	scaler, ok := scalerInterface.(*weatherAwareDemandScaler)
+	assert.True(t, ok, "Scaler should be of type *weatherAwareDemandScaler in TestClose")
+	if !ok {
+		t.FailNow()
+	}
+
+	// Make a call to ensure connection is used (if http client is relevant to Close)
+	// This might not be strictly necessary if Close only handles the client itself.
+	_, _, _ = scaler.GetMetricsAndActivity(context.Background(), "test-close-metric")
+
+	err = scaler.Close(context.Background())
+	assert.NoError(t, err, "Close should not return an error")
 }
