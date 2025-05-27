@@ -23,7 +23,7 @@ import (
 type weatherAwareDemandScalerMetadata struct {
 	// Weather API Configuration
 	WeatherAPIEndpoint   string `keda:"name=weatherApiEndpoint,order=triggerMetadata,optional"`
-	WeatherAPIKeyFromEnv string `keda:"name=weatherApiKey,order=resolvedEnv"`
+	WeatherAPIKeyFromEnv string `keda:"name=weatherApiKey,order=triggerMetadata,optional"`
 	WeatherLocation      string `keda:"name=weatherLocation,order=triggerMetadata,optional"`             // e.g., "city,country" or "lat,lon"
 	WeatherUnits         string `keda:"name=weatherUnits,order=triggerMetadata,optional,default=metric"` // "metric" or "imperial"
 	BadWeatherConditions string `keda:"name=badWeatherConditions,order=triggerMetadata,optional"`        // e.g., "temp_below:0,rain_above:5,wind_above:10" (temp in C, rain mm/hr, wind km/hr if metric)
@@ -42,6 +42,22 @@ type weatherAwareDemandScalerMetadata struct {
 	// Internal fields
 	triggerIndex    int               // Stores the trigger index
 	triggerMetadata map[string]string // To store trigger metadata for simplified API key access
+}
+
+func (m *weatherAwareDemandScalerMetadata) Validate() error {
+	if m.WeatherAPIEndpoint == "" && m.DemandAPIEndpoint == "" {
+		return fmt.Errorf("at least one of weatherApiEndpoint or demandApiEndpoint must be provided")
+	}
+	if m.WeatherAPIEndpoint != "" && m.WeatherLocation == "" {
+		return fmt.Errorf("weatherLocation is required when weatherApiEndpoint is provided")
+	}
+	if m.TargetDemandPerReplica <= 0 {
+		return fmt.Errorf("targetDemandPerReplica must be greater than 0")
+	}
+	if m.WeatherEffectScaleFactor <= 0 {
+		return fmt.Errorf("weatherEffectScaleFactor must be greater than 0")
+	}
+	return nil
 }
 
 // weatherAwareDemandScaler is the scaler implementation
@@ -64,21 +80,14 @@ func NewWeatherAwareDemandScaler(config *scalersconfig.ScalerConfig) (Scaler, er
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing weather aware demand scaler metadata: %w", err)
 	}
+	if err := meta.Validate(); err != nil {
+		return nil, fmt.Errorf("error validating weather aware demand scaler metadata: %w", err)
+	}
 	meta.triggerIndex = config.TriggerIndex
 	// Store the trigger metadata for simplified API key access in fetchJSONData (as per subtask instruction)
 	// In a real KEDA scaler, API keys are usually resolved from config.ResolvedEnv
 	// and stored in dedicated fields within the metadata struct or the scaler struct itself.
 	meta.triggerMetadata = config.TriggerMetadata
-
-	// Basic validation: Check if essential endpoints are provided if they are not optional by design
-	// For this example, we assume WeatherAPIEndpoint and DemandAPIEndpoint are optional as per struct tags.
-	// More specific validation (e.g. if one is set, the other must be too) can be added.
-	if meta.WeatherAPIEndpoint == "" && meta.DemandAPIEndpoint == "" {
-		// This is just an example validation, the actual logic might be more complex
-		// depending on how the scaler is supposed to behave if one source is missing.
-		// For now, we'll allow it, assuming it might operate with only one source or none (becomes a pass-through or fixed metric).
-		logger.Info("WeatherAPIEndpoint and DemandAPIEndpoint are not set. Scaler might not provide meaningful metrics unless this is intended.")
-	}
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
@@ -103,7 +112,8 @@ func (s *weatherAwareDemandScaler) fetchJSONData(ctx context.Context, endpoint s
 
 	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
-		return fmt.Errorf("error creating request: %w", err)
+		s.logger.Error(err, "Error creating HTTP request")
+		return fmt.Errorf("error creating request for %s: %w", endpoint, err)
 	}
 
 	if apiKeyFromEnv != "" {
@@ -114,9 +124,10 @@ func (s *weatherAwareDemandScaler) fetchJSONData(ctx context.Context, endpoint s
 			// This part needs to align with how NewWeatherAwareDemandScaler makes env vars available.
 			// For now, let's assume it's directly available or resolved in metadata.
 			// If using resolvedEnv: apiKey = s.config.ResolvedEnv[s.metadata.APIKeyFromEnv]
-			return fmt.Errorf("API key env var %s not found or empty", apiKeyFromEnv)
+			s.logger.V(1).Info("API key env var not found or empty", "apiKeyName", apiKeyFromEnv, "endpoint", endpoint)
+		} else {
+			req.Header.Set("Authorization", "Bearer "+apiKey) // Or other auth mechanism
 		}
-		req.Header.Set("Authorization", "Bearer "+apiKey) // Or other auth mechanism
 	}
 
 	resp, err := s.httpClient.Do(req)

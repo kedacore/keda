@@ -20,12 +20,32 @@ import (
 
 // Mock ScalerConfig for tests
 func newTestScalerConfig(metadata map[string]string, triggerIndex int, metricType v2.MetricTargetType) *scalersconfig.ScalerConfig {
+	resolvedEnv := make(map[string]string)
+
+	// For WeatherAPIKeyFromEnv (now keda:"name=weatherApiKey,order=triggerMetadata,optional")
+	// its value will be metadata["weatherApiKey"].
+	// We need to ensure that if metadata["weatherApiKey"] specifies an env var name,
+	// that name exists as a key in ResolvedEnv for later lookup of the actual key value.
+	if envVarNameForWeatherKey, ok := metadata["weatherApiKey"]; ok && envVarNameForWeatherKey != "" {
+		resolvedEnv[envVarNameForWeatherKey] = "dummy_weather_key_value_from_env"
+	}
+
+	// For DemandAPIKeyFromEnv (keda:"name=demandApiKeyFromEnv,order=triggerMetadata,optional")
+	// its value will be metadata["demandApiKeyFromEnv"].
+	// If this were to be used to look up a value in ResolvedEnv (it isn't directly by TypedConfig for order=triggerMetadata),
+	// similar logic would apply.
+	if envVarNameForDemandKey, ok := metadata["demandApiKeyFromEnv"]; ok && envVarNameForDemandKey != "" {
+		// Although not strictly necessary for TypedConfig for this field, if our code later uses
+		// meta.DemandAPIKeyFromEnv to look up in ResolvedEnv, this pre-populates it.
+		resolvedEnv[envVarNameForDemandKey] = "dummy_demand_key_value_from_env"
+	}
+
 	return &scalersconfig.ScalerConfig{
 		TriggerMetadata:         metadata,
 		TriggerIndex:            triggerIndex,
 		MetricType:              metricType,
 		GlobalHTTPTimeout:       3000 * time.Millisecond, // Default KEDA global HTTP timeout
-		ResolvedEnv:             make(map[string]string), // Populate if API keys from env are tested directly
+		ResolvedEnv:             resolvedEnv,
 		AuthParams:              make(map[string]string),
 		ScalableObjectName:      "test-scaledobject",
 		ScalableObjectNamespace: "test-namespace",
@@ -51,27 +71,27 @@ var weatherAwareDemandScalerMetadataTestDataset = []testWeatherAwareDemandScaler
 			"targetDemandPerReplica": "50",
 			"activationDemandLevel":  "5",
 			"metricName":             "custom-ride-demand",
+			// No "weatherApiKey" here. WeatherAPIKeyFromEnv is optional & order=triggerMetadata.
 		},
 		metricType: v2.AverageValueMetricType,
 		expected: &weatherAwareDemandScalerMetadata{
 			WeatherAPIEndpoint:       "http://weather.example.com",
+			WeatherAPIKeyFromEnv:     "", // Should be empty as not in metadata["weatherApiKey"]
 			WeatherLocation:          "London,UK",
-			WeatherUnits:             "metric", // default
+			WeatherUnits:             "metric",
 			DemandAPIEndpoint:        "http://demand.example.com",
 			DemandJSONPath:           "{.value}",
 			TargetDemandPerReplica:   50,
 			ActivationDemandLevel:    5,
 			MetricName:               "custom-ride-demand",
-			WeatherEffectScaleFactor: 1.0, // default
-			triggerIndex:             0,   // Will be set by config
-			// triggerMetadata will be set by NewWeatherAwareDemandScaler based on config.TriggerMetadata
+			WeatherEffectScaleFactor: 1.0,
 		},
 		hasError: false,
 	},
 	{ // All optional fields provided
 		metadata: map[string]string{
 			"weatherApiEndpoint":       "http://weather.example.com",
-			"weatherApiKeyFromEnv":     "WEATHER_API_KEY",
+			"weatherApiKey":            "WEATHER_API_KEY", // This will populate WeatherAPIKeyFromEnv
 			"weatherLocation":          "NewYork,US",
 			"weatherUnits":             "imperial",
 			"badWeatherConditions":     "temp_below:32,rain_above:0.5",
@@ -86,7 +106,7 @@ var weatherAwareDemandScalerMetadataTestDataset = []testWeatherAwareDemandScaler
 		metricType: v2.ValueMetricType,
 		expected: &weatherAwareDemandScalerMetadata{
 			WeatherAPIEndpoint:       "http://weather.example.com",
-			WeatherAPIKeyFromEnv:     "WEATHER_API_KEY",
+			WeatherAPIKeyFromEnv:     "WEATHER_API_KEY", // Correctly gets from metadata["weatherApiKey"]
 			WeatherLocation:          "NewYork,US",
 			WeatherUnits:             "imperial",
 			BadWeatherConditions:     "temp_below:32,rain_above:0.5",
@@ -97,18 +117,111 @@ var weatherAwareDemandScalerMetadataTestDataset = []testWeatherAwareDemandScaler
 			ActivationDemandLevel:    2,
 			WeatherEffectScaleFactor: 1.75,
 			MetricName:               "nyc-demand",
-			triggerIndex:             0, // Will be set by config
-			// triggerMetadata will be set by NewWeatherAwareDemandScaler
 		},
 		hasError: false,
 	},
-	{ // Malformed number for targetDemandPerReplica
+	{ // Malformed number for targetDemandPerReplica (TypedConfig error)
 		metadata: map[string]string{
+			"demandApiEndpoint":      "http://demand.example.com", // Needed to pass initial validation if TypedConfig didn't fail first
 			"targetDemandPerReplica": "not-a-number",
 		},
 		metricType: v2.AverageValueMetricType,
 		expected:   nil,
-		hasError:   true, // Expecting TypedConfig to fail
+		hasError:   true,
+	},
+	{ // Missing both API endpoints (Validate error)
+		metadata: map[string]string{
+			"targetDemandPerReplica": "10", // Valid to pass TypedConfig
+			"activationDemandLevel":  "5",
+		},
+		metricType: v2.AverageValueMetricType,
+		expected:   nil,
+		hasError:   true,
+	},
+	{ // Weather API endpoint provided, but weatherLocation missing (Validate error)
+		metadata: map[string]string{
+			"weatherApiEndpoint":     "http://weather.example.com",
+			"targetDemandPerReplica": "10",
+		},
+		metricType: v2.AverageValueMetricType,
+		expected:   nil,
+		hasError:   true,
+	},
+	{ // targetDemandPerReplica is 0 (Validate error)
+		metadata: map[string]string{
+			"demandApiEndpoint":      "http://demand.example.com",
+			"targetDemandPerReplica": "0",
+		},
+		metricType: v2.AverageValueMetricType,
+		expected:   nil,
+		hasError:   true,
+	},
+	{ // targetDemandPerReplica is negative (Validate error)
+		metadata: map[string]string{
+			"demandApiEndpoint":      "http://demand.example.com",
+			"targetDemandPerReplica": "-10",
+		},
+		metricType: v2.AverageValueMetricType,
+		expected:   nil,
+		hasError:   true,
+	},
+	{ // weatherEffectScaleFactor is 0 (Validate error)
+		metadata: map[string]string{
+			"demandApiEndpoint":        "http://demand.example.com",
+			"weatherEffectScaleFactor": "0",
+		},
+		metricType: v2.AverageValueMetricType,
+		expected:   nil,
+		hasError:   true,
+	},
+	{ // weatherEffectScaleFactor is negative (Validate error)
+		metadata: map[string]string{
+			"demandApiEndpoint":        "http://demand.example.com",
+			"weatherEffectScaleFactor": "-1.5",
+		},
+		metricType: v2.AverageValueMetricType,
+		expected:   nil,
+		hasError:   true,
+	},
+	{ // Valid case: Only Demand API endpoint provided (ensure no weatherApiKey needed here for this specific test)
+		metadata: map[string]string{
+			"demandApiEndpoint":      "http://demand.example.com",
+			"demandJsonPath":         "{.value}",
+			"targetDemandPerReplica": "30",
+			"activationDemandLevel":  "3",
+		},
+		metricType: v2.AverageValueMetricType,
+		expected: &weatherAwareDemandScalerMetadata{
+			DemandAPIEndpoint:        "http://demand.example.com",
+			DemandJSONPath:           "{.value}",
+			TargetDemandPerReplica:   30,
+			ActivationDemandLevel:    3,
+			WeatherUnits:             "metric",
+			WeatherEffectScaleFactor: 1.0,
+			MetricName:               "weather-aware-ride-demand",
+		},
+		hasError: false,
+	},
+	{ // Valid case: Only Weather API endpoint provided (with location)
+		metadata: map[string]string{
+			"weatherApiEndpoint":     "http://weather.example.com",
+			"weatherApiKey":          "ONLY_WEATHER_KEY", // This will populate WeatherAPIKeyFromEnv
+			"weatherLocation":        "Paris,FR",
+			"targetDemandPerReplica": "25",
+			"activationDemandLevel":  "2",
+		},
+		metricType: v2.ValueMetricType,
+		expected: &weatherAwareDemandScalerMetadata{
+			WeatherAPIEndpoint:       "http://weather.example.com",
+			WeatherAPIKeyFromEnv:     "ONLY_WEATHER_KEY", // Correctly gets from metadata["weatherApiKey"]
+			WeatherLocation:          "Paris,FR",
+			WeatherUnits:             "metric",
+			TargetDemandPerReplica:   25,
+			ActivationDemandLevel:    2,
+			WeatherEffectScaleFactor: 1.0,
+			MetricName:               "weather-aware-ride-demand",
+		},
+		hasError: false,
 	},
 }
 
@@ -342,6 +455,7 @@ var getMetricsTestDataset = []testGetMetricsCase{
 		name: "GoodDemand_GoodWeather_Active",
 		metadata: map[string]string{
 			"weatherApiEndpoint":     "placeholder", // Will be replaced by mock
+			"weatherApiKey":          "GOOD_WEATHER_KEY", // Added for explicit env var name
 			"weatherLocation":        "testville",
 			"badWeatherConditions":   "temp_below:0",
 			"demandApiEndpoint":      "placeholder", // Will be replaced by mock
@@ -365,6 +479,7 @@ var getMetricsTestDataset = []testGetMetricsCase{
 		name: "HighDemand_BadWeather_ScaledActive",
 		metadata: map[string]string{
 			"weatherApiEndpoint":       "placeholder",
+			"weatherApiKey":            "BAD_WEATHER_KEY", // Added
 			"weatherLocation":          "coldplace",
 			"badWeatherConditions":     "temp_below:0",
 			"weatherEffectScaleFactor": "2.0",
@@ -389,6 +504,7 @@ var getMetricsTestDataset = []testGetMetricsCase{
 		name: "LowDemand_GoodWeather_Inactive",
 		metadata: map[string]string{
 			"weatherApiEndpoint":     "placeholder",
+			"weatherApiKey":          "LOW_GOOD_WEATHER_KEY", // Added
 			"weatherLocation":        "warmplace",
 			"badWeatherConditions":   "temp_below:0",
 			"demandApiEndpoint":      "placeholder",
@@ -416,6 +532,8 @@ var getMetricsTestDataset = []testGetMetricsCase{
 			"activationDemandLevel": "10",
 			"metricName":            "test-metric-demand-err",
 			"weatherApiEndpoint":    "placeholder", // For good weather
+			"weatherApiKey":         "DEMAND_ERR_WEATHER_KEY", // Added
+			"weatherLocation":       "anyplace",    // Required for weatherApiEndpoint to be valid
 		},
 		demandAPIError:       true, // Simulate network error
 		weatherAPIResponse:   `{"temp": 10.0}`,
@@ -430,6 +548,7 @@ var getMetricsTestDataset = []testGetMetricsCase{
 		name: "WeatherAPIError_ProceedsAsGoodWeather",
 		metadata: map[string]string{
 			"weatherApiEndpoint":       "placeholder", // Will cause fetch attempt
+			"weatherApiKey":            "WEATHER_ERR_KEY", // Added
 			"weatherLocation":          "anywhere",
 			"badWeatherConditions":     "temp_below:0",
 			"weatherEffectScaleFactor": "2.0",
@@ -456,6 +575,8 @@ var getMetricsTestDataset = []testGetMetricsCase{
 			"activationDemandLevel": "10",
 			"metricName":            "test-metric-jsonpath-err",
 			"weatherApiEndpoint":    "placeholder",
+			"weatherApiKey":         "JSON_PATH_WEATHER_KEY", // Added
+			"weatherLocation":       "anyplace", // Required for weatherApiEndpoint to be valid
 		},
 		demandAPIResponse:    `{"value": 20}`,
 		demandAPIStatusCode:  http.StatusOK,
@@ -466,20 +587,6 @@ var getMetricsTestDataset = []testGetMetricsCase{
 		expectError:          true,
 		expectedErrorMessage: "error extracting demand value",
 		metricIdentifier:     "s5-test-metric-jsonpath-err",
-	},
-	{
-		name: "NoDemandAPI_NoWeatherAPI_DefaultInactive",
-		metadata: map[string]string{
-			// No API endpoints configured in tc.metadata, so they won't be set in currentMetadata
-			"activationDemandLevel": "10",
-			"metricName":            "test-metric-no-apis",
-		},
-		metricType:          v2.AverageValueMetricType,
-		triggerIndex:        6,
-		expectedMetricValue: 0,
-		expectedActive:      false,
-		expectError:         false,
-		metricIdentifier:    "s6-test-metric-no-apis",
 	},
 }
 
@@ -602,6 +709,7 @@ var getMetricSpecTestDataset = []testGetMetricSpecCase{
 		metadata: map[string]string{
 			"metricName":             "my-demand",
 			"targetDemandPerReplica": "100",
+			"demandApiEndpoint":      "http://dummy.com", // Added to pass validation
 		},
 		metricType:         v2.AverageValueMetricType,
 		triggerIndex:       0,
@@ -616,6 +724,7 @@ var getMetricSpecTestDataset = []testGetMetricSpecCase{
 		metadata: map[string]string{
 			"metricName":             "My Custom Metric", // Needs normalization
 			"targetDemandPerReplica": "75",
+			"demandApiEndpoint":      "http://dummy.com", // Added to pass validation
 		},
 		metricType:         v2.ValueMetricType,
 		triggerIndex:       1,
@@ -630,6 +739,7 @@ var getMetricSpecTestDataset = []testGetMetricSpecCase{
 		metadata: map[string]string{
 			// metricName not provided, should use default "weather-aware-ride-demand"
 			"targetDemandPerReplica": "120",
+			"demandApiEndpoint":      "http://dummy.com", // Added to pass validation
 		},
 		metricType:         v2.AverageValueMetricType,
 		triggerIndex:       2,
