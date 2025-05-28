@@ -73,7 +73,7 @@ spec:
         app: mssql-consumer-worker
     spec:
       containers:
-      - image: ghcr.io/kedacore/test-mssql:latest 
+      - image: ghcr.io/kedacore/tests-mssql:latest
         imagePullPolicy: Always
         name: mssql-consumer-worker
         command: ["/app"]
@@ -204,7 +204,7 @@ spec:
         app: mssql-producer-job
     spec:
       containers:
-      - image: ghcr.io/kedacore/test-mssql:latest 
+      - image: ghcr.io/kedacore/tests-mssql:latest
         imagePullPolicy: Always
         name: mssql-test-producer
         command: ["/app"]
@@ -234,7 +234,7 @@ spec:
         app: mssql-producer-job
     spec:
       containers:
-      - image: ghcr.io/kedacore/test-mssql:latest 
+      - image: ghcr.io/kedacore/tests-mssql:latest
         imagePullPolicy: Always
         name: mssql-test-producer
         command: ["/app"]
