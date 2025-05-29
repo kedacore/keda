@@ -277,9 +277,9 @@ var testGetMetricsCases = []testGetMetricsCase{
 		metadata: map[string]string{
 			"weatherApiEndpoint":     "WEATHER_ENDPOINT_VAR",
 			"weatherLocation":        "london,uk",
-			"targetDemandPerReplica": "50",       // Explicitly set for this test
-			"weatherParameter":       "temp",     // Condition for scaling: temp < 0
-			"weatherOperator":        "<",        // If temp is 10 (good), 10 < 0 is false -> demand 0
+			"targetDemandPerReplica": "50",   // Explicitly set for this test
+			"weatherParameter":       "temp", // Condition for scaling: temp < 0
+			"weatherOperator":        "<",    // If temp is 10 (good), 10 < 0 is false -> demand 0
 			"weatherThreshold":       "0",
 		},
 		resolvedEnv: map[string]string{
@@ -300,11 +300,11 @@ var testGetMetricsCases = []testGetMetricsCase{
 	{
 		name: "weather only - bad weather, activation, default demand 0 but scaled",
 		metadata: map[string]string{
-			"weatherApiEndpoint":       "WEATHER_ENDPOINT_VAR",
-			"weatherLocation":          "london,uk",
-			"weatherParameter":         "temp",    // Condition for scaling: temp < 0
-			"weatherOperator":          "<",       // If temp is -5 (bad), -5 < 0 is true -> demand = targetDemandPerReplica
-			"weatherThreshold":         "0",
+			"weatherApiEndpoint": "WEATHER_ENDPOINT_VAR",
+			"weatherLocation":    "london,uk",
+			"weatherParameter":   "temp", // Condition for scaling: temp < 0
+			"weatherOperator":    "<",    // If temp is -5 (bad), -5 < 0 is true -> demand = targetDemandPerReplica
+			"weatherThreshold":   "0",
 			// "targetDemandPerReplica" is not set here, so it defaults to 100 from the struct.
 			// "weatherEffectScaleFactor": "1.5", // Not used in weather-only mode
 		},
@@ -315,8 +315,8 @@ var testGetMetricsCases = []testGetMetricsCase{
 		mockWeatherAPIHandler: func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, `{"temp": -5, "rain": 0}`) // Bad weather: temp = -5
 		},
-		expectedMetricValue:   100,   // Bad weather, demand is TargetDemandPerReplica (default 100)
-		expectedActivity:      true,  // 100 > activation (default 10)
+		expectedMetricValue:   100,  // Bad weather, demand is TargetDemandPerReplica (default 100)
+		expectedActivity:      true, // 100 > activation (default 10)
 		activationDemandLevel: "10",
 	},
 	{
@@ -428,13 +428,13 @@ var testGetMetricsCases = []testGetMetricsCase{
 	{
 		name: "weather API error - proceeds with demand only",
 		metadata: map[string]string{
-			"demandApiEndpoint":    "DEMAND_ENDPOINT_VAR",
-			"demandJsonPath":       "{.value}",
-			"weatherApiEndpoint":   "WEATHER_ENDPOINT_VAR",
-			"weatherLocation":      "london,uk",
-			"weatherParameter":     "temp",
-			"weatherOperator":      "<",
-			"weatherThreshold":     "0",
+			"demandApiEndpoint":  "DEMAND_ENDPOINT_VAR",
+			"demandJsonPath":     "{.value}",
+			"weatherApiEndpoint": "WEATHER_ENDPOINT_VAR",
+			"weatherLocation":    "london,uk",
+			"weatherParameter":   "temp",
+			"weatherOperator":    "<",
+			"weatherThreshold":   "0",
 		},
 		resolvedEnv: map[string]string{
 			"demandApiKey":  "test_demand_key",
@@ -453,13 +453,13 @@ var testGetMetricsCases = []testGetMetricsCase{
 	{
 		name: "bad weather condition format - error in isBadWeather",
 		metadata: map[string]string{
-			"demandApiEndpoint":    "DEMAND_ENDPOINT_VAR",
-			"demandJsonPath":       "{.value}",
-			"weatherApiEndpoint":   "WEATHER_ENDPOINT_VAR",
-			"weatherLocation":      "london,uk",
-			"weatherParameter":     "temp",
-			"weatherOperator":      ">",
-			"weatherThreshold":     "0",
+			"demandApiEndpoint":  "DEMAND_ENDPOINT_VAR",
+			"demandJsonPath":     "{.value}",
+			"weatherApiEndpoint": "WEATHER_ENDPOINT_VAR",
+			"weatherLocation":    "london,uk",
+			"weatherParameter":   "temp",
+			"weatherOperator":    ">",
+			"weatherThreshold":   "0",
 		},
 		resolvedEnv: map[string]string{
 			"demandApiKey":  "test_demand_key",
