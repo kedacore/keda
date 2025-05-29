@@ -11,9 +11,14 @@ import (
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/joho/godotenv"
+	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 
+	cloudevent_types "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
+	message "github.com/kedacore/keda/v2/pkg/common/message"
+	eventreason "github.com/kedacore/keda/v2/pkg/eventreason"
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
@@ -42,6 +47,7 @@ var (
 	expectedSubject                 = fmt.Sprintf("/%s/%s/scaledobject/%s", clusterName, namespace, scaledObjectName)
 	expectedSource                  = fmt.Sprintf("/%s/keda/keda", clusterName)
 	lastCloudEventTime              = time.Now()
+	g                               *GomegaWithT
 )
 
 type templateData struct {
@@ -347,9 +353,14 @@ spec:
 func TestScaledObjectGeneral(t *testing.T) {
 	// setup
 	t.Log("--- setting up ---")
+	g = NewWithT(t)
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+	t.Cleanup(func() {
+		t.Log("--- cleaning up ---")
+		DeleteKubernetesResources(t, namespace, data, templates)
+	})
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
 	assert.True(t, WaitForAllPodRunningInNamespace(t, kc, namespace, 5, 20), "all pods should be running")
@@ -364,12 +375,10 @@ func TestScaledObjectGeneral(t *testing.T) {
 	testErrEventSourceExcludeValue(t, kc, data, false)
 	testErrEventSourceIncludeValue(t, kc, data, false)
 	testErrEventSourceCreation(t, kc, data, false)
-
-	DeleteKubernetesResources(t, namespace, data, templates)
 }
 
 // tests error events emitted
-func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templateData, isClusterScope bool) {
+func testErrEventSourceEmitValue(t *testing.T, kc *kubernetes.Clientset, data templateData, isClusterScope bool) {
 	ceTemplate := ""
 	if isClusterScope {
 		ceTemplate = clusterCloudEventSourceTemplate
@@ -377,16 +386,34 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 		ceTemplate = cloudEventSourceTemplate
 	}
 
-	t.Log("--- test emitting eventsource about scaledobject err---")
+	t.Logf("--- test emitting eventsource about scaledobject err --- [isClusterScope: %t]", isClusterScope)
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", ceTemplate)
-	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", ceTemplate)
 
-	// wait 15 seconds to ensure event propagation
-	time.Sleep(5 * time.Second)
+	WatchForEventAfterTrigger(
+		t,
+		g,
+		kc,
+		namespace,
+		scaledObjectName,
+		"ScaledObject",
+		eventreason.ScaledObjectCheckFailed,
+		corev1.EventTypeWarning,
+		[]string{message.ScaleTargetErrMsg, message.ScaleTargetNotFoundMsg},
+		60*time.Second,
+		func() error {
+			KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
+			return nil
+		},
+	)
+
+	// in order to satisfy lastCloudEventTime, we cannot defer this deletion because the ExecCommand would then retrieve a stale list of current events
+	// i.e. more ScaledObjectCheckFailed events will happen between the ExecCommand and the deletion of the ScaledObject
+	// hence, we have to delete it here after an arbitrary few seconds, in order to stop all events
+	// then we will calculate lastCloudEventTime which will be updated with the ACTUAL last event without any surprises
 	KubectlDeleteWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
-	time.Sleep(10 * time.Second)
 
-	out, outErr, err := ExecCommandOnSpecificPod(t, clientName, namespace, fmt.Sprintf("curl -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectCheckFailed"))
+	out, outErr, err := ExecCommandOnSpecificPodWithoutTTY(t, clientName, namespace, fmt.Sprintf("curl -s -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectCheckFailed"))
 	assert.NotEmpty(t, out)
 	assert.Empty(t, outErr)
 	assert.NoError(t, err, "dont expect error requesting ")
@@ -404,17 +431,17 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 			foundEvents = append(foundEvents, cloudEvent)
 			data := map[string]string{}
 			err := cloudEvent.DataAs(&data)
-			t.Log("--- test emitting eventsource about scaledobject err---", "message", data["message"])
+			t.Log("--- test emitting eventsource about scaledobject err ---", "message", data["message"])
 
 			assert.NoError(t, err)
 			assert.Condition(t, func() bool {
-				if data["message"] == "ScaledObject doesn't have correct scaleTargetRef specification" || data["message"] == "Target resource doesn't exist" {
+				if data["message"] == message.ScaleTargetErrMsg || data["message"] == message.ScaleTargetNotFoundMsg {
 					return true
 				}
 				return false
 			}, "get filtered event")
 
-			assert.Equal(t, cloudEvent.Type(), "keda.scaledobject.failed.v1")
+			assert.Equal(t, cloudEvent.Type(), string(cloudevent_types.ScaledObjectFailedType))
 			assert.Equal(t, cloudEvent.Source(), expectedSource)
 			assert.Equal(t, cloudEvent.DataContentType(), "application/json")
 
@@ -423,22 +450,34 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 			}
 		}
 	}
+
 	assert.NotEmpty(t, foundEvents)
-	KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", ceTemplate)
-	t.Log("--- testErrEventSourceEmitValuetestErrEventSourceEmitValuer---", "cloud event time", lastCloudEventTime)
 }
 
-func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templateData) {
-	t.Log("--- test emitting eventsource about scaledobject removed---")
+func testEventSourceEmitValue(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- test emitting eventsource about scaledobject removed ---")
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
 
-	// wait 15 seconds to ensure event propagation
-	time.Sleep(5 * time.Second)
-	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	time.Sleep(10 * time.Second)
+	WatchForEventAfterTrigger(
+		t,
+		g,
+		kc,
+		namespace,
+		scaledObjectName,
+		"ScaledObject",
+		eventreason.ScaledObjectDeleted,
+		corev1.EventTypeWarning,
+		[]string{message.ScaledObjectRemoved},
+		60*time.Second,
+		func() error {
+			KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+			return nil
+		},
+	)
 
-	out, outErr, err := ExecCommandOnSpecificPod(t, clientName, namespace, fmt.Sprintf("curl -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectDeleted"))
+	out, outErr, err := ExecCommandOnSpecificPodWithoutTTY(t, clientName, namespace, fmt.Sprintf("curl -s -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectDeleted"))
 	assert.NotEmpty(t, out)
 	assert.Empty(t, outErr)
 	assert.NoError(t, err, "dont expect error requesting ")
@@ -458,8 +497,8 @@ func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templa
 			err := cloudEvent.DataAs(&data)
 
 			assert.NoError(t, err)
-			assert.Equal(t, data["message"], "ScaledObject was deleted")
-			assert.Equal(t, cloudEvent.Type(), "keda.scaledobject.removed.v1")
+			assert.Equal(t, data["message"], message.ScaledObjectRemoved)
+			assert.Equal(t, cloudEvent.Type(), string(cloudevent_types.ScaledObjectRemovedType))
 			assert.Equal(t, cloudEvent.Source(), expectedSource)
 			assert.Equal(t, cloudEvent.DataContentType(), "application/json")
 
@@ -468,12 +507,13 @@ func testEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data templa
 			}
 		}
 	}
+
 	assert.NotEmpty(t, foundEvents)
 }
 
 // tests error events not emitted by
 func testErrEventSourceExcludeValue(t *testing.T, _ *kubernetes.Clientset, data templateData, isClusterScope bool) {
-	t.Log("--- test emitting eventsource about scaledobject err with exclude filter---", "cloud event time", lastCloudEventTime)
+	t.Logf("--- test emitting eventsource about scaledobject err with exclude filter --- [isClusterScope: %t]", isClusterScope)
 
 	ceTemplate := ""
 	if isClusterScope {
@@ -483,38 +523,58 @@ func testErrEventSourceExcludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	}
 
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", ceTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", ceTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
-	// wait 15 seconds to ensure event propagation
-	time.Sleep(15 * time.Second)
+	conditionFunc := func() bool {
+		out, outErr, err := ExecCommandOnSpecificPodWithoutTTY(t, clientName, namespace, fmt.Sprintf("curl -s -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectCheckFailed"))
 
-	out, outErr, err := ExecCommandOnSpecificPod(t, clientName, namespace, fmt.Sprintf("curl -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectCheckFailed"))
-	assert.NotEmpty(t, out)
-	assert.Empty(t, outErr)
-	assert.NoError(t, err, "dont expect error requesting ")
+		if err != nil {
+			t.Logf("command execution error: %v (stderr: %v)", err, outErr)
+			return false
+		}
+		if outErr != "" {
+			t.Logf("command execution error: %v", outErr)
+			return false
+		}
+		if out == "" {
+			t.Logf("command execution returned empty output")
+			return false
+		}
 
-	cloudEvents := []cloudevents.Event{}
-	err = json.Unmarshal([]byte(out), &cloudEvents)
+		var cloudEvents []cloudevents.Event
+		err = json.Unmarshal([]byte(out), &cloudEvents)
+		if err != nil {
+			t.Logf("cannot unmarshal cloudevents JSON '%s': %v", out, err)
+			return false
+		}
 
-	assert.NoError(t, err, "dont expect error unmarshaling the cloudEvents")
-
-	for _, cloudEvent := range cloudEvents {
-		assert.Condition(t, func() bool {
+		for _, cloudEvent := range cloudEvents {
 			if cloudEvent.Subject() == expectedSubject &&
-				cloudEvent.Time().After(lastCloudEventTime) &&
-				cloudEvent.Type() == "keda.scaledobject.failed.v1" {
+				cloudEvent.Type() == string(cloudevent_types.ScaledObjectFailedType) &&
+				cloudEvent.Time().After(lastCloudEventTime) {
+				t.Logf("found excluded event: subject=%q, type=%q, time=%s, lastCloudEventTime=%s", cloudEvent.Subject(), cloudEvent.Type(), cloudEvent.Time().Format(time.RFC3339), lastCloudEventTime.Format(time.RFC3339))
 				return false
 			}
-			return true
-		}, "get filtered event")
+		}
+
+		t.Log("no excluded event found... continuing to validate consistency")
+		return true
 	}
 
-	KubectlDeleteWithTemplate(t, data, "cloudEventSourceWithExcludeTemplate", ceTemplate)
+	timeout := 30 * time.Second
+	interval := 5 * time.Second
+	t.Logf("Checking consistently every %v for %v that the excluded CloudEvent does not get emitted", interval, timeout)
+	g.Consistently(conditionFunc).
+		WithTimeout(timeout).
+		WithPolling(interval).
+		Should(BeTrueBecause("expected excluded CloudEvent to not be emitted"))
 }
 
 // tests error events in include filter
-func testErrEventSourceIncludeValue(t *testing.T, _ *kubernetes.Clientset, data templateData, isClusterScope bool) {
-	t.Log("--- test emitting eventsource about scaledobject err with include filter---")
+func testErrEventSourceIncludeValue(t *testing.T, kc *kubernetes.Clientset, data templateData, isClusterScope bool) {
+	t.Logf("--- test emitting eventsource about scaledobject err with include filter --- [isClusterScope: %t]", isClusterScope)
 
 	ceTemplate := ""
 	if isClusterScope {
@@ -522,38 +582,51 @@ func testErrEventSourceIncludeValue(t *testing.T, _ *kubernetes.Clientset, data 
 	} else {
 		ceTemplate = cloudEventSourceWithIncludeTemplate
 	}
-
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", ceTemplate)
-	KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", ceTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
 
-	// wait 15 seconds to ensure event propagation
-	time.Sleep(15 * time.Second)
+	WatchForEventAfterTrigger(
+		t,
+		g,
+		kc,
+		namespace,
+		scaledObjectName,
+		"ScaledObject",
+		eventreason.ScaledObjectCheckFailed,
+		corev1.EventTypeWarning,
+		[]string{message.ScaleTargetErrMsg, message.ScaleTargetNotFoundMsg},
+		60*time.Second,
+		func() error {
+			KubectlApplyWithTemplate(t, data, "scaledObjectErrTemplate", scaledObjectErrTemplate)
+			return nil
+		},
+	)
 
-	out, outErr, err := ExecCommandOnSpecificPod(t, clientName, namespace, fmt.Sprintf("curl -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectCheckFailed"))
+	out, outErr, err := ExecCommandOnSpecificPodWithoutTTY(t, clientName, namespace, fmt.Sprintf("curl -s -X GET %s/getCloudEvent/%s", cloudEventHTTPServiceURL, "ScaledObjectCheckFailed"))
 	assert.NotEmpty(t, out)
 	assert.Empty(t, outErr)
 	assert.NoError(t, err, "dont expect error requesting ")
 
 	cloudEvents := []cloudevents.Event{}
 	err = json.Unmarshal([]byte(out), &cloudEvents)
-
 	assert.NoError(t, err, "dont expect error unmarshaling the cloudEvents")
 
-	foundEvents := []cloudevents.Event{}
+	foundCloudEvents := []cloudevents.Event{}
 	for _, cloudEvent := range cloudEvents {
 		if cloudEvent.Subject() == expectedSubject &&
 			cloudEvent.Time().After(lastCloudEventTime) &&
-			cloudEvent.Type() == "keda.scaledobject.failed.v1" {
-			foundEvents = append(foundEvents, cloudEvent)
+			cloudEvent.Type() == string(cloudevent_types.ScaledObjectFailedType) {
+			foundCloudEvents = append(foundCloudEvents, cloudEvent)
 		}
 	}
-	assert.NotEmpty(t, foundEvents)
-	KubectlDeleteWithTemplate(t, data, "cloudEventSourceWithIncludeTemplate", ceTemplate)
+
+	assert.NotEmpty(t, foundCloudEvents)
 }
 
 // tests error event type when creation
 func testErrEventSourceCreation(t *testing.T, _ *kubernetes.Clientset, data templateData, isClusterScope bool) {
-	t.Log("--- test emitting eventsource about scaledobject err with include filter---")
+	t.Logf("--- test emitting eventsource about scaledobject err with include filter --- [isClusterScope: %t]", isClusterScope)
 
 	ceErrTemplate := ""
 	ceErrTemplate2 := ""
@@ -564,8 +637,6 @@ func testErrEventSourceCreation(t *testing.T, _ *kubernetes.Clientset, data temp
 		ceErrTemplate = cloudEventSourceWithErrTypeTemplate
 		ceErrTemplate2 = cloudEventSourceWithErrTypeTemplate2
 	}
-
-	// KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
 
 	err := KubectlApplyWithErrors(t, data, "cloudEventSourceWithErrTypeTemplate", ceErrTemplate)
 	if isClusterScope {
