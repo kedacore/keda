@@ -71,6 +71,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Improve Events emitted from ScaledObject controller ([#6802](https://github.com/kedacore/keda/issues/6802))
 - **General**: Internal gRPC connection's certificates are hot reloaded ([#6756](https://github.com/kedacore/keda/pull/6756))
+- **General**: Simplify scalers cache by removing getScalerBuilder method ([#6773](https://github.com/kedacore/keda/pull/6773))
 - **Metrics API**: Support multiple auth methods simultaneously in Metrics API scaler ([#6642](https://github.com/kedacore/keda/issues/6642))
 
 ### Fixes
