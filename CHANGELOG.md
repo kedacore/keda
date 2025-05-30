@@ -59,6 +59,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
+- **MSSQL Scaler**: Refactor MS SQL e2e test ([#3401](https://github.com/kedacore/keda/issues/3401))
+
 ### New
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
