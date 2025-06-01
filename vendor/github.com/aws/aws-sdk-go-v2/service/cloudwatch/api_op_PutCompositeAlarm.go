@@ -193,7 +193,7 @@ type PutCompositeAlarmInput struct {
 	//
 	// Start a Amazon Q Developer operational investigation
 	//
-	//     arn:aws:aiops:region:account-id:investigation-group:ingestigation-group-id
+	//     arn:aws:aiops:region:account-id:investigation-group:investigation-group-id
 	AlarmActions []string
 
 	// The description for the composite alarm.

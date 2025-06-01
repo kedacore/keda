@@ -334,6 +334,9 @@ func awsAwsquery_deserializeOpErrorDeleteDashboards(response *smithyhttp.Respons
 	}
 	errorBody.Seek(0, io.SeekStart)
 	switch {
+	case strings.EqualFold("ConflictException", errorCode):
+		return awsAwsquery_deserializeErrorConflictException(response, errorBody)
+
 	case strings.EqualFold("InternalServiceError", errorCode):
 		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
 
@@ -3122,6 +3125,9 @@ func awsAwsquery_deserializeOpErrorPutDashboard(response *smithyhttp.Response, m
 	}
 	errorBody.Seek(0, io.SeekStart)
 	switch {
+	case strings.EqualFold("ConflictException", errorCode):
+		return awsAwsquery_deserializeErrorConflictException(response, errorBody)
+
 	case strings.EqualFold("InternalServiceError", errorCode):
 		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
 
@@ -4076,6 +4082,9 @@ func awsAwsquery_deserializeOpErrorTagResource(response *smithyhttp.Response, me
 	case strings.EqualFold("ConcurrentModificationException", errorCode):
 		return awsAwsquery_deserializeErrorConcurrentModificationException(response, errorBody)
 
+	case strings.EqualFold("ConflictException", errorCode):
+		return awsAwsquery_deserializeErrorConflictException(response, errorBody)
+
 	case strings.EqualFold("InternalServiceError", errorCode):
 		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
 
@@ -4197,6 +4206,9 @@ func awsAwsquery_deserializeOpErrorUntagResource(response *smithyhttp.Response, 
 	case strings.EqualFold("ConcurrentModificationException", errorCode):
 		return awsAwsquery_deserializeErrorConcurrentModificationException(response, errorBody)
 
+	case strings.EqualFold("ConflictException", errorCode):
+		return awsAwsquery_deserializeErrorConflictException(response, errorBody)
+
 	case strings.EqualFold("InternalServiceError", errorCode):
 		return awsAwsquery_deserializeErrorInternalServiceFault(response, errorBody)
 
@@ -4248,6 +4260,50 @@ func awsAwsquery_deserializeErrorConcurrentModificationException(response *smith
 
 	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
 	err = awsAwsquery_deserializeDocumentConcurrentModificationException(&output, decoder)
+	if err != nil {
+		var snapshot bytes.Buffer
+		io.Copy(&snapshot, ringBuffer)
+		return &smithy.DeserializationError{
+			Err:      fmt.Errorf("failed to decode response body, %w", err),
+			Snapshot: snapshot.Bytes(),
+		}
+	}
+
+	return output
+}
+
+func awsAwsquery_deserializeErrorConflictException(response *smithyhttp.Response, errorBody *bytes.Reader) error {
+	output := &types.ConflictException{}
+	var buff [1024]byte
+	ringBuffer := smithyio.NewRingBuffer(buff[:])
+	body := io.TeeReader(errorBody, ringBuffer)
+	rootDecoder := xml.NewDecoder(body)
+	t, err := smithyxml.FetchRootElement(rootDecoder)
+	if err == io.EOF {
+		return output
+	}
+	if err != nil {
+		var snapshot bytes.Buffer
+		io.Copy(&snapshot, ringBuffer)
+		return &smithy.DeserializationError{
+			Err:      fmt.Errorf("failed to decode response body, %w", err),
+			Snapshot: snapshot.Bytes(),
+		}
+	}
+
+	decoder := smithyxml.WrapNodeDecoder(rootDecoder, t)
+	t, err = decoder.GetElement("Error")
+	if err != nil {
+		var snapshot bytes.Buffer
+		io.Copy(&snapshot, ringBuffer)
+		return &smithy.DeserializationError{
+			Err:      fmt.Errorf("failed to decode response body, %w", err),
+			Snapshot: snapshot.Bytes(),
+		}
+	}
+
+	decoder = smithyxml.WrapNodeDecoder(decoder.Decoder, t)
+	err = awsAwsquery_deserializeDocumentConflictException(&output, decoder)
 	if err != nil {
 		var snapshot bytes.Buffer
 		io.Copy(&snapshot, ringBuffer)
@@ -5753,6 +5809,55 @@ func awsAwsquery_deserializeDocumentConcurrentModificationException(v **types.Co
 	return nil
 }
 
+func awsAwsquery_deserializeDocumentConflictException(v **types.ConflictException, decoder smithyxml.NodeDecoder) error {
+	if v == nil {
+		return fmt.Errorf("unexpected nil of type %T", v)
+	}
+	var sv *types.ConflictException
+	if *v == nil {
+		sv = &types.ConflictException{}
+	} else {
+		sv = *v
+	}
+
+	for {
+		t, done, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if done {
+			break
+		}
+		originalDecoder := decoder
+		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
+		switch {
+		case strings.EqualFold("Message", t.Name.Local):
+			val, err := decoder.Value()
+			if err != nil {
+				return err
+			}
+			if val == nil {
+				break
+			}
+			{
+				xtv := string(val)
+				sv.Message = ptr.String(xtv)
+			}
+
+		default:
+			// Do nothing and ignore the unexpected tag element
+			err = decoder.Decoder.Skip()
+			if err != nil {
+				return err
+			}
+
+		}
+		decoder = originalDecoder
+	}
+	*v = sv
+	return nil
+}
+
 func awsAwsquery_deserializeDocumentDashboardEntries(v *[]types.DashboardEntry, decoder smithyxml.NodeDecoder) error {
 	if v == nil {
 		return fmt.Errorf("unexpected nil of type %T", v)
@@ -6718,6 +6823,22 @@ func awsAwsquery_deserializeDocumentInsightRule(v **types.InsightRule, decoder s
 		originalDecoder := decoder
 		decoder = smithyxml.WrapNodeDecoder(originalDecoder.Decoder, t)
 		switch {
+		case strings.EqualFold("ApplyOnTransformedLogs", t.Name.Local):
+			val, err := decoder.Value()
+			if err != nil {
+				return err
+			}
+			if val == nil {
+				break
+			}
+			{
+				xtv, err := strconv.ParseBool(string(val))
+				if err != nil {
+					return fmt.Errorf("expected InsightRuleOnTransformedLogs to be of type *bool, got %T instead", val)
+				}
+				sv.ApplyOnTransformedLogs = ptr.Bool(xtv)
+			}
+
 		case strings.EqualFold("Definition", t.Name.Local):
 			val, err := decoder.Value()
 			if err != nil {

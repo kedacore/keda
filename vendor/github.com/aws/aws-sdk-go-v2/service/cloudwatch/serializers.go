@@ -4364,6 +4364,11 @@ func awsAwsquery_serializeOpDocumentPutInsightRuleInput(v *PutInsightRuleInput, 
 	object := value.Object()
 	_ = object
 
+	if v.ApplyOnTransformedLogs != nil {
+		objectKey := object.Key("ApplyOnTransformedLogs")
+		objectKey.Boolean(*v.ApplyOnTransformedLogs)
+	}
+
 	if v.RuleDefinition != nil {
 		objectKey := object.Key("RuleDefinition")
 		objectKey.String(*v.RuleDefinition)
