@@ -70,6 +70,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **General**: Internal gRPC connection's certificates are hot reloaded ([#6756](https://github.com/kedacore/keda/pull/6756))
+- **General**: Optimize ScaledObject status updates to reduce unnecessary API calls ([#XXXX](https://github.com/kedacore/keda/issues/XXXX))
 - **Metrics API**: Support multiple auth methods simultaneously in Metrics API scaler ([#6642](https://github.com/kedacore/keda/issues/6642))
 
 ### Fixes
@@ -130,7 +131,7 @@ New deprecation(s):
 - **IBMMQ Scaler**: Handling StatusNotFound in IBMMQ scaler ([#6472](https://github.com/kedacore/keda/pull/6472))
 - **MongoDB Scaler**: Support float queryValue for MongoDB scaler ([#6574](https://github.com/kedacore/keda/issues/6574))
 - **Prometheus Scaler**: Add custom HTTP client timeout ([#6607](https://github.com/kedacore/keda/pull/6607))
-- **RabbitMQ Scaler**: Support use of the ‘vhostName’ parameter in the ‘TriggerAuthentication’ resource ([#6369](https://github.com/kedacore/keda/issues/6369))
+- **RabbitMQ Scaler**: Support use of the 'vhostName' parameter in the 'TriggerAuthentication' resource ([#6369](https://github.com/kedacore/keda/issues/6369))
 - **Selenium Grid**: Add trigger param for Node enables managed downloads capability ([#6570](https://github.com/kedacore/keda/pull/6570))
 - **Selenium Grid**: Add trigger param to set custom capabilities for matching specific Nodes ([#6536](https://github.com/kedacore/keda/issues/6536))
 - **Selenium Grid**: Selenium Grid: Trigger param enableManagedDownloads set as true by default ([#6684](https://github.com/kedacore/keda/pull/6684))

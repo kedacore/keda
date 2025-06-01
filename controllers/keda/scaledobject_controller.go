@@ -51,7 +51,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedastatus "github.com/kedacore/keda/v2/pkg/status"
-	"github.com/kedacore/keda/v2/pkg/util"
+	"github.com/kedacore/keda/v2/pkg/utils"
 )
 
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects;scaledobjects/finalizers;scaledobjects/status,verbs=get;list;watch;update;patch
@@ -135,7 +135,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 				predicate.GenerationChangedPredicate{},
 			),
 		)).
-		WithEventFilter(util.IgnoreOtherNamespaces()).
+		WithEventFilter(utils.IgnoreOtherNamespaces()).
 		// Trigger a reconcile only when the HPA spec,label or annotation changes.
 		// Ignore updates to HPA status
 		Owns(&autoscalingv2.HorizontalPodAutoscaler{}, builder.WithPredicates(
@@ -211,9 +211,13 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	metricscollector.RecordScaledObjectPaused(scaledObject.Namespace, scaledObject.Name, conditions.GetPausedCondition().Status == metav1.ConditionTrue)
 
-	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, &conditions); err != nil {
-		r.EventEmitter.Emit(scaledObject, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectUpdateFailed, err.Error())
-		return ctrl.Result{}, err
+	// Compare the new conditions with the existing ones before updating.
+	// This helps to reduce unnecessary status updates if the conditions haven't changed.
+	if !utils.CompareConditions(&scaledObject.Status.Conditions, &conditions) {
+		if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, &conditions); err != nil {
+			r.EventEmitter.Emit(scaledObject, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectUpdateFailed, err.Error())
+			return ctrl.Result{}, err
+		}
 	}
 
 	if _, err := r.updateTriggerAuthenticationStatus(ctx, reqLogger, scaledObject); err != nil {
