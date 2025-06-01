@@ -28,12 +28,12 @@ jobs:
       - name: Get branch name
         id: branch-name
         uses: tj-actions/branch-names@dde14ac574a8b9b1cedc59a1cf312788af43d8d8 # v8.2.1
-      - uses: fossas/fossa-action@c0a7d013f84c8ee5e910593186598625513cc1e4 # v1.6.0
+      - uses: fossas/fossa-action@3ebcea1862c6ffbd5cf1b4d0bd6b3fe7bd6f2cac # v1.7.0
         name: Scanning with FOSSA
         with:
           api-key: ${{ env.fossa-key }}
           branch: ${{ steps.branch-name.outputs.current_branch }}
-      - uses: fossas/fossa-action@c0a7d013f84c8ee5e910593186598625513cc1e4 # v1.6.0
+      - uses: fossas/fossa-action@3ebcea1862c6ffbd5cf1b4d0bd6b3fe7bd6f2cac # v1.7.0
         name: Executing tests with FOSSA
         with:
           api-key: ${{ env.fossa-key }}
