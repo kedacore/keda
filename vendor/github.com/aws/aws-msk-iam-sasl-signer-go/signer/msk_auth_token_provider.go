@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-
 	"log"
 	"net/http"
 	"net/url"
@@ -28,6 +27,7 @@ const (
 	SigningName          = "kafka-cluster"              // SigningName represents the signing name for the Kafka cluster.
 	UserAgentKey         = "User-Agent"                 // UserAgentKey represents the key for the User-Agent parameter in the request.
 	LibName              = "aws-msk-iam-sasl-signer-go" // LibName represents the name of the library.
+	DateQueryKey         = "X-Amz-Date"                 // DateQueryKey represents the key for the date in the query parameters.
 	ExpiresQueryKey      = "X-Amz-Expires"              // ExpiresQueryKey represents the key for the expiration time in the query parameters.
 	DefaultSessionName   = "MSKSASLDefaultSession"      // DefaultSessionName represents the default session name for assuming a role.
 	DefaultExpirySeconds = 900                          // DefaultExpirySeconds represents the default expiration time in seconds.
@@ -52,7 +52,12 @@ func GenerateAuthToken(ctx context.Context, region string) (string, int64, error
 
 // GenerateAuthTokenFromProfile generates base64 encoded signed url as auth token by loading IAM credentials from an AWS named profile.
 func GenerateAuthTokenFromProfile(ctx context.Context, region string, awsProfile string) (string, int64, error) {
-	credentials, err := loadCredentialsFromProfile(ctx, region, awsProfile)
+	return GenerateAuthTokenFromProfileWithSharedConfigFiles(ctx, region, awsProfile, nil)
+}
+
+// GenerateAuthTokenFromProfileWithSharedConfigFiles generates base64 encoded signed url as auth token by loading IAM credentials from an AWS named profile with shared config files.
+func GenerateAuthTokenFromProfileWithSharedConfigFiles(ctx context.Context, region string, awsProfile string, sharedConfigFiles []string) (string, int64, error) {
+	credentials, err := loadCredentialsFromProfile(ctx, region, awsProfile, sharedConfigFiles)
 
 	if err != nil {
 		return "", 0, fmt.Errorf("failed to load credentials: %w", err)
@@ -65,10 +70,36 @@ func GenerateAuthTokenFromProfile(ctx context.Context, region string, awsProfile
 func GenerateAuthTokenFromRole(
 	ctx context.Context, region string, roleArn string, stsSessionName string,
 ) (string, int64, error) {
+	return GenerateAuthTokenFromRoleWithExternalId(ctx, region, roleArn, stsSessionName, "")
+}
+
+// GenerateAuthTokenFromRoleWithExternalId generates base64 encoded signed url as auth token by loading IAM credentials from an aws role Arn
+//
+// If the provided externalId is empty, it behaves exactly like GenerateAuthTokenFromRole.
+func GenerateAuthTokenFromRoleWithExternalId(
+	ctx context.Context, region string, roleArn string, stsSessionName string, externalId string,
+) (string, int64, error) {
 	if stsSessionName == "" {
 		stsSessionName = DefaultSessionName
 	}
-	credentials, err := loadCredentialsFromRoleArn(ctx, region, roleArn, stsSessionName)
+	credentials, err := loadCredentialsFromRoleArn(ctx, region, roleArn, stsSessionName, externalId)
+
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to load credentials: %w", err)
+	}
+
+	return constructAuthToken(ctx, region, credentials)
+}
+
+// GenerateAuthTokenFromWebIdentity generates base64 encoded signed url as auth token by loading IAM credentials from a web identity role Arn.
+func GenerateAuthTokenFromWebIdentity(
+	ctx context.Context, region string, roleArn string, webIdentityToken string, stsSessionName string,
+) (string, int64, error) {
+	if stsSessionName == "" {
+		stsSessionName = DefaultSessionName
+	}
+
+	credentials, err := loadCredentialsFromWebIdentityParameters(ctx, region, roleArn, webIdentityToken, stsSessionName)
 
 	if err != nil {
 		return "", 0, fmt.Errorf("failed to load credentials: %w", err)
@@ -103,10 +134,16 @@ func loadDefaultCredentials(ctx context.Context, region string) (*aws.Credential
 }
 
 // Loads credentials from a named aws profile.
-func loadCredentialsFromProfile(ctx context.Context, region string, awsProfile string) (*aws.Credentials, error) {
-	cfg, err := config.LoadDefaultConfig(ctx,
+func loadCredentialsFromProfile(ctx context.Context, region string, awsProfile string, sharedConfigFiles []string) (*aws.Credentials, error) {
+	optsFns := []func(*config.LoadOptions) error{
 		config.WithRegion(region),
 		config.WithSharedConfigProfile(awsProfile),
+	}
+	if len(sharedConfigFiles) > 0 {
+		optsFns = append(optsFns, config.WithSharedConfigFiles(sharedConfigFiles))
+	}
+	cfg, err := config.LoadDefaultConfig(ctx,
+		optsFns...,
 	)
 
 	if err != nil {
@@ -121,7 +158,7 @@ func loadCredentialsFromProfile(ctx context.Context, region string, awsProfile s
 // use your own credentials provider.
 // If you wish to use regional endpoint, please pass your own credentials provider.
 func loadCredentialsFromRoleArn(
-	ctx context.Context, region string, roleArn string, stsSessionName string,
+	ctx context.Context, region string, roleArn string, stsSessionName string, externalId string,
 ) (*aws.Credentials, error) {
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
 
@@ -135,6 +172,9 @@ func loadCredentialsFromRoleArn(
 		RoleArn:         aws.String(roleArn),
 		RoleSessionName: aws.String(stsSessionName),
 	}
+	if externalId != "" {
+		assumeRoleInput.ExternalId = aws.String(externalId)
+	}
 	assumeRoleOutput, err := stsClient.AssumeRole(ctx, assumeRoleInput)
 	if err != nil {
 		return nil, fmt.Errorf("unable to assume role, %s: %w", roleArn, err)
@@ -145,6 +185,41 @@ func loadCredentialsFromRoleArn(
 		AccessKeyID:     *assumeRoleOutput.Credentials.AccessKeyId,
 		SecretAccessKey: *assumeRoleOutput.Credentials.SecretAccessKey,
 		SessionToken:    *assumeRoleOutput.Credentials.SessionToken,
+	}
+
+	return &creds, nil
+}
+
+// Loads credentials from a named by assuming the passed web identity role and id token.
+// This implementation creates a new sts client for every call to get or refresh token. In order to avoid this, please
+// use your own credentials' provider.
+// If you wish to use regional endpoint, please pass your own credentials' provider.
+func loadCredentialsFromWebIdentityParameters(
+	ctx context.Context, region, roleArn, webIdentityToken, stsSessionName string,
+) (*aws.Credentials, error) {
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to load SDK config: %w", err)
+	}
+
+	stsClient := sts.NewFromConfig(cfg)
+
+	assumeRoleWithWebIdentityInput := &sts.AssumeRoleWithWebIdentityInput{
+		RoleArn:          aws.String(roleArn),
+		RoleSessionName:  aws.String(stsSessionName),
+		WebIdentityToken: aws.String(webIdentityToken),
+	}
+	assumeRoleWithWebIdentityOutput, err := stsClient.AssumeRoleWithWebIdentity(ctx, assumeRoleWithWebIdentityInput)
+	if err != nil {
+		return nil, fmt.Errorf("unable to assume role with web identity, %s: %w", roleArn, err)
+	}
+
+	//Create new aws.Credentials instance using the credentials from AssumeRoleWithWebIdentityOutput.Credentials
+	creds := aws.Credentials{
+		AccessKeyID:     *assumeRoleWithWebIdentityOutput.Credentials.AccessKeyId,
+		SecretAccessKey: *assumeRoleWithWebIdentityOutput.Credentials.SecretAccessKey,
+		SessionToken:    *assumeRoleWithWebIdentityOutput.Credentials.SessionToken,
 	}
 
 	return &creds, nil
@@ -232,14 +307,14 @@ func getExpirationTimeMs(signedURL string) (int64, error) {
 	}
 
 	params := parsedURL.Query()
-	date, err := time.Parse("20060102T150405Z", params.Get("X-Amz-Date"))
+	date, err := time.Parse("20060102T150405Z", params.Get(DateQueryKey))
 
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse the 'X-Amz-Date' param from signed url: %w", err)
 	}
 
 	signingTimeMs := date.UnixNano() / int64(time.Millisecond)
-	expiryDurationSeconds, err := strconv.ParseInt(params.Get("X-Amz-Expires"), 10, 64)
+	expiryDurationSeconds, err := strconv.ParseInt(params.Get(ExpiresQueryKey), 10, 64)
 
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse the 'X-Amz-Expires' param from signed url: %w", err)
