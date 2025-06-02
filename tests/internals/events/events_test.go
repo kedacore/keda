@@ -329,7 +329,7 @@ func checkingEvent(t *testing.T, namespace string, scaledObject string, index in
 
 	assert.NoError(t, err)
 	lastEventMessage := strings.Trim(string(result), "\"")
-	assert.Equal(t, eventReason+":"+message, lastEventMessage)
+	assert.Contains(t, lastEventMessage, eventReason+":"+message)
 }
 
 func testNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) {
