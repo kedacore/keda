@@ -260,6 +260,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewStanScaler(config)
 	case "temporal":
 		return scalers.NewTemporalScaler(ctx, config)
+	case "weather-aware-demand":
+		return scalers.NewWeatherAwareDemandScaler(config)
 	default:
 		return nil, fmt.Errorf("no scaler found for type: %s", triggerType)
 	}
