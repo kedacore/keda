@@ -29,6 +29,9 @@ const (
 	// any available sessions it will eventually time out and return an *azservicebus.Error
 	// with this code.
 	CodeTimeout Code = "timeout"
+
+	// CodeNotFound means the entity you're attempting to connect to doesn't exist.
+	CodeNotFound Code = "notfound"
 )
 
 // Error represents a Service Bus specific error.

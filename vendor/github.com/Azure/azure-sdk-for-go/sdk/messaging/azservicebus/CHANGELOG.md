@@ -1,5 +1,19 @@
 # Release History
 
+## 1.9.0 (2025-05-06)
+
+### Features Added
+
+- Added a new azservicebus.Code value, `CodeNotFound`, which indicates the queue, topic or subscription doesn't exist. (PR#24501)
+
+## 1.8.1 (2025-04-08)
+
+### Bugs Fixed
+
+- AcceptNextSessionFor(Queue/Subscription) and AcceptSessionFor(Queue/Subscription) no longer need to call RenewSessionLock before returning the accepted
+  session. (PR#24345)
+- Some Service Bus annotation values can be set to nil values, which would panic our Receiver. These are now checked, and set to nil appropriately. (PR#24312)
+
 ## 1.8.0 (2025-02-11)
 
 ### Features Added

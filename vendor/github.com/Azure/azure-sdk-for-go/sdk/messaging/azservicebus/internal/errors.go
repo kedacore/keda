@@ -78,8 +78,13 @@ func TransformError(err error) error {
 
 	var rpcErr RPCError
 
-	if errors.As(err, &rpcErr) && rpcErr.Resp.Code == http.StatusUnauthorized {
-		return exported.NewError(exported.CodeUnauthorizedAccess, err)
+	if errors.As(err, &rpcErr) {
+		switch rpcErr.Resp.Code {
+		case http.StatusUnauthorized:
+			return exported.NewError(exported.CodeUnauthorizedAccess, err)
+		case http.StatusNotFound:
+			return exported.NewError(exported.CodeNotFound, err)
+		}
 	}
 
 	rk := GetRecoveryKind(err)
