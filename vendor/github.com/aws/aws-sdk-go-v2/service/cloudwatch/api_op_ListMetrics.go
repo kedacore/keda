@@ -47,8 +47,9 @@ func (c *Client) ListMetrics(ctx context.Context, params *ListMetricsInput, optF
 
 type ListMetricsInput struct {
 
-	// The dimensions to filter against. Only the dimensions that match exactly will
-	// be returned.
+	// The dimensions to filter against. Only the dimension with names that match
+	// exactly will be returned. If you specify one dimension name and a metric has
+	// that dimension and also other dimensions, it will be returned.
 	Dimensions []types.DimensionFilter
 
 	// If you are using this operation in a monitoring account, specify true to

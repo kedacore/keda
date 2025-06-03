@@ -374,6 +374,13 @@ type InsightRule struct {
 	// This member is required.
 	State *string
 
+	// Displays whether the rule is evaluated on the transformed versions of logs, for
+	// log groups that have [Log transformation]enabled. If this is false , log events are evaluated before
+	// they are transformed.
+	//
+	// [Log transformation]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatch-Logs-Transformation.html
+	ApplyOnTransformedLogs *bool
+
 	//  An optional built-in rule that Amazon Web Services manages.
 	ManagedRule *bool
 
@@ -836,8 +843,8 @@ type MetricDataQuery struct {
 	// The granularity, in seconds, of the returned data points. For metrics with
 	// regular resolution, a period can be as short as one minute (60 seconds) and must
 	// be a multiple of 60. For high-resolution metrics that are collected at intervals
-	// of less than one minute, the period can be 1, 5, 10, 30, 60, or any multiple of
-	// 60. High-resolution metrics are those metrics stored by a PutMetricData
+	// of less than one minute, the period can be 1, 5, 10, 20, 30, 60, or any multiple
+	// of 60. High-resolution metrics are those metrics stored by a PutMetricData
 	// operation that includes a StorageResolution of 1 second .
 	Period *int32
 
@@ -989,8 +996,8 @@ type MetricStat struct {
 	// The granularity, in seconds, of the returned data points. For metrics with
 	// regular resolution, a period can be as short as one minute (60 seconds) and must
 	// be a multiple of 60. For high-resolution metrics that are collected at intervals
-	// of less than one minute, the period can be 1, 5, 10, 30, 60, or any multiple of
-	// 60. High-resolution metrics are those metrics stored by a PutMetricData call
+	// of less than one minute, the period can be 1, 5, 10, 20, 30, 60, or any multiple
+	// of 60. High-resolution metrics are those metrics stored by a PutMetricData call
 	// that includes a StorageResolution of 1 second.
 	//
 	// If the StartTime parameter specifies a time stamp that is greater than 3 hours

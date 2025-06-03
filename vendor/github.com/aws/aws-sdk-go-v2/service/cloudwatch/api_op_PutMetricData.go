@@ -144,7 +144,7 @@ type PutMetricDataInput struct {
 	//
 	// This parameter is required when EntityMetricData is included.
 	//
-	// [How to add related information to telemetry]: https://docs.aws.amazon.com/adding-your-own-related-telemetry.html
+	// [How to add related information to telemetry]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/adding-your-own-related-telemetry.html
 	StrictEntityValidation *bool
 
 	noSmithyDocumentSerde
