@@ -60,8 +60,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## Unreleased
 
 ### New
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Trigger Schema Generated Tool ([#6345](https://github.com/kedacore/keda/issues/6345))
 
 #### Experimental
 
