@@ -106,7 +106,7 @@ spec:
           - |
             sqlite3 /data/forgejo.db "UPDATE action_run_job SET created = {{.NewTimestamp}} WHERE id = 3"
             sqlite3 /data/forgejo.db "UPDATE action_run_job SET updated = {{.NewTimestamp}} WHERE id = 3"
-            forgejo --config /data/app.ini forgejo-cli actions register --secret 7c31591e8b67225a116d4a4519ea8e507e08f71f --labels ubuntu-20.04 --name keda_runner --version v6.3.1
+            forgejo --config /data/app.ini forgejo-cli actions register --secret {{.ForgejoToken}} --labels ubuntu-20.04 --name keda_runner --version v6.3.1
             /usr/local/bin/gitea --config /data/app.ini web
         imagePullPolicy: IfNotPresent
         name: forgejo
@@ -155,7 +155,7 @@ spec:
             - sh
             - -c
             - |
-              forgejo-runner create-runner-file --name keda_runner --instance {{.ForgejoAddress}} --secret 7c31591e8b67225a116d4a4519ea8e507e08f71f
+              forgejo-runner create-runner-file --name keda_runner --instance {{.ForgejoAddress}} --secret {{.ForgejoToken}}
               sed -i -e "s|\"labels\": null|\"labels\": \[ \"ubuntu-20.04:host://-self-hosted\"\]|" .runner ;
               exec forgejo-runner one-job
           securityContext:
@@ -185,20 +185,20 @@ func TestForgejoScaler(t *testing.T) {
 	require.NotEmpty(t, forgejoAccessToken, "FORGEJO_ACCESS_TOKEN env variable is required")
 
 	kc := GetKubernetesClient(t)
-	data_forgejo, templates_forgejo := getForgejoData()
+	dataForgejo, templatesForgejo := getForgejoData()
 	t.Cleanup(func() {
 
 	})
 
 	CreateNamespace(t, kc, testNamespace)
-	KubectlApplyMultipleWithTemplate(t, data_forgejo, templates_forgejo)
+	KubectlApplyMultipleWithTemplate(t, dataForgejo, templatesForgejo)
 
 	// setup forgejo
 	setupForgejo(t, kc)
 
 	data, templates := getTemplateData()
 	t.Cleanup(func() {
-		DeleteKubernetesResources(t, testNamespace, data_forgejo, append(templates, templates_forgejo...))
+		DeleteKubernetesResources(t, testNamespace, dataForgejo, append(templates, templatesForgejo...))
 	})
 
 	// Create kubernetes resources
