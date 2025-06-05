@@ -277,8 +277,17 @@ func checkMessage(t *testing.T, count int, client *azservicebus.Client) {
 
 		for _, message := range messages {
 			event := messaging.CloudEvent{}
+			t.Log(message.Body)
 			err = json.Unmarshal(message.Body, &event)
+
 			assert.NoErrorf(t, err, "cannot retrieve message - %s", err)
+			t.Logf("expected subject %s", expectedSubject)
+			t.Logf("expected source %s", expectedSource)
+			t.Logf("expected type %s", expectedType)
+			t.Logf("event subject %s", *event.Subject)
+			t.Logf("event source %s", event.Source)
+			t.Logf("event type %s", event.Type)
+
 			if expectedSubject == *event.Subject &&
 				expectedSource == event.Source &&
 				expectedType == event.Type {
