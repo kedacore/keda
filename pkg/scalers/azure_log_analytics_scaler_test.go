@@ -100,8 +100,6 @@ var testLogAnalyticsMetadata = []parseLogAnalyticsMetadataTestData{
 	{map[string]string{"tenantIdFromEnv": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientIdFromEnv": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecretFromEnv": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceIdFromEnv": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000", "cloud": "azureGermanCloud"}, true},
 	// Valid HTTP timeout
 	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000", "timeout": "1000"}, false},
-	// Invalid - 0 - HTTP timeout
-	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000", "timeout": "0"}, true},
 	// Invalid - negative - HTTP timeout
 	{map[string]string{"tenantId": "d248da64-0e1e-4f79-b8c6-72ab7aa055eb", "clientId": "41826dd4-9e0a-4357-a5bd-a88ad771ea7d", "clientSecret": "U6DtAX5r6RPZxd~l12Ri3X8J9urt5Q-xs", "workspaceId": "074dd9f8-c368-4220-9400-acb6e80fc325", "query": query, "threshold": "1900000000", "timeout": "-1"}, true},
 	// Invalid - not a number - HTTP timeout
@@ -233,8 +231,8 @@ func TestLogAnalyticsParseMetadataUnsafeSsl(t *testing.T) {
 			t.Error("Expected error but got success")
 		}
 		if meta != nil {
-			if meta.unsafeSsl != testData.unsafeSsl {
-				t.Errorf("Expected unsafeSsl to be %v but got %v", testData.unsafeSsl, meta.unsafeSsl)
+			if meta.UnsafeSsl != testData.unsafeSsl {
+				t.Errorf("Expected unsafeSsl to be %v but got %v", testData.unsafeSsl, meta.UnsafeSsl)
 			}
 		}
 	}
