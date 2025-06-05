@@ -151,7 +151,7 @@ spec:
         containers:
         - name: runner
           image: code.forgejo.org/forgejo/runner:6.3.1
-          command: 
+          command:
             - sh
             - -c
             - |
