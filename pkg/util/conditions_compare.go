@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package util
 
 import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"

@@ -70,7 +70,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **General**: Internal gRPC connection's certificates are hot reloaded ([#6756](https://github.com/kedacore/keda/pull/6756))
-- **General**: Optimize ScaledObject status updates to reduce unnecessary API calls ([#XXXX](https://github.com/kedacore/keda/issues/XXXX))
+- **General**: Optimize ScaledObject status updates to reduce unnecessary API calls ([#6789](https://github.com/kedacore/keda/issues/6789))
 - **Metrics API**: Support multiple auth methods simultaneously in Metrics API scaler ([#6642](https://github.com/kedacore/keda/issues/6642))
 
 ### Fixes
@@ -308,7 +308,6 @@ Here is an overview of all new **experimental** features:
 
 - **General**: Added Pre Regex check before building image in e2e test ([#5783](https://github.com/kedacore/keda/issues/5783))
 - **General**: Check for missing CRD references and sample CRs ([#5920](https://github.com/kedacore/keda/issues/5920))
-- **General**: Reduce the number of ScaledObject.Status updates in the fallback ([#5624](https://github.com/kedacore/keda/issues/5624))
 - **General**: Remove deprecated Kustomize commonLabels ([#5888](https://github.com/kedacore/keda/pull/5888))
 - **General**: Remove unused leader election parameters in metrics adapter ([#5959](https://github.com/kedacore/keda/issues/5959))
 - **General**: Use new declarative parsing to read scaler config ([#5037](https://github.com/kedacore/keda/issues/5037)|[#5797](https://github.com/kedacore/keda/issues/5797))
