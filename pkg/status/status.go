@@ -28,10 +28,30 @@ import (
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 // SetStatusConditions patches given object with passed list of conditions based on the object's type or returns an error.
 func SetStatusConditions(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object interface{}, conditions *kedav1alpha1.Conditions) error {
+	var existingConditions *kedav1alpha1.Conditions
+
+	switch obj := object.(type) {
+	case *kedav1alpha1.ScaledObject:
+		existingConditions = &obj.Status.Conditions
+	case *kedav1alpha1.ScaledJob:
+		existingConditions = &obj.Status.Conditions
+	case *eventingv1alpha1.CloudEventSource:
+		existingConditions = &obj.Status.Conditions
+	case *eventingv1alpha1.ClusterCloudEventSource:
+		existingConditions = &obj.Status.Conditions
+	default:
+		return fmt.Errorf("unknown object type %T", object)
+	}
+
+	if util.CompareConditions(existingConditions, conditions) {
+		logger.V(1).Info("Skipping status update because conditions are identical")
+		return nil
+	}
 	transform := func(runtimeObj runtimeclient.Object, target interface{}) error {
 		conditions, ok := target.(*kedav1alpha1.Conditions)
 		if !ok {
