@@ -19,16 +19,17 @@ package util
 import (
 	"testing"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 func TestCompareConditions(t *testing.T) {
 	tests := []struct {
-		name       string
+		name        string
 		conditions1 *kedav1alpha1.Conditions
 		conditions2 *kedav1alpha1.Conditions
-		expected   bool
+		expected    bool
 	}{
 		{
 			name:        "both nil conditions should be equal",
@@ -66,7 +67,7 @@ func TestCompareConditions(t *testing.T) {
 			expected: false,
 		},
 		{
-			name: "empty vs all unknown conditions should not be equal",
+			name:        "empty vs all unknown conditions should not be equal",
 			conditions1: &kedav1alpha1.Conditions{},
 			conditions2: &kedav1alpha1.Conditions{
 				{
@@ -420,4 +421,4 @@ func TestConditionsToMap(t *testing.T) {
 			}
 		})
 	}
-} 
+}

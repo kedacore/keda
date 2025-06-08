@@ -17,8 +17,9 @@ limitations under the License.
 package util
 
 import (
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 // CompareConditions checks if two slices of Conditions are semantically equivalent.

@@ -31,43 +31,43 @@ import (
 	"github.com/kedacore/keda/v2/pkg/util"
 )
 
-// SetStatusConditions patches given object with passed list of conditions based on the object's type or returns an error.
-func SetStatusConditions(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object interface{}, conditions *kedav1alpha1.Conditions) error {
-	var existingConditions *kedav1alpha1.Conditions
-
+func getConditions(object interface{}) (*kedav1alpha1.Conditions, error) {
 	switch obj := object.(type) {
 	case *kedav1alpha1.ScaledObject:
-		existingConditions = &obj.Status.Conditions
+		return &obj.Status.Conditions, nil
 	case *kedav1alpha1.ScaledJob:
-		existingConditions = &obj.Status.Conditions
+		return &obj.Status.Conditions, nil
 	case *eventingv1alpha1.CloudEventSource:
-		existingConditions = &obj.Status.Conditions
+		return &obj.Status.Conditions, nil
 	case *eventingv1alpha1.ClusterCloudEventSource:
-		existingConditions = &obj.Status.Conditions
+		return &obj.Status.Conditions, nil
 	default:
-		return fmt.Errorf("unknown object type %T", object)
+		return nil, fmt.Errorf("unknown object type %T", object)
+	}
+}
+
+// SetStatusConditions patches given object with passed list of conditions based on the object's type or returns an error.
+func SetStatusConditions(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object interface{}, conditions *kedav1alpha1.Conditions) error {
+	existingConditions, err := getConditions(object)
+	if err != nil {
+		return err
 	}
 
 	if util.CompareConditions(existingConditions, conditions) {
 		logger.V(1).Info("Skipping status update because conditions are identical")
 		return nil
 	}
+
 	transform := func(runtimeObj runtimeclient.Object, target interface{}) error {
 		conditions, ok := target.(*kedav1alpha1.Conditions)
 		if !ok {
 			return fmt.Errorf("transform target is not kedav1alpha1.Conditions type %v", target)
 		}
-		switch obj := runtimeObj.(type) {
-		case *kedav1alpha1.ScaledObject:
-			obj.Status.Conditions = *conditions
-		case *kedav1alpha1.ScaledJob:
-			obj.Status.Conditions = *conditions
-		case *eventingv1alpha1.CloudEventSource:
-			obj.Status.Conditions = *conditions
-		case *eventingv1alpha1.ClusterCloudEventSource:
-			obj.Status.Conditions = *conditions
-		default:
+		destConditions, err := getConditions(runtimeObj)
+		if err != nil {
+			return err
 		}
+		*destConditions = *conditions
 		return nil
 	}
 	return TransformObject(ctx, client, logger, object, conditions, transform)
