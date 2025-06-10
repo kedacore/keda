@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/newrelic/newrelic-client-go/v2/pkg/nrdb"
 	v2 "k8s.io/api/autoscaling/v2"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -21,6 +22,15 @@ type newrelicMetricIdentifier struct {
 	metadataTestData *parseNewRelicMetadataTestData
 	triggerIndex     int
 	name             string
+}
+
+type parseNewRelicResponseTestData struct {
+	name        string
+	results     []nrdb.NRDBResult
+	noDataError bool
+	nrql        string
+	expected    float64
+	expectError bool
 }
 
 var testNewRelicMetadata = []parseNewRelicMetadataTestData{
@@ -59,6 +69,59 @@ var testNewRelicMetadata = []parseNewRelicMetadataTestData{
 var newrelicMetricIdentifiers = []newrelicMetricIdentifier{
 	{&testNewRelicMetadata[1], 0, "s0-new-relic"},
 	{&testNewRelicMetadata[1], 1, "s1-new-relic"},
+}
+
+var testNewRelicResponseData = []parseNewRelicResponseTestData{
+	{
+		name:     "direct float64 value",
+		results:  []nrdb.NRDBResult{{"value": 42.5}},
+		expected: 42.5,
+	},
+	{
+		name:     "percentiles nested structure with multiple values",
+		results:  []nrdb.NRDBResult{{"percentiles": map[string]interface{}{"90": 0.11328125, "98": 0.59375}}},
+		expected: 0.59375,
+	},
+	{
+		name:     "single percentile",
+		results:  []nrdb.NRDBResult{{"percentiles": map[string]interface{}{"99": 1.23}}},
+		expected: 1.23,
+	},
+	{
+		name:     "other query result",
+		results:  []nrdb.NRDBResult{{"other": 150.0}},
+		expected: 150.0,
+	},
+	{
+		name:        "empty results with noDataError true",
+		results:     []nrdb.NRDBResult{},
+		noDataError: true,
+		nrql:        "SELECT * FROM test",
+		expectError: true,
+	},
+	{
+		name:        "empty results with noDataError false",
+		results:     []nrdb.NRDBResult{},
+		noDataError: false,
+		expected:    0,
+	},
+	{
+		name:        "no numeric values with noDataError true",
+		results:     []nrdb.NRDBResult{{"text": "hello", "name": "world"}},
+		noDataError: true,
+		nrql:        "SELECT * FROM test",
+		expectError: true,
+	},
+	{
+		name:     "no numeric values with noDataError false",
+		results:  []nrdb.NRDBResult{{"text": "hello", "name": "world"}},
+		expected: 0,
+	},
+	{
+		name:     "mixed data types - should find the float64",
+		results:  []nrdb.NRDBResult{{"text": "hello", "metric": 99.9, "name": "world"}},
+		expected: 99.9,
+	},
 }
 
 func TestNewRelicParseMetadata(t *testing.T) {
@@ -102,5 +165,29 @@ func TestNewRelicGetMetricSpecForScaling(t *testing.T) {
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
 		}
+	}
+}
+
+func TestParseNewRelicResponse(t *testing.T) {
+	for _, testData := range testNewRelicResponseData {
+		t.Run(testData.name, func(t *testing.T) {
+			result, err := parseNewRelicResponse(testData.results, testData.noDataError, testData.nrql)
+
+			if testData.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
+
+			if result != testData.expected {
+				t.Errorf("Expected %f, got %f", testData.expected, result)
+			}
+		})
 	}
 }
