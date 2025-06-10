@@ -18,6 +18,8 @@ jobs:
             name: arm64
           - runner: ubuntu-latest
             name: amd64
+          - runner: s390x
+            name: s390x
     steps:
       - name: Check out code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -93,6 +95,8 @@ jobs:
             name: arm64
           - runner: ubuntu-latest
             name: amd64
+          - runner: s390x
+            name: s390x
     steps:
       - name: Check out code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -127,6 +131,8 @@ jobs:
             name: arm64
           - runner: ubuntu-latest
             name: amd64
+          - runner: s390x
+            name: s390x
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 

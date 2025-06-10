@@ -8,6 +8,9 @@ on:
 env:
   SKIP_E2E_TAG: skip-e2e
   E2E_CHECK_NAME: e2e tests
+  ARM_SMOKE_CHECK_NAME: ARM smoke tests
+  S390X_SMOKE_CHECK_NAME: S390x smoke tests
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -34,6 +37,46 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ github.event.pull_request.head.sha }}
           check_id: ${{ steps.create.outputs.check_id }}
+          conclusion: success
+          output: |
+            {"summary": "skipped by maintainer"}
+
+      - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        name: Enqueue e2e
+        id: create-arm
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ github.event.pull_request.head.sha }}
+          name: ${{ env.ARM_SMOKE_CHECK_NAME }}
+          status: queued
+
+      - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        name: Skip e2e
+        if: ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_TAG )}}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ github.event.pull_request.head.sha }}
+          check_id: ${{ steps.create-arm.outputs.check_id }}
+          conclusion: success
+          output: |
+            {"summary": "skipped by maintainer"}
+
+      - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        name: Enqueue e2e
+        id: create-s390x
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ github.event.pull_request.head.sha }}
+          name: ${{ env.S390X_SMOKE_CHECK_NAME }}
+          status: queued
+
+      - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        name: Skip e2e
+        if: ${{ contains(github.event.pull_request.labels.*.name, env.SKIP_E2E_TAG )}}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ github.event.pull_request.head.sha }}
+          check_id: ${{ steps.create-s390x.outputs.check_id }}
           conclusion: success
           output: |
             {"summary": "skipped by maintainer"}

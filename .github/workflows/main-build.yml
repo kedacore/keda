@@ -49,6 +49,13 @@ jobs:
       - name: Test
         run: make test
 
+      # https://github.com/sigstore/cosign-installer
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # v3.8.2
+
+      - name: Check Cosign install!
+        run: cosign version
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
@@ -62,20 +69,25 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
 
-      - name: Publish on GitHub Container Registry
+      - name: Publish main on GitHub Container Registry
         run: make publish-multiarch
-
-      # https://github.com/sigstore/cosign-installer
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # v3.8.2
-
-      - name: Check Cosign install!
-        run: cosign version
 
       - name: Sign KEDA images published on GitHub Container Registry
         # This step uses the identity token to provision an ephemeral certificate
         # against the sigstore community Fulcio instance.
         run: make sign-images
+
+      - name: Publish sha on GitHub Container Registry
+        run: make publish-multiarch
+        env:
+          VERSION: ${{ github.sha }}
+
+      - name: Sign KEDA images published on GitHub Container Registry
+        # This step uses the identity token to provision an ephemeral certificate
+        # against the sigstore community Fulcio instance.
+        run: make sign-images
+        env:
+          VERSION: ${{ github.sha }}
 
   validate:
     needs: build
@@ -85,6 +97,10 @@ jobs:
   validate-arm64:
     needs: build
     uses: kedacore/keda/.github/workflows/template-arm64-smoke-tests.yml@main
+
+  validate-s390x:
+    needs: build
+    uses: kedacore/keda/.github/workflows/template-s390x-smoke-tests.yml@main
 
   validate-k8s-versions:
     needs: build
@@ -110,7 +126,7 @@ jobs:
       security-events: write
     strategy:
       matrix:
-        runner: [ARM64, ubuntu-latest]
+        runner: [ARM64, ubuntu-latest, s390x]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
@@ -127,7 +143,7 @@ jobs:
       security-events: write
     strategy:
       matrix:
-        runner: [ARM64, ubuntu-latest]
+        runner: [ARM64, ubuntu-latest, s390x]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
