@@ -383,7 +383,7 @@ jobs:
           name: arm-smoke-test-logs
           path: "${{ github.workspace }}/**/*.log"
           if-no-files-found: ignore
-  
+
   run-s390x-smoke-test:
     needs: [triage, build-test-images]
     runs-on: s390x
