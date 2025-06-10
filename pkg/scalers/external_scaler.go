@@ -44,8 +44,8 @@ type externalScalerMetadata struct {
 
 	// auth
 	CaCert        string `keda:"name=caCert, order=authParams, optional"`
-	TlsClientCert string `keda:"name=tlsClientCert, order=authParams, optional"`
-	TlsClientKey  string `keda:"name=tlsClientKey, order=authParams, optional"`
+	TLSClientCert string `keda:"name=tlsClientCert, order=authParams, optional"`
+	TLSClientKey  string `keda:"name=tlsClientKey, order=authParams, optional"`
 }
 
 type connectionGroup struct {
@@ -221,7 +221,7 @@ func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 	defer close(active)
 
-	// retry on error from runWithLog() starting by 2 sec backing off * 2 with a max of 2 minute
+	// retry on error from runWithLog() starting by 2 sec backing off * 2 with a max of 2 minutes
 	retryDuration := time.Second * 2
 
 	// It's possible for the connection to get terminated anytime, we need to run this in a retry loop
@@ -296,7 +296,7 @@ func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalSca
 	defer connectionPoolMutex.Unlock()
 
 	buildGRPCConnection := func(metadata externalScalerMetadata) (*grpc.ClientConn, error) {
-		tlsConfig, err := util.NewTLSConfig(metadata.TlsClientCert, metadata.TlsClientKey, metadata.CaCert, metadata.UnsafeSsl)
+		tlsConfig, err := util.NewTLSConfig(metadata.TLSClientCert, metadata.TLSClientKey, metadata.CaCert, metadata.UnsafeSsl)
 		if err != nil {
 			return nil, err
 		}
