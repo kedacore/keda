@@ -45,8 +45,13 @@ RUN apt-get update \
     && go install honnef.co/go/tools/cmd/staticcheck@latest \
     && go install golang.org/x/tools/gopls@latest \
     # Protocol Buffer Compiler
-    && PROTOC_VERSION=21.9 \
-    && if [ $(dpkg --print-architecture) = "amd64" ]; then PROTOC_ARCH="x86_64"; else PROTOC_ARCH="aarch_64" ; fi \
+    && PROTOC_VERSION=29.2 \
+    && case $(dpkg --print-architecture) in \
+        "amd64") PROTOC_ARCH="x86_64" ;; \
+        "arm64") PROTOC_ARCH="aarch_64" ;; \
+        "s390x") PROTOC_ARCH="s390_64" ;; \
+        *) echo "Unsupported architecture"; exit 1 ;; \
+    esac \
     && curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-$PROTOC_ARCH.zip" \
     && unzip "protoc-${PROTOC_VERSION}-linux-$PROTOC_ARCH.zip" -d $HOME/.local \
     && mv $HOME/.local/bin/protoc /usr/local/bin/protoc \
