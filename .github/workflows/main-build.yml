@@ -126,7 +126,7 @@ jobs:
       security-events: write
     strategy:
       matrix:
-        runner: [ARM64, ubuntu-latest, s390x]
+        runner: [ARM64, ubuntu-latest]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
@@ -143,7 +143,7 @@ jobs:
       security-events: write
     strategy:
       matrix:
-        runner: [ARM64, ubuntu-latest, s390x]
+        runner: [ARM64, ubuntu-latest]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}

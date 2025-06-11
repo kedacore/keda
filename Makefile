@@ -3,17 +3,8 @@
 ##################################################
 SHELL           = /bin/bash
 
-# If E2E_IMAGE_TAG is defined, we are on pr e2e test and we have to use the new tag and append -test to the repository
-ifeq '${E2E_IMAGE_TAG}' ''
 VERSION ?= main
-# SUFFIX here is intentional empty to not append nothing to the repository
-SUFFIX =
-endif
-
-ifneq '${E2E_IMAGE_TAG}' ''
-VERSION = ${E2E_IMAGE_TAG}
-SUFFIX = -test
-endif
+SUFFIX ?=
 
 IMAGE_REGISTRY ?= ghcr.io
 IMAGE_REPO     ?= kedacore
