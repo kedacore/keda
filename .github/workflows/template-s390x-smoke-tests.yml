@@ -51,7 +51,7 @@ jobs:
 
       - name: Remove Kubernetes
         run: |
-          kind delete cluster --name kind-s390x
+          kind delete cluster --name ${{ runner.name }}
         if: ${{ always() }}
         env:
           DEBIAN_FRONTEND: noninteractive
