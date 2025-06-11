@@ -28,7 +28,10 @@ jobs:
       - name: Install Kubernetes
         run: |
           go install sigs.k8s.io/kind@v0.29.0
-          kind create cluster --name kind-s390x --image vishnubijukumar/kindest-node-s390x:v0.29.0
+          kind create cluster --name ${{ runner.name }} --image vishnubijukumar/kindest-node-s390x:v0.29.0
+          kubectl -n kube-system set image daemonset/kindnet kindnet-cni=docker.io/vishnubijukumar/kindnetd:v20250512-s390x
+          kubectl -n local-path-storage set image deployment/local-path-provisioner local-path-provisioner=docker.io/vishnubijukumar/local-path-provisioner:v1
+
           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/s390x/kubectl"
           chmod +x kubectl
           mkdir -p ~/.local/bin
