@@ -47,11 +47,12 @@ type temporalMetadata struct {
 	APIKey                    string   `keda:"name=apiKey,                    order=authParams;resolvedEnv, optional"`
 	MinConnectTimeout         int      `keda:"name=minConnectTimeout,         order=triggerMetadata, default=5"`
 
-	UnsafeSsl   bool   `keda:"name=unsafeSsl,                 order=triggerMetadata, optional"`
-	Cert        string `keda:"name=cert,                      order=authParams, optional"`
-	Key         string `keda:"name=key,                       order=authParams, optional"`
-	KeyPassword string `keda:"name=keyPassword,               order=authParams, optional"`
-	CA          string `keda:"name=ca,                        order=authParams, optional"`
+	UnsafeSsl     bool   `keda:"name=unsafeSsl,                 order=triggerMetadata, optional"`
+	Cert          string `keda:"name=cert,                      order=authParams, optional"`
+	Key           string `keda:"name=key,                       order=authParams, optional"`
+	KeyPassword   string `keda:"name=keyPassword,               order=authParams, optional"`
+	CA            string `keda:"name=ca,                        order=authParams, optional"`
+	TLSServerName string `keda:"name=tlsServerName,             order=triggerMetadata, optional"`
 
 	triggerIndex int
 }
@@ -209,10 +210,13 @@ func getTemporalClient(ctx context.Context, meta *temporalMetadata, log logr.Log
 		}),
 	}
 
+	var tlsConfig *tls.Config
+
 	if meta.APIKey != "" {
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(
 			func(ctx context.Context, method string, req any, reply any,
-				cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+				cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption,
+			) error {
 				return invoker(
 					metadata.AppendToOutgoingContext(ctx, "temporal-namespace", meta.Namespace),
 					method,
@@ -224,21 +228,26 @@ func getTemporalClient(ctx context.Context, meta *temporalMetadata, log logr.Log
 			},
 		))
 		options.Credentials = sdk.NewAPIKeyStaticCredentials(meta.APIKey)
-		options.ConnectionOptions.TLS = &tls.Config{
-			MinVersion: tls.VersionTLS13,
+		tlsConfig = &tls.Config{
+			MinVersion: kedautil.GetMinTLSVersion(),
 		}
+	}
+
+	if meta.Cert != "" && meta.Key != "" {
+		var err error
+		tlsConfig, err = kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.CA, meta.UnsafeSsl)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if tlsConfig != nil && meta.TLSServerName != "" {
+		tlsConfig.ServerName = meta.TLSServerName
 	}
 
 	options.ConnectionOptions = sdk.ConnectionOptions{
 		DialOptions: dialOptions,
-	}
-
-	if meta.Cert != "" && meta.Key != "" {
-		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.CA, meta.UnsafeSsl)
-		if err != nil {
-			return nil, err
-		}
-		options.ConnectionOptions.TLS = tlsConfig
+		TLS:         tlsConfig,
 	}
 
 	return sdk.DialContext(ctx, options)

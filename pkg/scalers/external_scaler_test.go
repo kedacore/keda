@@ -133,14 +133,16 @@ func TestExternalPushScaler_Run(t *testing.T) {
 	defer cancel()
 	for {
 		<-time.After(time.Second * 1)
-		if resultCount == serverCount*iterationCount {
-			t.Logf("resultCount == %d", resultCount)
+		currentCount := atomic.LoadInt64(&resultCount)
+		if currentCount == serverCount*iterationCount {
+			t.Logf("resultCount == %d", currentCount)
 			return
 		}
 
 		retries++
 		if retries > 10 {
-			t.Fatalf("Expected resultCount to be %d after %d retries, but got %d", serverCount*iterationCount, retries, resultCount)
+			currentCount = atomic.LoadInt64(&resultCount)
+			t.Fatalf("Expected resultCount to be %d after %d retries, but got %d", serverCount*iterationCount, retries, currentCount)
 			return
 		}
 	}

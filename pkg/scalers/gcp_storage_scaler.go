@@ -204,21 +204,21 @@ func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int64) (int64, er
 
 	for count < maxCount {
 		item, err := it.Next()
-		if err == iterator.Done {
-			break
-		}
-		// The folder is retrieved as an entity, so if size is 0
-		// we can skip it
-		if item.Size == 0 {
-			continue
-		}
 		if err != nil {
+			if errors.Is(err, iterator.Done) {
+				break
+			}
 			if errors.Is(err, storage.ErrBucketNotExist) {
 				s.logger.Info("Bucket " + s.metadata.bucketName + " doesn't exist")
 				return 0, nil
 			}
 			s.logger.Error(err, "failed to enumerate items in bucket "+s.metadata.bucketName)
 			return count, err
+		}
+		// The folder is retrieved as an entity, so if size is 0
+		// we can skip it
+		if item.Size == 0 {
+			continue
 		}
 		count++
 	}

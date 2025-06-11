@@ -26,7 +26,7 @@ ARCH       ?=amd64
 CGO        ?=0
 TARGET_OS  ?=linux
 
-BUILD_PLATFORMS ?= linux/amd64,linux/arm64
+BUILD_PLATFORMS ?= linux/amd64,linux/arm64,linux/s390x
 OUTPUT_TYPE     ?= registry
 
 GIT_VERSION ?= $(shell git describe --always --abbrev=7)
@@ -78,6 +78,10 @@ all: build
 .PHONY: test
 test: manifests generate fmt vet envtest gotestsum ## Run tests and export the result to junit format.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" $(GOTESTSUM) --format standard-quiet --rerun-fails --junitfile report.xml
+
+.PHONY: test-race
+test-race: manifests generate fmt vet envtest gotestsum ## Run tests and export the result to junit format.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" $(GOTESTSUM) --format standard-quiet --rerun-fails --junitfile report-race.xml --packages=./... -- -race
 
 .PHONY:
 az-login:
