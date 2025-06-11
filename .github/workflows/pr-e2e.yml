@@ -146,8 +146,9 @@ jobs:
           conclusion: failure
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
-      - name: Set status in-progress
+      - name: Set status failure
         uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        if: steps.regex-validation.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -155,8 +156,9 @@ jobs:
           status: failure
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
-      - name: Set status in-progress
+      - name: Set status failure
         uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        if: steps.regex-validation.outcome != 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
@@ -181,7 +183,8 @@ jobs:
       - name: Publish on GitHub Container Registry
         run: make publish-multiarch
         env:
-          E2E_IMAGE_TAG: ${{ needs.triage.outputs.image_tag }}
+          VERSION: ${{ needs.triage.outputs.image_tag }}
+          SUFFIX: "-test"
 
   run-e2e-test:
     needs: [triage, build-test-images]
@@ -230,7 +233,8 @@ jobs:
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           GCP_RUN_IDENTITY_TESTS: true
           ENABLE_OPENTELEMETRY: true
-          E2E_IMAGE_TAG: ${{ needs.triage.outputs.image_tag }}
+          VERSION: ${{ needs.triage.outputs.image_tag }}
+          SUFFIX: "-test"
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
@@ -340,6 +344,9 @@ jobs:
       - name: Run smoke test
         run: make smoke-test
         id: test
+        env:
+          VERSION: ${{ needs.triage.outputs.image_tag }}
+          SUFFIX: "-test"
 
       - name: React to comment with success
         uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
@@ -419,7 +426,10 @@ jobs:
       - name: Install Kubernetes
         run: |
           go install sigs.k8s.io/kind@v0.29.0
-          kind create cluster --name kind-s390x --image vishnubijukumar/kindest-node-s390x:v0.29.0
+          kind create cluster --name ${{ runner.name }} --image vishnubijukumar/kindest-node-s390x:v0.29.0
+          kubectl -n kube-system set image daemonset/kindnet kindnet-cni=docker.io/vishnubijukumar/kindnetd:v20250512-s390x
+          kubectl -n local-path-storage set image deployment/local-path-provisioner local-path-provisioner=docker.io/vishnubijukumar/local-path-provisioner:v1
+
           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/s390x/kubectl"
           chmod +x kubectl
           mkdir -p ~/.local/bin
@@ -429,6 +439,9 @@ jobs:
       - name: Run smoke test
         run: make smoke-test
         id: test
+        env:
+          VERSION: ${{ needs.triage.outputs.image_tag }}
+          SUFFIX: "-test"
 
       - name: React to comment with success
         uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
