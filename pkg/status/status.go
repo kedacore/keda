@@ -28,26 +28,46 @@ import (
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
+
+func getConditions(object interface{}) (*kedav1alpha1.Conditions, error) {
+	switch obj := object.(type) {
+	case *kedav1alpha1.ScaledObject:
+		return &obj.Status.Conditions, nil
+	case *kedav1alpha1.ScaledJob:
+		return &obj.Status.Conditions, nil
+	case *eventingv1alpha1.CloudEventSource:
+		return &obj.Status.Conditions, nil
+	case *eventingv1alpha1.ClusterCloudEventSource:
+		return &obj.Status.Conditions, nil
+	default:
+		return nil, fmt.Errorf("unknown object type %T", object)
+	}
+}
 
 // SetStatusConditions patches given object with passed list of conditions based on the object's type or returns an error.
 func SetStatusConditions(ctx context.Context, client runtimeclient.StatusClient, logger logr.Logger, object interface{}, conditions *kedav1alpha1.Conditions) error {
+	existingConditions, err := getConditions(object)
+	if err != nil {
+		return err
+	}
+
+	if util.CompareConditions(existingConditions, conditions) {
+		logger.V(1).Info("Skipping status update because conditions are identical")
+		return nil
+	}
+
 	transform := func(runtimeObj runtimeclient.Object, target interface{}) error {
 		conditions, ok := target.(*kedav1alpha1.Conditions)
 		if !ok {
 			return fmt.Errorf("transform target is not kedav1alpha1.Conditions type %v", target)
 		}
-		switch obj := runtimeObj.(type) {
-		case *kedav1alpha1.ScaledObject:
-			obj.Status.Conditions = *conditions
-		case *kedav1alpha1.ScaledJob:
-			obj.Status.Conditions = *conditions
-		case *eventingv1alpha1.CloudEventSource:
-			obj.Status.Conditions = *conditions
-		case *eventingv1alpha1.ClusterCloudEventSource:
-			obj.Status.Conditions = *conditions
-		default:
+		destConditions, err := getConditions(runtimeObj)
+		if err != nil {
+			return err
 		}
+		*destConditions = *conditions
 		return nil
 	}
 	return TransformObject(ctx, client, logger, object, conditions, transform)

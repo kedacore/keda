@@ -33,8 +33,10 @@ jobs:
         with:
           api-key: ${{ env.fossa-key }}
           branch: ${{ steps.branch-name.outputs.current_branch }}
+          debug: true
       - uses: fossas/fossa-action@3ebcea1862c6ffbd5cf1b4d0bd6b3fe7bd6f2cac # v1.7.0
         name: Executing tests with FOSSA
         with:
           api-key: ${{ env.fossa-key }}
           run-tests: true
+          debug: true
