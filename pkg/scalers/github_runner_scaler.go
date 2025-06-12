@@ -47,7 +47,7 @@ type githubRunnerMetadata struct {
 	Labels                    []string `keda:"name=labels, order=triggerMetadata;resolvedEnv, optional"`
 	NoDefaultLabels           bool     `keda:"name=noDefaultLabels, order=triggerMetadata;resolvedEnv, default=false"`
 	EnableEtags               bool     `keda:"name=enableEtags, order=triggerMetadata;resolvedEnv, default=false"`
-	TargetWorkflowQueueLength int64    `keda:"name=targetWorkflowQueueLength, order=triggerMetadata;resolvedEnv, optional, default=1"`
+	TargetWorkflowQueueLength int64    `keda:"name=targetWorkflowQueueLength, order=triggerMetadata;resolvedEnv, default=1"`
 	TriggerIndex              int
 	ApplicationID             int64  `keda:"name=applicationID, order=triggerMetadata;resolvedEnv, optional"`
 	InstallationID            int64  `keda:"name=installationID, order=triggerMetadata;resolvedEnv, optional"`
