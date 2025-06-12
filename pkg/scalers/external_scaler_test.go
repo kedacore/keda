@@ -80,11 +80,11 @@ func TestExternalScalerParseMetadata(t *testing.T) {
 			t.Error("Expected success but got error", err)
 		}
 
-		if testData.metadata["unsafeSsl"] == "true" && !metadata.unsafeSsl {
-			t.Error("Expected unsafeSsl to be true but got", metadata.unsafeSsl)
+		if testData.metadata["unsafeSsl"] == "true" && !metadata.UnsafeSsl {
+			t.Error("Expected unsafeSsl to be true but got", metadata.UnsafeSsl)
 		}
-		if testData.metadata["enableTLS"] == "true" && !metadata.enableTLS {
-			t.Error("Expected enableTLS to be true but got", metadata.enableTLS)
+		if testData.metadata["enableTLS"] == "true" && !metadata.EnableTLS {
+			t.Error("Expected enableTLS to be true but got", metadata.EnableTLS)
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
