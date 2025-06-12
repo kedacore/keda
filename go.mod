@@ -42,7 +42,6 @@ require (
 	github.com/beanstalkd/go-beanstalk v0.2.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.14.0
 	github.com/cloudevents/sdk-go/v2 v2.16.0
-	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/dysnix/predictkube-libs v0.0.4-0.20230109175007-5a82fccd31c7
 	github.com/dysnix/predictkube-proto v0.0.0-20241017230806-4c74c627f2bb
 	github.com/elastic/go-elasticsearch/v7 v7.17.10
@@ -127,6 +126,8 @@ require (
 	sigs.k8s.io/custom-metrics-apiserver v1.30.1-0.20241105195130-84dc8cfe2555
 	sigs.k8s.io/kustomize/kustomize/v5 v5.6.0
 )
+
+require github.com/microsoft/go-mssqldb v1.8.0 // indirect
 
 replace (
 	// we need a version with a proper license
