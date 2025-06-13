@@ -342,7 +342,7 @@ jobs:
         uses: helm/kind-action@0025e74a8c7512023d06dc019c617aa3cf561fde # v1.10.0
         with:
           node_image: kindest/node:v1.32.0@sha256:c48c62eac5da28cdadcf560d1d8616cfa6783b58f0d94cf63ad1bf49600cb027
-          cluster_name: smoke-tests-cluster-pr
+          cluster_name: ${{ runner.name }}
 
       - name: Run smoke test
         run: make smoke-test
@@ -484,7 +484,7 @@ jobs:
 
       - name: Remove Kubernetes
         run: |
-          kind delete cluster --name kind-s390x
+          kind delete cluster --name ${{ runner.name }}
         if: ${{ always() }}
         env:
           DEBIAN_FRONTEND: noninteractive
