@@ -39,4 +39,4 @@ COPY --from=builder /workspace/bin/keda-adapter .
 USER 65532:65532
 
 
-ENTRYPOINT ["/keda-adapter", "--secure-port=6443", "--logtostderr=true", "--v=0"]
+ENTRYPOINT ["/keda-adapter", "--secure-port=6443", "--zap-log-level=info", "--zap-encoder=console"]
