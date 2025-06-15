@@ -98,8 +98,8 @@ spec:
     name: {{.DeploymentName}}
   triggers:
   - type: memory
+    metricType: Utilization
     metadata:
-      type: Utilization
       value: "{{.UtilizationValue}}"
 `
 
@@ -125,8 +125,8 @@ spec:
   cooldownPeriod: 1
   triggers:
   - type: memory
+    metricType: Utilization
     metadata:
-      type: Utilization
       value: "{{.UtilizationValue}}"
   - type: kubernetes-workload
     metadata:

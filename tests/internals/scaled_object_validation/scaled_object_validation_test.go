@@ -88,8 +88,8 @@ spec:
     name: {{.DeploymentName}}
   triggers:
     - type: cpu
+      metricType: Utilization
       metadata:
-        type: Utilization
         value: "50"
 `
 	memoryScaledObjectTemplate = `
@@ -103,8 +103,8 @@ spec:
     name: {{.DeploymentName}}
   triggers:
     - type: memory
+      metricType: Utilization
       metadata:
-        type: Utilization
         value: "50"
 `
 

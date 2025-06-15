@@ -138,14 +138,6 @@ func (p Params) IsDeprecated() bool {
 	return p.Deprecated != ""
 }
 
-// DeprecatedMessage is a function that returns the optional deprecated message if the parameter is deprecated
-func (p Params) DeprecatedMessage() string {
-	if p.Deprecated == deprecatedTag {
-		return ""
-	}
-	return fmt.Sprintf(": %s", p.Deprecated)
-}
-
 // TypedConfig is a function that is used to unmarshal the TriggerMetadata, ResolvedEnv and AuthParams
 // populating the provided typedConfig where structure fields along with complementary field tags define
 // declaratively the parsing rules
@@ -202,11 +194,11 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) e
 func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 	valFromConfig, exists := sc.configParamValue(params)
 	if exists && params.IsDeprecated() {
-		return fmt.Errorf("parameter %q is deprecated%v", params.Name(), params.DeprecatedMessage())
+		return fmt.Errorf("scaler %s info: %s", sc.TriggerType, params.Deprecated)
 	}
 	if exists && params.DeprecatedAnnounce != "" {
 		if sc.Recorder != nil {
-			message := fmt.Sprintf("Scaler %s info: %s", sc.TriggerType, params.DeprecatedAnnounce)
+			message := fmt.Sprintf("scaler %s info: %s", sc.TriggerType, params.DeprecatedAnnounce)
 			fmt.Print(message)
 			sc.Recorder.Event(sc.ScaledObject, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, message)
 		}

@@ -137,31 +137,56 @@ func TestMissing(t *testing.T) {
 	Expect(err).To(MatchError(`missing required parameter "stringVal" in [triggerMetadata]`))
 }
 
-// TestDeprecated tests the deprecated tag
-func TestDeprecated(t *testing.T) {
+// TestDeprecatedAnnounce tests the deprecatedAnnounce tag
+func TestDeprecatedAnnounce(t *testing.T) {
 	RegisterTestingT(t)
+
+	// Create a mock recorder to capture the event
+	mockRecorder := &MockEventRecorder{}
 
 	sc := &ScalerConfig{
 		TriggerMetadata: map[string]string{
-			"stringVal": "value1",
+			"oldParam": "value1",
 		},
+		Recorder:    mockRecorder,
+		TriggerType: "testScaler",
 	}
 
 	type testStruct struct {
-		StringVal string `keda:"name=stringVal, order=triggerMetadata, deprecated=deprecated"`
+		OldParam string `keda:"name=oldParam, order=triggerMetadata, deprecatedAnnounce=This parameter is deprecated and will be removed in - Use newParam instead"`
 	}
 
 	ts := testStruct{}
 	err := sc.TypedConfig(&ts)
-	Expect(err).To(MatchError(`parameter "stringVal" is deprecated`))
+	Expect(err).To(BeNil())
+	Expect(ts.OldParam).To(Equal("value1"))
 
-	sc2 := &ScalerConfig{
-		TriggerMetadata: map[string]string{},
+	// Verify that the deprecation event was recorded
+	Expect(mockRecorder.EventCalled).To(BeTrue())
+	Expect(mockRecorder.Message).To(Equal("scaler testScaler info: This parameter is deprecated and will be removed in - Use newParam instead"))
+}
+
+// TestDeprecated tests the deprecated tag
+func TestDeprecated(t *testing.T) {
+	RegisterTestingT(t)
+
+	mockRecorder := &MockEventRecorder{}
+
+	sc := &ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"oldParam": "value1",
+		},
+		Recorder:    mockRecorder,
+		TriggerType: "testScaler",
 	}
 
-	ts2 := testStruct{}
-	err = sc2.TypedConfig(&ts2)
-	Expect(err).To(BeNil())
+	type testStruct struct {
+		OldParam string `keda:"name=oldParam, order=triggerMetadata, deprecated=This parameter is deprecated and is removed - Use newParam instead"`
+	}
+
+	ts := testStruct{}
+	err := sc.TypedConfig(&ts)
+	Expect(err).To(MatchError("scaler testScaler info: This parameter is deprecated and is removed - Use newParam instead"))
 }
 
 // TestDefaultValue tests the default tag
@@ -583,34 +608,6 @@ func TestMultiName(t *testing.T) {
 	err = sc2.TypedConfig(&ts)
 	Expect(err).To(BeNil())
 	Expect(ts.Property).To(Equal("bbb"))
-}
-
-// TestDeprecatedAnnounce tests the deprecatedAnnounce tag
-func TestDeprecatedAnnounce(t *testing.T) {
-	RegisterTestingT(t)
-
-	// Create a mock recorder to capture the event
-	mockRecorder := &MockEventRecorder{}
-
-	sc := &ScalerConfig{
-		TriggerMetadata: map[string]string{
-			"oldParam": "value1",
-		},
-		Recorder: mockRecorder,
-	}
-
-	type testStruct struct {
-		OldParam string `keda:"name=oldParam, order=triggerMetadata, deprecatedAnnounce=This parameter is deprecated. Use newParam instead"`
-	}
-
-	ts := testStruct{}
-	err := sc.TypedConfig(&ts)
-	Expect(err).To(BeNil())
-	Expect(ts.OldParam).To(Equal("value1"))
-
-	// Verify that the deprecation event was recorded
-	Expect(mockRecorder.EventCalled).To(BeTrue())
-	Expect(mockRecorder.Message).To(Equal("Scaler  info: This parameter is deprecated. Use newParam instead"))
 }
 
 // MockEventRecorder is a mock implementation of record.EventRecorder
