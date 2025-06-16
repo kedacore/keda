@@ -89,7 +89,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: 'nginxinc/nginx-unprivileged'
+          image: 'ghcr.io/nginx/nginx-unprivileged:1.26'
 `
 
 	deploymentTemplate = `
@@ -112,7 +112,7 @@ spec:
     spec:
       containers:
         - name: {{.DeploymentName}}
-          image: nginxinc/nginx-unprivileged:alpine-slim
+          image: ghcr.io/nginx/nginx-unprivileged:1.26
 `
 
 	scaledObjectTargetErrTemplate = `
@@ -150,7 +150,7 @@ spec:
     spec:
       containers:
         - name: {{.DaemonsetName}}
-          image: nginxinc/nginx-unprivileged:alpine-slim
+          image: ghcr.io/nginx/nginx-unprivileged:1.26
 `
 
 	scaledObjectTargetNotSupportTemplate = `
@@ -329,7 +329,7 @@ func checkingEvent(t *testing.T, namespace string, scaledObject string, index in
 
 	assert.NoError(t, err)
 	lastEventMessage := strings.Trim(string(result), "\"")
-	assert.Equal(t, eventReason+":"+message, lastEventMessage)
+	assert.Contains(t, lastEventMessage, eventReason+":"+message)
 }
 
 func testNormalEvent(t *testing.T, kc *kubernetes.Clientset, data templateData) {

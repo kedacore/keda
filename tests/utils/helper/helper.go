@@ -48,7 +48,7 @@ data:
 `
 	OtlpConfig = `mode: deployment
 image:
-  repository: "otel/opentelemetry-collector-contrib"
+  repository: "ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib"
 config:
   exporters:
     debug: {}

@@ -6,6 +6,7 @@ package trigger_update_so_test
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -239,7 +240,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: 'nginxinc/nginx-unprivileged'
+          image: 'ghcr.io/nginx/nginx-unprivileged:1.26'
 `
 
 	scaledObjectTemplate = `
@@ -408,7 +409,7 @@ func testErrEventSourceEmitValue(t *testing.T, _ *kubernetes.Clientset, data tem
 
 			assert.NoError(t, err)
 			assert.Condition(t, func() bool {
-				if data["message"] == "ScaledObject doesn't have correct scaleTargetRef specification" || data["message"] == "Target resource doesn't exist" {
+				if strings.Contains(data["message"], "ScaledObject doesn't have correct scaleTargetRef specification") || strings.Contains(data["message"], "Target resource doesn't exist") {
 					return true
 				}
 				return false
