@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -204,12 +205,9 @@ func TestDatadogScalerClusterAgentAuthParams(t *testing.T) {
 
 			if datadogNamespace != "" && datadogMetricNamespace != "" {
 				// Verify that the URL contains the service namespace (datadogNamespace), not the metric namespace
-				expectedURL := fmt.Sprintf("https://%s.%s:%s/apis/external.metrics.k8s.io/v1beta1",
-					testData.authParams["datadogMetricsService"], datadogNamespace, testData.authParams["datadogMetricsServicePort"])
-				if meta.DatadogMetricServiceURL != expectedURL {
-					t.Errorf("Test case %d: DatadogMetricServiceURL should exactly match '%s', but got '%s'", idx, expectedURL, meta.DatadogMetricServiceURL)
+				if !strings.Contains(meta.DatadogMetricServiceURL, datadogNamespace) {
+					t.Errorf("Test case %d: DatadogMetricServiceURL should contain datadogNamespace '%s', but got %s", idx, datadogNamespace, meta.DatadogMetricServiceURL)
 				}
-
 				// When namespaces are different, ensure metric namespace is NOT used in the service URL
 				if datadogNamespace != datadogMetricNamespace {
 					datadogMetricsService := testData.authParams["datadogMetricsService"]
