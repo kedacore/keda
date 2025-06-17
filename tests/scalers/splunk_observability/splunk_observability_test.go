@@ -33,7 +33,7 @@ var (
 	authName               = fmt.Sprintf("%s-auth", testName)
 	accessToken            = os.Getenv("SPLUNK_OBSERVABILITY_ACCESS_TOKEN")
 	realm                  = os.Getenv("SPLUNK_OBSERVABILITY_REALM")
-	signalflowQuery        = "data('keda-test-metric').publish()"
+	signalflowQuery        = os.Getenv("SPLUNK_OBSERVABILITY_SIGNALFLOW_GUERY")
 	duration               = "10"
 	maxReplicaCount        = 10
 	minReplicaCount        = 1
