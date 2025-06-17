@@ -141,9 +141,6 @@ func TestSplunkObservabilityScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	t.Log("access token is " + data.AccessToken)
-	t.Log("realm is " + data.Realm)
-
 	t.Cleanup(func() {
 		DeleteKubernetesResources(t, testNamespace, data, templates)
 	})
