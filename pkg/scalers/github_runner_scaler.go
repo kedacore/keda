@@ -41,7 +41,7 @@ type githubRunnerScaler struct {
 type githubRunnerMetadata struct {
 	GithubAPIURL              string   `keda:"name=githubApiURL, order=triggerMetadata;resolvedEnv, default=https://api.github.com"`
 	Owner                     string   `keda:"name=owner, order=triggerMetadata;resolvedEnv"`
-	RunnerScope               string   `keda:"name=runnerScope, order=triggerMetadata;resolvedEnv"`
+	RunnerScope               string   `keda:"name=runnerScope, order=triggerMetadata;resolvedEnv, enum=org;ent;repo"`
 	PersonalAccessToken       string   `keda:"name=personalAccessToken, order=authParams, optional"`
 	Repos                     []string `keda:"name=repos, order=triggerMetadata;resolvedEnv, optional"`
 	Labels                    []string `keda:"name=labels, order=triggerMetadata;resolvedEnv, optional"`
