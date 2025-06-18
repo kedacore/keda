@@ -3,11 +3,9 @@ package scalers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -22,26 +20,6 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-type pulsarScaler struct {
-	metadata   pulsarMetadata
-	httpClient *http.Client
-	logger     logr.Logger
-}
-
-type pulsarMetadata struct {
-	adminURL                      string
-	topic                         string
-	subscription                  string
-	msgBacklogThreshold           int64
-	activationMsgBacklogThreshold int64
-
-	pulsarAuth *authentication.AuthMeta
-
-	statsURL     string
-	metricName   string
-	triggerIndex int
-}
-
 const (
 	pulsarMetricType           = "External"
 	defaultMsgBacklogThreshold = 10
@@ -49,6 +27,33 @@ const (
 	stringTrue                 = "true"
 	pulsarAuthModeHeader       = "X-Pulsar-Auth-Method-Name"
 )
+
+type pulsarScaler struct {
+	metadata   *pulsarMetadata
+	httpClient *http.Client
+	logger     logr.Logger
+}
+
+type pulsarMetadata struct {
+	AdminURL                      string `keda:"name=adminURL,                      order=triggerMetadata;resolvedEnv"`
+	Topic                         string `keda:"name=topic,                         order=triggerMetadata;resolvedEnv"`
+	Subscription                  string `keda:"name=subscription,                  order=triggerMetadata;resolvedEnv"`
+	MsgBacklogThreshold           int64  `keda:"name=msgBacklogThreshold,           order=triggerMetadata, default=10"`
+	ActivationMsgBacklogThreshold int64  `keda:"name=activationMsgBacklogThreshold, order=triggerMetadata, default=0"`
+	IsPartitionedTopic            bool   `keda:"name=isPartitionedTopic,            order=triggerMetadata, default=false"`
+	TLS                           string `keda:"name=tls,                           order=triggerMetadata, optional"`
+
+	// OAuth fields
+	OauthTokenURI  string `keda:"name=oauthTokenURI,  order=triggerMetadata, optional"`
+	Scope          string `keda:"name=scope,          order=triggerMetadata, optional"`
+	ClientID       string `keda:"name=clientID,       order=triggerMetadata, optional"`
+	EndpointParams string `keda:"name=EndpointParams, order=triggerMetadata, optional"`
+
+	pulsarAuth   *authentication.AuthMeta
+	statsURL     string
+	metricName   string
+	triggerIndex int
+}
 
 type pulsarSubscription struct {
 	Msgrateout                       float64       `json:"msgRateOut"`
@@ -98,7 +103,7 @@ type pulsarStats struct {
 // NewPulsarScaler creates a new PulsarScaler
 func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "pulsar_scaler")
-	pulsarMetadata, err := parsePulsarMetadata(config, logger)
+	pulsarMetadata, err := parsePulsarMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing pulsar metadata: %w", err)
 	}
@@ -118,7 +123,7 @@ func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			// The pulsar broker redirects HTTP calls to other brokers and expects the Authorization header
 			client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 				if len(via) != 0 && via[0].Response.StatusCode == http.StatusTemporaryRedirect {
-					addAuthHeaders(req, &pulsarMetadata)
+					addAuthHeaders(req, pulsarMetadata)
 				}
 				return nil
 			}
@@ -132,87 +137,45 @@ func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parsePulsarMetadata(config *scalersconfig.ScalerConfig, _ logr.Logger) (pulsarMetadata, error) {
-	meta := pulsarMetadata{}
-	switch {
-	case config.TriggerMetadata["adminURLFromEnv"] != "":
-		meta.adminURL = config.ResolvedEnv[config.TriggerMetadata["adminURLFromEnv"]]
-	case config.TriggerMetadata["adminURL"] != "":
-		meta.adminURL = config.TriggerMetadata["adminURL"]
-	default:
-		return meta, errors.New("no adminURL given")
+func parsePulsarMetadata(config *scalersconfig.ScalerConfig) (*pulsarMetadata, error) {
+	meta := &pulsarMetadata{}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing pulsar metadata: %w", err)
 	}
 
-	switch {
-	case config.TriggerMetadata["topicFromEnv"] != "":
-		meta.topic = config.ResolvedEnv[config.TriggerMetadata["topicFromEnv"]]
-	case config.TriggerMetadata["topic"] != "":
-		meta.topic = config.TriggerMetadata["topic"]
-	default:
-		return meta, errors.New("no topic given")
-	}
-
-	topic := strings.ReplaceAll(meta.topic, "persistent://", "")
-	if config.TriggerMetadata["isPartitionedTopic"] == stringTrue {
-		meta.statsURL = meta.adminURL + "/admin/v2/persistent/" + topic + "/partitioned-stats"
+	// Build stats URL based on topic and partitioned flag
+	topic := strings.ReplaceAll(meta.Topic, "persistent://", "")
+	if meta.IsPartitionedTopic {
+		meta.statsURL = meta.AdminURL + "/admin/v2/persistent/" + topic + "/partitioned-stats"
 	} else {
-		meta.statsURL = meta.adminURL + "/admin/v2/persistent/" + topic + "/stats"
+		meta.statsURL = meta.AdminURL + "/admin/v2/persistent/" + topic + "/stats"
 	}
 
-	switch {
-	case config.TriggerMetadata["subscriptionFromEnv"] != "":
-		meta.subscription = config.ResolvedEnv[config.TriggerMetadata["subscriptionFromEnv"]]
-	case config.TriggerMetadata["subscription"] != "":
-		meta.subscription = config.TriggerMetadata["subscription"]
-	default:
-		return meta, errors.New("no subscription given")
-	}
+	meta.metricName = fmt.Sprintf("%s-%s-%s", "pulsar", meta.Topic, meta.Subscription)
 
-	meta.metricName = fmt.Sprintf("%s-%s-%s", "pulsar", meta.topic, meta.subscription)
-
-	meta.activationMsgBacklogThreshold = 0
-	if val, ok := config.TriggerMetadata["activationMsgBacklogThreshold"]; ok {
-		activationMsgBacklogThreshold, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return meta, fmt.Errorf("activationMsgBacklogThreshold parsing error %w", err)
-		}
-		meta.activationMsgBacklogThreshold = activationMsgBacklogThreshold
-	}
-
-	meta.msgBacklogThreshold = defaultMsgBacklogThreshold
-
-	if val, ok := config.TriggerMetadata["msgBacklogThreshold"]; ok {
-		t, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return meta, fmt.Errorf("error parsing %s: %w", "msgBacklogThreshold", err)
-		}
-		meta.msgBacklogThreshold = t
-	}
-
-	// For backwards compatibility, we need to map "tls: enable" to
-	if tls, ok := config.TriggerMetadata["tls"]; ok {
-		if tls == enable && (config.AuthParams["cert"] != "" || config.AuthParams["key"] != "") {
-			if authModes, authModesOk := config.TriggerMetadata[authentication.AuthModesKey]; authModesOk {
-				config.TriggerMetadata[authentication.AuthModesKey] = fmt.Sprintf("%s,%s", authModes, authentication.TLSAuthType)
-			} else {
-				config.TriggerMetadata[authentication.AuthModesKey] = string(authentication.TLSAuthType)
-			}
+	// For backwards compatibility, we need to map "tls: enable" to auth modes
+	if meta.TLS == enable && (config.AuthParams["cert"] != "" || config.AuthParams["key"] != "") {
+		if authModes, authModesOk := config.TriggerMetadata[authentication.AuthModesKey]; authModesOk {
+			config.TriggerMetadata[authentication.AuthModesKey] = fmt.Sprintf("%s,%s", authModes, authentication.TLSAuthType)
+		} else {
+			config.TriggerMetadata[authentication.AuthModesKey] = string(authentication.TLSAuthType)
 		}
 	}
+
 	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
 	if err != nil {
-		return meta, fmt.Errorf("error parsing %s: %w", "msgBacklogThreshold", err)
+		return nil, fmt.Errorf("error parsing authentication: %w", err)
 	}
 
 	if auth != nil && auth.EnableOAuth {
 		if auth.OauthTokenURI == "" {
-			auth.OauthTokenURI = config.TriggerMetadata["oauthTokenURI"]
+			auth.OauthTokenURI = meta.OauthTokenURI
 		}
 		if auth.Scopes == nil {
-			auth.Scopes = authentication.ParseScope(config.TriggerMetadata["scope"])
+			auth.Scopes = authentication.ParseScope(meta.Scope)
 		}
 		if auth.ClientID == "" {
-			auth.ClientID = config.TriggerMetadata["clientID"]
+			auth.ClientID = meta.ClientID
 		}
 		// client_secret is not required for mtls OAuth(RFC8705)
 		// set secret to random string to work around the Go OAuth lib
@@ -220,15 +183,17 @@ func parsePulsarMetadata(config *scalersconfig.ScalerConfig, _ logr.Logger) (pul
 			auth.ClientSecret = time.Now().String()
 		}
 		if auth.EndpointParams == nil {
-			v, err := authentication.ParseEndpointParams(config.TriggerMetadata["EndpointParams"])
+			v, err := authentication.ParseEndpointParams(meta.EndpointParams)
 			if err != nil {
-				return meta, fmt.Errorf("error parsing EndpointParams: %s", config.TriggerMetadata["EndpointParams"])
+				return nil, fmt.Errorf("error parsing EndpointParams: %s", meta.EndpointParams)
 			}
 			auth.EndpointParams = v
 		}
 	}
+
 	meta.pulsarAuth = auth
 	meta.triggerIndex = config.TriggerIndex
+
 	return meta, nil
 }
 
@@ -251,7 +216,7 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 		}
 		client = config.Client(context.Background())
 	}
-	addAuthHeaders(req, &s.metadata)
+	addAuthHeaders(req, s.metadata)
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -291,7 +256,7 @@ func (s *pulsarScaler) getMsgBackLog(ctx context.Context) (int64, bool, error) {
 		return 0, false, nil
 	}
 
-	v, found := stats.Subscriptions[s.metadata.subscription]
+	v, found := stats.Subscriptions[s.metadata.Subscription]
 
 	return v.Msgbacklog, found, nil
 }
@@ -304,16 +269,16 @@ func (s *pulsarScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 	}
 
 	if !found {
-		return nil, false, fmt.Errorf("have not subscription found! %s", s.metadata.subscription)
+		return nil, false, fmt.Errorf("have not subscription found! %s", s.metadata.Subscription)
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(msgBacklog))
 
-	return []external_metrics.ExternalMetricValue{metric}, msgBacklog > s.metadata.activationMsgBacklogThreshold, nil
+	return []external_metrics.ExternalMetricValue{metric}, msgBacklog > s.metadata.ActivationMsgBacklogThreshold, nil
 }
 
 func (s *pulsarScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	targetMetricValue := resource.NewQuantity(s.metadata.msgBacklogThreshold, resource.DecimalSI)
+	targetMetricValue := resource.NewQuantity(s.metadata.MsgBacklogThreshold, resource.DecimalSI)
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
