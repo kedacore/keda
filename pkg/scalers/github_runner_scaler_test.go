@@ -68,6 +68,8 @@ var testGitHubRunnerMetadata = []parseGitHubRunnerMetadataTestData{
 	{"missing runnerScope", map[string]string{"githubApiURL": "https://api.github.com", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, true, true, "error parsing github runner metadata: missing required parameter \"runnerScope\" in [triggerMetadata resolvedEnv]"},
 	// empty runnerScope
 	{"empty runnerScope", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, true, true, "error parsing github runner metadata: missing required parameter \"runnerScope\" in [triggerMetadata resolvedEnv]"},
+	// invalid runnerScope
+	{"invalid runnerScope", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": "a", "owner": "ownername", "repos": "reponame,otherrepo", "labels": "golang", "targetWorkflowQueueLength": "1"}, true, true, "error parsing github runner metadata: parameter \"runnerScope\" value \"a\" must be one of [org ent repo]"},
 	// missing owner
 	{"missing owner", map[string]string{"githubApiURL": "https://api.github.com", "runnerScope": REPO, "repos": "reponame", "targetWorkflowQueueLength": "1"}, true, true, "error parsing github runner metadata: missing required parameter \"owner\" in [triggerMetadata resolvedEnv]"},
 	// empty owner
