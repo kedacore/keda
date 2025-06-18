@@ -20,9 +20,10 @@ import (
 )
 
 const (
-	ORG  = "org"
-	ENT  = "ent"
-	REPO = "repo"
+	ORG                  = "org"
+	ENT                  = "ent"
+	REPO                 = "repo"
+	githubDefaultPerPage = 30
 )
 
 var reservedLabels = []string{"self-hosted", "linux", "x64"}
@@ -418,12 +419,10 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 	for {
 		var url string
 		switch s.metadata.RunnerScope {
-		case ORG:
+		case ORG, ENT:
 			url = fmt.Sprintf("%s/orgs/%s/repos?page=%s", s.metadata.GithubAPIURL, s.metadata.Owner, strconv.Itoa(page))
 		case REPO:
 			url = fmt.Sprintf("%s/users/%s/repos?page=%s", s.metadata.GithubAPIURL, s.metadata.Owner, strconv.Itoa(page))
-		case ENT:
-			url = fmt.Sprintf("%s/orgs/%s/repos?page=%s", s.metadata.GithubAPIURL, s.metadata.Owner, strconv.Itoa(page))
 		default:
 			return nil, fmt.Errorf("runnerScope %s not supported", s.metadata.RunnerScope)
 		}
@@ -452,7 +451,7 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 		}
 
 		// GitHub returned less than 30 repos per page, so consider no repos left
-		if len(repos) < 30 {
+		if len(repos) < githubDefaultPerPage {
 			break
 		}
 
