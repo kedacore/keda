@@ -100,6 +100,76 @@ type pulsarStats struct {
 	Deduplicationstatus string `json:"deduplicationStatus"`
 }
 
+// buildStatsURL constructs the stats URL based on topic and partitioned flag
+func (m *pulsarMetadata) buildStatsURL() {
+	topic := strings.ReplaceAll(m.Topic, "persistent://", "")
+	if m.IsPartitionedTopic {
+		m.statsURL = m.AdminURL + "/admin/v2/persistent/" + topic + "/partitioned-stats"
+	} else {
+		m.statsURL = m.AdminURL + "/admin/v2/persistent/" + topic + "/stats"
+	}
+}
+
+// buildMetricName constructs the metric name
+func (m *pulsarMetadata) buildMetricName() {
+	m.metricName = fmt.Sprintf("%s-%s-%s", "pulsar", m.Topic, m.Subscription)
+}
+
+// handleBackwardsCompatibility handles backwards compatibility for TLS configuration
+func (m *pulsarMetadata) handleBackwardsCompatibility(config *scalersconfig.ScalerConfig) {
+	// For backwards compatibility, we need to map "tls: enable" to auth modes
+	if m.TLS == enable && (config.AuthParams["cert"] != "" || config.AuthParams["key"] != "") {
+		if authModes, authModesOk := config.TriggerMetadata[authentication.AuthModesKey]; authModesOk {
+			config.TriggerMetadata[authentication.AuthModesKey] = fmt.Sprintf("%s,%s", authModes, authentication.TLSAuthType)
+		} else {
+			config.TriggerMetadata[authentication.AuthModesKey] = string(authentication.TLSAuthType)
+		}
+	}
+}
+
+// setupAuthentication configures authentication for the pulsar scaler
+func (m *pulsarMetadata) setupAuthentication(config *scalersconfig.ScalerConfig) error {
+	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
+	if err != nil {
+		return fmt.Errorf("error parsing authentication: %w", err)
+	}
+
+	if auth != nil && auth.EnableOAuth {
+		if err := m.configureOAuth(auth); err != nil {
+			return err
+		}
+	}
+
+	m.pulsarAuth = auth
+	return nil
+}
+
+// configureOAuth configures OAuth settings
+func (m *pulsarMetadata) configureOAuth(auth *authentication.AuthMeta) error {
+	if auth.OauthTokenURI == "" {
+		auth.OauthTokenURI = m.OauthTokenURI
+	}
+	if auth.Scopes == nil {
+		auth.Scopes = authentication.ParseScope(m.Scope)
+	}
+	if auth.ClientID == "" {
+		auth.ClientID = m.ClientID
+	}
+	// client_secret is not required for mtls OAuth(RFC8705)
+	// set secret to random string to work around the Go OAuth lib
+	if auth.ClientSecret == "" {
+		auth.ClientSecret = time.Now().String()
+	}
+	if auth.EndpointParams == nil {
+		v, err := authentication.ParseEndpointParams(m.EndpointParams)
+		if err != nil {
+			return fmt.Errorf("error parsing EndpointParams: %s", m.EndpointParams)
+		}
+		auth.EndpointParams = v
+	}
+	return nil
+}
+
 // NewPulsarScaler creates a new PulsarScaler
 func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "pulsar_scaler")
@@ -138,61 +208,19 @@ func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 }
 
 func parsePulsarMetadata(config *scalersconfig.ScalerConfig) (*pulsarMetadata, error) {
-	meta := &pulsarMetadata{}
+	meta := &pulsarMetadata{triggerIndex: config.TriggerIndex}
+
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing pulsar metadata: %w", err)
 	}
 
-	// Build stats URL based on topic and partitioned flag
-	topic := strings.ReplaceAll(meta.Topic, "persistent://", "")
-	if meta.IsPartitionedTopic {
-		meta.statsURL = meta.AdminURL + "/admin/v2/persistent/" + topic + "/partitioned-stats"
-	} else {
-		meta.statsURL = meta.AdminURL + "/admin/v2/persistent/" + topic + "/stats"
+	meta.buildStatsURL()
+	meta.buildMetricName()
+	meta.handleBackwardsCompatibility(config)
+
+	if err := meta.setupAuthentication(config); err != nil {
+		return nil, err
 	}
-
-	meta.metricName = fmt.Sprintf("%s-%s-%s", "pulsar", meta.Topic, meta.Subscription)
-
-	// For backwards compatibility, we need to map "tls: enable" to auth modes
-	if meta.TLS == enable && (config.AuthParams["cert"] != "" || config.AuthParams["key"] != "") {
-		if authModes, authModesOk := config.TriggerMetadata[authentication.AuthModesKey]; authModesOk {
-			config.TriggerMetadata[authentication.AuthModesKey] = fmt.Sprintf("%s,%s", authModes, authentication.TLSAuthType)
-		} else {
-			config.TriggerMetadata[authentication.AuthModesKey] = string(authentication.TLSAuthType)
-		}
-	}
-
-	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing authentication: %w", err)
-	}
-
-	if auth != nil && auth.EnableOAuth {
-		if auth.OauthTokenURI == "" {
-			auth.OauthTokenURI = meta.OauthTokenURI
-		}
-		if auth.Scopes == nil {
-			auth.Scopes = authentication.ParseScope(meta.Scope)
-		}
-		if auth.ClientID == "" {
-			auth.ClientID = meta.ClientID
-		}
-		// client_secret is not required for mtls OAuth(RFC8705)
-		// set secret to random string to work around the Go OAuth lib
-		if auth.ClientSecret == "" {
-			auth.ClientSecret = time.Now().String()
-		}
-		if auth.EndpointParams == nil {
-			v, err := authentication.ParseEndpointParams(meta.EndpointParams)
-			if err != nil {
-				return nil, fmt.Errorf("error parsing EndpointParams: %s", meta.EndpointParams)
-			}
-			auth.EndpointParams = v
-		}
-	}
-
-	meta.pulsarAuth = auth
-	meta.triggerIndex = config.TriggerIndex
 
 	return meta, nil
 }
