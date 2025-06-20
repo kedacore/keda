@@ -61,6 +61,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Introduce new Sumo Logic Scaler ([#6734](https://github.com/kedacore/keda/issues/6734))
 - Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
 
 #### Experimental
