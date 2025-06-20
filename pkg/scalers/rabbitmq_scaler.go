@@ -106,7 +106,7 @@ type rabbitMQMetadata struct {
 	Cert        string `keda:"name=cert,        order=authParams, optional"`
 	Key         string `keda:"name=key,         order=authParams, optional"`
 	KeyPassword string `keda:"name=keyPassword, order=authParams, optional"`
-	EnableTLS   string `keda:"name=tls,         order=authParams, default=disable"`
+	EnableTLS   string `keda:"name=tls,         order=triggerMetadata;authParams, default=disable"`
 	UnsafeSsl   bool   `keda:"name=unsafeSsl,   order=triggerMetadata, optional"`
 
 	// token provider for azure AD
