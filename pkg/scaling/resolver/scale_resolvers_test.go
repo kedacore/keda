@@ -917,6 +917,7 @@ func TestEnvWithRestrictSecretAccess(t *testing.T) {
 }
 
 func TestEnvWithRestrictedNamespace(t *testing.T) {
+	envPrefix := "PREFIX_"
 	tests := []struct {
 		name      string
 		expected  map[string]string
@@ -951,6 +952,20 @@ func TestEnvWithRestrictedNamespace(t *testing.T) {
 				}},
 			},
 			expected: map[string]string{secretKey: secretData},
+		},
+		{
+			name: "env reference secret key with prefix",
+			container: &corev1.Container{
+				EnvFrom: []corev1.EnvFromSource{{
+					SecretRef: &corev1.SecretEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName,
+						},
+					},
+					Prefix: envPrefix,
+				}},
+			},
+			expected: map[string]string{envPrefix + secretKey: secretData},
 		},
 	}
 	secret := &corev1.Secret{

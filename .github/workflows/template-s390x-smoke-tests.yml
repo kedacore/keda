@@ -1,0 +1,57 @@
+name: Reusable workflow to run smoke tests on s390x
+
+on:
+  workflow_call:
+
+jobs:
+  smoke-tests-s390x:
+    name: Validate k8s
+    runs-on: s390x
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5
+        with:
+          go-version: "1.23"
+
+      - name: Install prerequisites
+        run: |
+          apt update
+          apt install curl make ca-certificates gcc libc-dev wget -y
+        env:
+          DEBIAN_FRONTEND: noninteractive
+
+      - name: Check out code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 1
+
+      - name: Install Kubernetes
+        run: |
+          go install sigs.k8s.io/kind@v0.29.0
+          kind create cluster --name ${{ runner.name }} --image vishnubijukumar/kindest-node-s390x:v0.29.0
+          kubectl -n kube-system set image daemonset/kindnet kindnet-cni=docker.io/vishnubijukumar/kindnetd:v20250512-s390x
+          kubectl -n local-path-storage set image deployment/local-path-provisioner local-path-provisioner=docker.io/vishnubijukumar/local-path-provisioner:v1
+
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/s390x/kubectl"
+          chmod +x kubectl
+          mkdir -p ~/.local/bin
+          mv ./kubectl ~/.local/bin/kubectl
+          kubectl version
+
+      - name: Run smoke test
+        run: make smoke-test
+
+      - name: Upload test logs
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4
+        if: ${{ always() }}
+        with:
+          name: smoke-test-logs ${{ inputs.runs-on }}-${{ inputs.kubernetesVersion }}
+          path: "${{ github.workspace }}/**/*.log"
+          if-no-files-found: ignore
+
+      - name: Remove Kubernetes
+        run: |
+          kind delete cluster --name ${{ runner.name }}
+        if: ${{ always() }}
+        env:
+          DEBIAN_FRONTEND: noninteractive

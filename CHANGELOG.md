@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.17.1](#v2171)
 - [v2.17.0](#v2170)
 - [v2.16.1](#v2161)
 - [v2.16.0](#v2160)
@@ -60,7 +61,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
 
 #### Experimental
 
@@ -68,14 +69,16 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
+- **General**: Improve Events emitted from ScaledObject controller ([#6802](https://github.com/kedacore/keda/issues/6802))
+- **General**: Internal gRPC connection's certificates are hot reloaded ([#6756](https://github.com/kedacore/keda/pull/6756))
 - **Metrics API**: Support multiple auth methods simultaneously in Metrics API scaler ([#6642](https://github.com/kedacore/keda/issues/6642))
+- **Temporal Scaler**: Support custom tlsServerName ([#6820](https://github.com/kedacore/keda/pull/6820))
 
 ### Fixes
 
-- **General**: Admission Webhook blocks ScaledObject without metricType with fallback ([#6696](https://github.com/kedacore/keda/issues/6696))
-- **AWS SQS Queue Scaler**: Fix AWS SQS Queue queueURLFromEnv not working ([#6712](https://github.com/kedacore/keda/issues/6712))
-- **Azure Service Bus scaler**: Fix Azure Service Bus scaler add default Operation ([#6730](https://github.com/kedacore/keda/issues/6730))
-- **Temporal Scaler**: Fix Temporal Scaler does not work properly with API Key authentication against Temporal Cloud as TLS is not enabled on the client ([#6703](https://github.com/kedacore/keda/issues/6703))
+- **General**: Fix prefixes on envFrom elements in a deployment spec aren't being interpreted and Environment variables are not prefixed with the prefix ([#6728](https://github.com/kedacore/keda/issues/6728))
+- **General**: Remove klogr dependency and replace with zap ([#5732](https://github.com/kedacore/keda/issues/5732))
+- **Temporal Scaler**: Fix Temporal Scaler TLS version ([#6707](https://github.com/kedacore/keda/pull/6707))
 
 ### Deprecations
 
@@ -87,11 +90,28 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Remove Prometheus webhook prommetrics deprecations ([#6698](https://github.com/kedacore/keda/pull/6698))
+- **CPU Memory scaler**: The 'type' setting is deprecated and removed, use 'metricType' instead ([#6698](https://github.com/kedacore/keda/pull/6698))
+- **IBM MQ scaler**: The 'tls' setting is deprecated and removed, use 'unsafeSsl' instead ([#6698](https://github.com/kedacore/keda/pull/6698))
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Replace deprecated webhook.Validator with webhook.CustomValidator ([#6660](https://github.com/kedacore/keda/issues/6660))
+
+## v2.17.1
+
+### Improvements
+
+- **Selenium Grid**: Update metric name generated without part of empty ([#6772](https://github.com/kedacore/keda/pull/6772))
+
+### Fixes
+
+- **General**: Admission Webhook blocks ScaledObject without metricType with fallback ([#6696](https://github.com/kedacore/keda/issues/6696))
+- **General**: ScalerCache gets the lock before operate the scalers to prevent panics ([#6739](https://github.com/kedacore/keda/pull/6739))
+- **AWS SQS Queue Scaler**: Fix AWS SQS Queue queueURLFromEnv not working ([#6712](https://github.com/kedacore/keda/issues/6712))
+- **Azure Service Bus scaler**: Fix Azure Service Bus scaler add default Operation ([#6730](https://github.com/kedacore/keda/issues/6730))
+- **Temporal Scaler**: Fix Temporal Scaler does not work properly with API Key authentication against Temporal Cloud as TLS is not enabled on the client ([#6703](https://github.com/kedacore/keda/issues/6703))
+
 
 ## v2.17.0
 
