@@ -89,7 +89,7 @@ spec:
     spec:
       containers:
         - name: gitea-webhook-api
-          image: "ghcr.io/christopherhx/gitea-workflow-webhook-api:nightly@sha256:7cb4eaaf0f4fb6db6a4a3fb8b4d79c588b32012ded2bde296fd61e055c8ee7d7"
+          image: "gitea/gitea:nightly"
           ports:
             - containerPort: 3000
           command:
@@ -188,8 +188,82 @@ spec:
       terminationGracePeriodSeconds: 90
       containers:
       - name: github-runner
-        image: ghcr.io/christopherhx/gitea-keda-runner:nightly@sha256:a1519c1908eb8aa018a0ae35232b01e07e1ef93a3ff127d889419009c0645ad2
+        image: gitea/act_runner:nightly
         imagePullPolicy: Always
+        command:
+          - sh
+          - -c
+          - |
+            #!/usr/bin/env bash
+            apk add curl jq
+
+            if [[ ! -d /data ]]; then
+              mkdir -p /data
+            fi
+            
+            cd /data
+            
+            RUNNER_STATE_FILE=${RUNNER_STATE_FILE:-'.runner'}
+            
+            CONFIG_ARG=""
+            if [[ ! -z "${CONFIG_FILE}" ]]; then
+              CONFIG_ARG="--config ${CONFIG_FILE}"
+            fi
+            EXTRA_ARGS=""
+            if [[ ! -z "${GITEA_RUNNER_LABELS}" ]]; then
+              EXTRA_ARGS="${EXTRA_ARGS} --labels ${GITEA_RUNNER_LABELS}"
+            fi
+            if [[ ! -z "${GITEA_RUNNER_EPHEMERAL}" ]]; then
+              EXTRA_ARGS="${EXTRA_ARGS} --ephemeral"
+            fi
+            RUN_ARGS=""
+            if [[ ! -z "${GITEA_RUNNER_ONCE}" ]]; then
+              RUN_ARGS="${RUN_ARGS} --once"
+            fi
+            
+            # In case no token is set, it's possible to read the token from a file, i.e. a Docker Secret
+            if [[ -z "${GITEA_RUNNER_REGISTRATION_TOKEN}" ]] && [[ -f "${GITEA_RUNNER_REGISTRATION_TOKEN_FILE}" ]]; then
+              GITEA_RUNNER_REGISTRATION_TOKEN=$(cat "${GITEA_RUNNER_REGISTRATION_TOKEN_FILE}")
+            fi
+            
+            if [[ ! -z "${GITEA_RUNNER_PAT}" ]]; then
+              GITEA_RUNNER_REGISTRATION_TOKEN="$(curl -s -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${GITEA_RUNNER_PAT}" ${GITEA_INSTANCE_URL}/api/v1/repos/${GITEA_RUNNER_OWNER}/${GITEA_RUNNER_REPO}/actions/runners/registration-token | jq .token -r)"
+              unset GITEA_RUNNER_PAT
+            fi
+            
+            # Use the same ENV variable names as https://github.com/vegardit/docker-gitea-act-runner
+            test -f "$RUNNER_STATE_FILE" || echo "$RUNNER_STATE_FILE is missing or not a regular file"
+            
+            if [[ ! -s "$RUNNER_STATE_FILE" ]]; then
+              try=$((try + 1))
+              success=0
+            
+              # The point of this loop is to make it simple, when running both act_runner and gitea in docker,
+              # for the act_runner to wait a moment for gitea to become available before erroring out.  Within
+              # the context of a single docker-compose, something similar could be done via healthchecks, but
+              # this is more flexible.
+              while [[ $success -eq 0 ]] && [[ $try -lt ${GITEA_MAX_REG_ATTEMPTS:-10} ]]; do
+                act_runner register \
+                  --instance "${GITEA_INSTANCE_URL}" \
+                  --token    "${GITEA_RUNNER_REGISTRATION_TOKEN}" \
+                  --name     "${GITEA_RUNNER_NAME:-` + "`hostname`" + `}" \
+                  ${CONFIG_ARG} ${EXTRA_ARGS} --no-interactive 2>&1 | tee /tmp/reg.log
+            
+                cat /tmp/reg.log | grep 'Runner registered successfully' > /dev/null
+                if [[ $? -eq 0 ]]; then
+                  echo "SUCCESS"
+                  success=1
+                else
+                  echo "Waiting to retry ..."
+                  sleep 5
+                fi
+              done
+            fi
+            # Prevent reading the token from the act_runner process
+            unset GITEA_RUNNER_REGISTRATION_TOKEN
+            unset GITEA_RUNNER_REGISTRATION_TOKEN_FILE
+            
+            exec act_runner daemon ${CONFIG_ARG} ${RUN_ARGS}
         env:
           - name: GITEA_RUNNER_EPHEMERAL
             value: "true"
@@ -246,8 +320,82 @@ spec:
       spec:
         containers:
         - name: {{.ScaledJobName}}
-          image: ghcr.io/christopherhx/gitea-keda-runner:nightly@sha256:a1519c1908eb8aa018a0ae35232b01e07e1ef93a3ff127d889419009c0645ad2
-          imagePullPolicy: IfNotPresent
+          image: gitea/act_runner:nightly
+          imagePullPolicy: Always
+          command:
+            - sh
+            - -c
+            - |
+              #!/usr/bin/env bash
+              apk add curl jq
+              
+              if [[ ! -d /data ]]; then
+                mkdir -p /data
+              fi
+              
+              cd /data
+              
+              RUNNER_STATE_FILE=${RUNNER_STATE_FILE:-'.runner'}
+              
+              CONFIG_ARG=""
+              if [[ ! -z "${CONFIG_FILE}" ]]; then
+                CONFIG_ARG="--config ${CONFIG_FILE}"
+              fi
+              EXTRA_ARGS=""
+              if [[ ! -z "${GITEA_RUNNER_LABELS}" ]]; then
+                EXTRA_ARGS="${EXTRA_ARGS} --labels ${GITEA_RUNNER_LABELS}"
+              fi
+              if [[ ! -z "${GITEA_RUNNER_EPHEMERAL}" ]]; then
+                EXTRA_ARGS="${EXTRA_ARGS} --ephemeral"
+              fi
+              RUN_ARGS=""
+              if [[ ! -z "${GITEA_RUNNER_ONCE}" ]]; then
+                RUN_ARGS="${RUN_ARGS} --once"
+              fi
+              
+              # In case no token is set, it's possible to read the token from a file, i.e. a Docker Secret
+              if [[ -z "${GITEA_RUNNER_REGISTRATION_TOKEN}" ]] && [[ -f "${GITEA_RUNNER_REGISTRATION_TOKEN_FILE}" ]]; then
+                GITEA_RUNNER_REGISTRATION_TOKEN=$(cat "${GITEA_RUNNER_REGISTRATION_TOKEN_FILE}")
+              fi
+              
+              if [[ ! -z "${GITEA_RUNNER_PAT}" ]]; then
+                GITEA_RUNNER_REGISTRATION_TOKEN="$(curl -s -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${GITEA_RUNNER_PAT}" ${GITEA_INSTANCE_URL}/api/v1/repos/${GITEA_RUNNER_OWNER}/${GITEA_RUNNER_REPO}/actions/runners/registration-token | jq .token -r)"
+                unset GITEA_RUNNER_PAT
+              fi
+              
+              # Use the same ENV variable names as https://github.com/vegardit/docker-gitea-act-runner
+              test -f "$RUNNER_STATE_FILE" || echo "$RUNNER_STATE_FILE is missing or not a regular file"
+              
+              if [[ ! -s "$RUNNER_STATE_FILE" ]]; then
+                try=$((try + 1))
+                success=0
+              
+                # The point of this loop is to make it simple, when running both act_runner and gitea in docker,
+                # for the act_runner to wait a moment for gitea to become available before erroring out.  Within
+                # the context of a single docker-compose, something similar could be done via healthchecks, but
+                # this is more flexible.
+                while [[ $success -eq 0 ]] && [[ $try -lt ${GITEA_MAX_REG_ATTEMPTS:-10} ]]; do
+                  act_runner register \
+                    --instance "${GITEA_INSTANCE_URL}" \
+                    --token    "${GITEA_RUNNER_REGISTRATION_TOKEN}" \
+                    --name     "${GITEA_RUNNER_NAME:-` + "`hostname`" + `}" \
+                    ${CONFIG_ARG} ${EXTRA_ARGS} --no-interactive 2>&1 | tee /tmp/reg.log
+              
+                  cat /tmp/reg.log | grep 'Runner registered successfully' > /dev/null
+                  if [[ $? -eq 0 ]]; then
+                    echo "SUCCESS"
+                    success=1
+                  else
+                    echo "Waiting to retry ..."
+                    sleep 5
+                  fi
+                done
+              fi
+              # Prevent reading the token from the act_runner process
+              unset GITEA_RUNNER_REGISTRATION_TOKEN
+              unset GITEA_RUNNER_REGISTRATION_TOKEN_FILE
+              
+              exec act_runner daemon ${CONFIG_ARG} ${RUN_ARGS}
           env:
           - name: GITEA_RUNNER_EPHEMERAL
             value: "true"
