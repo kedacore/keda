@@ -71,6 +71,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Improve Events emitted from ScaledObject controller ([#6802](https://github.com/kedacore/keda/issues/6802))
 - **General**: Internal gRPC connection's certificates are hot reloaded ([#6756](https://github.com/kedacore/keda/pull/6756))
+- **General**: Optimize ScaledObject status updates to reduce unnecessary API calls ([#6789](https://github.com/kedacore/keda/issues/6789))
 - **Metrics API**: Support multiple auth methods simultaneously in Metrics API scaler ([#6642](https://github.com/kedacore/keda/issues/6642))
 - **Temporal Scaler**: Support custom tlsServerName ([#6820](https://github.com/kedacore/keda/pull/6820))
 
@@ -135,7 +136,7 @@ New deprecation(s):
 - **IBMMQ Scaler**: Handling StatusNotFound in IBMMQ scaler ([#6472](https://github.com/kedacore/keda/pull/6472))
 - **MongoDB Scaler**: Support float queryValue for MongoDB scaler ([#6574](https://github.com/kedacore/keda/issues/6574))
 - **Prometheus Scaler**: Add custom HTTP client timeout ([#6607](https://github.com/kedacore/keda/pull/6607))
-- **RabbitMQ Scaler**: Support use of the ‘vhostName’ parameter in the ‘TriggerAuthentication’ resource ([#6369](https://github.com/kedacore/keda/issues/6369))
+- **RabbitMQ Scaler**: Support use of the 'vhostName' parameter in the 'TriggerAuthentication' resource ([#6369](https://github.com/kedacore/keda/issues/6369))
 - **Selenium Grid**: Add trigger param for Node enables managed downloads capability ([#6570](https://github.com/kedacore/keda/pull/6570))
 - **Selenium Grid**: Add trigger param to set custom capabilities for matching specific Nodes ([#6536](https://github.com/kedacore/keda/issues/6536))
 - **Selenium Grid**: Selenium Grid: Trigger param enableManagedDownloads set as true by default ([#6684](https://github.com/kedacore/keda/pull/6684))
@@ -312,7 +313,6 @@ Here is an overview of all new **experimental** features:
 
 - **General**: Added Pre Regex check before building image in e2e test ([#5783](https://github.com/kedacore/keda/issues/5783))
 - **General**: Check for missing CRD references and sample CRs ([#5920](https://github.com/kedacore/keda/issues/5920))
-- **General**: Reduce the number of ScaledObject.Status updates in the fallback ([#5624](https://github.com/kedacore/keda/issues/5624))
 - **General**: Remove deprecated Kustomize commonLabels ([#5888](https://github.com/kedacore/keda/pull/5888))
 - **General**: Remove unused leader election parameters in metrics adapter ([#5959](https://github.com/kedacore/keda/issues/5959))
 - **General**: Use new declarative parsing to read scaler config ([#5037](https://github.com/kedacore/keda/issues/5037)|[#5797](https://github.com/kedacore/keda/issues/5797))
