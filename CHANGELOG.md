@@ -76,6 +76,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
+- **General**: Fix failing webhook check when the targetRef object doesn't exist ([#6842](https://github.com/kedacore/keda/pull/6842))
 - **General**: Fix prefixes on envFrom elements in a deployment spec aren't being interpreted and Environment variables are not prefixed with the prefix ([#6728](https://github.com/kedacore/keda/issues/6728))
 - **General**: Remove klogr dependency and replace with zap ([#5732](https://github.com/kedacore/keda/issues/5732))
 - **Temporal Scaler**: Fix Temporal Scaler TLS version ([#6707](https://github.com/kedacore/keda/pull/6707))
