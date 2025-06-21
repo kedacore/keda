@@ -32,6 +32,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -149,6 +152,14 @@ func ExecuteCommandWithDir(cmdWithArgs, dir string) ([]byte, error) {
 }
 
 func ExecCommandOnSpecificPod(t *testing.T, podName string, namespace string, command string) (string, string, error) {
+	return executeCommandOnPod(t, podName, namespace, command, true)
+}
+
+func ExecCommandOnSpecificPodWithoutTTY(t *testing.T, podName string, namespace string, command string) (string, string, error) {
+	return executeCommandOnPod(t, podName, namespace, command, false)
+}
+
+func executeCommandOnPod(t *testing.T, podName string, namespace string, command string, tty bool) (string, string, error) {
 	cmd := []string{
 		"sh",
 		"-c",
@@ -164,7 +175,7 @@ func ExecCommandOnSpecificPod(t *testing.T, podName string, namespace string, co
 			Stdin:   false,
 			Stdout:  true,
 			Stderr:  true,
-			TTY:     true,
+			TTY:     tty,
 		}, scheme.ParameterCodec)
 	exec, err := remotecommand.NewSPDYExecutor(KubeConfig, "POST", request.URL())
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
@@ -912,4 +923,225 @@ func CheckKubectlGetResult(t *testing.T, kind string, name string, namespace str
 
 	unqoutedOutput := strings.ReplaceAll(string(output), "\"", "")
 	assert.Equal(t, expected, unqoutedOutput)
+}
+
+// KedaConsistently checks if the provided conditionFunc consistently returns true
+// (and no error) for the entire duration specified by the context's deadline.
+// It polls the conditionFunc at the given interval.
+func KedaConsistently(ctx context.Context, conditionFunc wait.ConditionWithContextFunc, interval time.Duration) error {
+	if interval <= 0 {
+		return fmt.Errorf("polling interval must be positive, got %v", interval)
+	}
+
+	ok, err := conditionFunc(ctx)
+	if err != nil {
+		return fmt.Errorf("consistency check failed on initial check: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("consistency check failed: condition was false on initial check")
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+
+		case <-ticker.C:
+			ok, err := conditionFunc(ctx)
+			if err != nil {
+				return fmt.Errorf("consistency check failed during polling: %w", err)
+			}
+			if !ok {
+				return fmt.Errorf("consistency check failed: condition returned false during polling period")
+			}
+		}
+	}
+}
+
+// EventWatchResult holds the outcome of the event watch.
+type EventWatchResult struct {
+	Event corev1.Event
+	Err   error
+}
+
+// StartEventWatch starts a watch for Kubernetes events matching the specified criteria.
+// It returns a channel that will receive the first matching event or an error if the watch fails.
+func StartEventWatch(
+	ctx context.Context,
+	t *testing.T,
+	clientset *kubernetes.Clientset,
+	namespace string,
+	involvedObjectName string,
+	involvedObjectKind string,
+	expectedReason string,
+	expectedType string,
+	expectedMessages []string,
+	resourceVersion string,
+) <-chan EventWatchResult {
+	t.Helper()
+	resultChan := make(chan EventWatchResult, 1)
+
+	fieldSelectorMap := fields.Set{
+		"involvedObject.name": involvedObjectName,
+		"involvedObject.kind": involvedObjectKind,
+		"reason":              expectedReason,
+		"type":                expectedType,
+	}
+	fieldSelector := fieldSelectorMap.String()
+
+	listOptions := metav1.ListOptions{
+		FieldSelector:   fieldSelector,
+		ResourceVersion: resourceVersion,
+	}
+
+	t.Logf("Starting event watch goroutine: namespace=%s, selector='%s', messages=%v, resourceVersion=%s",
+		namespace, fieldSelector, expectedMessages, resourceVersion)
+
+	watcher, err := clientset.CoreV1().Events(namespace).Watch(ctx, listOptions)
+	assert.NoErrorf(t, err, "failed to start watch for events with selector '%s' and rv %s: %s", fieldSelector, resourceVersion, err)
+	if err != nil {
+		resultChan <- EventWatchResult{Err: err}
+		close(resultChan)
+		return resultChan
+	}
+
+	go func() {
+		defer close(resultChan)
+		defer watcher.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				err := fmt.Errorf("watch context cancelled or timed out while waiting for event: %w", ctx.Err())
+				resultChan <- EventWatchResult{Err: err}
+				return
+
+			case watchEvent, ok := <-watcher.ResultChan():
+				if !ok {
+					err := fmt.Errorf("watcher channel closed unexpectedly for selector '%s'", fieldSelector)
+					if ctx.Err() != nil {
+						err = fmt.Errorf("watcher channel closed, likely due to context timeout: %w", ctx.Err())
+					}
+					resultChan <- EventWatchResult{Err: err}
+					return
+				}
+
+				switch watchEvent.Type {
+				case watch.Added, watch.Modified:
+					event, ok := watchEvent.Object.(*corev1.Event)
+					if !ok {
+						t.Logf("Received non-Event object type (%T) from watch, skipping", watchEvent.Object)
+						continue
+					}
+
+					t.Logf("Watch goroutine received event: %s/%s - %s %s (ts: %s): %s",
+						event.InvolvedObject.Kind, event.InvolvedObject.Name, event.Type, event.Reason,
+						event.LastTimestamp.Time.Format(time.RFC3339), event.Message)
+
+					messageMatched := false
+					for _, expectedMsg := range expectedMessages {
+						if strings.Contains(event.Message, expectedMsg) {
+							messageMatched = true
+							break
+						}
+					}
+					if !messageMatched {
+						t.Logf(" -> Skipping event: Message '%s' did not match any of expected %v", event.Message, expectedMessages)
+						continue
+					}
+
+					t.Logf("Watch goroutine found matching event: %s/%s - %s %s: %s",
+						event.InvolvedObject.Kind, event.InvolvedObject.Name, event.Type, event.Reason, event.Message)
+					resultChan <- EventWatchResult{Event: *event}
+					return
+
+				case watch.Error:
+					status, ok := watchEvent.Object.(*metav1.Status)
+					var errMsg string
+					if ok {
+						errMsg = fmt.Sprintf("received watch.Error status: %s", status.Message)
+					} else {
+						errMsg = fmt.Sprintf("received watch.Error with unexpected object type %T: %v", watchEvent.Object, watchEvent.Object)
+					}
+					resultChan <- EventWatchResult{Err: fmt.Errorf("%s", errMsg)}
+					return
+
+				case watch.Deleted, watch.Bookmark:
+					continue
+				}
+			}
+		}
+	}()
+
+	return resultChan
+}
+
+// WatchForEventAfterTrigger starts watching for a specific Kubernetes event,
+// executes a trigger function, and then waits for the event to appear.
+func WatchForEventAfterTrigger(
+	t *testing.T,
+	kc *kubernetes.Clientset,
+	namespace string,
+	involvedObjectName string,
+	involvedObjectKind string,
+	expectedReason string,
+	expectedType string,
+	expectedMessages []string, // matches any of the messages
+	watchTimeout time.Duration,
+	triggerAction func() error,
+) {
+	t.Helper()
+
+	watchCtx, watchCancel := context.WithTimeout(context.Background(), watchTimeout)
+	defer watchCancel()
+
+	initialListOptions := metav1.ListOptions{
+		FieldSelector: fields.Set{
+			"involvedObject.name": involvedObjectName,
+			"involvedObject.kind": involvedObjectKind,
+			"reason":              expectedReason,
+			"type":                expectedType,
+		}.String(),
+		Limit: 1,
+	}
+
+	eventsList, err := kc.CoreV1().Events(namespace).List(watchCtx, initialListOptions)
+	require.NoError(t, err, "failed to get initial resource version for watch")
+
+	// Use the resource version from the initial list to start the watch
+	// This ensures we only get events that occur after the initial list
+	initialResourceVersion := eventsList.ListMeta.ResourceVersion
+
+	t.Logf("Waiting up to %s for Kubernetes event '%s' via watch...", watchTimeout, expectedReason)
+
+	resultChan := StartEventWatch(
+		watchCtx,
+		t,
+		kc,
+		namespace,
+		involvedObjectName,
+		involvedObjectKind,
+		expectedReason,
+		expectedType,
+		expectedMessages,
+		initialResourceVersion,
+	)
+
+	err = triggerAction()
+	require.NoError(t, err, "Trigger action failed")
+
+	select {
+	case result := <-resultChan:
+		assert.NoError(t, result.Err, "Event watch failed for %s", expectedReason)
+		if result.Err == nil {
+			t.Logf("Received expected Kubernetes event via watch: %s/%s - %s %s: %s",
+				result.Event.InvolvedObject.Kind, result.Event.InvolvedObject.Name, result.Event.Type, result.Event.Reason, result.Event.Message)
+		}
+
+	case <-time.After(watchTimeout + 5*time.Second):
+		assert.Fail(t, "Timed out waiting for result from Kubernetes event watch channel")
+	}
 }
