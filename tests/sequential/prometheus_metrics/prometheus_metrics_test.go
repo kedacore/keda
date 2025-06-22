@@ -1361,7 +1361,7 @@ func testCloudEventEmitted(t *testing.T, data templateData) {
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
 			if len(labels) >= 4 &&
-				ExtractPrometheusLabelValue("cloudEventSource", labels) == "prometheus-metrics-test-ce" &&
+				ExtractPrometheusLabelValue("cloudeventsource", labels) == "prometheus-metrics-test-ce" &&
 				ExtractPrometheusLabelValue("eventsink", labels) == "http" &&
 				ExtractPrometheusLabelValue("namespace", labels) == "prometheus-metrics-test-ns" &&
 				ExtractPrometheusLabelValue("state", labels) == "emitted" {
