@@ -17,7 +17,6 @@ limitations under the License.
 package resolver
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -29,7 +28,7 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
-// HashicorpVaultHandler is specification of Hashi Corp Vault
+// HashicorpVaultHandler is a specification of HashiCorp Vault
 type HashicorpVaultHandler struct {
 	vault  *kedav1alpha1.HashiCorpVault
 	client *vaultapi.Client
@@ -176,12 +175,12 @@ RenewWatcherLoop:
 	}
 }
 
-// Read is used to get a secret from vault Read api. (e.g. secret)
+// Read is used to get a secret from vault Read api. (e.g., secret)
 func (vh *HashicorpVaultHandler) Read(path string) (*vaultapi.Secret, error) {
 	return vh.client.Logical().Read(path)
 }
 
-// Write is used to get a secret from vault that needs to pass along data and uses the vault Write api. (e.g. pki)
+// Write is used to get a secret from vault that needs to pass along data and uses the vault Write api. (e.g., pki)
 func (vh *HashicorpVaultHandler) Write(path string, data map[string]interface{}) (*vaultapi.Secret, error) {
 	return vh.client.Logical().Write(path, data)
 }
@@ -195,15 +194,29 @@ func (vh *HashicorpVaultHandler) Stop() {
 
 // getPkiRequest format the pkiData in a format that the vault sdk understands.
 func (vh *HashicorpVaultHandler) getPkiRequest(pkiData *kedav1alpha1.VaultPkiData) (map[string]interface{}, error) {
-	var data map[string]interface{}
-	a, err := json.Marshal(pkiData)
-	if err != nil {
-		return nil, err
+	data := make(map[string]interface{})
+	if pkiData.CommonName != "" {
+		data["common_name"] = pkiData.CommonName
 	}
-	err = json.Unmarshal(a, &data)
-	if err != nil {
-		return nil, err
+	if pkiData.AltNames != "" {
+		data["alt_names"] = pkiData.AltNames
 	}
+	if pkiData.IPSans != "" {
+		data["ip_sans"] = pkiData.IPSans
+	}
+	if pkiData.URISans != "" {
+		data["uri_sans"] = pkiData.URISans
+	}
+	if pkiData.OtherSans != "" {
+		data["other_sans"] = pkiData.OtherSans
+	}
+	if pkiData.TTL != "" {
+		data["ttl"] = pkiData.TTL
+	}
+	if pkiData.Format != "" {
+		data["format"] = pkiData.Format
+	}
+
 	return data, nil
 }
 
