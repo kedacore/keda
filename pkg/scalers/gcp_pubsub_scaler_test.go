@@ -126,47 +126,53 @@ func TestPubSubParseMetadata(t *testing.T) {
 
 func TestPubSubMetadataDefaultValues(t *testing.T) {
 	for _, testData := range gcpSubscriptionDefaults {
-		metaData, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv}, logr.Discard())
-		if err != nil {
-			t.Error("Expected success but got error", err)
-		}
-		if pubSubDefaultModeSubscriptionSize != metaData.Mode {
-			t.Errorf(`Expected mode "%s" but got "%s"`, pubSubDefaultModeSubscriptionSize, metaData.Mode)
-		}
-		if pubSubDefaultValue != metaData.Value {
-			t.Errorf(`Expected value "%d" but got "%f"`, pubSubDefaultValue, metaData.Value)
-		}
+		t.Run(testData.metadataTestData.testName, func(t *testing.T) {
+			metaData, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv}, logr.Discard())
+			if err != nil {
+				t.Error("Expected success but got error", err)
+			}
+			if pubSubDefaultModeSubscriptionSize != metaData.Mode {
+				t.Errorf(`Expected mode "%s" but got "%s"`, pubSubDefaultModeSubscriptionSize, metaData.Mode)
+			}
+			if pubSubDefaultValue != metaData.Value {
+				t.Errorf(`Expected value "%d" but got "%f"`, pubSubDefaultValue, metaData.Value)
+			}
+		})
 	}
 }
 
 func TestGcpPubSubGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpPubSubMetricIdentifiers {
-		meta, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
-		if err != nil {
-			t.Fatal("Could not parse metadata:", err)
-		}
-		mockGcpPubSubScaler := pubsubScaler{nil, "", meta, logr.Discard()}
+		t.Run(testData.metadataTestData.testName, func(t *testing.T) {
+			meta, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
+			if err != nil {
+				t.Fatal("Could not parse metadata:", err)
+			}
+			mockGcpPubSubScaler := pubsubScaler{nil, "", meta, logr.Discard()}
 
-		metricSpec := mockGcpPubSubScaler.GetMetricSpecForScaling(context.Background())
-		metricName := metricSpec[0].External.Metric.Name
-		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName)
-		}
+			metricSpec := mockGcpPubSubScaler.GetMetricSpecForScaling(context.Background())
+			metricName := metricSpec[0].External.Metric.Name
+			if metricName != testData.name {
+				t.Error("Wrong External metric source name:", metricName)
+			}
+		})
 	}
 }
 
 func TestGcpPubSubResourceName(t *testing.T) {
 	for _, testData := range gcpResourceNameTests {
-		meta, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
-		if err != nil {
-			t.Fatal("Could not parse metadata:", err)
-		}
-		mockGcpPubSubScaler := pubsubScaler{nil, "", meta, logr.Discard()}
-		resourceID, projectID := getResourceData(&mockGcpPubSubScaler)
+		t.Run(testData.metadataTestData.testName, func(t *testing.T) {
+			meta, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
+			if err != nil {
+				t.Fatal("Could not parse metadata:", err)
+			}
+			mockGcpPubSubScaler := pubsubScaler{nil, "", meta, logr.Discard()}
+			resourceID, projectID := getResourceData(&mockGcpPubSubScaler)
 
-		if resourceID != testData.name || projectID != testData.projectID {
-			t.Error("Wrong Resource parsing:", resourceID, projectID)
-		}
+			if resourceID != testData.name || projectID != testData.projectID {
+				t.Error("Wrong Resource parsing:", resourceID, projectID)
+			}
+		})
 	}
 }
 
