@@ -252,7 +252,7 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 	}
 	meta.HpaMetricName = "datadogmetric@" + meta.DatadogMetricNamespace + ":" + meta.DatadogMetricName
 
-	meta.DatadogMetricServiceURL = buildClusterAgentURL(meta.DatadogMetricsService, meta.DatadogMetricNamespace, meta.DatadogMetricsServicePort)
+	meta.DatadogMetricServiceURL = buildClusterAgentURL(meta.DatadogMetricsService, meta.DatadogNamespace, meta.DatadogMetricsServicePort)
 
 	return meta, nil
 }
