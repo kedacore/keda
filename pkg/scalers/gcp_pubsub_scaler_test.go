@@ -113,7 +113,7 @@ var gcpSubscriptionDefaults = []gcpPubSubSubscription{
 func TestPubSubParseMetadata(t *testing.T) {
 	for _, testData := range testPubSubMetadata {
 		t.Run(testData.testName, func(t *testing.T) {
-			_, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testPubSubResolvedEnv}, logr.Discard())
+			_, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testPubSubResolvedEnv})
 			if err != nil && !testData.isError {
 				t.Error("Expected success but got error", err)
 			}
@@ -127,7 +127,7 @@ func TestPubSubParseMetadata(t *testing.T) {
 func TestPubSubMetadataDefaultValues(t *testing.T) {
 	for _, testData := range gcpSubscriptionDefaults {
 		t.Run(testData.metadataTestData.testName, func(t *testing.T) {
-			metaData, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv}, logr.Discard())
+			metaData, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv})
 			if err != nil {
 				t.Error("Expected success but got error", err)
 			}
@@ -144,7 +144,7 @@ func TestPubSubMetadataDefaultValues(t *testing.T) {
 func TestGcpPubSubGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpPubSubMetricIdentifiers {
 		t.Run(testData.metadataTestData.testName, func(t *testing.T) {
-			meta, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
+			meta, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex})
 			if err != nil {
 				t.Fatal("Could not parse metadata:", err)
 			}
@@ -162,7 +162,7 @@ func TestGcpPubSubGetMetricSpecForScaling(t *testing.T) {
 func TestGcpPubSubResourceName(t *testing.T) {
 	for _, testData := range gcpResourceNameTests {
 		t.Run(testData.metadataTestData.testName, func(t *testing.T) {
-			meta, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
+			meta, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex})
 			if err != nil {
 				t.Fatal("Could not parse metadata:", err)
 			}

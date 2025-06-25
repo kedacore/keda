@@ -59,9 +59,7 @@ func NewPubSubScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
-	logger := InitializeLogger(config, "gcp_pub_sub_scaler")
-
-	meta, err := parsePubSubMetadata(config, logger)
+	meta, err := parsePubSubMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing PubSub metadata: %w", err)
 	}
@@ -69,21 +67,22 @@ func NewPubSubScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	return &pubsubScaler{
 		metricType: metricType,
 		metadata:   meta,
-		logger:     logger,
 	}, nil
 }
 
-func parsePubSubMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*pubsubMetadata, error) {
+func parsePubSubMetadata(config *scalersconfig.ScalerConfig) (*pubsubMetadata, error) {
 	meta := &pubsubMetadata{}
 
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing gcp pubsub metadata: %w", err)
 	}
 
+	if meta.Mode == "" {
+		meta.Mode = pubSubDefaultModeSubscriptionSize
+	}
+
 	if meta.SubscriptionSize != 0 {
 		meta.Value = float64(meta.SubscriptionSize)
-	} else if meta.Mode == "" {
-		meta.Mode = pubSubDefaultModeSubscriptionSize
 	}
 
 	if meta.SubscriptionName != "" {
