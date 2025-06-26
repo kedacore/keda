@@ -78,6 +78,7 @@ func parsePubSubMetadata(config *scalersconfig.ScalerConfig) (*pubsubMetadata, e
 	}
 
 	if meta.SubscriptionSize != 0 {
+		meta.Mode = pubSubDefaultModeSubscriptionSize
 		meta.Value = float64(meta.SubscriptionSize)
 	}
 
