@@ -88,7 +88,7 @@ func (s *GrpcServer) startServer() error {
 func (s *GrpcServer) Start(ctx context.Context) error {
 	<-s.certsReady
 	if s.server == nil {
-		creds, err := utils.LoadGrpcTLSCredentials(s.certDir, true)
+		creds, err := utils.LoadGrpcTLSCredentials(ctx, s.certDir, true)
 		if err != nil {
 			return err
 		}
