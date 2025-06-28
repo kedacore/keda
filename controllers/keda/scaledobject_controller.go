@@ -479,6 +479,14 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 		return false, err
 	}
 
+	// If the HPA name does not match the one in ScaledObject status, we need to update the status
+	if scaledObject.Status.HpaName != hpaName {
+		err = r.storeHpaNameInStatus(ctx, logger, scaledObject, hpaName)
+		if err != nil {
+			return false, err
+		}
+	}
+
 	return false, nil
 }
 
