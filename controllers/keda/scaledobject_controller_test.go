@@ -349,6 +349,62 @@ var _ = Describe("ScaledObjectController", func() {
 			Expect(errors.IsNotFound(err)).To(Equal(true))
 		})
 
+		It("sets the hpaName in status if not set and HPA already exists", func() {
+			// Create the scaling target.
+			deploymentName := "hpa-name-update"
+			soName := "so-" + deploymentName
+			err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+			Expect(err).ToNot(HaveOccurred())
+
+			// Create the ScaledObject without specifying name.
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{Name: soName, Namespace: "default"},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: deploymentName,
+					},
+					Advanced: &kedav1alpha1.AdvancedConfig{
+						HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{},
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Get and confirm the HPA.
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: fmt.Sprintf("keda-hpa-%s", soName), Namespace: "default"}, hpa)
+			}).ShouldNot(HaveOccurred())
+			Expect(hpa.Name).To(Equal(fmt.Sprintf("keda-hpa-%s", soName)))
+
+			// Remove the HPA name from the ScaledObject.
+			Eventually(func() error {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Expect(err).ToNot(HaveOccurred())
+				so.Status.HpaName = ""
+				return k8sClient.Status().Update(context.Background(), so)
+			}).ShouldNot(HaveOccurred())
+
+			// Wait until the hpaName is updated in the scaled object.
+			Eventually(func() string {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Expect(err).ToNot(HaveOccurred())
+				return so.Status.HpaName
+			}).Should(Equal(fmt.Sprintf("keda-hpa-%s", soName)))
+		})
+
 		//https://github.com/kedacore/keda/issues/2407
 		It("cache is correctly recreated if SO is deleted and created", func() {
 			// Create the scaling target.
