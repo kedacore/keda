@@ -1361,10 +1361,10 @@ func testCloudEventEmitted(t *testing.T, data templateData) {
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
 			if len(labels) >= 4 &&
-				*labels[0].Value == "prometheus-metrics-test-ce" &&
-				*labels[1].Value == "http" &&
-				*labels[2].Value == "prometheus-metrics-test-ns" &&
-				*labels[3].Value == "emitted" {
+				ExtractPrometheusLabelValue("cloudeventsource", labels) == "prometheus-metrics-test-ce" &&
+				ExtractPrometheusLabelValue("eventsink", labels) == "http" &&
+				ExtractPrometheusLabelValue("namespace", labels) == "prometheus-metrics-test-ns" &&
+				ExtractPrometheusLabelValue("state", labels) == "emitted" {
 				assert.GreaterOrEqual(t, *metric.Counter.Value, float64(1))
 				found = true
 			}
@@ -1393,10 +1393,10 @@ func testCloudEventEmittedError(t *testing.T, data templateData) {
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
 			if len(labels) >= 4 &&
-				*labels[0].Value == "prometheus-metrics-test-ce-w" &&
-				*labels[1].Value == "http" &&
-				*labels[2].Value == "prometheus-metrics-test-ns" &&
-				*labels[3].Value == "failed" {
+				ExtractPrometheusLabelValue("cloudeventsource", labels) == "prometheus-metrics-test-ce-w" &&
+				ExtractPrometheusLabelValue("eventsink", labels) == "http" &&
+				ExtractPrometheusLabelValue("namespace", labels) == "prometheus-metrics-test-ns" &&
+				ExtractPrometheusLabelValue("state", labels) == "failed" {
 				assert.GreaterOrEqual(t, *metric.Counter.Value, float64(5))
 				found = true
 			}
