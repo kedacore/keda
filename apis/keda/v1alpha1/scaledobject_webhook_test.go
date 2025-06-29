@@ -29,7 +29,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = It("should validate the so creation when there isn't any hpa", func() {
@@ -470,34 +469,6 @@ var _ = It("should validate the so creation with cpu and memory when deployment 
 	}).ShouldNot(HaveOccurred())
 })
 
-var _ = It("shouldn't validate the creation with cpu and memory when deployment is missing", func() {
-
-	namespaceName := "deployment-missing"
-	namespace := createNamespace(namespaceName)
-	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
-
-	err := k8sClient.Create(context.Background(), namespace)
-	Expect(err).ToNot(HaveOccurred())
-
-	Eventually(func() error {
-		return k8sClient.Create(context.Background(), so)
-	}).Should(HaveOccurred())
-})
-
-var _ = It("should validate the creation with cpu and memory when deployment is missing and dry-run is true", func() {
-
-	namespaceName := "deployment-missing-dry-run"
-	namespace := createNamespace(namespaceName)
-	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
-
-	err := k8sClient.Create(context.Background(), namespace)
-	Expect(err).ToNot(HaveOccurred())
-
-	Eventually(func() error {
-		return k8sClient.Create(context.Background(), so, client.DryRunAll)
-	}).ShouldNot(HaveOccurred())
-})
-
 var _ = It("shouldn't validate the so creation with cpu and memory when deployment hasn't got memory request", func() {
 
 	namespaceName := "deployment-no-memory-request"
@@ -516,26 +487,46 @@ var _ = It("shouldn't validate the so creation with cpu and memory when deployme
 	}).Should(HaveOccurred())
 })
 
-// This test checks whether the validation fails when the CPU and memory resource limits are missing in pod spec (in
-// deployment) and there are CPU and memory triggers in ScaledObject. This is a test for already existing behavior.
-// See github.com/kedacore/keda/issues/5348
-var _ = It("shouldn't validate the SO creation with CPU and memory when deployment doesn't have CPU and memory", func() {
-	namespaceName := "resource-default-limits-missing"
-	namespace := createNamespace(namespaceName)
-	deployment := createDeployment(namespaceName, false, false)
-	scaledObject := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
+var _ = It("shouldn't validate the so creation with cpu and memory when deployment hasn't got cpu request", func() {
 
-	// Create namespace
+	namespaceName := "deployment-no-cpu-request"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, true)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
+
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	// Create deployment
-	err = k8sClient.Create(context.Background(), deployment)
+	err = k8sClient.Create(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	// Create scaled object, asynchronously
 	Eventually(func() error {
-		return k8sClient.Create(context.Background(), scaledObject)
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
+var _ = It("shouldn't validate the so creation with cpu and memory when so references a non-existent container in a cpu/memory trigger", func() {
+
+	namespaceName := "deployment-cpu-memory-non-existent-container"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, true, true)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
+
+	// Setting the containerName metadata to reference a non-existent container.
+	for i, trigger := range so.Spec.Triggers {
+		if trigger.Type == cpuString || trigger.Type == memoryString {
+			so.Spec.Triggers[i].Metadata["containerName"] = "non-existent-container"
+		}
+	}
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
 	}).Should(HaveOccurred())
 })
 
@@ -569,24 +560,6 @@ var _ = It("should validate the SO creation with CPU and memory when deployment 
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), scaledObject)
 	}).ShouldNot(HaveOccurred())
-})
-
-var _ = It("shouldn't validate the so creation with cpu and memory when deployment hasn't got cpu request", func() {
-
-	namespaceName := "deployment-no-cpu-request"
-	namespace := createNamespace(namespaceName)
-	workload := createDeployment(namespaceName, false, true)
-	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
-
-	err := k8sClient.Create(context.Background(), namespace)
-	Expect(err).ToNot(HaveOccurred())
-
-	err = k8sClient.Create(context.Background(), workload)
-	Expect(err).ToNot(HaveOccurred())
-
-	Eventually(func() error {
-		return k8sClient.Create(context.Background(), so)
-	}).Should(HaveOccurred())
 })
 
 var _ = It("should validate the so creation with cpu and memory when statefulset has requests", func() {

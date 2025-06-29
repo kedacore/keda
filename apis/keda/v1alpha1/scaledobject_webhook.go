@@ -386,37 +386,49 @@ func verifyCPUMemoryScalers(incomingSo *ScaledObject, action string, dryRun bool
 				case "apps/v1.Deployment":
 					deployment := &appsv1.Deployment{}
 					if err := getFromCacheOrDirect(context.Background(), key, deployment); err != nil {
-						return err
+						// Only log the error. If the deployment is not found, proceed with SO creation.
+						scaledobjectlog.V(1).Info("failed to get deployment while trying to verify resource requirements are specified in its spec", "error", err.Error(), "scaledobject", incomingSo.Name, "deployment", deployment.Name, "triggerType", trigger.Type)
+						return nil
 					}
 					podSpec = &deployment.Spec.Template.Spec
 				case "apps/v1.StatefulSet":
 					statefulset := &appsv1.StatefulSet{}
 					if err := getFromCacheOrDirect(context.Background(), key, statefulset); err != nil {
-						return err
+						// Only log the error. If the statefulset is not found, proceed with SO creation.
+						scaledobjectlog.V(1).Info("failed to get statefulset while trying to verify resource requirements are specified in its spec", "error", err.Error(), "scaledobject", incomingSo.Name, "statefulset", statefulset.Name, "triggerType", trigger.Type)
+						return nil
 					}
 					podSpec = &statefulset.Spec.Template.Spec
 				default:
 					return nil
 				}
 			}
-			conainerName := trigger.Metadata["containerName"]
+			containerName := trigger.Metadata["containerName"]
+			containerFound := false
+
+			resourceType := corev1.ResourceName(trigger.Type)
+			containerResourceLimitSet := isContainerResourceLimitSet(context.Background(), incomingSo.Namespace, resourceType)
+
 			for _, container := range podSpec.Containers {
-				if conainerName != "" && container.Name != conainerName {
+				if containerName != "" && container.Name != containerName {
 					continue
 				}
-
-				if trigger.Type == cpuString || trigger.Type == memoryString {
-					// Fail if neither pod's container spec has particular resource limit specified, nor a default limit is
-					// specified in LimitRange in the same namespace as the deployment
-					resourceType := corev1.ResourceName(trigger.Type)
-					if !isWorkloadResourceSet(container.Resources, resourceType) &&
-						!isContainerResourceLimitSet(context.Background(), incomingSo.Namespace, resourceType) {
-						err := fmt.Errorf("the scaledobject has a %v trigger but the container %s doesn't have the %v request defined", resourceType, container.Name, resourceType)
-						scaledobjectlog.Error(err, "validation error")
-						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
-						return err
-					}
+				containerFound = true
+				// Fail if neither pod's container spec has particular resource limit specified, nor a default limit is
+				// specified in LimitRange in the same namespace as the deployment
+				if !isWorkloadResourceSet(container.Resources, resourceType) && !containerResourceLimitSet {
+					err := fmt.Errorf("the scaledobject has a %v trigger but the container %s doesn't have the %v request defined", resourceType, container.Name, resourceType)
+					scaledobjectlog.Error(err, "validation error")
+					metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "missing-requests")
+					return err
 				}
+			}
+
+			if containerName != "" && !containerFound {
+				err := fmt.Errorf("scaledobject has %s trigger targeting a container %s which doesn't exist", resourceType, containerName)
+				scaledobjectlog.Error(err, "validation error")
+				metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "wrong-containername-reference")
+				return err
 			}
 
 			// validate scaledObject with cpu/mem triggers:
