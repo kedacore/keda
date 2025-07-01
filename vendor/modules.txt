@@ -1189,7 +1189,7 @@ github.com/mwitkow/go-conntrack
 # github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f
 ## explicit
 github.com/mxk/go-flowrate/flowrate
-# github.com/newrelic/newrelic-client-go/v2 v2.55.4
+# github.com/newrelic/newrelic-client-go/v2 v2.64.0
 ## explicit; go 1.22
 github.com/newrelic/newrelic-client-go/v2/internal/http
 github.com/newrelic/newrelic-client-go/v2/internal/serialization
@@ -1214,6 +1214,7 @@ github.com/newrelic/newrelic-client-go/v2/pkg/customeradministration
 github.com/newrelic/newrelic-client-go/v2/pkg/dashboards
 github.com/newrelic/newrelic-client-go/v2/pkg/edge
 github.com/newrelic/newrelic-client-go/v2/pkg/entities
+github.com/newrelic/newrelic-client-go/v2/pkg/entityrelationship
 github.com/newrelic/newrelic-client-go/v2/pkg/errors
 github.com/newrelic/newrelic-client-go/v2/pkg/events
 github.com/newrelic/newrelic-client-go/v2/pkg/eventstometrics

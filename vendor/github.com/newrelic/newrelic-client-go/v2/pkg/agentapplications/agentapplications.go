@@ -1,12 +1,13 @@
 package agentapplications
 
 import (
+	"testing"
+
 	"github.com/newrelic/newrelic-client-go/v2/internal/http"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/config"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/entities"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/logging"
 	mock "github.com/newrelic/newrelic-client-go/v2/pkg/testhelpers"
-	"testing"
 )
 
 type AgentApplications struct {

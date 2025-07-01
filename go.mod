@@ -68,7 +68,7 @@ require (
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/newrelic/newrelic-client-go/v2 v2.55.4
+	github.com/newrelic/newrelic-client-go/v2 v2.64.0
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.37.0
 	github.com/open-policy-agent/cert-controller v0.12.0
@@ -213,7 +213,7 @@ require (
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/fsnotify/fsnotify v1.9.0 // indirect
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect

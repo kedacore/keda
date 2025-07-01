@@ -236,6 +236,12 @@ const CloudConfigureIntegrationMutation = `mutation(
 			inventoryPollingInterval
 			metricsPollingInterval
 		}
+			... on CloudAwsAutoDiscoveryIntegration {
+				__typename
+				awsRegions
+				inventoryPollingInterval
+				metricsPollingInterval
+			}
 		... on CloudAzureApimanagementIntegration {
 			__typename
 			inventoryPollingInterval
@@ -1027,6 +1033,12 @@ const CloudDisableIntegrationMutation = `mutation(
 			inventoryPollingInterval
 			metricsPollingInterval
 		}
+			... on CloudAwsAutoDiscoveryIntegration {
+				__typename
+				awsRegions
+				inventoryPollingInterval
+				metricsPollingInterval
+			}
 		... on CloudAzureApimanagementIntegration {
 			__typename
 			inventoryPollingInterval
@@ -2100,6 +2112,12 @@ const getLinkedAccountQuery = `query(
 			inventoryPollingInterval
 			metricsPollingInterval
 		}
+			... on CloudAwsAutoDiscoveryIntegration {
+				__typename
+				awsRegions
+				inventoryPollingInterval
+				metricsPollingInterval
+			}
 		... on CloudAzureApimanagementIntegration {
 			__typename
 			inventoryPollingInterval
@@ -2949,6 +2967,12 @@ const getLinkedAccountsQuery = `query(
 			inventoryPollingInterval
 			metricsPollingInterval
 		}
+			... on CloudAwsAutoDiscoveryIntegration {
+				__typename
+				awsRegions
+				inventoryPollingInterval
+				metricsPollingInterval
+			}
 		... on CloudAzureApimanagementIntegration {
 			__typename
 			inventoryPollingInterval
