@@ -36,7 +36,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/pborman/uuid"
+	"github.com/google/uuid"
 
 	commonpb "go.temporal.io/api/common/v1"
 	deploymentpb "go.temporal.io/api/deployment/v1"
@@ -164,7 +164,7 @@ type (
 	}
 
 	localActivityTaskHandler struct {
-		userContext        context.Context
+		backgroundContext  context.Context
 		metricsHandler     metrics.Handler
 		logger             log.Logger
 		dataConverter      converter.DataConverter
@@ -311,7 +311,7 @@ func newWorkflowTaskPoller(
 		logger:                       params.Logger,
 		dataConverter:                params.DataConverter,
 		failureConverter:             params.FailureConverter,
-		stickyUUID:                   uuid.New(),
+		stickyUUID:                   uuid.NewString(),
 		StickyScheduleToStartTimeout: params.StickyScheduleToStartTimeout,
 		stickyCacheSize:              params.cache.MaxWorkflowCacheSize(),
 		eagerActivityExecutor:        params.eagerActivityExecutor,
@@ -600,7 +600,7 @@ func newLocalActivityPoller(
 	client *WorkflowClient,
 ) *localActivityTaskPoller {
 	handler := &localActivityTaskHandler{
-		userContext:        params.UserContext,
+		backgroundContext:  params.BackgroundContext,
 		metricsHandler:     params.MetricsHandler,
 		logger:             params.Logger,
 		dataConverter:      params.DataConverter,
@@ -659,7 +659,7 @@ func (lath *localActivityTaskHandler) executeLocalActivityTask(task *localActivi
 			tagAttempt, task.attempt,
 		)
 	})
-	ctx, err := WithLocalActivityTask(lath.userContext, task, lath.logger, lath.metricsHandler,
+	ctx, err := WithLocalActivityTask(lath.backgroundContext, task, lath.logger, lath.metricsHandler,
 		lath.dataConverter, lath.interceptors, lath.client)
 	if err != nil {
 		return &localActivityResult{task: task, err: fmt.Errorf("failed building context: %w", err)}

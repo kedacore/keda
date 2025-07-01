@@ -153,7 +153,8 @@ type (
 		attributes       *commandpb.ScheduleNexusOperationCommandAttributes
 		// Instead of tracking cancelation as a state, we track it as a separate dimension with the request-cancel state
 		// machine.
-		cancelation *requestCancelNexusOperationStateMachine
+		cancelation   *requestCancelNexusOperationStateMachine
+		startMetadata *sdk.UserMetadata
 	}
 
 	// requestCancelNexusOperationStateMachine is the state machine for the RequestCancelNexusOperation command.
@@ -371,6 +372,7 @@ func (h *commandsHelper) newCancelActivityStateMachine(attributes *commandpb.Req
 func (h *commandsHelper) newNexusOperationStateMachine(
 	seq int64,
 	attributes *commandpb.ScheduleNexusOperationCommandAttributes,
+	startMetadata *sdk.UserMetadata,
 ) *nexusOperationStateMachine {
 	base := h.newCommandStateMachineBase(commandTypeNexusOperation, strconv.FormatInt(seq, 10))
 	sm := &nexusOperationStateMachine{
@@ -378,6 +380,7 @@ func (h *commandsHelper) newNexusOperationStateMachine(
 		attributes:              attributes,
 		seq:                     seq,
 		// scheduledEventID will be assigned by the server when the corresponding event comes in.
+		startMetadata: startMetadata,
 	}
 	h.nexusOperationsWithoutScheduledID.PushBack(sm)
 	return sm
@@ -941,7 +944,8 @@ func (sm *nexusOperationStateMachine) getCommand() *commandpb.Command {
 	if sm.state == commandStateCreated && sm.cancelation == nil {
 		// Only create the command in this state unlike other machines that also create it if canceled before sent.
 		return &commandpb.Command{
-			CommandType: enumspb.COMMAND_TYPE_SCHEDULE_NEXUS_OPERATION,
+			CommandType:  enumspb.COMMAND_TYPE_SCHEDULE_NEXUS_OPERATION,
+			UserMetadata: sm.startMetadata,
 			Attributes: &commandpb.Command_ScheduleNexusOperationCommandAttributes{
 				ScheduleNexusOperationCommandAttributes: sm.attributes,
 			},
@@ -1201,8 +1205,9 @@ func (h *commandsHelper) getActivityAndScheduledEventIDs(event *historypb.Histor
 func (h *commandsHelper) scheduleNexusOperation(
 	seq int64,
 	attributes *commandpb.ScheduleNexusOperationCommandAttributes,
+	startMetadata *sdk.UserMetadata,
 ) *nexusOperationStateMachine {
-	command := h.newNexusOperationStateMachine(seq, attributes)
+	command := h.newNexusOperationStateMachine(seq, attributes, startMetadata)
 	h.addCommand(command)
 	return command
 }

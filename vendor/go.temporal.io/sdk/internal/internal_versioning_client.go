@@ -75,6 +75,7 @@ const (
 // WorkerVersioningMode specifies whether the workflows processed by this
 // worker use the worker's Version. The Temporal Server will use this worker's
 // choice when dispatching tasks to it.
+//
 // NOTE: Experimental
 //
 // Exposed as: [go.temporal.io/sdk/client.WorkerVersioningMode]
@@ -82,6 +83,7 @@ type WorkerVersioningMode int
 
 const (
 	// WorkerVersioningModeUnspecified - Versioning mode not reported.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerVersioningModeUnspecified]
@@ -90,6 +92,7 @@ const (
 	// WorkerVersioningModeUnversioned - Workers with this mode are not
 	// distinguished from each other for task routing, even if they
 	// have different versions.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerVersioningModeUnversioned]
@@ -101,6 +104,7 @@ const (
 	// Each Deployment Version is distinguished from other Versions for task
 	// routing, and users can configure the Temporal Server to send tasks to a
 	// particular Version.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerVersioningModeVersioned]
@@ -156,6 +160,7 @@ type (
 	// WorkerDeploymentPollerOptions are Worker initialization settings
 	// related to Worker Deployment Versioning, which are propagated to the
 	// Temporal Server during polling.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentPollerOptions struct {
 		// DeploymentName - The name of the Worker Deployment.
@@ -258,6 +263,7 @@ type (
 	// TaskQueueVersioningInfo provides worker deployment configuration for this
 	// task queue.
 	// It is part of [TaskQueueDescription].
+	//
 	// NOTE: Experimental
 	TaskQueueVersioningInfo struct {
 		// CurrentVersion - Specifies which Deployment Version should receive new workflow
@@ -265,6 +271,7 @@ type (
 		// Can be one of the following:
 		// - A Deployment Version identifier in the form "<deployment_name>.<build_id>".
 		// - Or, the "__unversioned__" special value to represent all the unversioned workers
+		//
 		// NOTE: Experimental
 		CurrentVersion string
 
@@ -275,6 +282,7 @@ type (
 		// - Or, the "__unversioned__" special value, to represent all the unversioned workers
 		// Note that it is possible to ramp from one Version to another Version, or from unversioned
 		// workers to a particular Version, or from a particular Version to unversioned workers.
+		//
 		// NOTE: Experimental
 		RampingVersion string
 
@@ -282,10 +290,12 @@ type (
 		// of the Current Version.
 		// Valid range: [0, 100]. A 100% value means the Ramping Version is receiving full traffic but
 		// not yet "promoted" to be the Current Version, likely due to pending validations.
+		//
 		// NOTE: Experimental
 		RampingVersionPercentage float32
 
 		// UpdateTime - The last time versioning information of this Task Queue changed.
+		//
 		// NOTE: Experimental
 		UpdateTime time.Time
 	}

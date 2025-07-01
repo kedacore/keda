@@ -207,9 +207,11 @@ type GetWorkerTaskReachabilityOptions struct {
 	BuildIDs []string
 	// TaskQueues - The task queues with Build IDs defined on them that the request is
 	// concerned with.
+	//
 	// Optional: defaults to all task queues
 	TaskQueues []string
 	// Reachability - The reachability this request is concerned with.
+	//
 	// Optional: defaults to all types of reachability
 	Reachability TaskReachability
 }

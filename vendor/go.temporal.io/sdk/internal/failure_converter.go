@@ -51,10 +51,12 @@ func GetDefaultFailureConverter() converter.FailureConverter {
 // Exposed as: [go.temporal.io/sdk/temporal.DefaultFailureConverterOptions]
 type DefaultFailureConverterOptions struct {
 	// Optional: Sets DataConverter to customize serialization/deserialization of fields.
+	//
 	// default: Default data converter
 	DataConverter converter.DataConverter
 
 	// Optional: Whether to encode error messages and stack traces.
+	//
 	// default: false
 	EncodeCommonAttributes bool
 }

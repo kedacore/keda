@@ -134,6 +134,7 @@ type (
 		// server according to the RetryPolicy set by the Workflow.
 		// It is impossible to specify immediate retry as it is indistinguishable from the default value. As a
 		// workaround you could set NextRetryDelay to some small value.
+		//
 		// NOTE: This option is supported by Temporal Server >= v1.24.2 older version will ignore this value.
 		NextRetryDelay time.Duration
 	}

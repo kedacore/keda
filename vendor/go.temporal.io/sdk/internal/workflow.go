@@ -67,6 +67,7 @@ const (
 )
 
 // VersioningBehavior specifies when existing workflows could change their Build ID.
+//
 // NOTE: Experimental
 //
 // Exposed as: [go.temporal.io/sdk/workflow.VersioningBehavior]
@@ -330,25 +331,30 @@ type (
 	// Exposed as: [go.temporal.io/sdk/workflow.ChildWorkflowOptions]
 	ChildWorkflowOptions struct {
 		// Namespace of the child workflow.
+		//
 		// Optional: the current workflow (parent)'s namespace will be used if this is not provided.
 		Namespace string
 
 		// WorkflowID of the child workflow to be scheduled.
+		//
 		// Optional: an auto generated workflowID will be used if this is not provided.
 		WorkflowID string
 
 		// TaskQueue that the child workflow needs to be scheduled on.
+		//
 		// Optional: the parent workflow task queue will be used if this is not provided.
 		TaskQueue string
 
 		// WorkflowExecutionTimeout - The end to end timeout for the child workflow execution including retries
 		// and continue as new.
+		//
 		// Optional: defaults to unlimited.
 		WorkflowExecutionTimeout time.Duration
 
 		// WorkflowRunTimeout - The timeout for a single run of the child workflow execution. Each retry or
 		// continue as new should obey this timeout. Use WorkflowExecutionTimeout to specify how long the parent
 		// is willing to wait for the child completion.
+		//
 		// Optional: defaults to WorkflowExecutionTimeout
 		WorkflowRunTimeout time.Duration
 
@@ -360,6 +366,7 @@ type (
 
 		// WaitForCancellation - Whether to wait for canceled child workflow to be ended (child workflow can be ended
 		// as: completed/failed/timedout/terminated/canceled)
+		//
 		// Optional: default false
 		WaitForCancellation bool
 
@@ -368,6 +375,7 @@ type (
 		WorkflowIDReusePolicy enumspb.WorkflowIdReusePolicy
 
 		// RetryPolicy specify how to retry child workflow if error happens.
+		//
 		// Optional: default is no retry
 		RetryPolicy *RetryPolicy
 
@@ -435,6 +443,12 @@ type (
 		//
 		// NOTE: Experimental
 		StaticDetails string
+
+		// Priority - Optional priority settings that control relative ordering of
+		// task processing when tasks are backed up in a queue.
+		//
+		// WARNING: Task queue priority is currently experimental.
+		Priority Priority
 	}
 
 	// RegisterWorkflowOptions consists of options for registering a workflow
@@ -453,6 +467,7 @@ type (
 		// Optional: Provides a Versioning Behavior to workflows of this type. It is required
 		// when WorkerOptions does not specify [DeploymentOptions.DefaultVersioningBehavior],
 		// [DeploymentOptions.DeploymentSeriesName] is set, and [UseBuildIDForVersioning] is true.
+		//
 		// NOTE: Experimental
 		VersioningBehavior VersioningBehavior
 	}
@@ -1268,6 +1283,11 @@ type WorkflowInfo struct {
 	// Deprecated: use [Workflow.GetTypedSearchAttributes] instead.
 	SearchAttributes *commonpb.SearchAttributes // Value can be decoded using defaultDataConverter.
 	RetryPolicy      *RetryPolicy
+	// Priority settings that control relative ordering of task processing when workflow tasks are backed up in a queue.
+	// If no priority is set, the default value is the zero value.
+	//
+	// WARNING: Task queue priority is currently experimental.
+	Priority Priority
 	// BinaryChecksum represents the value persisted by the last worker to complete a task in this workflow. It may be
 	// an explicitly set or implicitly derived binary checksum of the worker binary, or, if this worker has opted into
 	// build-id based versioning, is the explicitly set worker build id. If this is the first worker to operate on the
@@ -1749,6 +1769,7 @@ func WithChildWorkflowOptions(ctx Context, cwo ChildWorkflowOptions) Context {
 	wfOptions.VersioningIntent = cwo.VersioningIntent
 	wfOptions.StaticSummary = cwo.StaticSummary
 	wfOptions.StaticDetails = cwo.StaticDetails
+	wfOptions.Priority = convertToPBPriority(cwo.Priority)
 
 	return ctx1
 }
@@ -1771,6 +1792,7 @@ func GetChildWorkflowOptions(ctx Context) ChildWorkflowOptions {
 		WaitForCancellation:      opts.WaitForCancellation,
 		WorkflowIDReusePolicy:    opts.WorkflowIDReusePolicy,
 		RetryPolicy:              convertFromPBRetryPolicy(opts.RetryPolicy),
+		Priority:                 convertFromPBPriority(opts.Priority),
 		CronSchedule:             opts.CronSchedule,
 		Memo:                     opts.Memo,
 		SearchAttributes:         opts.SearchAttributes,
@@ -1850,6 +1872,15 @@ func WithDataConverter(ctx Context, dc converter.DataConverter) Context {
 	}
 	ctx1 := setWorkflowEnvOptionsIfNotExist(ctx)
 	getWorkflowEnvOptions(ctx1).DataConverter = dc
+	return ctx1
+}
+
+// WithPriority adds a priority to the context.
+//
+// Exposed as: [go.temporal.io/sdk/workflow.WithWorkflowPriority]
+func WithWorkflowPriority(ctx Context, priority Priority) Context {
+	ctx1 := setWorkflowEnvOptionsIfNotExist(ctx)
+	getWorkflowEnvOptions(ctx1).Priority = convertToPBPriority(priority)
 	return ctx1
 }
 
@@ -2344,6 +2375,7 @@ func WithActivityOptions(ctx Context, options ActivityOptions) Context {
 	eap.RetryPolicy = convertToPBRetryPolicy(options.RetryPolicy)
 	eap.DisableEagerExecution = options.DisableEagerExecution
 	eap.VersioningIntent = options.VersioningIntent
+	eap.Priority = convertToPBPriority(options.Priority)
 	eap.Summary = options.Summary
 	return ctx1
 }
@@ -2407,6 +2439,7 @@ func GetActivityOptions(ctx Context) ActivityOptions {
 		RetryPolicy:            convertFromPBRetryPolicy(opts.RetryPolicy),
 		DisableEagerExecution:  opts.DisableEagerExecution,
 		VersioningIntent:       opts.VersioningIntent,
+		Priority:               convertFromPBPriority(opts.Priority),
 		Summary:                opts.Summary,
 	}
 }
@@ -2488,6 +2521,15 @@ func WithRetryPolicy(ctx Context, retryPolicy RetryPolicy) Context {
 	return ctx1
 }
 
+// WithPriority adds priority to the copy of the context.
+//
+// Exposed as: [go.temporal.io/sdk/workflow.WithPriority]
+func WithPriority(ctx Context, priority Priority) Context {
+	ctx1 := setActivityParametersIfNotExist(ctx)
+	getActivityOptions(ctx1).Priority = convertToPBPriority(priority)
+	return ctx1
+}
+
 func convertToPBRetryPolicy(retryPolicy *RetryPolicy) *commonpb.RetryPolicy {
 	if retryPolicy == nil {
 		return nil
@@ -2517,6 +2559,32 @@ func convertFromPBRetryPolicy(retryPolicy *commonpb.RetryPolicy) *RetryPolicy {
 	p.InitialInterval = retryPolicy.InitialInterval.AsDuration()
 
 	return &p
+}
+
+func convertToPBPriority(priority Priority) *commonpb.Priority {
+	// If the priority only contains default values, return nil instead
+	// - since there's no need to send the default values to the server.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.Priority]
+	var defaultPriority Priority
+	if priority == defaultPriority {
+		return nil
+	}
+
+	return &commonpb.Priority{
+		PriorityKey: int32(priority.PriorityKey),
+	}
+}
+
+func convertFromPBPriority(priority *commonpb.Priority) Priority {
+	// If the priority is nil, return the default value.
+	if priority == nil {
+		return Priority{}
+	}
+
+	return Priority{
+		PriorityKey: int(priority.PriorityKey),
+	}
 }
 
 // GetLastCompletionResultFromWorkflowInfo returns value of last completion result.
@@ -2557,7 +2625,18 @@ func AllHandlersFinished(ctx Context) bool {
 //
 // Exposed as: [go.temporal.io/sdk/workflow.NexusOperationOptions]
 type NexusOperationOptions struct {
+	// ScheduleToCloseTimeout - The end to end timeout for the Nexus Operation
+	//
+	// Optional: defaults to the maximum allowed by the Temporal server.
 	ScheduleToCloseTimeout time.Duration
+
+	// StaticSummary is a single-line fixed summary for this Nexus Operation that will appear in UI/CLI. This can be
+	// in single-line Temporal Markdown format.
+	//
+	// Optional: defaults to none/empty.
+	//
+	// NOTE: Experimental
+	Summary string
 }
 
 // NexusOperationExecution is the result of NexusOperationFuture.GetNexusOperationExecution.
@@ -2663,7 +2742,7 @@ func (wc *workflowEnvironmentInterceptor) prepareNexusOperationParams(ctx Contex
 		operationName = regOp.Name()
 		inputType := reflect.TypeOf(input.Input)
 		if inputType != nil && !inputType.AssignableTo(regOp.InputType()) {
-			return executeNexusOperationParams{}, fmt.Errorf("cannot assign argument of type %s to type %s for operation %s", inputType.Name(), regOp.InputType().Name(), operationName)
+			return executeNexusOperationParams{}, fmt.Errorf("cannot assign argument of type %q to type %q for operation %q", inputType, regOp.InputType(), operationName)
 		}
 	} else {
 		return executeNexusOperationParams{}, fmt.Errorf("invalid 'operation' parameter, must be an OperationReference or a string")

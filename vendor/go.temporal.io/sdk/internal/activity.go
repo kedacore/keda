@@ -62,6 +62,11 @@ type (
 		Deadline          time.Time     // Time of activity timeout
 		Attempt           int32         // Attempt starts from 1, and increased by 1 for every retry if retry policy is specified.
 		IsLocalActivity   bool          // true if it is a local activity
+		// Priority settings that control relative ordering of task processing when activity tasks are backed up in a queue.
+		// If no priority is set, the default value is the zero value.
+		//
+		// WARNING: Task queue priority is currently experimental.
+		Priority Priority
 	}
 
 	// RegisterActivityOptions consists of options for registering an activity.
@@ -91,6 +96,7 @@ type (
 	// Exposed as: [go.temporal.io/sdk/workflow.ActivityOptions]
 	ActivityOptions struct {
 		// TaskQueue - Name of the task queue that the activity needs to be scheduled on.
+		//
 		// Optional: The default task queue with the same name as the workflow task queue.
 		TaskQueue string
 
@@ -107,6 +113,7 @@ type (
 		// better to rely on the default value.
 		// ScheduleToStartTimeout is always non-retryable. Retrying after this timeout doesn't make sense, as it would
 		// just put the Activity Task back into the same Task Queue.
+		//
 		// Optional: Defaults to unlimited.
 		ScheduleToStartTimeout time.Duration
 
@@ -124,11 +131,13 @@ type (
 
 		// WaitForCancellation - Whether to wait for canceled activity to be completed(
 		// activity can be failed, completed, cancel accepted)
+		//
 		// Optional: default false
 		WaitForCancellation bool
 
 		// ActivityID - Business level activity ID, this is not needed for most of the cases if you have
 		// to specify this then talk to the temporal team. This is something will be done in the future.
+		//
 		// Optional: default empty string
 		ActivityID string
 
@@ -165,6 +174,12 @@ type (
 		//
 		// NOTE: Experimental
 		Summary string
+
+		// Priority - Optional priority settings that control relative ordering of
+		// task processing when tasks are backed up in a queue.
+		//
+		// WARNING: Task queue priority is currently experimental.
+		Priority Priority
 	}
 
 	// LocalActivityOptions stores local activity specific parameters that will be stored inside of a context.
@@ -182,6 +197,7 @@ type (
 		StartToCloseTimeout time.Duration
 
 		// RetryPolicy - Specify how to retry activity if error happens.
+		//
 		// Optional: default is to retry according to the default retry policy up to ScheduleToCloseTimeout
 		// with 1sec initial delay between retries and 2x backoff.
 		RetryPolicy *RetryPolicy
@@ -252,8 +268,6 @@ func GetWorkerStopChannel(ctx context.Context) <-chan struct{} {
 // If the activity is either canceled or workflow/activity doesn't exist, then we would cancel
 // the context with error context.Canceled.
 //
-//	TODO: we don't have a way to distinguish between the two cases when context is canceled because
-//	context doesn't support overriding value of ctx.Error.
 //	TODO: Implement automatic heartbeating with cancellation through ctx.
 //
 // details - The details that you provided here can be seen in the workflow when it receives TimeoutError. You
@@ -329,6 +343,7 @@ func WithActivityTask(
 		taskQueue:        taskQueue,
 		dataConverter:    dataConverter,
 		attempt:          task.GetAttempt(),
+		priority:         task.GetPriority(),
 		heartbeatDetails: task.HeartbeatDetails,
 		workflowType: &WorkflowType{
 			Name: task.WorkflowType.GetName(),

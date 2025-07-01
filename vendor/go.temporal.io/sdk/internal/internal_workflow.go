@@ -220,6 +220,7 @@ type (
 		OnConflictOptions        *OnConflictOptions
 		DataConverter            converter.DataConverter
 		RetryPolicy              *commonpb.RetryPolicy
+		Priority                 *commonpb.Priority
 		CronSchedule             string
 		ContextPropagators       []ContextPropagator
 		Memo                     map[string]interface{}
@@ -623,7 +624,13 @@ func (d *syncWorkflowDefinition) Execute(env WorkflowEnvironment, header *common
 				if result, err := getWorkflowMetadata(rootCtx); err != nil {
 					return nil, err
 				} else {
-					return encodeArg(getDataConverterFromWorkflowContext(rootCtx), result)
+					// Use raw value built from default converter because we don't want to use
+					// user-conversion
+					resultPayload, err := converter.GetDefaultDataConverter().ToPayload(result)
+					if err != nil {
+						return nil, err
+					}
+					return encodeArg(getDataConverterFromWorkflowContext(rootCtx), converter.NewRawValue(resultPayload))
 				}
 			}
 

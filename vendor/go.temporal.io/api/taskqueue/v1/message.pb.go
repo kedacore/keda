@@ -1364,6 +1364,58 @@ func (x *TimestampedCompatibleBuildIdRedirectRule) GetCreateTime() *timestamppb.
 	return nil
 }
 
+// Attached to task responses to give hints to the SDK about how it may adjust its number of
+// pollers.
+type PollerScalingDecision struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How many poll requests to suggest should be added or removed, if any. As of now, server only
+	// scales up or down by 1. However, SDKs should allow for other values (while staying within
+	// defined min/max).
+	//
+	// The SDK is free to ignore this suggestion, EX: making more polls would not make sense because
+	// all slots are already occupied.
+	PollRequestDeltaSuggestion int32 `protobuf:"varint,1,opt,name=poll_request_delta_suggestion,json=pollRequestDeltaSuggestion,proto3" json:"poll_request_delta_suggestion,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
+}
+
+func (x *PollerScalingDecision) Reset() {
+	*x = PollerScalingDecision{}
+	mi := &file_temporal_api_taskqueue_v1_message_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PollerScalingDecision) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PollerScalingDecision) ProtoMessage() {}
+
+func (x *PollerScalingDecision) ProtoReflect() protoreflect.Message {
+	mi := &file_temporal_api_taskqueue_v1_message_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PollerScalingDecision.ProtoReflect.Descriptor instead.
+func (*PollerScalingDecision) Descriptor() ([]byte, []int) {
+	return file_temporal_api_taskqueue_v1_message_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *PollerScalingDecision) GetPollRequestDeltaSuggestion() int32 {
+	if x != nil {
+		return x.PollRequestDeltaSuggestion
+	}
+	return 0
+}
+
 var File_temporal_api_taskqueue_v1_message_proto protoreflect.FileDescriptor
 
 var file_temporal_api_taskqueue_v1_message_proto_rawDesc = string([]byte{
@@ -1590,18 +1642,23 @@ var file_temporal_api_taskqueue_v1_message_proto_rawDesc = string([]byte{
 	0x6c, 0x65, 0x12, 0x3b, 0x0a, 0x0b, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x5f, 0x74, 0x69, 0x6d,
 	0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65,
 	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74,
-	0x61, 0x6d, 0x70, 0x52, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x69, 0x6d, 0x65, 0x42,
-	0x98, 0x01, 0x0a, 0x1c, 0x69, 0x6f, 0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e,
-	0x61, 0x70, 0x69, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x71, 0x75, 0x65, 0x75, 0x65, 0x2e, 0x76, 0x31,
-	0x42, 0x0c, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01,
-	0x5a, 0x29, 0x67, 0x6f, 0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e, 0x69, 0x6f,
-	0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x61, 0x73, 0x6b, 0x71, 0x75, 0x65, 0x75, 0x65, 0x2f, 0x76,
-	0x31, 0x3b, 0x74, 0x61, 0x73, 0x6b, 0x71, 0x75, 0x65, 0x75, 0x65, 0xaa, 0x02, 0x1b, 0x54, 0x65,
-	0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x69, 0x6f, 0x2e, 0x41, 0x70, 0x69, 0x2e, 0x54, 0x61, 0x73,
-	0x6b, 0x51, 0x75, 0x65, 0x75, 0x65, 0x2e, 0x56, 0x31, 0xea, 0x02, 0x1e, 0x54, 0x65, 0x6d, 0x70,
-	0x6f, 0x72, 0x61, 0x6c, 0x69, 0x6f, 0x3a, 0x3a, 0x41, 0x70, 0x69, 0x3a, 0x3a, 0x54, 0x61, 0x73,
-	0x6b, 0x51, 0x75, 0x65, 0x75, 0x65, 0x3a, 0x3a, 0x56, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x33,
+	0x61, 0x6d, 0x70, 0x52, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x69, 0x6d, 0x65, 0x22,
+	0x5a, 0x0a, 0x15, 0x50, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x53, 0x63, 0x61, 0x6c, 0x69, 0x6e, 0x67,
+	0x44, 0x65, 0x63, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x41, 0x0a, 0x1d, 0x70, 0x6f, 0x6c, 0x6c,
+	0x5f, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x5f, 0x64, 0x65, 0x6c, 0x74, 0x61, 0x5f, 0x73,
+	0x75, 0x67, 0x67, 0x65, 0x73, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52,
+	0x1a, 0x70, 0x6f, 0x6c, 0x6c, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x44, 0x65, 0x6c, 0x74,
+	0x61, 0x53, 0x75, 0x67, 0x67, 0x65, 0x73, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x98, 0x01, 0x0a, 0x1c,
+	0x69, 0x6f, 0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e, 0x61, 0x70, 0x69, 0x2e,
+	0x74, 0x61, 0x73, 0x6b, 0x71, 0x75, 0x65, 0x75, 0x65, 0x2e, 0x76, 0x31, 0x42, 0x0c, 0x4d, 0x65,
+	0x73, 0x73, 0x61, 0x67, 0x65, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x29, 0x67, 0x6f,
+	0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c, 0x2e, 0x69, 0x6f, 0x2f, 0x61, 0x70, 0x69,
+	0x2f, 0x74, 0x61, 0x73, 0x6b, 0x71, 0x75, 0x65, 0x75, 0x65, 0x2f, 0x76, 0x31, 0x3b, 0x74, 0x61,
+	0x73, 0x6b, 0x71, 0x75, 0x65, 0x75, 0x65, 0xaa, 0x02, 0x1b, 0x54, 0x65, 0x6d, 0x70, 0x6f, 0x72,
+	0x61, 0x6c, 0x69, 0x6f, 0x2e, 0x41, 0x70, 0x69, 0x2e, 0x54, 0x61, 0x73, 0x6b, 0x51, 0x75, 0x65,
+	0x75, 0x65, 0x2e, 0x56, 0x31, 0xea, 0x02, 0x1e, 0x54, 0x65, 0x6d, 0x70, 0x6f, 0x72, 0x61, 0x6c,
+	0x69, 0x6f, 0x3a, 0x3a, 0x41, 0x70, 0x69, 0x3a, 0x3a, 0x54, 0x61, 0x73, 0x6b, 0x51, 0x75, 0x65,
+	0x75, 0x65, 0x3a, 0x3a, 0x56, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 })
 
 var (
@@ -1616,7 +1673,7 @@ func file_temporal_api_taskqueue_v1_message_proto_rawDescGZIP() []byte {
 	return file_temporal_api_taskqueue_v1_message_proto_rawDescData
 }
 
-var file_temporal_api_taskqueue_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_temporal_api_taskqueue_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_temporal_api_taskqueue_v1_message_proto_goTypes = []any{
 	(*TaskQueue)(nil),                                // 0: temporal.api.taskqueue.v1.TaskQueue
 	(*TaskQueueMetadata)(nil),                        // 1: temporal.api.taskqueue.v1.TaskQueueMetadata
@@ -1638,38 +1695,39 @@ var file_temporal_api_taskqueue_v1_message_proto_goTypes = []any{
 	(*CompatibleBuildIdRedirectRule)(nil),            // 17: temporal.api.taskqueue.v1.CompatibleBuildIdRedirectRule
 	(*TimestampedBuildIdAssignmentRule)(nil),         // 18: temporal.api.taskqueue.v1.TimestampedBuildIdAssignmentRule
 	(*TimestampedCompatibleBuildIdRedirectRule)(nil), // 19: temporal.api.taskqueue.v1.TimestampedCompatibleBuildIdRedirectRule
-	nil,                                   // 20: temporal.api.taskqueue.v1.TaskQueueVersionInfo.TypesInfoEntry
-	(v1.TaskQueueKind)(0),                 // 21: temporal.api.enums.v1.TaskQueueKind
-	(*wrapperspb.DoubleValue)(nil),        // 22: google.protobuf.DoubleValue
-	(*timestamppb.Timestamp)(nil),         // 23: google.protobuf.Timestamp
-	(v1.BuildIdTaskReachability)(0),       // 24: temporal.api.enums.v1.BuildIdTaskReachability
-	(*durationpb.Duration)(nil),           // 25: google.protobuf.Duration
-	(*v11.WorkerVersionCapabilities)(nil), // 26: temporal.api.common.v1.WorkerVersionCapabilities
-	(*v12.WorkerDeploymentOptions)(nil),   // 27: temporal.api.deployment.v1.WorkerDeploymentOptions
-	(v1.TaskReachability)(0),              // 28: temporal.api.enums.v1.TaskReachability
+	(*PollerScalingDecision)(nil),                    // 20: temporal.api.taskqueue.v1.PollerScalingDecision
+	nil,                                              // 21: temporal.api.taskqueue.v1.TaskQueueVersionInfo.TypesInfoEntry
+	(v1.TaskQueueKind)(0),                            // 22: temporal.api.enums.v1.TaskQueueKind
+	(*wrapperspb.DoubleValue)(nil),                   // 23: google.protobuf.DoubleValue
+	(*timestamppb.Timestamp)(nil),                    // 24: google.protobuf.Timestamp
+	(v1.BuildIdTaskReachability)(0),                  // 25: temporal.api.enums.v1.BuildIdTaskReachability
+	(*durationpb.Duration)(nil),                      // 26: google.protobuf.Duration
+	(*v11.WorkerVersionCapabilities)(nil),            // 27: temporal.api.common.v1.WorkerVersionCapabilities
+	(*v12.WorkerDeploymentOptions)(nil),              // 28: temporal.api.deployment.v1.WorkerDeploymentOptions
+	(v1.TaskReachability)(0),                         // 29: temporal.api.enums.v1.TaskReachability
 }
 var file_temporal_api_taskqueue_v1_message_proto_depIdxs = []int32{
-	21, // 0: temporal.api.taskqueue.v1.TaskQueue.kind:type_name -> temporal.api.enums.v1.TaskQueueKind
-	22, // 1: temporal.api.taskqueue.v1.TaskQueueMetadata.max_tasks_per_second:type_name -> google.protobuf.DoubleValue
-	23, // 2: temporal.api.taskqueue.v1.TaskQueueVersioningInfo.update_time:type_name -> google.protobuf.Timestamp
-	20, // 3: temporal.api.taskqueue.v1.TaskQueueVersionInfo.types_info:type_name -> temporal.api.taskqueue.v1.TaskQueueVersionInfo.TypesInfoEntry
-	24, // 4: temporal.api.taskqueue.v1.TaskQueueVersionInfo.task_reachability:type_name -> temporal.api.enums.v1.BuildIdTaskReachability
+	22, // 0: temporal.api.taskqueue.v1.TaskQueue.kind:type_name -> temporal.api.enums.v1.TaskQueueKind
+	23, // 1: temporal.api.taskqueue.v1.TaskQueueMetadata.max_tasks_per_second:type_name -> google.protobuf.DoubleValue
+	24, // 2: temporal.api.taskqueue.v1.TaskQueueVersioningInfo.update_time:type_name -> google.protobuf.Timestamp
+	21, // 3: temporal.api.taskqueue.v1.TaskQueueVersionInfo.types_info:type_name -> temporal.api.taskqueue.v1.TaskQueueVersionInfo.TypesInfoEntry
+	25, // 4: temporal.api.taskqueue.v1.TaskQueueVersionInfo.task_reachability:type_name -> temporal.api.enums.v1.BuildIdTaskReachability
 	10, // 5: temporal.api.taskqueue.v1.TaskQueueTypeInfo.pollers:type_name -> temporal.api.taskqueue.v1.PollerInfo
 	6,  // 6: temporal.api.taskqueue.v1.TaskQueueTypeInfo.stats:type_name -> temporal.api.taskqueue.v1.TaskQueueStats
-	25, // 7: temporal.api.taskqueue.v1.TaskQueueStats.approximate_backlog_age:type_name -> google.protobuf.Duration
+	26, // 7: temporal.api.taskqueue.v1.TaskQueueStats.approximate_backlog_age:type_name -> google.protobuf.Duration
 	8,  // 8: temporal.api.taskqueue.v1.TaskQueueStatus.task_id_block:type_name -> temporal.api.taskqueue.v1.TaskIdBlock
-	23, // 9: temporal.api.taskqueue.v1.PollerInfo.last_access_time:type_name -> google.protobuf.Timestamp
-	26, // 10: temporal.api.taskqueue.v1.PollerInfo.worker_version_capabilities:type_name -> temporal.api.common.v1.WorkerVersionCapabilities
-	27, // 11: temporal.api.taskqueue.v1.PollerInfo.deployment_options:type_name -> temporal.api.deployment.v1.WorkerDeploymentOptions
+	24, // 9: temporal.api.taskqueue.v1.PollerInfo.last_access_time:type_name -> google.protobuf.Timestamp
+	27, // 10: temporal.api.taskqueue.v1.PollerInfo.worker_version_capabilities:type_name -> temporal.api.common.v1.WorkerVersionCapabilities
+	28, // 11: temporal.api.taskqueue.v1.PollerInfo.deployment_options:type_name -> temporal.api.deployment.v1.WorkerDeploymentOptions
 	0,  // 12: temporal.api.taskqueue.v1.StickyExecutionAttributes.worker_task_queue:type_name -> temporal.api.taskqueue.v1.TaskQueue
-	25, // 13: temporal.api.taskqueue.v1.StickyExecutionAttributes.schedule_to_start_timeout:type_name -> google.protobuf.Duration
-	28, // 14: temporal.api.taskqueue.v1.TaskQueueReachability.reachability:type_name -> temporal.api.enums.v1.TaskReachability
+	26, // 13: temporal.api.taskqueue.v1.StickyExecutionAttributes.schedule_to_start_timeout:type_name -> google.protobuf.Duration
+	29, // 14: temporal.api.taskqueue.v1.TaskQueueReachability.reachability:type_name -> temporal.api.enums.v1.TaskReachability
 	13, // 15: temporal.api.taskqueue.v1.BuildIdReachability.task_queue_reachability:type_name -> temporal.api.taskqueue.v1.TaskQueueReachability
 	15, // 16: temporal.api.taskqueue.v1.BuildIdAssignmentRule.percentage_ramp:type_name -> temporal.api.taskqueue.v1.RampByPercentage
 	16, // 17: temporal.api.taskqueue.v1.TimestampedBuildIdAssignmentRule.rule:type_name -> temporal.api.taskqueue.v1.BuildIdAssignmentRule
-	23, // 18: temporal.api.taskqueue.v1.TimestampedBuildIdAssignmentRule.create_time:type_name -> google.protobuf.Timestamp
+	24, // 18: temporal.api.taskqueue.v1.TimestampedBuildIdAssignmentRule.create_time:type_name -> google.protobuf.Timestamp
 	17, // 19: temporal.api.taskqueue.v1.TimestampedCompatibleBuildIdRedirectRule.rule:type_name -> temporal.api.taskqueue.v1.CompatibleBuildIdRedirectRule
-	23, // 20: temporal.api.taskqueue.v1.TimestampedCompatibleBuildIdRedirectRule.create_time:type_name -> google.protobuf.Timestamp
+	24, // 20: temporal.api.taskqueue.v1.TimestampedCompatibleBuildIdRedirectRule.create_time:type_name -> google.protobuf.Timestamp
 	5,  // 21: temporal.api.taskqueue.v1.TaskQueueVersionInfo.TypesInfoEntry.value:type_name -> temporal.api.taskqueue.v1.TaskQueueTypeInfo
 	22, // [22:22] is the sub-list for method output_type
 	22, // [22:22] is the sub-list for method input_type
@@ -1692,7 +1750,7 @@ func file_temporal_api_taskqueue_v1_message_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_temporal_api_taskqueue_v1_message_proto_rawDesc), len(file_temporal_api_taskqueue_v1_message_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

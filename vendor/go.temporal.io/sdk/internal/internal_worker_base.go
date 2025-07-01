@@ -58,9 +58,12 @@ var (
 	pollOperationRetryPolicy         = createPollRetryPolicy()
 	pollResourceExhaustedRetryPolicy = createPollResourceExhaustedRetryPolicy()
 	retryLongPollGracePeriod         = 2 * time.Minute
+	errStop                          = errors.New("worker stopping")
+	// ErrWorkerStopped is returned when the worker is stopped
+	//
+	// Exposed as: [go.temporal.io/sdk/worker.ErrWorkerShutdown]
+	ErrWorkerShutdown = errors.New("worker is now shutdown")
 )
-
-var errStop = errors.New("worker stopping")
 
 type (
 	// ResultHandler that returns result
@@ -173,21 +176,21 @@ type (
 
 	// baseWorkerOptions options to configure base worker.
 	baseWorkerOptions struct {
-		pollerCount         int
-		pollerRate          int
-		slotSupplier        SlotSupplier
-		maxTaskPerSecond    float64
-		taskWorker          taskPoller
-		workerType          string
-		identity            string
-		buildId             string
-		logger              log.Logger
-		stopTimeout         time.Duration
-		fatalErrCb          func(error)
-		userContextCancel   context.CancelFunc
-		metricsHandler      metrics.Handler
-		sessionTokenBucket  *sessionTokenBucket
-		slotReservationData slotReservationData
+		pollerCount             int
+		pollerRate              int
+		slotSupplier            SlotSupplier
+		maxTaskPerSecond        float64
+		taskWorker              taskPoller
+		workerType              string
+		identity                string
+		buildId                 string
+		logger                  log.Logger
+		stopTimeout             time.Duration
+		fatalErrCb              func(error)
+		backgroundContextCancel context.CancelCauseFunc
+		metricsHandler          metrics.Handler
+		sessionTokenBucket      *sessionTokenBucket
+		slotReservationData     slotReservationData
 	}
 
 	// baseWorker that wraps worker activities.
@@ -601,8 +604,8 @@ func (bw *baseWorker) Stop() {
 	}
 
 	// Close context
-	if bw.options.userContextCancel != nil {
-		bw.options.userContextCancel()
+	if bw.options.backgroundContextCancel != nil {
+		bw.options.backgroundContextCancel(ErrWorkerShutdown)
 	}
 
 	bw.isWorkerStarted = false

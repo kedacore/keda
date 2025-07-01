@@ -148,6 +148,7 @@ var (
 		"ApsLimit":                6,
 		"PersistenceStorageLimit": 7,
 		"CircuitBreakerOpen":      8,
+		"OpsLimit":                9,
 	}
 )
 

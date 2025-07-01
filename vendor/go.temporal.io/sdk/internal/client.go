@@ -81,6 +81,7 @@ type (
 		//  - serviceerror.InvalidArgument
 		//  - serviceerror.Internal
 		//  - serviceerror.Unavailable
+		//  - serviceerror.WorkflowExecutionAlreadyStarted, when WorkflowExecutionErrorWhenAlreadyStarted is specified
 		//
 		// The current timeout resolution implementation is in seconds and uses math.Ceil(d.Seconds()) as the duration. But is
 		// subjected to change in the future.
@@ -91,12 +92,14 @@ type (
 		//  - Get(ctx context.Context, valuePtr interface{}) error: which will fill the workflow
 		//    execution result to valuePtr, if workflow execution is a success, or return corresponding
 		//    error. This is a blocking API.
-		// NOTE: if the started workflow return ContinueAsNewError during the workflow execution, the
-		// return result of GetRunID() will be the started workflow run ID, not the new run ID caused by ContinueAsNewError,
-		// however, Get(ctx context.Context, valuePtr interface{}) will return result from the run which did not return ContinueAsNewError.
+		//
+		// NOTE: If the started workflow returns ContinueAsNewError during the workflow execution, the
+		// returned result of GetRunID() will be the started workflow run ID, not the new run ID caused by ContinueAsNewError.
+		// However, Get(ctx context.Context, valuePtr interface{}) will return result from the run which did not return ContinueAsNewError.
 		// Say ExecuteWorkflow started a workflow, in its first run, has run ID "run ID 1", and returned ContinueAsNewError,
 		// the second run has run ID "run ID 2" and return some result other than ContinueAsNewError:
 		// GetRunID() will always return "run ID 1" and  Get(ctx context.Context, valuePtr interface{}) will return the result of second run.
+		//
 		// NOTE: DO NOT USE THIS API INSIDE A WORKFLOW, USE workflow.ExecuteChildWorkflow instead
 		ExecuteWorkflow(ctx context.Context, options StartWorkflowOptions, workflow interface{}, args ...interface{}) (WorkflowRun, error)
 
@@ -110,6 +113,7 @@ type (
 		//  - Get(ctx context.Context, valuePtr interface{}) error: which will fill the workflow
 		//    execution result to valuePtr, if workflow execution is a success, or return corresponding
 		//    error. This is a blocking API.
+		//
 		// NOTE: if the retrieved workflow returned ContinueAsNewError during the workflow execution, the
 		// return result of GetRunID() will be the retrieved workflow run ID, not the new run ID caused by ContinueAsNewError,
 		// however, Get(ctx context.Context, valuePtr interface{}) will return result from the run which did not return ContinueAsNewError.
@@ -140,6 +144,7 @@ type (
 			options StartWorkflowOptions, workflow interface{}, workflowArgs ...interface{}) (WorkflowRun, error)
 
 		// NewWithStartWorkflowOperation returns a WithStartWorkflowOperation for use in UpdateWithStartWorkflow.
+		//
 		// NOTE: Experimental
 		NewWithStartWorkflowOperation(options StartWorkflowOptions, workflow interface{}, args ...interface{}) WithStartWorkflowOperation
 
@@ -248,7 +253,7 @@ type (
 
 		// ListWorkflow gets workflow executions based on query.The query is basically the SQL WHERE clause,
 		// examples:
-		//  - "(WorkflowID = 'wid1' or (WorkflowType = 'type2' and WorkflowID = 'wid2'))".
+		//  - "(WorkflowId = 'wid1' or (WorkflowType = 'type2' and WorkflowId = 'wid2'))".
 		//  - "CloseTime between '2019-08-27T15:04:05+00:00' and '2019-08-28T15:04:05+00:00'".
 		//  - to list only open workflow use "CloseTime is null"
 		// Retrieved workflow executions are sorted by StartTime in descending order when list open workflow,
@@ -345,6 +350,7 @@ type (
 		// UpdateWorkflowExecutionOptions partially overrides the [WorkflowExecutionOptions] of an existing workflow execution
 		// and returns the new [WorkflowExecutionOptions] after applying the changes.
 		// It is intended for building tools that can selectively apply ad-hoc workflow configuration changes.
+		//
 		// NOTE: Experimental
 		UpdateWorkflowExecutionOptions(ctx context.Context, options UpdateWorkflowExecutionOptionsRequest) (WorkflowExecutionOptions, error)
 
@@ -453,6 +459,7 @@ type (
 	// Exposed as: [go.temporal.io/sdk/client.Options]
 	ClientOptions struct {
 		// Optional: To set the host:port for this client to connect to.
+		//
 		// default: localhost:7233
 		//
 		// This is a gRPC address and therefore can also support a special-formatted address of "<resolver>:///<value>" that
@@ -472,6 +479,7 @@ type (
 		HostPort string
 
 		// Optional: To set the namespace name for this client to work with.
+		//
 		// default: default
 		Namespace string
 
@@ -479,31 +487,38 @@ type (
 		Credentials Credentials
 
 		// Optional: Logger framework can use to log.
+		//
 		// default: default logger provided.
 		Logger log.Logger
 
 		// Optional: Metrics handler for reporting metrics.
+		//
 		// default: no metrics.
 		MetricsHandler metrics.Handler
 
 		// Optional: Sets an identify that can be used to track this host for debugging.
+		//
 		// default: default identity that include hostname, groupName and process ID.
 		Identity string
 
 		// Optional: Sets DataConverter to customize serialization/deserialization of arguments in Temporal
+		//
 		// default: defaultDataConverter, an combination of google protobuf converter, gogo protobuf converter and json converter
 		DataConverter converter.DataConverter
 
 		// Optional: Sets FailureConverter to customize serialization/deserialization of errors.
+		//
 		// default: temporal.DefaultFailureConverter, does not encode any fields of the error. Use temporal.NewDefaultFailureConverter
 		// options to configure or create a custom converter.
 		FailureConverter converter.FailureConverter
 
 		// Optional: Sets ContextPropagators that allows users to control the context information passed through a workflow
+		//
 		// default: nil
 		ContextPropagators []ContextPropagator
 
 		// Optional: Sets options for server connection that allow users to control features of connections such as TLS settings.
+		//
 		// default: no extra options
 		ConnectionOptions ConnectionOptions
 
@@ -557,12 +572,14 @@ type (
 		// After a duration of this time if the client doesn't see any activity it
 		// pings the server to see if the transport is still alive.
 		// If set below 10s, a minimum value of 10s will be used instead.
+		//
 		// default: 30s
 		KeepAliveTime time.Duration
 
 		// After having pinged for keepalive check, the client waits for a duration
 		// of Timeout and if no activity is seen even after that the connection is
 		// closed.
+		//
 		// default: 15s
 		KeepAliveTimeout time.Duration
 
@@ -573,6 +590,7 @@ type (
 		// if true, when there are no active RPCs, Time and Timeout will be ignored and no
 		// keepalive pings will be sent.
 		// If false, client sends keepalive pings even with no active RPCs
+		//
 		// default: false
 		DisableKeepAlivePermitWithoutStream bool
 
@@ -607,12 +625,14 @@ type (
 	// Exposed as: [go.temporal.io/sdk/client.StartWorkflowOptions]
 	StartWorkflowOptions struct {
 		// ID - The business identifier of the workflow execution.
+		//
 		// Optional: defaulted to a uuid.
 		ID string
 
 		// TaskQueue - The workflow tasks of the workflow are scheduled on the queue with this name.
 		// This is also the name of the activity task queue on which activities are scheduled.
 		// The workflow author can choose to override this using activity options.
+		//
 		// Mandatory: No default.
 		TaskQueue string
 
@@ -620,38 +640,50 @@ type (
 		// It includes retries and continue as new. Use WorkflowRunTimeout to limit execution time
 		// of a single workflow run.
 		// The resolution is seconds.
+		//
 		// Optional: defaulted to unlimited.
 		WorkflowExecutionTimeout time.Duration
 
 		// WorkflowRunTimeout - The timeout for duration of a single workflow run.
 		// The resolution is seconds.
+		//
 		// Optional: defaulted to WorkflowExecutionTimeout.
 		WorkflowRunTimeout time.Duration
 
 		// WorkflowTaskTimeout - The timeout for processing workflow task from the time the worker
 		// pulled this task. If a workflow task is lost, it is retried after this timeout.
 		// The resolution is seconds.
+		//
 		// Optional: defaulted to 10 secs.
 		WorkflowTaskTimeout time.Duration
 
-		// WorkflowIDReusePolicy - Specifies server behavior if a *completed* workflow with the same id exists.
-		// This can be useful for dedupe logic if set to RejectDuplicate
-		// Optional: defaulted to AllowDuplicate.
-		WorkflowIDReusePolicy enumspb.WorkflowIdReusePolicy
-
 		// WorkflowIDConflictPolicy - Specifies server behavior if a *running* workflow with the same id exists.
 		// This cannot be set if WorkflowIDReusePolicy is set to TerminateIfRunning.
-		// Optional: defaulted to Fail.
+		//
+		// NOTE: WorkflowExecutionErrorWhenAlreadyStarted will affect if Client.ExecuteWorkflow returns an error
+		// when a re-run would be disallowed. See its docstring for more information.
+		//
+		// Optional: defaults to Fail (but required when used in WithStartWorkflowOperation).
 		WorkflowIDConflictPolicy enumspb.WorkflowIdConflictPolicy
 
-		// When WorkflowExecutionErrorWhenAlreadyStarted is true, Client.ExecuteWorkflow will return an error if the
+		// WorkflowIDReusePolicy - Specifies server behavior if a *running* workflow with the same id does not exist but
+		// a *completed* workflow with the same id does exist.
+		// This can be useful for dedupe logic if set to RejectDuplicate.
+		//
+		// NOTE: WorkflowExecutionErrorWhenAlreadyStarted will affect if Client.ExecuteWorkflow returns an error
+		// when a re-run would be disallowed. See its docstring for more information.
+		//
+		// Optional: defaults to AllowDuplicate.
+		WorkflowIDReusePolicy enumspb.WorkflowIdReusePolicy
+
+		// WorkflowExecutionErrorWhenAlreadyStarted - when set to true, Client.ExecuteWorkflow will return an error if the
 		// workflow id has already been used and WorkflowIDReusePolicy or WorkflowIDConflictPolicy would
-		// disallow a re-run. If it is set to false, rather than erroring a WorkflowRun instance representing
+		// disallow a re-run. When set to false, rather than erroring, a WorkflowRun instance representing
 		// the current or last run will be returned. However, this field is ignored in the following cases:
-		// - when WithStartOperation is set;
+		// - in WithStartWorkflowOperation;
 		// - in the Nexus WorkflowRunOperation.
-		// When this field is ignored, you must set WorkflowIDConflictPolicy to UseExisting to prevent
-		// erroring.
+		// When this field is ignored, you can set WorkflowIDConflictPolicy to UseExisting to receive the current run in
+		// the case where a *running* workflow with the same id exists.
 		//
 		// Optional: defaults to false
 		WorkflowExecutionErrorWhenAlreadyStarted bool
@@ -675,7 +707,7 @@ type (
 		// │ │ │ │ │
 		// │ │ │ │ │
 		// * * * * *
-		// Cannot be set the same time as a StartDelay or WithStartOperation.
+		// Cannot be set the same time as a StartDelay or in WithStartWorkflowOperation.
 		CronSchedule string
 
 		// Memo - Optional non-indexed info that will be shown in list workflow.
@@ -701,7 +733,7 @@ type (
 		TypedSearchAttributes SearchAttributes
 
 		// EnableEagerStart - request eager execution for this workflow, if a local worker is available.
-		// Cannot be set the same time as a WithStartOperation.
+		// Cannot be set in WithStartWorkflowOperation.
 		//
 		// WARNING: Eager start does not respect worker versioning. An eagerly started workflow may run on
 		// any available local worker even if that worker is not in the default build ID set.
@@ -711,7 +743,7 @@ type (
 
 		// StartDelay - Time to wait before dispatching the first workflow task.
 		// A signal from signal with start will not trigger a workflow task.
-		// Cannot be set the same time as a CronSchedule or WithStartOperation.
+		// Cannot be set the same time as a CronSchedule or in WithStartWorkflowOperation.
 		StartDelay time.Duration
 
 		// StaticSummary - Single-line fixed summary for this workflow execution that will appear in UI/CLI. This can be
@@ -734,10 +766,17 @@ type (
 		// VersioningOverride - Sets the versioning configuration of a specific workflow execution, ignoring current
 		// server or worker default policies. This enables running canary tests without affecting existing workflows.
 		// To unset the override after the workflow is running, use [UpdateWorkflowExecutionOptions].
+		//
 		// Optional: defaults to no override.
 		//
 		// NOTE: Experimental
 		VersioningOverride VersioningOverride
+
+		// Priority - Optional priority settings that control relative ordering of
+		// task processing when tasks are backed up in a queue.
+		//
+		// WARNING: Task queue priority is currently experimental.
+		Priority Priority
 
 		// request ID. Only settable by the SDK - e.g. [temporalnexus.workflowRunOperation].
 		requestID string
@@ -757,6 +796,7 @@ type (
 
 	// WithStartWorkflowOperation defines how to start a workflow when using UpdateWithStartWorkflow.
 	// See [NewWithStartWorkflowOperation] and [UpdateWithStartWorkflow].
+	//
 	// NOTE: Experimental
 	WithStartWorkflowOperation interface {
 		// Get returns the WorkflowRun that was targeted by the UpdateWithStartWorkflow call.
@@ -802,10 +842,40 @@ type (
 		MaximumAttempts int32
 
 		// Non-Retriable errors. This is optional. Temporal server will stop retry if error type matches this list.
+		//
 		// Note:
 		//  - cancellation is not a failure, so it won't be retried,
 		//  - only StartToClose or Heartbeat timeouts are retryable.
 		NonRetryableErrorTypes []string
+	}
+
+	// Priority contains metadata that controls the relative ordering of task processing
+	// when tasks are backed up in a queue. The affected queues depend on the
+	// server version.
+	//
+	// Priority is attached to workflows and activities. By default, activities
+	// and child workflows inherit Priority from the workflow that created them, but may
+	// override fields when an activity is started or modified.
+	//
+	// For all fields, the field not present or equal to zero/empty string means to
+	// inherit the value from the calling workflow, or if there is no calling
+	// workflow, then use the default value.
+	//
+	// WARNING: Task queue priority is currently experimental.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.Priority]
+	Priority struct {
+		// PriorityKey is a positive integer from 1 to n, where smaller integers
+		// correspond to higher priorities (tasks run sooner). In general, tasks in
+		// a queue should be processed in close to priority order, although small
+		// deviations are possible.
+		//
+		// The maximum priority value (minimum priority) is determined by server
+		// configuration, and defaults to 5.
+		//
+		// The default value when unset or 0 is calculated by (min+max)/2. With the
+		// default max of 5, and min of 1, that comes out to 3.
+		PriorityKey int
 	}
 
 	// NamespaceClient is the client for managing operations on the namespace.
@@ -934,13 +1004,13 @@ func newClient(ctx context.Context, options ClientOptions, existing *WorkflowCli
 	// the new connection. Otherwise, only load server capabilities eagerly if not
 	// disabled.
 	if existing != nil {
-		if client.capabilities, err = existing.loadCapabilities(ctx, options.ConnectionOptions.GetSystemInfoTimeout); err != nil {
+		if client.capabilities, err = existing.loadCapabilities(ctx); err != nil {
 			return nil, err
 		}
 		client.unclosedClients = existing.unclosedClients
 	} else {
 		if !options.ConnectionOptions.disableEagerConnection {
-			if _, err := client.loadCapabilities(ctx, options.ConnectionOptions.GetSystemInfoTimeout); err != nil {
+			if _, err := client.loadCapabilities(ctx); err != nil {
 				client.Close()
 				return nil, err
 			}
@@ -989,6 +1059,10 @@ func NewServiceClient(workflowServiceClient workflowservice.WorkflowServiceClien
 		options.ConnectionOptions.excludeInternalFromRetry = &atomic.Bool{}
 	}
 
+	if options.ConnectionOptions.GetSystemInfoTimeout == 0 {
+		options.ConnectionOptions.GetSystemInfoTimeout = defaultGetSystemInfoTimeout
+	}
+
 	// Collect set of applicable worker interceptors
 	var workerInterceptors []WorkerInterceptor
 	for _, interceptor := range options.Interceptors {
@@ -1013,6 +1087,7 @@ func NewServiceClient(workflowServiceClient workflowservice.WorkflowServiceClien
 		eagerDispatcher: &eagerWorkflowDispatcher{
 			workersByTaskQueue: make(map[string]map[eagerWorker]struct{}),
 		},
+		getSystemInfoTimeout: options.ConnectionOptions.GetSystemInfoTimeout,
 	}
 
 	// Create outbound interceptor by wrapping backwards through chain

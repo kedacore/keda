@@ -35,8 +35,10 @@ import (
 
 type (
 	// WorkerDeploymentOptions provides configuration for Worker Deployment Versioning.
+	//
 	// NOTE: Both [WorkerDeploymentOptions.Version] and [WorkerDeploymentOptions.UseVersioning]
 	// need to be set for enabling Worker Deployment Versioning.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/worker.DeploymentOptions]
@@ -44,13 +46,16 @@ type (
 		// If set, opts this worker into the Worker Deployment Versioning feature. It will only
 		// operate on workflows it claims to be compatible with. You must set [Version] if this flag
 		// is true.
+		//
 		// NOTE: Experimental
+		//
 		// NOTE: Cannot be enabled at the same time as [WorkerOptions.EnableSessionWorker]
 		UseVersioning bool
 
 		// Assign a Deployment Version identifier to this worker. The format of this identifier
 		// is "<deployment_name>.<build_id>". If [Version] is set both [WorkerOptions.BuildID] and
 		// [DeploymentSeriesName] will be ignored.
+		//
 		// NOTE: Experimental
 		Version string
 
@@ -62,9 +67,11 @@ type (
 
 		// Optional: Provides a default Versioning Behavior to workflows that do not set one with the
 		// registration option [RegisterWorkflowOptions.VersioningBehavior].
+		//
 		// NOTE: When the new Deployment-based Worker Versioning feature is on,
 		// and [DefaultVersioningBehavior] is unspecified,
 		// workflows that do not set the Versioning Behavior will fail at registration time.
+		//
 		// NOTE: Experimental
 		DefaultVersioningBehavior VersioningBehavior
 	}
@@ -77,6 +84,7 @@ type (
 	WorkerOptions struct {
 		// Optional: To set the maximum concurrent activity executions this worker can have.
 		// The zero value of this uses the default value.
+		//
 		// default: defaultMaxConcurrentActivityExecutionSize(1k)
 		MaxConcurrentActivityExecutionSize int
 
@@ -86,11 +94,13 @@ type (
 		// 1 if needed. For example, set the number to 0.1 means you want your activity to be executed
 		// once for every 10 seconds. This can be used to protect down stream services from flooding.
 		// The zero value of this uses the default value
+		//
 		// default: 100k
 		WorkerActivitiesPerSecond float64
 
 		// Optional: To set the maximum concurrent local activity executions this worker can have.
 		// The zero value of this uses the default value.
+		//
 		// default: 1k
 		MaxConcurrentLocalActivityExecutionSize int
 
@@ -100,6 +110,7 @@ type (
 		// 1 if needed. For example, set the number to 0.1 means you want your local activity to be executed
 		// once for every 10 seconds. This can be used to protect down stream services from flooding.
 		// The zero value of this uses the default value
+		//
 		// default: 100k
 		WorkerLocalActivitiesPerSecond float64
 
@@ -110,6 +121,7 @@ type (
 		// 1 if needed. For example, set the number to 0.1 means you want your activity to be executed
 		// once for every 10 seconds. This can be used to protect down stream services from flooding.
 		// The zero value of this uses the default value.
+		//
 		// default: 100k
 		//
 		// NOTE: Setting this to a non zero value will also disable eager activities.
@@ -118,6 +130,7 @@ type (
 		// Optional: Sets the maximum number of goroutines that will concurrently poll the
 		// temporal-server to retrieve activity tasks. Changing this value will affect the
 		// rate at which the worker is able to consume tasks from a task queue.
+		//
 		// default: 2
 		MaxConcurrentActivityTaskPollers int
 
@@ -125,6 +138,7 @@ type (
 		// The zero value of this uses the default value. Due to internal logic where pollers
 		// alternate between stick and non-sticky queues, this
 		// value cannot be 1 and will panic if set to that value.
+		//
 		// default: defaultMaxConcurrentTaskExecutionSize(1k)
 		MaxConcurrentWorkflowTaskExecutionSize int
 
@@ -133,17 +147,20 @@ type (
 		// rate at which the worker is able to consume tasks from a task queue. Due to
 		// internal logic where pollers alternate between stick and non-sticky queues, this
 		// value cannot be 1 and will panic if set to that value.
+		//
 		// default: 2
 		MaxConcurrentWorkflowTaskPollers int
 
 		// Optional: Sets the maximum concurrent nexus task executions this worker can have.
 		// The zero value of this uses the default value.
+		//
 		// default: defaultMaxConcurrentTaskExecutionSize(1k)
 		MaxConcurrentNexusTaskExecutionSize int
 
 		// Optional: Sets the maximum number of goroutines that will concurrently poll the
 		// temporal-server to retrieve nexus tasks. Changing this value will affect the
 		// rate at which the worker is able to consume tasks from a task queue.
+		//
 		// default: 2
 		MaxConcurrentNexusTaskPollers int
 
@@ -151,6 +168,7 @@ type (
 		// In the workflow code you can use workflow.GetLogger(ctx) to write logs. By default, the logger will skip log
 		// entry during replay mode so you won't see duplicate logs. This option will enable the logging in replay mode.
 		// This is only useful for debugging purpose.
+		//
 		// default: false
 		EnableLoggingInReplay bool
 
@@ -177,16 +195,19 @@ type (
 		// Optional: Sets how workflow worker deals with non-deterministic history events
 		// (presumably arising from non-deterministic workflow definitions or non-backward compatible workflow
 		// definition changes) and other panics raised from workflow code.
+		//
 		// default: BlockWorkflow, which just logs error but doesn't fail workflow.
 		WorkflowPanicPolicy WorkflowPanicPolicy
 
 		// Optional: worker graceful stop timeout
+		//
 		// default: 0s
 		WorkerStopTimeout time.Duration
 
 		// Optional: Enable running session workers.
 		// Session workers is for activities within a session.
 		// Enable this option to allow worker to process sessions.
+		//
 		// default: false
 		EnableSessionWorker bool
 
@@ -197,21 +218,25 @@ type (
 		// SessionResourceID string
 
 		// Optional: Sets the maximum number of concurrently running sessions the resource supports.
+		//
 		// default: 1000
 		MaxConcurrentSessionExecutionSize int
 
 		// Optional: If set to true, a workflow worker is not started for this
 		// worker and workflows cannot be registered with this worker. Use this if
 		// you only want your worker to execute activities.
+		//
 		// default: false
 		DisableWorkflowWorker bool
 
 		// Optional: If set to true worker will only handle workflow tasks and local activities.
 		// Non-local activities will not be executed by this worker.
+		//
 		// default: false
 		LocalActivityWorkerOnly bool
 
 		// Optional: If set overwrites the client level Identity value.
+		//
 		// default: client identity
 		Identity string
 
@@ -221,12 +246,14 @@ type (
 		// Optional: The maximum amount of time between sending each pending heartbeat to the server. Regardless of
 		// heartbeat timeout, no pending heartbeat will wait longer than this amount of time to send. To effectively disable
 		// heartbeat throttling, this can be set to something like 1 nanosecond, but it is not recommended.
+		//
 		// default: 60 seconds
 		MaxHeartbeatThrottleInterval time.Duration
 
 		// Optional: The default amount of time between sending each pending heartbeat to the server. This is used if the
 		// ActivityOptions do not provide a HeartbeatTimeout. Otherwise, the interval becomes a value a bit smaller than the
 		// given HeartbeatTimeout.
+		//
 		// default: 30 seconds
 		DefaultHeartbeatThrottleInterval time.Duration
 
@@ -291,17 +318,20 @@ type (
 		// is true.
 		//
 		// Deprecated: Use [WorkerDeploymentOptions.UseVersioning]
+		//
 		// NOTE: Cannot be enabled at the same time as [WorkerOptions.EnableSessionWorker]
 		UseBuildIDForVersioning bool
 
 		// Optional: If set it configures Worker Versioning for this worker. See [WorkerDeploymentOptions]
 		// for more.
+		//
 		// NOTE: Experimental
 		DeploymentOptions WorkerDeploymentOptions
 
 		// Optional: If set, use a custom tuner for this worker. See WorkerTuner for more.
 		// Mutually exclusive with MaxConcurrentWorkflowTaskExecutionSize,
 		// MaxConcurrentActivityExecutionSize, and MaxConcurrentLocalActivityExecutionSize.
+		//
 		// NOTE: Experimental
 		Tuner WorkerTuner
 	}

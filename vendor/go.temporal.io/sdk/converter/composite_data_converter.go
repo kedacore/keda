@@ -61,6 +61,16 @@ func (dc *CompositeDataConverter) ToPayloads(values ...interface{}) (*commonpb.P
 	if len(values) == 0 {
 		return nil, nil
 	}
+	var rawValuePayloads []*commonpb.Payload
+	for _, v := range values {
+		rawValue, ok := v.(RawValue)
+		if ok {
+			rawValuePayloads = append(rawValuePayloads, rawValue.Payload())
+		}
+	}
+	if len(rawValuePayloads) > 0 {
+		return &commonpb.Payloads{Payloads: rawValuePayloads}, nil
+	}
 
 	result := &commonpb.Payloads{}
 	for i, value := range values {
@@ -85,10 +95,14 @@ func (dc *CompositeDataConverter) FromPayloads(payloads *commonpb.Payloads, valu
 		if i >= len(valuePtrs) {
 			break
 		}
-
-		err := dc.FromPayload(payload, valuePtrs[i])
-		if err != nil {
-			return fmt.Errorf("payload item %d: %w", i, err)
+		rawValue, ok := valuePtrs[i].(*RawValue)
+		if ok {
+			*rawValue = NewRawValue(payload)
+		} else {
+			err := dc.FromPayload(payload, valuePtrs[i])
+			if err != nil {
+				return fmt.Errorf("payload item %d: %w", i, err)
+			}
 		}
 	}
 
@@ -97,6 +111,11 @@ func (dc *CompositeDataConverter) FromPayloads(payloads *commonpb.Payloads, valu
 
 // ToPayload converts single value to payload.
 func (dc *CompositeDataConverter) ToPayload(value interface{}) (*commonpb.Payload, error) {
+	rawValue, ok := value.(RawValue)
+	if ok {
+		return rawValue.Payload(), nil
+	}
+
 	for _, enc := range dc.orderedEncodings {
 		payloadConverter := dc.payloadConverters[enc]
 		payload, err := payloadConverter.ToPayload(value)
@@ -114,6 +133,12 @@ func (dc *CompositeDataConverter) ToPayload(value interface{}) (*commonpb.Payloa
 // FromPayload converts single value from payload.
 func (dc *CompositeDataConverter) FromPayload(payload *commonpb.Payload, valuePtr interface{}) error {
 	if payload == nil {
+		return nil
+	}
+
+	rawValue, ok := valuePtr.(*RawValue)
+	if ok {
+		*rawValue = NewRawValue(payload)
 		return nil
 	}
 

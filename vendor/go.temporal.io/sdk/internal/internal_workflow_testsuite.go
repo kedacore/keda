@@ -793,7 +793,7 @@ func (env *testWorkflowEnvironmentImpl) executeLocalActivity(
 		header:        params.Header,
 	}
 	taskHandler := localActivityTaskHandler{
-		userContext:        env.workerOptions.BackgroundActivityContext,
+		backgroundContext:  env.workerOptions.BackgroundActivityContext,
 		metricsHandler:     env.metricsHandler,
 		logger:             env.logger,
 		interceptors:       env.registry.interceptors,
@@ -1586,7 +1586,7 @@ func (env *testWorkflowEnvironmentImpl) ExecuteLocalActivity(params ExecuteLocal
 
 	task := newLocalActivityTask(params, callback, activityID)
 	taskHandler := localActivityTaskHandler{
-		userContext:        env.workerOptions.BackgroundActivityContext,
+		backgroundContext:  env.workerOptions.BackgroundActivityContext,
 		metricsHandler:     env.metricsHandler,
 		logger:             env.logger,
 		dataConverter:      env.dataConverter,
@@ -2095,20 +2095,20 @@ func (env *testWorkflowEnvironmentImpl) newTestActivityTaskHandler(taskQueue str
 		Identity:           env.identity,
 		MetricsHandler:     env.metricsHandler,
 		Logger:             env.logger,
-		UserContext:        env.workerOptions.BackgroundActivityContext,
+		BackgroundContext:  env.workerOptions.BackgroundActivityContext,
 		FailureConverter:   env.failureConverter,
 		DataConverter:      dataConverter,
 		WorkerStopChannel:  env.workerStopChannel,
 		ContextPropagators: env.contextPropagators,
 	}
 	ensureRequiredParams(&params)
-	if params.UserContext == nil {
-		params.UserContext = context.Background()
+	if params.BackgroundContext == nil {
+		params.BackgroundContext = context.Background()
 	}
 	if env.workerOptions.EnableSessionWorker && env.sessionEnvironment == nil {
 		env.sessionEnvironment = newTestSessionEnvironment(env, &params, env.workerOptions.MaxConcurrentSessionExecutionSize)
 	}
-	params.UserContext = context.WithValue(params.UserContext, sessionEnvironmentContextKey, env.sessionEnvironment)
+	params.BackgroundContext = context.WithValue(params.BackgroundContext, sessionEnvironmentContextKey, env.sessionEnvironment)
 	registry := env.registry
 	if len(registry.getRegisteredActivities()) == 0 {
 		panic(fmt.Sprintf("no activity is registered for taskqueue '%v'", taskQueue))
@@ -2173,6 +2173,7 @@ func newTestActivityTask(workflowID, runID, workflowTypeName, namespace string,
 		},
 		WorkflowNamespace: namespace,
 		Header:            attr.GetHeader(),
+		Priority:          attr.Priority,
 	}
 	return task
 }

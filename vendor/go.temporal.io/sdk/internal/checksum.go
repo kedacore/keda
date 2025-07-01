@@ -22,23 +22,54 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+//go:build go1.24
+
 package internal
 
-// Below are the metadata which will be embedded as part of headers in every RPC call made by this client to Temporal server.
-// Update to the metadata below is typically done by the Temporal team as part of a major feature or behavior change.
-
-const (
-	// SDKVersion is a semver (https://semver.org/) that represents the version of this Temporal GoSDK.
-	// Server validates if SDKVersion fits its supported range and rejects request if it doesn't.
-	//
-	// Exposed as: [go.temporal.io/sdk/temporal.SDKVersion]
-	SDKVersion = "1.34.0"
-
-	// SDKName represents the name of the SDK.
-	SDKName = clientNameHeaderValue
-
-	// SupportedServerVersions is a semver rages (https://github.com/blang/semver#ranges) of server versions that
-	// are supported by this Temporal SDK.
-	// Server validates if its version fits into SupportedServerVersions range and rejects request if it doesn't.
-	SupportedServerVersions = ">=1.0.0 <2.0.0"
+import (
+	"crypto/fips140"
+	"crypto/md5"
+	"crypto/sha256"
+	"encoding/hex"
+	"hash"
+	"io"
+	"os"
 )
+
+// callers MUST hold binaryChecksumLock before calling
+func initBinaryChecksumLocked() error {
+	if len(binaryChecksum) > 0 {
+		return nil
+	}
+
+	exec, err := os.Executable()
+	if err != nil {
+		return err
+	}
+
+	f, err := os.Open(exec)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = f.Close() // error is unimportant as it is read-only
+	}()
+
+	var h hash.Hash
+	if fips140.Enabled() {
+		h = sha256.New()
+		if _, err := io.Copy(h, f); err != nil {
+			return err
+		}
+	} else {
+		h = md5.New()
+		if _, err := io.Copy(h, f); err != nil {
+			return err
+		}
+	}
+
+	checksum := h.Sum(nil)
+	binaryChecksum = hex.EncodeToString(checksum[:])
+
+	return nil
+}

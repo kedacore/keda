@@ -35,6 +35,7 @@ import (
 
 type (
 	// UpdateWorkflowExecutionOptionsRequest is a request for [Client.UpdateWorkflowExecutionOptions].
+	//
 	// NOTE: Experimental
 	UpdateWorkflowExecutionOptionsRequest struct {
 		// ID of the workflow.
@@ -46,6 +47,7 @@ type (
 	}
 
 	// WorkflowExecutionOptions describes options for a workflow execution.
+	//
 	// NOTE: Experimental
 	WorkflowExecutionOptions struct {
 		// If set, it takes precedence over the Versioning Behavior provided with code annotations.
@@ -56,6 +58,7 @@ type (
 	// An entry with a `nil` pointer means do not change.
 	// An entry with a pointer to an empty value means delete the entry, i.e., the empty value is a tombstone.
 	// An entry with a pointer to a non-empty value means replace the entry, i.e., there is no deep merging.
+	//
 	// NOTE: Experimental
 	WorkflowExecutionOptionsChanges struct {
 		VersioningOverride *VersioningOverride
@@ -67,6 +70,7 @@ type (
 	// To remove the override, the [UpdateWorkflowExecutionOptionsRequest] should include a pointer to
 	// an empty [VersioningOverride] value in [WorkflowExecutionOptionsChanges].
 	// See [WorkflowExecutionOptionsChanges] for details.
+	//
 	// NOTE: Experimental
 	VersioningOverride struct {
 		// Behavior - The new Versioning Behavior. This field is required.

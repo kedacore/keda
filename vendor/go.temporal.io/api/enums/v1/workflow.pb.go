@@ -46,7 +46,7 @@ const (
 )
 
 // Defines whether to allow re-using a workflow id from a previously *closed* workflow.
-// If the request is denied, a `WorkflowExecutionAlreadyStartedFailure` is returned.
+// If the request is denied, the server returns a `WorkflowExecutionAlreadyStartedFailure` error.
 //
 // See `WorkflowIdConflictPolicy` for handling workflow id duplication with a *running* workflow.
 type WorkflowIdReusePolicy int32

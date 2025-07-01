@@ -83,17 +83,20 @@ const (
 // WorkerDeploymentVersionDrainageStatus specifies the drainage status for a Worker
 // Deployment Version enabling users to decide when they can safely decommission this
 // Version.
+//
 // NOTE: Experimental
 type WorkerDeploymentVersionDrainageStatus = internal.WorkerDeploymentVersionDrainageStatus
 
 const (
 	// WorkerDeploymentVersionDrainageStatusUnspecified - Drainage status not specified.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentVersionDrainageStatusUnspecified = internal.WorkerDeploymentVersionDrainageStatusUnspecified
 
 	// WorkerDeploymentVersionDrainageStatusDraining - The Worker Deployment Version is not
 	// used by new workflows, but it is still used by open pinned workflows.
 	// This Version cannot be decommissioned safely.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentVersionDrainageStatusDraining = internal.WorkerDeploymentVersionDrainageStatusDraining
 
@@ -102,6 +105,7 @@ const (
 	// Queries sent to closed workflows. This Version can be decommissioned safely if the user
 	// does not expect to query closed workflows. In some cases this requires waiting for some
 	// time after it is drained to guarantee no pending queries.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentVersionDrainageStatusDrained = internal.WorkerDeploymentVersionDrainageStatusDrained
 )
@@ -109,17 +113,20 @@ const (
 // WorkerVersioningMode specifies whether the workflows processed by this
 // worker use the worker's Version. The Temporal Server will use this worker's
 // choice when dispatching tasks to it.
+//
 // NOTE: Experimental
 type WorkerVersioningMode = internal.WorkerVersioningMode
 
 const (
 	// WorkerVersioningModeUnspecified - Versioning mode not reported.
+	//
 	// NOTE: Experimental
 	WorkerVersioningModeUnspecified = internal.WorkerVersioningModeUnspecified
 
 	// WorkerVersioningModeUnversioned - Workers with this mode are not
 	// distinguished from each other for task routing, even if they
 	// have different versions.
+	//
 	// NOTE: Experimental
 	WorkerVersioningModeUnversioned = internal.WorkerVersioningModeUnversioned
 
@@ -129,6 +136,7 @@ const (
 	// Each Deployment Version is distinguished from other Versions for task
 	// routing, and users can configure the Temporal Server to send tasks to a
 	// particular Version.
+	//
 	// NOTE: Experimental
 	WorkerVersioningModeVersioned = internal.WorkerVersioningModeVersioned
 )
@@ -169,6 +177,7 @@ const (
 )
 
 // BuildIDTaskReachability specifies which category of tasks may reach a versioned worker of a certain Build ID.
+//
 // NOTE: future activities who inherit their workflow's Build ID but not its task queue will not be
 // accounted for reachability as server cannot know if they'll happen as they do not use
 // assignment rules of their task queue. Same goes for Child Workflows or Continue-As-New Workflows
@@ -241,6 +250,7 @@ type (
 
 	// WithStartWorkflowOperation defines how to start a workflow when using UpdateWithStartWorkflow.
 	// See [client.Client.NewWithStartWorkflowOperation] and [client.Client.UpdateWithStartWorkflow].
+	//
 	// NOTE: Experimental
 	WithStartWorkflowOperation = internal.WithStartWorkflowOperation
 
@@ -352,124 +362,151 @@ type (
 
 	// UpdateWithStartWorkflowOptions encapsulates the parameters used by UpdateWithStartWorkflow.
 	// See [client.Client.UpdateWithStartWorkflow] and [client.Client.NewWithStartWorkflowOperation].
+	//
 	// NOTE: Experimental
 	UpdateWithStartWorkflowOptions = internal.UpdateWithStartWorkflowOptions
 
 	// WorkerDeploymentDescribeOptions provides options for [WorkerDeploymentHandle.Describe].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentDescribeOptions = internal.WorkerDeploymentDescribeOptions
 
 	// WorkerDeploymentVersionSummary provides a brief description of a Version.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentVersionSummary = internal.WorkerDeploymentVersionSummary
 
 	// WorkerDeploymentInfo provides information about a Worker Deployment.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentInfo = internal.WorkerDeploymentInfo
 
 	// WorkerDeploymentDescribeResponse is the response type for [WorkerDeploymentHandle.Describe].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentDescribeResponse = internal.WorkerDeploymentDescribeResponse
 
 	// WorkerDeploymentSetCurrentVersionOptions provides options for
 	// [WorkerDeploymentHandle.SetCurrentVersion].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentSetCurrentVersionOptions = internal.WorkerDeploymentSetCurrentVersionOptions
 
 	// WorkerDeploymentSetCurrentVersionResponse is the response for
 	// [WorkerDeploymentHandle.SetCurrentVersion].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentSetCurrentVersionResponse = internal.WorkerDeploymentSetCurrentVersionResponse
 
 	// WorkerDeploymentSetRampingVersionOptions provides options for
 	// [WorkerDeploymentHandle.SetRampingVersion].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentSetRampingVersionOptions = internal.WorkerDeploymentSetRampingVersionOptions
 
 	// WorkerDeploymentSetRampingVersionResponse is the response for
 	// [WorkerDeploymentHandle.SetRampingVersion].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentSetRampingVersionResponse = internal.WorkerDeploymentSetRampingVersionResponse
 
 	// WorkerDeploymentDescribeVersionOptions provides options for
 	// [WorkerDeploymentHandle.DescribeVersion].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentDescribeVersionOptions = internal.WorkerDeploymentDescribeVersionOptions
 
 	// WorkerDeploymentTaskQueueInfo describes properties of the Task Queues involved
 	// in a Deployment Version.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentTaskQueueInfo = internal.WorkerDeploymentTaskQueueInfo
 
 	// WorkerDeploymentVersionDrainageInfo describes drainage properties of a Deployment Version.
 	// This enables users to safely decide when they can decommission a Version.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentVersionDrainageInfo = internal.WorkerDeploymentVersionDrainageInfo
 
 	// WorkerDeploymentVersionInfo provides information about a Worker Deployment Version.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentVersionInfo = internal.WorkerDeploymentVersionInfo
 
 	// WorkerDeploymentVersionDescription is the response for
 	// [WorkerDeploymentHandle.DescribeVersion].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentVersionDescription = internal.WorkerDeploymentVersionDescription
 
 	// WorkerDeploymentDeleteVersionOptions provides options for
 	// [WorkerDeploymentHandle.DeleteVersion].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentDeleteVersionOptions = internal.WorkerDeploymentDeleteVersionOptions
 
 	// WorkerDeploymentDeleteVersionResponse is the response for
 	// [WorkerDeploymentHandle.DeleteVersion].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentDeleteVersionResponse = internal.WorkerDeploymentDeleteVersionResponse
 
 	// WorkerDeploymentMetadataUpdate modifies user-defined metadata entries that describe
 	// a Version.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentMetadataUpdate = internal.WorkerDeploymentMetadataUpdate
 
 	// WorkerDeploymentUpdateVersionMetadataOptions provides options for
 	// [WorkerDeploymentHandle.UpdateVersionMetadata].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentUpdateVersionMetadataOptions = internal.WorkerDeploymentUpdateVersionMetadataOptions
 
 	// WorkerDeploymentUpdateVersionMetadataResponse is the response for
 	// [WorkerDeploymentHandle.UpdateVersionMetadata].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentUpdateVersionMetadataResponse = internal.WorkerDeploymentUpdateVersionMetadataResponse
 
 	// WorkerDeploymentHandle is a handle to a Worker Deployment.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentHandle = internal.WorkerDeploymentHandle
 
 	// DeploymentListOptions are the parameters for configuring listing Worker Deployments.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentListOptions = internal.WorkerDeploymentListOptions
 
 	// WorkerDeploymentRoutingConfig describes when new or existing Workflow Tasks are
 	// executed with this Worker Deployment.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentRoutingConfig = internal.WorkerDeploymentRoutingConfig
 
 	// WorkerDeploymentListEntry is a subset of fields from [WorkerDeploymentInfo].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentListEntry = internal.WorkerDeploymentListEntry
 
 	// WorkerDeploymentListIterator is an iterator for deployments.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentListIterator = internal.WorkerDeploymentListIterator
 
 	// WorkerDeploymentDeleteOptions provides options for [WorkerDeploymentClient.Delete].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentDeleteOptions = internal.WorkerDeploymentDeleteOptions
 
 	// WorkerDeploymentDeleteResponse is the response for [WorkerDeploymentClient.Delete].
+	//
 	// NOTE: Experimental
 	WorkerDeploymentDeleteResponse = internal.WorkerDeploymentDeleteResponse
 
 	// WorkerDeploymentClient is the client that manages Worker Deployments.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentClient = internal.WorkerDeploymentClient
 
@@ -560,16 +597,19 @@ type (
 	DeploymentClient = internal.DeploymentClient
 
 	// UpdateWorkflowExecutionOptionsRequest is a request for [client.Client.UpdateWorkflowExecutionOptions].
+	//
 	// NOTE: Experimental
 	UpdateWorkflowExecutionOptionsRequest = internal.UpdateWorkflowExecutionOptionsRequest
 
 	// WorkflowExecutionOptions contains a set of properties of an existing workflow
 	// that can be overriden using [client.Client.UpdateWorkflowExecutionOptions].
+	//
 	// NOTE: Experimental
 	WorkflowExecutionOptions = internal.WorkflowExecutionOptions
 
 	// WorkflowExecutionOptionsChanges describes changes to [WorkflowExecutionOptions]
 	// in the [client.Client.UpdateWorkflowExecutionOptions] API.
+	//
 	// NOTE: Experimental
 	WorkflowExecutionOptionsChanges = internal.WorkflowExecutionOptionsChanges
 
@@ -577,6 +617,7 @@ type (
 	// configuration of a specific workflow execution.
 	// If set, it takes precedence over the Versioning Behavior provided with workflow type registration, or
 	// default worker options.
+	//
 	// NOTE: Experimental
 	VersioningOverride = internal.VersioningOverride
 
@@ -667,6 +708,7 @@ type (
 	// TaskQueueVersioningInfo provides worker deployment configuration for this
 	// task queue.
 	// It is part of [Client.TaskQueueDescription].
+	//
 	// NOTE: Experimental
 	TaskQueueVersioningInfo = internal.TaskQueueVersioningInfo
 
@@ -812,6 +854,7 @@ type (
 		//  - serviceerror.InvalidArgument
 		//  - serviceerror.Internal
 		//  - serviceerror.Unavailable
+		//  - serviceerror.WorkflowExecutionAlreadyStarted, when WorkflowExecutionErrorWhenAlreadyStarted is specified
 		//
 		// WorkflowRun has 3 methods:
 		//  - GetWorkflowID() string: which return the started workflow ID
@@ -819,12 +862,14 @@ type (
 		//  - Get(ctx context.Context, valuePtr interface{}) error: which will fill the workflow
 		//    execution result to valuePtr, if workflow execution is a success, or return corresponding
 		//    error. This is a blocking API.
-		// NOTE: if the started workflow returns ContinueAsNewError during the workflow execution, the
-		// returned result of GetRunID() will be the started workflow run ID, not the new run ID caused by ContinueAsNewError,
-		// however, Get(ctx context.Context, valuePtr interface{}) will return result from the run which did not return ContinueAsNewError.
+		//
+		// NOTE: If the started workflow returns ContinueAsNewError during the workflow execution, the
+		// returned result of GetRunID() will be the started workflow run ID, not the new run ID caused by ContinueAsNewError.
+		// However, Get(ctx context.Context, valuePtr interface{}) will return result from the run which did not return ContinueAsNewError.
 		// Say ExecuteWorkflow started a workflow, in its first run, has run ID "run ID 1", and returned ContinueAsNewError,
 		// the second run has run ID "run ID 2" and return some result other than ContinueAsNewError:
 		// GetRunID() will always return "run ID 1" and  Get(ctx context.Context, valuePtr interface{}) will return the result of second run.
+		//
 		// NOTE: DO NOT USE THIS API INSIDE A WORKFLOW, USE workflow.ExecuteChildWorkflow instead
 		ExecuteWorkflow(ctx context.Context, options StartWorkflowOptions, workflow interface{}, args ...interface{}) (WorkflowRun, error)
 
@@ -838,6 +883,7 @@ type (
 		//    execution result to valuePtr, if workflow execution is a success, or return corresponding
 		//    error. This is a blocking API.
 		// If workflow not found, the Get() will return serviceerror.NotFound.
+		//
 		// NOTE: if the started workflow return ContinueAsNewError during the workflow execution, the
 		// return result of GetRunID() will be the started workflow run ID, not the new run ID caused by ContinueAsNewError,
 		// however, Get(ctx context.Context, valuePtr interface{}) will return result from the run which did not return ContinueAsNewError.
@@ -861,6 +907,7 @@ type (
 		//  - workflowID, signalName, signalArg are same as SignalWorkflow's parameters
 		//  - options, workflow, workflowArgs are same as StartWorkflow's parameters
 		//  - the workflowID parameter is used instead of options.ID. If the latter is present, it must match the workflowID.
+		//
 		// NOTE: options.WorkflowIDReusePolicy is default to AllowDuplicate in this API.
 		// The errors it can return:
 		//  - serviceerror.NotFound
@@ -872,6 +919,7 @@ type (
 
 		// NewWithStartWorkflowOperation returns a WithStartWorkflowOperation for use with UpdateWithStartWorkflow.
 		// See [client.Client.UpdateWithStartWorkflow].
+		//
 		// NOTE: Experimental
 		NewWithStartWorkflowOperation(options StartWorkflowOptions, workflow interface{}, args ...interface{}) WithStartWorkflowOperation
 
@@ -950,15 +998,19 @@ type (
 
 		// RecordActivityHeartbeat records heartbeat for an activity.
 		// taskToken - is the value of the binary "TaskToken" field of the "ActivityInfo" struct retrieved inside the activity.
-		// details - is the progress you want to record along with heart beat for this activity.
-		// The errors it can return:
+		// details - is the progress you want to record along with heart beat for this activity. If the activity is canceled,
+		// the error returned will be a CanceledError. If the activity is paused by the server, the error returned will be a
+		// ErrActivityPaused.
+		// Otherwise the errors it can return:
 		//  - serviceerror.NotFound
 		//  - serviceerror.Internal
 		//  - serviceerror.Unavailable
 		RecordActivityHeartbeat(ctx context.Context, taskToken []byte, details ...interface{}) error
 
 		// RecordActivityHeartbeatByID records heartbeat for an activity.
-		// details - is the progress you want to record along with heart beat for this activity.
+		// details - is the progress you want to record along with heart beat for this activity. If the activity is canceled,
+		// the error returned will be a CanceledError. If the activity is paused by the server, the error returned will be a
+		// ErrActivityPaused.
 		// The errors it can return:
 		//  - serviceerror.NotFound
 		//  - serviceerror.Internal
@@ -967,6 +1019,7 @@ type (
 
 		// ListClosedWorkflow gets closed workflow executions based on request filters.
 		// Retrieved workflow executions are sorted by close time in descending order.
+		//
 		// NOTE: heavy usage of this API may cause huge persistence pressure.
 		// The errors it can return:
 		//  - serviceerror.InvalidArgument
@@ -977,6 +1030,7 @@ type (
 
 		// ListOpenWorkflow gets open workflow executions based on request filters.
 		// Retrieved workflow executions are sorted by start time in descending order.
+		//
 		// NOTE: heavy usage of this API may cause huge persistence pressure.
 		// The errors it can return:
 		//  - serviceerror.InvalidArgument
@@ -986,7 +1040,7 @@ type (
 		ListOpenWorkflow(ctx context.Context, request *workflowservice.ListOpenWorkflowExecutionsRequest) (*workflowservice.ListOpenWorkflowExecutionsResponse, error)
 
 		// ListWorkflow gets workflow executions based on query. The query is basically the SQL WHERE clause, examples:
-		//  - "(WorkflowID = 'wid1' or (WorkflowType = 'type2' and WorkflowID = 'wid2'))".
+		//  - "(WorkflowId = 'wid1' or (WorkflowType = 'type2' and WorkflowId = 'wid2'))".
 		//  - "CloseTime between '2019-08-27T15:04:05+00:00' and '2019-08-28T15:04:05+00:00'".
 		//  - to list only open workflow use "CloseTime is null"
 		// For supported operations on different server versions see https://docs.temporal.io/visibility.
@@ -1034,6 +1088,7 @@ type (
 		// GetSearchAttributes returns valid search attributes keys and value types.
 		// The search attributes can be used in query of List/Scan/Count APIs. Adding new search attributes requires temporal server
 		// to update dynamic config ValidSearchAttributes.
+		//
 		// NOTE: This API is not supported on Temporal Cloud.
 		GetSearchAttributes(ctx context.Context) (*workflowservice.GetSearchAttributesResponse, error)
 
@@ -1158,6 +1213,7 @@ type (
 		// and returns the new [WorkflowExecutionOptions] after applying the changes.
 		// It is intended for building tools that can selectively apply ad-hoc workflow configuration changes.
 		// Use [DescribeWorkflowExecution] to get similar information without modifying options.
+		//
 		// NOTE: Experimental
 		UpdateWorkflowExecutionOptions(ctx context.Context, options UpdateWorkflowExecutionOptionsRequest) (WorkflowExecutionOptions, error)
 
@@ -1172,6 +1228,7 @@ type (
 		// has reached the WaitForStage in the options. Note that this means
 		// that the call will not return successfully until the update has been
 		// delivered to a worker.
+		//
 		// NOTE: Experimental
 		UpdateWithStartWorkflow(ctx context.Context, options UpdateWithStartWorkflowOptions) (WorkflowUpdateHandle, error)
 
@@ -1197,6 +1254,7 @@ type (
 		DeploymentClient() DeploymentClient
 
 		// WorkerDeploymentClient create a new worker deployment client with the same gRPC connections as this client.
+		//
 		// NOTE: Experimental
 		WorkerDeploymentClient() WorkerDeploymentClient
 

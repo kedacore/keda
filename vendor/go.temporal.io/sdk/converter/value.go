@@ -24,6 +24,11 @@
 
 package converter
 
+import (
+	"fmt"
+	commonpb "go.temporal.io/api/common/v1"
+)
+
 type (
 	// EncodedValue is used to encapsulate/extract encoded value from workflow/activity.
 	EncodedValue interface {
@@ -48,4 +53,29 @@ type (
 		// json.Unmarshal.
 		Get(valuePtr ...interface{}) error
 	}
+
+	// RawValue is a representation of an unconverted, raw payload.
+	//
+	// This type can be used as a paramter or return type in workflows and activities to pass through
+	// a raw payload. Encoding/decoding of the payload is still done by the system.
+	RawValue struct {
+		payload *commonpb.Payload
+	}
 )
+
+// NewRawValue creates a new RawValue instance.
+func NewRawValue(payload *commonpb.Payload) RawValue {
+	return RawValue{payload: payload}
+}
+
+func (v RawValue) Payload() *commonpb.Payload {
+	return v.payload
+}
+
+func (v RawValue) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("RawValue is not JSON serializable")
+}
+
+func (v *RawValue) UnmarshalJSON(b []byte) error {
+	return fmt.Errorf("RawValue is not JSON serializable")
+}

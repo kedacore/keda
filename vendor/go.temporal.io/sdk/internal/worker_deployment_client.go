@@ -32,6 +32,7 @@ import (
 // WorkerDeploymentVersionDrainageStatus specifies the drainage status for a Worker
 // Deployment Version enabling users to decide when they can safely decommission this
 // Version.
+//
 // NOTE: Experimental
 //
 // Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentVersionDrainageStatus]
@@ -39,6 +40,7 @@ type WorkerDeploymentVersionDrainageStatus int
 
 const (
 	// WorkerDeploymentVersionDrainageStatusUnspecified - Drainage status not specified.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentVersionDrainageStatusUnspecified]
@@ -47,6 +49,7 @@ const (
 	// WorkerDeploymentVersionDrainageStatusDraining - The Worker Deployment Version is not
 	// used by new workflows, but it is still used by open pinned workflows.
 	// This Version cannot be decommissioned safely.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentVersionDrainageStatusDraining]
@@ -57,6 +60,7 @@ const (
 	// Queries sent to closed workflows. This Version can be decommissioned safely if the user
 	// does not expect to query closed workflows. In some cases this requires waiting for some
 	// time after it is drained to guarantee no pending queries.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentVersionDrainageStatusDrained]
@@ -66,6 +70,7 @@ const (
 type (
 
 	// WorkerDeploymentDescribeOptions provides options for [WorkerDeploymentHandle.Describe].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentDescribeOptions]
@@ -73,6 +78,7 @@ type (
 	}
 
 	// WorkerDeploymentVersionSummary provides a brief description of a Version.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentVersionSummary]
@@ -89,6 +95,7 @@ type (
 	}
 
 	// WorkerDeploymentInfo provides information about a Worker Deployment.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentInfo]
@@ -117,6 +124,7 @@ type (
 	}
 
 	// WorkerDeploymentDescribeResponse is the response type for [WorkerDeploymentHandle.Describe].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentDescribeResponse]
@@ -130,6 +138,7 @@ type (
 
 	// WorkerDeploymentSetCurrentVersionOptions provides options for
 	// [WorkerDeploymentHandle.SetCurrentVersion].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentSetCurrentVersionOptions]
@@ -145,10 +154,12 @@ type (
 		// generated the token and this one.
 		// The current token can be obtained with [WorkerDeploymentHandle.Describe],
 		// or returned by other successful Worker Deployment operations.
+		//
 		// Optional: defaulted to empty token, which bypasses conflict detection.
 		ConflictToken []byte
 
 		// Identity: The identity of the client who initiated this request.
+		//
 		// Optional: default to the identity of the underlying workflow client.
 		Identity string
 
@@ -161,12 +172,14 @@ type (
 		//   - Task Queues moved to another Worker Deployment, i.e., current in a different Deployment.
 		// WARNING: setting this flag could lead to missing Task Queues polled by late starting
 		// Workers.
+		//
 		// Optional: default to reject request when queues are missing.
 		IgnoreMissingTaskQueues bool
 	}
 
 	// WorkerDeploymentSetCurrentVersionResponse is the response for
 	// [WorkerDeploymentHandle.SetCurrentVersion].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentSetCurrentVersionResponse]
@@ -182,6 +195,7 @@ type (
 
 	// WorkerDeploymentSetRampingVersionOptions provides options for
 	// [WorkerDeploymentHandle.SetRampingVersion].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentSetRampingVersionOptions]
@@ -201,10 +215,12 @@ type (
 		// generated the token and this one.
 		// The current token can be obtained with [WorkerDeploymentHandle.Describe],
 		// or returned by other successful Worker Deployment operations.
+		//
 		// Optional: defaulted to empty token, which bypasses conflict detection.
 		ConflictToken []byte
 
 		// Identity: The identity of the client who initiated this request.
+		//
 		// Optional: default to the identity of the underlying workflow client.
 		Identity string
 
@@ -217,12 +233,14 @@ type (
 		//   - Task Queues moved to another Worker Deployment, i.e., current in a different Deployment.
 		// WARNING: setting this flag could lead to missing Task Queues polled by late starting
 		// Workers.
+		//
 		// Optional: default to reject request when queues are missing.
 		IgnoreMissingTaskQueues bool
 	}
 
 	// WorkerDeploymentSetRampingVersionResponse is the response for
 	// [WorkerDeploymentHandle.SetRampingVersion].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentSetRampingVersionResponse]
@@ -241,6 +259,7 @@ type (
 
 	// WorkerDeploymentDescribeVersionOptions provides options for
 	// [WorkerDeploymentHandle.DescribeVersion].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentDescribeVersionOptions]
@@ -251,6 +270,7 @@ type (
 
 	// WorkerDeploymentTaskQueueInfo describes properties of the Task Queues involved
 	// in a Deployment Version.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentTaskQueueInfo]
@@ -264,6 +284,7 @@ type (
 
 	// WorkerDeploymentVersionDrainageInfo describes drainage properties of a Deployment Version.
 	// This enables users to safely decide when they can decommission a Version.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentVersionDrainageInfo]
@@ -282,6 +303,7 @@ type (
 	}
 
 	// WorkerDeploymentVersionInfo provides information about a Worker Deployment Version.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentVersionInfo]
@@ -309,6 +331,7 @@ type (
 
 		// DrainageInfo - Drainage information for a Worker Deployment Version, enabling users to
 		// decide when they can safely decommission this Version.
+		//
 		// Optional: not present when the version is Current or Ramping.
 		DrainageInfo *WorkerDeploymentVersionDrainageInfo
 
@@ -318,6 +341,7 @@ type (
 
 	// WorkerDeploymentVersionDescription is the response for
 	// [WorkerDeploymentHandle.DescribeVersion].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentVersionDescription]
@@ -328,6 +352,7 @@ type (
 
 	// WorkerDeploymentDeleteVersionOptions provides options for
 	// [WorkerDeploymentHandle.DeleteVersion].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentDeleteVersionOptions]
@@ -337,16 +362,19 @@ type (
 		Version string
 
 		// SkipDrainage - Force deletion even if the Version is still draining.
+		//
 		// Optional: default to always drain before deletion
 		SkipDrainage bool
 
 		// Identity - The identity of the client who initiated this request.
+		//
 		// Optional: default to the identity of the underlying workflow client.
 		Identity string
 	}
 
 	// WorkerDeploymentDeleteVersionResponse is the response for
 	// [WorkerDeploymentHandle.DeleteVersion].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentDeleteVersionResponse]
@@ -355,6 +383,7 @@ type (
 
 	// WorkerDeploymentMetadataUpdate modifies user-defined metadata entries that describe
 	// a Version.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentMetadataUpdate]
@@ -370,6 +399,7 @@ type (
 
 	// WorkerDeploymentUpdateVersionMetadataOptions provides options for
 	// [WorkerDeploymentHandle.UpdateVersionMetadata].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentUpdateVersionMetadataOptions]
@@ -384,6 +414,7 @@ type (
 
 	// WorkerDeploymentUpdateVersionMetadataResponse is the response for
 	// [WorkerDeploymentHandle.UpdateVersionMetadata].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentUpdateVersionMetadataResponse]
@@ -393,26 +424,31 @@ type (
 	}
 
 	// WorkerDeploymentHandle is a handle to a Worker Deployment.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentHandle]
 	WorkerDeploymentHandle interface {
 		// Describe returns a description of this Worker Deployment.
+		//
 		// NOTE: Experimental
 		Describe(ctx context.Context, options WorkerDeploymentDescribeOptions) (WorkerDeploymentDescribeResponse, error)
 
 		// SetCurrentVersion changes the Current Version for this Worker Deployment.
 		//
 		// It also unsets the Ramping Version when it matches the Version being set as Current.
+		//
 		// NOTE: Experimental
 		SetCurrentVersion(ctx context.Context, options WorkerDeploymentSetCurrentVersionOptions) (WorkerDeploymentSetCurrentVersionResponse, error)
 
 		// SetRampingVersion changes the Ramping Version of this Worker Deployment and its ramp
 		// percentage.
+		//
 		// NOTE: Experimental
 		SetRampingVersion(ctx context.Context, options WorkerDeploymentSetRampingVersionOptions) (WorkerDeploymentSetRampingVersionResponse, error)
 
 		// DescribeVersion gives a description of one the Versions in this Worker Deployment.
+		//
 		// NOTE: Experimental
 		DescribeVersion(ctx context.Context, options WorkerDeploymentDescribeVersionOptions) (WorkerDeploymentVersionDescription, error)
 
@@ -422,29 +458,32 @@ type (
 		//  - It is not the Current or Ramping Version for this Deployment.
 		//  - It has no active pollers, i.e., none of the task queues in the Version have pollers.
 		//  - It is not draining. This requirement can be ignored with the option SkipDrainage.
+		//
 		// NOTE: Experimental
 		DeleteVersion(ctx context.Context, options WorkerDeploymentDeleteVersionOptions) (WorkerDeploymentDeleteVersionResponse, error)
 
 		// UpdateVersionMetadata changes the metadata associated with a Worker Version in this
 		// Deployment.
 		//
-		//
 		// NOTE: Experimental
 		UpdateVersionMetadata(ctx context.Context, options WorkerDeploymentUpdateVersionMetadataOptions) (WorkerDeploymentUpdateVersionMetadataResponse, error)
 	}
 
 	// DeploymentListOptions are the parameters for configuring listing Worker Deployments.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentListOptions]
 	WorkerDeploymentListOptions struct {
 		// PageSize - How many results to fetch from the Server at a time.
+		//
 		// Optional: defaulted to 1000
 		PageSize int
 	}
 
 	// WorkerDeploymentRoutingConfig describes when new or existing Workflow Tasks are
 	// executed with this Worker Deployment.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentRoutingConfig]
@@ -487,6 +526,7 @@ type (
 	}
 
 	// WorkerDeploymentListEntry is a subset of fields from [WorkerDeploymentInfo].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentListEntry]
@@ -502,6 +542,7 @@ type (
 	}
 
 	// WorkerDeploymentListIterator is an iterator for deployments.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentListIterator]
@@ -514,6 +555,7 @@ type (
 	}
 
 	// WorkerDeploymentDeleteOptions provides options for [WorkerDeploymentClient.Delete].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentDeleteOptions]
@@ -522,11 +564,13 @@ type (
 		Name string
 
 		// Identity - The identity of the client who initiated this request.
+		//
 		// Optional: default to the identity of the underlying workflow client.
 		Identity string
 	}
 
 	// WorkerDeploymentDeleteResponse is the response for [WorkerDeploymentClient.Delete].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentDeleteResponse]
@@ -534,11 +578,13 @@ type (
 	}
 
 	// WorkerDeploymentClient is the client that manages Worker Deployments.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentClient]
 	WorkerDeploymentClient interface {
 		// List returns an iterator to enumerate Worker Deployments in the client's namespace.
+		//
 		// NOTE: Experimental
 		List(ctx context.Context, options WorkerDeploymentListOptions) (WorkerDeploymentListIterator, error)
 
@@ -547,17 +593,13 @@ type (
 		// This method does not validate the Worker Deployment Name. If there is no deployment
 		// with that name in this namespace, methods like WorkerDeploymentHandle.Describe()
 		// will return an error.
+		//
 		// NOTE: Experimental
-		//
-		// TODO(antlai-temporal): The following annotation is wrong but I cannot pass `check`
-		// without it. See https://github.com/temporalio/sdk-go/issues/1829. Delete annotations
-		// after doclink tool fixed.
-		//
-		// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentHandle]
 		GetHandle(name string) WorkerDeploymentHandle
 
 		// Delete removes the records of a Worker Deployment. A Deployment can only be
 		// deleted if it has no Version in it.
+		//
 		// NOTE: Experimental
 		Delete(ctx context.Context, options WorkerDeploymentDeleteOptions) (WorkerDeploymentDeleteResponse, error)
 	}

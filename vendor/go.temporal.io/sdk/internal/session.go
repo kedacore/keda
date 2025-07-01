@@ -32,7 +32,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pborman/uuid"
+	"github.com/google/uuid"
 
 	"go.temporal.io/sdk/internal/common/backoff"
 )
@@ -395,7 +395,7 @@ func createSession(ctx Context, creationTaskqueue string, options *SessionOption
 func generateSessionID(ctx Context) (string, error) {
 	var sessionID string
 	err := SideEffect(ctx, func(ctx Context) interface{} {
-		return uuid.New()
+		return uuid.NewString()
 	}).Get(&sessionID)
 	return sessionID, err
 }

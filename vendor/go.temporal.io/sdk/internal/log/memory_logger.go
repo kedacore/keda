@@ -27,12 +27,14 @@ package log
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"go.temporal.io/sdk/log"
 )
 
 // MemoryLoggerWithoutWith is a Logger implementation that stores logs in memory (useful for testing). Use Lines() to get log lines.
 type MemoryLoggerWithoutWith struct {
+	lock          sync.RWMutex
 	lines         *[]string
 	globalKeyvals string
 }
@@ -46,6 +48,8 @@ func NewMemoryLoggerWithoutWith() *MemoryLoggerWithoutWith {
 }
 
 func (l *MemoryLoggerWithoutWith) println(level, msg string, keyvals []interface{}) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
 	// To avoid extra space when globalKeyvals is not specified.
 	if l.globalKeyvals == "" {
 		*l.lines = append(*l.lines, fmt.Sprintln(append([]interface{}{level, msg}, keyvals...)...))
@@ -76,7 +80,11 @@ func (l *MemoryLoggerWithoutWith) Error(msg string, keyvals ...interface{}) {
 
 // Lines returns written log lines.
 func (l *MemoryLoggerWithoutWith) Lines() []string {
-	return *l.lines
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+	ret := make([]string, len(*l.lines))
+	copy(ret, *l.lines)
+	return ret
 }
 
 type MemoryLogger struct {
@@ -92,6 +100,9 @@ func NewMemoryLogger() *MemoryLogger {
 
 // With returns new logger that prepend every log entry with keyvals.
 func (l *MemoryLogger) With(keyvals ...interface{}) log.Logger {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+
 	logger := &MemoryLoggerWithoutWith{
 		lines: l.lines,
 	}

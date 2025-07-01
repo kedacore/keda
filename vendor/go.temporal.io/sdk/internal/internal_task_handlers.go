@@ -68,6 +68,13 @@ const (
 	defaultMaxHeartbeatThrottleInterval     = 60 * time.Second
 )
 
+var (
+	// ErrActivityPaused is returned from an activity heartbeat or the cause of an activity's context to indicate that the activity is paused.
+	//
+	// WARNING: Activity pause is currently experimental
+	ErrActivityPaused = errors.New("activity paused")
+)
+
 type (
 	// workflowExecutionEventHandler process a single event.
 	workflowExecutionEventHandler interface {
@@ -162,7 +169,7 @@ type (
 		client                           *WorkflowClient
 		metricsHandler                   metrics.Handler
 		logger                           log.Logger
-		userContext                      context.Context
+		backgroundContext                context.Context
 		registry                         *registry
 		activityProvider                 activityProvider
 		dataConverter                    converter.DataConverter
@@ -500,6 +507,10 @@ OrderEvents:
 			if event.GetEventType() == enumspb.EVENT_TYPE_WORKFLOW_TASK_COMPLETED {
 				bidStr := event.GetWorkflowTaskCompletedEventAttributes().
 					GetWorkerVersion().GetBuildId()
+				version := event.GetWorkflowTaskCompletedEventAttributes().GetWorkerDeploymentVersion()
+				if splitVersion := strings.SplitN(version, ".", 2); len(splitVersion) == 2 {
+					bidStr = splitVersion[1]
+				}
 				taskEvents.buildID = &bidStr
 			} else if isPreloadMarkerEvent(event) {
 				taskEvents.markers = append(taskEvents.markers, event)
@@ -750,6 +761,7 @@ func (wth *workflowTaskHandlerImpl) createWorkflowContext(task *workflowservice.
 		// Original execution run ID stays the same for the entire chain of workflow resets.
 		// This helps us keep child workflow IDs consistent up until a reset-point is encountered.
 		currentRunID: attributes.GetOriginalExecutionRunId(),
+		Priority:     convertFromPBPriority(attributes.Priority),
 	}
 
 	return newWorkflowExecutionContext(workflowInfo, wth), nil
@@ -2004,7 +2016,7 @@ func newActivityTaskHandlerWithCustomProvider(
 		client:                           client,
 		logger:                           params.Logger,
 		metricsHandler:                   params.MetricsHandler,
-		userContext:                      params.UserContext,
+		backgroundContext:                params.BackgroundContext,
 		registry:                         registry,
 		activityProvider:                 activityProvider,
 		dataConverter:                    params.DataConverter,
@@ -2035,7 +2047,8 @@ type temporalInvoker struct {
 	service        workflowservice.WorkflowServiceClient
 	metricsHandler metrics.Handler
 	taskToken      []byte
-	cancelHandler  func()
+	// cancelHandler is called when the activity is canceled by a heartbeat request.
+	cancelHandler context.CancelCauseFunc
 	// Amount of time to wait between each pending heartbeat send
 	heartbeatThrottleInterval time.Duration
 	hbBatchEndTimer           *time.Timer // Whether we started a batch of operations that need to be reported in the cycle. This gets started on a user call.
@@ -2118,23 +2131,27 @@ func (i *temporalInvoker) internalHeartBeat(ctx context.Context, details *common
 	switch err.(type) {
 	case *CanceledError:
 		// We are asked to cancel. inform the activity about cancellation through context.
-		i.cancelHandler()
+		i.cancelHandler(err)
 		isActivityCanceled = true
-
 	case *serviceerror.NotFound, *serviceerror.NamespaceNotActive, *serviceerror.NamespaceNotFound:
 		// We will pass these through as cancellation for now but something we can change
 		// later when we have setter on cancel handler.
-		i.cancelHandler()
+		i.cancelHandler(err)
 		isActivityCanceled = true
 	case nil:
 		// No error, do nothing.
 	default:
+		if errors.Is(err, ErrActivityPaused) {
+			// We are asked to pause. inform the activity about cancellation through context.
+			i.cancelHandler(err)
+			isActivityCanceled = true
+		}
 		// Transient errors are getting retried for the duration of the heartbeat timeout.
 		// The fact that error has been returned means that activity should now be timed out, hence we should
 		// propagate cancellation to the handler.
-		err, _ := status.FromError(err)
-		if retry.IsStatusCodeRetryable(err) {
-			i.cancelHandler()
+		statusErr, _ := status.FromError(err)
+		if retry.IsStatusCodeRetryable(statusErr) {
+			i.cancelHandler(err)
 			isActivityCanceled = true
 		}
 	}
@@ -2170,7 +2187,7 @@ func newServiceInvoker(
 	identity string,
 	service workflowservice.WorkflowServiceClient,
 	metricsHandler metrics.Handler,
-	cancelHandler func(),
+	cancelHandler context.CancelCauseFunc,
 	heartbeatThrottleInterval time.Duration,
 	workerStopChannel <-chan struct{},
 	namespace string,
@@ -2198,13 +2215,13 @@ func (ath *activityTaskHandlerImpl) Execute(taskQueue string, t *workflowservice
 			tagAttempt, t.Attempt,
 		)
 	})
-
-	rootCtx := ath.userContext
+	// The root context is only cancelled when the worker is finished shutting down.
+	rootCtx := ath.backgroundContext
 	if rootCtx == nil {
 		rootCtx = context.Background()
 	}
-	canCtx, cancel := context.WithCancel(rootCtx)
-	defer cancel()
+	canCtx, cancel := context.WithCancelCause(rootCtx)
+	defer cancel(nil)
 
 	heartbeatThrottleInterval := ath.getHeartbeatThrottleInterval(t.GetHeartbeatTimeout().AsDuration())
 	invoker := newServiceInvoker(
@@ -2268,7 +2285,8 @@ func (ath *activityTaskHandlerImpl) Execute(taskQueue string, t *workflowservice
 
 	output, err := activityImplementation.Execute(ctx, t.Input)
 	// Check if context canceled at a higher level before we cancel it ourselves
-	isActivityCancel := ctx.Err() == context.Canceled
+	// TODO : check if the cause of the context cancellation is from the server
+	isActivityCanceled := ctx.Err() == context.Canceled
 
 	dlCancelFunc()
 	if <-ctx.Done(); ctx.Err() == context.DeadlineExceeded {
@@ -2292,7 +2310,7 @@ func (ath *activityTaskHandlerImpl) Execute(taskQueue string, t *workflowservice
 		)
 	}
 	return convertActivityResultToRespondRequest(ath.identity, t.TaskToken, output, err,
-		ath.dataConverter, ath.failureConverter, ath.namespace, isActivityCancel, ath.versionStamp, ath.deployment, ath.workerDeploymentOptions), nil
+		ath.dataConverter, ath.failureConverter, ath.namespace, isActivityCanceled, ath.versionStamp, ath.deployment, ath.workerDeploymentOptions), nil
 }
 
 func (ath *activityTaskHandlerImpl) getActivity(name string) activity {
@@ -2363,8 +2381,12 @@ func recordActivityHeartbeat(ctx context.Context, service workflowservice.Workfl
 	defer cancel()
 
 	heartbeatResponse, err := service.RecordActivityTaskHeartbeat(grpcCtx, request)
-	if err == nil && heartbeatResponse != nil && heartbeatResponse.GetCancelRequested() {
-		return NewCanceledError()
+	if err == nil && heartbeatResponse != nil {
+		if heartbeatResponse.GetCancelRequested() {
+			return NewCanceledError()
+		} else if heartbeatResponse.GetActivityPaused() {
+			return ErrActivityPaused
+		}
 	}
 	return err
 }

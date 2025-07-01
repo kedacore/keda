@@ -593,6 +593,7 @@ func (wc *workflowEnvironmentImpl) ExecuteChildWorkflow(
 	attributes.WorkflowIdReusePolicy = params.WorkflowIDReusePolicy
 	attributes.ParentClosePolicy = params.ParentClosePolicy
 	attributes.RetryPolicy = params.RetryPolicy
+	attributes.Priority = params.Priority
 	attributes.Header = params.Header
 	attributes.Memo = memo
 	attributes.SearchAttributes = searchAttr
@@ -638,7 +639,13 @@ func (wc *workflowEnvironmentImpl) ExecuteNexusOperation(params executeNexusOper
 		NexusHeader:            params.nexusHeader,
 	}
 
-	command := wc.commandsHelper.scheduleNexusOperation(seq, scheduleTaskAttr)
+	startMetadata, err := buildUserMetadata(params.options.Summary, "", wc.dataConverter)
+	if err != nil {
+		callback(nil, err)
+		return 0
+	}
+
+	command := wc.commandsHelper.scheduleNexusOperation(seq, scheduleTaskAttr, startMetadata)
 	command.setData(&scheduledNexusOperation{
 		startedCallback:   startedHandler,
 		completedCallback: callback,
@@ -758,6 +765,7 @@ func (wc *workflowEnvironmentImpl) ExecuteActivity(parameters ExecuteActivityPar
 	scheduleTaskAttr.RequestEagerExecution = !parameters.DisableEagerExecution
 	scheduleTaskAttr.UseWorkflowBuildId = determineInheritBuildIdFlagForCommand(
 		parameters.VersioningIntent, wc.workflowInfo.TaskQueueName, parameters.TaskQueueName)
+	scheduleTaskAttr.Priority = parameters.Priority
 
 	startMetadata, err := buildUserMetadata(parameters.Summary, "", wc.dataConverter)
 	if err != nil {

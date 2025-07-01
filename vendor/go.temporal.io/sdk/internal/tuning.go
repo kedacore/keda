@@ -78,7 +78,8 @@ type SlotReservationInfo interface {
 	WorkerBuildId() string
 	// WorkerBuildId returns the build ID of the worker that is reserving the slot.
 	WorkerIdentity() string
-	// NumIssuedSlots returns the number of slots that have already been issued by the supplier.
+	// NumIssuedSlots returns the current number of slots that have already been issued by the
+	// supplier. This value may change over the course of the reservation.
 	NumIssuedSlots() int
 	// Logger returns an appropriately tagged logger.
 	Logger() log.Logger
@@ -328,7 +329,7 @@ type slotReserveInfoImpl struct {
 	taskQueue      string
 	workerBuildId  string
 	workerIdentity string
-	issuedSlots    int
+	issuedSlots    *atomic.Int32
 	logger         log.Logger
 	metrics        metrics.Handler
 }
@@ -346,7 +347,7 @@ func (s slotReserveInfoImpl) WorkerIdentity() string {
 }
 
 func (s slotReserveInfoImpl) NumIssuedSlots() int {
-	return s.issuedSlots
+	return int(s.issuedSlots.Load())
 }
 
 func (s slotReserveInfoImpl) Logger() log.Logger {
@@ -442,7 +443,7 @@ func (t *trackingSlotSupplier) ReserveSlot(
 		taskQueue:      data.taskQueue,
 		workerBuildId:  t.workerBuildId,
 		workerIdentity: t.workerIdentity,
-		issuedSlots:    int(t.issuedSlotsAtomic.Load()),
+		issuedSlots:    &t.issuedSlotsAtomic,
 		logger:         t.logger,
 		metrics:        t.metrics,
 	})
@@ -465,7 +466,7 @@ func (t *trackingSlotSupplier) TryReserveSlot(data *slotReservationData) *SlotPe
 		taskQueue:      data.taskQueue,
 		workerBuildId:  t.workerBuildId,
 		workerIdentity: t.workerIdentity,
-		issuedSlots:    int(t.issuedSlotsAtomic.Load()),
+		issuedSlots:    &t.issuedSlotsAtomic,
 		logger:         t.logger,
 		metrics:        t.metrics,
 	})

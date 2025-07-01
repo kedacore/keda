@@ -133,6 +133,9 @@ func (*zlibCodec) Decode(payloads []*commonpb.Payload) ([]*commonpb.Payload, err
 // CodecDataConverter is a DataConverter that wraps an underlying data
 // converter and supports chained encoding of just the payload without regard
 // for serialization to/from actual types.
+//
+// CodecDataConverter provides support for RawValue handling, where it skips the
+// parent data converter and directly encodes/decodes the RawValue payload.
 type CodecDataConverter struct {
 	parent DataConverter
 	codecs []PayloadCodec
@@ -172,9 +175,17 @@ func (e *CodecDataConverter) decode(payloads []*commonpb.Payload) ([]*commonpb.P
 // ToPayload implements DataConverter.ToPayload performing encoding on the
 // result of the parent's ToPayload call.
 func (e *CodecDataConverter) ToPayload(value interface{}) (*commonpb.Payload, error) {
-	payload, err := e.parent.ToPayload(value)
-	if payload == nil || err != nil {
-		return payload, err
+	rawValue, ok := value.(RawValue)
+
+	var payload *commonpb.Payload
+	if ok {
+		payload = rawValue.Payload()
+	} else {
+		var err error
+		payload, err = e.parent.ToPayload(value)
+		if payload == nil || err != nil {
+			return payload, err
+		}
 	}
 
 	encodedPayloads, err := e.encode([]*commonpb.Payload{payload})
@@ -190,10 +201,25 @@ func (e *CodecDataConverter) ToPayload(value interface{}) (*commonpb.Payload, er
 // ToPayloads implements DataConverter.ToPayloads performing encoding on the
 // result of the parent's ToPayloads call.
 func (e *CodecDataConverter) ToPayloads(value ...interface{}) (*commonpb.Payloads, error) {
-	payloads, err := e.parent.ToPayloads(value...)
-	if payloads == nil || err != nil {
-		return payloads, err
+	var payloads *commonpb.Payloads
+	var rawValuePayloads []*commonpb.Payload
+	for _, v := range value {
+		rawValue, ok := v.(RawValue)
+		if ok {
+			rawValuePayloads = append(rawValuePayloads, rawValue.Payload())
+		}
 	}
+
+	if len(rawValuePayloads) > 0 {
+		payloads = &commonpb.Payloads{Payloads: rawValuePayloads}
+	} else {
+		var err error
+		payloads, err = e.parent.ToPayloads(value...)
+		if payloads == nil || err != nil {
+			return payloads, err
+		}
+	}
+
 	encodedPayloads, err := e.encode(payloads.Payloads)
 	return &commonpb.Payloads{Payloads: encodedPayloads}, err
 }
@@ -212,6 +238,12 @@ func (e *CodecDataConverter) FromPayload(payload *commonpb.Payload, valuePtr int
 		return fmt.Errorf("received %d payloads from codec, expected 1", len(decodedPayloads))
 	}
 
+	rawValue, ok := valuePtr.(*RawValue)
+	if ok {
+		*rawValue = NewRawValue(decodedPayloads[0])
+		return nil
+	}
+
 	return e.parent.FromPayload(decodedPayloads[0], valuePtr)
 }
 
@@ -225,6 +257,22 @@ func (e *CodecDataConverter) FromPayloads(payloads *commonpb.Payloads, valuePtrs
 	if err != nil {
 		return err
 	}
+
+	var isRawValue bool
+	for i, payload := range decodedPayloads {
+		if i >= len(valuePtrs) {
+			break
+		}
+		rawValue, ok := valuePtrs[i].(*RawValue)
+		if ok {
+			isRawValue = true
+			*rawValue = NewRawValue(payload)
+		}
+	}
+	if isRawValue {
+		return nil
+	}
+
 	return e.parent.FromPayloads(&commonpb.Payloads{Payloads: decodedPayloads}, valuePtrs...)
 }
 

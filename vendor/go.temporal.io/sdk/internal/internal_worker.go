@@ -28,8 +28,6 @@ package internal
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -44,8 +42,8 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"github.com/nexus-rpc/sdk-go/nexus"
-	"github.com/pborman/uuid"
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 	historypb "go.temporal.io/api/history/v1"
@@ -102,6 +100,7 @@ type (
 		localActivityWorker *baseWorker
 		identity            string
 		stopC               chan struct{}
+		localActivityStopC  chan struct{}
 	}
 
 	// ActivityWorker wraps the code for hosting activity types.
@@ -189,10 +188,10 @@ type (
 		EnableLoggingInReplay bool
 
 		// Context to store user provided key/value pairs
-		UserContext context.Context
+		BackgroundContext context.Context
 
 		// Context cancel function to cancel user context
-		UserContextCancel context.CancelFunc
+		BackgroundContextCancel context.CancelCauseFunc
 
 		StickyScheduleToStartTimeout time.Duration
 
@@ -355,8 +354,15 @@ func newWorkflowTaskWorkerInternal(
 	},
 	)
 
+	// We want a separate stop channel for local activities because when a worker shuts down,
+	// we need to allow pending local activities to finish running for that workflow task.
+	// After all pending local activities are handled, we then close the local activity stop channel.
+	laStopChannel := make(chan struct{})
+	laParams := params
+	laParams.WorkerStopChannel = laStopChannel
+
 	// laTunnel is the glue that hookup 3 parts
-	laTunnel := newLocalActivityTunnel(params.WorkerStopChannel)
+	laTunnel := newLocalActivityTunnel(getReadOnlyChannel(laStopChannel))
 
 	// 1) workflow handler will send local activity task to laTunnel
 	if handlerImpl, ok := taskHandler.(*workflowTaskHandlerImpl); ok {
@@ -364,19 +370,19 @@ func newWorkflowTaskWorkerInternal(
 	}
 
 	// 2) local activity task poller will poll from laTunnel, and result will be pushed to laTunnel
-	localActivityTaskPoller := newLocalActivityPoller(params, laTunnel, interceptors, client)
+	localActivityTaskPoller := newLocalActivityPoller(laParams, laTunnel, interceptors, client)
 	localActivityWorker := newBaseWorker(baseWorkerOptions{
 		pollerCount:      1, // 1 poller (from local channel) is enough for local activity
-		slotSupplier:     params.Tuner.GetLocalActivitySlotSupplier(),
-		maxTaskPerSecond: params.WorkerLocalActivitiesPerSecond,
+		slotSupplier:     laParams.Tuner.GetLocalActivitySlotSupplier(),
+		maxTaskPerSecond: laParams.WorkerLocalActivitiesPerSecond,
 		taskWorker:       localActivityTaskPoller,
 		workerType:       "LocalActivityWorker",
-		identity:         params.Identity,
-		buildId:          params.getBuildID(),
-		logger:           params.Logger,
-		stopTimeout:      params.WorkerStopTimeout,
-		fatalErrCb:       params.WorkerFatalErrorCallback,
-		metricsHandler:   params.MetricsHandler,
+		identity:         laParams.Identity,
+		buildId:          laParams.getBuildID(),
+		logger:           laParams.Logger,
+		stopTimeout:      laParams.WorkerStopTimeout,
+		fatalErrCb:       laParams.WorkerFatalErrorCallback,
+		metricsHandler:   laParams.MetricsHandler,
 		slotReservationData: slotReservationData{
 			taskQueue: params.TaskQueue,
 		},
@@ -394,6 +400,7 @@ func newWorkflowTaskWorkerInternal(
 		localActivityWorker: localActivityWorker,
 		identity:            params.Identity,
 		stopC:               stopC,
+		localActivityStopC:  laStopChannel,
 	}
 }
 
@@ -412,8 +419,9 @@ func (ww *workflowWorker) Start() error {
 func (ww *workflowWorker) Stop() {
 	close(ww.stopC)
 	// TODO: remove the stop methods in favor of the workerStopChannel
-	ww.localActivityWorker.Stop()
 	ww.worker.Stop()
+	close(ww.localActivityStopC)
+	ww.localActivityWorker.Stop()
 }
 
 func newSessionWorker(client *WorkflowClient, params workerExecutionParameters, env *registry, maxConcurrentSessionExecutionSize int) *sessionWorker {
@@ -422,12 +430,12 @@ func newSessionWorker(client *WorkflowClient, params workerExecutionParameters, 
 	}
 	// For now resourceID is hidden from user so we will always create a unique one for each worker.
 	if params.SessionResourceID == "" {
-		params.SessionResourceID = uuid.New()
+		params.SessionResourceID = uuid.NewString()
 	}
 	sessionEnvironment := newSessionEnvironment(params.SessionResourceID, maxConcurrentSessionExecutionSize)
 
 	creationTaskqueue := getCreationTaskqueue(params.TaskQueue)
-	params.UserContext = context.WithValue(params.UserContext, sessionEnvironmentContextKey, sessionEnvironment)
+	params.BackgroundContext = context.WithValue(params.BackgroundContext, sessionEnvironmentContextKey, sessionEnvironment)
 	params.TaskQueue = sessionEnvironment.GetResourceSpecificTaskqueue()
 	activityWorker := newActivityWorker(client, params,
 		&workerOverrides{slotSupplier: params.Tuner.GetSessionActivitySlotSupplier()}, env, nil)
@@ -498,20 +506,20 @@ func newActivityWorker(
 
 	base := newBaseWorker(
 		baseWorkerOptions{
-			pollerCount:        params.MaxConcurrentActivityTaskQueuePollers,
-			pollerRate:         defaultPollerRate,
-			slotSupplier:       slotSupplier,
-			maxTaskPerSecond:   params.WorkerActivitiesPerSecond,
-			taskWorker:         poller,
-			workerType:         "ActivityWorker",
-			identity:           params.Identity,
-			buildId:            params.getBuildID(),
-			logger:             params.Logger,
-			stopTimeout:        params.WorkerStopTimeout,
-			fatalErrCb:         params.WorkerFatalErrorCallback,
-			userContextCancel:  params.UserContextCancel,
-			metricsHandler:     params.MetricsHandler,
-			sessionTokenBucket: sessionTokenBucket,
+			pollerCount:             params.MaxConcurrentActivityTaskQueuePollers,
+			pollerRate:              defaultPollerRate,
+			slotSupplier:            slotSupplier,
+			maxTaskPerSecond:        params.WorkerActivitiesPerSecond,
+			taskWorker:              poller,
+			workerType:              "ActivityWorker",
+			identity:                params.Identity,
+			buildId:                 params.getBuildID(),
+			logger:                  params.Logger,
+			stopTimeout:             params.WorkerStopTimeout,
+			fatalErrCb:              params.WorkerFatalErrorCallback,
+			backgroundContextCancel: params.BackgroundContextCancel,
+			metricsHandler:          params.MetricsHandler,
+			sessionTokenBucket:      sessionTokenBucket,
 			slotReservationData: slotReservationData{
 				taskQueue: params.TaskQueue,
 			},
@@ -1092,7 +1100,7 @@ func (aw *AggregatedWorker) start() error {
 		return err
 	}
 	// Populate the capabilities. This should be the only time it is written too.
-	capabilities, err := aw.client.loadCapabilities(context.Background(), defaultGetSystemInfoTimeout)
+	capabilities, err := aw.client.loadCapabilities(context.Background())
 	if err != nil {
 		return err
 	}
@@ -1206,36 +1214,6 @@ func initBinaryChecksum() error {
 	return initBinaryChecksumLocked()
 }
 
-// callers MUST hold binaryChecksumLock before calling
-func initBinaryChecksumLocked() error {
-	if len(binaryChecksum) > 0 {
-		return nil
-	}
-
-	exec, err := os.Executable()
-	if err != nil {
-		return err
-	}
-
-	f, err := os.Open(exec)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = f.Close() // error is unimportant as it is read-only
-	}()
-
-	h := md5.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return err
-	}
-
-	checksum := h.Sum(nil)
-	binaryChecksum = hex.EncodeToString(checksum[:])
-
-	return nil
-}
-
 func getBinaryChecksum() string {
 	binaryChecksumLock.Lock()
 	defer binaryChecksumLock.Unlock()
@@ -1320,6 +1298,7 @@ type WorkflowReplayerOptions struct {
 	FailureConverter converter.FailureConverter
 
 	// Optional: Sets ContextPropagators that allows users to control the context information passed through a workflow
+	//
 	// default: nil
 	ContextPropagators []ContextPropagator
 
@@ -1336,6 +1315,7 @@ type WorkflowReplayerOptions struct {
 	// In the workflow code you can use workflow.GetLogger(ctx) to write logs. By default, the logger will skip log
 	// entry during replay mode so you won't see duplicate logs. This option will enable the logging in replay mode.
 	// This is only useful for debugging purpose.
+	//
 	// default: false
 	EnableLoggingInReplay bool
 
@@ -1502,7 +1482,7 @@ func (aw *WorkflowReplayer) replayWorkflowHistory(logger log.Logger, service wor
 	}
 	workflowType := attr.WorkflowType
 	execution := &commonpb.WorkflowExecution{
-		RunId:      uuid.NewRandom().String(),
+		RunId:      uuid.NewString(),
 		WorkflowId: "ReplayId",
 	}
 	if originalExecution.ID != "" {
@@ -1688,7 +1668,7 @@ func NewAggregatedWorker(client *WorkflowClient, taskQueue string, options Worke
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	backgroundActivityContext, backgroundActivityContextCancel := context.WithCancel(ctx)
+	backgroundActivityContext, backgroundActivityContextCancel := context.WithCancelCause(ctx)
 
 	// If max-concurrent workflow pollers is 1, the worker will only do
 	// sticky-queue requests and never regular-queue requests. We disallow the
@@ -1770,8 +1750,8 @@ func NewAggregatedWorker(client *WorkflowClient, taskQueue string, options Worke
 		MetricsHandler:                        client.metricsHandler.WithTags(metrics.TaskQueueTags(taskQueue)),
 		Logger:                                client.logger,
 		EnableLoggingInReplay:                 options.EnableLoggingInReplay,
-		UserContext:                           backgroundActivityContext,
-		UserContextCancel:                     backgroundActivityContextCancel,
+		BackgroundContext:                     backgroundActivityContext,
+		BackgroundContextCancel:               backgroundActivityContextCancel,
 		StickyScheduleToStartTimeout:          options.StickyScheduleToStartTimeout,
 		TaskQueueActivitiesPerSecond:          options.TaskQueueActivitiesPerSecond,
 		WorkflowPanicPolicy:                   options.WorkflowPanicPolicy,

@@ -42,10 +42,12 @@ type (
 		Start int
 
 		// End of the range (inclusive)
+		//
 		// Optional: defaulted to Start
 		End int
 
 		// Step to be take between each value
+		//
 		// Optional: defaulted to 1
 		Step int
 	}
@@ -127,6 +129,7 @@ type (
 		Every time.Duration
 
 		// Offset - is a fixed offset added to the intervals period.
+		//
 		// Optional: Defaulted to 0
 		Offset time.Duration
 	}
@@ -208,15 +211,18 @@ type (
 		Skip []ScheduleCalendarSpec
 
 		// StartAt - Any times before `startAt` will be skipped. Together, `startAt` and `endAt` make an inclusive interval.
+		//
 		// Optional: Defaulted to the beginning of time
 		StartAt time.Time
 
 		// EndAt - Any times after `endAt` will be skipped.
+		//
 		// Optional: Defaulted to the end of time
 		EndAt time.Time
 
 		// Jitter - All times will be incremented by a random value from 0 to this amount of jitter, capped
 		// by the time until the next schedule.
+		//
 		// Optional: Defaulted to 0
 		Jitter time.Duration
 
@@ -231,6 +237,7 @@ type (
 		// fires at 1:30am will be triggered twice on the day that has two 1:30s.
 		//
 		// Note: No actions are taken on leap-seconds (e.g. 23:59:60 UTC).
+		//
 		// Optional: Defaulted to UTC
 		TimeZoneName string
 	}
@@ -247,6 +254,7 @@ type (
 		// ID - The business identifier of the workflow execution.
 		// The workflow ID of the started workflow may not match this exactly,
 		// it may have a timestamp appended for uniqueness.
+		//
 		// Optional: defaulted to a uuid.
 		ID string
 
@@ -297,6 +305,7 @@ type (
 		// VersioningOverride - Sets the versioning configuration of a specific workflow execution, ignoring current
 		// server or worker default policies. This enables running canary tests without affecting existing workflows.
 		// To unset the override after the workflow is running, use [Client.UpdateWorkflowExecutionOptions].
+		//
 		// Optional: defaults to no override.
 		//
 		// NOTE: Experimental
@@ -318,6 +327,10 @@ type (
 		//
 		// NOTE: Experimental
 		StaticDetails string
+
+		// Priority - Optional priority settings that control relative ordering of
+		// task processing when tasks are backed up in a queue.
+		Priority Priority
 	}
 
 	// ScheduleOptions configure the parameters for creating a schedule.
@@ -345,6 +358,7 @@ type (
 		// minute, which means that the Schedule attempts to take any Actions that wouldn't be more than one minute late. It
 		// takes those Actions according to the Overlap. An outage that lasts longer than the Catchup
 		// Window could lead to missed Actions.
+		//
 		// Optional: defaulted to 1 minute
 		CatchupWindow time.Duration
 
@@ -353,6 +367,7 @@ type (
 		// With SCHEDULE_OVERLAP_POLICY_ALLOW_ALL, this pause might not apply to the next Action, because the next Action
 		// might have already started previous to the failed one finishing. Pausing applies only to Actions that are scheduled
 		// to start after the failed one finishes.
+		//
 		// Optional: defaulted to false
 		PauseOnFailure bool
 
@@ -362,6 +377,7 @@ type (
 		Note string
 
 		// Paused - Start in paused state.
+		//
 		// Optional: defaulted to false
 		Paused bool
 
@@ -374,6 +390,7 @@ type (
 		RemainingActions int
 
 		// TriggerImmediately - Trigger one Action immediately on creating the schedule.
+		//
 		// Optional: defaulted to false
 		TriggerImmediately bool
 
@@ -578,6 +595,7 @@ type (
 	// Exposed as: [go.temporal.io/sdk/client.SchedulePauseOptions]
 	SchedulePauseOptions struct {
 		// Note - Informative human-readable message with contextual notes.
+		//
 		// Optional: defaulted to 'Paused via Go SDK'
 		Note string
 	}
@@ -587,6 +605,7 @@ type (
 	// Exposed as: [go.temporal.io/sdk/client.ScheduleUnpauseOptions]
 	ScheduleUnpauseOptions struct {
 		// Note - Informative human-readable message with contextual notes.
+		//
 		// Optional: defaulted to 'Unpaused via Go SDK'
 		Note string
 	}
@@ -692,6 +711,7 @@ type (
 	// Exposed as: [go.temporal.io/sdk/client.ScheduleListOptions]
 	ScheduleListOptions struct {
 		// PageSize - How many results to fetch from the Server at a time.
+		//
 		// Optional: defaulted to 1000
 		PageSize int
 
