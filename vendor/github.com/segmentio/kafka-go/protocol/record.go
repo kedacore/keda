@@ -191,7 +191,7 @@ func (rs *RecordSet) ReadFrom(r io.Reader) (int64, error) {
 			// Reconstruct the prefix that we had to read to determine the version
 			// of the record set from the magic byte.
 			//
-			// Technically this may recurisvely stack readers when consuming all
+			// Technically this may recursively stack readers when consuming all
 			// items of the batch, which could hurt performance. In practice this
 			// path should not be taken tho, since the decoder would read from a
 			// *bufio.Reader which implements the bufferedReader interface.
@@ -304,7 +304,7 @@ type RawRecordSet struct {
 // then writes/encodes the RecordSet to a buffer referenced by the RawRecordSet.
 //
 // Note: re-using the RecordSet.ReadFrom implementation makes this suboptimal from a
-// performance standpoint as it require an extra copy of the record bytes. Holding off
+// performance standpoint as it requires an extra copy of the record bytes. Holding off
 // on optimizing, as this code path is only invoked in tests.
 func (rrs *RawRecordSet) ReadFrom(r io.Reader) (int64, error) {
 	rs := &RecordSet{}

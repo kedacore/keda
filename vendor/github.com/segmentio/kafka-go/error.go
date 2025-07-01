@@ -329,6 +329,8 @@ func (e Error) Title() string {
 		return "Unsupported Compression Type"
 	case MemberIDRequired:
 		return "Member ID Required"
+	case FencedInstanceID:
+		return "Fenced Instance ID"
 	case EligibleLeadersNotAvailable:
 		return "Eligible Leader Not Available"
 	case ElectionNotNeeded:
@@ -538,6 +540,8 @@ func (e Error) Description() string {
 		return "the requesting client does not support the compression type of given partition"
 	case MemberIDRequired:
 		return "the group member needs to have a valid member id before actually entering a consumer group"
+	case FencedInstanceID:
+		return "the broker rejected this static consumer since another consumer with the same group.instance.id has registered with a different member.id"
 	case EligibleLeadersNotAvailable:
 		return "eligible topic partition leaders are not available"
 	case ElectionNotNeeded:
@@ -636,6 +640,7 @@ func coalesceErrors(errs ...error) error {
 	return nil
 }
 
+// MessageTooLargeError is returned when a message is too large to fit within the allowed size.
 type MessageTooLargeError struct {
 	Message   Message
 	Remaining []Message
@@ -653,6 +658,10 @@ func messageTooLarge(msgs []Message, i int) MessageTooLargeError {
 
 func (e MessageTooLargeError) Error() string {
 	return MessageSizeTooLarge.Error()
+}
+
+func (e MessageTooLargeError) Unwrap() error {
+	return MessageSizeTooLarge
 }
 
 func makeError(code int16, message string) error {

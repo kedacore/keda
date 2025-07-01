@@ -229,7 +229,7 @@ func (t *offsetFetchResponseV1Response) readFrom(r *bufio.Reader, size int) (rem
 
 	fn := func(r *bufio.Reader, size int) (fnRemain int, fnErr error) {
 		item := offsetFetchResponseV1PartitionResponse{}
-		if fnRemain, fnErr = (&item).readFrom(r, size); err != nil {
+		if fnRemain, fnErr = (&item).readFrom(r, size); fnErr != nil {
 			return
 		}
 		t.PartitionResponses = append(t.PartitionResponses, item)

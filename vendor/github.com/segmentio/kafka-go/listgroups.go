@@ -125,7 +125,7 @@ func (t *listGroupsResponseV1) readFrom(r *bufio.Reader, size int) (remain int, 
 
 	fn := func(withReader *bufio.Reader, withSize int) (fnRemain int, fnErr error) {
 		var item listGroupsResponseGroupV1
-		if fnRemain, fnErr = (&item).readFrom(withReader, withSize); err != nil {
+		if fnRemain, fnErr = (&item).readFrom(withReader, withSize); fnErr != nil {
 			return
 		}
 		t.Groups = append(t.Groups, item)
