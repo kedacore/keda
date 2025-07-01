@@ -26,15 +26,6 @@ const (
 )
 
 var (
-	scaledObjectValidatingTotal = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "webhook",
-			Name:      "scaled_object_validation_total",
-			Help:      "DEPRECATED - will be removed in 2.16 - Use `scaled_object_validations_total` instead.",
-		},
-		[]string{"namespace", "action"},
-	)
 	scaledObjectValidationsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -43,15 +34,6 @@ var (
 			Help:      "Total number of scaled object validations",
 		},
 		[]string{"namespace", "action"},
-	)
-	scaledObjectValidatingErrors = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "webhook",
-			Name:      "scaled_object_validation_errors",
-			Help:      "DEPRECATED - will be removed in 2.16 - Use `scaled_object_validation_errors_total` instead.",
-		},
-		[]string{"namespace", "action", "reason"},
 	)
 	scaledObjectValidationErrorsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -65,22 +47,18 @@ var (
 )
 
 func init() {
-	metrics.Registry.MustRegister(scaledObjectValidatingTotal)
 	metrics.Registry.MustRegister(scaledObjectValidationsTotal)
-	metrics.Registry.MustRegister(scaledObjectValidatingErrors)
 	metrics.Registry.MustRegister(scaledObjectValidationErrorsTotal)
 }
 
 // RecordScaledObjectValidatingTotal counts the number of ScaledObject validations
 func RecordScaledObjectValidatingTotal(namespace, action string) {
 	labels := prometheus.Labels{"namespace": namespace, "action": action}
-	scaledObjectValidatingTotal.With(labels).Inc()
 	scaledObjectValidationsTotal.With(labels).Inc()
 }
 
 // RecordScaledObjectValidatingErrors counts the number of ScaledObject validating errors
 func RecordScaledObjectValidatingErrors(namespace, action, reason string) {
 	labels := prometheus.Labels{"namespace": namespace, "action": action, "reason": reason}
-	scaledObjectValidatingErrors.With(labels).Inc()
 	scaledObjectValidationErrorsTotal.With(labels).Inc()
 }

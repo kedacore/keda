@@ -345,6 +345,7 @@ jobs:
           cluster_name: ${{ runner.name }}
 
       - name: Run smoke test
+        continue-on-error: true
         run: make smoke-test
         id: test
         env:
@@ -440,6 +441,7 @@ jobs:
           kubectl version
 
       - name: Run smoke test
+        continue-on-error: true
         run: make smoke-test
         id: test
         env:

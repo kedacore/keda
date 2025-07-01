@@ -72,6 +72,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Improve Events emitted from ScaledObject controller ([#6802](https://github.com/kedacore/keda/issues/6802))
 - **General**: Internal gRPC connection's certificates are hot reloaded ([#6756](https://github.com/kedacore/keda/pull/6756))
+- **Datadog Scaler**: Fix bug with datadogNamespace config ([#6828](https://github.com/kedacore/keda/pull/6828))
 - **Metrics API**: Support multiple auth methods simultaneously in Metrics API scaler ([#6642](https://github.com/kedacore/keda/issues/6642))
 - **Temporal Scaler**: Support custom tlsServerName ([#6820](https://github.com/kedacore/keda/pull/6820))
 
@@ -79,6 +80,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Fix prefixes on envFrom elements in a deployment spec aren't being interpreted and Environment variables are not prefixed with the prefix ([#6728](https://github.com/kedacore/keda/issues/6728))
 - **General**: Remove klogr dependency and replace with zap ([#5732](https://github.com/kedacore/keda/issues/5732))
+- **General**: Sets hpaName in Status when ScaledObject adopts/finds an existing HPA ([#6336](https://github.com/kedacore/keda/issues/6336))
 - **Temporal Scaler**: Fix Temporal Scaler TLS version ([#6707](https://github.com/kedacore/keda/pull/6707))
 
 ### Deprecations
@@ -91,7 +93,9 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Remove Prometheus webhook prommetrics deprecations ([#6698](https://github.com/kedacore/keda/pull/6698))
+- **CPU Memory scaler**: The 'type' setting is deprecated and removed, use 'metricType' instead ([#6698](https://github.com/kedacore/keda/pull/6698))
+- **IBM MQ scaler**: The 'tls' setting is deprecated and removed, use 'unsafeSsl' instead ([#6698](https://github.com/kedacore/keda/pull/6698))
 
 ### Other
 
