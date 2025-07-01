@@ -10,6 +10,7 @@
 // builds a list of push/pop events and their node type. Subsequent
 // method calls that request a traversal scan this list, rather than walk
 // the AST, and perform type filtering using efficient bit sets.
+// This representation is sometimes called a "balanced parenthesis tree."
 //
 // Experiments suggest the inspector's traversals are about 2.5x faster
 // than ast.Inspect, but it may take around 5 traversals for this
@@ -47,9 +48,10 @@ type Inspector struct {
 	events []event
 }
 
-//go:linkname events
+//go:linkname events golang.org/x/tools/go/ast/inspector.events
 func events(in *Inspector) []event { return in.events }
 
+//go:linkname packEdgeKindAndIndex golang.org/x/tools/go/ast/inspector.packEdgeKindAndIndex
 func packEdgeKindAndIndex(ek edge.Kind, index int) int32 {
 	return int32(uint32(index+1)<<7 | uint32(ek))
 }
@@ -57,7 +59,7 @@ func packEdgeKindAndIndex(ek edge.Kind, index int) int32 {
 // unpackEdgeKindAndIndex unpacks the edge kind and edge index (within
 // an []ast.Node slice) from the parent field of a pop event.
 //
-//go:linkname unpackEdgeKindAndIndex
+//go:linkname unpackEdgeKindAndIndex golang.org/x/tools/go/ast/inspector.unpackEdgeKindAndIndex
 func unpackEdgeKindAndIndex(x int32) (edge.Kind, int) {
 	// The "parent" field of a pop node holds the
 	// edge Kind in the lower 7 bits and the index+1
