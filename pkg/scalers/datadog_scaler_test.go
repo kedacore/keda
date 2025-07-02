@@ -2,7 +2,9 @@ package scalers
 
 import (
 	"context"
+	"fmt"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -107,6 +109,7 @@ var testDatadogClusterAgentMetadata = []datadogAuthMetadataTestData{
 	// Default Datadog service name and port
 	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "type": "global"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "unsafeSsl": "true", "authMode": "bearer"}, false},
 
+	// TODO: Fix this failed test case
 	// both metadata type and trigger type
 	{v2.AverageValueMetricType, map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "type": "global"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "unsafeSsl": "true", "authMode": "bearer"}, true},
 	// missing DatadogMetric name
@@ -119,6 +122,10 @@ var testDatadogClusterAgentMetadata = []datadogAuthMetadataTestData{
 	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "notanint", "type": "global"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "datadogMetricsServicePort": "8080", "unsafeSsl": "true", "authMode": "bearer"}, true},
 	// wrong type
 	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "type": "notatype"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "datadogMetricsServicePort": "8080", "unsafeSsl": "true", "authMode": "bearer"}, true},
+	// Test case with different datadogNamespace and datadogMetricNamespace to ensure the correct namespace is used in URL
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "test-metric", "datadogMetricNamespace": "application-metrics", "targetValue": "10"}, map[string]string{"token": "test-token", "datadogNamespace": "datadog-system", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "datadogMetricsServicePort": "8443", "authMode": "bearer"}, false},
+	// Test case with custom service name and port to verify URL building
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "custom-metric", "datadogMetricNamespace": "prod-metrics", "targetValue": "5"}, map[string]string{"token": "test-token", "datadogNamespace": "monitoring", "datadogMetricsService": "custom-datadog-service", "datadogMetricsServicePort": "9443", "authMode": "bearer"}, false},
 }
 
 var testDatadogAPIMetadata = []datadogAuthMetadataTestData{
@@ -167,27 +174,53 @@ var testDatadogAPIMetadata = []datadogAuthMetadataTestData{
 }
 
 func TestDatadogScalerAPIAuthParams(t *testing.T) {
-	for _, testData := range testDatadogAPIMetadata {
+	for idx, testData := range testDatadogAPIMetadata {
 		_, err := parseDatadogAPIMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
 
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+			t.Errorf("Expected success but got error: %s for test case %d", err, idx)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Errorf("Expected error but got success for test case %d", idx)
 		}
 	}
 }
 
 func TestDatadogScalerClusterAgentAuthParams(t *testing.T) {
-	for _, testData := range testDatadogClusterAgentMetadata {
-		_, err := parseDatadogClusterAgentMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
+	for idx, testData := range testDatadogClusterAgentMetadata {
+		meta, err := parseDatadogClusterAgentMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
 
 		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
+			t.Errorf("Expected success but got error: %s for test case %d", err, idx)
 		}
 		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
+			t.Errorf("Expected error but got success for test case %d", idx)
+		}
+
+		// Additional validation for URL building when we have valid metadata
+		// This validates that datadogNamespace is used correctly in URL building (issue #6769)
+		if !testData.isError && meta != nil {
+			datadogNamespace := testData.authParams["datadogNamespace"]
+			datadogMetricNamespace := testData.metadata["datadogMetricNamespace"]
+
+			if datadogNamespace != "" && datadogMetricNamespace != "" {
+				// Verify that the URL contains the service namespace (datadogNamespace), not the metric namespace
+				if !strings.Contains(meta.DatadogMetricServiceURL, datadogNamespace) {
+					t.Errorf("Test case %d: DatadogMetricServiceURL should contain datadogNamespace '%s', but got %s", idx, datadogNamespace, meta.DatadogMetricServiceURL)
+				}
+				// When namespaces are different, ensure metric namespace is NOT used in the service URL
+				if datadogNamespace != datadogMetricNamespace {
+					datadogMetricsService := testData.authParams["datadogMetricsService"]
+					datadogMetricsServicePort := testData.authParams["datadogMetricsServicePort"]
+
+					incorrectURL := fmt.Sprintf("https://%s.%s:%s/apis/external.metrics.k8s.io/v1beta1",
+						datadogMetricsService, datadogMetricNamespace, datadogMetricsServicePort)
+
+					if meta.DatadogMetricServiceURL == incorrectURL {
+						t.Errorf("Test case %d: Bug detected - DatadogMetricServiceURL incorrectly uses datadogMetricNamespace instead of datadogNamespace. Got %s", idx, meta.DatadogMetricServiceURL)
+					}
+				}
+			}
 		}
 	}
 }
@@ -198,11 +231,12 @@ var datadogMetricIdentifiers = []datadogMetricIdentifier{
 	{&testDatadogClusterAgentMetadata[1], clusterAgentType, 0, "datadogmetric@default:nginx-hits"},
 }
 
+// TODO: Need to check whether we need to rewrite this test case because vType is long deprecated
 func TestDatadogGetMetricSpecForScaling(t *testing.T) {
 	var err error
 	var meta *datadogMetadata
 
-	for _, testData := range datadogMetricIdentifiers {
+	for idx, testData := range datadogMetricIdentifiers {
 		if testData.typeOfScaler == apiType {
 			meta, err = parseDatadogAPIMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
 		} else {
@@ -221,7 +255,7 @@ func TestDatadogGetMetricSpecForScaling(t *testing.T) {
 		metricSpec := mockDatadogScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName)
+			t.Errorf("Wrong External metric source name:%s for test case %d", metricName, idx)
 		}
 	}
 }

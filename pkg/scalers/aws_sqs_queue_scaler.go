@@ -29,7 +29,7 @@ type awsSqsQueueScaler struct {
 type awsSqsQueueMetadata struct {
 	TargetQueueLength           int64  `keda:"name=queueLength, order=triggerMetadata, default=5"`
 	ActivationTargetQueueLength int64  `keda:"name=activationQueueLength, order=triggerMetadata, default=0"`
-	QueueURL                    string `keda:"name=queueURL;queueURLFromEnv, order=triggerMetadata;resolvedEnv"`
+	QueueURL                    string `keda:"name=queueURL, order=triggerMetadata;resolvedEnv"`
 	queueName                   string
 	AwsRegion                   string `keda:"name=awsRegion, order=triggerMetadata;authParams"`
 	AwsEndpoint                 string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`

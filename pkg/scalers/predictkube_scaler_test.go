@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -64,6 +65,7 @@ var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r 
 
 type server struct {
 	pb.UnimplementedMlEngineServiceServer
+	mu       sync.Mutex
 	grpcSrv  *grpc.Server
 	listener net.Listener
 	port     int
@@ -71,10 +73,20 @@ type server struct {
 }
 
 func (s *server) GetPredictMetric(_ context.Context, _ *pb.ReqGetPredictMetric) (res *pb.ResGetPredictMetric, err error) {
+	s.mu.Lock()
 	s.val = int64(rand.Intn(30000-10000) + 10000)
+	predictVal := s.val
+	s.mu.Unlock()
+
 	return &pb.ResGetPredictMetric{
-		ResultMetric: s.val,
+		ResultMetric: predictVal,
 	}, nil
+}
+
+func (s *server) getPort() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.port
 }
 
 func (s *server) start() <-chan error {
@@ -84,32 +96,37 @@ func (s *server) start() <-chan error {
 		defer close(errCh)
 
 		var (
-			err error
+			err  error
+			port int
 		)
 
-		s.port, err = freeport.GetFreePort()
+		port, err = freeport.GetFreePort()
 		if err != nil {
 			log.Fatalf("Could not get free port for init mock grpc server: %s", err)
 		}
 
-		serverURL := fmt.Sprintf("0.0.0.0:%d", s.port)
-		if s.listener == nil {
-			var err error
-			s.listener, err = net.Listen("tcp4", serverURL)
+		s.mu.Lock()
+		s.port = port
+		s.mu.Unlock()
 
-			if err != nil {
-				log.Println("starting grpc server with error")
+		serverURL := fmt.Sprintf("0.0.0.0:%d", port)
 
-				errCh <- err
-				return
-			}
+		var listener net.Listener
+		listener, err = net.Listen("tcp4", serverURL)
+		if err != nil {
+			log.Println("starting grpc server with error")
+			errCh <- err
+			return
 		}
 
-		log.Printf("🚀 starting mock grpc server. On host 0.0.0.0, with port: %d", s.port)
+		s.mu.Lock()
+		s.listener = listener
+		s.mu.Unlock()
 
-		if err := s.grpcSrv.Serve(s.listener); err != nil {
+		log.Printf("🚀 starting mock grpc server. On host 0.0.0.0, with port: %d", port)
+
+		if err := s.grpcSrv.Serve(listener); err != nil {
 			log.Println(err, "serving grpc server with error")
-
 			errCh <- err
 			return
 		}
@@ -120,7 +137,15 @@ func (s *server) start() <-chan error {
 
 func (s *server) stop() error {
 	s.grpcSrv.GracefulStop()
-	return libsSrv.CheckNetErrClosing(s.listener.Close())
+
+	s.mu.Lock()
+	listener := s.listener
+	s.mu.Unlock()
+
+	if listener != nil {
+		return libsSrv.CheckNetErrClosing(listener.Close())
+	}
+	return nil
 }
 
 func runMockGrpcPredictServer() (*server, *grpc.Server) {
@@ -211,13 +236,14 @@ var predictKubeMetricIdentifiers = []predictKubeMetricIdentifier{
 
 func TestPredictKubeGetMetricSpecForScaling(t *testing.T) {
 	mockPredictServer, grpcServer := runMockGrpcPredictServer()
+
 	defer func() {
 		_ = mockPredictServer.stop()
 		grpcServer.GracefulStop()
 	}()
 
 	mlEngineHost = "0.0.0.0"
-	mlEnginePort = mockPredictServer.port
+	mlEnginePort = mockPredictServer.getPort()
 
 	for _, testData := range predictKubeMetricIdentifiers {
 		mockPredictKubeScaler, err := NewPredictKubeScaler(
@@ -251,7 +277,7 @@ func TestPredictKubeGetMetrics(t *testing.T) {
 	}()
 
 	mlEngineHost = "0.0.0.0"
-	mlEnginePort = mockPredictServer.port
+	mlEnginePort = mockPredictServer.getPort()
 
 	for _, testData := range predictKubeMetricIdentifiers {
 		mockPredictKubeScaler, err := NewPredictKubeScaler(
@@ -266,8 +292,13 @@ func TestPredictKubeGetMetrics(t *testing.T) {
 		result, _, err := mockPredictKubeScaler.GetMetricsAndActivity(context.Background(), predictKubeMetricPrefix)
 		assert.NoError(t, err)
 		assert.Equal(t, len(result), 1)
-		assert.Equal(t, result[0].Value, *resource.NewMilliQuantity(mockPredictServer.val*1000, resource.DecimalSI))
 
-		t.Logf("get: %v, want: %v, predictMetric: %d", result[0].Value, *resource.NewQuantity(mockPredictServer.val, resource.DecimalSI), mockPredictServer.val)
+		mockPredictServer.mu.Lock()
+		predictVal := mockPredictServer.val
+		mockPredictServer.mu.Unlock()
+
+		assert.Equal(t, result[0].Value, *resource.NewMilliQuantity(predictVal*1000, resource.DecimalSI))
+
+		t.Logf("get: %v, want: %v, predictMetric: %d", result[0].Value, *resource.NewQuantity(predictVal, resource.DecimalSI), predictVal)
 	}
 }

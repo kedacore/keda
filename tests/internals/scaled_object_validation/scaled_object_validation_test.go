@@ -56,7 +56,7 @@ spec:
     spec:
       containers:
         - name: {{.DeploymentName}}
-          image: nginxinc/nginx-unprivileged
+          image: ghcr.io/nginx/nginx-unprivileged:1.26
 `
 
 	scaledObjectTemplate = `
@@ -88,8 +88,8 @@ spec:
     name: {{.DeploymentName}}
   triggers:
     - type: cpu
+      metricType: Utilization
       metadata:
-        type: Utilization
         value: "50"
 `
 	memoryScaledObjectTemplate = `
@@ -103,8 +103,8 @@ spec:
     name: {{.DeploymentName}}
   triggers:
     - type: memory
+      metricType: Utilization
       metadata:
-        type: Utilization
         value: "50"
 `
 
@@ -335,7 +335,7 @@ spec:
     spec:
       containers:
         - name: {{.DeploymentName}}
-          image: nginxinc/nginx-unprivileged
+          image: ghcr.io/nginx/nginx-unprivileged:1.26
           resources:
             limits:
               cpu: 50m

@@ -136,6 +136,7 @@ type ScalingModifiers struct {
 	// +optional
 	ActivationTarget string `json:"activationTarget,omitempty"`
 	// +optional
+	// +kubebuilder:validation:Enum=AverageValue;Value
 	MetricType autoscalingv2.MetricTargetType `json:"metricType,omitempty"`
 }
 
@@ -295,7 +296,7 @@ func CheckFallbackValid(scaledObject *ScaledObject) error {
 	}
 
 	if scaledObject.IsUsingModifiers() {
-		if scaledObject.Spec.Advanced.ScalingModifiers.MetricType != autoscalingv2.AverageValueMetricType {
+		if scaledObject.Spec.Advanced.ScalingModifiers.MetricType == autoscalingv2.ValueMetricType {
 			return fmt.Errorf("when using ScalingModifiers, ScaledObject.Spec.Advanced.ScalingModifiers.MetricType must be AverageValue to have fallback enabled")
 		}
 	} else {
@@ -304,8 +305,13 @@ func CheckFallbackValid(scaledObject *ScaledObject) error {
 			if trigger.Type == cpuString || trigger.Type == memoryString {
 				continue
 			}
-			// If at least one trigger is of the type `AverageValue`, then having fallback is valid.
-			if trigger.MetricType == autoscalingv2.AverageValueMetricType {
+
+			effectiveMetricType := trigger.MetricType
+			if effectiveMetricType == "" {
+				effectiveMetricType = autoscalingv2.AverageValueMetricType
+			}
+
+			if effectiveMetricType == autoscalingv2.AverageValueMetricType {
 				fallbackValid = true
 				break
 			}

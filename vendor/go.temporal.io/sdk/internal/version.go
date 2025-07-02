@@ -32,7 +32,7 @@ const (
 	// Server validates if SDKVersion fits its supported range and rejects request if it doesn't.
 	//
 	// Exposed as: [go.temporal.io/sdk/temporal.SDKVersion]
-	SDKVersion = "1.31.0"
+	SDKVersion = "1.33.1"
 
 	// SDKName represents the name of the SDK.
 	SDKName = clientNameHeaderValue

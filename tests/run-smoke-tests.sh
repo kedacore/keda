@@ -4,10 +4,11 @@ set -u
 DIR=$(dirname "$0")
 cd $DIR
 
-# use only e2e test which support running on ARM
+export E2E_INSTALL_KAFKA="false"
+
+# use only e2e test which support running on ARM and s390x
 test_files=(
     "scalers/kubernetes_workload/kubernetes_workload_test.go"
-    "scalers/activemq/activemq_test.go"
     "scalers/cron/cron_test.go"
 )
 

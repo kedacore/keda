@@ -43,6 +43,12 @@ type DescribeContributorInsightsInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *DescribeContributorInsightsInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 type DescribeContributorInsightsOutput struct {
 
 	// List of names of the associated contributor insights rules.
@@ -146,6 +152,12 @@ func (c *Client) addOperationDescribeContributorInsightsMiddlewares(stack *middl
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeContributorInsightsValidationMiddleware(stack); err != nil {

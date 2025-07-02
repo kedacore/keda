@@ -414,6 +414,13 @@ func awsRestjson1_serializeOpDocumentCreateScraperInput(v *CreateScraperInput, v
 		}
 	}
 
+	if v.RoleConfiguration != nil {
+		ok := object.Key("roleConfiguration")
+		if err := awsRestjson1_serializeDocumentRoleConfiguration(v.RoleConfiguration, ok); err != nil {
+			return err
+		}
+	}
+
 	if v.ScrapeConfiguration != nil {
 		ok := object.Key("scrapeConfiguration")
 		if err := awsRestjson1_serializeDocumentScrapeConfiguration(v.ScrapeConfiguration, ok); err != nil {
@@ -2233,6 +2240,13 @@ func awsRestjson1_serializeOpDocumentUpdateScraperInput(v *UpdateScraperInput, v
 		}
 	}
 
+	if v.RoleConfiguration != nil {
+		ok := object.Key("roleConfiguration")
+		if err := awsRestjson1_serializeDocumentRoleConfiguration(v.RoleConfiguration, ok); err != nil {
+			return err
+		}
+	}
+
 	if v.ScrapeConfiguration != nil {
 		ok := object.Key("scrapeConfiguration")
 		if err := awsRestjson1_serializeDocumentScrapeConfiguration(v.ScrapeConfiguration, ok); err != nil {
@@ -2393,6 +2407,23 @@ func awsRestjson1_serializeDocumentEksConfiguration(v *types.EksConfiguration, v
 		if err := awsRestjson1_serializeDocumentSubnetIds(v.SubnetIds, ok); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func awsRestjson1_serializeDocumentRoleConfiguration(v *types.RoleConfiguration, value smithyjson.Value) error {
+	object := value.Object()
+	defer object.Close()
+
+	if v.SourceRoleArn != nil {
+		ok := object.Key("sourceRoleArn")
+		ok.String(*v.SourceRoleArn)
+	}
+
+	if v.TargetRoleArn != nil {
+		ok := object.Key("targetRoleArn")
+		ok.String(*v.TargetRoleArn)
 	}
 
 	return nil
