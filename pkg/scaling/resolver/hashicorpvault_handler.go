@@ -124,7 +124,7 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 			vh.vault.Credential = &defaultCred
 		}
 
-		if vh.vault.Credential.ServiceAccountName == "" && len(vh.vault.Credential.ServiceAccount) == 0 {
+		if vh.vault.Credential.ServiceAccountName == "" && vh.vault.Credential.ServiceAccount == "" {
 			return token, errors.New("k8s SA file not in config or serviceAccountName not supplied")
 		}
 
