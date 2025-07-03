@@ -76,7 +76,6 @@ var (
 type pkiRequestTestData struct {
 	name     string
 	raw      string
-	isError  bool
 	secret   kedav1alpha1.VaultSecret
 	expected map[string]interface{}
 }
@@ -129,12 +128,7 @@ func TestGetPkiRequest(t *testing.T) {
 		} else {
 			secret = testData.secret
 		}
-		data, err := vault.getPkiRequest(&secret.PkiData)
-		if testData.isError {
-			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
-			continue
-		}
-		assert.Nilf(t, err, "test %s: expected success but got error - %s", testData.name, err)
+		data := vault.getPkiRequest(&secret.PkiData)
 		assert.Equalf(t, testData.expected, data, "test %s: expected data does not match given secret", testData.name)
 	}
 }
