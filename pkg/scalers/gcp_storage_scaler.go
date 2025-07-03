@@ -17,13 +17,6 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-const (
-	// Default for how many objects per a single scaled processor
-	defaultTargetObjectCount = 100
-	// A limit on iterating bucket objects
-	defaultMaxBucketItemsToScan = 1000
-)
-
 type gcsScaler struct {
 	client     *storage.Client
 	bucket     *storage.BucketHandle
@@ -46,7 +39,6 @@ type gcsMetadata struct {
 }
 
 func (g *gcsMetadata) Validate() error {
-
 	if g.TargetObjectCount <= 0 {
 		return fmt.Errorf("targetObjectCount must be a positive number")
 	}
@@ -56,6 +48,7 @@ func (g *gcsMetadata) Validate() error {
 	if g.MaxBucketItemsToScan <= 0 {
 		return fmt.Errorf("maxBucketItemsToScan must be a positive number")
 	}
+
 	return nil
 }
 
@@ -68,7 +61,7 @@ func NewGcsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	logger := InitializeLogger(config, "gcp_storage_scaler")
 
-	meta, err := parseGcsMetadata(config, logger)
+	meta, err := parseGcsMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing GCP storage metadata: %w", err)
 	}
@@ -108,7 +101,7 @@ func NewGcsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseGcsMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*gcsMetadata, error) {
+func parseGcsMetadata(config *scalersconfig.ScalerConfig) (*gcsMetadata, error) {
 	meta := &gcsMetadata{triggerIndex: config.TriggerIndex}
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing gcs metadata: %w", err)
