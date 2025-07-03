@@ -148,7 +148,7 @@ func (vh *HashicorpVaultHandler) renewToken(logger logr.Logger) {
 
 	renewer, err := vh.client.NewLifetimeWatcher(&vaultapi.RenewerInput{
 		Secret: secret,
-		//Grace:  time.Duration(15 * time.Second),
+		//Grace: time.Duration(15 * time.Second),
 		//Increment: 60,
 	})
 	if err != nil {
@@ -193,7 +193,7 @@ func (vh *HashicorpVaultHandler) Stop() {
 }
 
 // getPkiRequest format the pkiData in a format that the vault sdk understands.
-func (vh *HashicorpVaultHandler) getPkiRequest(pkiData *kedav1alpha1.VaultPkiData) (map[string]interface{}, error) {
+func (vh *HashicorpVaultHandler) getPkiRequest(pkiData *kedav1alpha1.VaultPkiData) map[string]interface{} {
 	data := make(map[string]interface{})
 	if pkiData.CommonName != "" {
 		data["common_name"] = pkiData.CommonName
@@ -217,7 +217,7 @@ func (vh *HashicorpVaultHandler) getPkiRequest(pkiData *kedav1alpha1.VaultPkiDat
 		data["format"] = pkiData.Format
 	}
 
-	return data, nil
+	return data
 }
 
 // getSecretValue extract the secret value from the vault api response. As the vault api returns us a map[string]interface{},
@@ -300,10 +300,7 @@ func (vh *HashicorpVaultHandler) fetchSecret(secretType kedav1alpha1.VaultSecret
 	var err error
 	switch secretType {
 	case kedav1alpha1.VaultSecretTypePki:
-		data, err := vh.getPkiRequest(vaultPkiData)
-		if err != nil {
-			return nil, err
-		}
+		data := vh.getPkiRequest(vaultPkiData)
 		vaultSecret, err = vh.Write(path, data)
 		if err != nil {
 			return nil, err
@@ -320,8 +317,8 @@ func (vh *HashicorpVaultHandler) fetchSecret(secretType kedav1alpha1.VaultSecret
 	return vaultSecret, nil
 }
 
-// ResolveSecrets allows to resolve a slice of secrets by vault. The function returns the list of secrets with the value updated.
-// If multiple secret refers to the same SecretGroup, the secret will be fetched only once.
+// ResolveSecrets allows resolving a slice of secrets by vault. The function returns the list of secrets with the value updated.
+// If multiple secrets refer to the same SecretGroup, the secret will be fetched only once.
 func (vh *HashicorpVaultHandler) ResolveSecrets(secrets []kedav1alpha1.VaultSecret) ([]kedav1alpha1.VaultSecret, error) {
 	// Group secret by path and type, this allows to fetch a path only once. This is useful for dynamic credentials
 	grouped := make(map[SecretGroup][]kedav1alpha1.VaultSecret)
