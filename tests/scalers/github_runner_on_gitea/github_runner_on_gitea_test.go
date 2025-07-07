@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -593,10 +592,9 @@ func TestScaler(t *testing.T) {
 			// 2. Port-forward: use remote port 3000 and get a random free local port.
 			localPort, err := getFreePortForward(ctx, kc, KubeConfig, testGiteaNamespace, deploymentName, 3000)
 			if err != nil {
-				// assert.NoError(t, fmt.Errorf("Error setting up port forwarding: %w", err))
 				log.Printf("Error setting up port forwarding: %v", err)
 				if i == 4 {
-					assert.NoError(t, fmt.Errorf("Error setting up port forwarding: %w", err))
+					assert.NoError(t, fmt.Errorf("error setting up port forwarding: %w", err))
 					return
 				}
 				log.Printf("Retrying port forwarding in 5 seconds...")
@@ -642,7 +640,7 @@ func TestScaler(t *testing.T) {
 		// Passing an empty string as the organization creates the repo in the user's namespace.
 		repo, _, err := client.Repositories.Create(ctx, "", repoRequest)
 		if err != nil {
-			assert.NoError(t, fmt.Errorf("Error creating repository: %w", err))
+			assert.NoError(t, fmt.Errorf("error creating repository: %w", err))
 			return
 		}
 		fmt.Printf("Repository created: %s\n", repo.GetFullName())
