@@ -30,6 +30,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -368,6 +369,20 @@ func WaitForJobCountUntilIteration(t *testing.T, kc *kubernetes.Clientset, names
 	}
 
 	return isTargetAchieved
+}
+
+func WaitForJobCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace string, iterations, intervalSeconds int) (*batchv1.Job, error) {
+	job := &batchv1.Job{}
+	var err error
+	for i := 0; i < iterations; i++ {
+		job, err = kc.BatchV1().Jobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		t.Log("Waiting for job creation")
+		if err == nil {
+			return job, nil
+		}
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+	return job, err
 }
 
 // Waits until deployment count hits target or number of iterations are done.

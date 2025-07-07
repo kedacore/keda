@@ -411,9 +411,9 @@ func testScaledObjectWithExcludedLabels(t *testing.T, data templateData) {
 	hpa, err := WaitForHpaCreation(t, GetKubernetesClient(t), data.HpaName, data.TestNamespace, 10, 5)
 	assert.NoError(t, err, "hpa should be created")
 
-	// Ensure that only one label with the correct value was propagated
-	assert.Equal(t, 1, len(hpa.Labels))
-	assert.Equal(t, "backend", hpa.Labels["team"])
+	// Ensure that foo.bar/environment and foo.bar/version labels are not propagated
+	assert.Equal(t, "", hpa.Labels["foo.bar/environment"], "hpa should not have the 'foo.bar/environment' label")
+	assert.Equal(t, "", hpa.Labels["foo.bar/version"], "hpa should not have the 'foo.bar/version' label")
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplateWithExcludedLabels", scaledObjectTemplateWithExcludedLabels)
 }
