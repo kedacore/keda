@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -36,14 +35,17 @@ type externalPushScaler struct {
 }
 
 type externalScalerMetadata struct {
-	scalerAddress    string
 	originalMetadata map[string]string
 	triggerIndex     int
-	caCert           string
-	tlsClientCert    string
-	tlsClientKey     string
-	enableTLS        bool
-	unsafeSsl        bool
+
+	ScalerAddress string `keda:"name=scalerAddress, order=triggerMetadata"`
+	EnableTLS     bool   `keda:"name=enableTLS, order=triggerMetadata, optional"`
+	UnsafeSsl     bool   `keda:"name=unsafeSsl, order=triggerMetadata, optional"`
+
+	// auth
+	CaCert        string `keda:"name=caCert, order=authParams, optional"`
+	TLSClientCert string `keda:"name=tlsClientCert, order=authParams, optional"`
+	TLSClientKey  string `keda:"name=tlsClientKey, order=authParams, optional"`
 }
 
 type connectionGroup struct {
@@ -107,46 +109,13 @@ func NewExternalPushScaler(config *scalersconfig.ScalerConfig) (PushScaler, erro
 }
 
 func parseExternalScalerMetadata(config *scalersconfig.ScalerConfig) (externalScalerMetadata, error) {
-	meta := externalScalerMetadata{
-		originalMetadata: config.TriggerMetadata,
-	}
-
-	// Check if scalerAddress is present
-	if val, ok := config.TriggerMetadata["scalerAddress"]; ok && val != "" {
-		meta.scalerAddress = val
-	} else {
-		return meta, fmt.Errorf("scaler Address is a required field")
+	meta := externalScalerMetadata{}
+	meta.triggerIndex = config.TriggerIndex
+	if err := config.TypedConfig(&meta); err != nil {
+		return meta, fmt.Errorf("error parsing external scaler metadata: %w", err)
 	}
 
 	meta.originalMetadata = make(map[string]string)
-	if val, ok := config.AuthParams["caCert"]; ok {
-		meta.caCert = val
-	}
-
-	if val, ok := config.AuthParams["tlsClientCert"]; ok {
-		meta.tlsClientCert = val
-	}
-
-	if val, ok := config.AuthParams["tlsClientKey"]; ok {
-		meta.tlsClientKey = val
-	}
-
-	meta.unsafeSsl = false
-	if val, ok := config.TriggerMetadata["unsafeSsl"]; ok && val != "" {
-		boolVal, err := strconv.ParseBool(val)
-		if err != nil {
-			return meta, fmt.Errorf("failed to parse insecureSkipVerify value. Must be either true or false")
-		}
-		meta.unsafeSsl = boolVal
-	}
-	if val, ok := config.TriggerMetadata["enableTLS"]; ok && val != "" {
-		boolVal, err := strconv.ParseBool(val)
-		if err != nil {
-			return meta, fmt.Errorf("failed to parse enableTLS value. Must be either true or false")
-		}
-		meta.enableTLS = boolVal
-	}
-	// Add elements to metadata
 	for key, value := range config.TriggerMetadata {
 		// Check if key is in resolved environment and resolve
 		if strings.HasSuffix(key, "FromEnv") {
@@ -157,7 +126,7 @@ func parseExternalScalerMetadata(config *scalersconfig.ScalerConfig) (externalSc
 			meta.originalMetadata[key] = value
 		}
 	}
-	meta.triggerIndex = config.TriggerIndex
+
 	return meta, nil
 }
 
@@ -252,7 +221,7 @@ func (s *externalScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 func (s *externalPushScaler) Run(ctx context.Context, active chan<- bool) {
 	defer close(active)
 
-	// retry on error from runWithLog() starting by 2 sec backing off * 2 with a max of 2 minute
+	// retry on error from runWithLog() starting by 2 sec backing off * 2 with a max of 2 minutes
 	retryDuration := time.Second * 2
 
 	// It's possible for the connection to get terminated anytime, we need to run this in a retry loop
@@ -327,26 +296,26 @@ func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalSca
 	defer connectionPoolMutex.Unlock()
 
 	buildGRPCConnection := func(metadata externalScalerMetadata) (*grpc.ClientConn, error) {
-		tlsConfig, err := util.NewTLSConfig(metadata.tlsClientCert, metadata.tlsClientKey, metadata.caCert, metadata.unsafeSsl)
+		tlsConfig, err := util.NewTLSConfig(metadata.TLSClientCert, metadata.TLSClientKey, metadata.CaCert, metadata.UnsafeSsl)
 		if err != nil {
 			return nil, err
 		}
 
-		if metadata.enableTLS || len(tlsConfig.Certificates) > 0 || metadata.caCert != "" {
+		if metadata.EnableTLS || len(tlsConfig.Certificates) > 0 || metadata.CaCert != "" {
 			// nosemgrep: go.grpc.ssrf.grpc-tainted-url-host.grpc-tainted-url-host
-			return grpc.NewClient(metadata.scalerAddress,
+			return grpc.NewClient(metadata.ScalerAddress,
 				grpc.WithDefaultServiceConfig(grpcConfig),
 				grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 		}
 
-		return grpc.NewClient(metadata.scalerAddress,
+		return grpc.NewClient(metadata.ScalerAddress,
 			grpc.WithDefaultServiceConfig(grpcConfig),
 			grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	// create a unique key per-metadata. If scaledObjects share the same connection properties
 	// in the metadata, they will share the same grpc.ClientConn
-	key, err := hashstructure.Hash(metadata.scalerAddress, nil)
+	key, err := hashstructure.Hash(metadata.ScalerAddress, nil)
 	if err != nil {
 		return nil, err
 	}
