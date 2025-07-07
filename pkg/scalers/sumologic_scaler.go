@@ -47,6 +47,42 @@ type sumologicMetadata struct {
 	TriggerIndex        int
 }
 
+func (s *sumologicMetadata) Validate() error {
+	switch s.QueryType {
+	case sumologic.Logs:
+		if s.Query == "" {
+			return errors.New("missing required metadata: query")
+		}
+		if len(s.Queries) != 0 {
+			return errors.New("invalid metadata, query.<RowId> not supported for logs queryType")
+		}
+		if s.ResultField == "" {
+			return errors.New("missing required metadata: resultField (required for logs queryType)")
+		}
+	case sumologic.Metrics:
+		if s.Query == "" && len(s.Queries) == 0 {
+			return errors.New("missing metadata: either of query or query.<RowId> must be defined for metrics queryType")
+		}
+		if s.Query != "" && len(s.Queries) != 0 {
+			return errors.New("invalid metadata: only one of query or query.<RowId> must be defined for metrics queryType")
+		}
+		if len(s.Queries) > 0 {
+			if s.ResultQueryRowID == "" {
+				return errors.New("missing required metadata: resultQueryRowID for multi-metrics query")
+			}
+			if _, ok := s.Queries[s.ResultQueryRowID]; !ok {
+				return fmt.Errorf("resultQueryRowID '%s' not found in queries", s.ResultQueryRowID)
+			}
+		}
+
+		if s.Quantization == 0 {
+			return errors.New("missing required metadata: quantization for metrics queryType")
+		}
+	}
+
+	return nil
+}
+
 func NewSumologicScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger := InitializeLogger(config, "sumologic_scaler")
 	meta, err := parseSumoMetadata(config)
@@ -78,52 +114,19 @@ func NewSumologicScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 }
 
 func parseSumoMetadata(config *scalersconfig.ScalerConfig) (*sumologicMetadata, error) {
-	meta := sumologicMetadata{}
-	if err := config.TypedConfig(&meta); err != nil {
-		return nil, fmt.Errorf("error parsing metadata: %w", err)
-	}
-	meta.TriggerIndex = config.TriggerIndex
-
+	meta := &sumologicMetadata{}
 	queries, err := parseMultiMetricsQueries(config.TriggerMetadata)
 	if err != nil {
 		return nil, err
 	}
 	meta.Queries = queries
 
-	if meta.QueryType == sumologic.Logs {
-		if meta.Query == "" {
-			return nil, errors.New("missing required metadata: query")
-		}
-		if len(meta.Queries) != 0 {
-			return nil, errors.New("invalid metadata, query.<RowId> not supported for logs queryType")
-		}
-		if meta.ResultField == "" {
-			return nil, errors.New("missing required metadata: resultField (required for logs queryType)")
-		}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing metadata: %w", err)
 	}
+	meta.TriggerIndex = config.TriggerIndex
 
-	if meta.QueryType == sumologic.Metrics {
-		if meta.Query == "" && len(meta.Queries) == 0 {
-			return nil, errors.New("missing metadata: either of query or query.<RowId> must be defined for metrics queryType")
-		}
-		if meta.Query != "" && len(meta.Queries) != 0 {
-			return nil, errors.New("invalid metadata: only one of query or query.<RowId> must be defined for metrics queryType")
-		}
-		if len(meta.Queries) > 0 {
-			if meta.ResultQueryRowID == "" {
-				return nil, errors.New("missing required metadata: resultQueryRowID for multi-metrics query")
-			}
-			if _, ok := meta.Queries[meta.ResultQueryRowID]; !ok {
-				return nil, fmt.Errorf("resultQueryRowID '%s' not found in queries", meta.ResultQueryRowID)
-			}
-		}
-
-		if meta.Quantization == 0 {
-			return nil, errors.New("missing required metadata: quantization for metrics queryType")
-		}
-	}
-
-	return &meta, nil
+	return meta, nil
 }
 
 func parseMultiMetricsQueries(triggerMetadata map[string]string) (map[string]string, error) {
