@@ -74,7 +74,6 @@ func (s *sumologicMetadata) Validate() error {
 				return fmt.Errorf("resultQueryRowID '%s' not found in queries", s.ResultQueryRowID)
 			}
 		}
-
 		if s.Quantization == 0 {
 			return errors.New("missing required metadata: quantization for metrics queryType")
 		}
