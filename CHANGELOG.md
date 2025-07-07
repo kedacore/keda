@@ -62,6 +62,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
+- **General**: Introduce new SolarWinds Scaler ([#6576](https://github.com/kedacore/keda/pull/6576))
 
 #### Experimental
 
