@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.17.2](#v2172)
 - [v2.17.1](#v2171)
 - [v2.17.0](#v2170)
 - [v2.16.1](#v2161)
@@ -70,7 +71,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **General**: Improve Events emitted from ScaledObject controller ([#6802](https://github.com/kedacore/keda/issues/6802))
-- **General**: Internal gRPC connection's certificates are hot reloaded ([#6756](https://github.com/kedacore/keda/pull/6756))
 - **Datadog Scaler**: Fix bug with datadogNamespace config ([#6828](https://github.com/kedacore/keda/pull/6828))
 - **Metrics API**: Support multiple auth methods simultaneously in Metrics API scaler ([#6642](https://github.com/kedacore/keda/issues/6642))
 - **Temporal Scaler**: Support custom tlsServerName ([#6820](https://github.com/kedacore/keda/pull/6820))
@@ -80,7 +80,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Fix prefixes on envFrom elements in a deployment spec aren't being interpreted and Environment variables are not prefixed with the prefix ([#6728](https://github.com/kedacore/keda/issues/6728))
 - **General**: Remove klogr dependency and replace with zap ([#5732](https://github.com/kedacore/keda/issues/5732))
 - **General**: Sets hpaName in Status when ScaledObject adopts/finds an existing HPA ([#6336](https://github.com/kedacore/keda/issues/6336))
-- **Temporal Scaler**: Fix Temporal Scaler TLS version ([#6707](https://github.com/kedacore/keda/pull/6707))
 
 ### Deprecations
 
@@ -99,6 +98,16 @@ New deprecation(s):
 ### Other
 
 - **General**: Replace deprecated webhook.Validator with webhook.CustomValidator ([#6660](https://github.com/kedacore/keda/issues/6660))
+
+## v2.17.2
+
+### Improvements
+
+- **General**: Internal gRPC connection's certificates are hot reloaded ([#6756](https://github.com/kedacore/keda/pull/6756))
+
+### Fixes
+
+- **Temporal Scaler**: Fix Temporal Scaler TLS version ([#6707](https://github.com/kedacore/keda/pull/6707))
 
 ## v2.17.1
 
