@@ -197,7 +197,7 @@ metadata:
   labels:
     team: backend
     foo.bar/environment: bf5011472247b67cce3ee7b24c9a08c5
-    foo.bar/version: 1
+    foo.bar/version: "1"
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
