@@ -143,7 +143,7 @@ type azurePipelinesMetadata struct {
 	PoolID                               int    `keda:"name=poolID,          order=triggerMetadata, optional"`
 	TargetPipelinesQueueLength           int64  `keda:"name=targetPipelinesQueueLength,          order=triggerMetadata, default=1, optional"`
 	ActivationTargetPipelinesQueueLength int64  `keda:"name=activationTargetPipelinesQueueLength,          order=triggerMetadata, default=0, optional"`
-	JobsToFetch                          int64  `keda:"name=jobsToFetch,          order=triggerMetadata, default=0, optional"`
+	JobsToFetch                          int64  `keda:"name=jobsToFetch,          order=triggerMetadata, default=250, optional"`
 	FetchPendingJobsOnly                 bool   `keda:"name=fetchPendingJobsOnly,          order=triggerMetadata, default=false, optional"`
 	triggerIndex                         int
 	RequireAllDemands                    bool `keda:"name=requireAllDemands,          order=triggerMetadata, default=false, optional"`
