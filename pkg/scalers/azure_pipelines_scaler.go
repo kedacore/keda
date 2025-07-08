@@ -214,6 +214,16 @@ func getAuthMethod(logger logr.Logger, config *scalersconfig.ScalerConfig) (stri
 }
 
 func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config *scalersconfig.ScalerConfig, httpClient *http.Client) (*azurePipelinesMetadata, kedav1alpha1.AuthPodIdentity, error) {
+	if config.TriggerMetadata["jobsToFetch"] != "" && config.TriggerMetadata["fetchPendingJobsOnly"] != "" {
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("cannot specify both jobsToFetch and fetchPendingJobsOnly at the same time")
+	}
+	if config.TriggerMetadata["jobsToFetch"] != "" && config.TriggerMetadata["parent"] != "" {
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("cannot specify both jobsToFetch and parent at the same time")
+	}
+	if config.TriggerMetadata["fetchPendingJobsOnly"] != "" && config.TriggerMetadata["parent"] != "" {
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("cannot specify both fetchPendingJobsOnly and parent at the same time")
+	}
+
 	meta := &azurePipelinesMetadata{}
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure pipeline metadata: %w", err)
@@ -369,16 +379,26 @@ func getAzurePipelineRequest(ctx context.Context, logger logr.Logger, urlString 
 	return b, nil
 }
 
-func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int64, error) {
-	// HotFix Issue (#4387), $top changes the format of the returned JSON
+func (s *azurePipelinesScaler) GetAzurePipelinesQueueURL() (string, error) {
 	var urlString string
 	if s.metadata.Parent != "" {
+		// HotFix Issue (#4387), $top changes the format of the returned JSON
 		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.OrganizationURL, s.metadata.PoolID)
 	} else if s.metadata.FetchPendingJobsOnly {
 		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?completedRequestCount=0", s.metadata.OrganizationURL, s.metadata.PoolID)
 	} else {
 		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?$top=%d", s.metadata.OrganizationURL, s.metadata.PoolID, s.metadata.JobsToFetch)
 	}
+
+	return urlString, nil
+}
+
+func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int64, error) {
+	urlString, err := s.GetAzurePipelinesQueueURL()
+	if err != nil {
+		return -1, err
+	}
+
 	body, err := getAzurePipelineRequest(ctx, s.logger, urlString, s.metadata, s.podIdentity, s.httpClient)
 	if err != nil {
 		return -1, err
