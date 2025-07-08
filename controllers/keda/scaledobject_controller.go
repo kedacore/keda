@@ -193,9 +193,10 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	msg, err := r.reconcileScaledObject(ctx, reqLogger, scaledObject, &conditions)
 	if err != nil {
 		reqLogger.Error(err, msg)
-		conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledObjectCheckFailed", msg)
+		fullErrMsg := fmt.Sprintf("%s: %s", msg, err.Error())
+		conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledObjectCheckFailed", fullErrMsg)
 		conditions.SetActiveCondition(metav1.ConditionUnknown, "UnknownState", "ScaledObject check failed")
-		r.EventEmitter.Emit(scaledObject, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, msg)
+		r.EventEmitter.Emit(scaledObject, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, fullErrMsg)
 	} else {
 		wasReady := conditions.GetReadyCondition()
 		if wasReady.IsFalse() || wasReady.IsUnknown() {
@@ -476,6 +477,14 @@ func (r *ScaledObjectReconciler) ensureHPAForScaledObjectExists(ctx context.Cont
 	if err != nil {
 		logger.Error(err, "failed to check HPA for possible update")
 		return false, err
+	}
+
+	// If the HPA name does not match the one in ScaledObject status, we need to update the status
+	if scaledObject.Status.HpaName != hpaName {
+		err = r.storeHpaNameInStatus(ctx, logger, scaledObject, hpaName)
+		if err != nil {
+			return false, err
+		}
 	}
 
 	return false, nil

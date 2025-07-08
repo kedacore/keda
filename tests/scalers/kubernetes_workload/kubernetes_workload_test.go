@@ -51,7 +51,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: 'nginxinc/nginx-unprivileged'`
+          image: 'ghcr.io/nginx/nginx-unprivileged:1.26'`
 
 	sutDeploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
@@ -72,7 +72,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: 'nginxinc/nginx-unprivileged'`
+        image: 'ghcr.io/nginx/nginx-unprivileged:1.26'`
 
 	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
 kind: ScaledObject

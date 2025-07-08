@@ -107,8 +107,8 @@ spec:
     name: {{.DeploymentName}}
   triggers:
   - type: cpu
+    metricType: Utilization
     metadata:
-      type: Utilization
       value: "50"
 `
 	scaledObjectTwoTriggerTemplate = `
@@ -133,8 +133,8 @@ spec:
   cooldownPeriod: 1
   triggers:
   - type: cpu
+    metricType: Utilization
     metadata:
-      type: Utilization
       value: "50"
   - type: kubernetes-workload
     metadata:
@@ -161,7 +161,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: 'nginxinc/nginx-unprivileged'`
+          image: 'ghcr.io/nginx/nginx-unprivileged:1.26'`
 
 	triggerJob = `apiVersion: batch/v1
 kind: Job
