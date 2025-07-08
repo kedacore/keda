@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	prommodel "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -1144,4 +1145,13 @@ func WatchForEventAfterTrigger(
 	case <-time.After(watchTimeout + 5*time.Second):
 		assert.Fail(t, "Timed out waiting for result from Kubernetes event watch channel")
 	}
+}
+
+func ExtractPrometheusLabelValue(key string, labels []*prommodel.LabelPair) string {
+	for _, label := range labels {
+		if label.Name != nil && *label.Name == key {
+			return *label.Value
+		}
+	}
+	return ""
 }
