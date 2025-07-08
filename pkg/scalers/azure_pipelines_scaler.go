@@ -143,7 +143,8 @@ type azurePipelinesMetadata struct {
 	PoolID                               int    `keda:"name=poolID,          order=triggerMetadata, optional"`
 	TargetPipelinesQueueLength           int64  `keda:"name=targetPipelinesQueueLength,          order=triggerMetadata, default=1, optional"`
 	ActivationTargetPipelinesQueueLength int64  `keda:"name=activationTargetPipelinesQueueLength,          order=triggerMetadata, default=0, optional"`
-	JobsToFetch                          int64  `keda:"name=jobsToFetch,          order=triggerMetadata, default=250, optional"`
+	JobsToFetch                          int64  `keda:"name=jobsToFetch,          order=triggerMetadata, default=0, optional"`
+	FetchPendingJobsOnly                 bool   `keda:"name=fetchPendingJobsOnly,          order=triggerMetadata, default=false, optional"`
 	triggerIndex                         int
 	RequireAllDemands                    bool `keda:"name=requireAllDemands,          order=triggerMetadata, default=false, optional"`
 	RequireAllDemandsAndIgnoreOthers     bool `keda:"name=requireAllDemandsAndIgnoreOthers,          order=triggerMetadata, default=false, optional"`
@@ -373,6 +374,8 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context)
 	var urlString string
 	if s.metadata.Parent != "" {
 		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.OrganizationURL, s.metadata.PoolID)
+	} else if s.metadata.FetchPendingJobsOnly {
+		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?completedRequestCount=0", s.metadata.OrganizationURL, s.metadata.PoolID)
 	} else {
 		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?$top=%d", s.metadata.OrganizationURL, s.metadata.PoolID, s.metadata.JobsToFetch)
 	}
