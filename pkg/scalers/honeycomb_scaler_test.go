@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -38,6 +39,10 @@ var testHoneycombMetadata = []parseHoneycombMetadataTestData{
 	{map[string]string{"apiKey": "abc", "dataset": "ds"}, map[string]string{}, true},
 	// invalid threshold
 	{map[string]string{"apiKey": "abc", "dataset": "ds", "threshold": "notanumber"}, map[string]string{}, true},
+	// minimal with queryRaw (valid JSON)
+	{map[string]string{"apiKey": "abc", "dataset": "ds", "threshold": "10", "queryRaw": `{"breakdowns":["ua"],"calculations":[{"op":"COUNT"}]}`}, map[string]string{}, false},
+	// minimal with queryRaw (invalid JSON)
+	{map[string]string{"apiKey": "abc", "dataset": "ds", "threshold": "10", "queryRaw": `not-json`}, map[string]string{}, true},
 }
 
 var honeycombMetricIdentifiers = []honeycombMetricIdentifier{
@@ -85,5 +90,82 @@ func TestHoneycombGetMetricSpecForScaling(t *testing.T) {
 		if metricName != testData.name {
 			t.Error("Wrong External metric source name:", metricName)
 		}
+	}
+}
+
+// ---- Result Extraction Edge Cases ----
+
+func TestExtractResultField(t *testing.T) {
+	// 1. Use resultField, field present, numeric
+	results := []map[string]interface{}{
+		{"COUNT": float64(42), "foo": "bar"},
+	}
+	val, err := extractResultField(results, "COUNT")
+	if err != nil || val != 42 {
+		t.Errorf("Expected 42, got %v, err: %v", val, err)
+	}
+
+	// 2. Use resultField, field not present
+	_, err = extractResultField(results, "DOES_NOT_EXIST")
+	if err == nil {
+		t.Error("Expected error for missing result field, got nil")
+	}
+
+	// 3. Use resultField, field present but not numeric
+	badResults := []map[string]interface{}{
+		{"COUNT": "not-a-number"},
+	}
+	_, err = extractResultField(badResults, "COUNT")
+	if err == nil {
+		t.Error("Expected error for non-numeric result field, got nil")
+	}
+
+	// 4. resultField empty, fallback to first numeric
+	results = []map[string]interface{}{
+		{"foo": "bar", "COUNT": float64(99)},
+	}
+	val, err = extractResultField(results, "")
+	if err != nil || val != 99 {
+		t.Errorf("Expected 99, got %v, err: %v", val, err)
+	}
+
+	// 5. No numeric value at all
+	results = []map[string]interface{}{
+		{"foo": "bar"},
+	}
+	_, err = extractResultField(results, "")
+	if err == nil {
+		t.Error("Expected error for no numeric value found, got nil")
+	}
+
+	// 6. Empty results
+	results = []map[string]interface{}{}
+	_, err = extractResultField(results, "")
+	if err == nil {
+		t.Error("Expected error for empty results, got nil")
+	}
+}
+
+// ---- QueryRaw flexible parsing test ----
+
+func TestParseHoneycombMetadata_QueryRawOverridesFields(t *testing.T) {
+	rawQuery := `{"filters":[{"column":"foo","op":"=","value":"bar"}]}`
+	metaMap := map[string]string{
+		"apiKey":   "abc",
+		"dataset":  "ds",
+		"threshold": "10",
+		"queryRaw": rawQuery,
+		"breakdowns": "shouldBeIgnored",
+	}
+	cfg := &scalersconfig.ScalerConfig{
+		TriggerMetadata: metaMap,
+	}
+	meta, err := parseHoneycombMetadata(cfg)
+	if err != nil {
+		t.Fatal("Expected success, got error:", err)
+	}
+	b, _ := json.Marshal(meta.Query)
+	if string(b) != rawQuery {
+		t.Errorf("Expected QueryRaw to override other fields. Got: %s", string(b))
 	}
 }

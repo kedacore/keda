@@ -33,34 +33,46 @@ type honeycombScaler struct {
 }
 
 type honeycombMetadata struct {
-	APIKey              string   `keda:"name=apiKey, order=authParams;triggerMetadata"`
-	Dataset             string   `keda:"name=dataset, order=triggerMetadata"`
-	Breakdowns          []string `keda:"name=breakdowns, order=triggerMetadata, optional"`
-	Calculation         string   `keda:"name=calculation, order=triggerMetadata, default=COUNT"`
-	Limit               int      `keda:"name=limit, order=triggerMetadata, default=1"`
-	TimeRange           int      `keda:"name=timeRange, order=triggerMetadata, default=60"`
-	Threshold           float64  `keda:"name=threshold, order=triggerMetadata"`
-	ActivationThreshold float64  `keda:"name=activationThreshold, order=triggerMetadata, default=0"`
-	TriggerIndex        int
+	APIKey              string                 `keda:"name=apiKey, order=authParams;triggerMetadata"`
+	Dataset             string                 `keda:"name=dataset, order=triggerMetadata"`
+	Query               map[string]interface{} `keda:"name=query, order=triggerMetadata, optional"`
+	QueryRaw            string                 `keda:"name=queryRaw, order=triggerMetadata, optional"`
+	ResultField         string                 `keda:"name=resultField, order=triggerMetadata, optional"`
+	ActivationThreshold float64                `keda:"name=activationThreshold, order=triggerMetadata, default=0"`
+	Threshold           float64                `keda:"name=threshold, order=triggerMetadata"`
+	// Legacy/simple config (for backward compatibility)
+	Breakdowns  []string `keda:"name=breakdowns, order=triggerMetadata, optional"`
+	Calculation string   `keda:"name=calculation, order=triggerMetadata, default=COUNT"`
+	Limit       int      `keda:"name=limit, order=triggerMetadata, default=1"`
+	TimeRange   int      `keda:"name=timeRange, order=triggerMetadata, default=60"`
+	TriggerIndex int
 }
 
+// ---- Constructor ----
 func NewHoneycombScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
+
+	logger := InitializeLogger(config, fmt.Sprintf("%s_scaler", honeycombScalerName))
+
 	meta, err := parseHoneycombMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing honeycomb metadata: %w", err)
 	}
+
+	logger.Info("Initializing Honeycomb Scaler", "dataset", meta.Dataset)
+
 	return &honeycombScaler{
 		metricType: metricType,
 		metadata:   meta,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
-		logger:     InitializeLogger(config, "honeycomb_scaler"),
+		logger:     logger,
 	}, nil
 }
 
+// ---- Metadata Parsing ----
 func parseHoneycombMetadata(config *scalersconfig.ScalerConfig) (honeycombMetadata, error) {
 	meta := honeycombMetadata{}
 	err := config.TypedConfig(&meta)
@@ -68,14 +80,33 @@ func parseHoneycombMetadata(config *scalersconfig.ScalerConfig) (honeycombMetada
 		return meta, fmt.Errorf("error parsing honeycomb metadata: %w", err)
 	}
 	meta.TriggerIndex = config.TriggerIndex
-	if meta.Calculation == "" {
-		meta.Calculation = "COUNT"
+
+	// 1. Most flexible: queryRaw as JSON string
+	if raw, ok := config.TriggerMetadata["queryRaw"]; ok && raw != "" {
+		var q map[string]interface{}
+		if err := json.Unmarshal([]byte(raw), &q); err != nil {
+			return meta, fmt.Errorf("error parsing queryRaw: %w", err)
+		}
+		meta.Query = q
+	} else if meta.Query == nil {
+		// 2. Legacy/simple: Build from fields
+		q := make(map[string]interface{})
+		if len(meta.Breakdowns) > 0 {
+			q["breakdowns"] = meta.Breakdowns
+		}
+		if meta.Calculation != "" {
+			q["calculations"] = []map[string]string{{"op": meta.Calculation}}
+		}
+		if meta.Limit > 0 {
+			q["limit"] = meta.Limit
+		}
+		if meta.TimeRange > 0 {
+			q["time_range"] = meta.TimeRange
+		}
+		meta.Query = q
 	}
-	if meta.Limit <= 0 {
-		meta.Limit = 1
-	}
-	if meta.TimeRange <= 0 {
-		meta.TimeRange = 60
+	if meta.Query == nil {
+		return meta, errors.New("no valid query provided in 'queryRaw', 'query', or legacy fields")
 	}
 	return meta, nil
 }
@@ -84,18 +115,11 @@ func (s *honeycombScaler) Close(context.Context) error {
 	return nil
 }
 
-// --------- Main Query Execution Logic ---------
-
+// ---- Core Logic ----
 func (s *honeycombScaler) executeHoneycombQuery(ctx context.Context) (float64, error) {
 	// 1. Create Query
 	createURL := fmt.Sprintf("%s/queries/%s", honeycombBaseURL, s.metadata.Dataset)
-	createBody := map[string]interface{}{
-		"breakdowns":   s.metadata.Breakdowns,
-		"calculations": []map[string]string{{"op": s.metadata.Calculation}},
-		"limit":        s.metadata.Limit,
-		"time_range":   s.metadata.TimeRange,
-	}
-	bodyBytes, _ := json.Marshal(createBody)
+	bodyBytes, _ := json.Marshal(s.metadata.Query)
 	req, _ := http.NewRequestWithContext(ctx, "POST", createURL, bytes.NewBuffer(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Honeycomb-Team", s.metadata.APIKey)
@@ -116,7 +140,7 @@ func (s *honeycombScaler) executeHoneycombQuery(ctx context.Context) (float64, e
 		return 0, errors.New("createQuery: missing query id")
 	}
 
-	// 2. Run Query (async)
+	// 2. Run Query
 	runURL := fmt.Sprintf("%s/query_results/%s", honeycombBaseURL, s.metadata.Dataset)
 	runBody, _ := json.Marshal(map[string]string{"query_id": createRes.ID})
 	runReq, _ := http.NewRequestWithContext(ctx, "POST", runURL, bytes.NewBuffer(runBody))
@@ -137,7 +161,9 @@ func (s *honeycombScaler) executeHoneycombQuery(ctx context.Context) (float64, e
 	var runRes struct {
 		ID       string                   `json:"id"`
 		Complete bool                     `json:"complete"`
-		Results  []map[string]interface{} `json:"results"`
+		Data     struct {
+			Results []map[string]interface{} `json:"results"`
+		} `json:"data"`
 	}
 	if err := json.NewDecoder(runResp.Body).Decode(&runRes); err != nil {
 		return 0, fmt.Errorf("decode runQuery: %w", err)
@@ -145,16 +171,16 @@ func (s *honeycombScaler) executeHoneycombQuery(ctx context.Context) (float64, e
 	if runRes.ID == "" {
 		return 0, errors.New("runQuery: missing queryResult id")
 	}
-	if runRes.Complete && len(runRes.Results) > 0 {
-		return extractFirstNumericResult(runRes.Results[0])
+	if runRes.Complete && len(runRes.Data.Results) > 0 {
+		return extractResultField(runRes.Data.Results, s.metadata.ResultField)
 	}
 
-	// 3. Poll Query Result endpoint (exponential backoff, up to 10s)
+	// 3. Poll for completion (exponential backoff)
 	pollURL := fmt.Sprintf("%s/query_results/%s/%s", honeycombBaseURL, s.metadata.Dataset, runRes.ID)
-	var pollDelay = initialPollDelay
+	pollDelay := initialPollDelay
 	for attempt := 0; attempt < maxPollAttempts; attempt++ {
 		time.Sleep(pollDelay)
-		pollDelay *= 2 // Exponential backoff: 2s, 4s, 8s (but will never go over 10s total)
+		pollDelay *= 2
 		statusReq, _ := http.NewRequestWithContext(ctx, "GET", pollURL, nil)
 		statusReq.Header.Set("X-Honeycomb-Team", s.metadata.APIKey)
 		statusResp, err := s.httpClient.Do(statusReq)
@@ -170,21 +196,43 @@ func (s *honeycombScaler) executeHoneycombQuery(ctx context.Context) (float64, e
 			return 0, fmt.Errorf("honeycomb pollQuery status: %s - %s", statusResp.Status, string(body))
 		}
 		var pollRes struct {
-			Complete bool                     `json:"complete"`
-			Results  []map[string]interface{} `json:"results"`
+			Complete bool `json:"complete"`
+			Data     struct {
+				Results []map[string]interface{} `json:"results"`
+			} `json:"data"`
 		}
 		if err := json.NewDecoder(statusResp.Body).Decode(&pollRes); err != nil {
 			return 0, fmt.Errorf("pollQuery decode error: %w", err)
 		}
-		if pollRes.Complete && len(pollRes.Results) > 0 {
-			return extractFirstNumericResult(pollRes.Results[0])
+		if pollRes.Complete && len(pollRes.Data.Results) > 0 {
+			return extractResultField(pollRes.Data.Results, s.metadata.ResultField)
 		}
 	}
 	return 0, errors.New("honeycomb: timed out waiting for query result")
 }
 
-func extractFirstNumericResult(row map[string]interface{}) (float64, error) {
-	for _, v := range row {
+func extractResultField(results []map[string]interface{}, field string) (float64, error) {
+	if len(results) == 0 {
+		return 0, errors.New("no results from Honeycomb")
+	}
+	row := results[0]
+	if field == "" {
+		// Return first numeric
+		for _, v := range row {
+			switch val := v.(type) {
+			case float64:
+				return val, nil
+			case int:
+				return float64(val), nil
+			case int64:
+				return float64(val), nil
+			}
+		}
+	} else {
+		v, ok := row[field]
+		if !ok {
+			return 0, fmt.Errorf("field '%s' not found in Honeycomb result", field)
+		}
 		switch val := v.(type) {
 		case float64:
 			return val, nil
@@ -194,7 +242,7 @@ func extractFirstNumericResult(row map[string]interface{}) (float64, error) {
 			return float64(val), nil
 		}
 	}
-	return 0, errors.New("no numeric value found in Honeycomb result row")
+	return 0, fmt.Errorf("no numeric value found for field '%s'", field)
 }
 
 // ---- KEDA Scaler interface methods ----
