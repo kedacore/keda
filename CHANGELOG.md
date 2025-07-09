@@ -63,6 +63,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
+- **General**: Introduce new Honeycomb Scaler ([#6896](https://github.com/kedacore/keda/pull/6896/))
 
 #### Experimental
 
@@ -147,7 +148,7 @@ New deprecation(s):
 - **IBMMQ Scaler**: Handling StatusNotFound in IBMMQ scaler ([#6472](https://github.com/kedacore/keda/pull/6472))
 - **MongoDB Scaler**: Support float queryValue for MongoDB scaler ([#6574](https://github.com/kedacore/keda/issues/6574))
 - **Prometheus Scaler**: Add custom HTTP client timeout ([#6607](https://github.com/kedacore/keda/pull/6607))
-- **RabbitMQ Scaler**: Support use of the ‘vhostName’ parameter in the ‘TriggerAuthentication’ resource ([#6369](https://github.com/kedacore/keda/issues/6369))
+- **RabbitMQ Scaler**: Support use of the 'vhostName' parameter in the 'TriggerAuthentication' resource ([#6369](https://github.com/kedacore/keda/issues/6369))
 - **Selenium Grid**: Add trigger param for Node enables managed downloads capability ([#6570](https://github.com/kedacore/keda/pull/6570))
 - **Selenium Grid**: Add trigger param to set custom capabilities for matching specific Nodes ([#6536](https://github.com/kedacore/keda/issues/6536))
 - **Selenium Grid**: Selenium Grid: Trigger param enableManagedDownloads set as true by default ([#6684](https://github.com/kedacore/keda/pull/6684))
