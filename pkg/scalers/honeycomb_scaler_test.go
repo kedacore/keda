@@ -93,12 +93,10 @@ func TestHoneycombGetMetricSpecForScaling(t *testing.T) {
 	}
 }
 
-// ---- Result Extraction Edge Cases ----
-
 func TestExtractResultField(t *testing.T) {
 	// 1. Use resultField, field present, numeric
 	results := []map[string]interface{}{
-		{"COUNT": float64(42), "foo": "bar"},
+		{"data": map[string]interface{}{"COUNT": float64(42), "foo": "bar"}},
 	}
 	val, err := extractResultField(results, "COUNT")
 	if err != nil || val != 42 {
@@ -113,7 +111,7 @@ func TestExtractResultField(t *testing.T) {
 
 	// 3. Use resultField, field present but not numeric
 	badResults := []map[string]interface{}{
-		{"COUNT": "not-a-number"},
+		{"data": map[string]interface{}{"COUNT": "not-a-number"}},
 	}
 	_, err = extractResultField(badResults, "COUNT")
 	if err == nil {
@@ -122,7 +120,7 @@ func TestExtractResultField(t *testing.T) {
 
 	// 4. resultField empty, fallback to first numeric
 	results = []map[string]interface{}{
-		{"foo": "bar", "COUNT": float64(99)},
+		{"data": map[string]interface{}{"foo": "bar", "COUNT": float64(99)}},
 	}
 	val, err = extractResultField(results, "")
 	if err != nil || val != 99 {
@@ -131,7 +129,7 @@ func TestExtractResultField(t *testing.T) {
 
 	// 5. No numeric value at all
 	results = []map[string]interface{}{
-		{"foo": "bar"},
+		{"data": map[string]interface{}{"foo": "bar"}},
 	}
 	_, err = extractResultField(results, "")
 	if err == nil {
@@ -144,17 +142,34 @@ func TestExtractResultField(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for empty results, got nil")
 	}
-}
 
-// ---- QueryRaw flexible parsing test ----
+	// 7. No "data" key
+	results = []map[string]interface{}{
+		{"COUNT": float64(77)},
+	}
+	_, err = extractResultField(results, "COUNT")
+	if err == nil {
+		t.Error("Expected error for missing 'data' key, got nil")
+	}
+
+	// 8. Multiple result rows, should only consider the first
+	results = []map[string]interface{}{
+		{"data": map[string]interface{}{"COUNT": float64(3)}},
+		{"data": map[string]interface{}{"COUNT": float64(999)}},
+	}
+	val, err = extractResultField(results, "COUNT")
+	if err != nil || val != 3 {
+		t.Errorf("Expected 3 from first row, got %v, err: %v", val, err)
+	}
+}
 
 func TestParseHoneycombMetadata_QueryRawOverridesFields(t *testing.T) {
 	rawQuery := `{"filters":[{"column":"foo","op":"=","value":"bar"}]}`
 	metaMap := map[string]string{
-		"apiKey":   "abc",
-		"dataset":  "ds",
+		"apiKey":    "abc",
+		"dataset":   "ds",
 		"threshold": "10",
-		"queryRaw": rawQuery,
+		"queryRaw":  rawQuery,
 		"breakdowns": "shouldBeIgnored",
 	}
 	cfg := &scalersconfig.ScalerConfig{
@@ -164,8 +179,13 @@ func TestParseHoneycombMetadata_QueryRawOverridesFields(t *testing.T) {
 	if err != nil {
 		t.Fatal("Expected success, got error:", err)
 	}
+	// The meta.Query should match what's in rawQuery (not necessarily byte-for-byte, but same structure)
 	b, _ := json.Marshal(meta.Query)
-	if string(b) != rawQuery {
+	var rawQ map[string]interface{}
+	_ = json.Unmarshal([]byte(rawQuery), &rawQ)
+	var parsedQ map[string]interface{}
+	_ = json.Unmarshal(b, &parsedQ)
+	if fmt.Sprintf("%v", rawQ) != fmt.Sprintf("%v", parsedQ) {
 		t.Errorf("Expected QueryRaw to override other fields. Got: %s", string(b))
 	}
 }
