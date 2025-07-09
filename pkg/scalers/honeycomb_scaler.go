@@ -115,8 +115,14 @@ func (s *honeycombScaler) Close(context.Context) error { return nil }
 func (s *honeycombScaler) executeHoneycombQuery(ctx context.Context) (float64, error) {
 	// 1. Create Query
 	createURL := fmt.Sprintf("%s/queries/%s", honeycombBaseURL, s.metadata.Dataset)
-	bodyBytes, _ := json.Marshal(s.metadata.Query)
-	req, _ := http.NewRequestWithContext(ctx, "POST", createURL, bytes.NewBuffer(bodyBytes))
+	bodyBytes, err := json.Marshal(s.metadata.Query)
+	if err != nil {
+		return 0, fmt.Errorf("error marshaling Honeycomb create query body: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", createURL, bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return 0, fmt.Errorf("error creating Honeycomb create query request: %w", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Honeycomb-Team", s.metadata.APIKey)
 	resp, err := s.httpClient.Do(req)
