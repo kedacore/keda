@@ -195,18 +195,22 @@ func (s *honeycombScaler) executeHoneycombQuery(ctx context.Context) (float64, e
 	for attempt := 0; attempt < maxPollAttempts; attempt++ {
 		time.Sleep(pollDelay)
 		pollDelay *= 2
-		statusReq, _ := http.NewRequestWithContext(ctx, "GET", pollURL, nil)
+		statusReq, err := http.NewRequestWithContext(ctx, "GET", pollURL, nil)
+		if err != nil {
+			return 0, fmt.Errorf("error creating Honeycomb poll query request: %w", err)
+		}
 		statusReq.Header.Set("X-Honeycomb-Team", s.metadata.APIKey)
 		statusResp, err := s.httpClient.Do(statusReq)
 		if err != nil {
 			return 0, fmt.Errorf("honeycomb poll query error: %w", err)
 		}
-		defer statusResp.Body.Close()
 		if statusResp.StatusCode == 429 {
+			statusResp.Body.Close()
 			return 0, errors.New("honeycomb: rate limited (429) on poll, back off and try again later")
 		}
 		if statusResp.StatusCode != 200 && statusResp.StatusCode != 201 {
 			body, _ := io.ReadAll(statusResp.Body)
+			statusResp.Body.Close()
 			return 0, fmt.Errorf("honeycomb pollQuery status: %s - %s", statusResp.Status, string(body))
 		}
 		var pollRes struct {
@@ -216,8 +220,10 @@ func (s *honeycombScaler) executeHoneycombQuery(ctx context.Context) (float64, e
 			} `json:"data"`
 		}
 		if err := json.NewDecoder(statusResp.Body).Decode(&pollRes); err != nil {
+			statusResp.Body.Close()
 			return 0, fmt.Errorf("pollQuery decode error: %w", err)
 		}
+		statusResp.Body.Close()
 		if pollRes.Complete && len(pollRes.Data.Results) > 0 {
 			return extractResultField(pollRes.Data.Results, s.metadata.ResultField)
 		}
