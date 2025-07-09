@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 
-	"github.com/go-logr/logr"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
