@@ -221,7 +221,6 @@ func extractResultField(results []map[string]interface{}, field string) (float64
 		return 0, errors.New("missing 'data' field in Honeycomb result")
 	}
 	if field == "" {
-		// Find the first numeric value in dataObj
 		for _, v := range dataObj {
 			switch val := v.(type) {
 			case float64:
