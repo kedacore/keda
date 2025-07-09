@@ -19,11 +19,11 @@ import (
 )
 
 const (
-	honeycombScalerName = "honeycomb"
-	honeycombBaseURL    = "https://api.honeycomb.io/1"
-	maxPollAttempts     = 5
-	initialPollDelay    = 2 * time.Second
-    honeycombQueryResultsLimit = 10000
+	honeycombScalerName        = "honeycomb"
+	honeycombBaseURL           = "https://api.honeycomb.io/1"
+	maxPollAttempts            = 5
+	initialPollDelay           = 2 * time.Second
+	honeycombQueryResultsLimit = 10000
 )
 
 type honeycombScaler struct {
@@ -134,7 +134,9 @@ func (s *honeycombScaler) executeHoneycombQuery(ctx context.Context) (float64, e
 		body, _ := io.ReadAll(resp.Body)
 		return 0, fmt.Errorf("honeycomb createQuery status: %s - %s", resp.Status, string(body))
 	}
-	var createRes struct{ ID string `json:"id"` }
+	var createRes struct {
+		ID string `json:"id"`
+	}
 	if err := json.NewDecoder(resp.Body).Decode(&createRes); err != nil {
 		return 0, fmt.Errorf("decode createQuery: %w", err)
 	}

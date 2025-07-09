@@ -166,10 +166,10 @@ func TestExtractResultField(t *testing.T) {
 func TestParseHoneycombMetadata_QueryRawOverridesFields(t *testing.T) {
 	rawQuery := `{"filters":[{"column":"foo","op":"=","value":"bar"}]}`
 	metaMap := map[string]string{
-		"apiKey":    "abc",
-		"dataset":   "ds",
-		"threshold": "10",
-		"queryRaw":  rawQuery,
+		"apiKey":     "abc",
+		"dataset":    "ds",
+		"threshold":  "10",
+		"queryRaw":   rawQuery,
 		"breakdowns": "shouldBeIgnored",
 	}
 	cfg := &scalersconfig.ScalerConfig{
