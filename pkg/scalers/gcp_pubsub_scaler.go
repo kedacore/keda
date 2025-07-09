@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -36,15 +37,15 @@ type pubsubScaler struct {
 }
 
 type pubsubMetadata struct {
-	SubscriptionSize int      `keda:"name=subscriptionSize, order=triggerMetadata, optional, deprecatedAnnounce=The 'subscriptionSize' setting is DEPRECATED and will be removed in v2.20 - Use 'mode' and 'value' instead"`
-	Mode             string   `keda:"name=mode, order=triggerMetadata, default=SubscriptionSize"`
-	Value            float64  `keda:"name=value, order=triggerMetadata, default=10"`
-	ActivationValue  float64  `keda:"name=activationValue, order=triggerMetadata, optional"`
-	Aggregation      string   `keda:"name=aggregation, order=triggerMetadata, optional"`
-	TimeHorizon      string   `keda:"name=timeHorizon, order=triggerMetadata, optional"`
-	ValueIfNull      *float64 `keda:"name=valueIfNull, order=triggerMetadata, optional"`
-	SubscriptionName string   `keda:"name=subscriptionName, order=triggerMetadata;resolvedEnv, optional"`
-	TopicName        string   `keda:"name=topicName, order=triggerMetadata;resolvedEnv, optional"`
+	SubscriptionSize int           `keda:"name=subscriptionSize, order=triggerMetadata, optional, deprecatedAnnounce=The 'subscriptionSize' setting is DEPRECATED and will be removed in v2.20 - Use 'mode' and 'value' instead"`
+	Mode             string        `keda:"name=mode, order=triggerMetadata, default=SubscriptionSize"`
+	Value            float64       `keda:"name=value, order=triggerMetadata, default=10"`
+	ActivationValue  float64       `keda:"name=activationValue, order=triggerMetadata, default=0"`
+	Aggregation      string        `keda:"name=aggregation, order=triggerMetadata, optional"`
+	TimeHorizon      time.Duration `keda:"name=timeHorizon, order=triggerMetadata, optional"`
+	ValueIfNull      *float64      `keda:"name=valueIfNull, order=triggerMetadata, optional"`
+	SubscriptionName string        `keda:"name=subscriptionName, order=triggerMetadata;resolvedEnv, optional"`
+	TopicName        string        `keda:"name=topicName, order=triggerMetadata;resolvedEnv, optional"`
 	// a resource is one of subscription or topic
 	resourceType     string
 	resourceName     string
