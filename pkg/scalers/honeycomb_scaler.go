@@ -138,14 +138,20 @@ func (s *honeycombScaler) executeHoneycombQuery(ctx context.Context) (float64, e
 
 	// 2. Run Query
 	runURL := fmt.Sprintf("%s/query_results/%s", honeycombBaseURL, s.metadata.Dataset)
-	runBody, _ := json.Marshal(map[string]interface{}{
+	runBody, err := json.Marshal(map[string]interface{}{
 		"query_id":                   createRes.ID,
 		"disable_series":             false,
 		"disable_total_by_aggregate": true,
 		"disable_other_by_aggregate": true,
 		"limit":                      honeycombQueryResultsLimit,
 	})
-	runReq, _ := http.NewRequestWithContext(ctx, "POST", runURL, bytes.NewBuffer(runBody))
+	if err != nil {
+		return 0, fmt.Errorf("error marshaling Honeycomb run query body: %w", err)
+	}
+	runReq, err := http.NewRequestWithContext(ctx, "POST", runURL, bytes.NewBuffer(runBody))
+	if err != nil {
+		return 0, fmt.Errorf("error creating Honeycomb run query request: %w", err)
+	}
 	runReq.Header.Set("Content-Type", "application/json")
 	runReq.Header.Set("X-Honeycomb-Team", s.metadata.APIKey)
 	runResp, err := s.httpClient.Do(runReq)
