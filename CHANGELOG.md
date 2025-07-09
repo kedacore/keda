@@ -60,10 +60,11 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
+- **General**: Introduce new Honeycomb Scaler ([#6896](https://github.com/kedacore/keda/pull/6896/))
+
 ### New
 
 - Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
-- **General**: Introduce new Honeycomb Scaler ([#6896](https://github.com/kedacore/keda/pull/6896/))
 
 #### Experimental
 
