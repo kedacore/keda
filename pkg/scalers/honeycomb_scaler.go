@@ -23,6 +23,7 @@ const (
 	honeycombBaseURL    = "https://api.honeycomb.io/1"
 	maxPollAttempts     = 5
 	initialPollDelay    = 2 * time.Second
+    honeycombQueryResultsLimit = 10000
 )
 
 type honeycombScaler struct {
@@ -142,7 +143,7 @@ func (s *honeycombScaler) executeHoneycombQuery(ctx context.Context) (float64, e
 		"disable_series":             false,
 		"disable_total_by_aggregate": true,
 		"disable_other_by_aggregate": true,
-		"limit":                      10000,
+		"limit":                      honeycombQueryResultsLimit,
 	})
 	runReq, _ := http.NewRequestWithContext(ctx, "POST", runURL, bytes.NewBuffer(runBody))
 	runReq.Header.Set("Content-Type", "application/json")
