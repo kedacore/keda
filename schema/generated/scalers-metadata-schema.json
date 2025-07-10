@@ -1,0 +1,2529 @@
+{
+    "kedaVersion": "main",
+    "schemaVersion": 1,
+    "scalers": [
+        {
+            "type": "activemq",
+            "metadata": [
+                {
+                    "name": "managementEndpoint",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "destinationName",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "brokerName",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "corsHeader",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "restAPITemplate",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "targetQueueSize",
+                    "type": "string",
+                    "default": "10"
+                },
+                {
+                    "name": "activationTargetQueueSize",
+                    "type": "string",
+                    "default": "0"
+                }
+            ]
+        },
+        {
+            "type": "apache-kafka",
+            "metadata": [
+                {
+                    "name": "bootstrapServers",
+                    "type": "string",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "consumerGroup",
+                    "type": "string",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "topic",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "partitionLimitation",
+                    "type": "string",
+                    "optional": true,
+                    "rangeSeparator": "-"
+                },
+                {
+                    "name": "lagThreshold",
+                    "type": "string",
+                    "default": "10"
+                },
+                {
+                    "name": "activationLagThreshold",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "offsetResetPolicy",
+                    "type": "string",
+                    "default": "latest",
+                    "allowedValue": [
+                        "earliest",
+                        "latest"
+                    ]
+                },
+                {
+                    "name": "allowIdleConsumers",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "excludePersistentLag",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "scaleToZeroOnInvalidOffset",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "limitToPartitionsWithLag",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "sasl",
+                    "type": "string",
+                    "default": "none",
+                    "allowedValue": [
+                        "none",
+                        "plaintext",
+                        "scram_sha256",
+                        "scram_sha512",
+                        "gssapi",
+                        "aws_msk_iam"
+                    ],
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "awsRegion",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "tls",
+                    "type": "string",
+                    "default": "disable",
+                    "allowedValue": [
+                        "enable",
+                        "disable"
+                    ],
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "arangodb",
+            "metadata": [
+                {
+                    "name": "endpoints",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "collection",
+                    "type": "string"
+                },
+                {
+                    "name": "query",
+                    "type": "string"
+                },
+                {
+                    "name": "queryValue",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "activationQueryValue",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "connectionLimit",
+                    "type": "string",
+                    "optional": true
+                }
+            ]
+        },
+        {
+            "type": "aws-cloudwatch",
+            "metadata": [
+                {
+                    "name": "namespace",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "metricName",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "dimensionName",
+                    "type": "string",
+                    "optional": true,
+                    "separator": ";"
+                },
+                {
+                    "name": "dimensionValue",
+                    "type": "string",
+                    "optional": true,
+                    "separator": ";"
+                },
+                {
+                    "name": "expression",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "targetMetricValue",
+                    "type": "string"
+                },
+                {
+                    "name": "activationTargetMetricValue",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "minMetricValue",
+                    "type": "string"
+                },
+                {
+                    "name": "ignoreNullValues",
+                    "type": "string",
+                    "default": "true"
+                },
+                {
+                    "name": "metricCollectionTime",
+                    "type": "string",
+                    "default": "300"
+                },
+                {
+                    "name": "metricStat",
+                    "type": "string",
+                    "default": "Average"
+                },
+                {
+                    "name": "metricUnit",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "metricStatPeriod",
+                    "type": "string",
+                    "default": "300"
+                },
+                {
+                    "name": "metricEndTimeOffset",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "awsRegion",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "awsEndpoint",
+                    "type": "string",
+                    "optional": true
+                }
+            ]
+        },
+        {
+            "type": "aws-dynamodb",
+            "metadata": [
+                {
+                    "name": "tableName",
+                    "type": "string"
+                },
+                {
+                    "name": "awsRegion",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "awsEndpoint",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "keyConditionExpression",
+                    "type": "string"
+                },
+                {
+                    "name": "indexName",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "targetValue",
+                    "type": "string",
+                    "optional": true,
+                    "default": "-1"
+                },
+                {
+                    "name": "activationTargetValue",
+                    "type": "string",
+                    "default": "0"
+                }
+            ]
+        },
+        {
+            "type": "aws-dynamodb-streams",
+            "metadata": [
+                {
+                    "name": "shardCount",
+                    "type": "string",
+                    "default": "2"
+                },
+                {
+                    "name": "activationShardCount",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "tableName",
+                    "type": "string"
+                },
+                {
+                    "name": "awsRegion",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "awsEndpoint",
+                    "type": "string",
+                    "optional": true
+                }
+            ]
+        },
+        {
+            "type": "aws-kinesis-stream",
+            "metadata": [
+                {
+                    "name": "shardCount",
+                    "type": "string",
+                    "default": "2"
+                },
+                {
+                    "name": "activationShardCount",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "streamName",
+                    "type": "string"
+                },
+                {
+                    "name": "awsRegion",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "awsEndpoint",
+                    "type": "string",
+                    "optional": true
+                }
+            ]
+        },
+        {
+            "type": "aws-sqs-queue",
+            "metadata": [
+                {
+                    "name": "queueLength",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "activationQueueLength",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "queueURL",
+                    "type": "string",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "awsRegion",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "awsEndpoint",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "scaleOnInFlight",
+                    "type": "string",
+                    "default": "true"
+                },
+                {
+                    "name": "scaleOnDelayed",
+                    "type": "string",
+                    "default": "false"
+                }
+            ]
+        },
+        {
+            "type": "azure-monitor",
+            "metadata": [
+                {
+                    "name": "targetValue",
+                    "type": "string"
+                },
+                {
+                    "name": "activationTargetValue",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "resourceURI",
+                    "type": "string"
+                },
+                {
+                    "name": "tenantId",
+                    "type": "string"
+                },
+                {
+                    "name": "subscriptionId",
+                    "type": "string"
+                },
+                {
+                    "name": "resourceGroupName",
+                    "type": "string"
+                },
+                {
+                    "name": "metricName",
+                    "type": "string"
+                },
+                {
+                    "name": "metricNamespace",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "metricFilter",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "metricAggregationInterval",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "metricAggregationType",
+                    "type": "string"
+                },
+                {
+                    "name": "activeDirectoryClientId",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "activeDirectoryClientPassword",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cloud",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "azureResourceManagerEndpoint",
+                    "type": "string",
+                    "optional": true
+                }
+            ]
+        },
+        {
+            "type": "azure-pipelines",
+            "metadata": [
+                {
+                    "name": "organizationURL",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "parent",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "demands",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "poolName",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "poolID",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "targetPipelinesQueueLength",
+                    "type": "string",
+                    "optional": true,
+                    "default": "1"
+                },
+                {
+                    "name": "activationTargetPipelinesQueueLength",
+                    "type": "string",
+                    "optional": true,
+                    "default": "0"
+                },
+                {
+                    "name": "jobsToFetch",
+                    "type": "string",
+                    "optional": true,
+                    "default": "250"
+                },
+                {
+                    "name": "requireAllDemands",
+                    "type": "string",
+                    "optional": true,
+                    "default": "false"
+                },
+                {
+                    "name": "requireAllDemandsAndIgnoreOthers",
+                    "type": "string",
+                    "optional": true,
+                    "default": "false"
+                }
+            ]
+        },
+        {
+            "type": "azure-servicebus",
+            "metadata": [
+                {
+                    "name": "messageCount",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "activationMessageCount",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "queueName",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "topicName",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "subscriptionName",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "connection",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "namespace",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "useRegex",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "operation",
+                    "type": "string",
+                    "default": "sum",
+                    "allowedValue": [
+                        "sum",
+                        "max",
+                        "avg"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "etcd",
+            "metadata": [
+                {
+                    "name": "endpoints",
+                    "type": "string"
+                },
+                {
+                    "name": "watchKey",
+                    "type": "string"
+                },
+                {
+                    "name": "value",
+                    "type": "string"
+                },
+                {
+                    "name": "activationValue",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "watchProgressNotifyInterval",
+                    "type": "string",
+                    "default": "600"
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "tls",
+                    "type": "string",
+                    "default": "disable",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "external-push",
+            "metadata": [
+                {
+                    "name": "scalerAddress",
+                    "type": "string"
+                },
+                {
+                    "name": "enableTLS",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "caCert",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "tlsClientCert",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "tlsClientKey",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "external",
+            "metadata": [
+                {
+                    "name": "scalerAddress",
+                    "type": "string"
+                },
+                {
+                    "name": "enableTLS",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "caCert",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "tlsClientCert",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "tlsClientKey",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "gcp-cloudtasks",
+            "metadata": [
+                {
+                    "name": "value",
+                    "type": "string",
+                    "optional": true,
+                    "default": "100"
+                },
+                {
+                    "name": "activationValue",
+                    "type": "string",
+                    "optional": true,
+                    "default": "0"
+                },
+                {
+                    "name": "filterDuration",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "queueName",
+                    "type": "string"
+                },
+                {
+                    "name": "projectID",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "type": "ibmmq",
+            "metadata": [
+                {
+                    "name": "host",
+                    "type": "string"
+                },
+                {
+                    "name": "queueName",
+                    "type": "string"
+                },
+                {
+                    "name": "queueNames",
+                    "type": "string"
+                },
+                {
+                    "name": "queueDepth",
+                    "type": "string",
+                    "default": "20"
+                },
+                {
+                    "name": "activationQueueDepth",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "operation",
+                    "type": "string",
+                    "default": "max",
+                    "allowedValue": [
+                        "max",
+                        "avg",
+                        "sum"
+                    ]
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "tls",
+                    "type": "string",
+                    "default": "false",
+                    "deprecated": "The 'tls' setting is DEPRECATED and is removed in v2.18 - Use 'unsafeSsl' instead"
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "influxdb",
+            "metadata": [
+                {
+                    "name": "authToken",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "organizationName",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "query",
+                    "type": "string"
+                },
+                {
+                    "name": "serverURL",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "thresholdValue",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "activationThresholdValue",
+                    "type": "string",
+                    "optional": true
+                }
+            ]
+        },
+        {
+            "type": "kubernetes-workload",
+            "metadata": [
+                {
+                    "name": "podSelector",
+                    "type": "string"
+                },
+                {
+                    "name": "value",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "activationValue",
+                    "type": "string",
+                    "default": "0"
+                }
+            ]
+        },
+        {
+            "type": "liiklus",
+            "metadata": [
+                {
+                    "name": "lagThreshold",
+                    "type": "string",
+                    "default": "10"
+                },
+                {
+                    "name": "activationLagThreshold",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "address",
+                    "type": "string"
+                },
+                {
+                    "name": "topic",
+                    "type": "string"
+                },
+                {
+                    "name": "group",
+                    "type": "string"
+                },
+                {
+                    "name": "groupVersion",
+                    "type": "string",
+                    "default": "0"
+                }
+            ]
+        },
+        {
+            "type": "nats-jetstream",
+            "metadata": [
+                {
+                    "name": "account",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "accountID",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "stream",
+                    "type": "string"
+                },
+                {
+                    "name": "consumer",
+                    "type": "string"
+                },
+                {
+                    "name": "lagThreshold",
+                    "type": "string",
+                    "default": "10"
+                },
+                {
+                    "name": "activationLagThreshold",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "useHttps",
+                    "type": "string",
+                    "optional": true,
+                    "default": "false"
+                },
+                {
+                    "name": "natsServerMonitoringEndpoint",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "nsq",
+            "metadata": [
+                {
+                    "name": "nsqLookupdHTTPAddresses",
+                    "type": "string",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "topic",
+                    "type": "string",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "channel",
+                    "type": "string",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "depthThreshold",
+                    "type": "string",
+                    "default": "10",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "activationDepthThreshold",
+                    "type": "string",
+                    "default": "0",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "useHttps",
+                    "type": "string",
+                    "default": "false",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false",
+                    "envVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "postgresql",
+            "metadata": [
+                {
+                    "name": "targetQueryValue",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "activationTargetQueryValue",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "connection",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "query",
+                    "type": "string"
+                },
+                {
+                    "name": "host",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "port",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "userName",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "dbName",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sslmode",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "predictkube",
+            "metadata": [
+                {
+                    "name": "prometheusAddress",
+                    "type": "string"
+                },
+                {
+                    "name": "query",
+                    "type": "string"
+                },
+                {
+                    "name": "predictHorizon",
+                    "type": "string"
+                },
+                {
+                    "name": "queryStep",
+                    "type": "string"
+                },
+                {
+                    "name": "historyTimeWindow",
+                    "type": "string"
+                },
+                {
+                    "name": "apiKey",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "threshold",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "activationThreshold",
+                    "type": "string",
+                    "optional": true
+                }
+            ]
+        },
+        {
+            "type": "prometheus",
+            "metadata": [
+                {
+                    "name": "serverAddress",
+                    "type": "string"
+                },
+                {
+                    "name": "query",
+                    "type": "string"
+                },
+                {
+                    "name": "queryParameters",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "threshold",
+                    "type": "string"
+                },
+                {
+                    "name": "activationThreshold",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "namespace",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "customHeaders",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "ignoreNullValues",
+                    "type": "string",
+                    "default": "true"
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "awsRegion",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "timeout",
+                    "type": "string",
+                    "optional": true
+                }
+            ]
+        },
+        {
+            "type": "rabbitmq",
+            "metadata": [
+                {
+                    "name": "queueName",
+                    "type": "string"
+                },
+                {
+                    "name": "mode",
+                    "type": "string",
+                    "optional": true,
+                    "default": "Unknown"
+                },
+                {
+                    "name": "queueLength",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "value",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "activationValue",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "host",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "protocol",
+                    "type": "string",
+                    "default": "auto",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "vhostName",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "useRegex",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "excludeUnacknowledged",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "pageSize",
+                    "type": "string",
+                    "default": "100"
+                },
+                {
+                    "name": "operation",
+                    "type": "string",
+                    "default": "sum"
+                },
+                {
+                    "name": "timeout",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "tls",
+                    "type": "string",
+                    "default": "disable",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "workloadIdentityResource",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "redis",
+            "metadata": [
+                {
+                    "name": "listLength",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "activationListLength",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "listName",
+                    "type": "string"
+                },
+                {
+                    "name": "databaseIndex",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "enableTLS",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "tls",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "address",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "addresses",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelUsername",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelPassword",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelMaster",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "host",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "hosts",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "port",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ports",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "Cert",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "redis-cluster",
+            "metadata": [
+                {
+                    "name": "listLength",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "activationListLength",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "listName",
+                    "type": "string"
+                },
+                {
+                    "name": "databaseIndex",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "enableTLS",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "tls",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "address",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "addresses",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelUsername",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelPassword",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelMaster",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "host",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "hosts",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "port",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ports",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "Cert",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "redis-sentinel",
+            "metadata": [
+                {
+                    "name": "listLength",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "activationListLength",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "listName",
+                    "type": "string"
+                },
+                {
+                    "name": "databaseIndex",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "enableTLS",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "tls",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "address",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "addresses",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelUsername",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelPassword",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelMaster",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "host",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "hosts",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "port",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ports",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "Cert",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "redis-cluster-streams",
+            "metadata": [
+                {
+                    "name": "pendingEntriesCount",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "streamLength",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "lagCount",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "stream",
+                    "type": "string"
+                },
+                {
+                    "name": "consumerGroup",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "databaseIndex",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "address",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "addresses",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelUsername",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelPassword",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelMaster",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "host",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "hosts",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "port",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ports",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "Cert",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "activationLagCount",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "enableTLS",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "tls",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "redis-sentinel-streams",
+            "metadata": [
+                {
+                    "name": "pendingEntriesCount",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "streamLength",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "lagCount",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "stream",
+                    "type": "string"
+                },
+                {
+                    "name": "consumerGroup",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "databaseIndex",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "address",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "addresses",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelUsername",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelPassword",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelMaster",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "host",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "hosts",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "port",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ports",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "Cert",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "activationLagCount",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "enableTLS",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "tls",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "redis-streams",
+            "metadata": [
+                {
+                    "name": "pendingEntriesCount",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "streamLength",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "lagCount",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "stream",
+                    "type": "string"
+                },
+                {
+                    "name": "consumerGroup",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "databaseIndex",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "address",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "addresses",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelUsername",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelPassword",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "sentinelMaster",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "host",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "hosts",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "port",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ports",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "Cert",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "activationLagCount",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "enableTLS",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "tls",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "selenium-grid",
+            "metadata": [
+                {
+                    "name": "url",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "authType",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "accessToken",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "browserName",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "sessionBrowserName",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "browserVersion",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "platformName",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "activationThreshold",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "nodeMaxSessions",
+                    "type": "string",
+                    "default": "1"
+                },
+                {
+                    "name": "enableManagedDownloads",
+                    "type": "string",
+                    "default": "true"
+                },
+                {
+                    "name": "capabilities",
+                    "type": "string",
+                    "optional": true
+                }
+            ]
+        },
+        {
+            "type": "solace-event-queue",
+            "metadata": [
+                {
+                    "name": "solaceSempBaseURL",
+                    "type": "string"
+                },
+                {
+                    "name": "messageVpn",
+                    "type": "string"
+                },
+                {
+                    "name": "queueName",
+                    "type": "string"
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "messageCountTarget",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "messageSpoolUsageTarget",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "messageReceiveRateTarget",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "activationMessageCountTarget",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "activationMessageSpoolUsageTarget",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "activationMessageReceiveRateTarget",
+                    "type": "string",
+                    "default": "0"
+                }
+            ]
+        },
+        {
+            "type": "solr",
+            "metadata": [
+                {
+                    "name": "host",
+                    "type": "string"
+                },
+                {
+                    "name": "collection",
+                    "type": "string"
+                },
+                {
+                    "name": "targetQueryValue",
+                    "type": "string"
+                },
+                {
+                    "name": "activationTargetQueryValue",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "query",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "splunk",
+            "metadata": [
+                {
+                    "name": "apiToken",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "host",
+                    "type": "string"
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "targetValue",
+                    "type": "string"
+                },
+                {
+                    "name": "activationValue",
+                    "type": "string"
+                },
+                {
+                    "name": "savedSearchName",
+                    "type": "string"
+                },
+                {
+                    "name": "valueField",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "type": "temporal",
+            "metadata": [
+                {
+                    "name": "endpoint",
+                    "type": "string",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "namespace",
+                    "type": "string",
+                    "default": "default",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "activationTargetQueueSize",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "targetQueueSize",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "taskQueue",
+                    "type": "string",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "queueTypes",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "buildId",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "selectAllActive",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "selectUnversioned",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "apiKey",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "minConnectTimeout",
+                    "type": "string",
+                    "default": "5"
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "tlsServerName",
+                    "type": "string",
+                    "optional": true
+                }
+            ]
+        }
+    ]
+}
