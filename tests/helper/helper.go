@@ -371,18 +371,25 @@ func WaitForJobCountUntilIteration(t *testing.T, kc *kubernetes.Clientset, names
 	return isTargetAchieved
 }
 
-func WaitForJobCreation(t *testing.T, kc *kubernetes.Clientset, name, namespace string, iterations, intervalSeconds int) (*batchv1.Job, error) {
-	job := &batchv1.Job{}
+func WaitForJobCreation(t *testing.T, kc *kubernetes.Clientset, scaledJobName, namespace string, iterations, intervalSeconds int) (*batchv1.Job, error) {
+	jobList := &batchv1.JobList{}
 	var err error
+
 	for i := 0; i < iterations; i++ {
-		job, err = kc.BatchV1().Jobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		jobList, err = kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("scaledjob.keda.sh/name=%s", scaledJobName),
+		})
+
 		t.Log("Waiting for job creation")
-		if err == nil {
-			return job, nil
+
+		if len(jobList.Items) > 0 {
+			return &jobList.Items[0], nil
 		}
+
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
 	}
-	return job, err
+
+	return nil, err
 }
 
 // Waits until deployment count hits target or number of iterations are done.

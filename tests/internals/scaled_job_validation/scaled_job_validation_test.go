@@ -144,6 +144,7 @@ func testScaledJobWithExcludedLabels(t *testing.T, data templateData) {
 
 	job, err := WaitForJobCreation(t, GetKubernetesClient(t), data.ExcludedLabelsSjName, data.TestNamespace, 10, 5)
 	assert.NoError(t, err, "job should be created")
+	assert.NotNil(t, job, "job should be created")
 
 	// Ensure that foo.bar/environment and foo.bar/version labels are not propagated
 	assert.Equal(t, "", job.Labels["foo.bar/environment"], "job should not have the 'foo.bar/environment' label")
