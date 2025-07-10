@@ -4,9 +4,14 @@
 package splunk_observability_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"log"
+	"math/rand/v2"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -33,7 +38,7 @@ var (
 	authName               = fmt.Sprintf("%s-auth", testName)
 	accessToken            = os.Getenv("SPLUNK_OBSERVABILITY_ACCESS_TOKEN")
 	realm                  = os.Getenv("SPLUNK_OBSERVABILITY_REALM")
-	signalflowQuery        = os.Getenv("SPLUNK_OBSERVABILITY_SIGNALFLOW_GUERY")
+	signalflowQuery        = os.Getenv("SPLUNK_OBSERVABILITY_SIGNALFLOW_QUERY")
 	duration               = "10"
 	maxReplicaCount        = 10
 	minReplicaCount        = 1
@@ -124,7 +129,7 @@ spec:
   - type: splunk-observability
     metricType: Value
     metadata:
-      query: {{.SignalflowQuery}}
+      query: data('keda-test-metric').publish()
       duration: "10"
       targetValue: "250"
       activationTargetValue: "1.1"
@@ -133,6 +138,65 @@ spec:
       name: keda-trigger-auth-splunk-secret
 `
 )
+
+func sendTestMetrics(ctx context.Context, token string, realm string) {
+	tStart := time.Now()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Stopping metrics sender")
+			return
+		default:
+			tNow := time.Now()
+			var value float64
+			if tNow.Sub(tStart) < 3*time.Minute {
+				value = 1000 + rand.Float64()*100
+			} else {
+				value = rand.Float64() * 100
+			}
+
+			body := map[string]interface{}{
+				"gauge": []map[string]interface{}{
+					{
+						"metric": "keda-test-metric",
+						"value":  value,
+						"dimensions": map[string]string{
+							"service": "keda-splunk-observability-scaler-test",
+						},
+					},
+				},
+			}
+
+			jsonBody, err := json.Marshal(body)
+			if err != nil {
+				log.Printf("Error marshalling JSON: %v\n", err)
+				continue
+			}
+
+			url := fmt.Sprintf("https://ingest.%s.signalfx.com/v2/datapoint", realm)
+			req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+			if err != nil {
+				log.Printf("Error creating request: %v\n", err)
+				continue
+			}
+
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("X-SF-Token", token)
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				log.Printf("Error sending request: %v\n", err)
+				continue
+			}
+
+			log.Printf("Sent value %.5f to SignalFx. Status: %d. Response: %s\n", value, resp.StatusCode, resp.Status)
+			resp.Body.Close()
+
+			time.Sleep(3 * time.Second)
+		}
+	}
+}
 
 func TestSplunkObservabilityScaler(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
@@ -145,12 +209,15 @@ func TestSplunkObservabilityScaler(t *testing.T) {
 		DeleteKubernetesResources(t, testNamespace, data, templates)
 	})
 
+	// Start sending metrics concurrently
+	go sendTestMetrics(ctx, accessToken, realm)
+
 	// Create kubernetes resources
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// Ensure nginx deployment is ready
 	assert.True(t, WaitForAllPodRunningInNamespace(t, kc, testNamespace, minReplicaCount, 120),
-		"replica count should be %d after 2 minutes", minReplicaCount)
+		"replica count should be greater than %d after 2 minutes", minReplicaCount)
 
 	// test scaling
 	testScaleOut(ctx, t, kc, testNamespace)
