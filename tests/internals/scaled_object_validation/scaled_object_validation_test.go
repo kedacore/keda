@@ -22,6 +22,7 @@ var (
 	scaledObject1Name                 = fmt.Sprintf("%s-so1", testName)
 	scaledObject2Name                 = fmt.Sprintf("%s-so2", testName)
 	emptyTriggersSoName               = fmt.Sprintf("%s-so-empty-triggers", testName)
+	excludedLabelsSoName              = fmt.Sprintf("%s-so-excluded-labels", testName)
 	hpaName                           = fmt.Sprintf("%s-hpa", testName)
 	ownershipTransferScaledObjectName = fmt.Sprintf("%s-ownership-transfer-so", testName)
 	ownershipTransferHpaName          = fmt.Sprintf("%s-ownership-transfer-hpa", testName)
@@ -201,6 +202,9 @@ metadata:
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: {{.HpaName}}
   triggers:
     - type: cpu
       metricType: Utilization
@@ -404,6 +408,9 @@ func testTriggersWithEmptyArray(t *testing.T, data templateData) {
 
 func testScaledObjectWithExcludedLabels(t *testing.T, data templateData) {
 	t.Log("--- scaled object with excluded labels ---")
+
+	data.ScaledObjectName = excludedLabelsSoName
+	data.HpaName = hpaName
 
 	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplateWithExcludedLabels", scaledObjectTemplateWithExcludedLabels)
 	assert.NoError(t, err, "scaledObject should be deployed")
