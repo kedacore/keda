@@ -93,13 +93,10 @@ spec:
     template:
       spec:
         containers:
-        - name: demo-rabbitmq-client
-          image: demo-rabbitmq-client:1
-          imagePullPolicy: Always
-          command: ["receive",  "amqp://user:PASSWORD@rabbitmq.default.svc.cluster.local:5672"]
-          envFrom:
-            - secretRef:
-                name: rabbitmq-consumer-secrets
+        - name: external-executor
+          image: busybox
+          command: ["sleep", "60"]
+          imagePullPolicy: IfNotPresent
         restartPolicy: Never
   triggers:
     - type: kubernetes-workload
