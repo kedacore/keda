@@ -643,7 +643,7 @@ func TestUnexpectedOptional(t *testing.T) {
 	err := sc.TypedConfig(&ts)
 	Expect(err).To(BeNil())
 
-	// Verify that the deprecation event was recorded
+	// Verify that the event was recorded
 	Expect(mockRecorder.EventCalled).To(BeTrue())
 	Expect(mockRecorder.Messages[0]).To(Equal("Unmatched input property notexistVal in scaler test"))
 	Expect(mockRecorder.Messages[1]).To(Equal("Unmatched input property notValFromEnv in scaler test"))
