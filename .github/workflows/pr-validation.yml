@@ -64,6 +64,9 @@ jobs:
       - name: Verify generated Manifests are up to date
         run: make verify-manifests
 
+      - name: Verify generated Scalers schema is up to date
+        run: make verify-scalers-schema
+
       - name: Build
         run: make build
 

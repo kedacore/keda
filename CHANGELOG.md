@@ -63,6 +63,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### New
 
 - Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
+- **General**: Trigger Schema Generated Tool ([#6345](https://github.com/kedacore/keda/issues/6345))
 
 #### Experimental
 
