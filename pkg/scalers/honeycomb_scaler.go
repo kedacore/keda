@@ -170,6 +170,10 @@ func (s *honeycombScaler) executeHoneycombQuery(ctx context.Context) (float64, e
 	if runResp.StatusCode == 429 {
 		return 0, errors.New("honeycomb: rate limited (429), back off and try again later")
 	}
+	if runResp.StatusCode == 401 {
+		body, _ := io.ReadAll(runResp.Body)
+		return 0, fmt.Errorf("honeycomb: unauthorized (401) - an Enterprise API key is required, check your API key permissions. See: https://api-docs.honeycomb.io/api/query-data for details. Response: %s", string(body))
+	}
 	if runResp.StatusCode != 200 && runResp.StatusCode != 201 {
 		body, _ := io.ReadAll(runResp.Body)
 		return 0, fmt.Errorf("honeycomb runQuery status: %s - %s", runResp.Status, string(body))
