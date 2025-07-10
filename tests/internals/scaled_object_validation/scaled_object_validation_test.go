@@ -206,10 +206,12 @@ spec:
     horizontalPodAutoscalerConfig:
       name: {{.HpaName}}
   triggers:
-    - type: cpu
-      metricType: Utilization
-      metadata:
-        value: "50"
+  - type: cron
+    metadata:
+      timezone: Etc/UTC
+      start: 0 * * * *
+      end: 1 * * * *
+      desiredReplicas: '1'
 `
 )
 
