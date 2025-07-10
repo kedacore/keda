@@ -83,7 +83,7 @@ metadata:
   name: {{.ExcludedLabelsSjName}}
   namespace: {{.TestNamespace}}
   annotations:
-    scaledjob.keda.sh/excluded-labels: "foo.bar/environment,foo.bar/version"
+    scaledjob.keda.sh/job-excluded-labels: "foo.bar/environment,foo.bar/version"
   labels:
     team: backend
     foo.bar/environment: bf5011472247b67cce3ee7b24c9a08c5
