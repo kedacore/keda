@@ -37,8 +37,9 @@ var (
 	scaledObjectName       = fmt.Sprintf("%s-so", testName)
 	authName               = fmt.Sprintf("%s-auth", testName)
 	accessToken            = os.Getenv("SPLUNK_OBSERVABILITY_ACCESS_TOKEN")
+	ingestToken            = os.Getenv("SPLUNK_OBSERVABILITY_INGEST_TOKEN")
 	realm                  = os.Getenv("SPLUNK_OBSERVABILITY_REALM")
-	signalflowQuery        = os.Getenv("SPLUNK_OBSERVABILITY_SIGNALFLOW_QUERY")
+	signalflowQuery        = "data('keda-test-metric').publish()"
 	duration               = "10"
 	maxReplicaCount        = 10
 	minReplicaCount        = 1
@@ -210,7 +211,7 @@ func TestSplunkObservabilityScaler(t *testing.T) {
 	})
 
 	// Start sending metrics concurrently
-	go sendTestMetrics(ctx, accessToken, realm)
+	go sendTestMetrics(ctx, ingestToken, realm)
 
 	// Create kubernetes resources
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
