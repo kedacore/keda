@@ -20,6 +20,7 @@ import (
 	"context"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
@@ -159,7 +160,20 @@ func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1
 		"app.kubernetes.io/managed-by": "keda-operator",
 		"scaledjob.keda.sh/name":       scaledJob.GetName(),
 	}
+
+	excludedLabels := map[string]struct{}{}
+
+	if labels, ok := scaledJob.ObjectMeta.Annotations[kedav1alpha1.ScaledJobExcludedLabelsAnnotation]; ok {
+		for _, excludedLabel := range strings.Split(labels, ",") {
+			excludedLabels[excludedLabel] = struct{}{}
+		}
+	}
+
 	for key, value := range scaledJob.ObjectMeta.Labels {
+		if _, ok := excludedLabels[key]; ok {
+			continue
+		}
+
 		labels[key] = value
 	}
 
