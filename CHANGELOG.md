@@ -116,6 +116,7 @@ New deprecation(s):
 
 ### Improvements
 
+- **AWS RDS JSON Utility**: Add convenience to decode AWS RDS Secert JSON ([#6807](https://github.com/kedacore/keda/pull/6807))
 - **Selenium Grid**: Update metric name generated without part of empty ([#6772](https://github.com/kedacore/keda/pull/6772))
 
 ### Fixes
