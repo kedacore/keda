@@ -721,6 +721,9 @@ func contains(s []string, e string) bool {
 
 // canRunnerMatchLabels check Agent Label array will match runner label array
 func canRunnerMatchLabels(jobLabels []string, runnerLabels []string, noDefaultLabels bool) bool {
+	if len(jobLabels) == 0 {
+		return false
+	}
 	allLabels := runnerLabels
 	if !noDefaultLabels {
 		allLabels = append(allLabels, reservedLabels...)
