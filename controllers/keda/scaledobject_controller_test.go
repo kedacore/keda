@@ -582,6 +582,52 @@ var _ = Describe("ScaledObjectController", func() {
 			Ω(hpa.Annotations).To(Equal(so.Annotations))
 		})
 
+		It("deploys ScaledObject and creates HPA with scale down select policy disabled when pause scaledown annotation set", func() {
+
+			deploymentName := "disable-scale-down"
+			soName := "so-" + deploymentName
+
+			// Create the scaling target.
+			err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+			Expect(err).ToNot(HaveOccurred())
+
+			// Create the ScaledObject
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      soName,
+					Namespace: "default",
+					Annotations: map[string]string{
+						kedav1alpha1.PausedScaleDownAnnotation: "true",
+					}},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: deploymentName,
+					},
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "1",
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Ω(err).ToNot(HaveOccurred())
+
+			// Get and confirm the HPA
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
+			}).ShouldNot(HaveOccurred())
+
+			Ω(*hpa.Spec.Behavior.ScaleDown.SelectPolicy).To(Equal(autoscalingv2.DisabledPolicySelect))
+		})
+
 		It("doesn't allow MinReplicaCount > MaxReplicaCount", func() {
 			deploymentName := "minmax"
 			soName := "so-" + deploymentName

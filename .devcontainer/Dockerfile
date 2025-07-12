@@ -42,9 +42,9 @@ RUN apt-get update \
     && go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
     && go install github.com/mgechev/revive@latest \
     && go install honnef.co/go/tools/cmd/staticcheck@latest \
-    && go install golang.org/x/tools/gopls@latest \
+    && go install golang.org/x/tools/gopls@v0.18.1 \
     # Protocol Buffer Compiler
-    && PROTOC_VERSION=29.2 \
+    && PROTOC_VERSION=29.3 \
     && case $(dpkg --print-architecture) in \
         "amd64") PROTOC_ARCH="x86_64" ;; \
         "arm64") PROTOC_ARCH="aarch_64" ;; \

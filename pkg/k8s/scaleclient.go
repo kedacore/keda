@@ -49,7 +49,8 @@ func InitScaleClient(mgr ctrl.Manager) (scale.ScalesGetter, kedautil.K8sVersion,
 	}
 
 	return scale.New(
-		clientset.RESTClient(), mgr.GetRESTMapper(),
+		clientset.RESTClient(),
+		mgr.GetRESTMapper(),
 		dynamic.LegacyAPIPathResolverFunc,
 		scale.NewDiscoveryScaleKindResolver(clientset),
 	), kubeVersion, nil
