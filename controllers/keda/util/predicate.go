@@ -102,3 +102,29 @@ func (HPASpecChangedPredicate) Update(e event.UpdateEvent) bool {
 
 	return len(newObj.Spec.Metrics) != len(oldObj.Spec.Metrics) || !equality.Semantic.DeepDerivative(newObj.Spec, oldObj.Spec)
 }
+
+type PausedScaleDownPredicate struct {
+	predicate.Funcs
+}
+
+func (PausedScaleDownPredicate) Update(e event.UpdateEvent) bool {
+	if e.ObjectOld == nil || e.ObjectNew == nil {
+		return false
+	}
+
+	newAnnotations := e.ObjectNew.GetAnnotations()
+	oldAnnotations := e.ObjectOld.GetAnnotations()
+
+	newPausedValue := ""
+	oldPausedValue := ""
+
+	if newAnnotations != nil {
+		newPausedValue = newAnnotations[kedav1alpha1.PausedScaleDownAnnotation]
+	}
+
+	if oldAnnotations != nil {
+		oldPausedValue = oldAnnotations[kedav1alpha1.PausedScaleDownAnnotation]
+	}
+
+	return newPausedValue != oldPausedValue
+}
