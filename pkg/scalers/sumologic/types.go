@@ -32,8 +32,9 @@ type LogSearchJobResponse struct {
 }
 
 type LogSearchJobStatus struct {
-	State       string `json:"state"`
-	RecordCount int    `json:"recordCount"`
+	State        string `json:"state"`
+	RecordCount  int    `json:"recordCount"`
+	MessageCount int    `json:"messageCount"`
 }
 
 type LogSearchRecordsResponse struct {

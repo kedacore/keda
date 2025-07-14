@@ -161,7 +161,7 @@ func (c *Client) GetLogSearchResult(query Query) (*float64, error) {
 		return nil, err
 	}
 
-	if jobStatus.RecordCount == 0 {
+	if jobStatus.MessageCount > 0 && jobStatus.RecordCount == 0 {
 		return nil, errors.New("only agg queries are supported, please check your query")
 	}
 
