@@ -94,7 +94,6 @@ type SolaceDMScalerConfiguration struct {
 }
 
 func (s *SolaceDMScalerConfiguration) Validate() error {
-
 	// Check each of the urls for: empty strings, valid url pattern
 	urls := strings.Split(s.SolaceSEMPBaseURL, ",")
 
