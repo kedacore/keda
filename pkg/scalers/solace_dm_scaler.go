@@ -94,12 +94,6 @@ type SolaceDMScalerConfiguration struct {
 }
 
 func (s *SolaceDMScalerConfiguration) Validate() error {
-	// host url is not empty or full of spaces!
-	s.SolaceSEMPBaseURL = strings.TrimSpace(s.SolaceSEMPBaseURL)
-
-	if len(s.SolaceSEMPBaseURL) == 0 {
-		return fmt.Errorf("no host url value found in the scaler configuration. SolaceSEMPBaseURL: '%s'", s.SolaceSEMPBaseURL)
-	}
 
 	// Check each of the urls for: empty strings, valid url pattern
 	urls := strings.Split(s.SolaceSEMPBaseURL, ",")
@@ -113,21 +107,6 @@ func (s *SolaceDMScalerConfiguration) Validate() error {
 		if !match {
 			return fmt.Errorf("invalid host url value found in the scaler configuration. Url[%d]: '%s'", i, url)
 		}
-	}
-
-	s.Username = strings.TrimSpace(s.Username)
-	if len(s.Username) == 0 {
-		return fmt.Errorf("no username value found in the scaler configuration. Username: '%s'", s.Username)
-	}
-
-	s.MessageVpn = strings.TrimSpace(s.MessageVpn)
-	if len(s.MessageVpn) == 0 {
-		return fmt.Errorf("no message-vpn value found in the scaler configuration. MessageVpn: '%s'", s.MessageVpn)
-	}
-
-	s.ClientNamePattern = strings.TrimSpace(s.ClientNamePattern)
-	if len(s.ClientNamePattern) == 0 {
-		return fmt.Errorf("no client-name-pattern value found in the scaler configuration. ClientNamePattern: '%s'", s.ClientNamePattern)
 	}
 
 	if strings.Contains(s.ClientNamePattern, "*") {

@@ -103,7 +103,7 @@ var solaceDMParseConfigurationTestCases = []testSolaceDMConfiguration{
 	{
 		"No Host URL",
 		map[string]string{
-			solaceDMSempBaseURL:                               "",
+			solaceDMSempBaseURL:                               "     ",
 			solaceDMMessageVpn:                                "training-dmr-2",
 			solaceDMClientNamePattern:                         "direct-messaging-simple",
 			solaceDMUnsafeSSL:                                 "true",
