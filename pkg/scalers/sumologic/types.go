@@ -2,16 +2,18 @@ package sumologic
 
 import (
 	"net/http"
+	"time"
 
 	"go.uber.org/zap"
 )
 
 type Config struct {
-	Host      string
-	AccessID  string
-	AccessKey string
-	UnsafeSsl bool
-	LogLevel  string
+	Host                string
+	AccessID            string
+	AccessKey           string
+	UnsafeSsl           bool
+	LogLevel            string
+	LogsPollingInterval time.Duration
 }
 
 type Client struct {
