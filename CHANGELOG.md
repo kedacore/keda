@@ -82,7 +82,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Fix prefixes on envFrom elements in a deployment spec aren't being interpreted and Environment variables are not prefixed with the prefix ([#6728](https://github.com/kedacore/keda/issues/6728))
 - **General**: Remove klogr dependency and replace with zap ([#5732](https://github.com/kedacore/keda/issues/5732))
 - **General**: Sets hpaName in Status when ScaledObject adopts/finds an existing HPA ([#6336](https://github.com/kedacore/keda/issues/6336))
-- **Github Scaler**: Stop github scaler from scaling if there are no job labels ([#6900](https://github.com/kedacore/keda/issues/6900))
+- **Github Scaler**: Stop github scaler from scaling when scaler has labels but job does not ([#6900](https://github.com/kedacore/keda/issues/6900))
 
 ### Deprecations
 
