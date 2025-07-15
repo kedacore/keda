@@ -101,6 +101,7 @@ New deprecation(s):
 ### Other
 
 - **General**: Replace deprecated webhook.Validator with webhook.CustomValidator ([#6660](https://github.com/kedacore/keda/issues/6660))
+- **General**: Fix several typos ([#6909](https://github.com/kedacore/keda/pull/6909))
 
 ## v2.17.2
 
