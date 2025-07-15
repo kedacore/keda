@@ -210,7 +210,7 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) {
 	if scaledObject.NeedToPauseScaleDown() {
 		// The Pause Scale Down annotation is set so we should not scale down this target
-		logger.V(1).Info("Pause Scale Down annotation set on ScaledObject, no scaling down on inactive trigger")
+		logger.Info("Pause Scale Down annotation set on ScaledObject, no scaling down on inactive trigger")
 		return
 	}
 
