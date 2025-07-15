@@ -212,6 +212,8 @@ func TestScaleFromMinReplicasWhenActive(t *testing.T) {
 	assert.Equal(t, int32(1), scale.Spec.Replicas)
 	condition := scaledObject.Status.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsTrue())
+	assert.Equal(t, "ScalerActive", condition.Reason)
+	assert.Equal(t, "Scaling is performed because triggers are active", condition.Message)
 }
 
 func TestScaleToIdleReplicasWhenNotActive(t *testing.T) {
@@ -336,6 +338,8 @@ func TestScaleFromIdleToMinReplicasWhenActive(t *testing.T) {
 	assert.Equal(t, minReplicas, scale.Spec.Replicas)
 	condition := scaledObject.Status.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsTrue())
+	assert.Equal(t, "ScalerActive", condition.Reason)
+	assert.Equal(t, "Scaling is performed because triggers are active", condition.Message)
 }
 
 func TestScaleToPausedReplicasCount(t *testing.T) {
