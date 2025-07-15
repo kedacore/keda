@@ -14,7 +14,7 @@ type parsePostgreSQLMetadataTestData struct {
 	metadata map[string]string
 }
 
-var testPostgreSQLMetdata = []parsePostgreSQLMetadataTestData{
+var testPostgreSQLMetadata = []parsePostgreSQLMetadataTestData{
 	// connection with username and password
 	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "connectionFromEnv": "test_connection_string"}},
 	// connection with username
@@ -40,8 +40,8 @@ type postgreSQLMetricIdentifier struct {
 }
 
 var postgreSQLMetricIdentifiers = []postgreSQLMetricIdentifier{
-	{&testPostgreSQLMetdata[0], map[string]string{"test_connection_string": "postgresql://localhost:5432"}, nil, 0, "s0-postgresql"},
-	{&testPostgreSQLMetdata[1], map[string]string{"test_connection_string2": "postgresql://test@localhost"}, nil, 1, "s1-postgresql"},
+	{&testPostgreSQLMetadata[0], map[string]string{"test_connection_string": "postgresql://localhost:5432"}, nil, 0, "s0-postgresql"},
+	{&testPostgreSQLMetadata[1], map[string]string{"test_connection_string2": "postgresql://test@localhost"}, nil, 1, "s1-postgresql"},
 }
 
 func TestPosgresSQLGetMetricSpecForScaling(t *testing.T) {
