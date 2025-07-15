@@ -15,7 +15,7 @@ import (
 // EventHubInfo to keep event hub connection and resources
 type EventHubInfo struct {
 	EventHubConnection       string `keda:"name=connection,                order=authParams;resolvedEnv, optional"`
-	EventHubConsumerGroup    string `keda:"name=consumerGroup,             order=triggerMetadata, default=$Default, optional"`
+	EventHubConsumerGroup    string `keda:"name=consumerGroup,             order=triggerMetadata, default=$Default"`
 	StorageConnection        string `keda:"name=storageConnection,         order=authParams;resolvedEnv, optional"`
 	StorageAccountName       string `keda:"name=storageAccountName,        order=triggerMetadata, optional"`
 	BlobStorageEndpoint      string

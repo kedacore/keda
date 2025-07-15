@@ -37,7 +37,6 @@ import (
 )
 
 const (
-	defaultEventHubMessageThreshold    = 64
 	eventHubMetricType                 = "External"
 	defaultEventHubConsumerGroup       = "$Default"
 	defaultBlobContainer               = ""
@@ -54,9 +53,9 @@ type azureEventHubScaler struct {
 }
 
 type eventHubMetadata struct {
-	Threshold                   int64              `keda:"name=unprocessedEventThreshold,          order=triggerMetadata, default=64, optional"`
-	ActivationThreshold         int64              `keda:"name=activationUnprocessedEventThreshold,          order=triggerMetadata, default=0, optional"`
-	StalePartitionInfoThreshold int64              `keda:"name=stalePartitionInfoThreshold,          order=triggerMetadata, default=10000, optional"`
+	Threshold                   int64              `keda:"name=unprocessedEventThreshold,          order=triggerMetadata, default=64"`
+	ActivationThreshold         int64              `keda:"name=activationUnprocessedEventThreshold,          order=triggerMetadata, default=0"`
+	StalePartitionInfoThreshold int64              `keda:"name=stalePartitionInfoThreshold,          order=triggerMetadata, default=10000"`
 	EventHubInfo                azure.EventHubInfo `keda:"optional"`
 	triggerIndex                int
 }
