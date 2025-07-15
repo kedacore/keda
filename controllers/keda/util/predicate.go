@@ -14,25 +14,7 @@ type PausedReplicasPredicate struct {
 }
 
 func (PausedReplicasPredicate) Update(e event.UpdateEvent) bool {
-	if e.ObjectOld == nil || e.ObjectNew == nil {
-		return false
-	}
-
-	newAnnotations := e.ObjectNew.GetAnnotations()
-	oldAnnotations := e.ObjectOld.GetAnnotations()
-
-	newPausedValue := ""
-	oldPausedValue := ""
-
-	if newAnnotations != nil {
-		newPausedValue = newAnnotations[kedav1alpha1.PausedReplicasAnnotation]
-	}
-
-	if oldAnnotations != nil {
-		oldPausedValue = oldAnnotations[kedav1alpha1.PausedReplicasAnnotation]
-	}
-
-	return newPausedValue != oldPausedValue
+	return checkAnnotation(e, kedav1alpha1.PausedReplicasAnnotation)
 }
 
 type ScaleObjectReadyConditionPredicate struct {
@@ -71,6 +53,18 @@ type PausedPredicate struct {
 }
 
 func (PausedPredicate) Update(e event.UpdateEvent) bool {
+	return checkAnnotation(e, kedav1alpha1.PausedAnnotation)
+}
+
+type PausedScaleDownPredicate struct {
+	predicate.Funcs
+}
+
+func (PausedScaleDownPredicate) Update(e event.UpdateEvent) bool {
+	return checkAnnotation(e, kedav1alpha1.PausedScaleDownAnnotation)
+}
+
+func checkAnnotation(e event.UpdateEvent, annotation string) bool {
 	if e.ObjectOld == nil || e.ObjectNew == nil {
 		return false
 	}
@@ -78,18 +72,18 @@ func (PausedPredicate) Update(e event.UpdateEvent) bool {
 	newAnnotations := e.ObjectNew.GetAnnotations()
 	oldAnnotations := e.ObjectOld.GetAnnotations()
 
-	newPausedValue := ""
-	oldPausedValue := ""
+	newValue := ""
+	oldValue := ""
 
 	if newAnnotations != nil {
-		newPausedValue = newAnnotations[kedav1alpha1.PausedAnnotation]
+		newValue = newAnnotations[annotation]
 	}
 
 	if oldAnnotations != nil {
-		oldPausedValue = oldAnnotations[kedav1alpha1.PausedAnnotation]
+		oldValue = oldAnnotations[annotation]
 	}
 
-	return newPausedValue != oldPausedValue
+	return newValue != oldValue
 }
 
 type HPASpecChangedPredicate struct {
@@ -101,30 +95,4 @@ func (HPASpecChangedPredicate) Update(e event.UpdateEvent) bool {
 	oldObj := e.ObjectOld.(*autoscalingv2.HorizontalPodAutoscaler)
 
 	return len(newObj.Spec.Metrics) != len(oldObj.Spec.Metrics) || !equality.Semantic.DeepDerivative(newObj.Spec, oldObj.Spec)
-}
-
-type PausedScaleDownPredicate struct {
-	predicate.Funcs
-}
-
-func (PausedScaleDownPredicate) Update(e event.UpdateEvent) bool {
-	if e.ObjectOld == nil || e.ObjectNew == nil {
-		return false
-	}
-
-	newAnnotations := e.ObjectNew.GetAnnotations()
-	oldAnnotations := e.ObjectOld.GetAnnotations()
-
-	newPausedValue := ""
-	oldPausedValue := ""
-
-	if newAnnotations != nil {
-		newPausedValue = newAnnotations[kedav1alpha1.PausedScaleDownAnnotation]
-	}
-
-	if oldAnnotations != nil {
-		oldPausedValue = oldAnnotations[kedav1alpha1.PausedScaleDownAnnotation]
-	}
-
-	return newPausedValue != oldPausedValue
 }
