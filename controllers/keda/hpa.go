@@ -97,7 +97,7 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		disabledPolicy := autoscalingv2.DisabledPolicySelect
 		behavior.ScaleDown.SelectPolicy = &disabledPolicy
 
-		logger.V(1).Info(
+		logger.Info(
 			"Scale down paused by annotation, setting HPA Scale Down Select Behavior to Disabled",
 			"HPA.Namespace",
 			scaledObject.Namespace,
