@@ -173,7 +173,7 @@ func (a *sharedConfigCache) retrievePodIdentityCredentials(ctx context.Context, 
 
 // retrieveStaticCredentials returns an *aws.CredentialsCache for given
 // AuthorizationMetadata (using static credentials). This is used for static
-// authenticatyion via AwsAccessKeyID & AwsAccessKeySecret
+// authentication via AwsAccessKeyID & AwsAccessKeySecret
 func (*sharedConfigCache) retrieveStaticCredentials(awsAuthorization AuthorizationMetadata) *aws.CredentialsCache {
 	staticCredentialsProvider := aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(awsAuthorization.AwsAccessKeyID, awsAuthorization.AwsSecretAccessKey, awsAuthorization.AwsSessionToken))
 	return staticCredentialsProvider
