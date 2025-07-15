@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	DefaultQueryAggregator = "Avg"
-	DefaultRollup          = "Avg"
+	DefaultQueryAggregator     = "Avg"
+	DefaultRollup              = "Avg"
+	DefaultLogsPollingInterval = 2 * time.Second
 )
 
 // query types
@@ -36,6 +37,9 @@ func NewClient(c *Config, sc *scalersconfig.ScalerConfig) (*Client, error) {
 	}
 	if c.AccessKey == "" {
 		return nil, errors.New("accessKey is required")
+	}
+	if c.LogsPollingInterval == 0 {
+		c.LogsPollingInterval = DefaultLogsPollingInterval
 	}
 
 	jar, err := cookiejar.New(nil)
@@ -161,8 +165,13 @@ func (c *Client) GetLogSearchResult(query Query) (*float64, error) {
 		return nil, err
 	}
 
-	if jobStatus.RecordCount == 0 {
+	if jobStatus.MessageCount > 0 && jobStatus.RecordCount == 0 {
 		return nil, errors.New("only agg queries are supported, please check your query")
+	}
+
+	if jobStatus.RecordCount == 0 {
+		zero := float64(0)
+		return &zero, nil
 	}
 
 	records, err := c.getLogSearchRecords(jobID, jobStatus.RecordCount, query.ResultField)
