@@ -31,7 +31,7 @@ type Client struct {
 	// HTTPClient is the client used for launching HTTP requests.
 	HTTPClient *http.Client
 
-	// authMetadata contains the properties needed for retrieving an authentication token, renew it, and dinamically discover services public URLs from Keystone.
+	// authMetadata contains the properties needed for retrieving an authentication token, renew it, and dynamically discover services public URLs from Keystone.
 	authMetadata *KeystoneAuthRequest
 }
 
@@ -137,7 +137,7 @@ func (client *Client) IsTokenValid(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-// RenewToken retrives another token from Keystone
+// RenewToken retrieves another token from Keystone
 func (client *Client) RenewToken(ctx context.Context) error {
 	token, err := client.authMetadata.getToken(ctx)
 
@@ -243,7 +243,7 @@ func (keystone *KeystoneAuthRequest) RequestClient(ctx context.Context, projectP
 	}
 
 	if err != nil {
-		return client, fmt.Errorf("scaler could not find the service URL dinamically. Either provide it in the scaler parameters or check your OpenStack configuration: %w", err)
+		return client, fmt.Errorf("scaler could not find the service URL dynamically. Either provide it in the scaler parameters or check your OpenStack configuration: %w", err)
 	}
 
 	client.URL = serviceURL
@@ -297,7 +297,7 @@ func (keystone *KeystoneAuthRequest) getToken(ctx context.Context) (string, erro
 	return "", fmt.Errorf("%s", string(errBody))
 }
 
-// getCatalog retrives the OpenStack catalog according to the current authorization
+// getCatalog retrieves the OpenStack catalog according to the current authorization
 func (keystone *KeystoneAuthRequest) getCatalog(ctx context.Context, token string) ([]service, error) {
 	var httpClient = kedautil.CreateHTTPClient(keystone.HTTPClientTimeout, false)
 
@@ -331,7 +331,7 @@ func (keystone *KeystoneAuthRequest) getCatalog(ctx context.Context, token strin
 		err := json.NewDecoder(resp.Body).Decode(&keystoneCatalog)
 
 		if err != nil {
-			return nil, fmt.Errorf("error parsing the catalog resquest response body: %w", err)
+			return nil, fmt.Errorf("error parsing the catalog request response body: %w", err)
 		}
 
 		return keystoneCatalog.Catalog, nil
@@ -361,7 +361,7 @@ func (keystone *KeystoneAuthRequest) getServiceURL(ctx context.Context, token st
 	}
 
 	if len(serviceCatalog) == 0 {
-		return "", fmt.Errorf("no catalog provided based upon the current authorization. Service URL cannot be dinamically retrieved")
+		return "", fmt.Errorf("no catalog provided based upon the current authorization. Service URL cannot be dynamically retrieved")
 	}
 
 	for _, serviceType := range serviceTypes {

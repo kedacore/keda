@@ -1048,7 +1048,7 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			wantErr:             false,
 		},
 		{
-			name: "1 queue request without platformName and scaler metadata without platfromName should return 1 new node and 1 ongoing session",
+			name: "1 queue request without platformName and scaler metadata without platformName should return 1 new node and 1 ongoing session",
 			args: args{
 				b: []byte(`{
 					"data": {

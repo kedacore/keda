@@ -39,7 +39,7 @@ var openstackMetricAuthMetadataTestData = []parseOpenstackMetricAuthMetadataTest
 	{authMetadata: map[string]string{"appCredentialID": "my-app-credential-id", "appCredentialSecret": "my-app-credential-secret", "authURL": "http://localhost:5000/v3/"}},
 }
 
-var invalidOpenstackMetricMetadaTestData = []parseOpenstackMetricMetadataTestData{
+var invalidOpenstackMetricMetadataTestData = []parseOpenstackMetricMetadataTestData{
 
 	// Missing metrics url
 	{metadata: map[string]string{"metricID": "003bb589-166d-439d-8c31-cbf098d863de", "aggregationMethod": "mean", "granularity": "300", "threshold": "1250"}},
@@ -131,15 +131,15 @@ func TestOpenstackMetricsGetMetricsForSpecScaling(t *testing.T) {
 
 func TestOpenstackMetricsGetMetricsForSpecScalingInvalidMetaData(t *testing.T) {
 	testCases := []openstackMetricScalerMetricIdentifier{
-		{nil, &invalidOpenstackMetricMetadaTestData[0], &openstackMetricAuthMetadataTestData[0], 0, "s0-Missing metrics url"},
-		{nil, &invalidOpenstackMetricMetadaTestData[1], &openstackMetricAuthMetadataTestData[0], 1, "s1-Empty metrics url"},
-		{nil, &invalidOpenstackMetricMetadaTestData[2], &openstackMetricAuthMetadataTestData[0], 2, "s2-Missing metricID"},
-		{nil, &invalidOpenstackMetricMetadaTestData[3], &openstackMetricAuthMetadataTestData[0], 3, "s3-Empty metricID"},
-		{nil, &invalidOpenstackMetricMetadaTestData[4], &openstackMetricAuthMetadataTestData[0], 4, "s4-Missing aggregation method"},
-		{nil, &invalidOpenstackMetricMetadaTestData[5], &openstackMetricAuthMetadataTestData[0], 5, "s5-Missing granularity"},
-		{nil, &invalidOpenstackMetricMetadaTestData[6], &openstackMetricAuthMetadataTestData[0], 6, "s6-Missing threshold"},
-		{nil, &invalidOpenstackMetricMetadaTestData[7], &openstackMetricAuthMetadataTestData[0], 7, "s7-Missing threshold"},
-		{nil, &invalidOpenstackMetricMetadaTestData[8], &openstackMetricAuthMetadataTestData[0], 8, "s8-Missing threshold"},
+		{nil, &invalidOpenstackMetricMetadataTestData[0], &openstackMetricAuthMetadataTestData[0], 0, "s0-Missing metrics url"},
+		{nil, &invalidOpenstackMetricMetadataTestData[1], &openstackMetricAuthMetadataTestData[0], 1, "s1-Empty metrics url"},
+		{nil, &invalidOpenstackMetricMetadataTestData[2], &openstackMetricAuthMetadataTestData[0], 2, "s2-Missing metricID"},
+		{nil, &invalidOpenstackMetricMetadataTestData[3], &openstackMetricAuthMetadataTestData[0], 3, "s3-Empty metricID"},
+		{nil, &invalidOpenstackMetricMetadataTestData[4], &openstackMetricAuthMetadataTestData[0], 4, "s4-Missing aggregation method"},
+		{nil, &invalidOpenstackMetricMetadataTestData[5], &openstackMetricAuthMetadataTestData[0], 5, "s5-Missing granularity"},
+		{nil, &invalidOpenstackMetricMetadataTestData[6], &openstackMetricAuthMetadataTestData[0], 6, "s6-Missing threshold"},
+		{nil, &invalidOpenstackMetricMetadataTestData[7], &openstackMetricAuthMetadataTestData[0], 7, "s7-Missing threshold"},
+		{nil, &invalidOpenstackMetricMetadataTestData[8], &openstackMetricAuthMetadataTestData[0], 8, "s8-Missing threshold"},
 	}
 
 	for _, testData := range testCases {
