@@ -233,7 +233,7 @@ func (s *azureAppInsightsScaler) GetMetricSpecForScaling(context.Context) []v2.M
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureAppInsightsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	val, err := azure.GetAzureAppInsightsMetricValue(ctx, s.metadata.azureAppInsightsInfo, s.podIdentity, s.metadata.ignoreNullValues)
+	val, err := azure.GetAzureAppInsightsMetricValueMSAL(ctx, s.metadata.azureAppInsightsInfo, s.podIdentity, s.metadata.ignoreNullValues)
 	if err != nil {
 		s.logger.Error(err, "error getting azure app insights metric")
 		return []external_metrics.ExternalMetricValue{}, false, err
