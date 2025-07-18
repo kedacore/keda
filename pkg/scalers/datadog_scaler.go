@@ -30,6 +30,7 @@ type datadogScaler struct {
 	logger               logr.Logger
 	useClusterAgentProxy bool
 	metricType           v2.MetricTargetType
+	isAuthValidated      bool
 }
 
 // TODO: Need to check whether we can deprecate vType and how should we proceed with it
@@ -81,7 +82,7 @@ func init() {
 }
 
 // NewDatadogScaler creates a new Datadog scaler
-func NewDatadogScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewDatadogScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -111,10 +112,7 @@ func NewDatadogScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (
 		if err != nil {
 			return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
 		}
-		apiClient, err = newDatadogAPIConnection(ctx, meta, config)
-		if err != nil {
-			return nil, fmt.Errorf("error establishing Datadog connection: %w", err)
-		}
+		apiClient = newDatadogAPIClient(config)
 	}
 
 	return &datadogScaler{
@@ -257,37 +255,13 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 	return meta, nil
 }
 
-// newDatadogAPIConnection tests a connection to the Datadog API
-func newDatadogAPIConnection(ctx context.Context, meta *datadogMetadata, config *scalersconfig.ScalerConfig) (*datadog.APIClient, error) {
-	ctx = context.WithValue(
-		ctx,
-		datadog.ContextAPIKeys,
-		map[string]datadog.APIKey{
-			"apiKeyAuth": {
-				Key: meta.APIKey,
-			},
-			"appKeyAuth": {
-				Key: meta.AppKey,
-			},
-		},
-	)
-
-	ctx = context.WithValue(ctx,
-		datadog.ContextServerVariables,
-		map[string]string{
-			"site": meta.DatadogSite,
-		})
-
+// newDatadogAPIClient creates a new Datadog API client that needs to be validated
+func newDatadogAPIClient(config *scalersconfig.ScalerConfig) *datadog.APIClient {
 	configuration := datadog.NewConfiguration()
 	configuration.HTTPClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 	apiClient := datadog.NewAPIClient(configuration)
 
-	_, _, err := apiClient.AuthenticationApi.Validate(ctx) //nolint:bodyclose
-	if err != nil {
-		return nil, fmt.Errorf("error connecting to Datadog API endpoint: %w", err)
-	}
-
-	return apiClient, nil
+	return apiClient
 }
 
 // No need to close connections
@@ -318,6 +292,14 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		map[string]string{
 			"site": s.metadata.DatadogSite,
 		})
+
+	if !s.isAuthValidated {
+		_, _, err := s.apiClient.AuthenticationApi.Validate(ctx) //nolint:bodyclose
+		if err != nil {
+			return -1, fmt.Errorf("error connecting to Datadog API endpoint: %w", err)
+		}
+		s.isAuthValidated = true
+	}
 
 	timeWindowTo := time.Now().Unix() - int64(s.metadata.TimeWindowOffset)
 	timeWindowFrom := timeWindowTo - int64(s.metadata.Age)
