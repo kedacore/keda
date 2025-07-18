@@ -16,6 +16,7 @@ import (
 
 const (
 	testAWSSQSRoleArn         = "none"
+	testAWSSQSExternalID      = "test-external-id"
 	testAWSSQSAccessKeyID     = "none"
 	testAWSSQSSecretAccessKey = "none"
 	testAWSSQSSessionToken    = "none"
@@ -244,6 +245,17 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		false,
 		"with AWS Role from TriggerAuthentication"},
 	{map[string]string{
+		"queueURL":    testAWSSQSProperQueueURL,
+		"queueLength": "1",
+		"awsRegion":   "eu-west-1"},
+		map[string]string{
+			"awsRoleArn":    testAWSSQSRoleArn,
+			"awsExternalID": testAWSSQSExternalID,
+		},
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"with AWS Role and External ID from TriggerAuthentication"},
+	{map[string]string{
 		"queueURL":      testAWSSQSProperQueueURL,
 		"queueLength":   "1",
 		"awsRegion":     "eu-west-1",
@@ -255,6 +267,20 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		testAWSSQSEmptyResolvedEnv,
 		false,
 		"with AWS Role assigned on KEDA operator itself"},
+	{map[string]string{
+		"queueURL":      testAWSSQSProperQueueURL,
+		"queueLength":   "1",
+		"awsRegion":     "eu-west-1",
+		"identityOwner": "operator"},
+		map[string]string{
+			"awsRoleArn":         testAWSSQSRoleArn,
+			"awsExternalID":      testAWSSQSExternalID,
+			"awsAccessKeyId":     "",
+			"awsSecretAccessKey": "",
+		},
+		testAWSSQSEmptyResolvedEnv,
+		false,
+		"with AWS Role and External ID assigned on KEDA operator itself"},
 	{map[string]string{
 		"queueURL":    testAWSSimpleQueueURL,
 		"queueLength": "1",
@@ -306,6 +332,16 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		},
 		true,
 		"empty QUEUE_URL env value"},
+	{map[string]string{
+		"queueURL":    testAWSSQSProperQueueURL,
+		"queueLength": "1",
+		"awsRegion":   "eu-west-1"},
+		map[string]string{
+			"awsExternalID": testAWSSQSExternalID,
+		},
+		testAWSSQSEmptyResolvedEnv,
+		true,
+		"with External ID but missing Role ARN"},
 }
 
 var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{

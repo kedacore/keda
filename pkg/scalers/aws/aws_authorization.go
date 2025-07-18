@@ -17,7 +17,8 @@ limitations under the License.
 package aws
 
 type AuthorizationMetadata struct {
-	AwsRoleArn string
+	AwsRoleArn    string
+	AwsExternalID string
 
 	AwsAccessKeyID     string
 	AwsSecretAccessKey string
