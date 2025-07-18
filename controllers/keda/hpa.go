@@ -38,6 +38,19 @@ import (
 	version "github.com/kedacore/keda/v2/version"
 )
 
+// storeHpaNameInStatus updates the ScaledObject status subresource with the hpaName.
+func (r *ScaledObjectReconciler) storeHpaNameInStatus(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, hpaName string) error {
+	status := scaledObject.Status.DeepCopy()
+	status.HpaName = hpaName
+
+	err := kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
+	if err != nil {
+		logger.Error(err, "Failed to update scaledObject status with used hpaName")
+		return err
+	}
+	return nil
+}
+
 // createAndDeployNewHPA creates and deploy HPA in the cluster for specified ScaledObject
 func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) error {
 	hpaName := getHPAName(scaledObject)
@@ -54,17 +67,7 @@ func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logg
 		return err
 	}
 
-	// store hpaName in the ScaledObject
-	status := scaledObject.Status.DeepCopy()
-	status.HpaName = hpaName
-
-	err = kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
-	if err != nil {
-		logger.Error(err, "Failed to update scaledObject status with used hpaName")
-		return err
-	}
-
-	return nil
+	return r.storeHpaNameInStatus(ctx, logger, scaledObject, hpaName)
 }
 
 // newHPAForScaledObject returns HPA as it is specified in ScaledObject
@@ -95,7 +98,20 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		"app.kubernetes.io/part-of":    scaledObject.Name,
 		"app.kubernetes.io/managed-by": "keda-operator",
 	}
+
+	excludedLabels := map[string]struct{}{}
+
+	if labels, ok := scaledObject.ObjectMeta.Annotations[kedav1alpha1.ScaledObjectExcludedLabelsAnnotation]; ok {
+		for _, excludedLabel := range strings.Split(labels, ",") {
+			excludedLabels[excludedLabel] = struct{}{}
+		}
+	}
+
 	for key, value := range scaledObject.ObjectMeta.Labels {
+		if _, ok := excludedLabels[key]; ok {
+			continue
+		}
+
 		labels[key] = value
 	}
 
