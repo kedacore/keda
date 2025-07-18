@@ -104,25 +104,28 @@ func parseNewRelicResponse(results []nrdb.NRDBResult, noDataError bool, nrql str
 		return 0, nil
 	}
 
-	// Only use the first result from the query, as the query should not be multi row
-	for _, v := range results[0] {
-		if val, ok := v.(float64); ok {
+	result := results[0]
+
+	// First, look for direct numeric values
+	for _, value := range result {
+		if value == nil {
+			continue
+		}
+
+		if val, ok := value.(float64); ok {
 			return val, nil
 		}
-		if mapVal, ok := v.(map[string]interface{}); ok {
-			var keys []string
-			for key, nestedVal := range mapVal {
-				if _, ok := nestedVal.(float64); ok {
-					keys = append(keys, key)
-				}
-			}
-			if len(keys) > 0 {
-				// Sort keys and take the highest percentile (last in sorted order)
-				sort.Strings(keys)
-				lastKey := keys[len(keys)-1]
-				if val, ok := mapVal[lastKey].(float64); ok {
-					return val, nil
-				}
+	}
+
+	// Then, look for nested maps (like percentiles)
+	for _, value := range result {
+		if value == nil {
+			continue
+		}
+
+		if mapVal, ok := value.(map[string]interface{}); ok {
+			if val, err := extractFromNestedMap(mapVal); err == nil {
+				return val, nil
 			}
 		}
 	}
@@ -131,6 +134,29 @@ func parseNewRelicResponse(results []nrdb.NRDBResult, noDataError bool, nrql str
 		return 0, fmt.Errorf("query returned no numeric results: %s", nrql)
 	}
 	return 0, nil
+}
+
+func extractFromNestedMap(mapVal map[string]interface{}) (float64, error) {
+	var keys []string
+	for key, nestedVal := range mapVal {
+		if _, ok := nestedVal.(float64); ok {
+			keys = append(keys, key)
+		}
+	}
+
+	if len(keys) == 0 {
+		return 0, fmt.Errorf("no numeric values found in nested map")
+	}
+
+	// Sort keys and take the highest percentile
+	sort.Strings(keys)
+	lastKey := keys[len(keys)-1]
+
+	if val, ok := mapVal[lastKey].(float64); ok {
+		return val, nil
+	}
+
+	return 0, fmt.Errorf("failed to convert value to float64")
 }
 
 func (s *newrelicScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
