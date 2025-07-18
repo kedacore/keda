@@ -73,7 +73,7 @@ func (a *sharedConfigCache) getCacheKey(awsAuthorization AuthorizationMetadata) 
 	if awsAuthorization.AwsAccessKeyID != "" {
 		key = fmt.Sprintf("%s-%s-%s-%s", awsAuthorization.AwsAccessKeyID, awsAuthorization.AwsSecretAccessKey, awsAuthorization.AwsSessionToken, awsAuthorization.AwsRegion)
 	} else if awsAuthorization.AwsRoleArn != "" {
-		key = fmt.Sprintf("%s-%s", awsAuthorization.AwsRoleArn, awsAuthorization.AwsRegion)
+		key = fmt.Sprintf("%s-%s-%s", awsAuthorization.AwsRoleArn, awsAuthorization.AwsExternalID, awsAuthorization.AwsRegion)
 	}
 	// to avoid sensitive data as key and to use a constant key size,
 	// we hash the key with sha3
@@ -105,7 +105,7 @@ func (a *sharedConfigCache) GetCredentials(ctx context.Context, awsAuthorization
 
 	if awsAuthorization.UsingPodIdentity {
 		if awsAuthorization.AwsRoleArn != "" {
-			cfg.Credentials = a.retrievePodIdentityCredentials(ctx, cfg, awsAuthorization.AwsRoleArn)
+			cfg.Credentials = a.retrievePodIdentityCredentials(ctx, cfg, awsAuthorization.AwsRoleArn, awsAuthorization.AwsExternalID)
 		}
 	} else {
 		cfg.Credentials = a.retrieveStaticCredentials(awsAuthorization)
@@ -145,7 +145,7 @@ func (a *sharedConfigCache) RemoveCachedEntry(awsAuthorization AuthorizationMeta
 // retrievePodIdentityCredentials returns an *aws.CredentialsCache to assume given roleArn.
 // It tries first to assume the role using WebIdentity (OIDC federation) and if this method fails,
 // it tries to assume the role using KEDA's role (AssumeRole)
-func (a *sharedConfigCache) retrievePodIdentityCredentials(ctx context.Context, cfg aws.Config, roleArn string) *aws.CredentialsCache {
+func (a *sharedConfigCache) retrievePodIdentityCredentials(ctx context.Context, cfg aws.Config, roleArn string, externalID string) *aws.CredentialsCache {
 	stsSvc := sts.NewFromConfig(cfg)
 
 	if webIdentityTokenFile != "" {
@@ -167,6 +167,9 @@ func (a *sharedConfigCache) retrievePodIdentityCredentials(ctx context.Context, 
 	a.logger.V(1).Info(fmt.Sprintf("using assume role to retrieve token for arnRole %s", roleArn))
 	assumeRoleCredentialProvider := stscreds.NewAssumeRoleProvider(stsSvc, roleArn, func(options *stscreds.AssumeRoleOptions) {
 		options.RoleSessionName = "KEDA"
+		if externalID != "" {
+			options.ExternalID = aws.String(externalID)
+		}
 	})
 	return aws.NewCredentialsCache(assumeRoleCredentialProvider)
 }
