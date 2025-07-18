@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/go-logr/logr"
 	"github.com/newrelic/newrelic-client-go/v2/newrelic"
@@ -92,23 +93,70 @@ func (s *newrelicScaler) executeNewRelicQuery(ctx context.Context) (float64, err
 		return 0, fmt.Errorf("error running NRQL %s: %w", s.metadata.NRQL, err)
 	}
 
-	if len(resp.Results) == 0 {
-		if s.metadata.NoDataError {
-			return 0, fmt.Errorf("query returned no results: %s", s.metadata.NRQL)
+	return parseNewRelicResponse(resp.Results, s.metadata.NoDataError, s.metadata.NRQL)
+}
+
+func parseNewRelicResponse(results []nrdb.NRDBResult, noDataError bool, nrql string) (float64, error) {
+	if len(results) == 0 {
+		if noDataError {
+			return 0, fmt.Errorf("query returned no results: %s", nrql)
 		}
 		return 0, nil
 	}
-	// Only use the first result from the query, as the query should not be multi row
-	for _, v := range resp.Results[0] {
-		if val, ok := v.(float64); ok {
+
+	result := results[0]
+
+	// First, look for direct numeric values
+	for _, value := range result {
+		if value == nil {
+			continue
+		}
+
+		if val, ok := value.(float64); ok {
 			return val, nil
 		}
 	}
 
-	if s.metadata.NoDataError {
-		return 0, fmt.Errorf("query returned no numeric results: %s", s.metadata.NRQL)
+	// Then, look for nested maps (like percentiles)
+	for _, value := range result {
+		if value == nil {
+			continue
+		}
+
+		if mapVal, ok := value.(map[string]interface{}); ok {
+			if val, err := extractFromNestedMap(mapVal); err == nil {
+				return val, nil
+			}
+		}
+	}
+
+	if noDataError {
+		return 0, fmt.Errorf("query returned no numeric results: %s", nrql)
 	}
 	return 0, nil
+}
+
+func extractFromNestedMap(mapVal map[string]interface{}) (float64, error) {
+	var keys []string
+	for key, nestedVal := range mapVal {
+		if _, ok := nestedVal.(float64); ok {
+			keys = append(keys, key)
+		}
+	}
+
+	if len(keys) == 0 {
+		return 0, fmt.Errorf("no numeric values found in nested map")
+	}
+
+	// Sort keys and take the highest percentile
+	sort.Strings(keys)
+	lastKey := keys[len(keys)-1]
+
+	if val, ok := mapVal[lastKey].(float64); ok {
+		return val, nil
+	}
+
+	return 0, fmt.Errorf("failed to convert value to float64")
 }
 
 func (s *newrelicScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
