@@ -284,7 +284,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
-		err := fmt.Errorf("promtheus query returns %f", v)
+		err := fmt.Errorf("prometheus query returns %f", v)
 		s.logger.Error(err, "Error converting prometheus value")
 		return -1, err
 	}
