@@ -54,7 +54,7 @@ var gcpGcsMetricIdentifiers = []gcpGcsMetricIdentifier{
 
 func TestGcsParseMetadata(t *testing.T) {
 	for _, testData := range testGcsMetadata {
-		_, err := parseGcsMetadata(&scalersconfig.ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testGcsResolvedEnv}, logr.Discard())
+		_, err := parseGcsMetadata(&scalersconfig.ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testGcsResolvedEnv})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
 		}
@@ -66,7 +66,7 @@ func TestGcsParseMetadata(t *testing.T) {
 
 func TestGcsGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpGcsMetricIdentifiers {
-		meta, err := parseGcsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testGcsResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
+		meta, err := parseGcsMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testGcsResolvedEnv, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
