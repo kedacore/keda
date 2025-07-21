@@ -84,12 +84,12 @@ func (vh *GCPSecretManagerHandler) Initialize(ctx context.Context, client client
 			return fmt.Errorf("failed to create secretmanager client, %w", err)
 		}
 
-		gcpCedentialsMap := make(map[string]interface{})
-		if err := json.Unmarshal([]byte(clientSecret), &gcpCedentialsMap); err != nil {
+		gcpCredentialsMap := make(map[string]interface{})
+		if err := json.Unmarshal([]byte(clientSecret), &gcpCredentialsMap); err != nil {
 			return fmt.Errorf("failed to unmarshal gcp credentials key into a map, %w", err)
 		}
 
-		project, ok := gcpCedentialsMap["project_id"]
+		project, ok := gcpCredentialsMap["project_id"]
 		if !ok {
 			return fmt.Errorf("project_id field is missing in the json credentials")
 		}
