@@ -418,16 +418,22 @@ func TestNSQGetTopicProducers(t *testing.T) {
 		// Create separate mock servers for each response
 		for i, response := range tc.responses {
 			shouldError := tc.errorAtIndex == i
-			mockServer := httptest.NewServer(func(resp string, err bool) http.HandlerFunc {
-				return func(w http.ResponseWriter, r *http.Request) {
-					if err {
-						http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-						return
-					}
+			resp := response
+			errFlag := shouldError
+
+			var handler http.HandlerFunc
+			if errFlag {
+				handler = func(w http.ResponseWriter, r *http.Request) {
+					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				}
+			} else {
+				handler = func(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("Content-Type", "application/json")
 					http.ServeContent(w, r, "", time.Time{}, strings.NewReader(resp))
 				}
-			}(response, shouldError))
+			}
+
+			mockServer := httptest.NewServer(handler)
 			defer mockServer.Close()
 
 			parsedURL, err := url.Parse(mockServer.URL)
@@ -589,16 +595,22 @@ func TestNSQAggregateDepth(t *testing.T) {
 		// Create separate mock servers for each response
 		for i, response := range tc.responses {
 			shouldError := tc.errorAtIndex == i
-			mockServer := httptest.NewServer(func(resp string, err bool) http.HandlerFunc {
-				return func(w http.ResponseWriter, r *http.Request) {
-					if err {
-						http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-						return
-					}
+			resp := response
+			errFlag := shouldError
+
+			var handler http.HandlerFunc
+			if errFlag {
+				handler = func(w http.ResponseWriter, r *http.Request) {
+					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				}
+			} else {
+				handler = func(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("Content-Type", "application/json")
 					http.ServeContent(w, r, "", time.Time{}, strings.NewReader(resp))
 				}
-			}(response, shouldError))
+			}
+
+			mockServer := httptest.NewServer(handler)
 			defer mockServer.Close()
 
 			parsedURL, err := url.Parse(mockServer.URL)
