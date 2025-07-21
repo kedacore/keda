@@ -14,7 +14,7 @@ type parsePostgreSQLMetadataTestData struct {
 	metadata map[string]string
 }
 
-var testPostgreSQLMetdata = []parsePostgreSQLMetadataTestData{
+var testPostgreSQLMetadata = []parsePostgreSQLMetadataTestData{
 	// connection with username and password
 	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "connectionFromEnv": "test_connection_string"}},
 	// connection with username
@@ -40,11 +40,11 @@ type postgreSQLMetricIdentifier struct {
 }
 
 var postgreSQLMetricIdentifiers = []postgreSQLMetricIdentifier{
-	{&testPostgreSQLMetdata[0], map[string]string{"test_connection_string": "postgresql://localhost:5432"}, nil, 0, "s0-postgresql"},
-	{&testPostgreSQLMetdata[1], map[string]string{"test_connection_string2": "postgresql://test@localhost"}, nil, 1, "s1-postgresql"},
+	{&testPostgreSQLMetadata[0], map[string]string{"test_connection_string": "postgresql://localhost:5432"}, nil, 0, "s0-postgresql"},
+	{&testPostgreSQLMetadata[1], map[string]string{"test_connection_string2": "postgresql://test@localhost"}, nil, 1, "s1-postgresql"},
 }
 
-func TestPosgresSQLGetMetricSpecForScaling(t *testing.T) {
+func TestPostgreSQLGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range postgreSQLMetricIdentifiers {
 		meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authParam, TriggerIndex: testData.scaleIndex})
 		if err != nil {
@@ -78,7 +78,7 @@ var testPostgreSQLConnectionstring = []postgreSQLConnectionStringTestData{
 	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "host": "host1,host2", "port": "1234", "dbName": "testDb", "userName": "user", "sslmode": "required"}, connectionString: "host=host1,host2 port=1234 user=user dbname=testDb sslmode=required password="},
 }
 
-func TestPosgresSQLConnectionStringGeneration(t *testing.T) {
+func TestPostgreSQLConnectionStringGeneration(t *testing.T) {
 	for _, testData := range testPostgreSQLConnectionstring {
 		meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParam, TriggerIndex: 0})
 		if err != nil {
@@ -96,7 +96,7 @@ var testPodIdentityAzureWorkloadPostgreSQLConnectionstring = []postgreSQLConnect
 	{metadata: map[string]string{"query": "test_query", "targetQueryValue": "5", "host": "localhost", "port": "1234", "dbName": "testDb", "userName": "user", "sslmode": "required"}, connectionString: "host=localhost port=1234 user=user dbname=testDb sslmode=required %PASSWORD%"},
 }
 
-func TestPodIdentityAzureWorkloadPosgresSQLConnectionStringGeneration(t *testing.T) {
+func TestPodIdentityAzureWorkloadPostgreSQLConnectionStringGeneration(t *testing.T) {
 	identityID := "IDENTITY_ID_CORRESPONDING_TO_USERNAME_FIELD"
 	for _, testData := range testPodIdentityAzureWorkloadPostgreSQLConnectionstring {
 		meta, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, IdentityID: &identityID}, AuthParams: testData.authParam, TriggerIndex: 0})
@@ -153,7 +153,7 @@ var testPostgresMetadata = []parsePostgresMetadataTestData{
 	},
 }
 
-func TestParsePosgresSQLMetadata(t *testing.T) {
+func TestParsePostgreSQLMetadata(t *testing.T) {
 	for _, testData := range testPostgresMetadata {
 		_, _, err := parsePostgreSQLMetadata(logr.Discard(), &scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.raisesError {
