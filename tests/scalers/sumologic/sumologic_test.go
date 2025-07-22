@@ -94,7 +94,7 @@ spec:
     name: {{.DeploymentName}}
   minReplicaCount: {{.MinReplicaCount}}
   maxReplicaCount: {{.MaxReplicaCount}}
-  pollingInterval: 15
+  pollingInterval: 3
   cooldownPeriod: 1
   fallback:
     failureThreshold: 3

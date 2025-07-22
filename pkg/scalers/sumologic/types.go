@@ -14,6 +14,7 @@ type Config struct {
 	UnsafeSsl           bool
 	LogLevel            string
 	LogsPollingInterval time.Duration
+	MaxRetries          int
 }
 
 type Client struct {

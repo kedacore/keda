@@ -20,6 +20,7 @@ const (
 	DefaultQueryAggregator     = "Avg"
 	DefaultRollup              = "Avg"
 	DefaultLogsPollingInterval = 2 * time.Second
+	DefaultMaxRetries          = 5
 )
 
 // query types
@@ -38,8 +39,12 @@ func NewClient(c *Config, sc *scalersconfig.ScalerConfig) (*Client, error) {
 	if c.AccessKey == "" {
 		return nil, errors.New("accessKey is required")
 	}
+
 	if c.LogsPollingInterval == 0 {
 		c.LogsPollingInterval = DefaultLogsPollingInterval
+	}
+	if c.MaxRetries == 0 {
+		c.MaxRetries = DefaultMaxRetries
 	}
 
 	jar, err := cookiejar.New(nil)
@@ -113,7 +118,7 @@ func (c *Client) getTimerange(tz string, timerange time.Duration) (string, strin
 	return from, to, nil
 }
 
-func (c *Client) makeRequest(method, url string, payload []byte) ([]byte, error) {
+func (c *Client) makeRequest(method, url string, payload []byte) ([]byte, int, error) {
 	var reqBody io.Reader
 	if payload != nil {
 		reqBody = bytes.NewBuffer(payload)
@@ -121,7 +126,7 @@ func (c *Client) makeRequest(method, url string, payload []byte) ([]byte, error)
 
 	req, err := http.NewRequest(method, url, reqBody)
 	if err != nil {
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	req.SetBasicAuth(c.config.AccessID, c.config.AccessKey)
@@ -132,20 +137,43 @@ func (c *Client) makeRequest(method, url string, payload []byte) ([]byte, error)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("error response from server: %s %s %s %s", method, url, respBody, resp.Status)
-	}
+	return respBody, resp.StatusCode, nil
+}
 
-	return respBody, nil
+func (c *Client) makeRequestWithRetry(method, url string, payload []byte) ([]byte, error) {
+	backoff := time.Second
+
+	var lastStatusCode int
+	for attempt := 1; attempt <= c.config.MaxRetries; attempt++ {
+		respBody, statusCode, err := c.makeRequest(method, url, payload)
+		if err != nil {
+			return nil, fmt.Errorf("error response from server: %s %s %s %d", method, url, respBody, statusCode) // non-retryable error
+		}
+
+		if statusCode >= 400 {
+			c.logger.Debug("non-OK response from server, retrying",
+				zap.String("method", method),
+				zap.String("url", url),
+				zap.Int("statusCode", statusCode),
+				zap.Int("attempt", attempt+1),
+			)
+			time.Sleep(backoff)
+			backoff *= 2 // Exponential backoff
+			lastStatusCode = statusCode
+			continue
+		}
+		return respBody, nil
+	}
+	return nil, fmt.Errorf("request failed after %d attempts with status code %d: %s %s", c.config.MaxRetries, lastStatusCode, method, url) // all attempts failed
 }
 
 func (c *Client) GetLogSearchResult(query Query) (*float64, error) {

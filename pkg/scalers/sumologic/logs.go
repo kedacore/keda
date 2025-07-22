@@ -30,7 +30,7 @@ func (c *Client) createLogSearchJob(query, from, to, tz string) (string, error) 
 	}
 
 	url := fmt.Sprintf("%s/%s", c.config.Host, searchJobPath)
-	resp, err := c.makeRequest("POST", url, payload)
+	resp, err := c.makeRequestWithRetry("POST", url, payload)
 	if err != nil {
 		return "", err
 	}
@@ -47,7 +47,7 @@ func (c *Client) waitForLogSearchJobCompletion(jobID string) (*LogSearchJobStatu
 	url := fmt.Sprintf("%s/%s/%s", c.config.Host, searchJobPath, jobID)
 
 	for {
-		resp, err := c.makeRequest("GET", url, nil)
+		resp, err := c.makeRequestWithRetry("GET", url, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +81,7 @@ func (c *Client) getLogSearchRecords(jobID string, totalRecords int, resultField
 		}
 
 		url := fmt.Sprintf("%s/%s/%s/records?offset=%d&limit=%d", c.config.Host, searchJobPath, jobID, offset, limit)
-		resp, err := c.makeRequest("GET", url, nil)
+		resp, err := c.makeRequestWithRetry("GET", url, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -115,7 +115,7 @@ func (c *Client) getLogSearchRecords(jobID string, totalRecords int, resultField
 func (c *Client) deleteLogSearchJob(jobID string) error {
 	url := fmt.Sprintf("%s/%s/%s", c.config.Host, searchJobPath, jobID)
 
-	_, err := c.makeRequest("DELETE", url, nil)
+	_, err := c.makeRequestWithRetry("DELETE", url, nil)
 	if err == nil {
 		c.logger.Debug("log search job deleted", zap.String("jobID", jobID))
 	}
