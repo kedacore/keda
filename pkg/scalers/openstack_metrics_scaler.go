@@ -105,7 +105,7 @@ func NewOpenstackMetricScaler(ctx context.Context, config *scalersconfig.ScalerC
 
 	metricsClient, err = keystoneAuth.RequestClient(ctx)
 	if err != nil {
-		logger.Error(err, "Fail to retrieve new keystone clinet for openstack metrics scaler")
+		logger.Error(err, "Fail to retrieve new keystone client for openstack metrics scaler")
 		return nil, err
 	}
 
@@ -124,7 +124,7 @@ func parseOpenstackMetricMetadata(config *scalersconfig.ScalerConfig, logger log
 	if val, ok := triggerMetadata["metricsURL"]; ok && val != "" {
 		meta.metricsURL = val
 	} else {
-		logger.Error(fmt.Errorf("no metrics url could be read"), "Error readig metricsURL")
+		logger.Error(fmt.Errorf("no metrics url could be read"), "Error reading metricsURL")
 		return nil, fmt.Errorf("no metrics url was declared")
 	}
 
@@ -145,7 +145,7 @@ func parseOpenstackMetricMetadata(config *scalersconfig.ScalerConfig, logger log
 	if val, ok := triggerMetadata["granularity"]; ok && val != "" {
 		granularity, err := strconv.Atoi(val)
 		if err != nil {
-			logger.Error(err, "Error converting granulality information %s", err.Error)
+			logger.Error(err, "Error converting granularity information %s", err.Error)
 			return nil, err
 		}
 		meta.granularity = granularity
@@ -251,7 +251,7 @@ func (s *openstackMetricScaler) Close(context.Context) error {
 	return nil
 }
 
-// Gets measureament from API as float64, converts it to int and return the value.
+// Gets measurement from API as float64, converts it to int and return the value.
 func (s *openstackMetricScaler) readOpenstackMetrics(ctx context.Context) (float64, error) {
 	var metricURL = s.metadata.metricsURL
 
@@ -284,7 +284,7 @@ func (s *openstackMetricScaler) readOpenstackMetrics(ctx context.Context) (float
 	granularity := 0 // We start with granularity with value 2 cause gnocchi APIm which is used by openstack, consider a time window, and we want to get the last value
 
 	if s.metadata.granularity <= 0 {
-		s.logger.Error(fmt.Errorf("granularity value is less than 1"), "Minimum accepatble value expected for ganularity is 1.")
+		s.logger.Error(fmt.Errorf("granularity value is less than 1"), "Minimum acceptable value expected for granularity is 1.")
 		return defaultValueWhenError, fmt.Errorf("granularity value is less than 1")
 	}
 

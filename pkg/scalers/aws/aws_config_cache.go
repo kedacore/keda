@@ -160,7 +160,7 @@ func (a *sharedConfigCache) retrievePodIdentityCredentials(ctx context.Context, 
 			a.logger.V(1).Info(fmt.Sprintf("using assume web identity role to retrieve token for arnRole %s", roleArn))
 			return aws.NewCredentialsCache(webIdentityCredentialProvider)
 		}
-		a.logger.V(1).Error(err, fmt.Sprintf("error retreiving arnRole %s via WebIdentity", roleArn))
+		a.logger.V(1).Error(err, fmt.Sprintf("error retrieving arnRole %s via WebIdentity", roleArn))
 	}
 
 	// Fallback to Assume Role
@@ -176,7 +176,7 @@ func (a *sharedConfigCache) retrievePodIdentityCredentials(ctx context.Context, 
 
 // retrieveStaticCredentials returns an *aws.CredentialsCache for given
 // AuthorizationMetadata (using static credentials). This is used for static
-// authenticatyion via AwsAccessKeyID & AwsAccessKeySecret
+// authentication via AwsAccessKeyID & AwsAccessKeySecret
 func (*sharedConfigCache) retrieveStaticCredentials(awsAuthorization AuthorizationMetadata) *aws.CredentialsCache {
 	staticCredentialsProvider := aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(awsAuthorization.AwsAccessKeyID, awsAuthorization.AwsSecretAccessKey, awsAuthorization.AwsSessionToken))
 	return staticCredentialsProvider

@@ -96,7 +96,7 @@ func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObj
 }
 
 // WaitForConnectionReady waits for gRPC connection to be ready
-// returns true if the connection was successful, false if we hit a timeut from context
+// returns true if the connection was successful, false if we hit a timeout from context
 func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, logger logr.Logger) bool {
 	currentState := c.connection.GetState()
 	if currentState != connectivity.Ready {

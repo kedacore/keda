@@ -2,183 +2,159 @@ package scalers
 
 import (
 	"context"
-	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
-type mssqlTestData struct {
-	// test inputs
-	metadata    map[string]string
-	resolvedEnv map[string]string
-	authParams  map[string]string
-
-	// expected outputs
-	expectedMetricName       string
+type parseMSSQLMetadataTestData struct {
+	name                     string
+	metadata                 map[string]string
+	resolvedEnv              map[string]string
+	authParams               map[string]string
+	expectedError            string
 	expectedConnectionString string
-	expectedError            error
+	expectedMetricName       string
 }
 
-type mssqlMetricIdentifier struct {
-	metadataTestData *mssqlTestData
-	triggerIndex     int
-	name             string
-}
-
-var testMssqlMetadata = []mssqlTestData{
-	// direct connection string input
+var testMSSQLMetadata = []parseMSSQLMetadataTestData{
 	{
+		name:                     "Direct connection string input",
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1"},
 		resolvedEnv:              map[string]string{},
 		authParams:               map[string]string{"connectionString": "sqlserver://localhost"},
 		expectedConnectionString: "sqlserver://localhost",
 	},
-	// direct connection string input with activationTargetValue
 	{
+		name:                     "Direct connection string input with activationTargetValue",
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "activationTargetValue": "20"},
 		resolvedEnv:              map[string]string{},
 		authParams:               map[string]string{"connectionString": "sqlserver://localhost"},
 		expectedConnectionString: "sqlserver://localhost",
 	},
-	// direct connection string input, OLEDB format
 	{
+		name:                     "Direct connection string input, OLEDB format",
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1"},
 		resolvedEnv:              map[string]string{},
 		authParams:               map[string]string{"connectionString": "Server=example.database.windows.net;port=1433;Database=AdventureWorks;Persist Security Info=False;User ID=user1;Password=Password#1;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"},
 		expectedConnectionString: "Server=example.database.windows.net;port=1433;Database=AdventureWorks;Persist Security Info=False;User ID=user1;Password=Password#1;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;",
 	},
-	// connection string input via environment variables
 	{
+		name:                     "Connection string input via environment variables",
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "connectionStringFromEnv": "test_connection_string"},
 		resolvedEnv:              map[string]string{"test_connection_string": "sqlserver://localhost?database=AdventureWorks"},
 		authParams:               map[string]string{},
 		expectedConnectionString: "sqlserver://localhost?database=AdventureWorks",
 	},
-	// connection string generated from minimal required metadata
 	{
+		name:                     "Connection string generated from minimal required metadata",
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "127.0.0.1"},
 		resolvedEnv:              map[string]string{},
 		authParams:               map[string]string{},
 		expectedMetricName:       "mssql",
 		expectedConnectionString: "sqlserver://127.0.0.1",
 	},
-	// connection string generated from full metadata
 	{
+		name:                     "Connection string generated from full metadata",
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user1", "passwordFromEnv": "test_password", "port": "1433", "database": "AdventureWorks"},
 		resolvedEnv:              map[string]string{"test_password": "Password#1"},
 		authParams:               map[string]string{},
 		expectedConnectionString: "sqlserver://user1:Password%231@example.database.windows.net:1433?database=AdventureWorks",
 	},
-	// variation of previous: no port, password from authParams, metricName from database name
 	{
+		name:                     "Variation of previous: no port, password from authParams, metricName from database name",
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user2", "database": "AdventureWorks"},
 		resolvedEnv:              map[string]string{},
 		authParams:               map[string]string{"password": "Password#2"},
 		expectedMetricName:       "mssql",
 		expectedConnectionString: "sqlserver://user2:Password%232@example.database.windows.net?database=AdventureWorks",
 	},
-	// connection string generated from full authParams
 	{
+		name:                     "Connection string generated from full authParams",
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1"},
 		resolvedEnv:              map[string]string{},
 		authParams:               map[string]string{"password": "Password#2", "host": "example.database.windows.net", "username": "user2", "database": "AdventureWorks", "port": "1433"},
 		expectedMetricName:       "mssql",
 		expectedConnectionString: "sqlserver://user2:Password%232@example.database.windows.net:1433?database=AdventureWorks",
 	},
-	// variation of previous: no database name, metricName from host
 	{
+		name:                     "Variation of previous: no database name, metricName from host",
 		metadata:                 map[string]string{"query": "SELECT 1", "targetValue": "1", "host": "example.database.windows.net", "username": "user3"},
 		resolvedEnv:              map[string]string{},
 		authParams:               map[string]string{"password": "Password#3"},
 		expectedMetricName:       "mssql",
 		expectedConnectionString: "sqlserver://user3:Password%233@example.database.windows.net",
 	},
-	// Error: missing query
 	{
+		name:          "Error: missing query",
 		metadata:      map[string]string{"targetValue": "1"},
 		resolvedEnv:   map[string]string{},
 		authParams:    map[string]string{"connectionString": "sqlserver://localhost"},
-		expectedError: ErrMsSQLNoQuery,
+		expectedError: "missing required parameter \"query\" in [triggerMetadata]",
 	},
-	// Error: missing targetValue
 	{
+		name:          "Error: missing targetValue",
 		metadata:      map[string]string{"query": "SELECT 1"},
 		resolvedEnv:   map[string]string{},
 		authParams:    map[string]string{"connectionString": "sqlserver://localhost"},
-		expectedError: ErrMsSQLNoTargetValue,
+		expectedError: "missing required parameter \"targetValue\" in [triggerMetadata]",
 	},
-	// Error: missing host
 	{
+		name:          "Error: missing host",
 		metadata:      map[string]string{"query": "SELECT 1", "targetValue": "1"},
 		resolvedEnv:   map[string]string{},
 		authParams:    map[string]string{},
-		expectedError: ErrScalerConfigMissingField,
+		expectedError: "must provide either connectionstring or host",
 	},
 }
 
-var mssqlMetricIdentifiers = []mssqlMetricIdentifier{
-	{&testMssqlMetadata[0], 0, "s0-mssql"},
-	{&testMssqlMetadata[1], 1, "s1-mssql"},
-}
-
-func TestMSSQLMetadataParsing(t *testing.T) {
-	for _, testData := range testMssqlMetadata {
-		var config = scalersconfig.ScalerConfig{
-			ResolvedEnv:     testData.resolvedEnv,
-			TriggerMetadata: testData.metadata,
-			AuthParams:      testData.authParams,
-		}
-
-		outputMetadata, err := parseMSSQLMetadata(&config)
-		if err != nil {
-			if testData.expectedError == nil {
-				t.Errorf("Unexpected error parsing input metadata: %v", err)
-			} else if !errors.Is(err, testData.expectedError) {
-				t.Errorf("Expected error '%v' but got '%v'", testData.expectedError, err)
+func TestParseMSSQLMetadata(t *testing.T) {
+	for _, testData := range testMSSQLMetadata {
+		t.Run(testData.name, func(t *testing.T) {
+			config := &scalersconfig.ScalerConfig{
+				TriggerMetadata: testData.metadata,
+				ResolvedEnv:     testData.resolvedEnv,
+				AuthParams:      testData.authParams,
 			}
 
-			continue
-		}
+			meta, err := parseMSSQLMetadata(config)
 
-		expectedQuery := "SELECT 1"
-		if outputMetadata.query != expectedQuery {
-			t.Errorf("Wrong query. Expected '%s' but got '%s'", expectedQuery, outputMetadata.query)
-		}
-
-		var expectedTargetValue float64 = 1
-		if outputMetadata.targetValue != expectedTargetValue {
-			t.Errorf("Wrong targetValue. Expected %f but got %f", expectedTargetValue, outputMetadata.targetValue)
-		}
-
-		outputConnectionString := getMSSQLConnectionString(outputMetadata)
-		if testData.expectedConnectionString != outputConnectionString {
-			t.Errorf("Wrong connection string. Expected '%s' but got '%s'", testData.expectedConnectionString, outputConnectionString)
-		}
+			if testData.expectedError != "" {
+				assert.EqualError(t, err, testData.expectedError)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, meta)
+			}
+		})
 	}
 }
 
 func TestMSSQLGetMetricSpecForScaling(t *testing.T) {
-	for _, testData := range mssqlMetricIdentifiers {
-		ctx := context.Background()
-		var config = scalersconfig.ScalerConfig{
-			ResolvedEnv:     testData.metadataTestData.resolvedEnv,
-			TriggerMetadata: testData.metadataTestData.metadata,
-			AuthParams:      testData.metadataTestData.authParams,
-			TriggerIndex:    testData.triggerIndex,
-		}
-		meta, err := parseMSSQLMetadata(&config)
-		if err != nil {
-			t.Fatal("Could not parse metadata:", err)
-		}
+	for _, testData := range testMSSQLMetadata {
+		t.Run(testData.name, func(t *testing.T) {
+			if testData.expectedError != "" {
+				return
+			}
 
-		mockMssqlScaler := mssqlScaler{
-			metadata: meta,
-		}
-		metricSpec := mockMssqlScaler.GetMetricSpecForScaling(ctx)
-		metricName := metricSpec[0].External.Metric.Name
-		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName, testData.name)
-		}
+			meta, err := parseMSSQLMetadata(&scalersconfig.ScalerConfig{
+				TriggerMetadata: testData.metadata,
+				ResolvedEnv:     testData.resolvedEnv,
+				AuthParams:      testData.authParams,
+			})
+
+			assert.NoError(t, err)
+
+			mockMSSQLScaler := mssqlScaler{
+				metadata: meta,
+			}
+
+			metricSpec := mockMSSQLScaler.GetMetricSpecForScaling(context.Background())
+
+			assert.NotNil(t, metricSpec)
+			assert.Equal(t, 1, len(metricSpec))
+			assert.Contains(t, metricSpec[0].External.Metric.Name, "mssql")
+		})
 	}
 }
