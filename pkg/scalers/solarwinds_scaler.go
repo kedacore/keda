@@ -28,9 +28,9 @@ type solarWindsMetadata struct {
 	TargetValue     float64 `keda:"name=targetValue,     order=triggerMetadata"`
 	ActivationValue float64 `keda:"name=activationValue, order=triggerMetadata"`
 	MetricName      string  `keda:"name=metricName,      order=triggerMetadata"`
-	Aggregation     string  `keda:"name=aggregation,     order=triggerMetadata"`
+	Aggregation     string  `keda:"name=aggregation,     order=triggerMetadata, enum=COUNT;MIN;MAX;AVG;SUM;LAST"`
 	IntervalS       int     `keda:"name=intervalS,       order=triggerMetadata"`
-	Filter          string  `keda:"name=filter,          order=triggerMetadata"`
+	Filter          string  `keda:"name=filter,          order=triggerMetadata, optional"`
 }
 
 func NewSolarWindsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
@@ -83,9 +83,14 @@ func (s *solarWindsScaler) GetMetricsAndActivity(ctx context.Context, metricName
 	now := time.Now()
 	startTime := now.Add(-time.Duration(s.metadata.IntervalS) * time.Second).UTC()
 	endTime := now.UTC()
+	var filter *string
+	if s.metadata.Filter != "" {
+		filter = &s.metadata.Filter
+	}
+
 	res, err := session.Metrics.ListMetricMeasurements(ctx, operations.ListMetricMeasurementsRequest{
 		Name:        metricName,
-		Filter:      &s.metadata.Filter,
+		Filter:      filter,
 		AggregateBy: s.convertAggregation(s.metadata.Aggregation),
 		StartTime:   &startTime,
 		EndTime:     &endTime,

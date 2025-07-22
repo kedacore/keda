@@ -35,6 +35,21 @@ var testSolarWindsMetadata = []parseSolarWindsMetadataTestData{
 		isError:     false,
 		description: "Valid metadata",
 	},
+	// Valid metadata without filter (optional)
+	{
+		metadata: map[string]string{
+			"host":            "https://api.na-01.cloud.solarwinds.com",
+			"apiToken":        "testToken",
+			"targetValue":     "10",
+			"activationValue": "5",
+			"metricName":      "testMetric",
+			"aggregation":     "avg",
+			"intervalS":       "60",
+		},
+		authParams:  map[string]string{},
+		isError:     false,
+		description: "Valid metadata without filter (optional)",
+	},
 	// Invalid host
 	{
 		metadata: map[string]string{
