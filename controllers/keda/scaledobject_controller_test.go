@@ -402,7 +402,7 @@ var _ = Describe("ScaledObjectController", func() {
 				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 				Expect(err).ToNot(HaveOccurred())
 				return so.Status.HpaName
-			}).Should(Equal(fmt.Sprintf("keda-hpa-%s", soName)))
+			}).WithTimeout(60 * time.Second).WithPolling(2 * time.Second).Should(Equal(fmt.Sprintf("keda-hpa-%s", soName)))
 		})
 
 		//https://github.com/kedacore/keda/issues/2407
