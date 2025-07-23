@@ -61,6 +61,7 @@ const FallbackBehaviorStatic = "static"
 const FallbackBehaviorCurrentReplicas = "currentReplicas"
 const FallbackBehaviorCurrentReplicasIfHigher = "currentReplicasIfHigher"
 const FallbackBehaviorCurrentReplicasIfLower = "currentReplicasIfLower"
+const ForceActivationAnnotation = "autoscaling.keda.sh/force-activation"
 
 // HealthStatus is the status for a ScaledObject's health
 type HealthStatus struct {
@@ -230,16 +231,25 @@ func (so *ScaledObject) NeedToBePausedByAnnotation() bool {
 		return so.Status.PausedReplicaCount != nil
 	}
 
-	pausedAnnotationValue, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
-	if !pausedAnnotationFound {
+	return getBoolAnnotation(so, PausedAnnotation)
+}
+
+// NeedToForceActivation checks whether activation of a scale target needs to be forced because the ForceActivation annotation is set
+func (so *ScaledObject) NeedToForceActivation() bool {
+	return getBoolAnnotation(so, ForceActivationAnnotation)
+}
+
+func getBoolAnnotation(so *ScaledObject, annotation string) bool {
+	value, found := so.GetAnnotations()[annotation]
+	if !found {
 		return false
 	}
-	shouldPause, err := strconv.ParseBool(pausedAnnotationValue)
+	boolVal, err := strconv.ParseBool(value)
 	if err != nil {
-		// if annotation value is not a boolean, we assume user wants to pause the ScaledObject
+		// if annotation value is not a boolean, we assume true
 		return true
 	}
-	return shouldPause
+	return boolVal
 }
 
 // IsUsingModifiers determines whether scalingModifiers are defined or not
