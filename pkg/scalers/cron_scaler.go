@@ -141,7 +141,7 @@ func (s *cronScaler) GetMetricsAndActivity(_ context.Context, metricName string)
 		isWithinInterval = currentTime.After(nextStartTime) || currentTime.Before(nextEndTime)
 	}
 
-	metricValue := float64(1)
+	metricValue := float64(0)
 	if isWithinInterval {
 		metricValue = float64(s.metadata.DesiredReplicas)
 	}
