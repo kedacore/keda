@@ -12,7 +12,6 @@ import (
 	"github.com/solarwinds/swo-sdk-go/swov1/models/components"
 	"github.com/solarwinds/swo-sdk-go/swov1/models/operations"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -75,6 +74,17 @@ func (s *solarWindsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 }
 
 func (s *solarWindsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	value, err := s.getMetricValueViaSDK(ctx, metricName)
+	if err != nil {
+		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting SolarWinds metric: %w", err)
+	}
+
+	metric := GenerateMetricInMili(metricName, value)
+
+	return []external_metrics.ExternalMetricValue{metric}, value > s.metadata.ActivationValue, nil
+}
+
+func (s *solarWindsScaler) getMetricValueViaSDK(ctx context.Context, metricName string) (float64, error) {
 	session := swov1.New(
 		swov1.WithSecurity(s.metadata.APIToken),
 		swov1.WithServerURL(s.metadata.Host),
@@ -98,21 +108,10 @@ func (s *solarWindsScaler) GetMetricsAndActivity(ctx context.Context, metricName
 	})
 
 	if err != nil {
-		return nil, false, err
+		return 0, err
 	}
 
-	firstValue, err := s.getFirstMeasurement(res)
-	if err != nil {
-		return nil, false, err
-	}
-
-	valueMili := int64(firstValue * 1000)
-	metric := external_metrics.ExternalMetricValue{
-		MetricName: metricName,
-		Value:      *resource.NewMilliQuantity(valueMili, resource.DecimalSI),
-	}
-	activationValue := int64(s.metadata.ActivationValue * 1000)
-	return []external_metrics.ExternalMetricValue{metric}, valueMili > activationValue, nil
+	return s.getFirstMeasurement(res)
 }
 
 func (s *solarWindsScaler) convertAggregation(aggregation string) *components.MetricsAggregationMethods {
