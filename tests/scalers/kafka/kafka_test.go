@@ -362,9 +362,12 @@ kind: Kafka
 metadata:
   name: {{.KafkaName}}
   namespace: {{.TestNamespace}}
+  annotations:
+    strimzi.io/kraft: enabled
+    strimzi.io/node-pools: enabled
 spec:
   kafka:
-    version: "3.4.0"
+    version: "4.0.0"
     replicas: 1
     listeners:
       - name: plain
@@ -382,13 +385,33 @@ spec:
       log.message.format.version: "2.5"
     storage:
       type: ephemeral
-  zookeeper:
-    replicas: 1
-    storage:
-      type: ephemeral
   entityOperator:
     topicOperator: {}
     userOperator: {}
+    template:
+      # if you don't set this, you have to explicitly clean up the topics or they will block namespace deletion,
+      # the operator can get deleted from the namespace before the topics and we will get wedged on the finalizer
+      topicOperatorContainer:
+        env:
+          - name: STRIMZI_USE_FINALIZERS
+            value: "false"
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: {{ .KafkaName }}-pool
+  namespace: {{ .TestNamespace }}
+  labels:
+    strimzi.io/cluster: {{ .KafkaName }}
+spec:
+  replicas: 1
+  roles:
+    - broker
+    - controller
+  storage:
+    type: ephemeral
+  jvmOptions: {} # Optional, configure as needed
+  resources:     # Optional, configure requests/limits as needed
 `
 
 	kafkaTopicTemplate = `apiVersion: kafka.strimzi.io/v1beta2
