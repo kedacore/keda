@@ -155,8 +155,11 @@ func (c *Client) makeRequestWithRetry(method, url string, payload []byte) ([]byt
 	var lastResp *http.Response
 	for attempt := 1; attempt <= c.config.MaxRetries; attempt++ {
 		respBody, resp, err := c.makeRequest(method, url, payload)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
 		if err != nil {
-			return nil, fmt.Errorf("error response from server: %s %s %s %s", method, url, respBody, resp.Status) // non-retryable error
+			return nil, fmt.Errorf("error response from server: %s %s %s", method, url, respBody) // non-retryable error
 		}
 
 		if resp.StatusCode >= 400 {
