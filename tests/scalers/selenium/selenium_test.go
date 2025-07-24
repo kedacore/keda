@@ -41,7 +41,7 @@ var (
 	hubBasicAuthPasswordB64enc = "YWRtaW4="
 	hubBasicAuthHeader         = "YWRtaW46YWRtaW4="
 	minReplicaCount            = 0
-	maxReplicaCount            = 1
+	maxReplicaCount            = 2
 )
 
 type templateData struct {
@@ -195,7 +195,7 @@ metadata:
   name: chrome-{{.ScaledObjectName}}
   namespace: {{.TestNamespace}}
 spec:
-  maxReplicaCount: 1
+  maxReplicaCount: 2
   pollingInterval: 5
   cooldownPeriod:  5
   scaleTargetRef:
@@ -207,6 +207,7 @@ spec:
       browserName: 'chrome'
       platformName: ''
       activationThreshold: '1'
+      overProvisionRatio: '1'
     authenticationRef:
       name: '{{.TriggerAuthName}}'
 `
@@ -291,7 +292,7 @@ metadata:
   name: firefox-{{.ScaledObjectName}}
   namespace: {{.TestNamespace}}
 spec:
-  maxReplicaCount: 1
+  maxReplicaCount: 2
   pollingInterval: 5
   cooldownPeriod:  5
   scaleTargetRef:
@@ -303,6 +304,7 @@ spec:
         browserName: 'firefox'
         platformName: ''
         activationThreshold: '1'
+        overProvisionRatio: '1'
       authenticationRef:
         name: '{{.TriggerAuthName}}'
 `
@@ -388,7 +390,7 @@ metadata:
   name: edge-{{.ScaledObjectName}}
   namespace: {{.TestNamespace}}
 spec:
-  maxReplicaCount: 1
+  maxReplicaCount: 2
   pollingInterval: 5
   cooldownPeriod:  5
   scaleTargetRef:
@@ -401,6 +403,7 @@ spec:
       sessionBrowserName: 'msedge'
       platformName: ''
       activationThreshold: '1'
+      overProvisionRatio: '1'
     authenticationRef:
       name: '{{.TriggerAuthName}}'
 `
