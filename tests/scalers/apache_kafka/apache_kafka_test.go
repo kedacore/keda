@@ -24,23 +24,26 @@ const (
 )
 
 var (
-	testNamespace                 = fmt.Sprintf("%s-ns", testName)
-	deploymentName                = fmt.Sprintf("%s-deployment", testName)
-	kafkaName                     = fmt.Sprintf("%s-kafka", testName)
-	kafkaClientName               = fmt.Sprintf("%s-client", testName)
-	scaledObjectName              = fmt.Sprintf("%s-so", testName)
-	bootstrapServer               = fmt.Sprintf("%s-kafka-bootstrap.%s:9092", kafkaName, testNamespace)
-	topic1                        = "kafka-topic"
-	topic2                        = "kafka-topic2"
-	zeroInvalidOffsetTopic        = "kafka-topic-zero-invalid-offset"
-	oneInvalidOffsetTopic         = "kafka-topic-one-invalid-offset"
-	invalidOffsetGroup            = "invalidOffset"
-	persistentLagTopic            = "kafka-topic-persistent-lag"
-	persistentLagGroup            = "persistentLag"
-	persistentLagDeploymentGroup  = "persistentLagDeploymentGroup"
-	limitToPartitionsWithLagTopic = "limit-to-partitions-with-lag"
-	limitToPartitionsWithLagGroup = "limitToPartitionsWithLag"
-	topicPartitions               = 3
+	testNamespace                  = fmt.Sprintf("%s-ns", testName)
+	deploymentName                 = fmt.Sprintf("%s-deployment", testName)
+	kafkaName                      = fmt.Sprintf("%s-kafka", testName)
+	kafkaClientName                = fmt.Sprintf("%s-client", testName)
+	scaledObjectName               = fmt.Sprintf("%s-so", testName)
+	bootstrapServer                = fmt.Sprintf("%s-kafka-bootstrap.%s:9092", kafkaName, testNamespace)
+	topic1                         = "kafka-topic"
+	topic2                         = "kafka-topic2"
+	zeroInvalidOffsetTopic         = "kafka-topic-zero-invalid-offset"
+	zeroInvalidOffsetEarliestGroup = "invalidOffsetZeroEarliest"
+	zeroInvalidOffsetLatestGroup   = "invalidOffsetZeroLatest"
+	oneInvalidOffsetTopic          = "kafka-topic-one-invalid-offset"
+	oneInvalidOffsetEarliestGroup  = "invalidOffsetOneEarliest"
+	oneInvalidOffsetLatestGroup    = "invalidOffsetOneLatest"
+	persistentLagTopic             = "kafka-topic-persistent-lag"
+	persistentLagGroup             = "persistentLag"
+	persistentLagDeploymentGroup   = "persistentLagDeploymentGroup"
+	limitToPartitionsWithLagTopic  = "limit-to-partitions-with-lag"
+	limitToPartitionsWithLagGroup  = "limitToPartitionsWithLag"
+	topicPartitions                = 3
 )
 
 type templateData struct {
@@ -573,11 +576,11 @@ func testMultiTopic(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 }
 
 func testZeroOnInvalidOffsetWithLatestOffsetResetPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing zeroInvalidOffsetTopic: scale out ---")
-	data.Params = fmt.Sprintf("--topic %s --group %s", zeroInvalidOffsetTopic, invalidOffsetGroup)
+	t.Log("--- testing zeroInvalidOffsetTopicWithLatestOffsetResetPolicy: scale out ---")
+	data.Params = fmt.Sprintf("--topic %s --group %s", zeroInvalidOffsetTopic, zeroInvalidOffsetLatestGroup)
 	data.Commit = StringTrue
 	data.TopicName = zeroInvalidOffsetTopic
-	data.ResetPolicy = invalidOffsetGroup
+	data.ResetPolicy = zeroInvalidOffsetLatestGroup
 	data.ScaleToZeroOnInvalid = StringTrue
 	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
 	defer KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
@@ -590,10 +593,10 @@ func testZeroOnInvalidOffsetWithLatestOffsetResetPolicy(t *testing.T, kc *kubern
 
 func testZeroOnInvalidOffsetWithEarliestOffsetResetPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing zeroInvalidOffsetTopicWithEarliestOffsetResetPolicy: scale out ---")
-	data.Params = fmt.Sprintf("--topic %s --group %s", zeroInvalidOffsetTopic, invalidOffsetGroup)
+	data.Params = fmt.Sprintf("--topic %s --group %s", zeroInvalidOffsetTopic, zeroInvalidOffsetEarliestGroup)
 	data.Commit = StringTrue
 	data.TopicName = zeroInvalidOffsetTopic
-	data.ResetPolicy = invalidOffsetGroup
+	data.ResetPolicy = zeroInvalidOffsetEarliestGroup
 	data.ScaleToZeroOnInvalid = StringTrue
 	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
 	defer KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
@@ -606,10 +609,10 @@ func testZeroOnInvalidOffsetWithEarliestOffsetResetPolicy(t *testing.T, kc *kube
 
 func testOneOnInvalidOffsetWithLatestOffsetResetPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing oneInvalidOffsetTopicWithLatestOffsetResetPolicy: scale out ---")
-	data.Params = fmt.Sprintf("--topic %s --group %s --from-beginning", oneInvalidOffsetTopic, invalidOffsetGroup)
+	data.Params = fmt.Sprintf("--topic %s --group %s --from-beginning", oneInvalidOffsetTopic, oneInvalidOffsetLatestGroup)
 	data.Commit = StringTrue
 	data.TopicName = oneInvalidOffsetTopic
-	data.ResetPolicy = invalidOffsetGroup
+	data.ResetPolicy = oneInvalidOffsetLatestGroup
 	data.ScaleToZeroOnInvalid = StringFalse
 	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
 	defer KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
@@ -620,7 +623,7 @@ func testOneOnInvalidOffsetWithLatestOffsetResetPolicy(t *testing.T, kc *kuberne
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
 		"replica count should be %d after 2 minute", 1)
 
-	commitPartition(t, oneInvalidOffsetTopic, invalidOffsetGroup)
+	commitPartition(t, oneInvalidOffsetTopic, oneInvalidOffsetLatestGroup)
 	publishMessage(t, oneInvalidOffsetTopic)
 
 	// Should scale to 0
@@ -629,11 +632,11 @@ func testOneOnInvalidOffsetWithLatestOffsetResetPolicy(t *testing.T, kc *kuberne
 }
 
 func testOneOnInvalidOffsetWithEarliestOffsetResetPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing oneInvalidOffsetTopic: scale out ---")
-	data.Params = fmt.Sprintf("--topic %s --group %s --from-beginning", oneInvalidOffsetTopic, invalidOffsetGroup)
+	t.Log("--- testing oneInvalidOffsetTopicWithEarliestOffsetResetPolicy: scale out ---")
+	data.Params = fmt.Sprintf("--topic %s --group %s --from-beginning", oneInvalidOffsetTopic, oneInvalidOffsetEarliestGroup)
 	data.Commit = StringTrue
 	data.TopicName = oneInvalidOffsetTopic
-	data.ResetPolicy = invalidOffsetGroup
+	data.ResetPolicy = oneInvalidOffsetEarliestGroup
 	data.ScaleToZeroOnInvalid = StringFalse
 	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
 	defer KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
@@ -645,7 +648,7 @@ func testOneOnInvalidOffsetWithEarliestOffsetResetPolicy(t *testing.T, kc *kuber
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
 		"replica count should be %d after 2 minute", 1)
 
-	commitPartition(t, oneInvalidOffsetTopic, invalidOffsetGroup)
+	commitPartition(t, oneInvalidOffsetTopic, oneInvalidOffsetEarliestGroup)
 	publishMessage(t, oneInvalidOffsetTopic)
 
 	// Should scale to 0
