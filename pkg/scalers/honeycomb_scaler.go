@@ -153,7 +153,7 @@ func (s *honeycombScaler) executeHoneycombQuery(ctx context.Context) (float64, e
 		"disable_total_by_aggregate": true,
 		"disable_other_by_aggregate": true,
 		// Query results limit is 10000, see https://api-docs.honeycomb.io/api for details
-		"limit":                      honeycombQueryResultsLimit,
+		"limit": honeycombQueryResultsLimit,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("error marshaling Honeycomb run query body: %w", err)
