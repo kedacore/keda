@@ -19,12 +19,14 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 		nodeMaxSessions        int64
 		enableManagedDownloads bool
 		capabilities           string
+		overProvisionRatio     float64
 	}
 	tests := []struct {
 		name                string
 		args                args
 		wantNewRequestNodes int64
 		wantOnGoingSessions int64
+		wantOverProvisioned float64
 		wantErr             bool
 	}{
 		{
@@ -435,6 +437,57 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 			},
 			wantNewRequestNodes: 1,
 			wantOnGoingSessions: 0,
+			wantErr:             false,
+		},
+		{
+			name: "Scaled_number_when_set_param_over_provisioned",
+			args: args{
+				b: []byte(`{
+                    "data": {
+                        "grid": {
+                            "sessionCount": 0,
+                            "maxSession": 0,
+                            "totalSlots": 0
+                        },
+                        "nodesInfo": {
+                            "nodes": [
+                                {
+                                    "id": "node-1",
+                                    "status": "UP",
+                                    "sessionCount": 0,
+                                    "maxSession": 1,
+                                    "slotCount": 1,
+                                    "stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"linux\"}}]",
+                                    "sessions": []
+                                },
+                                {
+                                    "id": "node-2",
+                                    "status": "UP",
+                                    "sessionCount": 0,
+                                    "maxSession": 1,
+                                    "slotCount": 1,
+                                    "stereotypes": "[{\"slots\": 1, \"stereotype\": {\"browserName\": \"chrome\", \"browserVersion\": \"\", \"platformName\": \"Windows 11\"}}]",
+                                    "sessions": []
+                                }
+                            ]
+                        },
+                        "sessionsInfo": {
+                            "sessionQueueRequests": [
+                                "{\"browserName\": \"chrome\", \"platformName\": \"linux\"}",
+                                "{\"browserName\": \"chrome\", \"platformName\": \"linux\"}"
+                            ]
+                        }
+                    }
+                }`),
+				browserName:        "chrome",
+				sessionBrowserName: "chrome",
+				browserVersion:     "",
+				platformName:       "linux",
+				overProvisionRatio: 1.2,
+			},
+			wantNewRequestNodes: 1,
+			wantOnGoingSessions: 0,
+			wantOverProvisioned: 2.2,
 			wantErr:             false,
 		},
 		{
@@ -3154,12 +3207,16 @@ func Test_getCountFromSeleniumResponse(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			newRequestNodes, onGoingSessions, err := getCountFromSeleniumResponse(tt.args.b, tt.args.browserName, tt.args.browserVersion, tt.args.sessionBrowserName, tt.args.platformName, tt.args.nodeMaxSessions, tt.args.enableManagedDownloads, tt.args.capabilities, logr.Discard())
+			scaledCount := getScaledCount(newRequestNodes, onGoingSessions, tt.args.overProvisionRatio)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCountFromSeleniumResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(newRequestNodes, tt.wantNewRequestNodes) || !reflect.DeepEqual(onGoingSessions, tt.wantOnGoingSessions) {
 				t.Errorf("getCountFromSeleniumResponse() = [%v, %v], want [%v, %v]", newRequestNodes, onGoingSessions, tt.wantNewRequestNodes, tt.wantOnGoingSessions)
+			}
+			if tt.args.overProvisionRatio > 0 && !reflect.DeepEqual(scaledCount, tt.wantOverProvisioned) {
+				t.Errorf("getCountFromSeleniumResponse() = %v, want over-provisioned %v", scaledCount, tt.wantOverProvisioned)
 			}
 		})
 	}
