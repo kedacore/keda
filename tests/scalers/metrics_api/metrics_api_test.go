@@ -161,6 +161,8 @@ spec:
     metadata:
       targetValue: "5"
       activationTargetValue: "20"
+      ignoreUnavailable: "true"
+      defaultValue: "0"
       url: "{{.MetricsServerEndpoint}}"
       valueLocation: 'value'
       authMode: "basic"
