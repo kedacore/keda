@@ -2,9 +2,8 @@ package azure
 
 import (
 	"context"
+	"strings"
 	"testing"
-
-	"github.com/Azure/go-autorest/autorest/azure/auth"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
@@ -69,40 +68,33 @@ func TestAzGetAzureAppInsightsMetricValue(t *testing.T) {
 	}
 }
 
-type testAppInsightsAuthConfigTestData struct {
-	testName    string
-	config      string
-	info        AppInsightsInfo
-	podIdentity kedav1alpha1.PodIdentityProvider
+type testAppInsightsMSALClientTestData struct {
+	testName       string
+	expectError    bool
+	info           AppInsightsInfo
+	podIdentity    kedav1alpha1.PodIdentityProvider
+	errorSubstring string
 }
 
-const (
-	msiConfig               = "msiConfig"
-	clientCredentialsConfig = "clientCredentialsConfig"
-	workloadIdentityConfig  = "workloadIdentityConfig"
-)
-
-var testAppInsightsAuthConfigData = []testAppInsightsAuthConfigTestData{
-	{"client credentials", clientCredentialsConfig, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, ""},
-	{"client credentials - pod id none", clientCredentialsConfig, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, kedav1alpha1.PodIdentityProviderNone},
-	{"azure workload identity", workloadIdentityConfig, AppInsightsInfo{}, kedav1alpha1.PodIdentityProviderAzureWorkload},
+var testAppInsightsMSALClientData = []testAppInsightsMSALClientTestData{
+	{"client credentials", false, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, "", ""},
+	{"client credentials - pod id none", false, AppInsightsInfo{ClientID: "1234", ClientPassword: "pw", TenantID: "5678"}, kedav1alpha1.PodIdentityProviderNone, ""},
+	{"azure workload identity", true, AppInsightsInfo{}, kedav1alpha1.PodIdentityProviderAzureWorkload, "failed to create workload identity credential"},
+	{"unsupported identity provider", true, AppInsightsInfo{}, "unsupported", "unsupported pod identity provider"},
 }
 
-func TestAzAppInfoGetAuthConfig(t *testing.T) {
-	for _, testData := range testAppInsightsAuthConfigData {
-		authConfig := getAuthConfig(context.TODO(), testData.info, kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity})
-		switch testData.config {
-		case msiConfig:
-			if _, ok := authConfig.(auth.MSIConfig); !ok {
-				t.Errorf("Test %v; incorrect auth config. expected MSI config", testData.testName)
+func TestNewMSALAppInsightsClientCreation(t *testing.T) {
+	for _, testData := range testAppInsightsMSALClientData {
+		_, err := NewMSALAppInsightsClient(context.TODO(), testData.info, kedav1alpha1.AuthPodIdentity{Provider: testData.podIdentity})
+		if testData.expectError {
+			if err == nil {
+				t.Errorf("Test %v; expected error but got none", testData.testName)
+			} else if testData.errorSubstring != "" && !strings.Contains(err.Error(), testData.errorSubstring) {
+				t.Errorf("Test: %v; expected error containing '%s' but got '%s'", testData.testName, testData.errorSubstring, err.Error())
 			}
-		case clientCredentialsConfig:
-			if _, ok := authConfig.(auth.ClientCredentialsConfig); !ok {
-				t.Errorf("Test: %v; incorrect auth config. expected client credentials config", testData.testName)
-			}
-		case workloadIdentityConfig:
-			if _, ok := authConfig.(ADWorkloadIdentityConfig); !ok {
-				t.Errorf("Test: %v; incorrect auth config. expected ad workload identity config", testData.testName)
+		} else {
+			if err != nil {
+				t.Errorf("Test: %v; expected success but got error: %v", testData.testName, err)
 			}
 		}
 	}
@@ -141,46 +133,3 @@ func TestToISO8601(t *testing.T) {
 	}
 }
 
-type queryParameterTestData struct {
-	testName         string
-	isError          bool
-	info             AppInsightsInfo
-	expectedTimespan string
-}
-
-var queryParameterData = []queryParameterTestData{
-	{testName: "invalid timespace", isError: true, info: AppInsightsInfo{AggregationType: "avg", AggregationTimespan: "00:00:00", Filter: "cloud/roleName eq 'role'"}},
-	{testName: "empty filter", isError: false, expectedTimespan: "PT01H02M", info: AppInsightsInfo{AggregationType: "min", AggregationTimespan: "01:02", Filter: ""}},
-	{testName: "filter specified", isError: false, expectedTimespan: "PT01H02M", info: AppInsightsInfo{AggregationType: "min", AggregationTimespan: "01:02", Filter: "cloud/roleName eq 'role'"}},
-}
-
-func TestQueryParamsForAppInsightsRequest(t *testing.T) {
-	for _, testData := range queryParameterData {
-		params, err := queryParamsForAppInsightsRequest(testData.info)
-		if testData.isError {
-			if err == nil {
-				t.Errorf("Test: %v; Expected error but got success. testData: %v", testData.testName, testData)
-			}
-		} else {
-			if err == nil {
-				if testData.info.AggregationType != params["aggregation"] {
-					t.Errorf("Test: %v; Expected aggregation %v actual %v", testData.testName, testData.info.AggregationType, params["aggregation"])
-				}
-				if testData.expectedTimespan != params["timespan"] {
-					t.Errorf("Test: %v; Expected timespan %v actual %v", testData.testName, testData.expectedTimespan, params["timespan"])
-				}
-				if testData.info.Filter == "" {
-					if params["filter"] != nil {
-						t.Errorf("Test: %v; Filter should not be included in params", testData.testName)
-					}
-				} else {
-					if params["filter"] != testData.info.Filter {
-						t.Errorf("Test: %v; Expected filter %v actual %v", testData.testName, testData.info.Filter, params["filter"])
-					}
-				}
-			} else {
-				t.Errorf("Test: %v; Expected success but got error: %v", testData.testName, err)
-			}
-		}
-	}
-}
