@@ -66,6 +66,7 @@ func NewHoneycombScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	return &honeycombScaler{
 		metricType: metricType,
 		metadata:   meta,
+		// Query Results cannot take longer than 10 seconds to run, see https://api-docs.honeycomb.io/api for details
 		httpClient: &http.Client{Timeout: 15 * time.Second},
 		logger:     logger,
 	}, nil
