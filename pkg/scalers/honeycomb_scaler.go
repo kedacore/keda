@@ -199,6 +199,7 @@ func (s *honeycombScaler) executeHoneycombQuery(ctx context.Context) (float64, e
 
 	// 3. Poll for completion (exponential backoff)
 	pollURL := fmt.Sprintf("%s/query_results/%s/%s", honeycombBaseURL, s.metadata.Dataset, runRes.ID)
+	// Polling query results are rate limited, see https://api-docs.honeycomb.io/api for details
 	pollDelay := initialPollDelay
 	for attempt := 0; attempt < maxPollAttempts; attempt++ {
 		time.Sleep(pollDelay)
