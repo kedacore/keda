@@ -3,30 +3,19 @@ package scalers
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"net"
 	"net/url"
-	"strconv"
 
-	// mssql driver required for this scaler
-	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/go-logr/logr"
+	// Import the MS SQL driver so it can register itself with database/sql
+	_ "github.com/microsoft/go-mssqldb"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
-var (
-	// ErrMsSQLNoQuery is returned when "query" is missing from the config.
-	ErrMsSQLNoQuery = errors.New("no query given")
-
-	// ErrMsSQLNoTargetValue is returned when "targetValue" is missing from the config.
-	ErrMsSQLNoTargetValue = errors.New("no targetValue given")
-)
-
-// mssqlScaler exposes a data pointer to mssqlMetadata and sql.DB connection
 type mssqlScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *mssqlMetadata
@@ -34,42 +23,27 @@ type mssqlScaler struct {
 	logger     logr.Logger
 }
 
-// mssqlMetadata defines metadata used by KEDA to query a Microsoft SQL database
 type mssqlMetadata struct {
-	// The connection string used to connect to the MSSQL database.
-	// Both URL syntax (sqlserver://host?database=dbName) and OLEDB syntax is supported.
-	// +optional
-	connectionString string
-	// The username credential for connecting to the MSSQL instance, if not specified in the connection string.
-	// +optional
-	username string
-	// The password credential for connecting to the MSSQL instance, if not specified in the connection string.
-	// +optional
-	password string
-	// The hostname of the MSSQL instance endpoint, if not specified in the connection string.
-	// +optional
-	host string
-	// The port number of the MSSQL instance endpoint, if not specified in the connection string.
-	// +optional
-	port int
-	// The name of the database to query, if not specified in the connection string.
-	// +optional
-	database string
-	// The T-SQL query to run against the target database - e.g. SELECT COUNT(*) FROM table.
-	// +required
-	query string
-	// The threshold that is used as targetAverageValue in the Horizontal Pod Autoscaler.
-	// +required
-	targetValue float64
-	// The threshold that is used in activation phase
-	// +optional
-	activationTargetValue float64
-	// The index of the scaler inside the ScaledObject
-	// +internal
-	triggerIndex int
+	ConnectionString      string  `keda:"name=connectionString,      order=authParams;resolvedEnv, optional"`
+	Username              string  `keda:"name=username,              order=authParams;triggerMetadata, optional"`
+	Password              string  `keda:"name=password,              order=authParams;resolvedEnv, optional"`
+	Host                  string  `keda:"name=host,                  order=authParams;triggerMetadata, optional"`
+	Port                  int     `keda:"name=port,                  order=authParams;triggerMetadata, optional"`
+	Database              string  `keda:"name=database,              order=authParams;triggerMetadata, optional"`
+	Query                 string  `keda:"name=query,                 order=triggerMetadata"`
+	TargetValue           float64 `keda:"name=targetValue,           order=triggerMetadata"`
+	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
+
+	TriggerIndex int
 }
 
-// NewMSSQLScaler creates a new mssql scaler
+func (m *mssqlMetadata) Validate() error {
+	if m.ConnectionString == "" && m.Host == "" {
+		return fmt.Errorf("must provide either connectionstring or host")
+	}
+	return nil
+}
+
 func NewMSSQLScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
@@ -80,158 +54,92 @@ func NewMSSQLScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	meta, err := parseMSSQLMetadata(config)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing mssql metadata: %w", err)
+		return nil, err
 	}
 
-	conn, err := newMSSQLConnection(meta, logger)
+	scaler := &mssqlScaler{
+		metricType: metricType,
+		metadata:   meta,
+		logger:     logger,
+	}
+
+	conn, err := newMSSQLConnection(scaler)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing mssql connection: %w", err)
 	}
 
-	return &mssqlScaler{
-		metricType: metricType,
-		metadata:   meta,
-		connection: conn,
-		logger:     logger,
-	}, nil
+	scaler.connection = conn
+
+	return scaler, nil
 }
 
-// parseMSSQLMetadata takes a ScalerConfig and returns a mssqlMetadata or an error if the config is invalid
 func parseMSSQLMetadata(config *scalersconfig.ScalerConfig) (*mssqlMetadata, error) {
-	meta := mssqlMetadata{}
-
-	// Query
-	if val, ok := config.TriggerMetadata["query"]; ok {
-		meta.query = val
-	} else {
-		return nil, ErrMsSQLNoQuery
+	meta := &mssqlMetadata{}
+	meta.TriggerIndex = config.TriggerIndex
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, err
 	}
 
-	// Target query value
-	if val, ok := config.TriggerMetadata["targetValue"]; ok {
-		targetValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("targetValue parsing error %w", err)
-		}
-		meta.targetValue = targetValue
-	} else {
-		if config.AsMetricSource {
-			meta.targetValue = 0
-		} else {
-			return nil, ErrMsSQLNoTargetValue
-		}
+	if !config.AsMetricSource && meta.TargetValue == 0 {
+		return nil, fmt.Errorf("no targetValue given")
 	}
 
-	// Activation target value
-	meta.activationTargetValue = 0
-	if val, ok := config.TriggerMetadata["activationTargetValue"]; ok {
-		activationTargetValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("activationTargetValue parsing error %w", err)
-		}
-		meta.activationTargetValue = activationTargetValue
-	}
-
-	// Connection string, which can either be provided explicitly or via the helper fields
-	switch {
-	case config.AuthParams["connectionString"] != "":
-		meta.connectionString = config.AuthParams["connectionString"]
-	case config.TriggerMetadata["connectionStringFromEnv"] != "":
-		meta.connectionString = config.ResolvedEnv[config.TriggerMetadata["connectionStringFromEnv"]]
-	default:
-		meta.connectionString = ""
-		var err error
-
-		host, err := GetFromAuthOrMeta(config, "host")
-		if err != nil {
-			return nil, err
-		}
-		meta.host = host
-
-		var paramPort string
-		paramPort, _ = GetFromAuthOrMeta(config, "port")
-		if paramPort != "" {
-			port, err := strconv.Atoi(paramPort)
-			if err != nil {
-				return nil, fmt.Errorf("port parsing error %w", err)
-			}
-			meta.port = port
-		}
-
-		meta.username, _ = GetFromAuthOrMeta(config, "username")
-
-		// database is optional in SQL s
-		meta.database, _ = GetFromAuthOrMeta(config, "database")
-
-		if config.AuthParams["password"] != "" {
-			meta.password = config.AuthParams["password"]
-		} else if config.TriggerMetadata["passwordFromEnv"] != "" {
-			meta.password = config.ResolvedEnv[config.TriggerMetadata["passwordFromEnv"]]
-		}
-	}
-	meta.triggerIndex = config.TriggerIndex
-	return &meta, nil
+	return meta, nil
 }
 
-// newMSSQLConnection returns a new, opened SQL connection for the provided mssqlMetadata
-func newMSSQLConnection(meta *mssqlMetadata, logger logr.Logger) (*sql.DB, error) {
-	connStr := getMSSQLConnectionString(meta)
+func newMSSQLConnection(s *mssqlScaler) (*sql.DB, error) {
+	connStr := getMSSQLConnectionString(s)
 
 	db, err := sql.Open("sqlserver", connStr)
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("Found error opening mssql: %s", err))
+		s.logger.Error(err, "Found error opening mssql")
 		return nil, err
 	}
 
 	err = db.Ping()
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("Found error pinging mssql: %s", err))
+		s.logger.Error(err, "Found error pinging mssql")
 		return nil, err
 	}
 
 	return db, nil
 }
 
-// getMSSQLConnectionString returns a connection string from a mssqlMetadata
-func getMSSQLConnectionString(meta *mssqlMetadata) string {
-	var connStr string
-
-	if meta.connectionString != "" {
-		connStr = meta.connectionString
-	} else {
-		query := url.Values{}
-		if meta.database != "" {
-			query.Add("database", meta.database)
-		}
-
-		connectionURL := &url.URL{Scheme: "sqlserver", RawQuery: query.Encode()}
-		if meta.username != "" {
-			if meta.password != "" {
-				connectionURL.User = url.UserPassword(meta.username, meta.password)
-			} else {
-				connectionURL.User = url.User(meta.username)
-			}
-		}
-
-		if meta.port > 0 {
-			connectionURL.Host = net.JoinHostPort(meta.host, fmt.Sprintf("%d", meta.port))
-		} else {
-			connectionURL.Host = meta.host
-		}
-
-		connStr = connectionURL.String()
+func getMSSQLConnectionString(s *mssqlScaler) string {
+	meta := s.metadata
+	if meta.ConnectionString != "" {
+		return meta.ConnectionString
 	}
 
-	return connStr
+	query := url.Values{}
+	if meta.Database != "" {
+		query.Add("database", meta.Database)
+	}
+
+	connectionURL := &url.URL{Scheme: "sqlserver", RawQuery: query.Encode()}
+	if meta.Username != "" {
+		if meta.Password != "" {
+			connectionURL.User = url.UserPassword(meta.Username, meta.Password)
+		} else {
+			connectionURL.User = url.User(meta.Username)
+		}
+	}
+
+	if meta.Port > 0 {
+		connectionURL.Host = net.JoinHostPort(meta.Host, fmt.Sprintf("%d", meta.Port))
+	} else {
+		connectionURL.Host = meta.Host
+	}
+
+	return connectionURL.String()
 }
 
-// GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
 func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, "mssql"),
+			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, "mssql"),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.targetValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.TargetValue),
 	}
 
 	metricSpec := v2.MetricSpec{
@@ -241,7 +149,6 @@ func (s *mssqlScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetricsAndActivity returns a value for a supported metric or an error if there is a problem getting the metric
 func (s *mssqlScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	num, err := s.getQueryResult(ctx)
 	if err != nil {
@@ -250,13 +157,13 @@ func (s *mssqlScaler) GetMetricsAndActivity(ctx context.Context, metricName stri
 
 	metric := GenerateMetricInMili(metricName, num)
 
-	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.activationTargetValue, nil
+	return []external_metrics.ExternalMetricValue{metric}, num > s.metadata.ActivationTargetValue, nil
 }
 
-// getQueryResult returns the result of the scaler query
 func (s *mssqlScaler) getQueryResult(ctx context.Context) (float64, error) {
 	var value float64
-	err := s.connection.QueryRowContext(ctx, s.metadata.query).Scan(&value)
+
+	err := s.connection.QueryRowContext(ctx, s.metadata.Query).Scan(&value)
 	switch {
 	case err == sql.ErrNoRows:
 		value = 0
@@ -268,7 +175,6 @@ func (s *mssqlScaler) getQueryResult(ctx context.Context) (float64, error) {
 	return value, nil
 }
 
-// Close closes the mssql database connections
 func (s *mssqlScaler) Close(context.Context) error {
 	err := s.connection.Close()
 	if err != nil {
