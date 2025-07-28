@@ -60,6 +60,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
+- **RabbitMQ Scaler**: add DeliverGetRate and PublishedToDeliveredRatio trigger modes to RabbitMQ scaler
 
 ### New
 
