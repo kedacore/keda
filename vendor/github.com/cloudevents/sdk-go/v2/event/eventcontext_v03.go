@@ -314,7 +314,7 @@ func (ec EventContextV03) String() string {
 		b.WriteString("  datacontentencoding: " + *ec.DataContentEncoding + "\n")
 	}
 
-	if ec.Extensions != nil && len(ec.Extensions) > 0 {
+	if len(ec.Extensions) > 0 {
 		b.WriteString("Extensions,\n")
 		keys := make([]string, 0, len(ec.Extensions))
 		for k := range ec.Extensions {

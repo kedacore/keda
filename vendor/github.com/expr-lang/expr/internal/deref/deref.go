@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-func Deref(p any) any {
+func Interface(p any) any {
 	if p == nil {
 		return nil
 	}

@@ -26,10 +26,49 @@ package internal
 
 import (
 	"context"
+	"strings"
 	"time"
+
+	deploymentpb "go.temporal.io/api/deployment/v1"
+	enumspb "go.temporal.io/api/enums/v1"
 )
 
 type (
+	// WorkerDeploymentOptions provides configuration for Worker Deployment Versioning.
+	// NOTE: Both [WorkerDeploymentOptions.Version] and [WorkerDeploymentOptions.UseVersioning]
+	// need to be set for enabling Worker Deployment Versioning.
+	// NOTE: Experimental
+	//
+	// Exposed as: [go.temporal.io/sdk/worker.DeploymentOptions]
+	WorkerDeploymentOptions struct {
+		// If set, opts this worker into the Worker Deployment Versioning feature. It will only
+		// operate on workflows it claims to be compatible with. You must set [Version] if this flag
+		// is true.
+		// NOTE: Experimental
+		// NOTE: Cannot be enabled at the same time as [WorkerOptions.EnableSessionWorker]
+		UseVersioning bool
+
+		// Assign a Deployment Version identifier to this worker. The format of this identifier
+		// is "<deployment_name>.<build_id>". If [Version] is set both [WorkerOptions.BuildID] and
+		// [DeploymentSeriesName] will be ignored.
+		// NOTE: Experimental
+		Version string
+
+		// Assign a deployment series name to this worker. Different versions of the same worker
+		// service/application are linked together by sharing a series name.
+		//
+		// Deprecated: Use [Version].
+		DeploymentSeriesName string
+
+		// Optional: Provides a default Versioning Behavior to workflows that do not set one with the
+		// registration option [RegisterWorkflowOptions.VersioningBehavior].
+		// NOTE: When the new Deployment-based Worker Versioning feature is on,
+		// and [DefaultVersioningBehavior] is unspecified,
+		// workflows that do not set the Versioning Behavior will fail at registration time.
+		// NOTE: Experimental
+		DefaultVersioningBehavior VersioningBehavior
+	}
+
 	// WorkerOptions is used to configure a worker instance.
 	// The current timeout resolution implementation is in seconds and uses math.Ceil(d.Seconds()) as the duration. But is
 	// subjected to change in the future.
@@ -73,7 +112,7 @@ type (
 		// The zero value of this uses the default value.
 		// default: 100k
 		//
-		// Note: Setting this to a non zero value will also disable eager activities.
+		// NOTE: Setting this to a non zero value will also disable eager activities.
 		TaskQueueActivitiesPerSecond float64
 
 		// Optional: Sets the maximum number of goroutines that will concurrently poll the
@@ -211,7 +250,7 @@ type (
 		// activities directly from the workflow task back to this worker which is
 		// faster than non-eager which may be dispatched to a separate worker.
 		//
-		// Note: Eager activities will automatically be disabled if TaskQueueActivitiesPerSecond is set.
+		// NOTE: Eager activities will automatically be disabled if TaskQueueActivitiesPerSecond is set.
 		DisableEagerActivities bool
 
 		// Optional: Maximum number of eager activities that can be running.
@@ -242,16 +281,23 @@ type (
 
 		// Assign a BuildID to this worker. This replaces the deprecated binary checksum concept,
 		// and is used to provide a unique identifier for a set of worker code, and is necessary
-		// to opt in to the Worker Versioning feature. See UseBuildIDForVersioning.
-		// NOTE: Experimental
+		// to opt in to the Worker Versioning feature. See [UseBuildIDForVersioning].
+		//
+		// Deprecated: Use [WorkerDeploymentOptions.Version]
 		BuildID string
 
-		// Optional: If set, opts this worker into the Worker Versioning feature. It will only
+		// If set, opts this worker into the Worker Versioning feature. It will only
 		// operate on workflows it claims to be compatible with. You must set BuildID if this flag
 		// is true.
-		// NOTE: Experimental
-		// Note: Cannot be enabled at the same time as EnableSessionWorker
+		//
+		// Deprecated: Use [WorkerDeploymentOptions.UseVersioning]
+		// NOTE: Cannot be enabled at the same time as [WorkerOptions.EnableSessionWorker]
 		UseBuildIDForVersioning bool
+
+		// Optional: If set it configures Worker Versioning for this worker. See [WorkerDeploymentOptions]
+		// for more.
+		// NOTE: Experimental
+		DeploymentOptions WorkerDeploymentOptions
 
 		// Optional: If set, use a custom tuner for this worker. See WorkerTuner for more.
 		// Mutually exclusive with MaxConcurrentWorkflowTaskExecutionSize,
@@ -312,4 +358,25 @@ func NewWorker(
 		panic("Client must be created with client.Dial() or client.NewLazyClient()")
 	}
 	return NewAggregatedWorker(workflowClient, taskQueue, options)
+}
+
+func workerDeploymentOptionsToProto(useVersioning bool, version string) *deploymentpb.WorkerDeploymentOptions {
+	if version != "" {
+		splitVersion := strings.SplitN(version, ".", 2)
+		if len(splitVersion) != 2 {
+			panic("invalid format for worker deployment version, not \"<deployment_name>.<build_id>\"")
+		}
+		var workerVersioningMode enumspb.WorkerVersioningMode
+		if useVersioning {
+			workerVersioningMode = enumspb.WORKER_VERSIONING_MODE_VERSIONED
+		} else {
+			workerVersioningMode = enumspb.WORKER_VERSIONING_MODE_UNVERSIONED
+		}
+		return &deploymentpb.WorkerDeploymentOptions{
+			DeploymentName:       splitVersion[0],
+			BuildId:              splitVersion[1],
+			WorkerVersioningMode: workerVersioningMode,
+		}
+	}
+	return nil
 }

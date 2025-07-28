@@ -199,6 +199,9 @@ func (c *Client) addOperationUpdateShardCountMiddlewares(stack *middleware.Stack
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpUpdateShardCountValidationMiddleware(stack); err != nil {
 		return err
 	}

@@ -42,80 +42,88 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	WorkflowService_RegisterNamespace_FullMethodName                  = "/temporal.api.workflowservice.v1.WorkflowService/RegisterNamespace"
-	WorkflowService_DescribeNamespace_FullMethodName                  = "/temporal.api.workflowservice.v1.WorkflowService/DescribeNamespace"
-	WorkflowService_ListNamespaces_FullMethodName                     = "/temporal.api.workflowservice.v1.WorkflowService/ListNamespaces"
-	WorkflowService_UpdateNamespace_FullMethodName                    = "/temporal.api.workflowservice.v1.WorkflowService/UpdateNamespace"
-	WorkflowService_DeprecateNamespace_FullMethodName                 = "/temporal.api.workflowservice.v1.WorkflowService/DeprecateNamespace"
-	WorkflowService_StartWorkflowExecution_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/StartWorkflowExecution"
-	WorkflowService_ExecuteMultiOperation_FullMethodName              = "/temporal.api.workflowservice.v1.WorkflowService/ExecuteMultiOperation"
-	WorkflowService_GetWorkflowExecutionHistory_FullMethodName        = "/temporal.api.workflowservice.v1.WorkflowService/GetWorkflowExecutionHistory"
-	WorkflowService_GetWorkflowExecutionHistoryReverse_FullMethodName = "/temporal.api.workflowservice.v1.WorkflowService/GetWorkflowExecutionHistoryReverse"
-	WorkflowService_PollWorkflowTaskQueue_FullMethodName              = "/temporal.api.workflowservice.v1.WorkflowService/PollWorkflowTaskQueue"
-	WorkflowService_RespondWorkflowTaskCompleted_FullMethodName       = "/temporal.api.workflowservice.v1.WorkflowService/RespondWorkflowTaskCompleted"
-	WorkflowService_RespondWorkflowTaskFailed_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/RespondWorkflowTaskFailed"
-	WorkflowService_PollActivityTaskQueue_FullMethodName              = "/temporal.api.workflowservice.v1.WorkflowService/PollActivityTaskQueue"
-	WorkflowService_RecordActivityTaskHeartbeat_FullMethodName        = "/temporal.api.workflowservice.v1.WorkflowService/RecordActivityTaskHeartbeat"
-	WorkflowService_RecordActivityTaskHeartbeatById_FullMethodName    = "/temporal.api.workflowservice.v1.WorkflowService/RecordActivityTaskHeartbeatById"
-	WorkflowService_RespondActivityTaskCompleted_FullMethodName       = "/temporal.api.workflowservice.v1.WorkflowService/RespondActivityTaskCompleted"
-	WorkflowService_RespondActivityTaskCompletedById_FullMethodName   = "/temporal.api.workflowservice.v1.WorkflowService/RespondActivityTaskCompletedById"
-	WorkflowService_RespondActivityTaskFailed_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/RespondActivityTaskFailed"
-	WorkflowService_RespondActivityTaskFailedById_FullMethodName      = "/temporal.api.workflowservice.v1.WorkflowService/RespondActivityTaskFailedById"
-	WorkflowService_RespondActivityTaskCanceled_FullMethodName        = "/temporal.api.workflowservice.v1.WorkflowService/RespondActivityTaskCanceled"
-	WorkflowService_RespondActivityTaskCanceledById_FullMethodName    = "/temporal.api.workflowservice.v1.WorkflowService/RespondActivityTaskCanceledById"
-	WorkflowService_RequestCancelWorkflowExecution_FullMethodName     = "/temporal.api.workflowservice.v1.WorkflowService/RequestCancelWorkflowExecution"
-	WorkflowService_SignalWorkflowExecution_FullMethodName            = "/temporal.api.workflowservice.v1.WorkflowService/SignalWorkflowExecution"
-	WorkflowService_SignalWithStartWorkflowExecution_FullMethodName   = "/temporal.api.workflowservice.v1.WorkflowService/SignalWithStartWorkflowExecution"
-	WorkflowService_ResetWorkflowExecution_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/ResetWorkflowExecution"
-	WorkflowService_TerminateWorkflowExecution_FullMethodName         = "/temporal.api.workflowservice.v1.WorkflowService/TerminateWorkflowExecution"
-	WorkflowService_DeleteWorkflowExecution_FullMethodName            = "/temporal.api.workflowservice.v1.WorkflowService/DeleteWorkflowExecution"
-	WorkflowService_ListOpenWorkflowExecutions_FullMethodName         = "/temporal.api.workflowservice.v1.WorkflowService/ListOpenWorkflowExecutions"
-	WorkflowService_ListClosedWorkflowExecutions_FullMethodName       = "/temporal.api.workflowservice.v1.WorkflowService/ListClosedWorkflowExecutions"
-	WorkflowService_ListWorkflowExecutions_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/ListWorkflowExecutions"
-	WorkflowService_ListArchivedWorkflowExecutions_FullMethodName     = "/temporal.api.workflowservice.v1.WorkflowService/ListArchivedWorkflowExecutions"
-	WorkflowService_ScanWorkflowExecutions_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/ScanWorkflowExecutions"
-	WorkflowService_CountWorkflowExecutions_FullMethodName            = "/temporal.api.workflowservice.v1.WorkflowService/CountWorkflowExecutions"
-	WorkflowService_GetSearchAttributes_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/GetSearchAttributes"
-	WorkflowService_RespondQueryTaskCompleted_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/RespondQueryTaskCompleted"
-	WorkflowService_ResetStickyTaskQueue_FullMethodName               = "/temporal.api.workflowservice.v1.WorkflowService/ResetStickyTaskQueue"
-	WorkflowService_ShutdownWorker_FullMethodName                     = "/temporal.api.workflowservice.v1.WorkflowService/ShutdownWorker"
-	WorkflowService_QueryWorkflow_FullMethodName                      = "/temporal.api.workflowservice.v1.WorkflowService/QueryWorkflow"
-	WorkflowService_DescribeWorkflowExecution_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/DescribeWorkflowExecution"
-	WorkflowService_DescribeTaskQueue_FullMethodName                  = "/temporal.api.workflowservice.v1.WorkflowService/DescribeTaskQueue"
-	WorkflowService_GetClusterInfo_FullMethodName                     = "/temporal.api.workflowservice.v1.WorkflowService/GetClusterInfo"
-	WorkflowService_GetSystemInfo_FullMethodName                      = "/temporal.api.workflowservice.v1.WorkflowService/GetSystemInfo"
-	WorkflowService_ListTaskQueuePartitions_FullMethodName            = "/temporal.api.workflowservice.v1.WorkflowService/ListTaskQueuePartitions"
-	WorkflowService_CreateSchedule_FullMethodName                     = "/temporal.api.workflowservice.v1.WorkflowService/CreateSchedule"
-	WorkflowService_DescribeSchedule_FullMethodName                   = "/temporal.api.workflowservice.v1.WorkflowService/DescribeSchedule"
-	WorkflowService_UpdateSchedule_FullMethodName                     = "/temporal.api.workflowservice.v1.WorkflowService/UpdateSchedule"
-	WorkflowService_PatchSchedule_FullMethodName                      = "/temporal.api.workflowservice.v1.WorkflowService/PatchSchedule"
-	WorkflowService_ListScheduleMatchingTimes_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/ListScheduleMatchingTimes"
-	WorkflowService_DeleteSchedule_FullMethodName                     = "/temporal.api.workflowservice.v1.WorkflowService/DeleteSchedule"
-	WorkflowService_ListSchedules_FullMethodName                      = "/temporal.api.workflowservice.v1.WorkflowService/ListSchedules"
-	WorkflowService_UpdateWorkerBuildIdCompatibility_FullMethodName   = "/temporal.api.workflowservice.v1.WorkflowService/UpdateWorkerBuildIdCompatibility"
-	WorkflowService_GetWorkerBuildIdCompatibility_FullMethodName      = "/temporal.api.workflowservice.v1.WorkflowService/GetWorkerBuildIdCompatibility"
-	WorkflowService_UpdateWorkerVersioningRules_FullMethodName        = "/temporal.api.workflowservice.v1.WorkflowService/UpdateWorkerVersioningRules"
-	WorkflowService_GetWorkerVersioningRules_FullMethodName           = "/temporal.api.workflowservice.v1.WorkflowService/GetWorkerVersioningRules"
-	WorkflowService_GetWorkerTaskReachability_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/GetWorkerTaskReachability"
-	WorkflowService_DescribeDeployment_FullMethodName                 = "/temporal.api.workflowservice.v1.WorkflowService/DescribeDeployment"
-	WorkflowService_ListDeployments_FullMethodName                    = "/temporal.api.workflowservice.v1.WorkflowService/ListDeployments"
-	WorkflowService_GetDeploymentReachability_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/GetDeploymentReachability"
-	WorkflowService_GetCurrentDeployment_FullMethodName               = "/temporal.api.workflowservice.v1.WorkflowService/GetCurrentDeployment"
-	WorkflowService_SetCurrentDeployment_FullMethodName               = "/temporal.api.workflowservice.v1.WorkflowService/SetCurrentDeployment"
-	WorkflowService_UpdateWorkflowExecution_FullMethodName            = "/temporal.api.workflowservice.v1.WorkflowService/UpdateWorkflowExecution"
-	WorkflowService_PollWorkflowExecutionUpdate_FullMethodName        = "/temporal.api.workflowservice.v1.WorkflowService/PollWorkflowExecutionUpdate"
-	WorkflowService_StartBatchOperation_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/StartBatchOperation"
-	WorkflowService_StopBatchOperation_FullMethodName                 = "/temporal.api.workflowservice.v1.WorkflowService/StopBatchOperation"
-	WorkflowService_DescribeBatchOperation_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/DescribeBatchOperation"
-	WorkflowService_ListBatchOperations_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/ListBatchOperations"
-	WorkflowService_PollNexusTaskQueue_FullMethodName                 = "/temporal.api.workflowservice.v1.WorkflowService/PollNexusTaskQueue"
-	WorkflowService_RespondNexusTaskCompleted_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/RespondNexusTaskCompleted"
-	WorkflowService_RespondNexusTaskFailed_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/RespondNexusTaskFailed"
-	WorkflowService_UpdateActivityOptionsById_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/UpdateActivityOptionsById"
-	WorkflowService_UpdateWorkflowExecutionOptions_FullMethodName     = "/temporal.api.workflowservice.v1.WorkflowService/UpdateWorkflowExecutionOptions"
-	WorkflowService_PauseActivityById_FullMethodName                  = "/temporal.api.workflowservice.v1.WorkflowService/PauseActivityById"
-	WorkflowService_UnpauseActivityById_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/UnpauseActivityById"
-	WorkflowService_ResetActivityById_FullMethodName                  = "/temporal.api.workflowservice.v1.WorkflowService/ResetActivityById"
+	WorkflowService_RegisterNamespace_FullMethodName                     = "/temporal.api.workflowservice.v1.WorkflowService/RegisterNamespace"
+	WorkflowService_DescribeNamespace_FullMethodName                     = "/temporal.api.workflowservice.v1.WorkflowService/DescribeNamespace"
+	WorkflowService_ListNamespaces_FullMethodName                        = "/temporal.api.workflowservice.v1.WorkflowService/ListNamespaces"
+	WorkflowService_UpdateNamespace_FullMethodName                       = "/temporal.api.workflowservice.v1.WorkflowService/UpdateNamespace"
+	WorkflowService_DeprecateNamespace_FullMethodName                    = "/temporal.api.workflowservice.v1.WorkflowService/DeprecateNamespace"
+	WorkflowService_StartWorkflowExecution_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/StartWorkflowExecution"
+	WorkflowService_ExecuteMultiOperation_FullMethodName                 = "/temporal.api.workflowservice.v1.WorkflowService/ExecuteMultiOperation"
+	WorkflowService_GetWorkflowExecutionHistory_FullMethodName           = "/temporal.api.workflowservice.v1.WorkflowService/GetWorkflowExecutionHistory"
+	WorkflowService_GetWorkflowExecutionHistoryReverse_FullMethodName    = "/temporal.api.workflowservice.v1.WorkflowService/GetWorkflowExecutionHistoryReverse"
+	WorkflowService_PollWorkflowTaskQueue_FullMethodName                 = "/temporal.api.workflowservice.v1.WorkflowService/PollWorkflowTaskQueue"
+	WorkflowService_RespondWorkflowTaskCompleted_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/RespondWorkflowTaskCompleted"
+	WorkflowService_RespondWorkflowTaskFailed_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/RespondWorkflowTaskFailed"
+	WorkflowService_PollActivityTaskQueue_FullMethodName                 = "/temporal.api.workflowservice.v1.WorkflowService/PollActivityTaskQueue"
+	WorkflowService_RecordActivityTaskHeartbeat_FullMethodName           = "/temporal.api.workflowservice.v1.WorkflowService/RecordActivityTaskHeartbeat"
+	WorkflowService_RecordActivityTaskHeartbeatById_FullMethodName       = "/temporal.api.workflowservice.v1.WorkflowService/RecordActivityTaskHeartbeatById"
+	WorkflowService_RespondActivityTaskCompleted_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/RespondActivityTaskCompleted"
+	WorkflowService_RespondActivityTaskCompletedById_FullMethodName      = "/temporal.api.workflowservice.v1.WorkflowService/RespondActivityTaskCompletedById"
+	WorkflowService_RespondActivityTaskFailed_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/RespondActivityTaskFailed"
+	WorkflowService_RespondActivityTaskFailedById_FullMethodName         = "/temporal.api.workflowservice.v1.WorkflowService/RespondActivityTaskFailedById"
+	WorkflowService_RespondActivityTaskCanceled_FullMethodName           = "/temporal.api.workflowservice.v1.WorkflowService/RespondActivityTaskCanceled"
+	WorkflowService_RespondActivityTaskCanceledById_FullMethodName       = "/temporal.api.workflowservice.v1.WorkflowService/RespondActivityTaskCanceledById"
+	WorkflowService_RequestCancelWorkflowExecution_FullMethodName        = "/temporal.api.workflowservice.v1.WorkflowService/RequestCancelWorkflowExecution"
+	WorkflowService_SignalWorkflowExecution_FullMethodName               = "/temporal.api.workflowservice.v1.WorkflowService/SignalWorkflowExecution"
+	WorkflowService_SignalWithStartWorkflowExecution_FullMethodName      = "/temporal.api.workflowservice.v1.WorkflowService/SignalWithStartWorkflowExecution"
+	WorkflowService_ResetWorkflowExecution_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/ResetWorkflowExecution"
+	WorkflowService_TerminateWorkflowExecution_FullMethodName            = "/temporal.api.workflowservice.v1.WorkflowService/TerminateWorkflowExecution"
+	WorkflowService_DeleteWorkflowExecution_FullMethodName               = "/temporal.api.workflowservice.v1.WorkflowService/DeleteWorkflowExecution"
+	WorkflowService_ListOpenWorkflowExecutions_FullMethodName            = "/temporal.api.workflowservice.v1.WorkflowService/ListOpenWorkflowExecutions"
+	WorkflowService_ListClosedWorkflowExecutions_FullMethodName          = "/temporal.api.workflowservice.v1.WorkflowService/ListClosedWorkflowExecutions"
+	WorkflowService_ListWorkflowExecutions_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/ListWorkflowExecutions"
+	WorkflowService_ListArchivedWorkflowExecutions_FullMethodName        = "/temporal.api.workflowservice.v1.WorkflowService/ListArchivedWorkflowExecutions"
+	WorkflowService_ScanWorkflowExecutions_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/ScanWorkflowExecutions"
+	WorkflowService_CountWorkflowExecutions_FullMethodName               = "/temporal.api.workflowservice.v1.WorkflowService/CountWorkflowExecutions"
+	WorkflowService_GetSearchAttributes_FullMethodName                   = "/temporal.api.workflowservice.v1.WorkflowService/GetSearchAttributes"
+	WorkflowService_RespondQueryTaskCompleted_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/RespondQueryTaskCompleted"
+	WorkflowService_ResetStickyTaskQueue_FullMethodName                  = "/temporal.api.workflowservice.v1.WorkflowService/ResetStickyTaskQueue"
+	WorkflowService_ShutdownWorker_FullMethodName                        = "/temporal.api.workflowservice.v1.WorkflowService/ShutdownWorker"
+	WorkflowService_QueryWorkflow_FullMethodName                         = "/temporal.api.workflowservice.v1.WorkflowService/QueryWorkflow"
+	WorkflowService_DescribeWorkflowExecution_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/DescribeWorkflowExecution"
+	WorkflowService_DescribeTaskQueue_FullMethodName                     = "/temporal.api.workflowservice.v1.WorkflowService/DescribeTaskQueue"
+	WorkflowService_GetClusterInfo_FullMethodName                        = "/temporal.api.workflowservice.v1.WorkflowService/GetClusterInfo"
+	WorkflowService_GetSystemInfo_FullMethodName                         = "/temporal.api.workflowservice.v1.WorkflowService/GetSystemInfo"
+	WorkflowService_ListTaskQueuePartitions_FullMethodName               = "/temporal.api.workflowservice.v1.WorkflowService/ListTaskQueuePartitions"
+	WorkflowService_CreateSchedule_FullMethodName                        = "/temporal.api.workflowservice.v1.WorkflowService/CreateSchedule"
+	WorkflowService_DescribeSchedule_FullMethodName                      = "/temporal.api.workflowservice.v1.WorkflowService/DescribeSchedule"
+	WorkflowService_UpdateSchedule_FullMethodName                        = "/temporal.api.workflowservice.v1.WorkflowService/UpdateSchedule"
+	WorkflowService_PatchSchedule_FullMethodName                         = "/temporal.api.workflowservice.v1.WorkflowService/PatchSchedule"
+	WorkflowService_ListScheduleMatchingTimes_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/ListScheduleMatchingTimes"
+	WorkflowService_DeleteSchedule_FullMethodName                        = "/temporal.api.workflowservice.v1.WorkflowService/DeleteSchedule"
+	WorkflowService_ListSchedules_FullMethodName                         = "/temporal.api.workflowservice.v1.WorkflowService/ListSchedules"
+	WorkflowService_UpdateWorkerBuildIdCompatibility_FullMethodName      = "/temporal.api.workflowservice.v1.WorkflowService/UpdateWorkerBuildIdCompatibility"
+	WorkflowService_GetWorkerBuildIdCompatibility_FullMethodName         = "/temporal.api.workflowservice.v1.WorkflowService/GetWorkerBuildIdCompatibility"
+	WorkflowService_UpdateWorkerVersioningRules_FullMethodName           = "/temporal.api.workflowservice.v1.WorkflowService/UpdateWorkerVersioningRules"
+	WorkflowService_GetWorkerVersioningRules_FullMethodName              = "/temporal.api.workflowservice.v1.WorkflowService/GetWorkerVersioningRules"
+	WorkflowService_GetWorkerTaskReachability_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/GetWorkerTaskReachability"
+	WorkflowService_DescribeDeployment_FullMethodName                    = "/temporal.api.workflowservice.v1.WorkflowService/DescribeDeployment"
+	WorkflowService_DescribeWorkerDeploymentVersion_FullMethodName       = "/temporal.api.workflowservice.v1.WorkflowService/DescribeWorkerDeploymentVersion"
+	WorkflowService_ListDeployments_FullMethodName                       = "/temporal.api.workflowservice.v1.WorkflowService/ListDeployments"
+	WorkflowService_GetDeploymentReachability_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/GetDeploymentReachability"
+	WorkflowService_GetCurrentDeployment_FullMethodName                  = "/temporal.api.workflowservice.v1.WorkflowService/GetCurrentDeployment"
+	WorkflowService_SetCurrentDeployment_FullMethodName                  = "/temporal.api.workflowservice.v1.WorkflowService/SetCurrentDeployment"
+	WorkflowService_SetWorkerDeploymentCurrentVersion_FullMethodName     = "/temporal.api.workflowservice.v1.WorkflowService/SetWorkerDeploymentCurrentVersion"
+	WorkflowService_DescribeWorkerDeployment_FullMethodName              = "/temporal.api.workflowservice.v1.WorkflowService/DescribeWorkerDeployment"
+	WorkflowService_DeleteWorkerDeployment_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/DeleteWorkerDeployment"
+	WorkflowService_DeleteWorkerDeploymentVersion_FullMethodName         = "/temporal.api.workflowservice.v1.WorkflowService/DeleteWorkerDeploymentVersion"
+	WorkflowService_SetWorkerDeploymentRampingVersion_FullMethodName     = "/temporal.api.workflowservice.v1.WorkflowService/SetWorkerDeploymentRampingVersion"
+	WorkflowService_ListWorkerDeployments_FullMethodName                 = "/temporal.api.workflowservice.v1.WorkflowService/ListWorkerDeployments"
+	WorkflowService_UpdateWorkerDeploymentVersionMetadata_FullMethodName = "/temporal.api.workflowservice.v1.WorkflowService/UpdateWorkerDeploymentVersionMetadata"
+	WorkflowService_UpdateWorkflowExecution_FullMethodName               = "/temporal.api.workflowservice.v1.WorkflowService/UpdateWorkflowExecution"
+	WorkflowService_PollWorkflowExecutionUpdate_FullMethodName           = "/temporal.api.workflowservice.v1.WorkflowService/PollWorkflowExecutionUpdate"
+	WorkflowService_StartBatchOperation_FullMethodName                   = "/temporal.api.workflowservice.v1.WorkflowService/StartBatchOperation"
+	WorkflowService_StopBatchOperation_FullMethodName                    = "/temporal.api.workflowservice.v1.WorkflowService/StopBatchOperation"
+	WorkflowService_DescribeBatchOperation_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/DescribeBatchOperation"
+	WorkflowService_ListBatchOperations_FullMethodName                   = "/temporal.api.workflowservice.v1.WorkflowService/ListBatchOperations"
+	WorkflowService_PollNexusTaskQueue_FullMethodName                    = "/temporal.api.workflowservice.v1.WorkflowService/PollNexusTaskQueue"
+	WorkflowService_RespondNexusTaskCompleted_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/RespondNexusTaskCompleted"
+	WorkflowService_RespondNexusTaskFailed_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/RespondNexusTaskFailed"
+	WorkflowService_UpdateActivityOptions_FullMethodName                 = "/temporal.api.workflowservice.v1.WorkflowService/UpdateActivityOptions"
+	WorkflowService_UpdateWorkflowExecutionOptions_FullMethodName        = "/temporal.api.workflowservice.v1.WorkflowService/UpdateWorkflowExecutionOptions"
+	WorkflowService_PauseActivity_FullMethodName                         = "/temporal.api.workflowservice.v1.WorkflowService/PauseActivity"
+	WorkflowService_UnpauseActivity_FullMethodName                       = "/temporal.api.workflowservice.v1.WorkflowService/UnpauseActivity"
+	WorkflowService_ResetActivity_FullMethodName                         = "/temporal.api.workflowservice.v1.WorkflowService/ResetActivity"
 )
 
 // WorkflowServiceClient is the client API for WorkflowService service.
@@ -350,6 +358,7 @@ type WorkflowServiceClient interface {
 	ListArchivedWorkflowExecutions(ctx context.Context, in *ListArchivedWorkflowExecutionsRequest, opts ...grpc.CallOption) (*ListArchivedWorkflowExecutionsResponse, error)
 	// ScanWorkflowExecutions is a visibility API to list large amount of workflow executions in a specific namespace without order.
 	//
+	// Deprecated: Replaced with `ListWorkflowExecutions`.
 	// (-- api-linter: core::0127::http-annotation=disabled
 	//
 	//	aip.dev/not-precedent: HTTP users should use ListWorkflowExecutions instead. --)
@@ -502,10 +511,15 @@ type WorkflowServiceClient interface {
 	GetWorkerTaskReachability(ctx context.Context, in *GetWorkerTaskReachabilityRequest, opts ...grpc.CallOption) (*GetWorkerTaskReachabilityResponse, error)
 	// Describes a worker deployment.
 	// Experimental. This API might significantly change or be removed in a future release.
+	// Deprecated. Replaced with `DescribeWorkerDeploymentVersion`.
 	DescribeDeployment(ctx context.Context, in *DescribeDeploymentRequest, opts ...grpc.CallOption) (*DescribeDeploymentResponse, error)
+	// Describes a worker deployment version.
+	// Experimental. This API might significantly change or be removed in a future release.
+	DescribeWorkerDeploymentVersion(ctx context.Context, in *DescribeWorkerDeploymentVersionRequest, opts ...grpc.CallOption) (*DescribeWorkerDeploymentVersionResponse, error)
 	// Lists worker deployments in the namespace. Optionally can filter based on deployment series
 	// name.
 	// Experimental. This API might significantly change or be removed in a future release.
+	// Deprecated. Replaced with `ListWorkerDeployments`.
 	ListDeployments(ctx context.Context, in *ListDeploymentsRequest, opts ...grpc.CallOption) (*ListDeploymentsResponse, error)
 	// Returns the reachability level of a worker deployment to help users decide when it is time
 	// to decommission a deployment. Reachability level is calculated based on the deployment's
@@ -514,14 +528,47 @@ type WorkflowServiceClient interface {
 	// cached value. In such a case, the `last_update_time` will inform you about the actual
 	// reachability calculation time.
 	// Experimental. This API might significantly change or be removed in a future release.
+	// Deprecated. Replaced with `DrainageInfo` returned by `DescribeWorkerDeploymentVersion`.
 	GetDeploymentReachability(ctx context.Context, in *GetDeploymentReachabilityRequest, opts ...grpc.CallOption) (*GetDeploymentReachabilityResponse, error)
 	// Returns the current deployment (and its info) for a given deployment series.
 	// Experimental. This API might significantly change or be removed in a future release.
+	// Deprecated. Replaced by `current_version` returned by `DescribeWorkerDeployment`.
 	GetCurrentDeployment(ctx context.Context, in *GetCurrentDeploymentRequest, opts ...grpc.CallOption) (*GetCurrentDeploymentResponse, error)
 	// Sets a deployment as the current deployment for its deployment series. Can optionally update
 	// the metadata of the deployment as well.
 	// Experimental. This API might significantly change or be removed in a future release.
+	// Deprecated. Replaced by `SetWorkerDeploymentCurrentVersion`.
 	SetCurrentDeployment(ctx context.Context, in *SetCurrentDeploymentRequest, opts ...grpc.CallOption) (*SetCurrentDeploymentResponse, error)
+	// Set/unset the Current Version of a Worker Deployment. Automatically unsets the Ramping
+	// Version if it is the Version being set as Current.
+	// Experimental. This API might significantly change or be removed in a future release.
+	SetWorkerDeploymentCurrentVersion(ctx context.Context, in *SetWorkerDeploymentCurrentVersionRequest, opts ...grpc.CallOption) (*SetWorkerDeploymentCurrentVersionResponse, error)
+	// Describes a Worker Deployment.
+	// Experimental. This API might significantly change or be removed in a future release.
+	DescribeWorkerDeployment(ctx context.Context, in *DescribeWorkerDeploymentRequest, opts ...grpc.CallOption) (*DescribeWorkerDeploymentResponse, error)
+	// Deletes records of (an old) Deployment. A deployment can only be deleted if
+	// it has no Version in it.
+	// Experimental. This API might significantly change or be removed in a future release.
+	DeleteWorkerDeployment(ctx context.Context, in *DeleteWorkerDeploymentRequest, opts ...grpc.CallOption) (*DeleteWorkerDeploymentResponse, error)
+	// Used for manual deletion of Versions. User can delete a Version only when all the
+	// following conditions are met:
+	//   - It is not the Current or Ramping Version of its Deployment.
+	//   - It has no active pollers (none of the task queues in the Version have pollers)
+	//   - It is not draining (see WorkerDeploymentVersionInfo.drainage_info). This condition
+	//     can be skipped by passing `skip-drainage=true`.
+	//
+	// Experimental. This API might significantly change or be removed in a future release.
+	DeleteWorkerDeploymentVersion(ctx context.Context, in *DeleteWorkerDeploymentVersionRequest, opts ...grpc.CallOption) (*DeleteWorkerDeploymentVersionResponse, error)
+	// Set/unset the Ramping Version of a Worker Deployment and its ramp percentage. Can be used for
+	// gradual ramp to unversioned workers too.
+	// Experimental. This API might significantly change or be removed in a future release.
+	SetWorkerDeploymentRampingVersion(ctx context.Context, in *SetWorkerDeploymentRampingVersionRequest, opts ...grpc.CallOption) (*SetWorkerDeploymentRampingVersionResponse, error)
+	// Lists all Worker Deployments that are tracked in the Namespace.
+	// Experimental. This API might significantly change or be removed in a future release.
+	ListWorkerDeployments(ctx context.Context, in *ListWorkerDeploymentsRequest, opts ...grpc.CallOption) (*ListWorkerDeploymentsResponse, error)
+	// Updates the user-given metadata attached to a Worker Deployment Version.
+	// Experimental. This API might significantly change or be removed in a future release.
+	UpdateWorkerDeploymentVersionMetadata(ctx context.Context, in *UpdateWorkerDeploymentVersionMetadataRequest, opts ...grpc.CallOption) (*UpdateWorkerDeploymentVersionMetadataResponse, error)
 	// Invokes the specified Update function on user Workflow code.
 	UpdateWorkflowExecution(ctx context.Context, in *UpdateWorkflowExecutionRequest, opts ...grpc.CallOption) (*UpdateWorkflowExecutionResponse, error)
 	// Polls a Workflow Execution for the outcome of a Workflow Update
@@ -556,15 +603,13 @@ type WorkflowServiceClient interface {
 	//
 	//	aip.dev/not-precedent: We do not expose worker API to HTTP. --)
 	RespondNexusTaskFailed(ctx context.Context, in *RespondNexusTaskFailedRequest, opts ...grpc.CallOption) (*RespondNexusTaskFailedResponse, error)
-	// UpdateActivityOptionsById is called by the client to update the options of an activity
-	// (-- api-linter: core::0136::prepositions=disabled
-	//
-	//	aip.dev/not-precedent: "By" is used to indicate request type. --)
-	UpdateActivityOptionsById(ctx context.Context, in *UpdateActivityOptionsByIdRequest, opts ...grpc.CallOption) (*UpdateActivityOptionsByIdResponse, error)
+	// UpdateActivityOptions is called by the client to update the options of an activity by its ID or type.
+	// If there are multiple pending activities of the provided type - all of them will be updated.
+	UpdateActivityOptions(ctx context.Context, in *UpdateActivityOptionsRequest, opts ...grpc.CallOption) (*UpdateActivityOptionsResponse, error)
 	// UpdateWorkflowExecutionOptions partially updates the WorkflowExecutionOptions of an existing workflow execution.
 	UpdateWorkflowExecutionOptions(ctx context.Context, in *UpdateWorkflowExecutionOptionsRequest, opts ...grpc.CallOption) (*UpdateWorkflowExecutionOptionsResponse, error)
-	// PauseActivityById pauses the execution of an activity specified by its ID.
-	// Returns a `NotFound` error if there is no pending activity with the provided ID.
+	// PauseActivity pauses the execution of an activity specified by its ID or type.
+	// If there are multiple pending activities of the provided type - all of them will be paused
 	//
 	// Pausing an activity means:
 	//   - If the activity is currently waiting for a retry or is running and subsequently fails,
@@ -578,41 +623,41 @@ type WorkflowServiceClient interface {
 	// For long-running activities:
 	// - activities in paused state will send a cancellation with "activity_paused" set to 'true' in response to 'RecordActivityTaskHeartbeat'.
 	// - The activity should respond to the cancellation accordingly.
-	// (-- api-linter: core::0136::prepositions=disabled
 	//
-	//	aip.dev/not-precedent: "By" is used to indicate request type. --)
-	PauseActivityById(ctx context.Context, in *PauseActivityByIdRequest, opts ...grpc.CallOption) (*PauseActivityByIdResponse, error)
-	// UnpauseActivityById unpauses the execution of an activity specified by its ID.
-	// Returns a `NotFound` error if there is no pending activity with the provided ID.
-	// There are two 'modes' of unpausing an activity:
-	// 'resume' - If the activity is paused, it will be resumed and scheduled for execution.
-	//   - If the activity is currently running Unpause with 'resume' has no effect.
-	//   - if 'no_wait' flag is set and the activity is waiting, the activity will be scheduled immediately.
+	// Returns a `NotFound` error if there is no pending activity with the provided ID or type
+	PauseActivity(ctx context.Context, in *PauseActivityRequest, opts ...grpc.CallOption) (*PauseActivityResponse, error)
+	// UnpauseActivity unpauses the execution of an activity specified by its ID or type.
+	// If there are multiple pending activities of the provided type - all of them will be unpaused.
 	//
-	// 'reset' - If the activity is paused, it will be reset to its initial state and (depending on parameters) scheduled for execution.
-	//   - If the activity is currently running, Unpause with 'reset' will reset the number of attempts.
-	//   - if 'no_wait' flag is set, the activity will be scheduled immediately.
-	//   - if 'reset_heartbeats' flag is set, the activity heartbeat timer and heartbeats will be reset.
-	//
-	// If the activity is in waiting for retry and past it retry timeout, it will be scheduled immediately.
+	// If activity is not paused, this call will have no effect.
+	// If the activity was paused while waiting for retry, it will be scheduled immediately (* see 'jitter' flag).
 	// Once the activity is unpaused, all timeout timers will be regenerated.
-	// (-- api-linter: core::0136::prepositions=disabled
 	//
-	//	aip.dev/not-precedent: "By" is used to indicate request type. --)
-	UnpauseActivityById(ctx context.Context, in *UnpauseActivityByIdRequest, opts ...grpc.CallOption) (*UnpauseActivityByIdResponse, error)
-	// ResetActivityById unpauses the execution of an activity specified by its ID.
-	// Returns a `NotFound` error if there is no pending activity with the provided ID.
+	// Flags:
+	// 'jitter': the activity will be scheduled at a random time within the jitter duration.
+	// 'reset_attempts': the number of attempts will be reset.
+	// 'reset_heartbeat': the activity heartbeat timer and heartbeats will be reset.
+	//
+	// Returns a `NotFound` error if there is no pending activity with the provided ID or type
+	UnpauseActivity(ctx context.Context, in *UnpauseActivityRequest, opts ...grpc.CallOption) (*UnpauseActivityResponse, error)
+	// ResetActivity resets the execution of an activity specified by its ID or type.
+	// If there are multiple pending activities of the provided type - all of them will be reset.
+	//
 	// Resetting an activity means:
-	// * number of attempts will be reset to 0.
-	// * activity timeouts will be resetted.
-	// If the activity currently running:
-	// *  if 'no_wait' flag is provided, a new instance of the activity will be scheduled immediately.
-	// *  if 'no_wait' flag is not provided, a new instance of the  activity will be scheduled after current instance completes if needed.
-	// If 'reset_heartbeats' flag is set, the activity heartbeat timer and heartbeats will be reset.
-	// (-- api-linter: core::0136::prepositions=disabled
+	//   - number of attempts will be reset to 0.
+	//   - activity timeouts will be reset.
+	//   - if the activity is waiting for retry, and it is not paused or 'keep_paused' is not provided:
+	//     it will be scheduled immediately (* see 'jitter' flag),
 	//
-	//	aip.dev/not-precedent: "By" is used to indicate request type. --)
-	ResetActivityById(ctx context.Context, in *ResetActivityByIdRequest, opts ...grpc.CallOption) (*ResetActivityByIdResponse, error)
+	// Flags:
+	//
+	// 'jitter': the activity will be scheduled at a random time within the jitter duration.
+	// If the activity currently paused it will be unpaused, unless 'keep_paused' flag is provided.
+	// 'reset_heartbeats': the activity heartbeat timer and heartbeats will be reset.
+	// 'keep_paused': if the activity is paused, it will remain paused.
+	//
+	// Returns a `NotFound` error if there is no pending activity with the provided ID or type.
+	ResetActivity(ctx context.Context, in *ResetActivityRequest, opts ...grpc.CallOption) (*ResetActivityResponse, error)
 }
 
 type workflowServiceClient struct {
@@ -1183,6 +1228,16 @@ func (c *workflowServiceClient) DescribeDeployment(ctx context.Context, in *Desc
 	return out, nil
 }
 
+func (c *workflowServiceClient) DescribeWorkerDeploymentVersion(ctx context.Context, in *DescribeWorkerDeploymentVersionRequest, opts ...grpc.CallOption) (*DescribeWorkerDeploymentVersionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DescribeWorkerDeploymentVersionResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_DescribeWorkerDeploymentVersion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *workflowServiceClient) ListDeployments(ctx context.Context, in *ListDeploymentsRequest, opts ...grpc.CallOption) (*ListDeploymentsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListDeploymentsResponse)
@@ -1217,6 +1272,76 @@ func (c *workflowServiceClient) SetCurrentDeployment(ctx context.Context, in *Se
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetCurrentDeploymentResponse)
 	err := c.cc.Invoke(ctx, WorkflowService_SetCurrentDeployment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) SetWorkerDeploymentCurrentVersion(ctx context.Context, in *SetWorkerDeploymentCurrentVersionRequest, opts ...grpc.CallOption) (*SetWorkerDeploymentCurrentVersionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetWorkerDeploymentCurrentVersionResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_SetWorkerDeploymentCurrentVersion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) DescribeWorkerDeployment(ctx context.Context, in *DescribeWorkerDeploymentRequest, opts ...grpc.CallOption) (*DescribeWorkerDeploymentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DescribeWorkerDeploymentResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_DescribeWorkerDeployment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) DeleteWorkerDeployment(ctx context.Context, in *DeleteWorkerDeploymentRequest, opts ...grpc.CallOption) (*DeleteWorkerDeploymentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteWorkerDeploymentResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_DeleteWorkerDeployment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) DeleteWorkerDeploymentVersion(ctx context.Context, in *DeleteWorkerDeploymentVersionRequest, opts ...grpc.CallOption) (*DeleteWorkerDeploymentVersionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteWorkerDeploymentVersionResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_DeleteWorkerDeploymentVersion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) SetWorkerDeploymentRampingVersion(ctx context.Context, in *SetWorkerDeploymentRampingVersionRequest, opts ...grpc.CallOption) (*SetWorkerDeploymentRampingVersionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetWorkerDeploymentRampingVersionResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_SetWorkerDeploymentRampingVersion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) ListWorkerDeployments(ctx context.Context, in *ListWorkerDeploymentsRequest, opts ...grpc.CallOption) (*ListWorkerDeploymentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListWorkerDeploymentsResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_ListWorkerDeployments_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) UpdateWorkerDeploymentVersionMetadata(ctx context.Context, in *UpdateWorkerDeploymentVersionMetadataRequest, opts ...grpc.CallOption) (*UpdateWorkerDeploymentVersionMetadataResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateWorkerDeploymentVersionMetadataResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_UpdateWorkerDeploymentVersionMetadata_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1313,10 +1438,10 @@ func (c *workflowServiceClient) RespondNexusTaskFailed(ctx context.Context, in *
 	return out, nil
 }
 
-func (c *workflowServiceClient) UpdateActivityOptionsById(ctx context.Context, in *UpdateActivityOptionsByIdRequest, opts ...grpc.CallOption) (*UpdateActivityOptionsByIdResponse, error) {
+func (c *workflowServiceClient) UpdateActivityOptions(ctx context.Context, in *UpdateActivityOptionsRequest, opts ...grpc.CallOption) (*UpdateActivityOptionsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UpdateActivityOptionsByIdResponse)
-	err := c.cc.Invoke(ctx, WorkflowService_UpdateActivityOptionsById_FullMethodName, in, out, cOpts...)
+	out := new(UpdateActivityOptionsResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_UpdateActivityOptions_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1333,30 +1458,30 @@ func (c *workflowServiceClient) UpdateWorkflowExecutionOptions(ctx context.Conte
 	return out, nil
 }
 
-func (c *workflowServiceClient) PauseActivityById(ctx context.Context, in *PauseActivityByIdRequest, opts ...grpc.CallOption) (*PauseActivityByIdResponse, error) {
+func (c *workflowServiceClient) PauseActivity(ctx context.Context, in *PauseActivityRequest, opts ...grpc.CallOption) (*PauseActivityResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(PauseActivityByIdResponse)
-	err := c.cc.Invoke(ctx, WorkflowService_PauseActivityById_FullMethodName, in, out, cOpts...)
+	out := new(PauseActivityResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_PauseActivity_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *workflowServiceClient) UnpauseActivityById(ctx context.Context, in *UnpauseActivityByIdRequest, opts ...grpc.CallOption) (*UnpauseActivityByIdResponse, error) {
+func (c *workflowServiceClient) UnpauseActivity(ctx context.Context, in *UnpauseActivityRequest, opts ...grpc.CallOption) (*UnpauseActivityResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UnpauseActivityByIdResponse)
-	err := c.cc.Invoke(ctx, WorkflowService_UnpauseActivityById_FullMethodName, in, out, cOpts...)
+	out := new(UnpauseActivityResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_UnpauseActivity_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *workflowServiceClient) ResetActivityById(ctx context.Context, in *ResetActivityByIdRequest, opts ...grpc.CallOption) (*ResetActivityByIdResponse, error) {
+func (c *workflowServiceClient) ResetActivity(ctx context.Context, in *ResetActivityRequest, opts ...grpc.CallOption) (*ResetActivityResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ResetActivityByIdResponse)
-	err := c.cc.Invoke(ctx, WorkflowService_ResetActivityById_FullMethodName, in, out, cOpts...)
+	out := new(ResetActivityResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_ResetActivity_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1595,6 +1720,7 @@ type WorkflowServiceServer interface {
 	ListArchivedWorkflowExecutions(context.Context, *ListArchivedWorkflowExecutionsRequest) (*ListArchivedWorkflowExecutionsResponse, error)
 	// ScanWorkflowExecutions is a visibility API to list large amount of workflow executions in a specific namespace without order.
 	//
+	// Deprecated: Replaced with `ListWorkflowExecutions`.
 	// (-- api-linter: core::0127::http-annotation=disabled
 	//
 	//	aip.dev/not-precedent: HTTP users should use ListWorkflowExecutions instead. --)
@@ -1747,10 +1873,15 @@ type WorkflowServiceServer interface {
 	GetWorkerTaskReachability(context.Context, *GetWorkerTaskReachabilityRequest) (*GetWorkerTaskReachabilityResponse, error)
 	// Describes a worker deployment.
 	// Experimental. This API might significantly change or be removed in a future release.
+	// Deprecated. Replaced with `DescribeWorkerDeploymentVersion`.
 	DescribeDeployment(context.Context, *DescribeDeploymentRequest) (*DescribeDeploymentResponse, error)
+	// Describes a worker deployment version.
+	// Experimental. This API might significantly change or be removed in a future release.
+	DescribeWorkerDeploymentVersion(context.Context, *DescribeWorkerDeploymentVersionRequest) (*DescribeWorkerDeploymentVersionResponse, error)
 	// Lists worker deployments in the namespace. Optionally can filter based on deployment series
 	// name.
 	// Experimental. This API might significantly change or be removed in a future release.
+	// Deprecated. Replaced with `ListWorkerDeployments`.
 	ListDeployments(context.Context, *ListDeploymentsRequest) (*ListDeploymentsResponse, error)
 	// Returns the reachability level of a worker deployment to help users decide when it is time
 	// to decommission a deployment. Reachability level is calculated based on the deployment's
@@ -1759,14 +1890,47 @@ type WorkflowServiceServer interface {
 	// cached value. In such a case, the `last_update_time` will inform you about the actual
 	// reachability calculation time.
 	// Experimental. This API might significantly change or be removed in a future release.
+	// Deprecated. Replaced with `DrainageInfo` returned by `DescribeWorkerDeploymentVersion`.
 	GetDeploymentReachability(context.Context, *GetDeploymentReachabilityRequest) (*GetDeploymentReachabilityResponse, error)
 	// Returns the current deployment (and its info) for a given deployment series.
 	// Experimental. This API might significantly change or be removed in a future release.
+	// Deprecated. Replaced by `current_version` returned by `DescribeWorkerDeployment`.
 	GetCurrentDeployment(context.Context, *GetCurrentDeploymentRequest) (*GetCurrentDeploymentResponse, error)
 	// Sets a deployment as the current deployment for its deployment series. Can optionally update
 	// the metadata of the deployment as well.
 	// Experimental. This API might significantly change or be removed in a future release.
+	// Deprecated. Replaced by `SetWorkerDeploymentCurrentVersion`.
 	SetCurrentDeployment(context.Context, *SetCurrentDeploymentRequest) (*SetCurrentDeploymentResponse, error)
+	// Set/unset the Current Version of a Worker Deployment. Automatically unsets the Ramping
+	// Version if it is the Version being set as Current.
+	// Experimental. This API might significantly change or be removed in a future release.
+	SetWorkerDeploymentCurrentVersion(context.Context, *SetWorkerDeploymentCurrentVersionRequest) (*SetWorkerDeploymentCurrentVersionResponse, error)
+	// Describes a Worker Deployment.
+	// Experimental. This API might significantly change or be removed in a future release.
+	DescribeWorkerDeployment(context.Context, *DescribeWorkerDeploymentRequest) (*DescribeWorkerDeploymentResponse, error)
+	// Deletes records of (an old) Deployment. A deployment can only be deleted if
+	// it has no Version in it.
+	// Experimental. This API might significantly change or be removed in a future release.
+	DeleteWorkerDeployment(context.Context, *DeleteWorkerDeploymentRequest) (*DeleteWorkerDeploymentResponse, error)
+	// Used for manual deletion of Versions. User can delete a Version only when all the
+	// following conditions are met:
+	//   - It is not the Current or Ramping Version of its Deployment.
+	//   - It has no active pollers (none of the task queues in the Version have pollers)
+	//   - It is not draining (see WorkerDeploymentVersionInfo.drainage_info). This condition
+	//     can be skipped by passing `skip-drainage=true`.
+	//
+	// Experimental. This API might significantly change or be removed in a future release.
+	DeleteWorkerDeploymentVersion(context.Context, *DeleteWorkerDeploymentVersionRequest) (*DeleteWorkerDeploymentVersionResponse, error)
+	// Set/unset the Ramping Version of a Worker Deployment and its ramp percentage. Can be used for
+	// gradual ramp to unversioned workers too.
+	// Experimental. This API might significantly change or be removed in a future release.
+	SetWorkerDeploymentRampingVersion(context.Context, *SetWorkerDeploymentRampingVersionRequest) (*SetWorkerDeploymentRampingVersionResponse, error)
+	// Lists all Worker Deployments that are tracked in the Namespace.
+	// Experimental. This API might significantly change or be removed in a future release.
+	ListWorkerDeployments(context.Context, *ListWorkerDeploymentsRequest) (*ListWorkerDeploymentsResponse, error)
+	// Updates the user-given metadata attached to a Worker Deployment Version.
+	// Experimental. This API might significantly change or be removed in a future release.
+	UpdateWorkerDeploymentVersionMetadata(context.Context, *UpdateWorkerDeploymentVersionMetadataRequest) (*UpdateWorkerDeploymentVersionMetadataResponse, error)
 	// Invokes the specified Update function on user Workflow code.
 	UpdateWorkflowExecution(context.Context, *UpdateWorkflowExecutionRequest) (*UpdateWorkflowExecutionResponse, error)
 	// Polls a Workflow Execution for the outcome of a Workflow Update
@@ -1801,15 +1965,13 @@ type WorkflowServiceServer interface {
 	//
 	//	aip.dev/not-precedent: We do not expose worker API to HTTP. --)
 	RespondNexusTaskFailed(context.Context, *RespondNexusTaskFailedRequest) (*RespondNexusTaskFailedResponse, error)
-	// UpdateActivityOptionsById is called by the client to update the options of an activity
-	// (-- api-linter: core::0136::prepositions=disabled
-	//
-	//	aip.dev/not-precedent: "By" is used to indicate request type. --)
-	UpdateActivityOptionsById(context.Context, *UpdateActivityOptionsByIdRequest) (*UpdateActivityOptionsByIdResponse, error)
+	// UpdateActivityOptions is called by the client to update the options of an activity by its ID or type.
+	// If there are multiple pending activities of the provided type - all of them will be updated.
+	UpdateActivityOptions(context.Context, *UpdateActivityOptionsRequest) (*UpdateActivityOptionsResponse, error)
 	// UpdateWorkflowExecutionOptions partially updates the WorkflowExecutionOptions of an existing workflow execution.
 	UpdateWorkflowExecutionOptions(context.Context, *UpdateWorkflowExecutionOptionsRequest) (*UpdateWorkflowExecutionOptionsResponse, error)
-	// PauseActivityById pauses the execution of an activity specified by its ID.
-	// Returns a `NotFound` error if there is no pending activity with the provided ID.
+	// PauseActivity pauses the execution of an activity specified by its ID or type.
+	// If there are multiple pending activities of the provided type - all of them will be paused
 	//
 	// Pausing an activity means:
 	//   - If the activity is currently waiting for a retry or is running and subsequently fails,
@@ -1823,41 +1985,41 @@ type WorkflowServiceServer interface {
 	// For long-running activities:
 	// - activities in paused state will send a cancellation with "activity_paused" set to 'true' in response to 'RecordActivityTaskHeartbeat'.
 	// - The activity should respond to the cancellation accordingly.
-	// (-- api-linter: core::0136::prepositions=disabled
 	//
-	//	aip.dev/not-precedent: "By" is used to indicate request type. --)
-	PauseActivityById(context.Context, *PauseActivityByIdRequest) (*PauseActivityByIdResponse, error)
-	// UnpauseActivityById unpauses the execution of an activity specified by its ID.
-	// Returns a `NotFound` error if there is no pending activity with the provided ID.
-	// There are two 'modes' of unpausing an activity:
-	// 'resume' - If the activity is paused, it will be resumed and scheduled for execution.
-	//   - If the activity is currently running Unpause with 'resume' has no effect.
-	//   - if 'no_wait' flag is set and the activity is waiting, the activity will be scheduled immediately.
+	// Returns a `NotFound` error if there is no pending activity with the provided ID or type
+	PauseActivity(context.Context, *PauseActivityRequest) (*PauseActivityResponse, error)
+	// UnpauseActivity unpauses the execution of an activity specified by its ID or type.
+	// If there are multiple pending activities of the provided type - all of them will be unpaused.
 	//
-	// 'reset' - If the activity is paused, it will be reset to its initial state and (depending on parameters) scheduled for execution.
-	//   - If the activity is currently running, Unpause with 'reset' will reset the number of attempts.
-	//   - if 'no_wait' flag is set, the activity will be scheduled immediately.
-	//   - if 'reset_heartbeats' flag is set, the activity heartbeat timer and heartbeats will be reset.
-	//
-	// If the activity is in waiting for retry and past it retry timeout, it will be scheduled immediately.
+	// If activity is not paused, this call will have no effect.
+	// If the activity was paused while waiting for retry, it will be scheduled immediately (* see 'jitter' flag).
 	// Once the activity is unpaused, all timeout timers will be regenerated.
-	// (-- api-linter: core::0136::prepositions=disabled
 	//
-	//	aip.dev/not-precedent: "By" is used to indicate request type. --)
-	UnpauseActivityById(context.Context, *UnpauseActivityByIdRequest) (*UnpauseActivityByIdResponse, error)
-	// ResetActivityById unpauses the execution of an activity specified by its ID.
-	// Returns a `NotFound` error if there is no pending activity with the provided ID.
+	// Flags:
+	// 'jitter': the activity will be scheduled at a random time within the jitter duration.
+	// 'reset_attempts': the number of attempts will be reset.
+	// 'reset_heartbeat': the activity heartbeat timer and heartbeats will be reset.
+	//
+	// Returns a `NotFound` error if there is no pending activity with the provided ID or type
+	UnpauseActivity(context.Context, *UnpauseActivityRequest) (*UnpauseActivityResponse, error)
+	// ResetActivity resets the execution of an activity specified by its ID or type.
+	// If there are multiple pending activities of the provided type - all of them will be reset.
+	//
 	// Resetting an activity means:
-	// * number of attempts will be reset to 0.
-	// * activity timeouts will be resetted.
-	// If the activity currently running:
-	// *  if 'no_wait' flag is provided, a new instance of the activity will be scheduled immediately.
-	// *  if 'no_wait' flag is not provided, a new instance of the  activity will be scheduled after current instance completes if needed.
-	// If 'reset_heartbeats' flag is set, the activity heartbeat timer and heartbeats will be reset.
-	// (-- api-linter: core::0136::prepositions=disabled
+	//   - number of attempts will be reset to 0.
+	//   - activity timeouts will be reset.
+	//   - if the activity is waiting for retry, and it is not paused or 'keep_paused' is not provided:
+	//     it will be scheduled immediately (* see 'jitter' flag),
 	//
-	//	aip.dev/not-precedent: "By" is used to indicate request type. --)
-	ResetActivityById(context.Context, *ResetActivityByIdRequest) (*ResetActivityByIdResponse, error)
+	// Flags:
+	//
+	// 'jitter': the activity will be scheduled at a random time within the jitter duration.
+	// If the activity currently paused it will be unpaused, unless 'keep_paused' flag is provided.
+	// 'reset_heartbeats': the activity heartbeat timer and heartbeats will be reset.
+	// 'keep_paused': if the activity is paused, it will remain paused.
+	//
+	// Returns a `NotFound` error if there is no pending activity with the provided ID or type.
+	ResetActivity(context.Context, *ResetActivityRequest) (*ResetActivityResponse, error)
 	mustEmbedUnimplementedWorkflowServiceServer()
 }
 
@@ -2036,6 +2198,9 @@ func (UnimplementedWorkflowServiceServer) GetWorkerTaskReachability(context.Cont
 func (UnimplementedWorkflowServiceServer) DescribeDeployment(context.Context, *DescribeDeploymentRequest) (*DescribeDeploymentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DescribeDeployment not implemented")
 }
+func (UnimplementedWorkflowServiceServer) DescribeWorkerDeploymentVersion(context.Context, *DescribeWorkerDeploymentVersionRequest) (*DescribeWorkerDeploymentVersionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DescribeWorkerDeploymentVersion not implemented")
+}
 func (UnimplementedWorkflowServiceServer) ListDeployments(context.Context, *ListDeploymentsRequest) (*ListDeploymentsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListDeployments not implemented")
 }
@@ -2047,6 +2212,27 @@ func (UnimplementedWorkflowServiceServer) GetCurrentDeployment(context.Context, 
 }
 func (UnimplementedWorkflowServiceServer) SetCurrentDeployment(context.Context, *SetCurrentDeploymentRequest) (*SetCurrentDeploymentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetCurrentDeployment not implemented")
+}
+func (UnimplementedWorkflowServiceServer) SetWorkerDeploymentCurrentVersion(context.Context, *SetWorkerDeploymentCurrentVersionRequest) (*SetWorkerDeploymentCurrentVersionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetWorkerDeploymentCurrentVersion not implemented")
+}
+func (UnimplementedWorkflowServiceServer) DescribeWorkerDeployment(context.Context, *DescribeWorkerDeploymentRequest) (*DescribeWorkerDeploymentResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DescribeWorkerDeployment not implemented")
+}
+func (UnimplementedWorkflowServiceServer) DeleteWorkerDeployment(context.Context, *DeleteWorkerDeploymentRequest) (*DeleteWorkerDeploymentResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteWorkerDeployment not implemented")
+}
+func (UnimplementedWorkflowServiceServer) DeleteWorkerDeploymentVersion(context.Context, *DeleteWorkerDeploymentVersionRequest) (*DeleteWorkerDeploymentVersionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteWorkerDeploymentVersion not implemented")
+}
+func (UnimplementedWorkflowServiceServer) SetWorkerDeploymentRampingVersion(context.Context, *SetWorkerDeploymentRampingVersionRequest) (*SetWorkerDeploymentRampingVersionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetWorkerDeploymentRampingVersion not implemented")
+}
+func (UnimplementedWorkflowServiceServer) ListWorkerDeployments(context.Context, *ListWorkerDeploymentsRequest) (*ListWorkerDeploymentsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListWorkerDeployments not implemented")
+}
+func (UnimplementedWorkflowServiceServer) UpdateWorkerDeploymentVersionMetadata(context.Context, *UpdateWorkerDeploymentVersionMetadataRequest) (*UpdateWorkerDeploymentVersionMetadataResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateWorkerDeploymentVersionMetadata not implemented")
 }
 func (UnimplementedWorkflowServiceServer) UpdateWorkflowExecution(context.Context, *UpdateWorkflowExecutionRequest) (*UpdateWorkflowExecutionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateWorkflowExecution not implemented")
@@ -2075,20 +2261,20 @@ func (UnimplementedWorkflowServiceServer) RespondNexusTaskCompleted(context.Cont
 func (UnimplementedWorkflowServiceServer) RespondNexusTaskFailed(context.Context, *RespondNexusTaskFailedRequest) (*RespondNexusTaskFailedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RespondNexusTaskFailed not implemented")
 }
-func (UnimplementedWorkflowServiceServer) UpdateActivityOptionsById(context.Context, *UpdateActivityOptionsByIdRequest) (*UpdateActivityOptionsByIdResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateActivityOptionsById not implemented")
+func (UnimplementedWorkflowServiceServer) UpdateActivityOptions(context.Context, *UpdateActivityOptionsRequest) (*UpdateActivityOptionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateActivityOptions not implemented")
 }
 func (UnimplementedWorkflowServiceServer) UpdateWorkflowExecutionOptions(context.Context, *UpdateWorkflowExecutionOptionsRequest) (*UpdateWorkflowExecutionOptionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateWorkflowExecutionOptions not implemented")
 }
-func (UnimplementedWorkflowServiceServer) PauseActivityById(context.Context, *PauseActivityByIdRequest) (*PauseActivityByIdResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PauseActivityById not implemented")
+func (UnimplementedWorkflowServiceServer) PauseActivity(context.Context, *PauseActivityRequest) (*PauseActivityResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PauseActivity not implemented")
 }
-func (UnimplementedWorkflowServiceServer) UnpauseActivityById(context.Context, *UnpauseActivityByIdRequest) (*UnpauseActivityByIdResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UnpauseActivityById not implemented")
+func (UnimplementedWorkflowServiceServer) UnpauseActivity(context.Context, *UnpauseActivityRequest) (*UnpauseActivityResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnpauseActivity not implemented")
 }
-func (UnimplementedWorkflowServiceServer) ResetActivityById(context.Context, *ResetActivityByIdRequest) (*ResetActivityByIdResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ResetActivityById not implemented")
+func (UnimplementedWorkflowServiceServer) ResetActivity(context.Context, *ResetActivityRequest) (*ResetActivityResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ResetActivity not implemented")
 }
 func (UnimplementedWorkflowServiceServer) mustEmbedUnimplementedWorkflowServiceServer() {}
 func (UnimplementedWorkflowServiceServer) testEmbeddedByValue()                         {}
@@ -3119,6 +3305,24 @@ func _WorkflowService_DescribeDeployment_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkflowService_DescribeWorkerDeploymentVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DescribeWorkerDeploymentVersionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).DescribeWorkerDeploymentVersion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_DescribeWorkerDeploymentVersion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).DescribeWorkerDeploymentVersion(ctx, req.(*DescribeWorkerDeploymentVersionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WorkflowService_ListDeployments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListDeploymentsRequest)
 	if err := dec(in); err != nil {
@@ -3187,6 +3391,132 @@ func _WorkflowService_SetCurrentDeployment_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WorkflowServiceServer).SetCurrentDeployment(ctx, req.(*SetCurrentDeploymentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_SetWorkerDeploymentCurrentVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetWorkerDeploymentCurrentVersionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).SetWorkerDeploymentCurrentVersion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_SetWorkerDeploymentCurrentVersion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).SetWorkerDeploymentCurrentVersion(ctx, req.(*SetWorkerDeploymentCurrentVersionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_DescribeWorkerDeployment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DescribeWorkerDeploymentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).DescribeWorkerDeployment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_DescribeWorkerDeployment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).DescribeWorkerDeployment(ctx, req.(*DescribeWorkerDeploymentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_DeleteWorkerDeployment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteWorkerDeploymentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).DeleteWorkerDeployment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_DeleteWorkerDeployment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).DeleteWorkerDeployment(ctx, req.(*DeleteWorkerDeploymentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_DeleteWorkerDeploymentVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteWorkerDeploymentVersionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).DeleteWorkerDeploymentVersion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_DeleteWorkerDeploymentVersion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).DeleteWorkerDeploymentVersion(ctx, req.(*DeleteWorkerDeploymentVersionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_SetWorkerDeploymentRampingVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetWorkerDeploymentRampingVersionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).SetWorkerDeploymentRampingVersion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_SetWorkerDeploymentRampingVersion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).SetWorkerDeploymentRampingVersion(ctx, req.(*SetWorkerDeploymentRampingVersionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_ListWorkerDeployments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWorkerDeploymentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).ListWorkerDeployments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_ListWorkerDeployments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).ListWorkerDeployments(ctx, req.(*ListWorkerDeploymentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_UpdateWorkerDeploymentVersionMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateWorkerDeploymentVersionMetadataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).UpdateWorkerDeploymentVersionMetadata(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_UpdateWorkerDeploymentVersionMetadata_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).UpdateWorkerDeploymentVersionMetadata(ctx, req.(*UpdateWorkerDeploymentVersionMetadataRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3353,20 +3683,20 @@ func _WorkflowService_RespondNexusTaskFailed_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorkflowService_UpdateActivityOptionsById_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateActivityOptionsByIdRequest)
+func _WorkflowService_UpdateActivityOptions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateActivityOptionsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WorkflowServiceServer).UpdateActivityOptionsById(ctx, in)
+		return srv.(WorkflowServiceServer).UpdateActivityOptions(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: WorkflowService_UpdateActivityOptionsById_FullMethodName,
+		FullMethod: WorkflowService_UpdateActivityOptions_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowServiceServer).UpdateActivityOptionsById(ctx, req.(*UpdateActivityOptionsByIdRequest))
+		return srv.(WorkflowServiceServer).UpdateActivityOptions(ctx, req.(*UpdateActivityOptionsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3389,56 +3719,56 @@ func _WorkflowService_UpdateWorkflowExecutionOptions_Handler(srv interface{}, ct
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorkflowService_PauseActivityById_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PauseActivityByIdRequest)
+func _WorkflowService_PauseActivity_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PauseActivityRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WorkflowServiceServer).PauseActivityById(ctx, in)
+		return srv.(WorkflowServiceServer).PauseActivity(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: WorkflowService_PauseActivityById_FullMethodName,
+		FullMethod: WorkflowService_PauseActivity_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowServiceServer).PauseActivityById(ctx, req.(*PauseActivityByIdRequest))
+		return srv.(WorkflowServiceServer).PauseActivity(ctx, req.(*PauseActivityRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorkflowService_UnpauseActivityById_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UnpauseActivityByIdRequest)
+func _WorkflowService_UnpauseActivity_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnpauseActivityRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WorkflowServiceServer).UnpauseActivityById(ctx, in)
+		return srv.(WorkflowServiceServer).UnpauseActivity(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: WorkflowService_UnpauseActivityById_FullMethodName,
+		FullMethod: WorkflowService_UnpauseActivity_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowServiceServer).UnpauseActivityById(ctx, req.(*UnpauseActivityByIdRequest))
+		return srv.(WorkflowServiceServer).UnpauseActivity(ctx, req.(*UnpauseActivityRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorkflowService_ResetActivityById_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ResetActivityByIdRequest)
+func _WorkflowService_ResetActivity_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResetActivityRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WorkflowServiceServer).ResetActivityById(ctx, in)
+		return srv.(WorkflowServiceServer).ResetActivity(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: WorkflowService_ResetActivityById_FullMethodName,
+		FullMethod: WorkflowService_ResetActivity_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowServiceServer).ResetActivityById(ctx, req.(*ResetActivityByIdRequest))
+		return srv.(WorkflowServiceServer).ResetActivity(ctx, req.(*ResetActivityRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3675,6 +4005,10 @@ var WorkflowService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WorkflowService_DescribeDeployment_Handler,
 		},
 		{
+			MethodName: "DescribeWorkerDeploymentVersion",
+			Handler:    _WorkflowService_DescribeWorkerDeploymentVersion_Handler,
+		},
+		{
 			MethodName: "ListDeployments",
 			Handler:    _WorkflowService_ListDeployments_Handler,
 		},
@@ -3689,6 +4023,34 @@ var WorkflowService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetCurrentDeployment",
 			Handler:    _WorkflowService_SetCurrentDeployment_Handler,
+		},
+		{
+			MethodName: "SetWorkerDeploymentCurrentVersion",
+			Handler:    _WorkflowService_SetWorkerDeploymentCurrentVersion_Handler,
+		},
+		{
+			MethodName: "DescribeWorkerDeployment",
+			Handler:    _WorkflowService_DescribeWorkerDeployment_Handler,
+		},
+		{
+			MethodName: "DeleteWorkerDeployment",
+			Handler:    _WorkflowService_DeleteWorkerDeployment_Handler,
+		},
+		{
+			MethodName: "DeleteWorkerDeploymentVersion",
+			Handler:    _WorkflowService_DeleteWorkerDeploymentVersion_Handler,
+		},
+		{
+			MethodName: "SetWorkerDeploymentRampingVersion",
+			Handler:    _WorkflowService_SetWorkerDeploymentRampingVersion_Handler,
+		},
+		{
+			MethodName: "ListWorkerDeployments",
+			Handler:    _WorkflowService_ListWorkerDeployments_Handler,
+		},
+		{
+			MethodName: "UpdateWorkerDeploymentVersionMetadata",
+			Handler:    _WorkflowService_UpdateWorkerDeploymentVersionMetadata_Handler,
 		},
 		{
 			MethodName: "UpdateWorkflowExecution",
@@ -3727,24 +4089,24 @@ var WorkflowService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WorkflowService_RespondNexusTaskFailed_Handler,
 		},
 		{
-			MethodName: "UpdateActivityOptionsById",
-			Handler:    _WorkflowService_UpdateActivityOptionsById_Handler,
+			MethodName: "UpdateActivityOptions",
+			Handler:    _WorkflowService_UpdateActivityOptions_Handler,
 		},
 		{
 			MethodName: "UpdateWorkflowExecutionOptions",
 			Handler:    _WorkflowService_UpdateWorkflowExecutionOptions_Handler,
 		},
 		{
-			MethodName: "PauseActivityById",
-			Handler:    _WorkflowService_PauseActivityById_Handler,
+			MethodName: "PauseActivity",
+			Handler:    _WorkflowService_PauseActivity_Handler,
 		},
 		{
-			MethodName: "UnpauseActivityById",
-			Handler:    _WorkflowService_UnpauseActivityById_Handler,
+			MethodName: "UnpauseActivity",
+			Handler:    _WorkflowService_UnpauseActivity_Handler,
 		},
 		{
-			MethodName: "ResetActivityById",
-			Handler:    _WorkflowService_ResetActivityById_Handler,
+			MethodName: "ResetActivity",
+			Handler:    _WorkflowService_ResetActivity_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

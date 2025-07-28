@@ -30,8 +30,6 @@ import (
 	"strconv"
 	"time"
 
-	"go.temporal.io/api/workflowservice/v1"
-
 	"go.temporal.io/sdk/log"
 )
 
@@ -61,8 +59,8 @@ type (
 )
 
 // newWorkflowWorkerWithPressurePoints returns an instance of a workflow worker.
-func newWorkflowWorkerWithPressurePoints(service workflowservice.WorkflowServiceClient, params workerExecutionParameters, pressurePoints map[string]map[string]string, registry *registry) (worker *workflowWorker) {
-	return newWorkflowWorker(service, params, &pressurePointMgrImpl{config: pressurePoints, logger: params.Logger}, registry)
+func newWorkflowWorkerWithPressurePoints(client *WorkflowClient, params workerExecutionParameters, pressurePoints map[string]map[string]string, registry *registry) (worker *workflowWorker) {
+	return newWorkflowWorker(client, params, &pressurePointMgrImpl{config: pressurePoints, logger: params.Logger}, registry)
 }
 
 func (p *pressurePointMgrImpl) Execute(pressurePointName string) error {

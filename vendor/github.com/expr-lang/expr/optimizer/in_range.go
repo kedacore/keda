@@ -22,7 +22,7 @@ func (*inRange) Visit(node *Node) {
 			if rangeOp, ok := n.Right.(*BinaryNode); ok && rangeOp.Operator == ".." {
 				if from, ok := rangeOp.Left.(*IntegerNode); ok {
 					if to, ok := rangeOp.Right.(*IntegerNode); ok {
-						Patch(node, &BinaryNode{
+						patchCopyType(node, &BinaryNode{
 							Operator: "and",
 							Left: &BinaryNode{
 								Operator: ">=",

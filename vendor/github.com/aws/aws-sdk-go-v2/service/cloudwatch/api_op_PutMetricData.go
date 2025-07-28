@@ -224,6 +224,9 @@ func (c *Client) addOperationPutMetricDataMiddlewares(stack *middleware.Stack, o
 	if err = addIsRequestCompressionUserAgent(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOperationPutMetricDataRequestCompressionMiddleware(stack, options); err != nil {
 		return err
 	}

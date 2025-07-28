@@ -66,6 +66,14 @@ func (s *workflowServiceProxyServer) DeleteSchedule(ctx context.Context, in0 *wo
 	return s.client.DeleteSchedule(s.reqCtx(ctx), in0)
 }
 
+func (s *workflowServiceProxyServer) DeleteWorkerDeployment(ctx context.Context, in0 *workflowservice.DeleteWorkerDeploymentRequest) (*workflowservice.DeleteWorkerDeploymentResponse, error) {
+	return s.client.DeleteWorkerDeployment(s.reqCtx(ctx), in0)
+}
+
+func (s *workflowServiceProxyServer) DeleteWorkerDeploymentVersion(ctx context.Context, in0 *workflowservice.DeleteWorkerDeploymentVersionRequest) (*workflowservice.DeleteWorkerDeploymentVersionResponse, error) {
+	return s.client.DeleteWorkerDeploymentVersion(s.reqCtx(ctx), in0)
+}
+
 func (s *workflowServiceProxyServer) DeleteWorkflowExecution(ctx context.Context, in0 *workflowservice.DeleteWorkflowExecutionRequest) (*workflowservice.DeleteWorkflowExecutionResponse, error) {
 	return s.client.DeleteWorkflowExecution(s.reqCtx(ctx), in0)
 }
@@ -92,6 +100,14 @@ func (s *workflowServiceProxyServer) DescribeSchedule(ctx context.Context, in0 *
 
 func (s *workflowServiceProxyServer) DescribeTaskQueue(ctx context.Context, in0 *workflowservice.DescribeTaskQueueRequest) (*workflowservice.DescribeTaskQueueResponse, error) {
 	return s.client.DescribeTaskQueue(s.reqCtx(ctx), in0)
+}
+
+func (s *workflowServiceProxyServer) DescribeWorkerDeployment(ctx context.Context, in0 *workflowservice.DescribeWorkerDeploymentRequest) (*workflowservice.DescribeWorkerDeploymentResponse, error) {
+	return s.client.DescribeWorkerDeployment(s.reqCtx(ctx), in0)
+}
+
+func (s *workflowServiceProxyServer) DescribeWorkerDeploymentVersion(ctx context.Context, in0 *workflowservice.DescribeWorkerDeploymentVersionRequest) (*workflowservice.DescribeWorkerDeploymentVersionResponse, error) {
+	return s.client.DescribeWorkerDeploymentVersion(s.reqCtx(ctx), in0)
 }
 
 func (s *workflowServiceProxyServer) DescribeWorkflowExecution(ctx context.Context, in0 *workflowservice.DescribeWorkflowExecutionRequest) (*workflowservice.DescribeWorkflowExecutionResponse, error) {
@@ -178,6 +194,10 @@ func (s *workflowServiceProxyServer) ListTaskQueuePartitions(ctx context.Context
 	return s.client.ListTaskQueuePartitions(s.reqCtx(ctx), in0)
 }
 
+func (s *workflowServiceProxyServer) ListWorkerDeployments(ctx context.Context, in0 *workflowservice.ListWorkerDeploymentsRequest) (*workflowservice.ListWorkerDeploymentsResponse, error) {
+	return s.client.ListWorkerDeployments(s.reqCtx(ctx), in0)
+}
+
 func (s *workflowServiceProxyServer) ListWorkflowExecutions(ctx context.Context, in0 *workflowservice.ListWorkflowExecutionsRequest) (*workflowservice.ListWorkflowExecutionsResponse, error) {
 	return s.client.ListWorkflowExecutions(s.reqCtx(ctx), in0)
 }
@@ -186,8 +206,8 @@ func (s *workflowServiceProxyServer) PatchSchedule(ctx context.Context, in0 *wor
 	return s.client.PatchSchedule(s.reqCtx(ctx), in0)
 }
 
-func (s *workflowServiceProxyServer) PauseActivityById(ctx context.Context, in0 *workflowservice.PauseActivityByIdRequest) (*workflowservice.PauseActivityByIdResponse, error) {
-	return s.client.PauseActivityById(s.reqCtx(ctx), in0)
+func (s *workflowServiceProxyServer) PauseActivity(ctx context.Context, in0 *workflowservice.PauseActivityRequest) (*workflowservice.PauseActivityResponse, error) {
+	return s.client.PauseActivity(s.reqCtx(ctx), in0)
 }
 
 func (s *workflowServiceProxyServer) PollActivityTaskQueue(ctx context.Context, in0 *workflowservice.PollActivityTaskQueueRequest) (*workflowservice.PollActivityTaskQueueResponse, error) {
@@ -226,8 +246,8 @@ func (s *workflowServiceProxyServer) RequestCancelWorkflowExecution(ctx context.
 	return s.client.RequestCancelWorkflowExecution(s.reqCtx(ctx), in0)
 }
 
-func (s *workflowServiceProxyServer) ResetActivityById(ctx context.Context, in0 *workflowservice.ResetActivityByIdRequest) (*workflowservice.ResetActivityByIdResponse, error) {
-	return s.client.ResetActivityById(s.reqCtx(ctx), in0)
+func (s *workflowServiceProxyServer) ResetActivity(ctx context.Context, in0 *workflowservice.ResetActivityRequest) (*workflowservice.ResetActivityResponse, error) {
+	return s.client.ResetActivity(s.reqCtx(ctx), in0)
 }
 
 func (s *workflowServiceProxyServer) ResetStickyTaskQueue(ctx context.Context, in0 *workflowservice.ResetStickyTaskQueueRequest) (*workflowservice.ResetStickyTaskQueueResponse, error) {
@@ -290,6 +310,14 @@ func (s *workflowServiceProxyServer) SetCurrentDeployment(ctx context.Context, i
 	return s.client.SetCurrentDeployment(s.reqCtx(ctx), in0)
 }
 
+func (s *workflowServiceProxyServer) SetWorkerDeploymentCurrentVersion(ctx context.Context, in0 *workflowservice.SetWorkerDeploymentCurrentVersionRequest) (*workflowservice.SetWorkerDeploymentCurrentVersionResponse, error) {
+	return s.client.SetWorkerDeploymentCurrentVersion(s.reqCtx(ctx), in0)
+}
+
+func (s *workflowServiceProxyServer) SetWorkerDeploymentRampingVersion(ctx context.Context, in0 *workflowservice.SetWorkerDeploymentRampingVersionRequest) (*workflowservice.SetWorkerDeploymentRampingVersionResponse, error) {
+	return s.client.SetWorkerDeploymentRampingVersion(s.reqCtx(ctx), in0)
+}
+
 func (s *workflowServiceProxyServer) ShutdownWorker(ctx context.Context, in0 *workflowservice.ShutdownWorkerRequest) (*workflowservice.ShutdownWorkerResponse, error) {
 	return s.client.ShutdownWorker(s.reqCtx(ctx), in0)
 }
@@ -318,12 +346,12 @@ func (s *workflowServiceProxyServer) TerminateWorkflowExecution(ctx context.Cont
 	return s.client.TerminateWorkflowExecution(s.reqCtx(ctx), in0)
 }
 
-func (s *workflowServiceProxyServer) UnpauseActivityById(ctx context.Context, in0 *workflowservice.UnpauseActivityByIdRequest) (*workflowservice.UnpauseActivityByIdResponse, error) {
-	return s.client.UnpauseActivityById(s.reqCtx(ctx), in0)
+func (s *workflowServiceProxyServer) UnpauseActivity(ctx context.Context, in0 *workflowservice.UnpauseActivityRequest) (*workflowservice.UnpauseActivityResponse, error) {
+	return s.client.UnpauseActivity(s.reqCtx(ctx), in0)
 }
 
-func (s *workflowServiceProxyServer) UpdateActivityOptionsById(ctx context.Context, in0 *workflowservice.UpdateActivityOptionsByIdRequest) (*workflowservice.UpdateActivityOptionsByIdResponse, error) {
-	return s.client.UpdateActivityOptionsById(s.reqCtx(ctx), in0)
+func (s *workflowServiceProxyServer) UpdateActivityOptions(ctx context.Context, in0 *workflowservice.UpdateActivityOptionsRequest) (*workflowservice.UpdateActivityOptionsResponse, error) {
+	return s.client.UpdateActivityOptions(s.reqCtx(ctx), in0)
 }
 
 func (s *workflowServiceProxyServer) UpdateNamespace(ctx context.Context, in0 *workflowservice.UpdateNamespaceRequest) (*workflowservice.UpdateNamespaceResponse, error) {
@@ -336,6 +364,10 @@ func (s *workflowServiceProxyServer) UpdateSchedule(ctx context.Context, in0 *wo
 
 func (s *workflowServiceProxyServer) UpdateWorkerBuildIdCompatibility(ctx context.Context, in0 *workflowservice.UpdateWorkerBuildIdCompatibilityRequest) (*workflowservice.UpdateWorkerBuildIdCompatibilityResponse, error) {
 	return s.client.UpdateWorkerBuildIdCompatibility(s.reqCtx(ctx), in0)
+}
+
+func (s *workflowServiceProxyServer) UpdateWorkerDeploymentVersionMetadata(ctx context.Context, in0 *workflowservice.UpdateWorkerDeploymentVersionMetadataRequest) (*workflowservice.UpdateWorkerDeploymentVersionMetadataResponse, error) {
+	return s.client.UpdateWorkerDeploymentVersionMetadata(s.reqCtx(ctx), in0)
 }
 
 func (s *workflowServiceProxyServer) UpdateWorkerVersioningRules(ctx context.Context, in0 *workflowservice.UpdateWorkerVersioningRulesRequest) (*workflowservice.UpdateWorkerVersioningRulesResponse, error) {

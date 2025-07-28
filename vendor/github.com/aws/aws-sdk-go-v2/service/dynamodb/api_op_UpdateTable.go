@@ -156,6 +156,12 @@ type UpdateTableInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *UpdateTableInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 // Represents the output of an UpdateTable operation.
 type UpdateTableOutput struct {
 
@@ -233,6 +239,12 @@ func (c *Client) addOperationUpdateTableMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateTableValidationMiddleware(stack); err != nil {

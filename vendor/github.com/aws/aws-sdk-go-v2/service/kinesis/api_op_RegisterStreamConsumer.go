@@ -148,6 +148,9 @@ func (c *Client) addOperationRegisterStreamConsumerMiddlewares(stack *middleware
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpRegisterStreamConsumerValidationMiddleware(stack); err != nil {
 		return err
 	}
