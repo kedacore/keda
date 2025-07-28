@@ -129,10 +129,10 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewArtemisQueueScaler(config)
 	case "aws-cloudwatch":
 		return scalers.NewAwsCloudwatchScaler(ctx, config)
-	case "aws-dynamodb":
-		return scalers.NewAwsDynamoDBScaler(ctx, config)
 	case "aws-dynamodb-streams":
 		return scalers.NewAwsDynamoDBStreamsScaler(ctx, config)
+	case "aws-dynamodb":
+		return scalers.NewAwsDynamoDBScaler(ctx, config)
 	case "aws-kinesis-stream":
 		return scalers.NewAwsKinesisStreamScaler(ctx, config)
 	case "aws-sqs-queue":
@@ -173,13 +173,13 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewElasticsearchScaler(config)
 	case "etcd":
 		return scalers.NewEtcdScaler(config)
-	case "external":
-		return scalers.NewExternalScaler(config)
 	// TODO: use other way for test.
 	case "external-mock":
 		return scalers.NewExternalMockScaler(config)
 	case "external-push":
 		return scalers.NewExternalPushScaler(config)
+	case "external":
+		return scalers.NewExternalScaler(config)
 	case "gcp-cloudtasks":
 		return scalers.NewGcpCloudTasksScaler(config)
 	case "gcp-pubsub":
@@ -238,18 +238,18 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewPulsarScaler(config)
 	case "rabbitmq":
 		return scalers.NewRabbitMQScaler(config)
-	case "redis":
-		return scalers.NewRedisScaler(ctx, false, false, config)
-	case "redis-cluster":
-		return scalers.NewRedisScaler(ctx, true, false, config)
 	case "redis-cluster-streams":
 		return scalers.NewRedisStreamsScaler(ctx, true, false, config)
-	case "redis-sentinel":
-		return scalers.NewRedisScaler(ctx, false, true, config)
+	case "redis-cluster":
+		return scalers.NewRedisScaler(ctx, true, false, config)
 	case "redis-sentinel-streams":
 		return scalers.NewRedisStreamsScaler(ctx, false, true, config)
+	case "redis-sentinel":
+		return scalers.NewRedisScaler(ctx, false, true, config)
 	case "redis-streams":
 		return scalers.NewRedisStreamsScaler(ctx, false, false, config)
+	case "redis":
+		return scalers.NewRedisScaler(ctx, false, false, config)
 	case "selenium-grid":
 		return scalers.NewSeleniumGridScaler(config)
 	case "solace-event-queue":

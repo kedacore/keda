@@ -183,7 +183,7 @@ spec:
               },
               {
                 "column": "name",
-                "op": "=", 
+                "op": "=",
                 "value": "{{.TestNamespace}}"
               }
             ],
