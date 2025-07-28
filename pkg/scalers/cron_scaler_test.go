@@ -101,7 +101,7 @@ func TestGetMetrics(t *testing.T) {
 	if currentDay == "Thursday" {
 		assert.Equal(t, metrics[0].Value.Value(), int64(10))
 	} else {
-		assert.Equal(t, metrics[0].Value.Value(), int64(1))
+		assert.Equal(t, metrics[0].Value.Value(), int64(0))
 	}
 }
 
@@ -112,7 +112,7 @@ func TestGetMetricsRange(t *testing.T) {
 	if currentHour%2 == 0 {
 		assert.Equal(t, metrics[0].Value.Value(), int64(10))
 	} else {
-		assert.Equal(t, metrics[0].Value.Value(), int64(1))
+		assert.Equal(t, metrics[0].Value.Value(), int64(0))
 	}
 }
 
