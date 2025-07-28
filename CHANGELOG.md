@@ -60,7 +60,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
-- **RabbitMQ Scaler**: add DeliverGetRate and PublishedToDeliveredRatio trigger modes to RabbitMQ scaler
+- **RabbitMQ Scaler**: add DeliverGetRate and PublishedToDeliveredRatio trigger modes to RabbitMQ scaler ([#6933](https://github.com/kedacore/keda/pull/6933))
 
 ### New
 
