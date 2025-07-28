@@ -2,6 +2,7 @@ package gcp
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -13,48 +14,48 @@ func TestBuildMQLQuery(t *testing.T) {
 		metric       string
 		resourceName string
 		aggregation  string
-		timeHorizon  string
+		timeHorizon  time.Duration
 
 		expected string
 		isError  bool
 	}{
 		{
 			"topic with aggregation",
-			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "count", "1m",
+			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "count", time.Minute,
 			"fetch pubsub_topic | metric 'pubsub.googleapis.com/topic/x' | filter (resource.project_id == 'myproject' && resource.topic_id == 'mytopic')" +
-				" | within 1m | align delta(3m) | every 3m | group_by [], count(value)",
+				" | within 1m0s | align delta(3m0s) | every 3m0s | group_by [], count(value)",
 			false,
 		},
 		{
 			"topic without aggregation",
-			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "", "",
+			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "", time.Duration(0),
 			"fetch pubsub_topic | metric 'pubsub.googleapis.com/topic/x' | filter (resource.project_id == 'myproject' && resource.topic_id == 'mytopic')" +
-				" | within 2m",
+				" | within 2m0s",
 			false,
 		},
 		{
 			"subscription with aggregation",
-			"subscription", "pubsub.googleapis.com/subscription/x", "mysubscription", "percentile99", "",
+			"subscription", "pubsub.googleapis.com/subscription/x", "mysubscription", "percentile99", time.Duration(0),
 			"fetch pubsub_subscription | metric 'pubsub.googleapis.com/subscription/x' | filter (resource.project_id == 'myproject' && resource.subscription_id == 'mysubscription')" +
-				" | within 5m | align delta(3m) | every 3m | group_by [], percentile(value, 99)",
+				" | within 5m0s | align delta(3m0s) | every 3m0s | group_by [], percentile(value, 99)",
 			false,
 		},
 		{
 			"subscription without aggregation",
-			"subscription", "pubsub.googleapis.com/subscription/x", "mysubscription", "", "4m",
+			"subscription", "pubsub.googleapis.com/subscription/x", "mysubscription", "", time.Minute * 4,
 			"fetch pubsub_subscription | metric 'pubsub.googleapis.com/subscription/x' | filter (resource.project_id == 'myproject' && resource.subscription_id == 'mysubscription')" +
-				" | within 4m",
+				" | within 4m0s",
 			false,
 		},
 		{
 			"invalid percentile",
-			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "percentile101", "1m",
+			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "percentile101", time.Minute,
 			"invalid percentile value: 101",
 			true,
 		},
 		{
 			"unsupported aggregation function",
-			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "max", "",
+			"topic", "pubsub.googleapis.com/topic/x", "mytopic", "max", time.Duration(0),
 			"unsupported aggregation function: max",
 			true,
 		},
