@@ -63,10 +63,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General**: Enable OpenSSF Scorecard to enhance security practices across the project ([#5913](https://github.com/kedacore/keda/issues/5913))
-- **General**: Introduce new NSQ scaler ([#3281](https://github.com/kedacore/keda/issues/3281))
-- **General**: Operator flag to control patching of webhook resources certificates ([#6184](https://github.com/kedacore/keda/issues/6184))
-- **General**: Add Splunk Observability Scaler ([#6192](https://github.com/kedacore/keda/pull/6192))
+- Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
+- **General**: Introduce new Sumo Logic Scaler ([#6734](https://github.com/kedacore/keda/issues/6734))
+- **General**: Introduce new Splunk Observability Cloud Sclaer ([#6534](https://github.com/kedacore/keda/pull/6534))
 
 #### Experimental
 
@@ -93,7 +92,10 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 
 New deprecation(s):
 
+<<<<<<< HEAD
 - **GCP Pub/Sub Scaler**: The 'subscriptionSize' setting is DEPRECATED and will be removed in v2.20 - Use 'mode' and 'value' instead" ([#6866](https://github.com/kedacore/keda/pull/6866))
+=======
+>>>>>>> e27bcb322 (synced changes with official commits from KEDA)
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Breaking Changes
