@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -37,6 +38,8 @@ const (
 	rabbitModeUnknown                      = "Unknown"
 	rabbitModeQueueLength                  = "QueueLength"
 	rabbitModeMessageRate                  = "MessageRate"
+	rabbitModeDeliverGetRate               = "DeliverGetRate"
+	rabbitModePublishedToDeliveredRatio    = "PublishedToDeliveredRatio"
 	defaultRabbitMQQueueLength             = 20
 	rabbitMetricType                       = "External"
 	rabbitRootVhostPath                    = "/%2F"
@@ -176,6 +179,20 @@ func (r *rabbitMQMetadata) Validate() error {
 }
 
 func (r *rabbitMQMetadata) validateTrigger() error {
+	modes := map[string][]string{
+		"all": {
+			rabbitModeQueueLength,
+			rabbitModeMessageRate,
+			rabbitModeDeliverGetRate,
+			rabbitModePublishedToDeliveredRatio,
+		},
+		"httpOnly": {
+			rabbitModeMessageRate,
+			rabbitModeDeliverGetRate,
+			rabbitModePublishedToDeliveredRatio,
+		},
+	}
+
 	// If nothing is specified for the trigger then return the default
 	if r.QueueLength == 0 && r.Mode == rabbitModeUnknown && r.Value == 0 {
 		r.Mode = rabbitModeQueueLength
@@ -202,12 +219,12 @@ func (r *rabbitMQMetadata) validateTrigger() error {
 		return fmt.Errorf("%s must be specified", rabbitValueTriggerConfigName)
 	}
 
-	if r.Mode != rabbitModeQueueLength && r.Mode != rabbitModeMessageRate {
-		return fmt.Errorf("trigger mode %s must be one of %s, %s", r.Mode, rabbitModeQueueLength, rabbitModeMessageRate)
+	if !slices.Contains(modes["all"], r.Mode) {
+		return fmt.Errorf("trigger mode %s must be one of %s, %s or %s", r.Mode, rabbitModeQueueLength, rabbitModeMessageRate, rabbitModeDeliverGetRate)
 	}
 
-	if r.Mode == rabbitModeMessageRate && r.Protocol != httpProtocol {
-		return fmt.Errorf("protocol %s not supported; must be http to use mode %s", r.Protocol, rabbitModeMessageRate)
+	if slices.Contains(modes["httpOnly"], r.Mode) && r.Protocol != httpProtocol {
+		return fmt.Errorf("protocol %s not supported; must be http to use mode %s", r.Protocol, r.Mode)
 	}
 
 	if r.Protocol == amqpProtocol && r.Timeout != 0 {
@@ -231,10 +248,15 @@ type regexQueueInfo struct {
 }
 
 type messageStat struct {
-	PublishDetail publishDetail `json:"publish_details"`
+	PublishDetail    publishDetail    `json:"publish_details"`
+	DeliverGetDetail deliverGetDetail `json:"deliver_get_details"`
 }
 
 type publishDetail struct {
+	Rate float64 `json:"rate"`
+}
+
+type deliverGetDetail struct {
 	Rate float64 `json:"rate"`
 }
 
@@ -370,28 +392,28 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 	return nil
 }
 
-func (s *rabbitMQScaler) getQueueStatus(ctx context.Context) (int64, float64, error) {
+func (s *rabbitMQScaler) getQueueStatus(ctx context.Context) (int64, float64, float64, error) {
 	if s.metadata.Protocol == httpProtocol {
 		info, err := s.getQueueInfoViaHTTP(ctx)
 		if err != nil {
-			return -1, -1, err
+			return -1, -1, -1, err
 		}
 
 		if s.metadata.ExcludeUnacknowledged {
 			// messages count includes only ready
-			return int64(info.MessagesReady), info.MessageStat.PublishDetail.Rate, nil
+			return int64(info.MessagesReady), info.MessageStat.PublishDetail.Rate, info.MessageStat.DeliverGetDetail.Rate, nil
 		}
 		// messages count includes count of ready and unack-ed
-		return int64(info.Messages), info.MessageStat.PublishDetail.Rate, nil
+		return int64(info.Messages), info.MessageStat.PublishDetail.Rate, info.MessageStat.DeliverGetDetail.Rate, nil
 	}
 
 	// QueueDeclarePassive assumes that the queue exists and fails if it doesn't
 	items, err := s.channel.QueueDeclarePassive(s.metadata.QueueName, false, false, false, false, amqp.Table{})
 	if err != nil {
-		return -1, -1, err
+		return -1, -1, -1, err
 	}
 
-	return int64(items.Messages), 0, nil
+	return int64(items.Messages), 0, 0, nil
 }
 
 func getJSON(ctx context.Context, s *rabbitMQScaler, url string) (queueInfo, error) {
@@ -510,19 +532,31 @@ func (s *rabbitMQScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *rabbitMQScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	messages, publishRate, err := s.getQueueStatus(ctx)
+	messages, publishRate, deliverGetRate, err := s.getQueueStatus(ctx)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, s.anonymizeRabbitMQError(err)
 	}
 
 	var metric external_metrics.ExternalMetricValue
 	var isActive bool
-	if s.metadata.Mode == rabbitModeQueueLength {
+
+	switch s.metadata.Mode {
+	case rabbitModeQueueLength:
 		metric = GenerateMetricInMili(metricName, float64(messages))
 		isActive = float64(messages) > s.metadata.ActivationValue
-	} else {
+	case rabbitModeMessageRate:
 		metric = GenerateMetricInMili(metricName, publishRate)
 		isActive = publishRate > s.metadata.ActivationValue || float64(messages) > s.metadata.ActivationValue
+	case rabbitModeDeliverGetRate:
+		metric = GenerateMetricInMili(metricName, deliverGetRate)
+		isActive = float64(messages) > 0
+	case rabbitModePublishedToDeliveredRatio:
+		if deliverGetRate == 0 {
+			metric = GenerateMetricInMili(metricName, 1)
+		} else {
+			metric = GenerateMetricInMili(metricName, publishRate/deliverGetRate)
+		}
+		isActive = float64(messages) > 0
 	}
 
 	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
@@ -530,58 +564,70 @@ func (s *rabbitMQScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 
 func getComposedQueue(s *rabbitMQScaler, q []queueInfo) (queueInfo, error) {
 	var queue = queueInfo{}
+
 	queue.Name = "composed-queue"
 	queue.MessagesUnacknowledged = 0
+
 	if len(q) > 0 {
 		switch s.metadata.Operation {
 		case sumOperation:
-			sumMessages, sumReady, sumRate := getSum(q)
+			sumMessages, sumReady, sumPublishRate, sumDeliverGetRate := getSum(q)
 			queue.Messages = sumMessages
 			queue.MessagesReady = sumReady
-			queue.MessageStat.PublishDetail.Rate = sumRate
+			queue.MessageStat.PublishDetail.Rate = sumPublishRate
+			queue.MessageStat.DeliverGetDetail.Rate = sumDeliverGetRate
 		case avgOperation:
-			avgMessages, avgReady, avgRate := getAverage(q)
+			avgMessages, avgReady, avgPublishRate, avgDeliverGetRate := getAverage(q)
 			queue.Messages = avgMessages
 			queue.MessagesReady = avgReady
-			queue.MessageStat.PublishDetail.Rate = avgRate
+			queue.MessageStat.PublishDetail.Rate = avgPublishRate
+			queue.MessageStat.DeliverGetDetail.Rate = avgDeliverGetRate
 		case maxOperation:
-			maxMessages, maxReady, maxRate := getMaximum(q)
+			maxMessages, maxReady, maxPublishRate, maxDeliverGetRate := getMaximum(q)
 			queue.Messages = maxMessages
 			queue.MessagesReady = maxReady
-			queue.MessageStat.PublishDetail.Rate = maxRate
+			queue.MessageStat.PublishDetail.Rate = maxPublishRate
+			queue.MessageStat.DeliverGetDetail.Rate = maxDeliverGetRate
 		default:
 			return queue, fmt.Errorf("operation mode %s must be one of %s, %s, %s", s.metadata.Operation, sumOperation, avgOperation, maxOperation)
 		}
 	} else {
 		queue.Messages = 0
+		queue.MessagesReady = 0
 		queue.MessageStat.PublishDetail.Rate = 0
+		queue.MessageStat.DeliverGetDetail.Rate = 0
 	}
 
 	return queue, nil
 }
 
-func getSum(q []queueInfo) (int, int, float64) {
+func getSum(q []queueInfo) (int, int, float64, float64) {
 	var sumMessages int
 	var sumMessagesReady int
-	var sumRate float64
+	var sumPublishRate, sumDeliverGetRate float64
+
 	for _, value := range q {
 		sumMessages += value.Messages
 		sumMessagesReady += value.MessagesReady
-		sumRate += value.MessageStat.PublishDetail.Rate
+		sumPublishRate += value.MessageStat.PublishDetail.Rate
+		sumDeliverGetRate += value.MessageStat.DeliverGetDetail.Rate
 	}
-	return sumMessages, sumMessagesReady, sumRate
+
+	return sumMessages, sumMessagesReady, sumPublishRate, sumDeliverGetRate
 }
 
-func getAverage(q []queueInfo) (int, int, float64) {
-	sumMessages, sumReady, sumRate := getSum(q)
+func getAverage(q []queueInfo) (int, int, float64, float64) {
+	sumMessages, sumReady, sumPublishRate, sumDeliverGetRate := getSum(q)
 	length := len(q)
-	return sumMessages / length, sumReady / length, sumRate / float64(length)
+
+	return sumMessages / length, sumReady / length, sumPublishRate / float64(length), sumDeliverGetRate / float64(length)
 }
 
-func getMaximum(q []queueInfo) (int, int, float64) {
+func getMaximum(q []queueInfo) (int, int, float64, float64) {
 	var maxMessages int
 	var maxReady int
-	var maxRate float64
+	var maxPublishRate, maxDeliverGetRate float64
+
 	for _, value := range q {
 		if value.Messages > maxMessages {
 			maxMessages = value.Messages
@@ -589,11 +635,15 @@ func getMaximum(q []queueInfo) (int, int, float64) {
 		if value.MessagesReady > maxReady {
 			maxReady = value.MessagesReady
 		}
-		if value.MessageStat.PublishDetail.Rate > maxRate {
-			maxRate = value.MessageStat.PublishDetail.Rate
+		if value.MessageStat.PublishDetail.Rate > maxPublishRate {
+			maxPublishRate = value.MessageStat.PublishDetail.Rate
+		}
+		if value.MessageStat.DeliverGetDetail.Rate > maxDeliverGetRate {
+			maxDeliverGetRate = value.MessageStat.DeliverGetDetail.Rate
 		}
 	}
-	return maxMessages, maxReady, maxRate
+
+	return maxMessages, maxReady, maxPublishRate, maxDeliverGetRate
 }
 
 // Mask host for log purposes
