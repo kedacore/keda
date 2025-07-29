@@ -83,7 +83,7 @@ type SolaceDMScalerConfiguration struct {
 	// Activation Client TxByteRate
 	ActivationAggregatedClientTxByteRateTarget int `keda:"name=activationAggregatedClientTxByteRateTarget, order=triggerMetadata, default=0"`
 	// Activation Target Average TxByteRate
-	ActivationAggregatedClientAverageTxByteRateTarget int `keda:"name=activationAggregatedClientAverageTxByteRateTarget, order=triggerMetadata=true, default=0"`
+	ActivationAggregatedClientAverageTxByteRateTarget int `keda:"name=activationAggregatedClientAverageTxByteRateTarget, order=triggerMetadata, default=0"`
 	// Activation Client TxMsgRate
 	ActivationAggregatedClientTxMsgRateTarget int `keda:"name=activationAggregatedClientTxMsgRateTarget, order=triggerMetadata, default=0"`
 	// Activation Target Average TxMsgRate
