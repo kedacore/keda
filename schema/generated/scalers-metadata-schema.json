@@ -446,6 +446,26 @@
             ]
         },
         {
+            "type": "azure-eventhub",
+            "metadata": [
+                {
+                    "name": "unprocessedEventThreshold",
+                    "type": "string",
+                    "default": "64"
+                },
+                {
+                    "name": "activationUnprocessedEventThreshold",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "stalePartitionInfoThreshold",
+                    "type": "string",
+                    "default": "10000"
+                }
+            ]
+        },
+        {
             "type": "azure-monitor",
             "metadata": [
                 {
@@ -812,6 +832,40 @@
                 {
                     "name": "projectID",
                     "type": "string"
+                }
+            ]
+        },
+        {
+            "type": "gcp-storage",
+            "metadata": [
+                {
+                    "name": "bucketName",
+                    "type": "string"
+                },
+                {
+                    "name": "targetObjectCount",
+                    "type": "string",
+                    "default": "100"
+                },
+                {
+                    "name": "activationTargetObjectCount",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "maxBucketItemsToScan",
+                    "type": "string",
+                    "default": "1000"
+                },
+                {
+                    "name": "blobDelimiter",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "blobPrefix",
+                    "type": "string",
+                    "optional": true
                 }
             ]
         },
