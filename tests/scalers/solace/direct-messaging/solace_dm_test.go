@@ -287,10 +287,10 @@ func testMsgRatePerSecond(t *testing.T, kc *kubernetes.Clientset, data *solaceDM
 	// will send 700 msgs per second during 30 secs
 	// wait 30 secs
 	// the number of instances should be the maximum configured
-	testScaleUp(t, kc, "TxtMsgRate", 700, 700*30, 30, 1)
+	testScaleUp(t, kc, "TxMsgRate", 700, 700*30, 30, 1)
 
 	// wait 125 seconds to scaler to reduce the replica number to the minimumn
-	testScaleDown(t, kc, "TxtMsgRate", 180, 1)
+	testScaleDown(t, kc, "TxMsgRate", 180, 1)
 }
 func testByteRatePerSecond(t *testing.T, kc *kubernetes.Clientset, data *solaceDMTemplateData) {
 	cleanParams(data)
