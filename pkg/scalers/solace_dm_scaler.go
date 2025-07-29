@@ -560,7 +560,7 @@ func (s *SolaceDMScaler) GetSolaceDMSempMetrics(ctx context.Context, httpClient 
 		s.logger.Info(fmt.Sprintf("Warning: getting metrics from url: '%s' failed, using next url in list. err: '%s'", sempURL, err))
 	}
 	// should not reach this code
-	return []byte{}, errors.New("no url return anything")
+	return []byte{}, errors.New("no URL returned any data")
 }
 
 func (s *SolaceDMScaler) GetSolaceDMSempMetricsFromHost(ctx context.Context, httpClient *http.Client, sempURL string, username string, password string, requestBody string) ([]byte, error) {
