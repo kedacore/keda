@@ -52,5 +52,3 @@ report.xml
 # KEDA Certs
 certs/*
 
-.venv
-./.venv/
