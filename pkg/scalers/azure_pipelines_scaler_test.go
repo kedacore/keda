@@ -436,8 +436,8 @@ var testValidateAzurePipelinesQueueURLData = []validateAzurePipelinesQueueURLTes
 	{"jobsToFetch given", azurePipelinesMetadata{JobsToFetch: 1250}, "%s/_apis/distributedtask/pools/%d/jobrequests?$top=1250"},
 	// fetchUnfinishedJobsOnly set to true
 	{"fetchUnfinishedJobsOnly set to true", azurePipelinesMetadata{FetchUnfinishedJobsOnly: true}, "%s/_apis/distributedtask/pools/%d/jobrequests?completedRequestCount=0"},
-	// fetchUnfinishedJobsOnly set to true and partent agent defined
-	{"fetchUnfinishedJobsOnly set to true and partent agent defined", azurePipelinesMetadata{FetchUnfinishedJobsOnly: true, Parent: "test-agent"}, "%s/_apis/distributedtask/pools/%d/jobrequests?completedRequestCount=0"},
+	// fetchUnfinishedJobsOnly set to true and parent agent defined
+	{"fetchUnfinishedJobsOnly set to true and parent agent defined", azurePipelinesMetadata{FetchUnfinishedJobsOnly: true, Parent: "test-agent"}, "%s/_apis/distributedtask/pools/%d/jobrequests?completedRequestCount=0"},
 }
 
 func TestAzurePipelinesQueueURLTest(t *testing.T) {
