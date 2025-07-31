@@ -92,12 +92,14 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 
 	s.logger.V(1).Info("Started MTS stream.")
 
-	time.Sleep(time.Duration(s.metadata.Duration * int(time.Second)))
-	if err := comp.Stop(ctx); err != nil {
-		return -1, fmt.Errorf("error creating SignalFlow client: %w", err)
-	}
-
-	s.logger.V(1).Info("Closed MTS stream.")
+	stopTimer := time.After(time.Duration(s.metadata.Duration) * time.Second)
+	go func() {
+		<-stopTimer
+		s.logger.V(1).Info("Stopping MTS stream after duration.")
+		if err := comp.Stop(context.Background()); err != nil {
+			s.logger.Error(err, "Failed to stop SignalFlow computation")
+		}
+	}()
 
 	maxValue := math.Inf(-1)
 	minValue := math.Inf(1)
