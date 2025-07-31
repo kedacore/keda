@@ -220,7 +220,7 @@ func (r *rabbitMQMetadata) validateTrigger() error {
 	}
 
 	if !slices.Contains(modes["all"], r.Mode) {
-		return fmt.Errorf("trigger mode %s must be one of %s, %s or %s", r.Mode, rabbitModeQueueLength, rabbitModeMessageRate, rabbitModeDeliverGetRate)
+		return fmt.Errorf("trigger mode %s must be one of %s, %s, %s or %s", r.Mode, rabbitModeQueueLength, rabbitModeMessageRate, rabbitModeDeliverGetRate, rabbitModePublishedToDeliveredRatio)
 	}
 
 	if slices.Contains(modes["httpOnly"], r.Mode) && r.Protocol != httpProtocol {
