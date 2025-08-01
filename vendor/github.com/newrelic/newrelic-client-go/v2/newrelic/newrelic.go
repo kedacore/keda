@@ -4,6 +4,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/newrelic/newrelic-client-go/v2/pkg/entityrelationship"
+	"github.com/newrelic/newrelic-client-go/v2/pkg/users"
+
 	"github.com/newrelic/newrelic-client-go/v2/pkg/accountmanagement"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/accounts"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/agent"
@@ -74,6 +77,8 @@ type NewRelic struct {
 	Workflows               workflows.Workflows
 	Workloads               workloads.Workloads
 	KeyTransaction          keytransaction.Keytransaction
+	EntityRelationship      entityrelationship.Entityrelationship
+	Users                   users.Users
 
 	config config.Config
 }
@@ -122,6 +127,8 @@ func New(opts ...ConfigOption) (*NewRelic, error) {
 		Workflows:               workflows.New(cfg),
 		Workloads:               workloads.New(cfg),
 		KeyTransaction:          keytransaction.New(cfg),
+		EntityRelationship:      entityrelationship.New(cfg),
+		Users:                   users.New(cfg),
 	}
 
 	return nr, nil

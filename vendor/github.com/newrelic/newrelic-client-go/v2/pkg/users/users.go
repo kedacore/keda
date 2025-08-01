@@ -11,6 +11,7 @@ import (
 type Users struct {
 	client http.Client
 	logger logging.Logger
+	config config.Config
 }
 
 // New returns a new client for interacting with New Relic users.
@@ -18,5 +19,6 @@ func New(config config.Config) Users {
 	return Users{
 		client: http.NewClient(config),
 		logger: config.GetLogger(),
+		config: config,
 	}
 }

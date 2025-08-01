@@ -15,6 +15,10 @@ var (
 const IntegrationTestApplicationEntityGUID = "MzgwNjUyNnxBUE18QVBQTElDQVRJT058NTczNDgyNjM4"
 const IntegrationTestApplicationEntityGUIDNew = "MzgwNjUyNnxBUE18QVBQTElDQVRJT058NTUzNDQ4MjAy"
 
+// GUIDs for the entity relationship
+const EntityRelationshipTestSourceEntityGUID = "MzgwNjUyNnxFWFR8U0VSVklDRV9MRVZFTHw1ODA4MDM"
+const EntityRelationshipTestTargetEntityGUID = "MzgwNjUyNnxFWFR8U0VSVklDRV9MRVZFTHw1NzE0Nzk"
+
 // name of the APM Application with the GUID IntegrationTestApplicationEntityGUIDNew
 const IntegrationTestApplicationEntityNameNew = "Dummy App Pro Max"
 

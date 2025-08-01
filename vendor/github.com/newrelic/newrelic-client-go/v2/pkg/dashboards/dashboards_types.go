@@ -318,6 +318,7 @@ type RawConfiguration struct {
 	RefreshRate    *DashboardWidgetRefreshRate    `json:"refreshRate,omitempty"`
 	InitialSorting *DashboardWidgetInitialSorting `json:"initialSorting,omitempty"`
 	DataFormat     []*DashboardWidgetDataFormat   `json:"dataFormatters,omitempty"`
+	Tooltip        *DashboardWidgetTooltip        `json:"tooltip,omitempty"`
 }
 
 // RawConfigurationPlatformOptions represents platform widget options
@@ -394,4 +395,21 @@ type DashboardWidgetColorOverrides struct {
 }
 type DashboardWidgetFacet struct {
 	ShowOtherSeries bool `json:"showOtherSeries,omitempty"`
+}
+
+type DashboardWidgetTooltip struct {
+	Mode string `json:"mode,omitempty"`
+}
+
+// DashboardTooltipType represents an option for the dashboard tooltip's mode field.
+type DashboardTooltipType string
+
+var DashboardTooltipTypes = struct {
+	ALL    DashboardTooltipType
+	SINGLE DashboardTooltipType
+	HIDDEN DashboardTooltipType
+}{
+	ALL:    "all",
+	SINGLE: "single",
+	HIDDEN: "hidden",
 }

@@ -1198,7 +1198,7 @@ github.com/mwitkow/go-conntrack
 # github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f
 ## explicit
 github.com/mxk/go-flowrate/flowrate
-# github.com/newrelic/newrelic-client-go/v2 v2.55.4
+# github.com/newrelic/newrelic-client-go/v2 v2.67.0
 ## explicit; go 1.22
 github.com/newrelic/newrelic-client-go/v2/internal/http
 github.com/newrelic/newrelic-client-go/v2/internal/serialization
@@ -1223,6 +1223,7 @@ github.com/newrelic/newrelic-client-go/v2/pkg/customeradministration
 github.com/newrelic/newrelic-client-go/v2/pkg/dashboards
 github.com/newrelic/newrelic-client-go/v2/pkg/edge
 github.com/newrelic/newrelic-client-go/v2/pkg/entities
+github.com/newrelic/newrelic-client-go/v2/pkg/entityrelationship
 github.com/newrelic/newrelic-client-go/v2/pkg/errors
 github.com/newrelic/newrelic-client-go/v2/pkg/events
 github.com/newrelic/newrelic-client-go/v2/pkg/eventstometrics
@@ -1387,6 +1388,15 @@ github.com/redis/go-redis/v9/internal/util
 # github.com/rivo/uniseg v0.4.4
 ## explicit; go 1.18
 github.com/rivo/uniseg
+# github.com/robertkrimen/otto v0.5.1
+## explicit; go 1.22
+github.com/robertkrimen/otto
+github.com/robertkrimen/otto/ast
+github.com/robertkrimen/otto/dbg
+github.com/robertkrimen/otto/file
+github.com/robertkrimen/otto/parser
+github.com/robertkrimen/otto/registry
+github.com/robertkrimen/otto/token
 # github.com/robfig/cron v1.2.0
 ## explicit
 github.com/robfig/cron
@@ -1893,6 +1903,7 @@ golang.org/x/text/internal/utf8internal
 golang.org/x/text/language
 golang.org/x/text/message
 golang.org/x/text/message/catalog
+golang.org/x/text/number
 golang.org/x/text/runes
 golang.org/x/text/secure/bidirule
 golang.org/x/text/secure/precis
@@ -2188,6 +2199,10 @@ gopkg.in/inf.v0
 # gopkg.in/natefinch/lumberjack.v2 v2.2.1
 ## explicit; go 1.13
 gopkg.in/natefinch/lumberjack.v2
+# gopkg.in/sourcemap.v1 v1.0.5
+## explicit
+gopkg.in/sourcemap.v1
+gopkg.in/sourcemap.v1/base64vlq
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2

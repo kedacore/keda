@@ -1,0 +1,10 @@
+.test
+otto/otto
+otto/otto-*
+tools/tester/testdata/
+tools/tester/tester
+tools/gen-jscore/gen-jscore
+tools/gen-tokens/gen-tokens
+.idea
+dist/
+.vscode/
