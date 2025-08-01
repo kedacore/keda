@@ -13,7 +13,7 @@ import (
 	"github.com/Azure/go-amqp"
 )
 
-// AMQPReceiver is implemented by *amqp.Receiver
+// AMQPReceiver is implemented by [*AMQPReceiverWrapper]
 type AMQPReceiver interface {
 	IssueCredit(credit uint32) error
 	Receive(ctx context.Context, o *amqp.ReceiveOptions) (*amqp.Message, error)
@@ -27,6 +27,7 @@ type AMQPReceiver interface {
 
 	LinkName() string
 	LinkSourceFilterValue(name string) any
+	Properties() map[string]any
 
 	// wrapper only functions,
 
@@ -34,26 +35,26 @@ type AMQPReceiver interface {
 	Credits() uint32
 }
 
-// AMQPReceiverCloser is implemented by *amqp.Receiver
+// AMQPReceiverCloser is implemented by [*AMQPReceiverWrapper]
 type AMQPReceiverCloser interface {
 	AMQPReceiver
 	Close(ctx context.Context) error
 }
 
-// AMQPSender is implemented by *amqp.Sender
+// AMQPSender is implemented by [*AMQPSenderWrapper]
 type AMQPSender interface {
 	Send(ctx context.Context, msg *amqp.Message, o *amqp.SendOptions) error
 	MaxMessageSize() uint64
 	LinkName() string
 }
 
-// AMQPSenderCloser is implemented by *amqp.Sender
+// AMQPSenderCloser is implemented by [*AMQPSenderWrapper]
 type AMQPSenderCloser interface {
 	AMQPSender
 	Close(ctx context.Context) error
 }
 
-// AMQPSession is a simple interface, implemented by *AMQPSessionWrapper.
+// AMQPSession is a simple interface, implemented by [*AMQPSessionWrapper].
 // It exists only so we can return AMQPReceiver/AMQPSender interfaces.
 type AMQPSession interface {
 	Close(ctx context.Context) error
@@ -61,23 +62,27 @@ type AMQPSession interface {
 	NewSender(ctx context.Context, target string, opts *amqp.SenderOptions) (AMQPSenderCloser, error)
 }
 
+// AMQPClient is a simple interface, implemented by [*AMQPClientWrapper].
 type AMQPClient interface {
 	Close() error
 	NewSession(ctx context.Context, opts *amqp.SessionOptions) (AMQPSession, error)
 	Name() string
 }
 
+// goamqpConn is a simple interface, implemented by [*amqp.Conn]
 type goamqpConn interface {
 	NewSession(ctx context.Context, opts *amqp.SessionOptions) (*amqp.Session, error)
 	Close() error
 }
 
+// goamqpSession is a simple interface, implemented by [*amqp.Session]
 type goamqpSession interface {
 	Close(ctx context.Context) error
 	NewReceiver(ctx context.Context, source string, opts *amqp.ReceiverOptions) (*amqp.Receiver, error)
 	NewSender(ctx context.Context, target string, opts *amqp.SenderOptions) (*amqp.Sender, error)
 }
 
+// goamqpReceiver is a simple interface, implemented by [*amqp.Receiver]
 type goamqpReceiver interface {
 	IssueCredit(credit uint32) error
 	Receive(ctx context.Context, o *amqp.ReceiveOptions) (*amqp.Message, error)
@@ -91,6 +96,7 @@ type goamqpReceiver interface {
 
 	LinkName() string
 	LinkSourceFilterValue(name string) any
+	Properties() map[string]any
 	Close(ctx context.Context) error
 }
 
@@ -219,6 +225,10 @@ func (rw *AMQPReceiverWrapper) LinkName() string {
 
 func (rw *AMQPReceiverWrapper) LinkSourceFilterValue(name string) any {
 	return rw.Inner.LinkSourceFilterValue(name)
+}
+
+func (rw *AMQPReceiverWrapper) Properties() map[string]any {
+	return rw.Inner.Properties()
 }
 
 func (rw *AMQPReceiverWrapper) Close(ctx context.Context) error {

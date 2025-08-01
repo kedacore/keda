@@ -66,6 +66,34 @@ func (r *Receiver) IssueCredit(credit uint32) error {
 	return nil
 }
 
+// DrainCreditOptions contains any optional values for the Receiver.DrainCredit method.
+type DrainCreditOptions struct {
+	// for future expansion
+}
+
+// DrainCredit sets the drain flag on the next outbound FLOW frame and blocks until
+// the corresponding FLOW frame is received. While a drain is in progress, messages
+// can continue to arrive. After a drain completes, the Receiver will have
+// zero active credits. To begin receiving again, call IssueCredit() to add active credits
+// to your Receiver.
+//
+// You may only have a single Drain operation active, at a time.
+//
+// If the context passed to DrainCredit expires or is cancelled then the receiver's
+// issued credits should be considered ambiguous.
+//
+// Returns nil if the drain has completed, error otherwise.
+//
+// NOTE: The behavior of drain is optional, as per the AMQP spec. Check with your individual
+// broker's documentation for implementation details.
+func (r *Receiver) DrainCredit(ctx context.Context, _ *DrainCreditOptions) error {
+	if r.autoSendFlow {
+		return errors.New("drain can only be used with receiver links using manual credit management")
+	}
+
+	return r.creditor.Drain(ctx, r)
+}
+
 // Prefetched returns the next message that is stored in the Receiver's
 // prefetch cache. It does NOT wait for the remote sender to send messages
 // and returns immediately if the prefetch cache is empty. To receive from the
@@ -401,6 +429,15 @@ func newReceiver(source string, session *Session, opts *ReceiverOptions) (*Recei
 		r.l.linkCredit = 0
 		r.autoSendFlow = false
 	}
+
+	if opts.DesiredCapabilities != nil {
+		r.l.desiredCapabilities = make([]encoding.Symbol, 0, len(opts.DesiredCapabilities))
+
+		for _, capabilityStr := range opts.DesiredCapabilities {
+			r.l.desiredCapabilities = append(r.l.desiredCapabilities, encoding.Symbol(capabilityStr))
+		}
+	}
+
 	if opts.Durability > DurabilityUnsettledState {
 		return nil, fmt.Errorf("invalid Durability %d", opts.Durability)
 	}

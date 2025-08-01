@@ -34,7 +34,7 @@ type MessageBatchOptions struct {
 // NewMessageBatch can be used to create a batch that contain multiple
 // messages. Sending a batch of messages is more efficient than sending the
 // messages one at a time.
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 func (s *Sender) NewMessageBatch(ctx context.Context, options *MessageBatchOptions) (*MessageBatch, error) {
 	var batch *MessageBatch
 
@@ -91,7 +91,7 @@ type SendMessageBatchOptions struct {
 
 // SendMessageBatch sends a MessageBatch to a queue or topic.
 // Message batches can be created using [Sender.NewMessageBatch].
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 func (s *Sender) SendMessageBatch(ctx context.Context, batch *MessageBatch, options *SendMessageBatchOptions) error {
 	err := s.links.Retry(ctx, EventSender, "SendMessageBatch", func(ctx context.Context, lwid *internal.LinksWithID, args *utils.RetryFnArgs) error {
 		return lwid.Sender.Send(ctx, batch.toAMQPMessage(), nil)
@@ -108,7 +108,7 @@ type ScheduleMessagesOptions struct {
 // ScheduleMessages schedules a slice of Messages to appear on Service Bus Queue/Subscription at a later time.
 // Returns the sequence numbers of the messages that were scheduled.  Messages that haven't been
 // delivered can be cancelled using `Receiver.CancelScheduleMessage(s)`
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 func (s *Sender) ScheduleMessages(ctx context.Context, messages []*Message, scheduledEnqueueTime time.Time, options *ScheduleMessagesOptions) ([]int64, error) {
 	return scheduleMessages(ctx, s.links, s.retryOptions, messages, scheduledEnqueueTime)
 }
@@ -121,7 +121,7 @@ type ScheduleAMQPAnnotatedMessagesOptions struct {
 // ScheduleAMQPAnnotatedMessages schedules a slice of Messages to appear on Service Bus Queue/Subscription at a later time.
 // Returns the sequence numbers of the messages that were scheduled.  Messages that haven't been
 // delivered can be cancelled using `Receiver.CancelScheduleMessage(s)`
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 func (s *Sender) ScheduleAMQPAnnotatedMessages(ctx context.Context, messages []*AMQPAnnotatedMessage, scheduledEnqueueTime time.Time, options *ScheduleAMQPAnnotatedMessagesOptions) ([]int64, error) {
 	return scheduleMessages(ctx, s.links, s.retryOptions, messages, scheduledEnqueueTime)
 }
@@ -156,7 +156,7 @@ type CancelScheduledMessagesOptions struct {
 }
 
 // CancelScheduledMessages cancels multiple messages that were scheduled.
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 func (s *Sender) CancelScheduledMessages(ctx context.Context, sequenceNumbers []int64, options *CancelScheduledMessagesOptions) error {
 	err := s.links.Retry(ctx, EventSender, "CancelScheduledMessages", func(ctx context.Context, lwv *internal.LinksWithID, args *utils.RetryFnArgs) error {
 		return internal.CancelScheduledMessages(ctx, lwv.RPC, lwv.Sender.LinkName(), sequenceNumbers)
