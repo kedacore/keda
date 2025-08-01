@@ -78,6 +78,40 @@ func (LoggingConfigurationStatusCode) Values() []LoggingConfigurationStatusCode 
 	}
 }
 
+type QueryLoggingConfigurationStatusCode string
+
+// Enum values for QueryLoggingConfigurationStatusCode
+const (
+	// Query logging configuration is being created.
+	QueryLoggingConfigurationStatusCodeCreating QueryLoggingConfigurationStatusCode = "CREATING"
+	// Query logging configuration is active.
+	QueryLoggingConfigurationStatusCodeActive QueryLoggingConfigurationStatusCode = "ACTIVE"
+	// Query logging configuration is being updated.
+	QueryLoggingConfigurationStatusCodeUpdating QueryLoggingConfigurationStatusCode = "UPDATING"
+	// Query logging configuration is being deleted.
+	QueryLoggingConfigurationStatusCodeDeleting QueryLoggingConfigurationStatusCode = "DELETING"
+	// Query logging configuration creation failed.
+	QueryLoggingConfigurationStatusCodeCreationFailed QueryLoggingConfigurationStatusCode = "CREATION_FAILED"
+	// Query logging configuration update failed.
+	QueryLoggingConfigurationStatusCodeUpdateFailed QueryLoggingConfigurationStatusCode = "UPDATE_FAILED"
+)
+
+// Values returns all known values for QueryLoggingConfigurationStatusCode. Note
+// that this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (QueryLoggingConfigurationStatusCode) Values() []QueryLoggingConfigurationStatusCode {
+	return []QueryLoggingConfigurationStatusCode{
+		"CREATING",
+		"ACTIVE",
+		"UPDATING",
+		"DELETING",
+		"CREATION_FAILED",
+		"UPDATE_FAILED",
+	}
+}
+
 type RuleGroupsNamespaceStatusCode string
 
 // Enum values for RuleGroupsNamespaceStatusCode
@@ -172,6 +206,33 @@ func (ValidationExceptionReason) Values() []ValidationExceptionReason {
 		"CANNOT_PARSE",
 		"FIELD_VALIDATION_FAILED",
 		"OTHER",
+	}
+}
+
+type WorkspaceConfigurationStatusCode string
+
+// Enum values for WorkspaceConfigurationStatusCode
+const (
+	// Workspace configuration has been updated. Update is disallowed until workspace
+	// configuration is ACTIVE and workspace status is ACTIVE.
+	WorkspaceConfigurationStatusCodeActive WorkspaceConfigurationStatusCode = "ACTIVE"
+	// Workspace configuration is being updated. Update is disallowed until workspace
+	// configuration is ACTIVE and workspace status is ACTIVE.
+	WorkspaceConfigurationStatusCodeUpdating WorkspaceConfigurationStatusCode = "UPDATING"
+	// Workspace configuration update failed.
+	WorkspaceConfigurationStatusCodeUpdateFailed WorkspaceConfigurationStatusCode = "UPDATE_FAILED"
+)
+
+// Values returns all known values for WorkspaceConfigurationStatusCode. Note that
+// this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (WorkspaceConfigurationStatusCode) Values() []WorkspaceConfigurationStatusCode {
+	return []WorkspaceConfigurationStatusCode{
+		"ACTIVE",
+		"UPDATING",
+		"UPDATE_FAILED",
 	}
 }
 

@@ -6,43 +6,54 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
+	"github.com/aws/aws-sdk-go-v2/service/amp/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// The ListTagsForResource operation returns the tags that are associated with an
-// Amazon Managed Service for Prometheus resource. Currently, the only resources
-// that can be tagged are scrapers, workspaces, and rule groups namespaces.
-func (c *Client) ListTagsForResource(ctx context.Context, params *ListTagsForResourceInput, optFns ...func(*Options)) (*ListTagsForResourceOutput, error) {
+// Creates a query logging configuration for the specified workspace. This
+// operation enables logging of queries that exceed the specified QSP threshold.
+func (c *Client) CreateQueryLoggingConfiguration(ctx context.Context, params *CreateQueryLoggingConfigurationInput, optFns ...func(*Options)) (*CreateQueryLoggingConfigurationOutput, error) {
 	if params == nil {
-		params = &ListTagsForResourceInput{}
+		params = &CreateQueryLoggingConfigurationInput{}
 	}
 
-	result, metadata, err := c.invokeOperation(ctx, "ListTagsForResource", params, optFns, c.addOperationListTagsForResourceMiddlewares)
+	result, metadata, err := c.invokeOperation(ctx, "CreateQueryLoggingConfiguration", params, optFns, c.addOperationCreateQueryLoggingConfigurationMiddlewares)
 	if err != nil {
 		return nil, err
 	}
 
-	out := result.(*ListTagsForResourceOutput)
+	out := result.(*CreateQueryLoggingConfigurationOutput)
 	out.ResultMetadata = metadata
 	return out, nil
 }
 
-type ListTagsForResourceInput struct {
+type CreateQueryLoggingConfigurationInput struct {
 
-	// The ARN of the resource to list tages for. Must be a workspace, scraper, or
-	// rule groups namespace resource.
+	// The destinations where query logs will be sent. Only CloudWatch Logs
+	// destination is supported. The list must contain exactly one element.
 	//
 	// This member is required.
-	ResourceArn *string
+	Destinations []types.LoggingDestination
+
+	// The ID of the workspace for which to create the query logging configuration.
+	//
+	// This member is required.
+	WorkspaceId *string
+
+	// (Optional) A unique, case-sensitive identifier that you can provide to ensure
+	// the idempotency of the request.
+	ClientToken *string
 
 	noSmithyDocumentSerde
 }
 
-type ListTagsForResourceOutput struct {
+type CreateQueryLoggingConfigurationOutput struct {
 
-	// The list of tag keys and values associated with the resource.
-	Tags map[string]string
+	// The current status of the query logging configuration.
+	//
+	// This member is required.
+	Status *types.QueryLoggingConfigurationStatus
 
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -50,19 +61,19 @@ type ListTagsForResourceOutput struct {
 	noSmithyDocumentSerde
 }
 
-func (c *Client) addOperationListTagsForResourceMiddlewares(stack *middleware.Stack, options Options) (err error) {
+func (c *Client) addOperationCreateQueryLoggingConfigurationMiddlewares(stack *middleware.Stack, options Options) (err error) {
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpListTagsForResource{}, middleware.After)
+	err = stack.Serialize.Add(&awsRestjson1_serializeOpCreateQueryLoggingConfiguration{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpListTagsForResource{}, middleware.After)
+	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpCreateQueryLoggingConfiguration{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "ListTagsForResource"); err != nil {
+	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateQueryLoggingConfiguration"); err != nil {
 		return fmt.Errorf("add protocol finalizers: %v", err)
 	}
 
@@ -117,10 +128,13 @@ func (c *Client) addOperationListTagsForResourceMiddlewares(stack *middleware.St
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
-	if err = addOpListTagsForResourceValidationMiddleware(stack); err != nil {
+	if err = addIdempotencyToken_opCreateQueryLoggingConfigurationMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListTagsForResource(options.Region), middleware.Before); err != nil {
+	if err = addOpCreateQueryLoggingConfigurationValidationMiddleware(stack); err != nil {
+		return err
+	}
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateQueryLoggingConfiguration(options.Region), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRecursionDetection(stack); err != nil {
@@ -183,10 +197,43 @@ func (c *Client) addOperationListTagsForResourceMiddlewares(stack *middleware.St
 	return nil
 }
 
-func newServiceMetadataMiddleware_opListTagsForResource(region string) *awsmiddleware.RegisterServiceMetadata {
+type idempotencyToken_initializeOpCreateQueryLoggingConfiguration struct {
+	tokenProvider IdempotencyTokenProvider
+}
+
+func (*idempotencyToken_initializeOpCreateQueryLoggingConfiguration) ID() string {
+	return "OperationIdempotencyTokenAutoFill"
+}
+
+func (m *idempotencyToken_initializeOpCreateQueryLoggingConfiguration) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	if m.tokenProvider == nil {
+		return next.HandleInitialize(ctx, in)
+	}
+
+	input, ok := in.Parameters.(*CreateQueryLoggingConfigurationInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("expected middleware input to be of type *CreateQueryLoggingConfigurationInput ")
+	}
+
+	if input.ClientToken == nil {
+		t, err := m.tokenProvider.GetIdempotencyToken()
+		if err != nil {
+			return out, metadata, err
+		}
+		input.ClientToken = &t
+	}
+	return next.HandleInitialize(ctx, in)
+}
+func addIdempotencyToken_opCreateQueryLoggingConfigurationMiddleware(stack *middleware.Stack, cfg Options) error {
+	return stack.Initialize.Add(&idempotencyToken_initializeOpCreateQueryLoggingConfiguration{tokenProvider: cfg.IdempotencyTokenProvider}, middleware.Before)
+}
+
+func newServiceMetadataMiddleware_opCreateQueryLoggingConfiguration(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		OperationName: "ListTagsForResource",
+		OperationName: "CreateQueryLoggingConfiguration",
 	}
 }

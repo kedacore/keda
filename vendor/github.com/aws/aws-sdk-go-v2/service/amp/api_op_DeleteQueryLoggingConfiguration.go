@@ -10,59 +10,56 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// The ListTagsForResource operation returns the tags that are associated with an
-// Amazon Managed Service for Prometheus resource. Currently, the only resources
-// that can be tagged are scrapers, workspaces, and rule groups namespaces.
-func (c *Client) ListTagsForResource(ctx context.Context, params *ListTagsForResourceInput, optFns ...func(*Options)) (*ListTagsForResourceOutput, error) {
+// Deletes the query logging configuration for the specified workspace.
+func (c *Client) DeleteQueryLoggingConfiguration(ctx context.Context, params *DeleteQueryLoggingConfigurationInput, optFns ...func(*Options)) (*DeleteQueryLoggingConfigurationOutput, error) {
 	if params == nil {
-		params = &ListTagsForResourceInput{}
+		params = &DeleteQueryLoggingConfigurationInput{}
 	}
 
-	result, metadata, err := c.invokeOperation(ctx, "ListTagsForResource", params, optFns, c.addOperationListTagsForResourceMiddlewares)
+	result, metadata, err := c.invokeOperation(ctx, "DeleteQueryLoggingConfiguration", params, optFns, c.addOperationDeleteQueryLoggingConfigurationMiddlewares)
 	if err != nil {
 		return nil, err
 	}
 
-	out := result.(*ListTagsForResourceOutput)
+	out := result.(*DeleteQueryLoggingConfigurationOutput)
 	out.ResultMetadata = metadata
 	return out, nil
 }
 
-type ListTagsForResourceInput struct {
+type DeleteQueryLoggingConfigurationInput struct {
 
-	// The ARN of the resource to list tages for. Must be a workspace, scraper, or
-	// rule groups namespace resource.
+	// The ID of the workspace from which to delete the query logging configuration.
 	//
 	// This member is required.
-	ResourceArn *string
+	WorkspaceId *string
+
+	// (Optional) A unique, case-sensitive identifier that you can provide to ensure
+	// the idempotency of the request.
+	ClientToken *string
 
 	noSmithyDocumentSerde
 }
 
-type ListTagsForResourceOutput struct {
-
-	// The list of tag keys and values associated with the resource.
-	Tags map[string]string
-
+type DeleteQueryLoggingConfigurationOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
 
 	noSmithyDocumentSerde
 }
 
-func (c *Client) addOperationListTagsForResourceMiddlewares(stack *middleware.Stack, options Options) (err error) {
+func (c *Client) addOperationDeleteQueryLoggingConfigurationMiddlewares(stack *middleware.Stack, options Options) (err error) {
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpListTagsForResource{}, middleware.After)
+	err = stack.Serialize.Add(&awsRestjson1_serializeOpDeleteQueryLoggingConfiguration{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpListTagsForResource{}, middleware.After)
+	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpDeleteQueryLoggingConfiguration{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "ListTagsForResource"); err != nil {
+	if err := addProtocolFinalizerMiddlewares(stack, options, "DeleteQueryLoggingConfiguration"); err != nil {
 		return fmt.Errorf("add protocol finalizers: %v", err)
 	}
 
@@ -117,10 +114,13 @@ func (c *Client) addOperationListTagsForResourceMiddlewares(stack *middleware.St
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
-	if err = addOpListTagsForResourceValidationMiddleware(stack); err != nil {
+	if err = addIdempotencyToken_opDeleteQueryLoggingConfigurationMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListTagsForResource(options.Region), middleware.Before); err != nil {
+	if err = addOpDeleteQueryLoggingConfigurationValidationMiddleware(stack); err != nil {
+		return err
+	}
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteQueryLoggingConfiguration(options.Region), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRecursionDetection(stack); err != nil {
@@ -183,10 +183,43 @@ func (c *Client) addOperationListTagsForResourceMiddlewares(stack *middleware.St
 	return nil
 }
 
-func newServiceMetadataMiddleware_opListTagsForResource(region string) *awsmiddleware.RegisterServiceMetadata {
+type idempotencyToken_initializeOpDeleteQueryLoggingConfiguration struct {
+	tokenProvider IdempotencyTokenProvider
+}
+
+func (*idempotencyToken_initializeOpDeleteQueryLoggingConfiguration) ID() string {
+	return "OperationIdempotencyTokenAutoFill"
+}
+
+func (m *idempotencyToken_initializeOpDeleteQueryLoggingConfiguration) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	if m.tokenProvider == nil {
+		return next.HandleInitialize(ctx, in)
+	}
+
+	input, ok := in.Parameters.(*DeleteQueryLoggingConfigurationInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("expected middleware input to be of type *DeleteQueryLoggingConfigurationInput ")
+	}
+
+	if input.ClientToken == nil {
+		t, err := m.tokenProvider.GetIdempotencyToken()
+		if err != nil {
+			return out, metadata, err
+		}
+		input.ClientToken = &t
+	}
+	return next.HandleInitialize(ctx, in)
+}
+func addIdempotencyToken_opDeleteQueryLoggingConfigurationMiddleware(stack *middleware.Stack, cfg Options) error {
+	return stack.Initialize.Add(&idempotencyToken_initializeOpDeleteQueryLoggingConfiguration{tokenProvider: cfg.IdempotencyTokenProvider}, middleware.Before)
+}
+
+func newServiceMetadataMiddleware_opDeleteQueryLoggingConfiguration(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		OperationName: "ListTagsForResource",
+		OperationName: "DeleteQueryLoggingConfiguration",
 	}
 }

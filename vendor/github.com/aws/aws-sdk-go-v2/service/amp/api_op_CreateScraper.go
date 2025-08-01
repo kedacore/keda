@@ -26,6 +26,11 @@ import (
 // The scrapeConfiguration parameter contains the base-64 encoded YAML
 // configuration for the scraper.
 //
+// When creating a scraper, the service creates a Network Interface in each
+// Availability Zone that are passed into CreateScraper through subnets. These
+// network interfaces are used to connect to the Amazon EKS cluster within the VPC
+// for scraping metrics.
+//
 // For more information about collectors, including what metrics are collected,
 // and how to configure the scraper, see [Using an Amazon Web Services managed collector]in the Amazon Managed Service for
 // Prometheus User Guide.
@@ -76,7 +81,8 @@ type CreateScraperInput struct {
 	// the idempotency of the request.
 	ClientToken *string
 
-	// The scraper role configuration for the workspace.
+	// Use this structure to enable cross-account access, so that you can use a target
+	// account to access Prometheus metrics from source accounts.
 	RoleConfiguration *types.RoleConfiguration
 
 	// (Optional) The list of tag keys and values to associate with the scraper.
@@ -201,6 +207,36 @@ func (c *Client) addOperationCreateScraperMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
 		return err
 	}
 	if err = addSpanInitializeStart(stack); err != nil {
