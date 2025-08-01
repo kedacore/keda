@@ -196,6 +196,7 @@ func apiStubHandlerCustomJob(hasRateLeft bool, exceeds30Repos bool, jobResponse 
 		} else {
 			w.Header().Set("X-RateLimit-Remaining", "0")
 			w.WriteHeader(http.StatusForbidden)
+			return
 		}
 		if strings.HasSuffix(r.URL.String(), "jobs?per_page=100") {
 			// nosemgrep: no-direct-write-to-responsewriter
@@ -498,6 +499,48 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithNotModified(t *testing
 	}
 
 	if queueLen != 1 {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_ShouldWait_ResetTime(t *testing.T) {
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		rateLimit: RateLimit{
+			Remaining:      0,
+			ResetTime:      time.Now().Add(15 * time.Second),
+			RetryAfterTime: time.Now(),
+		},
+	}
+
+	wait, waitDuration := mockGitHubRunnerScaler.shouldWaitForRateLimit()
+
+	if !wait {
+		t.Fail()
+	}
+
+	expectedWait := 15 * time.Second
+	if waitDuration < expectedWait-1*time.Second || waitDuration > expectedWait+1*time.Second {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_ShouldWait_RetryAfterTime(t *testing.T) {
+	mockGitHubRunnerScaler := githubRunnerScaler{
+		rateLimit: RateLimit{
+			Remaining:      0,
+			ResetTime:      time.Now(),
+			RetryAfterTime: time.Now().Add(15 * time.Second),
+		},
+	}
+
+	wait, waitDuration := mockGitHubRunnerScaler.shouldWaitForRateLimit()
+
+	if !wait {
+		t.Fail()
+	}
+
+	expectedWait := 15 * time.Second
+	if waitDuration < expectedWait-1*time.Second || waitDuration > expectedWait+1*time.Second {
 		t.Fail()
 	}
 }
