@@ -32,10 +32,12 @@ func (*inArray) Visit(node *Node) {
 						for _, a := range array.Nodes {
 							value[a.(*IntegerNode).Value] = struct{}{}
 						}
-						Patch(node, &BinaryNode{
+						m := &ConstantNode{Value: value}
+						m.SetType(reflect.TypeOf(value))
+						patchCopyType(node, &BinaryNode{
 							Operator: n.Operator,
 							Left:     n.Left,
-							Right:    &ConstantNode{Value: value},
+							Right:    m,
 						})
 					}
 
@@ -50,10 +52,12 @@ func (*inArray) Visit(node *Node) {
 						for _, a := range array.Nodes {
 							value[a.(*StringNode).Value] = struct{}{}
 						}
-						Patch(node, &BinaryNode{
+						m := &ConstantNode{Value: value}
+						m.SetType(reflect.TypeOf(value))
+						patchCopyType(node, &BinaryNode{
 							Operator: n.Operator,
 							Left:     n.Left,
-							Right:    &ConstantNode{Value: value},
+							Right:    m,
 						})
 					}
 

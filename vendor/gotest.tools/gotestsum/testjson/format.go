@@ -68,7 +68,7 @@ func standardQuietFormat(out io.Writer) EventFormatter {
 // go test -json
 func standardJSONFormat(out io.Writer) EventFormatter {
 	buf := bufio.NewWriter(out)
-	// nolint:errcheck // errors are returned by Flush
+	//nolint:errcheck // errors are returned by Flush
 	return eventFormatterFunc(func(event TestEvent, _ *Execution) error {
 		buf.Write(event.raw)
 		buf.WriteRune('\n')
@@ -95,7 +95,7 @@ func testDoxFormat(out io.Writer, opts FormatOptions) EventFormatter {
 
 	getIcon := getIconFunc(opts)
 	results := map[string][]Result{}
-	return eventFormatterFunc(func(event TestEvent, exec *Execution) error {
+	return eventFormatterFunc(func(event TestEvent, _ *Execution) error {
 		switch {
 		case event.PackageEvent():
 			if !event.Action.IsTerminal() {
@@ -140,7 +140,7 @@ func isFuzzCase(event TestEvent) bool {
 
 func testNameFormat(out io.Writer) EventFormatter {
 	buf := bufio.NewWriter(out)
-	// nolint:errcheck
+	//nolint:errcheck
 	return eventFormatterFunc(func(event TestEvent, exec *Execution) error {
 		formatTest := func() error {
 			testNameFormatTestEvent(buf, event)
@@ -379,12 +379,12 @@ func pkgNameWithFailuresFormat(out io.Writer, opts FormatOptions) eventFormatter
 			if event.Action == ActionFail {
 				pkg := exec.Package(event.Package)
 				tc := pkg.LastFailedByName(event.Test)
-				pkg.WriteOutputTo(buf, tc.ID) // nolint:errcheck
+				pkg.WriteOutputTo(buf, tc.ID) //nolint:errcheck
 				return buf.Flush()
 			}
 			return nil
 		}
-		buf.WriteString(shortFormatPackageEvent(opts, event, exec)) // nolint:errcheck
+		buf.WriteString(shortFormatPackageEvent(opts, event, exec))
 		return buf.Flush()
 	}
 }

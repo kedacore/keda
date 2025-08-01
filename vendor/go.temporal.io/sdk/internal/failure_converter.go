@@ -31,6 +31,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	commonpb "go.temporal.io/api/common/v1"
+	enumspb "go.temporal.io/api/enums/v1"
 	failurepb "go.temporal.io/api/failure/v1"
 
 	"go.temporal.io/sdk/converter"
@@ -170,17 +171,30 @@ func (dfc *DefaultFailureConverter) ErrorToFailure(err error) *failurepb.Failure
 		}
 		failure.FailureInfo = &failurepb.Failure_ChildWorkflowExecutionFailureInfo{ChildWorkflowExecutionFailureInfo: failureInfo}
 	case *NexusOperationError:
+		var token = err.OperationToken
+		if token == "" {
+			token = err.OperationID
+		}
 		failureInfo := &failurepb.NexusOperationFailureInfo{
 			ScheduledEventId: err.ScheduledEventID,
 			Endpoint:         err.Endpoint,
 			Service:          err.Service,
 			Operation:        err.Operation,
-			OperationId:      err.OperationID,
+			OperationId:      token,
+			OperationToken:   token,
 		}
 		failure.FailureInfo = &failurepb.Failure_NexusOperationExecutionFailureInfo{NexusOperationExecutionFailureInfo: failureInfo}
 	case *nexus.HandlerError:
+		var retryBehavior enumspb.NexusHandlerErrorRetryBehavior
+		switch err.RetryBehavior {
+		case nexus.HandlerErrorRetryBehaviorRetryable:
+			retryBehavior = enumspb.NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_RETRYABLE
+		case nexus.HandlerErrorRetryBehaviorNonRetryable:
+			retryBehavior = enumspb.NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_NON_RETRYABLE
+		}
 		failureInfo := &failurepb.NexusHandlerFailureInfo{
-			Type: string(err.Type),
+			Type:          string(err.Type),
+			RetryBehavior: retryBehavior,
 		}
 		failure.FailureInfo = &failurepb.Failure_NexusHandlerFailureInfo{NexusHandlerFailureInfo: failureInfo}
 	default: // All unknown errors are considered to be retryable ApplicationFailureInfo.
@@ -278,6 +292,10 @@ func (dfc *DefaultFailureConverter) FailureToError(failure *failurepb.Failure) e
 			dfc.FailureToError(failure.GetCause()),
 		)
 	} else if info := failure.GetNexusOperationExecutionFailureInfo(); info != nil {
+		token := info.GetOperationToken()
+		if token == "" {
+			token = info.GetOperationId()
+		}
 		err = &NexusOperationError{
 			Message:          failure.Message,
 			Cause:            dfc.FailureToError(failure.GetCause()),
@@ -286,12 +304,21 @@ func (dfc *DefaultFailureConverter) FailureToError(failure *failurepb.Failure) e
 			Endpoint:         info.GetEndpoint(),
 			Service:          info.GetService(),
 			Operation:        info.GetOperation(),
-			OperationID:      info.GetOperationId(),
+			OperationToken:   token,
+			OperationID:      token,
 		}
 	} else if info := failure.GetNexusHandlerFailureInfo(); info != nil {
+		var retryBehavior nexus.HandlerErrorRetryBehavior
+		switch info.RetryBehavior {
+		case enumspb.NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_RETRYABLE:
+			retryBehavior = nexus.HandlerErrorRetryBehaviorRetryable
+		case enumspb.NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_NON_RETRYABLE:
+			retryBehavior = nexus.HandlerErrorRetryBehaviorNonRetryable
+		}
 		err = &nexus.HandlerError{
-			Type:  nexus.HandlerErrorType(info.Type),
-			Cause: dfc.FailureToError(failure.GetCause()),
+			Type:          nexus.HandlerErrorType(info.Type),
+			Cause:         dfc.FailureToError(failure.GetCause()),
+			RetryBehavior: retryBehavior,
 		}
 	}
 

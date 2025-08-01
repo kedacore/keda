@@ -99,7 +99,7 @@ type (
 		RequestCancelChildWorkflow(namespace, workflowID string)
 		RequestCancelExternalWorkflow(namespace, workflowID, runID string, callback ResultHandler)
 		ExecuteChildWorkflow(params ExecuteWorkflowParams, callback ResultHandler, startedHandler func(r WorkflowExecution, e error))
-		ExecuteNexusOperation(params executeNexusOperationParams, callback func(*commonpb.Payload, error), startedHandler func(opID string, e error)) int64
+		ExecuteNexusOperation(params executeNexusOperationParams, callback func(*commonpb.Payload, error), startedHandler func(token string, e error)) int64
 		RequestCancelNexusOperation(seq int64)
 		GetLogger() log.Logger
 		GetMetricsHandler() metrics.Handler
@@ -231,6 +231,13 @@ type (
 		permit *SlotPermit
 	}
 )
+
+func (h ResultHandler) wrap(callback ResultHandler) ResultHandler {
+	return func(result *commonpb.Payloads, err error) {
+		callback(result, err)
+		h(result, err)
+	}
+}
 
 func (t *polledTask) getTask() taskForWorker {
 	return t.task

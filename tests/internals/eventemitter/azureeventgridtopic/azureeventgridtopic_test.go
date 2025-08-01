@@ -101,7 +101,7 @@ spec:
       spec:
         containers:
         - name: nginx
-          image: 'nginxinc/nginx-unprivileged'`
+          image: 'ghcr.io/nginx/nginx-unprivileged:1.26'`
 
 	secretTemplate = `
 apiVersion: v1
@@ -145,7 +145,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: 'nginxinc/nginx-unprivileged'`
+        image: 'ghcr.io/nginx/nginx-unprivileged:1.26'`
 
 	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -277,8 +277,17 @@ func checkMessage(t *testing.T, count int, client *azservicebus.Client) {
 
 		for _, message := range messages {
 			event := messaging.CloudEvent{}
+			t.Log(message.Body)
 			err = json.Unmarshal(message.Body, &event)
+
 			assert.NoErrorf(t, err, "cannot retrieve message - %s", err)
+			t.Logf("expected subject %s", expectedSubject)
+			t.Logf("expected source %s", expectedSource)
+			t.Logf("expected type %s", expectedType)
+			t.Logf("event subject %s", *event.Subject)
+			t.Logf("event source %s", event.Source)
+			t.Logf("event type %s", event.Type)
+
 			if expectedSubject == *event.Subject &&
 				expectedSource == event.Source &&
 				expectedType == event.Type {

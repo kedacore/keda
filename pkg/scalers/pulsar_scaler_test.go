@@ -154,7 +154,7 @@ func TestParsePulsarMetadata(t *testing.T) {
 		if val, ok := testData.metadata["msgBacklogThreshold"]; ok {
 			testDataMsgBacklogThreshold, err = strconv.ParseInt(val, 10, 64)
 			if err != nil {
-				t.Errorf("error parseing msgBacklogThreshold: %v", err)
+				t.Errorf("error parsing msgBacklogThreshold: %v", err)
 			}
 		} else {
 			testDataMsgBacklogThreshold = defaultMsgBacklogThreshold

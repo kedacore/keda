@@ -91,7 +91,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginxinc/nginx-unprivileged
+        image: ghcr.io/nginx/nginx-unprivileged:1.26
         ports:
         - containerPort: 80
 `
@@ -237,7 +237,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: 'nginxinc/nginx-unprivileged'`
+          image: 'ghcr.io/nginx/nginx-unprivileged:1.26'`
 
 	updateMetricsTemplate = `
 apiVersion: batch/v1

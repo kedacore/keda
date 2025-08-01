@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"cloud.google.com/go/storage"
 	"github.com/go-logr/logr"
@@ -18,13 +17,6 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-const (
-	// Default for how many objects per a single scaled processor
-	defaultTargetObjectCount = 100
-	// A limit on iterating bucket objects
-	defaultMaxBucketItemsToScan = 1000
-)
-
 type gcsScaler struct {
 	client     *storage.Client
 	bucket     *storage.BucketHandle
@@ -34,14 +26,30 @@ type gcsScaler struct {
 }
 
 type gcsMetadata struct {
-	bucketName                  string
-	gcpAuthorization            *gcp.AuthorizationMetadata
-	maxBucketItemsToScan        int64
-	metricName                  string
-	targetObjectCount           int64
-	activationTargetObjectCount int64
-	blobDelimiter               string
-	blobPrefix                  string
+	BucketName                  string `keda:"name=bucketName,                  order=triggerMetadata"`
+	TargetObjectCount           int64  `keda:"name=targetObjectCount,           order=triggerMetadata, default=100"`
+	ActivationTargetObjectCount int64  `keda:"name=activationTargetObjectCount, order=triggerMetadata, default=0"`
+	MaxBucketItemsToScan        int64  `keda:"name=maxBucketItemsToScan,        order=triggerMetadata, default=1000"`
+	BlobDelimiter               string `keda:"name=blobDelimiter,               order=triggerMetadata, optional"`
+	BlobPrefix                  string `keda:"name=blobPrefix,                  order=triggerMetadata, optional"`
+
+	gcpAuthorization *gcp.AuthorizationMetadata
+	metricName       string
+	triggerIndex     int
+}
+
+func (g *gcsMetadata) Validate() error {
+	if g.TargetObjectCount <= 0 {
+		return fmt.Errorf("targetObjectCount must be a positive number")
+	}
+	if g.ActivationTargetObjectCount < 0 {
+		return fmt.Errorf("activationTargetObjectCount must be a positive number")
+	}
+	if g.MaxBucketItemsToScan <= 0 {
+		return fmt.Errorf("maxBucketItemsToScan must be a positive number")
+	}
+
+	return nil
 }
 
 // NewGcsScaler creates a new gcsScaler
@@ -53,7 +61,7 @@ func NewGcsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	logger := InitializeLogger(config, "gcp_storage_scaler")
 
-	meta, err := parseGcsMetadata(config, logger)
+	meta, err := parseGcsMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing GCP storage metadata: %w", err)
 	}
@@ -77,9 +85,9 @@ func NewGcsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("storage.NewClient: %w", err)
 	}
 
-	bucket := client.Bucket(meta.bucketName)
+	bucket := client.Bucket(meta.BucketName)
 	if bucket == nil {
-		return nil, fmt.Errorf("failed to create a handle to bucket %s", meta.bucketName)
+		return nil, fmt.Errorf("failed to create a handle to bucket %s", meta.BucketName)
 	}
 
 	logger.Info(fmt.Sprintf("Metadata %v", meta))
@@ -93,58 +101,14 @@ func NewGcsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}, nil
 }
 
-func parseGcsMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*gcsMetadata, error) {
-	meta := gcsMetadata{}
-	meta.targetObjectCount = defaultTargetObjectCount
-	meta.maxBucketItemsToScan = defaultMaxBucketItemsToScan
-
-	if val, ok := config.TriggerMetadata["bucketName"]; ok {
-		if val == "" {
-			logger.Error(nil, "no bucket name given")
-			return nil, fmt.Errorf("no bucket name given")
-		}
-
-		meta.bucketName = val
-	} else {
-		logger.Error(nil, "no bucket name given")
-		return nil, fmt.Errorf("no bucket name given")
+func parseGcsMetadata(config *scalersconfig.ScalerConfig) (*gcsMetadata, error) {
+	meta := &gcsMetadata{triggerIndex: config.TriggerIndex}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing gcs metadata: %w", err)
 	}
 
-	if val, ok := config.TriggerMetadata["targetObjectCount"]; ok {
-		targetObjectCount, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			logger.Error(err, "Error parsing targetObjectCount")
-			return nil, fmt.Errorf("error parsing targetObjectCount: %w", err)
-		}
-
-		meta.targetObjectCount = targetObjectCount
-	}
-
-	meta.activationTargetObjectCount = 0
-	if val, ok := config.TriggerMetadata["activationTargetObjectCount"]; ok {
-		activationTargetObjectCount, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("activationTargetObjectCount parsing error %w", err)
-		}
-		meta.activationTargetObjectCount = activationTargetObjectCount
-	}
-
-	if val, ok := config.TriggerMetadata["maxBucketItemsToScan"]; ok {
-		maxBucketItemsToScan, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			logger.Error(err, "Error parsing maxBucketItemsToScan")
-			return nil, fmt.Errorf("error parsing maxBucketItemsToScan: %w", err)
-		}
-
-		meta.maxBucketItemsToScan = maxBucketItemsToScan
-	}
-
-	if val, ok := config.TriggerMetadata["blobDelimiter"]; ok {
-		meta.blobDelimiter = val
-	}
-
-	if val, ok := config.TriggerMetadata["blobPrefix"]; ok {
-		meta.blobPrefix = val
+	if err := meta.Validate(); err != nil {
+		return nil, err
 	}
 
 	auth, err := gcp.GetGCPAuthorization(config)
@@ -153,10 +117,10 @@ func parseGcsMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*
 	}
 	meta.gcpAuthorization = auth
 
-	var metricName = kedautil.NormalizeString(fmt.Sprintf("gcp-storage-%s", meta.bucketName))
+	var metricName = kedautil.NormalizeString(fmt.Sprintf("gcp-storage-%s", meta.BucketName))
 	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, metricName)
 
-	return &meta, nil
+	return meta, nil
 }
 
 func (s *gcsScaler) Close(context.Context) error {
@@ -172,28 +136,28 @@ func (s *gcsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 		Metric: v2.MetricIdentifier{
 			Name: s.metadata.metricName,
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetObjectCount),
+		Target: GetMetricTarget(s.metricType, s.metadata.TargetObjectCount),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
 }
 
-// GetMetricsAndActivity returns the number of items in the bucket (up to s.metadata.maxBucketItemsToScan)
+// GetMetricsAndActivity returns the number of items in the bucket (up to s.metadata.MaxBucketItemsToScan)
 func (s *gcsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	items, err := s.getItemCount(ctx, s.metadata.maxBucketItemsToScan)
+	items, err := s.getItemCount(ctx, s.metadata.MaxBucketItemsToScan)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
 	metric := GenerateMetricInMili(metricName, float64(items))
 
-	return []external_metrics.ExternalMetricValue{metric}, items > s.metadata.activationTargetObjectCount, nil
+	return []external_metrics.ExternalMetricValue{metric}, items > s.metadata.ActivationTargetObjectCount, nil
 }
 
 // getItemCount gets the number of items in the bucket, up to maxCount
 func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int64) (int64, error) {
-	query := &storage.Query{Delimiter: s.metadata.blobDelimiter, Prefix: s.metadata.blobPrefix}
-	err := query.SetAttrSelection([]string{"Name"})
+	query := &storage.Query{Delimiter: s.metadata.BlobDelimiter, Prefix: s.metadata.BlobPrefix}
+	err := query.SetAttrSelection([]string{"Size"})
 	if err != nil {
 		s.logger.Error(err, "failed to set attribute selection")
 		return 0, err
@@ -203,17 +167,22 @@ func (s *gcsScaler) getItemCount(ctx context.Context, maxCount int64) (int64, er
 	var count int64
 
 	for count < maxCount {
-		_, err := it.Next()
-		if err == iterator.Done {
-			break
-		}
+		item, err := it.Next()
 		if err != nil {
+			if errors.Is(err, iterator.Done) {
+				break
+			}
 			if errors.Is(err, storage.ErrBucketNotExist) {
-				s.logger.Info("Bucket " + s.metadata.bucketName + " doesn't exist")
+				s.logger.Info("Bucket " + s.metadata.BucketName + " doesn't exist")
 				return 0, nil
 			}
-			s.logger.Error(err, "failed to enumerate items in bucket "+s.metadata.bucketName)
+			s.logger.Error(err, "failed to enumerate items in bucket "+s.metadata.BucketName)
 			return count, err
+		}
+		// The folder is retrieved as an entity, so if size is 0
+		// we can skip it
+		if item.Size == 0 {
+			continue
 		}
 		count++
 	}

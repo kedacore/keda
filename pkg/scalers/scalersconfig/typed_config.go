@@ -27,6 +27,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -137,14 +138,6 @@ func (p Params) IsDeprecated() bool {
 	return p.Deprecated != ""
 }
 
-// DeprecatedMessage is a function that returns the optional deprecated message if the parameter is deprecated
-func (p Params) DeprecatedMessage() string {
-	if p.Deprecated == deprecatedTag {
-		return ""
-	}
-	return fmt.Sprintf(": %s", p.Deprecated)
-}
-
 // TypedConfig is a function that is used to unmarshal the TriggerMetadata, ResolvedEnv and AuthParams
 // populating the provided typedConfig where structure fields along with complementary field tags define
 // declaratively the parsing rules
@@ -201,11 +194,11 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) e
 func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 	valFromConfig, exists := sc.configParamValue(params)
 	if exists && params.IsDeprecated() {
-		return fmt.Errorf("parameter %q is deprecated%v", params.Name(), params.DeprecatedMessage())
+		return fmt.Errorf("scaler %s info: %s", sc.TriggerType, params.Deprecated)
 	}
 	if exists && params.DeprecatedAnnounce != "" {
 		if sc.Recorder != nil {
-			message := fmt.Sprintf("Scaler %s info: %s", sc.TriggerType, params.DeprecatedAnnounce)
+			message := fmt.Sprintf("scaler %s info: %s", sc.TriggerType, params.DeprecatedAnnounce)
 			fmt.Print(message)
 			sc.Recorder.Event(sc.ScaledObject, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, message)
 		}
@@ -399,6 +392,27 @@ func setConfigValueHelper(params Params, valFromConfig string, field reflect.Val
 	}
 	if paramValue.Type().ConvertibleTo(field.Type()) {
 		field.Set(paramValue.Convert(field.Type()))
+		return nil
+	}
+	if field.Type() == reflect.TypeOf(time.Duration(0)) {
+		// Try to parse as duration string first
+		duration, err := time.ParseDuration(valFromConfig)
+		if err == nil {
+			if duration < 0 {
+				return fmt.Errorf("duration cannot be negative: %q", valFromConfig)
+			}
+			field.Set(reflect.ValueOf(duration))
+			return nil
+		}
+		// If that fails, interpret as number of seconds
+		seconds, err := strconv.ParseInt(valFromConfig, 10, 64)
+		if err != nil {
+			return fmt.Errorf("unable to parse duration value %q: must be either a duration string (e.g. '30s', '5m') or a number of seconds", valFromConfig)
+		}
+		if seconds < 0 {
+			return fmt.Errorf("duration cannot be negative: %d seconds", seconds)
+		}
+		field.Set(reflect.ValueOf(time.Duration(seconds) * time.Second))
 		return nil
 	}
 	if field.Type() == reflect.TypeOf(url.Values{}) {

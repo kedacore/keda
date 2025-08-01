@@ -37,6 +37,12 @@ type DescribeImportInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *DescribeImportInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.ImportArn
+
+}
+
 type DescribeImportOutput struct {
 
 	//  Represents the properties of the table created for the import, and parameters
@@ -114,6 +120,12 @@ func (c *Client) addOperationDescribeImportMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeImportValidationMiddleware(stack); err != nil {

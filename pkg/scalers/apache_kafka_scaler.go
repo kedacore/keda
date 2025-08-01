@@ -70,7 +70,6 @@ type apacheKafkaMetadata struct {
 
 	// MSK
 	AWSRegion        string `keda:"name=awsRegion,     order=triggerMetadata, optional"`
-	AWSEndpoint      string `keda:"name=awsEndpoint,   order=triggerMetadata, optional"`
 	AWSAuthorization awsutils.AuthorizationMetadata
 
 	// TLS
@@ -275,7 +274,7 @@ func (s *apacheKafkaScaler) getTopicPartitions(ctx context.Context) (map[string]
 		for _, topic := range metadata.Topics {
 			partitions := make([]int, 0)
 			for _, partition := range topic.Partitions {
-				// if no partitions limitatitions are specified, all partitions are considered
+				// if no partitions limitations are specified, all partitions are considered
 				if (len(s.metadata.PartitionLimitation) == 0) ||
 					(len(s.metadata.PartitionLimitation) > 0 && kedautil.Contains(s.metadata.PartitionLimitation, partition.ID)) {
 					partitions = append(partitions, partition.ID)

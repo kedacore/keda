@@ -19,7 +19,7 @@ type arg byte
 
 const (
 	expr arg = 1 << iota
-	closure
+	predicate
 )
 
 const optional arg = 1 << 7
@@ -27,30 +27,69 @@ const optional arg = 1 << 7
 var predicates = map[string]struct {
 	args []arg
 }{
-	"all":           {[]arg{expr, closure}},
-	"none":          {[]arg{expr, closure}},
-	"any":           {[]arg{expr, closure}},
-	"one":           {[]arg{expr, closure}},
-	"filter":        {[]arg{expr, closure}},
-	"map":           {[]arg{expr, closure}},
-	"count":         {[]arg{expr, closure | optional}},
-	"sum":           {[]arg{expr, closure | optional}},
-	"find":          {[]arg{expr, closure}},
-	"findIndex":     {[]arg{expr, closure}},
-	"findLast":      {[]arg{expr, closure}},
-	"findLastIndex": {[]arg{expr, closure}},
-	"groupBy":       {[]arg{expr, closure}},
-	"sortBy":        {[]arg{expr, closure, expr | optional}},
-	"reduce":        {[]arg{expr, closure, expr | optional}},
+	"all":           {[]arg{expr, predicate}},
+	"none":          {[]arg{expr, predicate}},
+	"any":           {[]arg{expr, predicate}},
+	"one":           {[]arg{expr, predicate}},
+	"filter":        {[]arg{expr, predicate}},
+	"map":           {[]arg{expr, predicate}},
+	"count":         {[]arg{expr, predicate | optional}},
+	"sum":           {[]arg{expr, predicate | optional}},
+	"find":          {[]arg{expr, predicate}},
+	"findIndex":     {[]arg{expr, predicate}},
+	"findLast":      {[]arg{expr, predicate}},
+	"findLastIndex": {[]arg{expr, predicate}},
+	"groupBy":       {[]arg{expr, predicate}},
+	"sortBy":        {[]arg{expr, predicate, expr | optional}},
+	"reduce":        {[]arg{expr, predicate, expr | optional}},
 }
 
 type parser struct {
-	tokens  []Token
-	current Token
-	pos     int
-	err     *file.Error
-	depth   int // closure call depth
-	config  *conf.Config
+	tokens    []Token
+	current   Token
+	pos       int
+	err       *file.Error
+	config    *conf.Config
+	depth     int  // predicate call depth
+	nodeCount uint // tracks number of AST nodes created
+}
+
+func (p *parser) checkNodeLimit() error {
+	p.nodeCount++
+	if p.config == nil {
+		if p.nodeCount > conf.DefaultMaxNodes {
+			p.error("compilation failed: expression exceeds maximum allowed nodes")
+			return nil
+		}
+		return nil
+	}
+	if p.config.MaxNodes > 0 && p.nodeCount > p.config.MaxNodes {
+		p.error("compilation failed: expression exceeds maximum allowed nodes")
+		return nil
+	}
+	return nil
+}
+
+func (p *parser) createNode(n Node, loc file.Location) Node {
+	if err := p.checkNodeLimit(); err != nil {
+		return nil
+	}
+	if n == nil || p.err != nil {
+		return nil
+	}
+	n.SetLocation(loc)
+	return n
+}
+
+func (p *parser) createMemberNode(n *MemberNode, loc file.Location) *MemberNode {
+	if err := p.checkNodeLimit(); err != nil {
+		return nil
+	}
+	if n == nil || p.err != nil {
+		return nil
+	}
+	n.SetLocation(loc)
+	return n
 }
 
 type Tree struct {
@@ -59,9 +98,7 @@ type Tree struct {
 }
 
 func Parse(input string) (*Tree, error) {
-	return ParseWithConfig(input, &conf.Config{
-		Disabled: map[string]bool{},
-	})
+	return ParseWithConfig(input, nil)
 }
 
 func ParseWithConfig(input string, config *conf.Config) (*Tree, error) {
@@ -78,7 +115,7 @@ func ParseWithConfig(input string, config *conf.Config) (*Tree, error) {
 		config:  config,
 	}
 
-	node := p.parseExpression(0)
+	node := p.parseSequenceExpression()
 
 	if !p.current.Is(EOF) {
 		p.error("unexpected token %v", p.current)
@@ -128,9 +165,38 @@ func (p *parser) expect(kind Kind, values ...string) {
 
 // parse functions
 
+func (p *parser) parseSequenceExpression() Node {
+	nodes := []Node{p.parseExpression(0)}
+
+	for p.current.Is(Operator, ";") && p.err == nil {
+		p.next()
+		// If a trailing semicolon is present, break out.
+		if p.current.Is(EOF) {
+			break
+		}
+		nodes = append(nodes, p.parseExpression(0))
+	}
+
+	if len(nodes) == 1 {
+		return nodes[0]
+	}
+
+	return p.createNode(&SequenceNode{
+		Nodes: nodes,
+	}, nodes[0].Location())
+}
+
 func (p *parser) parseExpression(precedence int) Node {
+	if p.err != nil {
+		return nil
+	}
+
 	if precedence == 0 && p.current.Is(Operator, "let") {
 		return p.parseVariableDeclaration()
+	}
+
+	if precedence == 0 && p.current.Is(Operator, "if") {
+		return p.parseConditionalIf()
 	}
 
 	nodeLeft := p.parsePrimary()
@@ -187,19 +253,23 @@ func (p *parser) parseExpression(precedence int) Node {
 				nodeRight = p.parseExpression(op.Precedence)
 			}
 
-			nodeLeft = &BinaryNode{
+			nodeLeft = p.createNode(&BinaryNode{
 				Operator: opToken.Value,
 				Left:     nodeLeft,
 				Right:    nodeRight,
+			}, opToken.Location)
+			if nodeLeft == nil {
+				return nil
 			}
-			nodeLeft.SetLocation(opToken.Location)
 
 			if negate {
-				nodeLeft = &UnaryNode{
+				nodeLeft = p.createNode(&UnaryNode{
 					Operator: "not",
 					Node:     nodeLeft,
+				}, notToken.Location)
+				if nodeLeft == nil {
+					return nil
 				}
-				nodeLeft.SetLocation(notToken.Location)
 			}
 
 			goto next
@@ -225,14 +295,31 @@ func (p *parser) parseVariableDeclaration() Node {
 	p.expect(Operator, "=")
 	value := p.parseExpression(0)
 	p.expect(Operator, ";")
-	node := p.parseExpression(0)
-	let := &VariableDeclaratorNode{
+	node := p.parseSequenceExpression()
+	return p.createNode(&VariableDeclaratorNode{
 		Name:  variableName.Value,
 		Value: value,
 		Expr:  node,
+	}, variableName.Location)
+}
+
+func (p *parser) parseConditionalIf() Node {
+	p.next()
+	nodeCondition := p.parseExpression(0)
+	p.expect(Bracket, "{")
+	expr1 := p.parseSequenceExpression()
+	p.expect(Bracket, "}")
+	p.expect(Operator, "else")
+	p.expect(Bracket, "{")
+	expr2 := p.parseSequenceExpression()
+	p.expect(Bracket, "}")
+
+	return &ConditionalNode{
+		Cond: nodeCondition,
+		Exp1: expr1,
+		Exp2: expr2,
 	}
-	let.SetLocation(variableName.Location)
-	return let
+
 }
 
 func (p *parser) parseConditional(node Node) Node {
@@ -250,10 +337,13 @@ func (p *parser) parseConditional(node Node) Node {
 			expr2 = p.parseExpression(0)
 		}
 
-		node = &ConditionalNode{
+		node = p.createNode(&ConditionalNode{
 			Cond: node,
 			Exp1: expr1,
 			Exp2: expr2,
+		}, p.current.Location)
+		if node == nil {
+			return nil
 		}
 	}
 	return node
@@ -266,18 +356,20 @@ func (p *parser) parsePrimary() Node {
 		if op, ok := operator.Unary[token.Value]; ok {
 			p.next()
 			expr := p.parseExpression(op.Precedence)
-			node := &UnaryNode{
+			node := p.createNode(&UnaryNode{
 				Operator: token.Value,
 				Node:     expr,
+			}, token.Location)
+			if node == nil {
+				return nil
 			}
-			node.SetLocation(token.Location)
 			return p.parsePostfixExpression(node)
 		}
 	}
 
 	if token.Is(Bracket, "(") {
 		p.next()
-		expr := p.parseExpression(0)
+		expr := p.parseSequenceExpression()
 		p.expect(Bracket, ")") // "an opened parenthesis is not properly closed"
 		return p.parsePostfixExpression(expr)
 	}
@@ -292,13 +384,11 @@ func (p *parser) parsePrimary() Node {
 					p.next()
 				}
 			}
-			node := &PointerNode{Name: name}
-			node.SetLocation(token.Location)
+			node := p.createNode(&PointerNode{Name: name}, token.Location)
+			if node == nil {
+				return nil
+			}
 			return p.parsePostfixExpression(node)
-		}
-	} else {
-		if token.Is(Operator, "#") || token.Is(Operator, ".") {
-			p.error("cannot use pointer accessor outside closure")
 		}
 	}
 
@@ -322,23 +412,31 @@ func (p *parser) parseSecondary() Node {
 		p.next()
 		switch token.Value {
 		case "true":
-			node := &BoolNode{Value: true}
-			node.SetLocation(token.Location)
+			node = p.createNode(&BoolNode{Value: true}, token.Location)
+			if node == nil {
+				return nil
+			}
 			return node
 		case "false":
-			node := &BoolNode{Value: false}
-			node.SetLocation(token.Location)
+			node = p.createNode(&BoolNode{Value: false}, token.Location)
+			if node == nil {
+				return nil
+			}
 			return node
 		case "nil":
-			node := &NilNode{}
-			node.SetLocation(token.Location)
+			node = p.createNode(&NilNode{}, token.Location)
+			if node == nil {
+				return nil
+			}
 			return node
 		default:
 			if p.current.Is(Bracket, "(") {
 				node = p.parseCall(token, []Node{}, true)
 			} else {
-				node = &IdentifierNode{Value: token.Value}
-				node.SetLocation(token.Location)
+				node = p.createNode(&IdentifierNode{Value: token.Value}, token.Location)
+				if node == nil {
+					return nil
+				}
 			}
 		}
 
@@ -385,8 +483,10 @@ func (p *parser) parseSecondary() Node {
 		return node
 	case String:
 		p.next()
-		node = &StringNode{Value: token.Value}
-		node.SetLocation(token.Location)
+		node = p.createNode(&StringNode{Value: token.Value}, token.Location)
+		if node == nil {
+			return nil
+		}
 
 	default:
 		if token.Is(Bracket, "[") {
@@ -406,7 +506,7 @@ func (p *parser) toIntegerNode(number int64) Node {
 		p.error("integer literal is too large")
 		return nil
 	}
-	return &IntegerNode{Value: int(number)}
+	return p.createNode(&IntegerNode{Value: int(number)}, p.current.Location)
 }
 
 func (p *parser) toFloatNode(number float64) Node {
@@ -414,13 +514,16 @@ func (p *parser) toFloatNode(number float64) Node {
 		p.error("float literal is too large")
 		return nil
 	}
-	return &FloatNode{Value: number}
+	return p.createNode(&FloatNode{Value: number}, p.current.Location)
 }
 
 func (p *parser) parseCall(token Token, arguments []Node, checkOverrides bool) Node {
 	var node Node
 
-	isOverridden := p.config.IsOverridden(token.Value)
+	isOverridden := false
+	if p.config != nil {
+		isOverridden = p.config.IsOverridden(token.Value)
+	}
 	isOverridden = isOverridden && checkOverrides
 
 	if b, ok := predicates[token.Value]; ok && !isOverridden {
@@ -448,33 +551,46 @@ func (p *parser) parseCall(token Token, arguments []Node, checkOverrides bool) N
 			switch {
 			case arg&expr == expr:
 				node = p.parseExpression(0)
-			case arg&closure == closure:
-				node = p.parseClosure()
+			case arg&predicate == predicate:
+				node = p.parsePredicate()
 			}
 			arguments = append(arguments, node)
 		}
 
+		// skip last comma
+		if p.current.Is(Operator, ",") {
+			p.next()
+		}
 		p.expect(Bracket, ")")
 
-		node = &BuiltinNode{
+		node = p.createNode(&BuiltinNode{
 			Name:      token.Value,
 			Arguments: arguments,
+		}, token.Location)
+		if node == nil {
+			return nil
 		}
-		node.SetLocation(token.Location)
-	} else if _, ok := builtin.Index[token.Value]; ok && !p.config.Disabled[token.Value] && !isOverridden {
-		node = &BuiltinNode{
+	} else if _, ok := builtin.Index[token.Value]; ok && (p.config == nil || !p.config.Disabled[token.Value]) && !isOverridden {
+		node = p.createNode(&BuiltinNode{
 			Name:      token.Value,
 			Arguments: p.parseArguments(arguments),
+		}, token.Location)
+		if node == nil {
+			return nil
 		}
-		node.SetLocation(token.Location)
+
 	} else {
-		callee := &IdentifierNode{Value: token.Value}
-		callee.SetLocation(token.Location)
-		node = &CallNode{
+		callee := p.createNode(&IdentifierNode{Value: token.Value}, token.Location)
+		if callee == nil {
+			return nil
+		}
+		node = p.createNode(&CallNode{
 			Callee:    callee,
 			Arguments: p.parseArguments(arguments),
+		}, token.Location)
+		if node == nil {
+			return nil
 		}
-		node.SetLocation(token.Location)
 	}
 	return node
 }
@@ -489,6 +605,9 @@ func (p *parser) parseArguments(arguments []Node) []Node {
 		if len(arguments) > offset {
 			p.expect(Operator, ",")
 		}
+		if p.current.Is(Bracket, ")") {
+			break
+		}
 		node := p.parseExpression(0)
 		arguments = append(arguments, node)
 	}
@@ -497,26 +616,36 @@ func (p *parser) parseArguments(arguments []Node) []Node {
 	return arguments
 }
 
-func (p *parser) parseClosure() Node {
+func (p *parser) parsePredicate() Node {
 	startToken := p.current
-	expectClosingBracket := false
+	withBrackets := false
 	if p.current.Is(Bracket, "{") {
 		p.next()
-		expectClosingBracket = true
+		withBrackets = true
 	}
 
 	p.depth++
-	node := p.parseExpression(0)
+	var node Node
+	if withBrackets {
+		node = p.parseSequenceExpression()
+	} else {
+		node = p.parseExpression(0)
+		if p.current.Is(Operator, ";") {
+			p.error("wrap predicate with brackets { and }")
+		}
+	}
 	p.depth--
 
-	if expectClosingBracket {
+	if withBrackets {
 		p.expect(Bracket, "}")
 	}
-	closure := &ClosureNode{
+	predicateNode := p.createNode(&PredicateNode{
 		Node: node,
+	}, startToken.Location)
+	if predicateNode == nil {
+		return nil
 	}
-	closure.SetLocation(startToken.Location)
-	return closure
+	return predicateNode
 }
 
 func (p *parser) parseArrayExpression(token Token) Node {
@@ -536,8 +665,10 @@ func (p *parser) parseArrayExpression(token Token) Node {
 end:
 	p.expect(Bracket, "]")
 
-	node := &ArrayNode{Nodes: nodes}
-	node.SetLocation(token.Location)
+	node := p.createNode(&ArrayNode{Nodes: nodes}, token.Location)
+	if node == nil {
+		return nil
+	}
 	return node
 }
 
@@ -563,8 +694,10 @@ func (p *parser) parseMapExpression(token Token) Node {
 		//  * identifier, which is equivalent to a string
 		//  * expression, which must be enclosed in parentheses -- (1 + 2)
 		if p.current.Is(Number) || p.current.Is(String) || p.current.Is(Identifier) {
-			key = &StringNode{Value: p.current.Value}
-			key.SetLocation(token.Location)
+			key = p.createNode(&StringNode{Value: p.current.Value}, p.current.Location)
+			if key == nil {
+				return nil
+			}
 			p.next()
 		} else if p.current.Is(Bracket, "(") {
 			key = p.parseExpression(0)
@@ -575,16 +708,20 @@ func (p *parser) parseMapExpression(token Token) Node {
 		p.expect(Operator, ":")
 
 		node := p.parseExpression(0)
-		pair := &PairNode{Key: key, Value: node}
-		pair.SetLocation(token.Location)
+		pair := p.createNode(&PairNode{Key: key, Value: node}, token.Location)
+		if pair == nil {
+			return nil
+		}
 		nodes = append(nodes, pair)
 	}
 
 end:
 	p.expect(Bracket, "}")
 
-	node := &MapNode{Pairs: nodes}
-	node.SetLocation(token.Location)
+	node := p.createNode(&MapNode{Pairs: nodes}, token.Location)
+	if node == nil {
+		return nil
+	}
 	return node
 }
 
@@ -609,8 +746,10 @@ func (p *parser) parsePostfixExpression(node Node) Node {
 				p.error("expected name")
 			}
 
-			property := &StringNode{Value: propertyToken.Value}
-			property.SetLocation(propertyToken.Location)
+			property := p.createNode(&StringNode{Value: propertyToken.Value}, propertyToken.Location)
+			if property == nil {
+				return nil
+			}
 
 			chainNode, isChain := node.(*ChainNode)
 			optional := postfixToken.Value == "?."
@@ -619,26 +758,33 @@ func (p *parser) parsePostfixExpression(node Node) Node {
 				node = chainNode.Node
 			}
 
-			memberNode := &MemberNode{
+			memberNode := p.createMemberNode(&MemberNode{
 				Node:     node,
 				Property: property,
 				Optional: optional,
+			}, propertyToken.Location)
+			if memberNode == nil {
+				return nil
 			}
-			memberNode.SetLocation(propertyToken.Location)
 
 			if p.current.Is(Bracket, "(") {
 				memberNode.Method = true
-				node = &CallNode{
+				node = p.createNode(&CallNode{
 					Callee:    memberNode,
 					Arguments: p.parseArguments([]Node{}),
+				}, propertyToken.Location)
+				if node == nil {
+					return nil
 				}
-				node.SetLocation(propertyToken.Location)
 			} else {
 				node = memberNode
 			}
 
 			if isChain || optional {
-				node = &ChainNode{Node: node}
+				node = p.createNode(&ChainNode{Node: node}, propertyToken.Location)
+				if node == nil {
+					return nil
+				}
 			}
 
 		} else if postfixToken.Value == "[" {
@@ -652,11 +798,13 @@ func (p *parser) parsePostfixExpression(node Node) Node {
 					to = p.parseExpression(0)
 				}
 
-				node = &SliceNode{
+				node = p.createNode(&SliceNode{
 					Node: node,
 					To:   to,
+				}, postfixToken.Location)
+				if node == nil {
+					return nil
 				}
-				node.SetLocation(postfixToken.Location)
 				p.expect(Bracket, "]")
 
 			} else {
@@ -670,25 +818,32 @@ func (p *parser) parsePostfixExpression(node Node) Node {
 						to = p.parseExpression(0)
 					}
 
-					node = &SliceNode{
+					node = p.createNode(&SliceNode{
 						Node: node,
 						From: from,
 						To:   to,
+					}, postfixToken.Location)
+					if node == nil {
+						return nil
 					}
-					node.SetLocation(postfixToken.Location)
 					p.expect(Bracket, "]")
 
 				} else {
 					// Slice operator [:] was not found,
 					// it should be just an index node.
-					node = &MemberNode{
+					node = p.createNode(&MemberNode{
 						Node:     node,
 						Property: from,
 						Optional: optional,
+					}, postfixToken.Location)
+					if node == nil {
+						return nil
 					}
-					node.SetLocation(postfixToken.Location)
 					if optional {
-						node = &ChainNode{Node: node}
+						node = p.createNode(&ChainNode{Node: node}, postfixToken.Location)
+						if node == nil {
+							return nil
+						}
 					}
 					p.expect(Bracket, "]")
 				}
@@ -700,26 +855,29 @@ func (p *parser) parsePostfixExpression(node Node) Node {
 	}
 	return node
 }
-
 func (p *parser) parseComparison(left Node, token Token, precedence int) Node {
 	var rootNode Node
 	for {
 		comparator := p.parseExpression(precedence + 1)
-		cmpNode := &BinaryNode{
+		cmpNode := p.createNode(&BinaryNode{
 			Operator: token.Value,
 			Left:     left,
 			Right:    comparator,
+		}, token.Location)
+		if cmpNode == nil {
+			return nil
 		}
-		cmpNode.SetLocation(token.Location)
 		if rootNode == nil {
 			rootNode = cmpNode
 		} else {
-			rootNode = &BinaryNode{
+			rootNode = p.createNode(&BinaryNode{
 				Operator: "&&",
 				Left:     rootNode,
 				Right:    cmpNode,
+			}, token.Location)
+			if rootNode == nil {
+				return nil
 			}
-			rootNode.SetLocation(token.Location)
 		}
 
 		left = comparator

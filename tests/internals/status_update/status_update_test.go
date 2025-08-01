@@ -132,7 +132,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginxinc/nginx-unprivileged
+        image: ghcr.io/nginx/nginx-unprivileged:1.26
         ports:
         - containerPort: 80
 `
@@ -162,13 +162,13 @@ spec:
       method: "query"
     authenticationRef:
       name: {{.TriggerAuthName}}
-  - type: corn
+  - type: cron
     metadata:
       timezone: Asia/Kolkata
       start: 0 6 * * *
       end: 0 8 * * *
       desiredReplicas: "9"
-  - type: corn
+  - type: cron
     metadata:
       timezone: Asia/Kolkata
       start: 0 22 * * *
@@ -210,13 +210,13 @@ spec:
             method: "query"
           authenticationRef:
             name: {{.TriggerAuthName}}
-        - type: corn
+        - type: cron
           metadata:
             timezone: Asia/Kolkata
             start: 0 6 * * *
             end: 0 8 * * *
             desiredReplicas: "9"
-        - type: corn
+        - type: cron
           metadata:
             timezone: Asia/Kolkata
             start: 0 22 * * *
@@ -242,11 +242,11 @@ func TestScaler(t *testing.T) {
 
 func testTriggersAndAuthenticationsTypes(t *testing.T) {
 	otherparameter := `-o jsonpath="{.status.triggersTypes}"`
-	CheckKubectlGetResult(t, "ScaledObject", scaledObjectName, testNamespace, otherparameter, "metrics-api,corn")
+	CheckKubectlGetResult(t, "ScaledObject", scaledObjectName, testNamespace, otherparameter, "metrics-api,cron")
 	otherparameter = `-o jsonpath="{.status.authenticationsTypes}"`
 	CheckKubectlGetResult(t, "ScaledObject", scaledObjectName, testNamespace, otherparameter, triggerAuthName)
 	otherparameter = `-o jsonpath="{.status.triggersTypes}"`
-	CheckKubectlGetResult(t, "ScaledJob", scaledJobName, testNamespace, otherparameter, "metrics-api,corn")
+	CheckKubectlGetResult(t, "ScaledJob", scaledJobName, testNamespace, otherparameter, "metrics-api,cron")
 	otherparameter = `-o jsonpath="{.status.authenticationsTypes}"`
 	CheckKubectlGetResult(t, "ScaledJob", scaledJobName, testNamespace, otherparameter, triggerAuthName)
 }
