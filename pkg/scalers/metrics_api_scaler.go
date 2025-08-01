@@ -31,7 +31,6 @@ type metricsAPIScaler struct {
 	logger     logr.Logger
 }
 
-type APIFormat string
 type metricsAPIScalerMetadata struct {
 	TargetValue           float64   `keda:"name=targetValue,order=triggerMetadata,optional"`
 	ActivationTargetValue float64   `keda:"name=activationTargetValue,order=triggerMetadata,default=0"`
@@ -70,6 +69,7 @@ type metricsAPIScalerMetadata struct {
 }
 
 func (m *metricsAPIScalerMetadata) Validate() error {
+
 	// Handle authentication based on authMode and set enable flags
 	if m.AuthMode != "" {
 		authModes := strings.Split(m.AuthMode, ",")
@@ -117,6 +117,16 @@ func (m *metricsAPIScalerMetadata) Validate() error {
 const (
 	methodValueQuery           = "query"
 	valueLocationWrongErrorMsg = "valueLocation must point to value of type number or a string representing a Quantity got: '%s'"
+)
+
+type APIFormat string
+
+// Options for APIFormat:
+const (
+	PrometheusFormat APIFormat = "prometheus"
+	JSONFormat       APIFormat = "json"
+	XMLFormat        APIFormat = "xml"
+	YAMLFormat       APIFormat = "yaml"
 )
 
 // NewMetricsAPIScaler creates a new HTTP scaler
