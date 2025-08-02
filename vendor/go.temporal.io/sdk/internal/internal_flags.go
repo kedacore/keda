@@ -1,25 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2023 Temporal Technologies Inc.  All rights reserved.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 import (
@@ -53,7 +31,9 @@ const (
 	SDKFlagUnknown                      = math.MaxUint32
 )
 
-var unblockSelectorSignal bool
+// unblockSelectorSignal exists to allow us to configure the default behavior of
+// SDKFlagBlockedSelectorSignalReceive. This is primarily useful with tests.
+var unblockSelectorSignal = true
 
 func sdkFlagFromUint(value uint32) sdkFlag {
 	switch value {
@@ -81,10 +61,10 @@ func (f sdkFlag) isValid() bool {
 // sdkFlags represents all the flags that are currently set in a workflow execution.
 type sdkFlags struct {
 	capabilities *workflowservice.GetSystemInfoResponse_Capabilities
-	// Flags that have been recieved from the server
+	// Flags that have been received from the server
 	currentFlags map[sdkFlag]bool
 	// Flags that have been set this WFT that have not been sent to the server.
-	// Keep track of them sepratly so we know what to send to the server.
+	// Keep track of them separately so we know what to send to the server.
 	newFlags map[sdkFlag]bool
 }
 
@@ -145,7 +125,7 @@ func (sf *sdkFlags) gatherNewSDKFlags() []sdkFlag {
 }
 
 // SetUnblockSelectorSignal toggles the flag to unblock the selector signal.
-// For test use only,
+// For test use only.
 func SetUnblockSelectorSignal(unblockSignal bool) {
 	unblockSelectorSignal = unblockSignal
 }

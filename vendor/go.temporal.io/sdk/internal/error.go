@@ -1,27 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2020 Temporal Technologies Inc.  All rights reserved.
-//
-// Copyright (c) 2020 Uber Technologies, Inc.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 import (
@@ -134,8 +110,11 @@ type (
 		// server according to the RetryPolicy set by the Workflow.
 		// It is impossible to specify immediate retry as it is indistinguishable from the default value. As a
 		// workaround you could set NextRetryDelay to some small value.
+		//
 		// NOTE: This option is supported by Temporal Server >= v1.24.2 older version will ignore this value.
 		NextRetryDelay time.Duration
+		// Category of the error. Maps to logging/metrics behaviors.
+		Category ApplicationErrorCategory
 	}
 
 	// ApplicationError returned from activity implementations with message and optional details.
@@ -149,6 +128,7 @@ type (
 		cause          error
 		details        converter.EncodedValues
 		nextRetryDelay time.Duration
+		category       ApplicationErrorCategory
 	}
 
 	// TimeoutError returned when activity or child workflow timed out.
@@ -294,10 +274,6 @@ type (
 		Service string
 		// Operation name.
 		Operation string
-		// Operation ID - may be empty if the operation completed synchronously.
-		//
-		// Deprecated: Use OperationToken instead.
-		OperationID string
 		// Operation token - may be empty if the operation completed synchronously.
 		OperationToken string
 		// Chained cause - typically an ApplicationError or a CanceledError.
@@ -379,6 +355,23 @@ var (
 	ErrMissingWorkflowID = errors.New("workflow ID is unset for Nexus operation")
 )
 
+// ApplicationErrorCategory sets the category of the error. The category of the error
+// maps to logging/metrics behaviors.
+//
+// Exposed as: [go.temporal.io/sdk/temporal.ApplicationErrorCategory]
+type ApplicationErrorCategory int
+
+const (
+	// ApplicationErrorCategoryUnspecified represents an error with an unspecified category.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.ApplicationErrorCategoryUnspecified]
+	ApplicationErrorCategoryUnspecified ApplicationErrorCategory = iota
+	// ApplicationErrorCategoryBenign indicates an error that is expected under normal operation and should not trigger alerts.
+	//
+	// Exposed as: [go.temporal.io/sdk/temporal.ApplicationErrorCategoryBenign]
+	ApplicationErrorCategoryBenign
+)
+
 // NewApplicationError create new instance of *ApplicationError with message, type, and optional details.
 func NewApplicationError(msg string, errType string, nonRetryable bool, cause error, details ...interface{}) error {
 	return NewApplicationErrorWithOptions(
@@ -396,6 +389,7 @@ func NewApplicationErrorWithOptions(msg string, errType string, options Applicat
 		cause:          options.Cause,
 		nonRetryable:   options.NonRetryable,
 		nextRetryDelay: options.NextRetryDelay,
+		category:       options.Category,
 	}
 	// When return error to user, use EncodedValues as details and data is ready to be decoded by calling Get
 	details := options.Details
@@ -659,6 +653,11 @@ func (e *ApplicationError) Unwrap() error {
 // NextRetryDelay returns the delay to wait before retrying the activity.
 // a zero value means to use the activities retry policy.
 func (e *ApplicationError) NextRetryDelay() time.Duration { return e.nextRetryDelay }
+
+// Category returns the ApplicationErrorCategory of the error.
+func (e *ApplicationError) Category() ApplicationErrorCategory {
+	return e.category
+}
 
 // Error from error interface
 func (e *TimeoutError) Error() string {
@@ -1027,4 +1026,17 @@ func getErrType(err error) string {
 	}
 
 	return t.Name()
+}
+
+func isBenignApplicationError(err error) bool {
+	appError, _ := err.(*ApplicationError)
+	return appError != nil && appError.Category() == ApplicationErrorCategoryBenign
+}
+
+func isBenignProtoApplicationFailure(failure *failurepb.Failure) bool {
+	if failure == nil {
+		return false
+	}
+	appFailureInfo := failure.GetApplicationFailureInfo()
+	return appFailureInfo != nil && appFailureInfo.GetCategory() == enumspb.APPLICATION_ERROR_CATEGORY_BENIGN
 }

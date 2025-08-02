@@ -1,27 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2020 Temporal Technologies Inc.  All rights reserved.
-//
-// Copyright (c) 2020 Uber Technologies, Inc.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 // All code in this file is private to the package.
@@ -30,12 +6,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/api/serviceerror"
 	"golang.org/x/time/rate"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"go.temporal.io/sdk/internal/common/retry"
 
@@ -58,9 +37,12 @@ var (
 	pollOperationRetryPolicy         = createPollRetryPolicy()
 	pollResourceExhaustedRetryPolicy = createPollResourceExhaustedRetryPolicy()
 	retryLongPollGracePeriod         = 2 * time.Minute
+	errStop                          = errors.New("worker stopping")
+	// ErrWorkerStopped is returned when the worker is stopped
+	//
+	// Exposed as: [go.temporal.io/sdk/worker.ErrWorkerShutdown]
+	ErrWorkerShutdown = errors.New("worker is now shutdown")
 )
-
-var errStop = errors.New("worker stopping")
 
 type (
 	// ResultHandler that returns result
@@ -74,6 +56,10 @@ type (
 		Result  *commonpb.Payloads
 		Attempt int32
 		Backoff time.Duration
+	}
+
+	LocalActivityMarkerParams struct {
+		Summary string
 	}
 
 	executeNexusOperationParams struct {
@@ -173,21 +159,22 @@ type (
 
 	// baseWorkerOptions options to configure base worker.
 	baseWorkerOptions struct {
-		pollerCount         int
-		pollerRate          int
-		slotSupplier        SlotSupplier
-		maxTaskPerSecond    float64
-		taskWorker          taskPoller
-		workerType          string
-		identity            string
-		buildId             string
-		logger              log.Logger
-		stopTimeout         time.Duration
-		fatalErrCb          func(error)
-		userContextCancel   context.CancelFunc
-		metricsHandler      metrics.Handler
-		sessionTokenBucket  *sessionTokenBucket
-		slotReservationData slotReservationData
+		pollerCount             int
+		pollerRate              int
+		slotSupplier            SlotSupplier
+		maxTaskPerSecond        float64
+		taskWorker              taskPoller
+		workerType              string
+		identity                string
+		buildId                 string
+		logger                  log.Logger
+		stopTimeout             time.Duration
+		fatalErrCb              func(error)
+		backgroundContextCancel context.CancelCauseFunc
+		metricsHandler          metrics.Handler
+		sessionTokenBucket      *sessionTokenBucket
+		slotReservationData     slotReservationData
+		isInternalWorker        bool
 	}
 
 	// baseWorker that wraps worker activities.
@@ -559,6 +546,16 @@ func (bw *baseWorker) logPollTaskError(err error) {
 		bw.lastPollTaskErrStarted = time.Now()
 		return
 	}
+
+	// Ignore connection loss on server shutdown. This helps with quiescing spurious error messages
+	// upon server shutdown (where server is using the SDK).
+	if bw.options.isInternalWorker {
+		st, ok := status.FromError(err)
+		if ok && st.Code() == codes.Unavailable && strings.Contains(st.Message(), "graceful_stop") {
+			return
+		}
+	}
+
 	// Log the error as warn if it doesn't match the last error seen or its over
 	// the time since
 	if err.Error() != bw.lastPollTaskErrMessage || time.Since(bw.lastPollTaskErrStarted) > lastPollTaskErrSuppressTime {
@@ -601,8 +598,8 @@ func (bw *baseWorker) Stop() {
 	}
 
 	// Close context
-	if bw.options.userContextCancel != nil {
-		bw.options.userContextCancel()
+	if bw.options.backgroundContextCancel != nil {
+		bw.options.backgroundContextCancel(ErrWorkerShutdown)
 	}
 
 	bw.isWorkerStarted = false
