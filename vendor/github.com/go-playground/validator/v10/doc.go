@@ -188,7 +188,7 @@ Same as structonly tag except that any struct level validations will not run.
 
 # Omit Empty
 
-Allows conditional validation, for example if a field is not set with
+Allows conditional validation, for example, if a field is not set with
 a value (Determined by the "required" validator) then other validation
 such as min or max won't run, but if a value is set validation will run.
 
@@ -755,6 +755,20 @@ in a field of the struct specified via a parameter.
 
 	// For slices of struct:
 	Usage: unique=field
+
+# ValidateFn
+
+This validates that an object responds to a method that can return error or bool.
+By default it expects an interface `Validate() error` and check that the method
+does not return an error. Other methods can be specified using two signatures:
+If the method returns an error, it check if the return value is nil.
+If the method returns a boolean, it checks if the value is true.
+
+	// to use the default method Validate() error
+	Usage: validateFn
+
+	// to use the custom method IsValid() bool (or error)
+	Usage: validateFn=IsValid
 
 # Alpha Only
 
