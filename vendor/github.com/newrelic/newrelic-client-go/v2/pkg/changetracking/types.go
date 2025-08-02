@@ -2,9 +2,152 @@
 package changetracking
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/newrelic/newrelic-client-go/v2/pkg/common"
 	"github.com/newrelic/newrelic-client-go/v2/pkg/nrtime"
 )
+
+// BrowserAgentInstallType - Browser agent install types.
+type BrowserAgentInstallType string
+
+var BrowserAgentInstallTypeTypes = struct {
+	// Lite agent install type.
+	LITE BrowserAgentInstallType
+	// Pro agent install type.
+	PRO BrowserAgentInstallType
+	// Pro + SPA agent install type.
+	PRO_SPA BrowserAgentInstallType
+}{
+	// Lite agent install type.
+	LITE: "LITE",
+	// Pro agent install type.
+	PRO: "PRO",
+	// Pro + SPA agent install type.
+	PRO_SPA: "PRO_SPA",
+}
+
+// ChangeTrackingCategoryType - A combination of category and type. A category will often have multiple types.
+type ChangeTrackingCategoryType string
+
+var ChangeTrackingCategoryTypeTypes = struct {
+	// Convention
+	BUSINESS_EVENT__CONVENTION ChangeTrackingCategoryType
+	// Marketing campaign
+	BUSINESS_EVENT__MARKETING_CAMPAIGN ChangeTrackingCategoryType
+	// Other types of business events
+	BUSINESS_EVENT__OTHER ChangeTrackingCategoryType
+	// This is a special type that allows you to set your own custom type as an override. To use this CategoryType you must
+	// also pass in a value for the `customType` field as part of your `input`.
+	CUSTOMER_DEFINED__CUSTOM ChangeTrackingCategoryType
+	// Artifact copy
+	DEPLOYMENT_LIFECYCLE__ARTIFACT_COPY ChangeTrackingCategoryType
+	// Artifact deletion
+	DEPLOYMENT_LIFECYCLE__ARTIFACT_DELETION ChangeTrackingCategoryType
+	// Artifact deployment
+	DEPLOYMENT_LIFECYCLE__ARTIFACT_DEPLOYMENT ChangeTrackingCategoryType
+	// Artifact move
+	DEPLOYMENT_LIFECYCLE__ARTIFACT_MOVE ChangeTrackingCategoryType
+	// Build deletion
+	DEPLOYMENT_LIFECYCLE__BUILD_DELETION ChangeTrackingCategoryType
+	// Build promotion
+	DEPLOYMENT_LIFECYCLE__BUILD_PROMOTION ChangeTrackingCategoryType
+	// Build upload
+	DEPLOYMENT_LIFECYCLE__BUILD_UPLOAD ChangeTrackingCategoryType
+	// Image deletion
+	DEPLOYMENT_LIFECYCLE__IMAGE_DELETION ChangeTrackingCategoryType
+	// Image promotion
+	DEPLOYMENT_LIFECYCLE__IMAGE_PROMOTION ChangeTrackingCategoryType
+	// Image push
+	DEPLOYMENT_LIFECYCLE__IMAGE_PUSH ChangeTrackingCategoryType
+	// Release bundle creation
+	DEPLOYMENT_LIFECYCLE__RELEASE_BUNDLE_CREATION ChangeTrackingCategoryType
+	// Release bundle deletion
+	DEPLOYMENT_LIFECYCLE__RELEASE_BUNDLE_DELETION ChangeTrackingCategoryType
+	// Release bundle sign
+	DEPLOYMENT_LIFECYCLE__RELEASE_BUNDLE_SIGN ChangeTrackingCategoryType
+	// A vanilla deployment
+	DEPLOYMENT__BASIC ChangeTrackingCategoryType
+	// Blue-green deployment
+	DEPLOYMENT__BLUE_GREEN ChangeTrackingCategoryType
+	// Canary deployment
+	DEPLOYMENT__CANARY ChangeTrackingCategoryType
+	// Other types of deployment.
+	DEPLOYMENT__OTHER ChangeTrackingCategoryType
+	// Rolling deployment.
+	DEPLOYMENT__ROLLING ChangeTrackingCategoryType
+	// Shadow deployment
+	DEPLOYMENT__SHADOW ChangeTrackingCategoryType
+	// Edit of a feature flag
+	FEATURE_FLAG__BASIC ChangeTrackingCategoryType
+	// Crash
+	OPERATIONAL__CRASH ChangeTrackingCategoryType
+	// Other types of operational events
+	OPERATIONAL__OTHER ChangeTrackingCategoryType
+	// Scheduled maintenance period
+	OPERATIONAL__SCHEDULED_MAINTENANCE_PERIOD ChangeTrackingCategoryType
+	// Server reboot
+	OPERATIONAL__SERVER_REBOOT ChangeTrackingCategoryType
+}{
+	// Convention
+	BUSINESS_EVENT__CONVENTION: "BUSINESS_EVENT__CONVENTION",
+	// Marketing campaign
+	BUSINESS_EVENT__MARKETING_CAMPAIGN: "BUSINESS_EVENT__MARKETING_CAMPAIGN",
+	// Other types of business events
+	BUSINESS_EVENT__OTHER: "BUSINESS_EVENT__OTHER",
+	// This is a special type that allows you to set your own custom type as an override. To use this CategoryType you must
+	// also pass in a value for the `customType` field as part of your `input`.
+	CUSTOMER_DEFINED__CUSTOM: "CUSTOMER_DEFINED__CUSTOM",
+	// Artifact copy
+	DEPLOYMENT_LIFECYCLE__ARTIFACT_COPY: "DEPLOYMENT_LIFECYCLE__ARTIFACT_COPY",
+	// Artifact deletion
+	DEPLOYMENT_LIFECYCLE__ARTIFACT_DELETION: "DEPLOYMENT_LIFECYCLE__ARTIFACT_DELETION",
+	// Artifact deployment
+	DEPLOYMENT_LIFECYCLE__ARTIFACT_DEPLOYMENT: "DEPLOYMENT_LIFECYCLE__ARTIFACT_DEPLOYMENT",
+	// Artifact move
+	DEPLOYMENT_LIFECYCLE__ARTIFACT_MOVE: "DEPLOYMENT_LIFECYCLE__ARTIFACT_MOVE",
+	// Build deletion
+	DEPLOYMENT_LIFECYCLE__BUILD_DELETION: "DEPLOYMENT_LIFECYCLE__BUILD_DELETION",
+	// Build promotion
+	DEPLOYMENT_LIFECYCLE__BUILD_PROMOTION: "DEPLOYMENT_LIFECYCLE__BUILD_PROMOTION",
+	// Build upload
+	DEPLOYMENT_LIFECYCLE__BUILD_UPLOAD: "DEPLOYMENT_LIFECYCLE__BUILD_UPLOAD",
+	// Image deletion
+	DEPLOYMENT_LIFECYCLE__IMAGE_DELETION: "DEPLOYMENT_LIFECYCLE__IMAGE_DELETION",
+	// Image promotion
+	DEPLOYMENT_LIFECYCLE__IMAGE_PROMOTION: "DEPLOYMENT_LIFECYCLE__IMAGE_PROMOTION",
+	// Image push
+	DEPLOYMENT_LIFECYCLE__IMAGE_PUSH: "DEPLOYMENT_LIFECYCLE__IMAGE_PUSH",
+	// Release bundle creation
+	DEPLOYMENT_LIFECYCLE__RELEASE_BUNDLE_CREATION: "DEPLOYMENT_LIFECYCLE__RELEASE_BUNDLE_CREATION",
+	// Release bundle deletion
+	DEPLOYMENT_LIFECYCLE__RELEASE_BUNDLE_DELETION: "DEPLOYMENT_LIFECYCLE__RELEASE_BUNDLE_DELETION",
+	// Release bundle sign
+	DEPLOYMENT_LIFECYCLE__RELEASE_BUNDLE_SIGN: "DEPLOYMENT_LIFECYCLE__RELEASE_BUNDLE_SIGN",
+	// A vanilla deployment
+	DEPLOYMENT__BASIC: "DEPLOYMENT__BASIC",
+	// Blue-green deployment
+	DEPLOYMENT__BLUE_GREEN: "DEPLOYMENT__BLUE_GREEN",
+	// Canary deployment
+	DEPLOYMENT__CANARY: "DEPLOYMENT__CANARY",
+	// Other types of deployment.
+	DEPLOYMENT__OTHER: "DEPLOYMENT__OTHER",
+	// Rolling deployment.
+	DEPLOYMENT__ROLLING: "DEPLOYMENT__ROLLING",
+	// Shadow deployment
+	DEPLOYMENT__SHADOW: "DEPLOYMENT__SHADOW",
+	// Edit of a feature flag
+	FEATURE_FLAG__BASIC: "FEATURE_FLAG__BASIC",
+	// Crash
+	OPERATIONAL__CRASH: "OPERATIONAL__CRASH",
+	// Other types of operational events
+	OPERATIONAL__OTHER: "OPERATIONAL__OTHER",
+	// Scheduled maintenance period
+	OPERATIONAL__SCHEDULED_MAINTENANCE_PERIOD: "OPERATIONAL__SCHEDULED_MAINTENANCE_PERIOD",
+	// Server reboot
+	OPERATIONAL__SERVER_REBOOT: "OPERATIONAL__SERVER_REBOOT",
+}
 
 // ChangeTrackingDeploymentType - Type of deployment.
 type ChangeTrackingDeploymentType string
@@ -41,15 +184,799 @@ var ChangeTrackingDeploymentTypeTypes = struct {
 type ChangeTrackingValidationFlag string
 
 var ChangeTrackingValidationFlagTypes = struct {
+	// Allows passing custom categories or types. You should confirm this adheres to your organization's policies.
+	ALLOW_CUSTOM_CATEGORY_OR_TYPE ChangeTrackingValidationFlag
 	// Will validate all string fields to be within max size limit. An error is returned and data is not saved if any of the fields exceeds max size limit.
 	FAIL_ON_FIELD_LENGTH ChangeTrackingValidationFlag
 	// For APM entities, a call is made to the legacy New Relic v2 REST API. When this flag is set, if the call fails for any reason, an error will be returned containing the failure message.
 	FAIL_ON_REST_API_FAILURES ChangeTrackingValidationFlag
 }{
+	// Allows passing custom categories or types. You should confirm this adheres to your organization's policies.
+	ALLOW_CUSTOM_CATEGORY_OR_TYPE: "ALLOW_CUSTOM_CATEGORY_OR_TYPE",
 	// Will validate all string fields to be within max size limit. An error is returned and data is not saved if any of the fields exceeds max size limit.
 	FAIL_ON_FIELD_LENGTH: "FAIL_ON_FIELD_LENGTH",
 	// For APM entities, a call is made to the legacy New Relic v2 REST API. When this flag is set, if the call fails for any reason, an error will be returned containing the failure message.
 	FAIL_ON_REST_API_FAILURES: "FAIL_ON_REST_API_FAILURES",
+}
+
+// DashboardEntityPermissions - Permisions that represent visibility & editability
+type DashboardEntityPermissions string
+
+var DashboardEntityPermissionsTypes = struct {
+	// Private
+	PRIVATE DashboardEntityPermissions
+	// Public read only
+	PUBLIC_READ_ONLY DashboardEntityPermissions
+	// Public read & write
+	PUBLIC_READ_WRITE DashboardEntityPermissions
+}{
+	// Private
+	PRIVATE: "PRIVATE",
+	// Public read only
+	PUBLIC_READ_ONLY: "PUBLIC_READ_ONLY",
+	// Public read & write
+	PUBLIC_READ_WRITE: "PUBLIC_READ_WRITE",
+}
+
+// EntityAlertSeverity - The alert severity of the entity.
+type EntityAlertSeverity string
+
+var EntityAlertSeverityTypes = struct {
+	// Indicates an entity has a critical violation in progress.
+	CRITICAL EntityAlertSeverity
+	// Indicates an entity has no violations and therefore is not alerting.
+	NOT_ALERTING EntityAlertSeverity
+	// Indicates an entity is not configured for alerting.
+	NOT_CONFIGURED EntityAlertSeverity
+	// Indicates an entity  has a warning violation in progress.
+	WARNING EntityAlertSeverity
+}{
+	// Indicates an entity has a critical violation in progress.
+	CRITICAL: "CRITICAL",
+	// Indicates an entity has no violations and therefore is not alerting.
+	NOT_ALERTING: "NOT_ALERTING",
+	// Indicates an entity is not configured for alerting.
+	NOT_CONFIGURED: "NOT_CONFIGURED",
+	// Indicates an entity  has a warning violation in progress.
+	WARNING: "WARNING",
+}
+
+// EntityGoldenEventObjectId - Types of references for the default WHERE clause.
+type EntityGoldenEventObjectId string
+
+var EntityGoldenEventObjectIdTypes = struct {
+	// The WHERE clause will be done against a domainId.
+	DOMAIN_IDS EntityGoldenEventObjectId
+	// The WHERE clause will be done against a GUID.
+	ENTITY_GUIDS EntityGoldenEventObjectId
+	// The WHERE clause will be done against the name of the entity.
+	ENTITY_NAMES EntityGoldenEventObjectId
+}{
+	// The WHERE clause will be done against a domainId.
+	DOMAIN_IDS: "DOMAIN_IDS",
+	// The WHERE clause will be done against a GUID.
+	ENTITY_GUIDS: "ENTITY_GUIDS",
+	// The WHERE clause will be done against the name of the entity.
+	ENTITY_NAMES: "ENTITY_NAMES",
+}
+
+// EntityGoldenMetricUnit - The different units that can be used to express golden metrics.
+type EntityGoldenMetricUnit string
+
+var EntityGoldenMetricUnitTypes = struct {
+	// Apdex (Application Performance Index).
+	APDEX EntityGoldenMetricUnit
+	// Bits.
+	BITS EntityGoldenMetricUnit
+	// Bits per second.
+	BITS_PER_SECOND EntityGoldenMetricUnit
+	// Bytes.
+	BYTES EntityGoldenMetricUnit
+	// Bytes per second.
+	BYTES_PER_SECOND EntityGoldenMetricUnit
+	// Degrees celsius.
+	CELSIUS EntityGoldenMetricUnit
+	// Count.
+	COUNT EntityGoldenMetricUnit
+	// Hertz.
+	HERTZ EntityGoldenMetricUnit
+	// Messages per second.
+	MESSAGES_PER_SECOND EntityGoldenMetricUnit
+	// Milliseconds.
+	MS EntityGoldenMetricUnit
+	// Operations per second.
+	OPERATIONS_PER_SECOND EntityGoldenMetricUnit
+	// Pages loaded per second.
+	PAGES_PER_SECOND EntityGoldenMetricUnit
+	// Percentage.
+	PERCENTAGE EntityGoldenMetricUnit
+	// Requests received per minute.
+	REQUESTS_PER_MINUTE EntityGoldenMetricUnit
+	// Requests received per second.
+	REQUESTS_PER_SECOND EntityGoldenMetricUnit
+	// Seconds.
+	SECONDS EntityGoldenMetricUnit
+	// Timestamp.
+	TIMESTAMP EntityGoldenMetricUnit
+}{
+	// Apdex (Application Performance Index).
+	APDEX: "APDEX",
+	// Bits.
+	BITS: "BITS",
+	// Bits per second.
+	BITS_PER_SECOND: "BITS_PER_SECOND",
+	// Bytes.
+	BYTES: "BYTES",
+	// Bytes per second.
+	BYTES_PER_SECOND: "BYTES_PER_SECOND",
+	// Degrees celsius.
+	CELSIUS: "CELSIUS",
+	// Count.
+	COUNT: "COUNT",
+	// Hertz.
+	HERTZ: "HERTZ",
+	// Messages per second.
+	MESSAGES_PER_SECOND: "MESSAGES_PER_SECOND",
+	// Milliseconds.
+	MS: "MS",
+	// Operations per second.
+	OPERATIONS_PER_SECOND: "OPERATIONS_PER_SECOND",
+	// Pages loaded per second.
+	PAGES_PER_SECOND: "PAGES_PER_SECOND",
+	// Percentage.
+	PERCENTAGE: "PERCENTAGE",
+	// Requests received per minute.
+	REQUESTS_PER_MINUTE: "REQUESTS_PER_MINUTE",
+	// Requests received per second.
+	REQUESTS_PER_SECOND: "REQUESTS_PER_SECOND",
+	// Seconds.
+	SECONDS: "SECONDS",
+	// Timestamp.
+	TIMESTAMP: "TIMESTAMP",
+}
+
+// EntityType - The specific type of entity
+type EntityType string
+
+var EntityTypeTypes = struct {
+	// An APM Application
+	APM_APPLICATION_ENTITY EntityType
+	// A database instance seen by an APM Application
+	APM_DATABASE_INSTANCE_ENTITY EntityType
+	// An external service seen by an APM Application
+	APM_EXTERNAL_SERVICE_ENTITY EntityType
+	// A Browser Application
+	BROWSER_APPLICATION_ENTITY EntityType
+	// A Dashboard entity
+	DASHBOARD_ENTITY EntityType
+	// An External entity. For more information about defining External entities, see the [open source documentation](https://github.com/newrelic-experimental/entity-synthesis-definitions).
+	EXTERNAL_ENTITY EntityType
+	// A Generic entity with no detailed data
+	GENERIC_ENTITY EntityType
+	// An Infrastructure entity
+	GENERIC_INFRASTRUCTURE_ENTITY EntityType
+	// An Infrastructure Integration AWS Lambda Function entity
+	INFRASTRUCTURE_AWS_LAMBDA_FUNCTION_ENTITY EntityType
+	// An Infrastructure Host entity
+	INFRASTRUCTURE_HOST_ENTITY EntityType
+	// A Key Transaction entity
+	KEY_TRANSACTION_ENTITY EntityType
+	// A Mobile Application
+	MOBILE_APPLICATION_ENTITY EntityType
+	// A Secure Credential entity
+	SECURE_CREDENTIAL_ENTITY EntityType
+	// A Synthetic Monitor entity
+	SYNTHETIC_MONITOR_ENTITY EntityType
+	// A Team Entity
+	TEAM_ENTITY EntityType
+	// A Third Party Service entity
+	THIRD_PARTY_SERVICE_ENTITY EntityType
+	// A entity that is unavailable
+	UNAVAILABLE_ENTITY EntityType
+	// A Workload entity
+	WORKLOAD_ENTITY EntityType
+}{
+	// An APM Application
+	APM_APPLICATION_ENTITY: "APM_APPLICATION_ENTITY",
+	// A database instance seen by an APM Application
+	APM_DATABASE_INSTANCE_ENTITY: "APM_DATABASE_INSTANCE_ENTITY",
+	// An external service seen by an APM Application
+	APM_EXTERNAL_SERVICE_ENTITY: "APM_EXTERNAL_SERVICE_ENTITY",
+	// A Browser Application
+	BROWSER_APPLICATION_ENTITY: "BROWSER_APPLICATION_ENTITY",
+	// A Dashboard entity
+	DASHBOARD_ENTITY: "DASHBOARD_ENTITY",
+	// An External entity. For more information about defining External entities, see the [open source documentation](https://github.com/newrelic-experimental/entity-synthesis-definitions).
+	EXTERNAL_ENTITY: "EXTERNAL_ENTITY",
+	// A Generic entity with no detailed data
+	GENERIC_ENTITY: "GENERIC_ENTITY",
+	// An Infrastructure entity
+	GENERIC_INFRASTRUCTURE_ENTITY: "GENERIC_INFRASTRUCTURE_ENTITY",
+	// An Infrastructure Integration AWS Lambda Function entity
+	INFRASTRUCTURE_AWS_LAMBDA_FUNCTION_ENTITY: "INFRASTRUCTURE_AWS_LAMBDA_FUNCTION_ENTITY",
+	// An Infrastructure Host entity
+	INFRASTRUCTURE_HOST_ENTITY: "INFRASTRUCTURE_HOST_ENTITY",
+	// A Key Transaction entity
+	KEY_TRANSACTION_ENTITY: "KEY_TRANSACTION_ENTITY",
+	// A Mobile Application
+	MOBILE_APPLICATION_ENTITY: "MOBILE_APPLICATION_ENTITY",
+	// A Secure Credential entity
+	SECURE_CREDENTIAL_ENTITY: "SECURE_CREDENTIAL_ENTITY",
+	// A Synthetic Monitor entity
+	SYNTHETIC_MONITOR_ENTITY: "SYNTHETIC_MONITOR_ENTITY",
+	// A Team Entity
+	TEAM_ENTITY: "TEAM_ENTITY",
+	// A Third Party Service entity
+	THIRD_PARTY_SERVICE_ENTITY: "THIRD_PARTY_SERVICE_ENTITY",
+	// A entity that is unavailable
+	UNAVAILABLE_ENTITY: "UNAVAILABLE_ENTITY",
+	// A Workload entity
+	WORKLOAD_ENTITY: "WORKLOAD_ENTITY",
+}
+
+// ServiceLevelEventsQuerySelectFunction - The function to use in the SELECT clause.
+type ServiceLevelEventsQuerySelectFunction string
+
+var ServiceLevelEventsQuerySelectFunctionTypes = struct {
+	// Use on events and unaggregated data.
+	COUNT ServiceLevelEventsQuerySelectFunction
+	// Use on distribution metric types.
+	GET_CDF_COUNT ServiceLevelEventsQuerySelectFunction
+	// Use in valid events combined with GET_CDF_COUNT.
+	GET_FIELD ServiceLevelEventsQuerySelectFunction
+	// Use on aggregated counts.
+	SUM ServiceLevelEventsQuerySelectFunction
+}{
+	// Use on events and unaggregated data.
+	COUNT: "COUNT",
+	// Use on distribution metric types.
+	GET_CDF_COUNT: "GET_CDF_COUNT",
+	// Use in valid events combined with GET_CDF_COUNT.
+	GET_FIELD: "GET_FIELD",
+	// Use on aggregated counts.
+	SUM: "SUM",
+}
+
+// ServiceLevelObjectiveRollingTimeWindowUnit - The rolling time window units.
+type ServiceLevelObjectiveRollingTimeWindowUnit string
+
+var ServiceLevelObjectiveRollingTimeWindowUnitTypes = struct {
+	// Day.
+	DAY ServiceLevelObjectiveRollingTimeWindowUnit
+}{
+	// Day.
+	DAY: "DAY",
+}
+
+type SyntheticMonitorStatus string
+
+var SyntheticMonitorStatusTypes = struct {
+	DELETED  SyntheticMonitorStatus
+	DISABLED SyntheticMonitorStatus
+	ENABLED  SyntheticMonitorStatus
+	FAULTY   SyntheticMonitorStatus
+	MUTED    SyntheticMonitorStatus
+	PAUSED   SyntheticMonitorStatus
+}{
+	DELETED:  "DELETED",
+	DISABLED: "DISABLED",
+	ENABLED:  "ENABLED",
+	FAULTY:   "FAULTY",
+	MUTED:    "MUTED",
+	PAUSED:   "PAUSED",
+}
+
+// SyntheticMonitorType - The types of Synthetic Monitors.
+type SyntheticMonitorType string
+
+var SyntheticMonitorTypeTypes = struct {
+	BROKEN_LINKS   SyntheticMonitorType
+	BROWSER        SyntheticMonitorType
+	CERT_CHECK     SyntheticMonitorType
+	SCRIPT_API     SyntheticMonitorType
+	SCRIPT_BROWSER SyntheticMonitorType
+	SIMPLE         SyntheticMonitorType
+	STEP_MONITOR   SyntheticMonitorType
+}{
+	BROKEN_LINKS:   "BROKEN_LINKS",
+	BROWSER:        "BROWSER",
+	CERT_CHECK:     "CERT_CHECK",
+	SCRIPT_API:     "SCRIPT_API",
+	SCRIPT_BROWSER: "SCRIPT_BROWSER",
+	SIMPLE:         "SIMPLE",
+	STEP_MONITOR:   "STEP_MONITOR",
+}
+
+// WorkloadStatusSource - Indicates where the status value derives from.
+type WorkloadStatusSource string
+
+var WorkloadStatusSourceTypes = struct {
+	// Refers to the result of an automatic rule defined for a workload.
+	ROLLUP_RULE WorkloadStatusSource
+	// Refers to a static status defined for a workload.
+	STATIC WorkloadStatusSource
+	// Refers to an undetermined status source.
+	UNKNOWN WorkloadStatusSource
+	// Refers to the override policy that is applied to a set of partial results within a workload. Any static status always overrides any other status values calculated automatically. Otherwise, the worst status of the partial results is rolled up.
+	WORKLOAD WorkloadStatusSource
+}{
+	// Refers to the result of an automatic rule defined for a workload.
+	ROLLUP_RULE: "ROLLUP_RULE",
+	// Refers to a static status defined for a workload.
+	STATIC: "STATIC",
+	// Refers to an undetermined status source.
+	UNKNOWN: "UNKNOWN",
+	// Refers to the override policy that is applied to a set of partial results within a workload. Any static status always overrides any other status values calculated automatically. Otherwise, the worst status of the partial results is rolled up.
+	WORKLOAD: "WORKLOAD",
+}
+
+// WorkloadStatusValue - The status of the workload, which is derived from the static and the automatic statuses configured. Any static status always overrides any other status values calculated automatically.
+type WorkloadStatusValue string
+
+var WorkloadStatusValueTypes = struct {
+	// The status of the workload is degraded.
+	DEGRADED WorkloadStatusValue
+	// The status of the workload is disrupted.
+	DISRUPTED WorkloadStatusValue
+	// The status of the workload is operational.
+	OPERATIONAL WorkloadStatusValue
+	// The status of the workload is unknown.
+	UNKNOWN WorkloadStatusValue
+}{
+	// The status of the workload is degraded.
+	DEGRADED: "DEGRADED",
+	// The status of the workload is disrupted.
+	DISRUPTED: "DISRUPTED",
+	// The status of the workload is operational.
+	OPERATIONAL: "OPERATIONAL",
+	// The status of the workload is unknown.
+	UNKNOWN: "UNKNOWN",
+}
+
+// AccountOutline - The `AccountOutline` object provides basic data about an account.
+type AccountOutline struct {
+	ID   int    `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
+	// Returns event types that are currently reporting in the account.
+	ReportingEventTypes []string `json:"reportingEventTypes,omitempty"`
+}
+
+// AccountReference - The `AccountReference` object provides basic identifying information about the account.
+type AccountReference struct {
+	ID   int    `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
+}
+
+type AlertableEntityOutline struct {
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+}
+
+func (x *AlertableEntityOutline) ImplementsAlertableEntityOutline() {}
+
+// ApmApplicationEntityOutline - An APM Application entity outline.
+type ApmApplicationEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// Summary statistics about the Browser App injected by an APM Application.
+	ApmBrowserSummary ApmBrowserApplicationSummaryData `json:"apmBrowserSummary,omitempty"`
+	// Summary statistics about the APM App.
+	ApmSummary ApmApplicationSummaryData `json:"apmSummary,omitempty"`
+	// The ID of the APM Application.
+	ApplicationID int `json:"applicationId,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The programming language of the APM Application.
+	Language string `json:"language,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The running versions of the language agent in the APM Application.
+	RunningAgentVersions ApmApplicationRunningAgentVersions `json:"runningAgentVersions,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// Configuration settings for the APM Application
+	Settings ApmApplicationSettings `json:"settings,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *ApmApplicationEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *ApmApplicationEntityOutline) ImplementsApmBrowserApplicationEntityOutline() {}
+
+func (x *ApmApplicationEntityOutline) ImplementsEntityOutline() {}
+
+// ApmApplicationRunningAgentVersions - Represents the currently running agent versions in an APM Application.
+// An application could be running multiple versions of an agent (across different hosts, for example).
+type ApmApplicationRunningAgentVersions struct {
+	// The maximum (newest) language agent version running in the APM Application.
+	MaxVersion string `json:"maxVersion,omitempty"`
+	// The minimum (oldest) language agent version running in the APM Application.
+	MinVersion string `json:"minVersion,omitempty"`
+}
+
+// ApmApplicationSettings - Configuration settings for the APM Application
+type ApmApplicationSettings struct {
+	// The current Apdex target setting
+	ApdexTarget float64 `json:"apdexTarget,omitempty"`
+	// State of server-side configuration setting
+	ServerSideConfig bool `json:"serverSideConfig,omitempty"`
+}
+
+// ApmApplicationSummaryData - Summary statistics about the APM App.
+type ApmApplicationSummaryData struct {
+	// The apdex score. For more details on the use of apdex, visit [our docs](https://docs.newrelic.com/docs/apm/new-relic-apm/apdex/apdex-measure-user-satisfaction).
+	ApdexScore float64 `json:"apdexScore,omitempty"`
+	// The percentage of responses to all transactions with an error.
+	ErrorRate float64 `json:"errorRate,omitempty"`
+	// The number of hosts this application is running on.
+	HostCount int `json:"hostCount,omitempty"`
+	// The number of instances of this application running.
+	InstanceCount int `json:"instanceCount,omitempty"`
+	// The average response time for non-web transactions in seconds.
+	NonWebResponseTimeAverage Seconds `json:"nonWebResponseTimeAverage,omitempty"`
+	// The number of non-web transactions per minute.
+	NonWebThroughput float64 `json:"nonWebThroughput,omitempty"`
+	// The average response time for all transactions in seconds.
+	ResponseTimeAverage Seconds `json:"responseTimeAverage,omitempty"`
+	// The number of all transactions per minute.
+	Throughput float64 `json:"throughput,omitempty"`
+	// The average response time for web transactions in seconds.
+	WebResponseTimeAverage Seconds `json:"webResponseTimeAverage,omitempty"`
+	// The number of web transactions per minute.
+	WebThroughput float64 `json:"webThroughput,omitempty"`
+}
+
+// ApmBrowserApplicationEntityOutline - The `ApmBrowserApplicationEntityOutline` interface provides detailed information for the Browser App injected by an APM Application.
+type ApmBrowserApplicationEntityOutline struct {
+	ApmBrowserSummary ApmBrowserApplicationSummaryData `json:"apmBrowserSummary,omitempty"`
+}
+
+func (x *ApmBrowserApplicationEntityOutline) ImplementsApmBrowserApplicationEntityOutline() {}
+
+// ApmBrowserApplicationSummaryData - Summary statistics about the Browser App injected by the APM Application.
+type ApmBrowserApplicationSummaryData struct {
+	// The number of AJAX requests per minute
+	AjaxRequestThroughput float64 `json:"ajaxRequestThroughput,omitempty"`
+	// The average AJAX response time in seconds.
+	AjaxResponseTimeAverage Seconds `json:"ajaxResponseTimeAverage,omitempty"`
+	// The percentage of page views with a JS error.
+	JsErrorRate float64 `json:"jsErrorRate,omitempty"`
+	// The number of page loads per minute
+	PageLoadThroughput float64 `json:"pageLoadThroughput,omitempty"`
+	// The average page view time in seconds.
+	PageLoadTimeAverage float64 `json:"pageLoadTimeAverage,omitempty"`
+}
+
+// ApmDatabaseInstanceEntityOutline - A database instance seen by an APM Application
+type ApmDatabaseInstanceEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The host the database instance is running on.
+	Host string `json:"host,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The port or path the database instance is running on. ex: `3306` | `/tmp/mysql.sock`
+	PortOrPath string `json:"portOrPath,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+	// The type of database. ex: `Postgres` | `Redis`
+	Vendor string `json:"vendor,omitempty"`
+}
+
+func (x *ApmDatabaseInstanceEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *ApmDatabaseInstanceEntityOutline) ImplementsEntityOutline() {}
+
+// ApmExternalServiceEntityOutline - An external service seen by an APM Application.
+type ApmExternalServiceEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType      EntityType                    `json:"entityType,omitempty"`
+	ExternalSummary ApmExternalServiceSummaryData `json:"externalSummary,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The host of the external service.
+	Host string `json:"host,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *ApmExternalServiceEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *ApmExternalServiceEntityOutline) ImplementsEntityOutline() {}
+
+// ApmExternalServiceSummaryData - Summary statistics about an External Service called by an APM App.
+type ApmExternalServiceSummaryData struct {
+	// The average response time for external service calls in seconds.
+	ResponseTimeAverage Seconds `json:"responseTimeAverage,omitempty"`
+	// The number of external service calls per minute.
+	Throughput float64 `json:"throughput,omitempty"`
+}
+
+// BrowserApplicationEntityOutline - A Browser Application entity outline.
+type BrowserApplicationEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The type of Browser agent installed for this application.
+	AgentInstallType BrowserAgentInstallType `json:"agentInstallType,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The ID of the Browser App.
+	ApplicationID int `json:"applicationId,omitempty"`
+	// Summary statistics about the Browser App.
+	BrowserSummary BrowserApplicationSummaryData `json:"browserSummary,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The running versions of the agent in the Browser App.
+	RunningAgentVersions BrowserApplicationRunningAgentVersions `json:"runningAgentVersions,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The ID of the APM Application that serves this Browser App.
+	ServingApmApplicationID int `json:"servingApmApplicationId,omitempty"`
+	// Configuration settings for the Browser App
+	Settings BrowserApplicationSettings `json:"settings,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *BrowserApplicationEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *BrowserApplicationEntityOutline) ImplementsEntityOutline() {}
+
+// BrowserApplicationRunningAgentVersions - Represents the currently running agent versions in a Browser App.
+// An app could be running multiple versions of an agent (across different browsers, for example).
+type BrowserApplicationRunningAgentVersions struct {
+	// The maximum (newest) agent version running in the Browser App, represented as a semantic version string.
+	MaxSemanticVersion SemVer `json:"maxSemanticVersion,omitempty"`
+	// The maximum (newest) agent version running in the Browser App.
+	MaxVersion int `json:"maxVersion,omitempty"`
+	// The minimum (oldest) agent version running in the Browser App, represented as a semantic version string.
+	MinSemanticVersion SemVer `json:"minSemanticVersion,omitempty"`
+	// The minimum (oldest) agent version running in the Browser App.
+	MinVersion int `json:"minVersion,omitempty"`
+}
+
+// BrowserApplicationSettings - Configuration settings for the Browser App
+type BrowserApplicationSettings struct {
+	// The current Apdex target setting
+	ApdexTarget float64 `json:"apdexTarget,omitempty"`
+}
+
+// BrowserApplicationSummaryData - Summary statistics about the Browser App.
+type BrowserApplicationSummaryData struct {
+	// The number of AJAX requests per minute
+	AjaxRequestThroughput float64 `json:"ajaxRequestThroughput,omitempty"`
+	// The average AJAX response time in seconds.
+	AjaxResponseTimeAverage Seconds `json:"ajaxResponseTimeAverage,omitempty"`
+	// The percentage of page views with a JS error.
+	JsErrorRate float64 `json:"jsErrorRate,omitempty"`
+	// The number of page loads per minute
+	PageLoadThroughput float64 `json:"pageLoadThroughput,omitempty"`
+	// The average page view time in seconds.
+	PageLoadTimeAverage float64 `json:"pageLoadTimeAverage,omitempty"`
+	// The median page view time in seconds.
+	PageLoadTimeMedian float64 `json:"pageLoadTimeMedian,omitempty"`
+	// The average SPA response time in seconds.
+	SpaResponseTimeAverage Seconds `json:"spaResponseTimeAverage,omitempty"`
+	// The median SPA response time in seconds.
+	SpaResponseTimeMedian Seconds `json:"spaResponseTimeMedian,omitempty"`
+}
+
+// ChangeTrackingCategoryAndTypeInput - The category and type of the change event. These should match the prefix and suffix of the CategoryType enum.
+type ChangeTrackingCategoryAndTypeInput struct {
+	// The category of the change event.
+	//
+	// For a list of supported categories, [view our docs](https://docs.newrelic.com/docs/change-tracking/change-tracking-events/#supported-types).
+	Category string `json:"category"`
+	// The type of the change event.
+	//
+	// For a list of supported types, [view our docs](https://docs.newrelic.com/docs/change-tracking/change-tracking-events/#supported-types).
+	Type string `json:"type"`
+}
+
+// ChangeTrackingCategoryFieldsInput - "
+// This is a container for the various category related input fields.
+type ChangeTrackingCategoryFieldsInput struct {
+	// This container is mandatory for a category of `DEPLOYMENT`.
+	Deployment *ChangeTrackingDeploymentFieldsInput `json:"deployment,omitempty"`
+	// This container is mandatory for a category of `FEATURE_FLAG`.
+	FeatureFlag *ChangeTrackingFeatureFlagFieldsInput `json:"featureFlag,omitempty"`
+}
+
+// ChangeTrackingCategoryRelatedInput - The data that defines the category and type of change event as well as the category-specific fields.
+type ChangeTrackingCategoryRelatedInput struct {
+	// This is a container for the various category related input fields.
+	CategoryFields *ChangeTrackingCategoryFieldsInput `json:"categoryFields,omitempty"`
+	// The category and type of the change event. If you'd like to use your own, please add `ALLOW_CUSTOM_CATEGORY_OR_TYPE` to your validation flags.
+	//
+	// For a list of supported categories and types, [view our docs](https://docs.newrelic.com/docs/change-tracking/change-tracking-events/#supported-types).
+	Kind *ChangeTrackingCategoryAndTypeInput `json:"kind,omitempty"`
+}
+
+// ChangeTrackingCreateEventInput - The data necessary to create a change tracking event.
+type ChangeTrackingCreateEventInput struct {
+	// The data that defines the category and type of change event as well as the category-specific fields.
+	CategoryAndTypeData *ChangeTrackingCategoryRelatedInput `json:"categoryAndTypeData,omitempty"`
+	// Represents key-value pairs of custom attributes in JavaScript object format. Attribute values can be of type `string`, `boolean`, or `number`. We store JavaScript `number` values to either Java `long` or `double` values. The main difference between JavaScript object format vs. JSON is that keys are not enclosed in quotes.
+	//
+	// For more information on limitations, see [our docs](https://docs.newrelic.com/docs/change-tracking/change-tracking-graphql/)
+	//
+	// **Examples:**
+	//
+	// • {cloud_vendor : "vendor_name", region : "us-east-1", environment : "staging"}
+	// • {isProd : true, region : "us-east-1", instances: 2, deploy_time : 10.5}
+	CustomAttributes ChangeTrackingRawCustomAttributesMap `json:"customAttributes,omitempty"`
+	// A description of the event.
+	Description string `json:"description,omitempty"`
+	// Specify the entity to associate with the change tracking event via query.
+	EntitySearch ChangeTrackingEntitySearchInput `json:"entitySearch,omitempty"`
+	// An identifier used to correlate account-wide changes across entities. These changes are shown together in the `Changes in group` section of the change event details UI.
+	GroupId string `json:"groupId,omitempty"`
+	// This field allows you to add your own context to help you quickly identify the change events sent to our system. This field should contain a concise description of the change suitable for showing in various parts of New Relic One:
+	//
+	// 1. In the marker flag, shown when hovering over the pinhead of a "Changes" marker on a chart.
+	// 2. In the "Activity stream" panels.
+	//
+	// If this field is left blank sensible defaults will be shown instead.
+	ShortDescription string `json:"shortDescription,omitempty"`
+	// The start time of the change tracking event as the number of milliseconds since the Unix epoch.  Defaults to now.
+	Timestamp nrtime.EpochMilliseconds `json:"timestamp,omitempty"`
+	// The name or identifier of the person responsible for the change.
+	User string `json:"user,omitempty"`
+}
+
+// ChangeTrackingCreateEventResponse - The response for creating a ChangeTrackingEvent.
+type ChangeTrackingCreateEventResponse struct {
+	// The change tracking event that was created.
+	ChangeTrackingEvent ChangeTrackingEventInterface `json:"changeTrackingEvent,omitempty"`
+	// Any related messages associated with creation of the change tracking event. Track these to see if there are details
+	// to consider for future calls to this mutation.
+	Messages []string `json:"messages"`
+}
+
+// special
+func (x *ChangeTrackingCreateEventResponse) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range objMap {
+		if v == nil {
+			continue
+		}
+
+		switch k {
+		case "changeTrackingEvent":
+			if v == nil {
+				continue
+			}
+			xxx, err := UnmarshalChangeTrackingEventInterface(*v)
+			if err != nil {
+				return err
+			}
+
+			if xxx != nil {
+				x.ChangeTrackingEvent = *xxx
+			}
+		case "messages":
+			err = json.Unmarshal(*v, &x.Messages)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // ChangeTrackingDataHandlingRules - Validation and data handling rules to be applied to deployment input data.
@@ -64,8 +991,6 @@ type ChangeTrackingDeployment struct {
 	Changelog string `json:"changelog,omitempty"`
 	// The commit identifier, for example, a Git commit SHA.
 	Commit string `json:"commit,omitempty"`
-	// Represents key-value pairs of custom attributes in JSON format.
-	CustomAttributes ChangeTrackingRawCustomAttributesMap `json:"customAttributes,omitempty"`
 	// A link to the system that generated the deployment.
 	DeepLink string `json:"deepLink,omitempty"`
 	// A unique deployment identifier.
@@ -76,12 +1001,167 @@ type ChangeTrackingDeployment struct {
 	Description string `json:"description,omitempty"`
 	// The NR entity that was deployed.
 	EntityGUID common.EntityGUID `json:"entityGuid"`
-	// An identifier used to correlate two or more events.
+	// An identifier used to correlate account-wide changes across entities. These changes are shown together in the `Changes in group` section of the change event details UI.
 	GroupId string `json:"groupId,omitempty"`
 	// The start time of the deployment as the number of milliseconds since the Unix epoch.
 	Timestamp nrtime.EpochMilliseconds `json:"timestamp"`
 	// The username of the deployer or bot.
 	User string `json:"user,omitempty"`
+	// The version of the deployed software, for example, something like v1.1.
+	Version string `json:"version"`
+}
+
+// ChangeTrackingDeploymentEvent - A change tracking event with a category of "Deployment".
+type ChangeTrackingDeploymentEvent struct {
+	// The category of change event
+	Category string `json:"category"`
+	// The categoryType of change event
+	CategoryAndType ChangeTrackingCategoryType `json:"categoryAndType"`
+	// A unique change tracking identifier.
+	ChangeTrackingId string `json:"changeTrackingId"`
+	// A URL to the changelog or, if not linkable, a list of changes.
+	Changelog string `json:"changelog,omitempty"`
+	// The commit identifier, for example, a Git commit SHA.
+	Commit string `json:"commit,omitempty"`
+	// Represents key-value pairs of custom attributes in JSON format.
+	CustomAttributes ChangeTrackingRawCustomAttributesMap `json:"customAttributes,omitempty"`
+	// A link to the system that generated the deployment.
+	DeepLink string `json:"deepLink,omitempty"`
+	// A description of the event.
+	Description string `json:"description,omitempty"`
+	// The NR entity associated with the event.
+	Entity EntityOutlineInterface `json:"entity,omitempty"`
+	// An identifier used to correlate account-wide changes across entities. These changes are shown together in the `Changes in group` section of the change event details UI.
+	GroupId string `json:"groupId,omitempty"`
+	// This field allows you to add your own context to help you quickly identify the change events sent to our system. This field should contain a concise description of the change suitable for showing in various parts of New Relic One:
+	//
+	// 1. In the marker flag, shown when hovering over the pinhead of a "Changes" marker on a chart.
+	// 2. In the "Activity stream" panels.
+	//
+	// If this field is left blank sensible defaults will be shown instead.
+	ShortDescription string `json:"shortDescription,omitempty"`
+	// The start time of the change tracking event as the number of milliseconds since the Unix epoch.  Defaults to now.
+	Timestamp nrtime.EpochMilliseconds `json:"timestamp"`
+	// The type of the change event
+	Type string `json:"type"`
+	// The name or identifier of the person responsible for the change.
+	User string `json:"user,omitempty"`
+	// The version of the deployed software, for example, something like v1.1.
+	Version string `json:"version"`
+}
+
+func (x *ChangeTrackingDeploymentEvent) ImplementsChangeTrackingEvent() {}
+
+// special
+func (x *ChangeTrackingDeploymentEvent) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range objMap {
+		if v == nil {
+			continue
+		}
+
+		switch k {
+		case "category":
+			err = json.Unmarshal(*v, &x.Category)
+			if err != nil {
+				return err
+			}
+		case "categoryAndType":
+			err = json.Unmarshal(*v, &x.CategoryAndType)
+			if err != nil {
+				return err
+			}
+		case "changeTrackingId":
+			err = json.Unmarshal(*v, &x.ChangeTrackingId)
+			if err != nil {
+				return err
+			}
+		case "changelog":
+			err = json.Unmarshal(*v, &x.Changelog)
+			if err != nil {
+				return err
+			}
+		case "commit":
+			err = json.Unmarshal(*v, &x.Commit)
+			if err != nil {
+				return err
+			}
+		case "customAttributes":
+			err = json.Unmarshal(*v, &x.CustomAttributes)
+			if err != nil {
+				return err
+			}
+		case "deepLink":
+			err = json.Unmarshal(*v, &x.DeepLink)
+			if err != nil {
+				return err
+			}
+		case "description":
+			err = json.Unmarshal(*v, &x.Description)
+			if err != nil {
+				return err
+			}
+		case "entity":
+			if v == nil {
+				continue
+			}
+			xxx, err := UnmarshalEntityOutlineInterface(*v)
+			if err != nil {
+				return err
+			}
+
+			if xxx != nil {
+				x.Entity = *xxx
+			}
+		case "groupId":
+			err = json.Unmarshal(*v, &x.GroupId)
+			if err != nil {
+				return err
+			}
+		case "shortDescription":
+			err = json.Unmarshal(*v, &x.ShortDescription)
+			if err != nil {
+				return err
+			}
+		case "timestamp":
+			err = json.Unmarshal(*v, &x.Timestamp)
+			if err != nil {
+				return err
+			}
+		case "type":
+			err = json.Unmarshal(*v, &x.Type)
+			if err != nil {
+				return err
+			}
+		case "user":
+			err = json.Unmarshal(*v, &x.User)
+			if err != nil {
+				return err
+			}
+		case "version":
+			err = json.Unmarshal(*v, &x.Version)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// ChangeTrackingDeploymentFieldsInput - Deployment-related fields.
+type ChangeTrackingDeploymentFieldsInput struct {
+	// A URL to the changelog or, if not linkable, a list of changes.
+	Changelog string `json:"changelog,omitempty"`
+	// The commit identifier, for example, a Git commit SHA.
+	Commit string `json:"commit,omitempty"`
+	// A link to the system that generated the deployment.
+	DeepLink string `json:"deepLink,omitempty"`
 	// The version of the deployed software, for example, something like v1.1.
 	Version string `json:"version"`
 }
@@ -92,19 +1172,6 @@ type ChangeTrackingDeploymentInput struct {
 	Changelog string `json:"changelog,omitempty"`
 	// The commit identifier, for example, a Git commit SHA.
 	Commit string `json:"commit,omitempty"`
-	// Represents key-value pairs of custom attributes in JSON format. Attribute values can be of type string, boolean, or numeric.
-	//
-	// **Restricted attributes names:**  accountId, appID, changelog, commit, customAttributes, deepLink, deploymentType, description, entity.guid, entity.name, entity.type, entityGuid, entityName, eventType, groupId, timestamp, user, version
-	//
-	// **Restricted attribute name prefixes:**  'nr.', 'newrelic.'
-	//
-	// For more information on limitations, see [our docs](https://docs.newrelic.com/docs/change-tracking/change-tracking-graphql/)
-	//
-	// **Examples:**
-	//
-	//     • {cloudVendor : "vendorName", region : "us-east-1", environment : "staging"}
-	//     • {isProd : true, region : "us-east-1", instances: 2, deployTime : 10.5}
-	CustomAttributes ChangeTrackingRawCustomAttributesMap `json:"customAttributes,omitempty"`
 	// A URL to the system that generated the deployment.
 	DeepLink string `json:"deepLink,omitempty"`
 	// The type of deployment, for example, ‘Blue green’ or ‘Rolling’.
@@ -113,7 +1180,7 @@ type ChangeTrackingDeploymentInput struct {
 	Description string `json:"description,omitempty"`
 	// The NR entity that was deployed.
 	EntityGUID common.EntityGUID `json:"entityGuid"`
-	// An identifier used to correlate two or more events.
+	// An identifier used to correlate account-wide changes across entities. These changes are shown together in the `Changes in group` section of the change event details UI.
 	GroupId string `json:"groupId,omitempty"`
 	// The start time of the deployment as the number of milliseconds since the Unix epoch. Should be within the boundary of the past or future 24 hours. Defaults to now.
 	Timestamp nrtime.EpochMilliseconds `json:"timestamp,omitempty"`
@@ -123,5 +1190,2086 @@ type ChangeTrackingDeploymentInput struct {
 	Version string `json:"version"`
 }
 
+// ChangeTrackingEntitySearchInput - This field is how you specify the entity to associate with the change tracking event.
+type ChangeTrackingEntitySearchInput struct {
+	// Entity search query string that matches exactly one entity.
+	// The query string can search for an exact or fuzzy match on id, name, as well as searching several other attributes.
+	//
+	// Operators available: `=`, `AND`, `IN`, `LIKE`
+	//
+	// Special characters (`.,;:*-_`) are treated as whitespace. For example, `"name LIKE ':aws:'"` will match `-aws.` or `foo aws.`
+	//
+	// You can filter by default properties and tags.
+	//
+	// Default entity properties:
+	//
+	// - id
+	// - accountId
+	// - name
+	// - domainId
+	// - alertSeverity
+	// - reporting
+	// - indexedAt
+	// - firstIndexedAt
+	// - lastReportingChangeAt
+	//
+	// Tags:
+	//
+	// Tags are metadata usually linked to a more specific domainType or group of domainTypes. For example:
+	// - language - the agent language for APM applications.
+	// - clusterAgentId - in a Browser application, clusterAgentId denotes a link to an APM application with a specific cluster agent.
+	// - aws.accountId - the AWS account id for INFRA entities from AWS.
+	//
+	// Tags can be referenced with or without backticks.
+	//
+	// Examples:
+	// 1. I know the entity guid:
+	// - `"id = '<entity guid>'"`
+	//
+	// 1. I know the app id (REST v2 API):
+	// - `"domainId = '<app id>' AND domain = 'APM'"`
+	//
+	// 1. I have an OpenTelemetry entity:
+	// - `"name = '<service name>' AND domain = 'EXT' AND type = 'SERVICE' AND accountId = '<account id>'"`
+	Query string `json:"query"`
+}
+
+// ChangeTrackingEvent - The change tracking event interface.
+type ChangeTrackingEvent struct {
+	// The category of change event
+	Category string `json:"category"`
+	// The categoryType of change event
+	CategoryAndType ChangeTrackingCategoryType `json:"categoryAndType"`
+	// A unique change tracking identifier.
+	ChangeTrackingId string `json:"changeTrackingId"`
+	// Represents key-value pairs of custom attributes in JSON format.
+	CustomAttributes ChangeTrackingRawCustomAttributesMap `json:"customAttributes,omitempty"`
+	// A description of the event.
+	Description string `json:"description,omitempty"`
+	// The NR entity associated with the event.
+	Entity EntityOutlineInterface `json:"entity,omitempty"`
+	// An identifier used to correlate account-wide changes across entities. These changes are shown together in the `Changes in group` section of the change event details UI.
+	GroupId string `json:"groupId,omitempty"`
+	// This field allows you to add your own context to help you quickly identify the change events sent to our system. This field should contain a concise description of the change suitable for showing in various parts of New Relic One:
+	//
+	// 1. In the marker flag, shown when hovering over the pinhead of a "Changes" marker on a chart.
+	// 2. In the "Activity stream" panels.
+	//
+	// If this field is left blank sensible defaults will be shown instead.
+	ShortDescription string `json:"shortDescription,omitempty"`
+	// The start time of the change tracking event as the number of milliseconds since the Unix epoch.  Defaults to now.
+	Timestamp nrtime.EpochMilliseconds `json:"timestamp"`
+	// The type of the change event
+	Type string `json:"type"`
+	// The name or identifier of the person responsible for the change.
+	User string `json:"user,omitempty"`
+}
+
+func (x *ChangeTrackingEvent) ImplementsChangeTrackingEvent() {}
+
+// special
+func (x *ChangeTrackingEvent) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range objMap {
+		if v == nil {
+			continue
+		}
+
+		switch k {
+		case "category":
+			err = json.Unmarshal(*v, &x.Category)
+			if err != nil {
+				return err
+			}
+		case "categoryAndType":
+			err = json.Unmarshal(*v, &x.CategoryAndType)
+			if err != nil {
+				return err
+			}
+		case "changeTrackingId":
+			err = json.Unmarshal(*v, &x.ChangeTrackingId)
+			if err != nil {
+				return err
+			}
+		case "customAttributes":
+			err = json.Unmarshal(*v, &x.CustomAttributes)
+			if err != nil {
+				return err
+			}
+		case "description":
+			err = json.Unmarshal(*v, &x.Description)
+			if err != nil {
+				return err
+			}
+		case "entity":
+			if v == nil {
+				continue
+			}
+			xxx, err := UnmarshalEntityOutlineInterface(*v)
+			if err != nil {
+				return err
+			}
+
+			if xxx != nil {
+				x.Entity = *xxx
+			}
+		case "groupId":
+			err = json.Unmarshal(*v, &x.GroupId)
+			if err != nil {
+				return err
+			}
+		case "shortDescription":
+			err = json.Unmarshal(*v, &x.ShortDescription)
+			if err != nil {
+				return err
+			}
+		case "timestamp":
+			err = json.Unmarshal(*v, &x.Timestamp)
+			if err != nil {
+				return err
+			}
+		case "type":
+			err = json.Unmarshal(*v, &x.Type)
+			if err != nil {
+				return err
+			}
+		case "user":
+			err = json.Unmarshal(*v, &x.User)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// ChangeTrackingFeatureFlagEvent - A change tracking event with a category of "Feature Flag".
+type ChangeTrackingFeatureFlagEvent struct {
+	// The category of change event
+	Category string `json:"category"`
+	// The categoryType of change event
+	CategoryAndType ChangeTrackingCategoryType `json:"categoryAndType"`
+	// A unique change tracking identifier.
+	ChangeTrackingId string `json:"changeTrackingId"`
+	// Represents key-value pairs of custom attributes in JSON format.
+	CustomAttributes ChangeTrackingRawCustomAttributesMap `json:"customAttributes,omitempty"`
+	// A description of the event.
+	Description string `json:"description,omitempty"`
+	// The NR entity associated with the event.
+	Entity EntityOutlineInterface `json:"entity,omitempty"`
+	// The name of the feature flag.
+	FeatureFlagId string `json:"featureFlagId"`
+	// An identifier used to correlate account-wide changes across entities. These changes are shown together in the `Changes in group` section of the change event details UI.
+	GroupId string `json:"groupId,omitempty"`
+	// This field allows you to add your own context to help you quickly identify the change events sent to our system. This field should contain a concise description of the change suitable for showing in various parts of New Relic One:
+	//
+	// 1. In the marker flag, shown when hovering over the pinhead of a "Changes" marker on a chart.
+	// 2. In the "Activity stream" panels.
+	//
+	// If this field is left blank sensible defaults will be shown instead.
+	ShortDescription string `json:"shortDescription,omitempty"`
+	// The start time of the change tracking event as the number of milliseconds since the Unix epoch.  Defaults to now.
+	Timestamp nrtime.EpochMilliseconds `json:"timestamp"`
+	// The type of the change event
+	Type string `json:"type"`
+	// The name or identifier of the person responsible for the change.
+	User string `json:"user,omitempty"`
+}
+
+func (x *ChangeTrackingFeatureFlagEvent) ImplementsChangeTrackingEvent() {}
+
+// special
+func (x *ChangeTrackingFeatureFlagEvent) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range objMap {
+		if v == nil {
+			continue
+		}
+
+		switch k {
+		case "category":
+			err = json.Unmarshal(*v, &x.Category)
+			if err != nil {
+				return err
+			}
+		case "categoryAndType":
+			err = json.Unmarshal(*v, &x.CategoryAndType)
+			if err != nil {
+				return err
+			}
+		case "changeTrackingId":
+			err = json.Unmarshal(*v, &x.ChangeTrackingId)
+			if err != nil {
+				return err
+			}
+		case "customAttributes":
+			err = json.Unmarshal(*v, &x.CustomAttributes)
+			if err != nil {
+				return err
+			}
+		case "description":
+			err = json.Unmarshal(*v, &x.Description)
+			if err != nil {
+				return err
+			}
+		case "entity":
+			if v == nil {
+				continue
+			}
+			xxx, err := UnmarshalEntityOutlineInterface(*v)
+			if err != nil {
+				return err
+			}
+
+			if xxx != nil {
+				x.Entity = *xxx
+			}
+		case "featureFlagId":
+			err = json.Unmarshal(*v, &x.FeatureFlagId)
+			if err != nil {
+				return err
+			}
+		case "groupId":
+			err = json.Unmarshal(*v, &x.GroupId)
+			if err != nil {
+				return err
+			}
+		case "shortDescription":
+			err = json.Unmarshal(*v, &x.ShortDescription)
+			if err != nil {
+				return err
+			}
+		case "timestamp":
+			err = json.Unmarshal(*v, &x.Timestamp)
+			if err != nil {
+				return err
+			}
+		case "type":
+			err = json.Unmarshal(*v, &x.Type)
+			if err != nil {
+				return err
+			}
+		case "user":
+			err = json.Unmarshal(*v, &x.User)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// ChangeTrackingFeatureFlagFieldsInput - Feature flag-related fields.
+type ChangeTrackingFeatureFlagFieldsInput struct {
+	// The identifier of the feature flag.
+	FeatureFlagId string `json:"featureFlagId"`
+}
+
+// ChangeTrackingGenericEvent - A generic change tracking event.
+type ChangeTrackingGenericEvent struct {
+	// The category of change event
+	Category string `json:"category"`
+	// The categoryType of change event
+	CategoryAndType ChangeTrackingCategoryType `json:"categoryAndType"`
+	// A unique change tracking identifier.
+	ChangeTrackingId string `json:"changeTrackingId"`
+	// Represents key-value pairs of custom attributes in JSON format.
+	CustomAttributes ChangeTrackingRawCustomAttributesMap `json:"customAttributes,omitempty"`
+	// A description of the event.
+	Description string `json:"description,omitempty"`
+	// The NR entity associated with the event.
+	Entity EntityOutlineInterface `json:"entity,omitempty"`
+	// An identifier used to correlate account-wide changes across entities. These changes are shown together in the `Changes in group` section of the change event details UI.
+	GroupId string `json:"groupId,omitempty"`
+	// This field allows you to add your own context to help you quickly identify the change events sent to our system. This field should contain a concise description of the change suitable for showing in various parts of New Relic One:
+	//
+	// 1. In the marker flag, shown when hovering over the pinhead of a "Changes" marker on a chart.
+	// 2. In the "Activity stream" panels.
+	//
+	// If this field is left blank sensible defaults will be shown instead.
+	ShortDescription string `json:"shortDescription,omitempty"`
+	// The start time of the change tracking event as the number of milliseconds since the Unix epoch.  Defaults to now.
+	Timestamp nrtime.EpochMilliseconds `json:"timestamp"`
+	// The type of the change event
+	Type string `json:"type"`
+	// The name or identifier of the person responsible for the change.
+	User string `json:"user,omitempty"`
+}
+
+func (x *ChangeTrackingGenericEvent) ImplementsChangeTrackingEvent() {}
+
+// special
+func (x *ChangeTrackingGenericEvent) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range objMap {
+		if v == nil {
+			continue
+		}
+
+		switch k {
+		case "category":
+			err = json.Unmarshal(*v, &x.Category)
+			if err != nil {
+				return err
+			}
+		case "categoryAndType":
+			err = json.Unmarshal(*v, &x.CategoryAndType)
+			if err != nil {
+				return err
+			}
+		case "changeTrackingId":
+			err = json.Unmarshal(*v, &x.ChangeTrackingId)
+			if err != nil {
+				return err
+			}
+		case "customAttributes":
+			err = json.Unmarshal(*v, &x.CustomAttributes)
+			if err != nil {
+				return err
+			}
+		case "description":
+			err = json.Unmarshal(*v, &x.Description)
+			if err != nil {
+				return err
+			}
+		case "entity":
+			if v == nil {
+				continue
+			}
+			xxx, err := UnmarshalEntityOutlineInterface(*v)
+			if err != nil {
+				return err
+			}
+
+			if xxx != nil {
+				x.Entity = *xxx
+			}
+		case "groupId":
+			err = json.Unmarshal(*v, &x.GroupId)
+			if err != nil {
+				return err
+			}
+		case "shortDescription":
+			err = json.Unmarshal(*v, &x.ShortDescription)
+			if err != nil {
+				return err
+			}
+		case "timestamp":
+			err = json.Unmarshal(*v, &x.Timestamp)
+			if err != nil {
+				return err
+			}
+		case "type":
+			err = json.Unmarshal(*v, &x.Type)
+			if err != nil {
+				return err
+			}
+		case "user":
+			err = json.Unmarshal(*v, &x.User)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// DashboardEntityOutline - A Dashboard entity outline.
+type DashboardEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The date and time the dashboard was created
+	CreatedAt DateTime `json:"createdAt,omitempty"`
+	// The parent entity `guid` of the dashboard.
+	DashboardParentGUID common.EntityGUID `json:"dashboardParentGuid,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The owner information of the dashboard.
+	Owner DashboardEntityOwnerInfo `json:"owner,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The permissions of the dashboard.
+	Permissions DashboardEntityPermissions `json:"permissions,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+	// The date and time the dashboard was updated
+	UpdatedAt DateTime `json:"updatedAt,omitempty"`
+}
+
+func (x *DashboardEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *DashboardEntityOutline) ImplementsEntityOutline() {}
+
+// DashboardEntityOwnerInfo - Dashboard owner
+type DashboardEntityOwnerInfo struct {
+	// The email of the dashboard owner
+	Email string `json:"email,omitempty"`
+	// The user ID of the dashboard owner
+	UserID int `json:"userId,omitempty"`
+}
+
+// EntityGoldenContext - An object that represent the context.
+type EntityGoldenContext struct {
+	// Account context.
+	Account int `json:"account,omitempty"`
+	// Collection guid context.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+}
+
+// EntityGoldenContextInput - Input type used to define the context for the golden metrics.
+type EntityGoldenContextInput struct {
+	// Account context.
+	Account int `json:"account,omitempty"`
+	// Collection guid context.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+}
+
+// EntityGoldenContextScopedGoldenMetrics - An object that represents the golden metrics scoped by context
+type EntityGoldenContextScopedGoldenMetrics struct {
+	// Context for the golden metric
+	Context EntityGoldenContext `json:"context"`
+	// Metrics for the domain and type
+	Metrics []EntityGoldenMetric `json:"metrics"`
+}
+
+// EntityGoldenContextScopedGoldenTags - An object that represents the golden tags scoped by context
+type EntityGoldenContextScopedGoldenTags struct {
+	// Context for the golden tags
+	Context EntityGoldenContext `json:"context"`
+	// Tags for the domain and type
+	Tags []EntityGoldenTag `json:"tags"`
+}
+
+// EntityGoldenMetric - An object that represents a golden metric.
+type EntityGoldenMetric struct {
+	// The definition of the golden metric.
+	Definition EntityGoldenMetricDefinition `json:"definition"`
+	// The synthesised metric name. i.e: newrelic.goldenmetrics.apm.application.throughput
+	MetricName string `json:"metricName"`
+	// The name of the golden metric.
+	Name string `json:"name"`
+	// The definitions of the golden metric as they are defined in the public repo https://github.com/newrelic/entity-definitions.
+	OriginalDefinitions []EntityGoldenOriginalDefinitionWithSelector `json:"originalDefinitions"`
+	// Original queries as they are defined in the public repo https://github.com/newrelic/entity-definitions.
+	OriginalQueries []EntityGoldenOriginalQueryWithSelector `json:"originalQueries"`
+	// The golden metric NRQL query.
+	Query string `json:"query"`
+	// The title of the golden metric.
+	Title string `json:"title"`
+	// The unit used to represent the golden metric.
+	Unit EntityGoldenMetricUnit `json:"unit"`
+}
+
+// EntityGoldenMetricDefinition - The definition of the metric.
+type EntityGoldenMetricDefinition struct {
+	// The field used to filter the entity in the metric. This will be added to the WHERE by default.
+	EventId string `json:"eventId"`
+	// Indicates if the eventId field references a GUID, a domainId or an entity name.
+	EventObjectId EntityGoldenEventObjectId `json:"eventObjectId"`
+	// The field to FACET by.
+	Facet string `json:"facet"`
+	// The FROM clause of the query.
+	From string `json:"from"`
+	// The SELECT clause of the query.
+	Select string `json:"select"`
+	// If a complementary WHERE clause is required to identify the entity type this field will contain it.
+	Where string `json:"where,omitempty"`
+}
+
+// EntityGoldenNRQLTimeWindowInput - Time range to apply to the golden metric NRQL query
+type EntityGoldenNRQLTimeWindowInput struct {
+	// Start time.
+	Since NRQL `json:"since,omitempty"`
+	// End time.
+	Until NRQL `json:"until,omitempty"`
+}
+
+// EntityGoldenOriginalDefinitionWithSelector - Represents a metric definition for a give metric selector value.
+type EntityGoldenOriginalDefinitionWithSelector struct {
+	// The definition of the golden metric.
+	Definition EntityGoldenMetricDefinition `json:"definition"`
+	// The value of the selector. Currently, this is the value of the instrumentation provider.
+	SelectorValue string `json:"selectorValue"`
+}
+
+// EntityGoldenOriginalQueryWithSelector - Object that represents a nrql metric with its metric selector
+type EntityGoldenOriginalQueryWithSelector struct {
+	// The golden metric NRQL query.
+	Query string `json:"query"`
+	// The value of the selector. Currently, this is the value of the instrumentation provider.
+	SelectorValue string `json:"selectorValue"`
+}
+
+// EntityGoldenTag - An object that represents a golden tag.
+type EntityGoldenTag struct {
+	// The golden tag key.
+	Key string `json:"key"`
+}
+
+// EntityOutline - The `EntityOutline` interface object allows fetching basic entity data for many entities at a time.
+//
+// To understand more about entities and entity types, look at [our docs](https://docs.newrelic.com/docs/what-are-new-relic-entities).
+type EntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *EntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *EntityOutline) ImplementsEntityOutline() {}
+
+// EntityTag - A tag that has been applied to an entity.
+type EntityTag struct {
+	// The tag's key
+	Key string `json:"key,omitempty"`
+	// A list of the tag values
+	Values []string `json:"values,omitempty"`
+}
+
+// ExternalEntityOutline - An External entity outline.
+type ExternalEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *ExternalEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *ExternalEntityOutline) ImplementsEntityOutline() {}
+
+// GenericEntityOutline - A generic entity outline.
+type GenericEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *GenericEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *GenericEntityOutline) ImplementsEntityOutline() {}
+
+// GenericInfrastructureEntityOutline - An Infrastructure entity outline.
+type GenericInfrastructureEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt           nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	IntegrationTypeCode string                   `json:"integrationTypeCode,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *GenericInfrastructureEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *GenericInfrastructureEntityOutline) ImplementsEntityOutline() {}
+
+func (x *GenericInfrastructureEntityOutline) ImplementsInfrastructureIntegrationEntityOutline() {}
+
+// InfrastructureAwsLambdaFunctionEntityOutline - An AWS Lambda Function entity outline.
+type InfrastructureAwsLambdaFunctionEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt           nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	IntegrationTypeCode string                   `json:"integrationTypeCode,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool   `json:"reporting,omitempty"`
+	Runtime   string `json:"runtime,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *InfrastructureAwsLambdaFunctionEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *InfrastructureAwsLambdaFunctionEntityOutline) ImplementsEntityOutline() {}
+
+func (x *InfrastructureAwsLambdaFunctionEntityOutline) ImplementsInfrastructureIntegrationEntityOutline() {
+}
+
+// InfrastructureHostEntityOutline - An Infrastructure Host entity outline.
+type InfrastructureHostEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags  EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	HostSummary InfrastructureHostSummaryData       `json:"hostSummary,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *InfrastructureHostEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *InfrastructureHostEntityOutline) ImplementsEntityOutline() {}
+
+// InfrastructureHostSummaryData - Summary statistics about the Infra Host.
+type InfrastructureHostSummaryData struct {
+	// Total CPU utilization as a percentage.
+	CpuUtilizationPercent float64 `json:"cpuUtilizationPercent,omitempty"`
+	// The cumulative disk fullness percentage.
+	DiskUsedPercent float64 `json:"diskUsedPercent,omitempty"`
+	// Total memory utilization as a percentage.
+	MemoryUsedPercent float64 `json:"memoryUsedPercent,omitempty"`
+	// The number of bytes per second received during the sampling period.
+	NetworkReceiveRate float64 `json:"networkReceiveRate,omitempty"`
+	// The number of bytes sent per second during the sampling period.
+	NetworkTransmitRate float64 `json:"networkTransmitRate,omitempty"`
+	// Number of services running on the host.
+	ServicesCount int `json:"servicesCount,omitempty"`
+}
+
+type InfrastructureIntegrationEntityOutline struct {
+	IntegrationTypeCode string `json:"integrationTypeCode,omitempty"`
+}
+
+func (x *InfrastructureIntegrationEntityOutline) ImplementsInfrastructureIntegrationEntityOutline() {}
+
+// KeyTransactionEntityOutline - A Key Transaction entity outline.
+type KeyTransactionEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *KeyTransactionEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *KeyTransactionEntityOutline) ImplementsEntityOutline() {}
+
+// MobileAppSummaryData - Mobile application summary data
+type MobileAppSummaryData struct {
+	// The number of times the app has been launched.
+	AppLaunchCount int `json:"appLaunchCount,omitempty"`
+	// The number of crashes.
+	CrashCount int `json:"crashCount,omitempty"`
+	// Crash rate is percentage of crashes per sessions.
+	CrashRate float64 `json:"crashRate,omitempty"`
+	// Error rate is the percentage of http errors per successful requests.
+	HttpErrorRate float64 `json:"httpErrorRate,omitempty"`
+	// The number of http requests.
+	HttpRequestCount int `json:"httpRequestCount,omitempty"`
+	// The rate of http requests per minute.
+	HttpRequestRate float64 `json:"httpRequestRate,omitempty"`
+	// The average response time for all http calls.
+	HttpResponseTimeAverage Seconds `json:"httpResponseTimeAverage,omitempty"`
+	// The number of mobile sessions.
+	MobileSessionCount int `json:"mobileSessionCount,omitempty"`
+	// Network failure rate is the percentage of network failures per successful requests.
+	NetworkFailureRate float64 `json:"networkFailureRate,omitempty"`
+	// The number of users affected by crashes.
+	UsersAffectedCount int `json:"usersAffectedCount,omitempty"`
+}
+
+// MobileApplicationEntityOutline - A Mobile Application entity outline.
+type MobileApplicationEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The ID of the Mobile App.
+	ApplicationID int `json:"applicationId,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// Summary statistics about the Mobile App.
+	MobileSummary MobileAppSummaryData `json:"mobileSummary,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *MobileApplicationEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *MobileApplicationEntityOutline) ImplementsEntityOutline() {}
+
+// SecureCredentialEntityOutline - A secure credential entity outline.
+type SecureCredentialEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The description of the entity.
+	Description string `json:"description,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The domain-specific identifier for the entity.
+	SecureCredentialId int `json:"secureCredentialId,omitempty"`
+	// Summary statistics for the Synthetic Monitor Secure Credential.
+	SecureCredentialSummary SecureCredentialSummaryData `json:"secureCredentialSummary,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+	// The time at which the entity was last updated.
+	UpdatedAt nrtime.EpochMilliseconds `json:"updatedAt,omitempty"`
+}
+
+func (x *SecureCredentialEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *SecureCredentialEntityOutline) ImplementsEntityOutline() {}
+
+// SecureCredentialSummaryData - Summary statistics for the Synthetic Monitor Secure Credential.
+type SecureCredentialSummaryData struct {
+	// The number of monitors that contain this secure credential and failed their last check.
+	FailingMonitorCount int `json:"failingMonitorCount,omitempty"`
+	// The number of monitors that contain this secure credential.
+	MonitorCount int `json:"monitorCount,omitempty"`
+}
+
+// ServiceLevelDefinition - The service level defined for a specific entity.
+type ServiceLevelDefinition struct {
+	// The SLIs attached to the entity.
+	Indicators []ServiceLevelIndicator `json:"indicators"`
+}
+
+// ServiceLevelEvents - The events that define the SLI.
+type ServiceLevelEvents struct {
+	// The New Relic account to fetch the events from.
+	Account AccountReference `json:"account,omitempty"`
+	// The definition of bad events.
+	BadEvents ServiceLevelEventsQuery `json:"badEvents,omitempty"`
+	// The definition of good events.
+	GoodEvents ServiceLevelEventsQuery `json:"goodEvents,omitempty"`
+	// The definition of valid events.
+	ValidEvents ServiceLevelEventsQuery `json:"validEvents"`
+}
+
+// ServiceLevelEventsQuery - The query that represents the events to fetch.
+type ServiceLevelEventsQuery struct {
+	// The NRDB event to fetch the data from.
+	From NRQL `json:"from"`
+	// The NRQL SELECT clause to aggregate events.
+	Select ServiceLevelEventsQuerySelect `json:"select,omitempty"`
+	// The NRQL condition to filter the events.
+	Where NRQL `json:"where,omitempty"`
+}
+
+// ServiceLevelEventsQuerySelect - The resulting NRQL SELECT clause to aggregate events.
+type ServiceLevelEventsQuerySelect struct {
+	// The attribute used in the selected function.
+	Attribute string `json:"attribute,omitempty"`
+	// The function to use in the SELECT clause.
+	Function ServiceLevelEventsQuerySelectFunction `json:"function"`
+	// The threshold used in the selected function.
+	Threshold float64 `json:"threshold,omitempty"`
+}
+
+// ServiceLevelIndicator - The definition of the SLI.
+type ServiceLevelIndicator struct {
+	// The date when the SLI was created represented in the number of milliseconds since the Unix epoch.
+	CreatedAt nrtime.EpochMilliseconds `json:"createdAt"`
+	// The user who created the SLI.
+	CreatedBy UserReference `json:"createdBy,omitempty"`
+	// The description of the SLI.
+	Description string `json:"description,omitempty"`
+	// The entity which the SLI is attached to.
+	EntityGUID common.EntityGUID `json:"entityGuid"`
+	// The events that define the SLI.
+	Events ServiceLevelEvents `json:"events"`
+	// The unique entity identifier of the SLI.
+	GUID common.EntityGUID `json:"guid"`
+	// The unique identifier of the SLI.
+	ID int `json:"id"`
+	// The name of the SLI.
+	Name string `json:"name"`
+	// A list of objective definitions.
+	Objectives []ServiceLevelObjective `json:"objectives"`
+	// The resulting NRQL queries that help consume the metrics of the SLI.
+	ResultQueries ServiceLevelIndicatorResultQueries `json:"resultQueries,omitempty"`
+	// [DEPRECATED] The slug is deprecated and it will be removed from the schema as soon as possible.
+	Slug string `json:"slug"`
+	// The date when the SLI was last updated represented in the number of milliseconds since the Unix epoch.
+	UpdatedAt nrtime.EpochMilliseconds `json:"updatedAt,omitempty"`
+	// The user who last update the SLI.
+	UpdatedBy UserReference `json:"updatedBy,omitempty"`
+}
+
+// ServiceLevelIndicatorResultQueries - The resulting NRQL queries that help consume the metrics of the SLI.
+type ServiceLevelIndicatorResultQueries struct {
+	// The NRQL query that measures the good events.
+	GoodEvents ServiceLevelResultQuery `json:"goodEvents"`
+	// The NRQL query that measures the value of the SLI.
+	Indicator ServiceLevelResultQuery `json:"indicator"`
+	// The NRQL query that measures the valid events.
+	ValidEvents ServiceLevelResultQuery `json:"validEvents"`
+}
+
+// ServiceLevelObjective - An objective definition.
+type ServiceLevelObjective struct {
+	// The description of the SLO.
+	Description string `json:"description,omitempty"`
+	// The name of the SLO.
+	Name string `json:"name,omitempty"`
+	// The resulting NRQL queries that help consume the metrics of the SLO.
+	ResultQueries ServiceLevelObjectiveResultQueries `json:"resultQueries,omitempty"`
+	// The target percentage of the SLO.
+	Target float64 `json:"target"`
+	// The time window configuration of the SLO.
+	TimeWindow ServiceLevelObjectiveTimeWindow `json:"timeWindow"`
+}
+
+// ServiceLevelObjectiveResultQueries - The resulting NRQL queries that help consume the metrics of the SLO.
+type ServiceLevelObjectiveResultQueries struct {
+	// The NRQL query that measures the attainment of the SLO target.
+	Attainment ServiceLevelResultQuery `json:"attainment"`
+}
+
+// ServiceLevelObjectiveRollingTimeWindow - The rolling time window configuration of the SLO.
+type ServiceLevelObjectiveRollingTimeWindow struct {
+	// The count of time units.
+	Count int `json:"count"`
+	// The time unit.
+	Unit ServiceLevelObjectiveRollingTimeWindowUnit `json:"unit"`
+}
+
+// ServiceLevelObjectiveTimeWindow - The time window configuration of the SLO.
+type ServiceLevelObjectiveTimeWindow struct {
+	// The rolling time window configuration of the SLO.
+	Rolling ServiceLevelObjectiveRollingTimeWindow `json:"rolling,omitempty"`
+}
+
+// ServiceLevelResultQuery - A resulting query.
+type ServiceLevelResultQuery struct {
+	// A NRQL query.
+	NRQL NRQL `json:"nrql"`
+}
+
+// SyntheticMonitorEntityOutline - A Synthetic Monitor entity outline.
+type SyntheticMonitorEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The Synthetic Monitor ID
+	MonitorId int `json:"monitorId,omitempty"`
+	// Summary statistics for the Synthetic Monitor.
+	MonitorSummary SyntheticMonitorSummaryData `json:"monitorSummary,omitempty"`
+	// The Synthetic Monitor type
+	MonitorType SyntheticMonitorType `json:"monitorType,omitempty"`
+	// The URL being monitored by a `SIMPLE` or `BROWSER` monitor type.
+	MonitoredURL string `json:"monitoredUrl,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The duration in minutes between Synthetic Monitor runs.
+	Period Minutes `json:"period,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *SyntheticMonitorEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *SyntheticMonitorEntityOutline) ImplementsEntityOutline() {}
+
+// SyntheticMonitorSummaryData - Summary statistics for the Synthetic Monitor.
+type SyntheticMonitorSummaryData struct {
+	// The number of locations that are currently failing.
+	LocationsFailing int `json:"locationsFailing,omitempty"`
+	// The number of locations that are currently running.
+	LocationsRunning int                    `json:"locationsRunning,omitempty"`
+	Status           SyntheticMonitorStatus `json:"status,omitempty"`
+	// The percentage of successful synthetic monitor checks in the last 24 hours.
+	SuccessRate float64 `json:"successRate,omitempty"`
+}
+
+// TeamEntityOutline - A Team entity outline.
+type TeamEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *TeamEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *TeamEntityOutline) ImplementsEntityOutline() {}
+
+// ThirdPartyServiceEntityOutline - A third party service entity outline.
+type ThirdPartyServiceEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *ThirdPartyServiceEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *ThirdPartyServiceEntityOutline) ImplementsEntityOutline() {}
+
+// TimeWindowInput - Represents a time window input.
+type TimeWindowInput struct {
+	// The end time of the time window the number of milliseconds since the Unix epoch.
+	EndTime nrtime.EpochMilliseconds `json:"endTime"`
+	// The start time of the time window the number of milliseconds since the Unix epoch.
+	StartTime nrtime.EpochMilliseconds `json:"startTime"`
+}
+
+// UnavailableEntityOutline - An entity outline that is unavailable.
+type UnavailableEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+}
+
+func (x *UnavailableEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *UnavailableEntityOutline) ImplementsEntityOutline() {}
+
+// UserReference - The `UserReference` object provides basic identifying information about the user.
+type UserReference struct {
+	Email    string `json:"email,omitempty"`
+	Gravatar string `json:"gravatar,omitempty"`
+	ID       int    `json:"id,omitempty"`
+	Name     string `json:"name,omitempty"`
+}
+
+// WorkloadEntityOutline - A workload entity outline.
+type WorkloadEntityOutline struct {
+	Account AccountOutline `json:"account,omitempty"`
+	// The New Relic account ID associated with this entity.
+	AccountID int `json:"accountId,omitempty"`
+	// The current alerting severity of the entity.
+	AlertSeverity EntityAlertSeverity `json:"alertSeverity,omitempty"`
+	// When the workload was created.
+	CreatedAt nrtime.EpochMilliseconds `json:"createdAt,omitempty"`
+	// The user that created the workload.
+	CreatedByUser UserReference `json:"createdByUser,omitempty"`
+	// The entity's domain
+	Domain string `json:"domain,omitempty"`
+	// A value representing the combination of the entity's domain and type.
+	EntityType EntityType `json:"entityType,omitempty"`
+	// The date of last time the entity has updated any of its fields.
+	FirstIndexedAt nrtime.EpochMilliseconds `json:"firstIndexedAt,omitempty"`
+	// A unique entity identifier.
+	GUID common.EntityGUID `json:"guid,omitempty"`
+	// The list of golden metrics for a specific entity
+	GoldenMetrics EntityGoldenContextScopedGoldenMetrics `json:"goldenMetrics,omitempty"`
+	// The list of golden tags for a specific entityType.
+	GoldenTags EntityGoldenContextScopedGoldenTags `json:"goldenTags,omitempty"`
+	// The time the entity was indexed.
+	IndexedAt nrtime.EpochMilliseconds `json:"indexedAt,omitempty"`
+	// The last time the entity's reporting status changed.
+	LastReportingChangeAt nrtime.EpochMilliseconds `json:"lastReportingChangeAt,omitempty"`
+	// The name of this entity.
+	Name string `json:"name,omitempty"`
+	// The url to the entity.
+	Permalink string `json:"permalink,omitempty"`
+	// The reporting status of the entity. If New Relic is successfully collecting data from your application, this will be true.
+	Reporting bool `json:"reporting,omitempty"`
+	// The service level defined for the entity.
+	ServiceLevel ServiceLevelDefinition `json:"serviceLevel,omitempty"`
+	// The tags applied to the entity.
+	//
+	// For details on tags, as well as query and mutation examples, visit [our docs](https://docs.newrelic.com/docs/apis/graphql-api/tutorials/graphql-tagging-api-tutorial).
+	Tags []EntityTag `json:"tags,omitempty"`
+	// The entity's type
+	Type string `json:"type,omitempty"`
+	// When the workload was last updated.
+	UpdatedAt nrtime.EpochMilliseconds `json:"updatedAt,omitempty"`
+	// Status of the workload.
+	WorkloadStatus WorkloadStatus `json:"workloadStatus,omitempty"`
+}
+
+func (x *WorkloadEntityOutline) ImplementsAlertableEntityOutline() {}
+
+func (x *WorkloadEntityOutline) ImplementsEntityOutline() {}
+
+// WorkloadStatus - Detailed information about the status of a workload.
+type WorkloadStatus struct {
+	// A description that provides additional details about the status of the workload.
+	Description string `json:"description,omitempty"`
+	// Indicates where the status value derives from.
+	StatusSource WorkloadStatusSource `json:"statusSource,omitempty"`
+	// The status of the workload.
+	StatusValue WorkloadStatusValue `json:"statusValue,omitempty"`
+	// A short description of the status of the workload.
+	Summary string `json:"summary,omitempty"`
+}
+
 // ChangeTrackingRawCustomAttributesMap - A JSON scalar
 type ChangeTrackingRawCustomAttributesMap map[string]interface{}
+
+// DateTime - The `DateTime` scalar represents a date and time. The `DateTime` appears as an ISO8601 formatted string.
+type DateTime string
+
+// Float - The `Float` scalar type represents signed double-precision fractional
+// values as specified by
+// [IEEE 754](https://en.wikipedia.org/wiki/IEEE_754).
+type Float string
+
+// ID - The `ID` scalar type represents a unique identifier, often used to
+// refetch an object or as key for a cache. The ID type appears in a JSON
+// response as a String; however, it is not intended to be human-readable.
+// When expected as an input type, any string (such as `"4"`) or integer
+// (such as `4`) input value will be accepted as an ID.
+type ID string
+
+// Minutes - The `Minutes` scalar represents a duration in minutes
+type Minutes string
+
+// NRQL - This scalar represents a NRQL query string.
+//
+// See the [NRQL Docs](https://docs.newrelic.com/docs/insights/nrql-new-relic-query-language/nrql-resources/nrql-syntax-components-functions) for more information about NRQL syntax.
+type NRQL string
+
+// Seconds - The `Seconds` scalar represents a duration in seconds
+type Seconds string
+
+// SemVer - The `SemVer` scalar represents a version designation conforming to the SemVer specification.
+type SemVer string
+type AlertableEntityOutlineInterface interface {
+	ImplementsAlertableEntityOutline()
+}
+
+// UnmarshalAlertableEntityOutlineInterface unmarshals the interface into the correct type
+// based on __typename provided by GraphQL
+func UnmarshalAlertableEntityOutlineInterface(b []byte) (*AlertableEntityOutlineInterface, error) {
+	var err error
+
+	var rawMessageAlertableEntityOutline map[string]*json.RawMessage
+	err = json.Unmarshal(b, &rawMessageAlertableEntityOutline)
+	if err != nil {
+		return nil, err
+	}
+
+	// Nothing to unmarshal
+	if len(rawMessageAlertableEntityOutline) < 1 {
+		return nil, nil
+	}
+
+	var typeName string
+
+	if rawTypeName, ok := rawMessageAlertableEntityOutline["__typename"]; ok {
+		err = json.Unmarshal(*rawTypeName, &typeName)
+		if err != nil {
+			return nil, err
+		}
+
+		switch typeName {
+		case "ApmApplicationEntityOutline":
+			var interfaceType ApmApplicationEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "ApmDatabaseInstanceEntityOutline":
+			var interfaceType ApmDatabaseInstanceEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "ApmExternalServiceEntityOutline":
+			var interfaceType ApmExternalServiceEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "BrowserApplicationEntityOutline":
+			var interfaceType BrowserApplicationEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "DashboardEntityOutline":
+			var interfaceType DashboardEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "ExternalEntityOutline":
+			var interfaceType ExternalEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "GenericEntityOutline":
+			var interfaceType GenericEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "GenericInfrastructureEntityOutline":
+			var interfaceType GenericInfrastructureEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "InfrastructureAwsLambdaFunctionEntityOutline":
+			var interfaceType InfrastructureAwsLambdaFunctionEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "InfrastructureHostEntityOutline":
+			var interfaceType InfrastructureHostEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "KeyTransactionEntityOutline":
+			var interfaceType KeyTransactionEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "MobileApplicationEntityOutline":
+			var interfaceType MobileApplicationEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "SecureCredentialEntityOutline":
+			var interfaceType SecureCredentialEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "SyntheticMonitorEntityOutline":
+			var interfaceType SyntheticMonitorEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "TeamEntityOutline":
+			var interfaceType TeamEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "ThirdPartyServiceEntityOutline":
+			var interfaceType ThirdPartyServiceEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "UnavailableEntityOutline":
+			var interfaceType UnavailableEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "WorkloadEntityOutline":
+			var interfaceType WorkloadEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx AlertableEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		}
+	} else {
+		keys := []string{}
+		for k := range rawMessageAlertableEntityOutline {
+			keys = append(keys, k)
+		}
+		return nil, fmt.Errorf("interface AlertableEntityOutline did not include a __typename field for inspection: %s", keys)
+	}
+
+	return nil, fmt.Errorf("interface AlertableEntityOutline was not matched against all PossibleTypes: %s", typeName)
+}
+
+// ApmBrowserApplicationEntityOutline - The `ApmBrowserApplicationEntityOutline` interface provides detailed information for the Browser App injected by an APM Application.
+type ApmBrowserApplicationEntityOutlineInterface interface {
+	ImplementsApmBrowserApplicationEntityOutline()
+}
+
+// UnmarshalApmBrowserApplicationEntityOutlineInterface unmarshals the interface into the correct type
+// based on __typename provided by GraphQL
+func UnmarshalApmBrowserApplicationEntityOutlineInterface(b []byte) (*ApmBrowserApplicationEntityOutlineInterface, error) {
+	var err error
+
+	var rawMessageApmBrowserApplicationEntityOutline map[string]*json.RawMessage
+	err = json.Unmarshal(b, &rawMessageApmBrowserApplicationEntityOutline)
+	if err != nil {
+		return nil, err
+	}
+
+	// Nothing to unmarshal
+	if len(rawMessageApmBrowserApplicationEntityOutline) < 1 {
+		return nil, nil
+	}
+
+	var typeName string
+
+	if rawTypeName, ok := rawMessageApmBrowserApplicationEntityOutline["__typename"]; ok {
+		err = json.Unmarshal(*rawTypeName, &typeName)
+		if err != nil {
+			return nil, err
+		}
+
+		switch typeName {
+		case "ApmApplicationEntityOutline":
+			var interfaceType ApmApplicationEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx ApmBrowserApplicationEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		}
+	} else {
+		keys := []string{}
+		for k := range rawMessageApmBrowserApplicationEntityOutline {
+			keys = append(keys, k)
+		}
+		return nil, fmt.Errorf("interface ApmBrowserApplicationEntityOutline did not include a __typename field for inspection: %s", keys)
+	}
+
+	return nil, fmt.Errorf("interface ApmBrowserApplicationEntityOutline was not matched against all PossibleTypes: %s", typeName)
+}
+
+// ChangeTrackingEvent - The change tracking event interface.
+type ChangeTrackingEventInterface interface {
+	ImplementsChangeTrackingEvent()
+}
+
+// UnmarshalChangeTrackingEventInterface unmarshals the interface into the correct type
+// based on __typename provided by GraphQL
+func UnmarshalChangeTrackingEventInterface(b []byte) (*ChangeTrackingEventInterface, error) {
+	var err error
+
+	var rawMessageChangeTrackingEvent map[string]*json.RawMessage
+	err = json.Unmarshal(b, &rawMessageChangeTrackingEvent)
+	if err != nil {
+		return nil, err
+	}
+
+	// Nothing to unmarshal
+	if len(rawMessageChangeTrackingEvent) < 1 {
+		return nil, nil
+	}
+
+	var typeName string
+
+	if rawTypeName, ok := rawMessageChangeTrackingEvent["__typename"]; ok {
+		err = json.Unmarshal(*rawTypeName, &typeName)
+		if err != nil {
+			return nil, err
+		}
+
+		switch typeName {
+		case "ChangeTrackingDeploymentEvent":
+			var interfaceType ChangeTrackingDeploymentEvent
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx ChangeTrackingEventInterface = &interfaceType
+
+			return &xxx, nil
+		case "ChangeTrackingFeatureFlagEvent":
+			var interfaceType ChangeTrackingFeatureFlagEvent
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx ChangeTrackingEventInterface = &interfaceType
+
+			return &xxx, nil
+		case "ChangeTrackingGenericEvent":
+			var interfaceType ChangeTrackingGenericEvent
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx ChangeTrackingEventInterface = &interfaceType
+
+			return &xxx, nil
+		}
+	} else {
+		keys := []string{}
+		for k := range rawMessageChangeTrackingEvent {
+			keys = append(keys, k)
+		}
+		return nil, fmt.Errorf("interface ChangeTrackingEvent did not include a __typename field for inspection: %s", keys)
+	}
+
+	return nil, fmt.Errorf("interface ChangeTrackingEvent was not matched against all PossibleTypes: %s", typeName)
+}
+
+// EntityOutline - The `EntityOutline` interface object allows fetching basic entity data for many entities at a time.
+//
+// To understand more about entities and entity types, look at [our docs](https://docs.newrelic.com/docs/what-are-new-relic-entities).
+type EntityOutlineInterface interface {
+	ImplementsEntityOutline()
+}
+
+// UnmarshalEntityOutlineInterface unmarshals the interface into the correct type
+// based on __typename provided by GraphQL
+func UnmarshalEntityOutlineInterface(b []byte) (*EntityOutlineInterface, error) {
+	var err error
+
+	var rawMessageEntityOutline map[string]*json.RawMessage
+	err = json.Unmarshal(b, &rawMessageEntityOutline)
+	if err != nil {
+		return nil, err
+	}
+
+	// Nothing to unmarshal
+	if len(rawMessageEntityOutline) < 1 {
+		return nil, nil
+	}
+
+	var typeName string
+
+	if rawTypeName, ok := rawMessageEntityOutline["__typename"]; ok {
+		err = json.Unmarshal(*rawTypeName, &typeName)
+		if err != nil {
+			return nil, err
+		}
+
+		switch typeName {
+		case "ApmApplicationEntityOutline":
+			var interfaceType ApmApplicationEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "ApmDatabaseInstanceEntityOutline":
+			var interfaceType ApmDatabaseInstanceEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "ApmExternalServiceEntityOutline":
+			var interfaceType ApmExternalServiceEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "BrowserApplicationEntityOutline":
+			var interfaceType BrowserApplicationEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "DashboardEntityOutline":
+			var interfaceType DashboardEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "ExternalEntityOutline":
+			var interfaceType ExternalEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "GenericEntityOutline":
+			var interfaceType GenericEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "GenericInfrastructureEntityOutline":
+			var interfaceType GenericInfrastructureEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "InfrastructureAwsLambdaFunctionEntityOutline":
+			var interfaceType InfrastructureAwsLambdaFunctionEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "InfrastructureHostEntityOutline":
+			var interfaceType InfrastructureHostEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "KeyTransactionEntityOutline":
+			var interfaceType KeyTransactionEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "MobileApplicationEntityOutline":
+			var interfaceType MobileApplicationEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "SecureCredentialEntityOutline":
+			var interfaceType SecureCredentialEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "SyntheticMonitorEntityOutline":
+			var interfaceType SyntheticMonitorEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "TeamEntityOutline":
+			var interfaceType TeamEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "ThirdPartyServiceEntityOutline":
+			var interfaceType ThirdPartyServiceEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "UnavailableEntityOutline":
+			var interfaceType UnavailableEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "WorkloadEntityOutline":
+			var interfaceType WorkloadEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx EntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		}
+	} else {
+		keys := []string{}
+		for k := range rawMessageEntityOutline {
+			keys = append(keys, k)
+		}
+		return nil, fmt.Errorf("interface EntityOutline did not include a __typename field for inspection: %s", keys)
+	}
+
+	return nil, fmt.Errorf("interface EntityOutline was not matched against all PossibleTypes: %s", typeName)
+}
+
+type InfrastructureIntegrationEntityOutlineInterface interface {
+	ImplementsInfrastructureIntegrationEntityOutline()
+}
+
+// UnmarshalInfrastructureIntegrationEntityOutlineInterface unmarshals the interface into the correct type
+// based on __typename provided by GraphQL
+func UnmarshalInfrastructureIntegrationEntityOutlineInterface(b []byte) (*InfrastructureIntegrationEntityOutlineInterface, error) {
+	var err error
+
+	var rawMessageInfrastructureIntegrationEntityOutline map[string]*json.RawMessage
+	err = json.Unmarshal(b, &rawMessageInfrastructureIntegrationEntityOutline)
+	if err != nil {
+		return nil, err
+	}
+
+	// Nothing to unmarshal
+	if len(rawMessageInfrastructureIntegrationEntityOutline) < 1 {
+		return nil, nil
+	}
+
+	var typeName string
+
+	if rawTypeName, ok := rawMessageInfrastructureIntegrationEntityOutline["__typename"]; ok {
+		err = json.Unmarshal(*rawTypeName, &typeName)
+		if err != nil {
+			return nil, err
+		}
+
+		switch typeName {
+		case "GenericInfrastructureEntityOutline":
+			var interfaceType GenericInfrastructureEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx InfrastructureIntegrationEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		case "InfrastructureAwsLambdaFunctionEntityOutline":
+			var interfaceType InfrastructureAwsLambdaFunctionEntityOutline
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx InfrastructureIntegrationEntityOutlineInterface = &interfaceType
+
+			return &xxx, nil
+		}
+	} else {
+		keys := []string{}
+		for k := range rawMessageInfrastructureIntegrationEntityOutline {
+			keys = append(keys, k)
+		}
+		return nil, fmt.Errorf("interface InfrastructureIntegrationEntityOutline did not include a __typename field for inspection: %s", keys)
+	}
+
+	return nil, fmt.Errorf("interface InfrastructureIntegrationEntityOutline was not matched against all PossibleTypes: %s", typeName)
+}

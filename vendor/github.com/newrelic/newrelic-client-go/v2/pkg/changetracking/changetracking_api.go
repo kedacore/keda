@@ -69,3 +69,4858 @@ const ChangeTrackingCreateDeploymentMutation = `mutation(
 	user
 	version
 } }`
+
+// Coming soon! If you'd like to sign up to receive access to our Public Preview, you can sign up under Administration -> Previews & Trial.
+//
+// US, AMEA, LATAM: [Sign Up Here](https://one.newrelic.com/launcher/promotion-flow.launcher?pane=eyJvZmZlclR5cGVJZCI6ImYwNTQwYTU4LWY0YTAtNGIxOS1hMjNlLTlmZjQ0ZTNhZGJmNCJ9)
+// EU: [Sign Up Here](https://one.eu.newrelic.com/launcher/promotion-flow.launcher?pane=eyJvZmZlclR5cGVJZCI6ImYwNTQwYTU4LWY0YTAtNGIxOS1hMjNlLTlmZjQ0ZTNhZGJmNCJ9)
+//
+// Creates a new change tracking event in NRDB and its associated marker.
+func (a *Changetracking) ChangeTrackingCreateEvent(
+	changeTrackingEvent ChangeTrackingCreateEventInput,
+	dataHandlingRules ChangeTrackingDataHandlingRules,
+) (*ChangeTrackingCreateEventResponse, error) {
+	return a.ChangeTrackingCreateEventWithContext(context.Background(),
+		changeTrackingEvent,
+		dataHandlingRules,
+	)
+}
+
+// Coming soon! If you'd like to sign up to receive access to our Public Preview, you can sign up under Administration -> Previews & Trial.
+//
+// US, AMEA, LATAM: [Sign Up Here](https://one.newrelic.com/launcher/promotion-flow.launcher?pane=eyJvZmZlclR5cGVJZCI6ImYwNTQwYTU4LWY0YTAtNGIxOS1hMjNlLTlmZjQ0ZTNhZGJmNCJ9)
+// EU: [Sign Up Here](https://one.eu.newrelic.com/launcher/promotion-flow.launcher?pane=eyJvZmZlclR5cGVJZCI6ImYwNTQwYTU4LWY0YTAtNGIxOS1hMjNlLTlmZjQ0ZTNhZGJmNCJ9)
+//
+// Creates a new change tracking event in NRDB and its associated marker.
+func (a *Changetracking) ChangeTrackingCreateEventWithContext(
+	ctx context.Context,
+	changeTrackingEvent ChangeTrackingCreateEventInput,
+	dataHandlingRules ChangeTrackingDataHandlingRules,
+) (*ChangeTrackingCreateEventResponse, error) {
+
+	resp := ChangeTrackingCreateEventQueryResponse{}
+	vars := map[string]interface{}{
+		"changeTrackingEvent": changeTrackingEvent,
+		"dataHandlingRules":   dataHandlingRules,
+	}
+
+	if err := a.client.NerdGraphQueryWithContext(ctx, ChangeTrackingCreateEventMutation, vars, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp.ChangeTrackingCreateEventResponse, nil
+}
+
+type ChangeTrackingCreateEventQueryResponse struct {
+	ChangeTrackingCreateEventResponse ChangeTrackingCreateEventResponse `json:"ChangeTrackingCreateEvent"`
+}
+
+const ChangeTrackingCreateEventMutation = `mutation(
+	$changeTrackingEvent: ChangeTrackingCreateEventInput!,
+	$dataHandlingRules: ChangeTrackingDataHandlingRules,
+) { changeTrackingCreateEvent(
+	changeTrackingEvent: $changeTrackingEvent,
+	dataHandlingRules: $dataHandlingRules,
+) {
+	changeTrackingEvent {
+		__typename
+		category
+		categoryAndType
+		changeTrackingId
+		customAttributes
+		description
+		entity {
+			__typename
+			account {
+				id
+				name
+				reportingEventTypes
+			}
+			accountId
+			alertSeverity
+			domain
+			entityType
+			firstIndexedAt
+			goldenMetrics {
+				context {
+					account
+					guid
+				}
+				metrics {
+					definition {
+						eventId
+						eventObjectId
+						facet
+						from
+						select
+						where
+					}
+					metricName
+					name
+					originalDefinitions {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						selectorValue
+					}
+					originalQueries {
+						query
+						selectorValue
+					}
+					query
+					title
+					unit
+				}
+			}
+			goldenTags {
+				context {
+					account
+					guid
+				}
+				tags {
+					key
+				}
+			}
+			guid
+			indexedAt
+			lastReportingChangeAt
+			name
+			permalink
+			reporting
+			serviceLevel {
+				indicators {
+					createdAt
+					createdBy {
+						email
+						gravatar
+						id
+						name
+					}
+					description
+					entityGuid
+					events {
+						account {
+							id
+							name
+						}
+						badEvents {
+							from
+							where
+						}
+						goodEvents {
+							from
+							where
+						}
+						validEvents {
+							from
+							where
+						}
+					}
+					guid
+					id
+					name
+					objectives {
+						description
+						name
+						target
+					}
+					resultQueries {
+						goodEvents {
+							nrql
+						}
+						indicator {
+							nrql
+						}
+						validEvents {
+							nrql
+						}
+					}
+					slug
+					updatedAt
+					updatedBy {
+						email
+						gravatar
+						id
+						name
+					}
+				}
+			}
+			tags {
+				key
+				values
+			}
+			type
+			... on ApmApplicationEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				apmBrowserSummary {
+					ajaxRequestThroughput
+					ajaxResponseTimeAverage
+					jsErrorRate
+					pageLoadThroughput
+					pageLoadTimeAverage
+				}
+				apmSummary {
+					apdexScore
+					errorRate
+					hostCount
+					instanceCount
+					nonWebResponseTimeAverage
+					nonWebThroughput
+					responseTimeAverage
+					throughput
+					webResponseTimeAverage
+					webThroughput
+				}
+				applicationId
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				language
+				runningAgentVersions {
+					maxVersion
+					minVersion
+				}
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				settings {
+					apdexTarget
+					serverSideConfig
+				}
+				tags {
+					key
+					values
+				}
+			}
+			... on ApmDatabaseInstanceEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				host
+				portOrPath
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+				vendor
+			}
+			... on ApmExternalServiceEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				externalSummary {
+					responseTimeAverage
+					throughput
+				}
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				host
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+			}
+			... on BrowserApplicationEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				agentInstallType
+				applicationId
+				browserSummary {
+					ajaxRequestThroughput
+					ajaxResponseTimeAverage
+					jsErrorRate
+					pageLoadThroughput
+					pageLoadTimeAverage
+					pageLoadTimeMedian
+					spaResponseTimeAverage
+					spaResponseTimeMedian
+				}
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				runningAgentVersions {
+					maxSemanticVersion
+					maxVersion
+					minSemanticVersion
+					minVersion
+				}
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				servingApmApplicationId
+				settings {
+					apdexTarget
+				}
+				tags {
+					key
+					values
+				}
+			}
+			... on DashboardEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				createdAt
+				dashboardParentGuid
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				owner {
+					email
+					userId
+				}
+				permissions
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+				updatedAt
+			}
+			... on ExternalEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+			}
+			... on GenericEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+			}
+			... on GenericInfrastructureEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				integrationTypeCode
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+			}
+			... on InfrastructureAwsLambdaFunctionEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				integrationTypeCode
+				runtime
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+			}
+			... on InfrastructureHostEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				hostSummary {
+					cpuUtilizationPercent
+					diskUsedPercent
+					memoryUsedPercent
+					networkReceiveRate
+					networkTransmitRate
+					servicesCount
+				}
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+			}
+			... on KeyTransactionEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+			}
+			... on MobileApplicationEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				applicationId
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				mobileSummary {
+					appLaunchCount
+					crashCount
+					crashRate
+					httpErrorRate
+					httpRequestCount
+					httpRequestRate
+					httpResponseTimeAverage
+					mobileSessionCount
+					networkFailureRate
+					usersAffectedCount
+				}
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+			}
+			... on SecureCredentialEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				description
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				secureCredentialId
+				secureCredentialSummary {
+					failingMonitorCount
+					monitorCount
+				}
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+				updatedAt
+			}
+			... on SyntheticMonitorEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				monitorId
+				monitorSummary {
+					locationsFailing
+					locationsRunning
+					status
+					successRate
+				}
+				monitorType
+				monitoredUrl
+				period
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+			}
+			... on TeamEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+			}
+			... on ThirdPartyServiceEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+			}
+			... on UnavailableEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+			}
+			... on WorkloadEntityOutline {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				createdAt
+				createdByUser {
+					email
+					gravatar
+					id
+					name
+				}
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+				updatedAt
+				workloadStatus {
+					description
+					statusSource
+					statusValue
+					summary
+				}
+			}
+		}
+		groupId
+		shortDescription
+		timestamp
+		type
+		user
+		... on ChangeTrackingDeploymentEvent {
+			__typename
+			changelog
+			commit
+			deepLink
+			entity {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				accountId
+				alertSeverity
+				domain
+				entityType
+				firstIndexedAt
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				guid
+				indexedAt
+				lastReportingChangeAt
+				name
+				permalink
+				reporting
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+				type
+				... on ApmApplicationEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					apmBrowserSummary {
+						ajaxRequestThroughput
+						ajaxResponseTimeAverage
+						jsErrorRate
+						pageLoadThroughput
+						pageLoadTimeAverage
+					}
+					apmSummary {
+						apdexScore
+						errorRate
+						hostCount
+						instanceCount
+						nonWebResponseTimeAverage
+						nonWebThroughput
+						responseTimeAverage
+						throughput
+						webResponseTimeAverage
+						webThroughput
+					}
+					applicationId
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					language
+					runningAgentVersions {
+						maxVersion
+						minVersion
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					settings {
+						apdexTarget
+						serverSideConfig
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on ApmDatabaseInstanceEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					host
+					portOrPath
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+					vendor
+				}
+				... on ApmExternalServiceEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					externalSummary {
+						responseTimeAverage
+						throughput
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					host
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on BrowserApplicationEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					agentInstallType
+					applicationId
+					browserSummary {
+						ajaxRequestThroughput
+						ajaxResponseTimeAverage
+						jsErrorRate
+						pageLoadThroughput
+						pageLoadTimeAverage
+						pageLoadTimeMedian
+						spaResponseTimeAverage
+						spaResponseTimeMedian
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					runningAgentVersions {
+						maxSemanticVersion
+						maxVersion
+						minSemanticVersion
+						minVersion
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					servingApmApplicationId
+					settings {
+						apdexTarget
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on DashboardEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					createdAt
+					dashboardParentGuid
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					owner {
+						email
+						userId
+					}
+					permissions
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+					updatedAt
+				}
+				... on ExternalEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on GenericEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on GenericInfrastructureEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					integrationTypeCode
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on InfrastructureAwsLambdaFunctionEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					integrationTypeCode
+					runtime
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on InfrastructureHostEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					hostSummary {
+						cpuUtilizationPercent
+						diskUsedPercent
+						memoryUsedPercent
+						networkReceiveRate
+						networkTransmitRate
+						servicesCount
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on KeyTransactionEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on MobileApplicationEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					applicationId
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					mobileSummary {
+						appLaunchCount
+						crashCount
+						crashRate
+						httpErrorRate
+						httpRequestCount
+						httpRequestRate
+						httpResponseTimeAverage
+						mobileSessionCount
+						networkFailureRate
+						usersAffectedCount
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on SecureCredentialEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					description
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					secureCredentialId
+					secureCredentialSummary {
+						failingMonitorCount
+						monitorCount
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+					updatedAt
+				}
+				... on SyntheticMonitorEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					monitorId
+					monitorSummary {
+						locationsFailing
+						locationsRunning
+						status
+						successRate
+					}
+					monitorType
+					monitoredUrl
+					period
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on TeamEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on ThirdPartyServiceEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on UnavailableEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on WorkloadEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					createdAt
+					createdByUser {
+						email
+						gravatar
+						id
+						name
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+					updatedAt
+					workloadStatus {
+						description
+						statusSource
+						statusValue
+						summary
+					}
+				}
+			}
+			version
+		}
+		... on ChangeTrackingFeatureFlagEvent {
+			__typename
+			entity {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				accountId
+				alertSeverity
+				domain
+				entityType
+				firstIndexedAt
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				guid
+				indexedAt
+				lastReportingChangeAt
+				name
+				permalink
+				reporting
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+				type
+				... on ApmApplicationEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					apmBrowserSummary {
+						ajaxRequestThroughput
+						ajaxResponseTimeAverage
+						jsErrorRate
+						pageLoadThroughput
+						pageLoadTimeAverage
+					}
+					apmSummary {
+						apdexScore
+						errorRate
+						hostCount
+						instanceCount
+						nonWebResponseTimeAverage
+						nonWebThroughput
+						responseTimeAverage
+						throughput
+						webResponseTimeAverage
+						webThroughput
+					}
+					applicationId
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					language
+					runningAgentVersions {
+						maxVersion
+						minVersion
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					settings {
+						apdexTarget
+						serverSideConfig
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on ApmDatabaseInstanceEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					host
+					portOrPath
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+					vendor
+				}
+				... on ApmExternalServiceEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					externalSummary {
+						responseTimeAverage
+						throughput
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					host
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on BrowserApplicationEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					agentInstallType
+					applicationId
+					browserSummary {
+						ajaxRequestThroughput
+						ajaxResponseTimeAverage
+						jsErrorRate
+						pageLoadThroughput
+						pageLoadTimeAverage
+						pageLoadTimeMedian
+						spaResponseTimeAverage
+						spaResponseTimeMedian
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					runningAgentVersions {
+						maxSemanticVersion
+						maxVersion
+						minSemanticVersion
+						minVersion
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					servingApmApplicationId
+					settings {
+						apdexTarget
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on DashboardEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					createdAt
+					dashboardParentGuid
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					owner {
+						email
+						userId
+					}
+					permissions
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+					updatedAt
+				}
+				... on ExternalEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on GenericEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on GenericInfrastructureEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					integrationTypeCode
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on InfrastructureAwsLambdaFunctionEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					integrationTypeCode
+					runtime
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on InfrastructureHostEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					hostSummary {
+						cpuUtilizationPercent
+						diskUsedPercent
+						memoryUsedPercent
+						networkReceiveRate
+						networkTransmitRate
+						servicesCount
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on KeyTransactionEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on MobileApplicationEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					applicationId
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					mobileSummary {
+						appLaunchCount
+						crashCount
+						crashRate
+						httpErrorRate
+						httpRequestCount
+						httpRequestRate
+						httpResponseTimeAverage
+						mobileSessionCount
+						networkFailureRate
+						usersAffectedCount
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on SecureCredentialEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					description
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					secureCredentialId
+					secureCredentialSummary {
+						failingMonitorCount
+						monitorCount
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+					updatedAt
+				}
+				... on SyntheticMonitorEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					monitorId
+					monitorSummary {
+						locationsFailing
+						locationsRunning
+						status
+						successRate
+					}
+					monitorType
+					monitoredUrl
+					period
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on TeamEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on ThirdPartyServiceEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on UnavailableEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on WorkloadEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					createdAt
+					createdByUser {
+						email
+						gravatar
+						id
+						name
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+					updatedAt
+					workloadStatus {
+						description
+						statusSource
+						statusValue
+						summary
+					}
+				}
+			}
+			featureFlagId
+		}
+		... on ChangeTrackingGenericEvent {
+			__typename
+			entity {
+				__typename
+				account {
+					id
+					name
+					reportingEventTypes
+				}
+				accountId
+				alertSeverity
+				domain
+				entityType
+				firstIndexedAt
+				goldenMetrics {
+					context {
+						account
+						guid
+					}
+					metrics {
+						definition {
+							eventId
+							eventObjectId
+							facet
+							from
+							select
+							where
+						}
+						metricName
+						name
+						originalDefinitions {
+							selectorValue
+						}
+						originalQueries {
+							query
+							selectorValue
+						}
+						query
+						title
+						unit
+					}
+				}
+				goldenTags {
+					context {
+						account
+						guid
+					}
+					tags {
+						key
+					}
+				}
+				guid
+				indexedAt
+				lastReportingChangeAt
+				name
+				permalink
+				reporting
+				serviceLevel {
+					indicators {
+						createdAt
+						createdBy {
+							email
+							gravatar
+							id
+							name
+						}
+						description
+						entityGuid
+						guid
+						id
+						name
+						objectives {
+							description
+							name
+							target
+						}
+						slug
+						updatedAt
+						updatedBy {
+							email
+							gravatar
+							id
+							name
+						}
+					}
+				}
+				tags {
+					key
+					values
+				}
+				type
+				... on ApmApplicationEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					apmBrowserSummary {
+						ajaxRequestThroughput
+						ajaxResponseTimeAverage
+						jsErrorRate
+						pageLoadThroughput
+						pageLoadTimeAverage
+					}
+					apmSummary {
+						apdexScore
+						errorRate
+						hostCount
+						instanceCount
+						nonWebResponseTimeAverage
+						nonWebThroughput
+						responseTimeAverage
+						throughput
+						webResponseTimeAverage
+						webThroughput
+					}
+					applicationId
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					language
+					runningAgentVersions {
+						maxVersion
+						minVersion
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					settings {
+						apdexTarget
+						serverSideConfig
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on ApmDatabaseInstanceEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					host
+					portOrPath
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+					vendor
+				}
+				... on ApmExternalServiceEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					externalSummary {
+						responseTimeAverage
+						throughput
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					host
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on BrowserApplicationEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					agentInstallType
+					applicationId
+					browserSummary {
+						ajaxRequestThroughput
+						ajaxResponseTimeAverage
+						jsErrorRate
+						pageLoadThroughput
+						pageLoadTimeAverage
+						pageLoadTimeMedian
+						spaResponseTimeAverage
+						spaResponseTimeMedian
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					runningAgentVersions {
+						maxSemanticVersion
+						maxVersion
+						minSemanticVersion
+						minVersion
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					servingApmApplicationId
+					settings {
+						apdexTarget
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on DashboardEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					createdAt
+					dashboardParentGuid
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					owner {
+						email
+						userId
+					}
+					permissions
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+					updatedAt
+				}
+				... on ExternalEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on GenericEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on GenericInfrastructureEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					integrationTypeCode
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on InfrastructureAwsLambdaFunctionEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					integrationTypeCode
+					runtime
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on InfrastructureHostEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					hostSummary {
+						cpuUtilizationPercent
+						diskUsedPercent
+						memoryUsedPercent
+						networkReceiveRate
+						networkTransmitRate
+						servicesCount
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on KeyTransactionEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on MobileApplicationEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					applicationId
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					mobileSummary {
+						appLaunchCount
+						crashCount
+						crashRate
+						httpErrorRate
+						httpRequestCount
+						httpRequestRate
+						httpResponseTimeAverage
+						mobileSessionCount
+						networkFailureRate
+						usersAffectedCount
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on SecureCredentialEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					description
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					secureCredentialId
+					secureCredentialSummary {
+						failingMonitorCount
+						monitorCount
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+					updatedAt
+				}
+				... on SyntheticMonitorEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					monitorId
+					monitorSummary {
+						locationsFailing
+						locationsRunning
+						status
+						successRate
+					}
+					monitorType
+					monitoredUrl
+					period
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on TeamEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on ThirdPartyServiceEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on UnavailableEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+				}
+				... on WorkloadEntityOutline {
+					__typename
+					account {
+						id
+						name
+						reportingEventTypes
+					}
+					createdAt
+					createdByUser {
+						email
+						gravatar
+						id
+						name
+					}
+					goldenMetrics {
+						context {
+							account
+							guid
+						}
+						metrics {
+							metricName
+							name
+							query
+							title
+							unit
+						}
+					}
+					goldenTags {
+						context {
+							account
+							guid
+						}
+						tags {
+							key
+						}
+					}
+					serviceLevel {
+						indicators {
+							createdAt
+							description
+							entityGuid
+							guid
+							id
+							name
+							slug
+							updatedAt
+						}
+					}
+					tags {
+						key
+						values
+					}
+					updatedAt
+					workloadStatus {
+						description
+						statusSource
+						statusValue
+						summary
+					}
+				}
+			}
+		}
+	}
+	messages
+} }`

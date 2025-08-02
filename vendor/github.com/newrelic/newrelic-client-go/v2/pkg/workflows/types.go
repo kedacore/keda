@@ -97,6 +97,8 @@ var AiWorkflowsDestinationTypeTypes = struct {
 	SLACK_LEGACY AiWorkflowsDestinationType
 	// Webhook Destination Configuration type
 	WEBHOOK AiWorkflowsDestinationType
+	// Workflow Automation Destination Configuration type
+	WORKFLOW_AUTOMATION AiWorkflowsDestinationType
 }{
 	// Email Destination Configuration type
 	EMAIL: "EMAIL",
@@ -124,6 +126,8 @@ var AiWorkflowsDestinationTypeTypes = struct {
 	SLACK_LEGACY: "SLACK_LEGACY",
 	// Webhook Destination Configuration type
 	WEBHOOK: "WEBHOOK",
+	// Workflow Automation Destination Configuration type
+	WORKFLOW_AUTOMATION: "WORKFLOW_AUTOMATION",
 }
 
 // AiWorkflowsEnrichmentType - Type of Enrichment
