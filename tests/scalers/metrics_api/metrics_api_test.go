@@ -57,6 +57,7 @@ metadata:
 data:
   AUTH_PASSWORD: U0VDUkVUCg==
   AUTH_USERNAME: VVNFUgo=
+  AUTH_MODE: YmFzaWM=
 `
 
 	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
@@ -72,6 +73,9 @@ spec:
     - parameter: password
       name: {{.SecretName}}
       key: AUTH_PASSWORD
+    - parameter: authMode
+      name: {{.SecretName}}
+      key: AUTH_MODE
 `
 
 	metricsServerdeploymentTemplate = `
@@ -163,8 +167,6 @@ spec:
       activationTargetValue: "20"
       url: "{{.MetricsServerEndpoint}}"
       valueLocation: 'value'
-      authMode: "basic"
-      method: "query"
     authenticationRef:
       name: {{.TriggerAuthName}}
 `
