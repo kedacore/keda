@@ -117,7 +117,7 @@ type Fallback struct {
 	Replicas         int32 `json:"replicas"`
 	// +optional
 	// +kubebuilder:default=static
-	// +kubebuilder:validation:Enum=static;currentReplicas;currentReplicasIfHigher;currentReplicasIfLower
+	// +kubebuilder:validation:Enum=static;currentReplicas;currentReplicasIfHigher;currentReplicasIfLower;cached
 	Behavior string `json:"behavior,omitempty"`
 }
 
