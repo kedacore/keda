@@ -550,3 +550,119 @@ IisErx3ap2o99Zn+Yotv/TGZkS+lfMLdbcOBr8a57Q==
 		})
 	}
 }
+
+func TestPrometheusScalerExecutePromQuery_AllSpecialCharactersCombined(t *testing.T) {
+	// Test combining all edge cases: special query, custom params, namespace, complex URL
+	specialQuery := `sum(rate(test_metric{label="value & test=1"}[5m]))`
+	customParams := map[string]string{
+		"param1": "value with spaces & symbols",
+		"param2": "测试",
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		query := request.URL.Query()
+
+		// Verify all parameters are properly handled
+		assert.Equal(t, specialQuery, query.Get("query"))
+		assert.Equal(t, customParams["param1"], query.Get("param1"))
+		assert.Equal(t, customParams["param2"], query.Get("param2"))
+		assert.NotEmpty(t, query.Get("time"))
+
+		// Verify path
+		assert.Equal(t, "/metrics/api/v1/query", request.URL.Path)
+
+		writer.WriteHeader(http.StatusOK)
+		writer.Write([]byte(`{"data":{"result":[{"value": ["1", "789"]}]}}`))
+	}))
+	defer server.Close()
+
+	scaler := prometheusScaler{
+		metadata: &prometheusMetadata{
+			ServerAddress:   server.URL + "/metrics",
+			Query:           specialQuery,
+			QueryParameters: customParams,
+		},
+		httpClient: http.DefaultClient,
+		logger:     logr.Discard(),
+	}
+
+	value, err := scaler.ExecutePromQuery(context.TODO())
+
+	assert.NoError(t, err)
+	assert.Equal(t, float64(789), value)
+}
+
+func TestPrometheusScalerExecutePromQuery_TrailingSlashBehavior(t *testing.T) {
+	tests := []struct {
+		name          string
+		serverAddress string
+		expectedPath  string
+		description   string
+	}{
+		{
+			name:          "server_without_trailing_slash",
+			serverAddress: "", // Will be set to server.URL
+			expectedPath:  "/api/v1/query",
+			description:   "Server URL without trailing slash should work correctly",
+		},
+		{
+			name:          "server_with_trailing_slash",
+			serverAddress: "", // Will be set to server.URL + "/"
+			expectedPath:  "/api/v1/query",
+			description:   "Server URL with trailing slash should produce same result",
+		},
+		{
+			name:          "server_with_path_no_trailing_slash",
+			serverAddress: "", // Will be set to server.URL + "/prometheus"
+			expectedPath:  "/prometheus/api/v1/query",
+			description:   "Server URL with path but no trailing slash",
+		},
+		{
+			name:          "server_with_path_and_trailing_slash",
+			serverAddress: "", // Will be set to server.URL + "/prometheus/"
+			expectedPath:  "/prometheus/api/v1/query",
+			description:   "Server URL with path and trailing slash should produce same result",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				// Verify the path is correctly constructed regardless of trailing slash
+				assert.Equal(t, tt.expectedPath, request.URL.Path, tt.description)
+
+				// Return a valid response
+				writer.WriteHeader(http.StatusOK)
+				writer.Write([]byte(`{"data":{"result":[{"value": ["1", "42"]}]}}`))
+			}))
+			defer server.Close()
+
+			// Set the actual server URL based on test case
+			var actualServerAddress string
+			switch tt.name {
+			case "server_without_trailing_slash":
+				actualServerAddress = server.URL
+			case "server_with_trailing_slash":
+				actualServerAddress = server.URL + "/"
+			case "server_with_path_no_trailing_slash":
+				actualServerAddress = server.URL + "/prometheus"
+			case "server_with_path_and_trailing_slash":
+				actualServerAddress = server.URL + "/prometheus/"
+			}
+
+			scaler := prometheusScaler{
+				metadata: &prometheusMetadata{
+					ServerAddress: actualServerAddress,
+					Query:         "up",
+				},
+				httpClient: http.DefaultClient,
+				logger:     logr.Discard(),
+			}
+
+			value, err := scaler.ExecutePromQuery(context.TODO())
+
+			assert.NoError(t, err, "Query should succeed regardless of trailing slash")
+			assert.Equal(t, float64(42), value)
+		})
+	}
+}
