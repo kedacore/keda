@@ -234,7 +234,7 @@ func (so *ScaledObject) NeedToBePausedByAnnotation() bool {
 	return getBoolAnnotation(so, PausedAnnotation)
 }
 
-// NeedToPauseScaleDown checks whether Scale Down actions for a scale object need to be blocked based on the PausedScaleDown annotation
+// NeedToPauseScaleDown checks whether Scale Down actions for a ScaledObject need to be blocked based on the PausedScaleDown annotation
 func (so *ScaledObject) NeedToPauseScaleDown() bool {
 	return getBoolAnnotation(so, PausedScaleDownAnnotation)
 }
