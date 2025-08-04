@@ -69,7 +69,6 @@ type metricsAPIScalerMetadata struct {
 }
 
 func (m *metricsAPIScalerMetadata) Validate() error {
-
 	// Handle authentication based on authMode and set enable flags
 	if m.AuthMode != "" {
 		authModes := strings.Split(m.AuthMode, ",")
