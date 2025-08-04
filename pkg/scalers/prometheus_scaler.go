@@ -191,21 +191,33 @@ func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 
 func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error) {
 	t := time.Now().UTC().Format(time.RFC3339)
-	queryEscaped := url_pkg.QueryEscape(s.metadata.Query)
-	url := fmt.Sprintf("%s/api/v1/query?query=%s&time=%s", s.metadata.ServerAddress, queryEscaped, t)
+
+	// Parse the base server address and join the API path directly
+	parsedURL, err := url_pkg.Parse(s.metadata.ServerAddress)
+	if err != nil {
+		return -1, err
+	}
+	parsedURL = parsedURL.JoinPath("api/v1/query")
+
+	// Build query parameters using url.Values for safe parameter handling
+	queryParams := url_pkg.Values{}
+	queryParams.Set("query", s.metadata.Query)
+	queryParams.Set("time", t)
 
 	// set 'namespace' parameter for namespaced Prometheus requests (e.g. for Thanos Querier)
 	if s.metadata.Namespace != "" {
-		url = fmt.Sprintf("%s&namespace=%s", url, s.metadata.Namespace)
+		queryParams.Set("namespace", s.metadata.Namespace)
 	}
 
+	// Add custom query parameters
 	for queryParameterKey, queryParameterValue := range s.metadata.QueryParameters {
-		queryParameterKeyEscaped := url_pkg.QueryEscape(queryParameterKey)
-		queryParameterValueEscaped := url_pkg.QueryEscape(queryParameterValue)
-		url = fmt.Sprintf("%s&%s=%s", url, queryParameterKeyEscaped, queryParameterValueEscaped)
+		queryParams.Set(queryParameterKey, queryParameterValue)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	// Set the encoded query string
+	parsedURL.RawQuery = queryParams.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", parsedURL.String(), nil)
 	if err != nil {
 		return -1, err
 	}
