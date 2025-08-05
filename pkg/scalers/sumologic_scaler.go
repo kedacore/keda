@@ -39,6 +39,8 @@ type sumologicMetadata struct {
 	Quantization        time.Duration     `keda:"name=quantization,        order=triggerMetadata, optional"`                                // Only for metrics queries
 	Rollup              string            `keda:"name=rollup,              order=triggerMetadata, enum=Avg;Sum;Count;Min;Max, default=Avg"` // Only for metrics queries
 	ResultField         string            `keda:"name=resultField,         order=triggerMetadata, optional"`                                // Only for logs queries
+	LogsPollingInterval time.Duration     `keda:"name=logsPollingInterval, order=triggerMetadata, optional"`                                // Only for logs queries
+	MaxRetries          int               `keda:"name=maxRetries,          order=triggerMetadata, optional"`
 	Timerange           time.Duration     `keda:"name=timerange,           order=triggerMetadata"`
 	Timezone            string            `keda:"name=timezone,            order=triggerMetadata, default=UTC"`
 	ActivationThreshold float64           `keda:"name=activationThreshold, order=triggerMetadata, default=0"`
@@ -90,10 +92,12 @@ func NewSumologicScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	client, err := sumologic.NewClient(&sumologic.Config{
-		Host:      meta.Host,
-		AccessID:  meta.AccessID,
-		AccessKey: meta.AccessKey,
-		UnsafeSsl: meta.UnsafeSsl,
+		Host:                meta.Host,
+		AccessID:            meta.AccessID,
+		AccessKey:           meta.AccessKey,
+		UnsafeSsl:           meta.UnsafeSsl,
+		LogsPollingInterval: meta.LogsPollingInterval,
+		MaxRetries:          meta.MaxRetries,
 	}, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sumologic client: %w", err)
