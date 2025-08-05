@@ -1,0 +1,94 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.5
+  name: withtriggers.keda.sh
+spec:
+  group: keda.sh
+  names:
+    kind: WithTriggers
+    listKind: WithTriggersList
+    plural: withtriggers
+    singular: withtriggers
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: WithTriggers is a specification for a resource with triggers
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          internalKind:
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: WithTriggersSpec is the spec for a an object with triggers
+              resource
+            properties:
+              pollingInterval:
+                format: int32
+                type: integer
+              triggers:
+                items:
+                  description: ScaleTriggers reference the scaler that will be used
+                  properties:
+                    authenticationRef:
+                      description: |-
+                        AuthenticationRef points to the TriggerAuthentication or ClusterTriggerAuthentication object that
+                        is used to authenticate the scaler with the environment
+                      properties:
+                        kind:
+                          description: Kind of the resource being referred to. Defaults
+                            to TriggerAuthentication.
+                          type: string
+                        name:
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    metadata:
+                      additionalProperties:
+                        type: string
+                      type: object
+                    metricType:
+                      description: |-
+                        MetricTargetType specifies the type of metric being targeted, and should be either
+                        "Value", "AverageValue", or "Utilization"
+                      type: string
+                    name:
+                      type: string
+                    type:
+                      type: string
+                    useCachedMetrics:
+                      type: boolean
+                  required:
+                  - metadata
+                  - type
+                  type: object
+                type: array
+            required:
+            - triggers
+            type: object
+        required:
+        - internalKind
+        - spec
+        type: object
+    served: true
+    storage: true

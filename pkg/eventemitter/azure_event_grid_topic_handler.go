@@ -33,8 +33,8 @@ import (
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/keda-scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
-	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 )
 
 type AzureEventGridTopicHandler struct {
