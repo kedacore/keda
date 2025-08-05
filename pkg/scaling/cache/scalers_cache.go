@@ -29,8 +29,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/scalers"
-	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
+	"github.com/kedacore/keda/v2/keda-scalers"
+	"github.com/kedacore/keda/v2/keda-scalers/scalersconfig"
 )
 
 var log = logf.Log.WithName("scalers_cache")

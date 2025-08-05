@@ -33,9 +33,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/keda-scalers/authentication"
 	mock_v1 "github.com/kedacore/keda/v2/pkg/mock/mock_secretlister"
 	mock_serviceaccounts "github.com/kedacore/keda/v2/pkg/mock/mock_serviceaccounts"
-	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 )
 
 var (
