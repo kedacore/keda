@@ -1,0 +1,1197 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"Println",
+				"Println"
+			],
+			[
+				"t",
+				"target"
+			],
+			[
+				"acc",
+				"accountAssignment"
+			],
+			[
+				"query_user",
+				"local.query_user_get_sso_instances_ids"
+			],
+			[
+				"aws_sso",
+				"data.aws_ssoadmin_permission_set.this"
+			],
+			[
+				"permii",
+				"permissionSetARN"
+			],
+			[
+				"quer",
+				"local.query_get_permission_sets_per_sso_instance"
+			],
+			[
+				"aws_ss",
+				"data.aws_ssoadmin_permission_sets.this"
+			],
+			[
+				"query_get_",
+				"query_get_permission_sets"
+			],
+			[
+				"que",
+				"local.query_get_sso_instances_ids"
+			],
+			[
+				"pset_get",
+				"local.pset_get_attachments_configs"
+			],
+			[
+				"permissio",
+				"permissions_boundary"
+			],
+			[
+				"arn",
+				"instance_arn"
+			],
+			[
+				"aws",
+				"aws_db_instances"
+			],
+			[
+				"aw",
+				"aws_db_instance"
+			],
+			[
+				"identifi",
+				"db_identifier"
+			],
+			[
+				"his",
+				"histogram_s"
+			],
+			[
+				"ECS_",
+				"ECS_SERVICE"
+			],
+			[
+				"bef",
+				"before_script"
+			],
+			[
+				"repos",
+				"repositories"
+			],
+			[
+				"db_ori",
+				"db_orig_ids"
+			],
+			[
+				"db",
+				"db_id_1"
+			],
+			[
+				"enti",
+				"entity_exists"
+			],
+			[
+				"back",
+				"backstage_url"
+			],
+			[
+				"query_bs_",
+				"query_bs_users_architects"
+			],
+			[
+				"qe",
+				"query_results"
+			],
+			[
+				"client",
+				"clientCertKey"
+			],
+			[
+				"cli",
+				"clientCertKey"
+			],
+			[
+				"query",
+				"query_repositories_glob"
+			],
+			[
+				"SM",
+				"SMTP_PASSWORD"
+			],
+			[
+				"SMTP_",
+				"SMTP_USERNAME"
+			],
+			[
+				"vari",
+				"variableS\tvariable (string)"
+			],
+			[
+				"data",
+				"databases"
+			]
+		]
+	},
+	"buffers":
+	[
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+		[
+			[
+				[
+					"Packages/Makefile/Make.sublime-build",
+					""
+				],
+				[
+					"Packages/Makefile/Make.sublime-build",
+					"Clean"
+				]
+			],
+			[
+				"Packages/Makefile/Make.sublime-build",
+				""
+			]
+		]
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"renam",
+				"File: Rename File"
+			],
+			[
+				"jq",
+				"jq: Format JSON (pretty)"
+			],
+			[
+				"prefer",
+				"Preferences: Settings"
+			],
+			[
+				"list pack",
+				"Package Control: List Packages"
+			],
+			[
+				"rena",
+				"File: Rename File"
+			],
+			[
+				"git",
+				"GitSavvy: help"
+			],
+			[
+				"install ",
+				"Package Control: Install Package"
+			],
+			[
+				"lsp",
+				"Preferences: LSP-typescript Settings"
+			],
+			[
+				"rename",
+				"File: Rename File"
+			],
+			[
+				"ren",
+				"File: Rename File"
+			],
+			[
+				"pretty",
+				"jq: Format JSON (pretty)"
+			],
+			[
+				"color theme",
+				"UI: Select Color Scheme"
+			],
+			[
+				"remove pack",
+				"Package Control: Remove Package"
+			],
+			[
+				"remove ",
+				"Package Control: Remove Package"
+			],
+			[
+				"terminal",
+				"Preferences: Terminal Key Bindings"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				"custom",
+				"UI: Customize Theme"
+			],
+			[
+				"theme",
+				"UI: Select Color Scheme"
+			],
+			[
+				"color them",
+				"UI: Select Color Scheme"
+			],
+			[
+				"key",
+				"Preferences: Key Bindings"
+			],
+			[
+				"clan",
+				"Preferences: LSP-clangd Settings"
+			],
+			[
+				"prefe",
+				"Preferences: Settings"
+			],
+			[
+				"customm",
+				"UI: Customize Color Scheme"
+			],
+			[
+				"clor",
+				"UI: Select Color Scheme"
+			],
+			[
+				"prefre",
+				"Preferences: Settings"
+			],
+			[
+				"form",
+				"jq: Format JSON (pretty)"
+			],
+			[
+				"format",
+				"jq: Format JSON (pretty)"
+			],
+			[
+				"color th",
+				"UI: Select Color Scheme"
+			],
+			[
+				"reanme",
+				"File: Rename File"
+			],
+			[
+				"pack",
+				"Package Control: Remove Package"
+			],
+			[
+				"color scheme",
+				"UI: Select Color Scheme"
+			],
+			[
+				"prefr",
+				"Preferences: Settings"
+			],
+			[
+				"color ",
+				"UI: Customize Color Scheme"
+			],
+			[
+				"ttheme",
+				"UI: Select Theme"
+			],
+			[
+				"selec",
+				"UI: Select Color Scheme"
+			],
+			[
+				"select",
+				"UI: Select Color Scheme"
+			],
+			[
+				"the",
+				"UI: Select Theme"
+			],
+			[
+				"color shc",
+				"UI: Select Color Scheme"
+			],
+			[
+				"packa",
+				"Package Control: Remove Package"
+			],
+			[
+				"color shcme",
+				"UI: Select Color Scheme"
+			],
+			[
+				"colorsub",
+				"Colorsublime: Browse Themes Online"
+			],
+			[
+				"color sch",
+				"UI: Select Color Scheme"
+			],
+			[
+				"cusom",
+				"UI: Customize Theme"
+			],
+			[
+				"them",
+				"UI: Select Theme"
+			],
+			[
+				"filter",
+				"FilterPipes: Send Text to Command"
+			],
+			[
+				"keybin",
+				"Preferences: Key Bindings"
+			],
+			[
+				"prefeeer",
+				"Preferences: LSP-terraform Settings"
+			],
+			[
+				"pref",
+				"Preferences: Settings"
+			],
+			[
+				"terraform",
+				"Preferences: LSP-terraform Settings"
+			],
+			[
+				"list",
+				"Package Control: List Packages"
+			],
+			[
+				"remove",
+				"Package Control: Remove Package"
+			],
+			[
+				"prefee",
+				"Preferences: Settings"
+			],
+			[
+				"select them",
+				"UI: Select Theme"
+			],
+			[
+				"preer",
+				"Preferences: Settings"
+			],
+			[
+				"pre",
+				"Preferences: Settings"
+			],
+			[
+				"packin",
+				"Package Control: Install Package"
+			],
+			[
+				"cu",
+				"UI: Customize Color Scheme"
+			],
+			[
+				"Package Control: ",
+				"Package Control: Discover Packages"
+			],
+			[
+				"package",
+				"Package Control: Remove Package"
+			],
+			[
+				"thee",
+				"UI: Select Theme"
+			],
+			[
+				"package ",
+				"Package Control: Install Package"
+			],
+			[
+				"prefeee",
+				"Preferences: Settings"
+			],
+			[
+				"custome",
+				"UI: Customize Theme"
+			],
+			[
+				"ui colo",
+				"UI: Select Color Scheme"
+			],
+			[
+				"perfer",
+				"Preferences: Settings"
+			],
+			[
+				"sublin",
+				"Preferences: SublimeLinter Settings"
+			],
+			[
+				"json",
+				"jq: Format JSON (pretty)"
+			],
+			[
+				"copy",
+				"Auto Copyright: Insert Copyright"
+			],
+			[
+				"ins",
+				"Package Control: Install Package"
+			],
+			[
+				"ui ",
+				"UI: Select Color Scheme"
+			],
+			[
+				"custo",
+				"UI: Customize Color Scheme"
+			],
+			[
+				"cus",
+				"UI: Customize Color Scheme"
+			],
+			[
+				"lint",
+				"Preferences: SublimeLinter Settings"
+			],
+			[
+				"instal",
+				"Package Control: Install Package"
+			],
+			[
+				"SublimeLinter",
+				"SublimeLinter: Goto Error"
+			],
+			[
+				"linte",
+				"Preferences: SublimeLinter Settings"
+			],
+			[
+				"color ui",
+				"UI: Select Color Scheme"
+			],
+			[
+				"prerfe",
+				"Preferences: Settings"
+			],
+			[
+				"keys",
+				"Preferences: Key Bindings"
+			],
+			[
+				"cuso",
+				"UI: Customize Theme"
+			],
+			[
+				"sett",
+				"Preferences: Settings"
+			],
+			[
+				"ui:",
+				"UI: Select Theme"
+			],
+			[
+				"customme",
+				"UI: Customize Theme"
+			],
+			[
+				"ui coo",
+				"UI: Select Color Scheme"
+			],
+			[
+				"lorem",
+				"Snippet: Lorem ipsum"
+			],
+			[
+				"projec",
+				"Project: Close"
+			],
+			[
+				"pack  in",
+				"Package Control: Install Package"
+			],
+			[
+				"ui color",
+				"UI: Select Color Scheme"
+			],
+			[
+				"packains",
+				"Package Control: Install Package"
+			],
+			[
+				"bash",
+				"Set Syntax: Bash"
+			],
+			[
+				"cusomt",
+				"UI: Customize Theme"
+			],
+			[
+				"ui color ",
+				"UI: Select Color Scheme"
+			],
+			[
+				"copilot",
+				"Copilot: Edit CSS: Chat Panel"
+			],
+			[
+				"directo",
+				"Package Control: Clear Cache Directory"
+			],
+			[
+				"ui  color",
+				"UI: Select Color Scheme"
+			],
+			[
+				"preffer",
+				"Preferences: Settings – Distraction Free"
+			],
+			[
+				"ui: color",
+				"UI: Select Color Scheme"
+			],
+			[
+				"install pac",
+				"Package Control: Install Package"
+			],
+			[
+				"pree",
+				"Preferences: Settings"
+			],
+			[
+				"install pkack",
+				"Package Control: Install Package"
+			],
+			[
+				"install pack",
+				"Package Control: Install Package"
+			],
+			[
+				"balme",
+				"Git Blame: Settings"
+			],
+			[
+				"in",
+				"Package Control: Install Package"
+			],
+			[
+				"blame",
+				"Git Blame: Key Bindings"
+			],
+			[
+				"unins",
+				"Colorsublime: Uninstall Theme"
+			],
+			[
+				"color",
+				"Code Folding: Fold Tag Attributes"
+			],
+			[
+				"colro",
+				"UI: Select Color Scheme"
+			],
+			[
+				"uninstall",
+				"Colorsublime: Uninstall Theme"
+			],
+			[
+				"installth",
+				"Colorsublime: Uninstall Theme"
+			],
+			[
+				"package ins",
+				"Package Control: Install Package"
+			],
+			[
+				"filterpipes",
+				"FilterPipes: Send Text to Command"
+			],
+			[
+				"ui",
+				"UI: Select Color Scheme"
+			],
+			[
+				"git ",
+				"Git Blame: Key Bindings"
+			],
+			[
+				"j",
+				"jq: Format JSON (pretty)"
+			],
+			[
+				"ui: se",
+				"UI: Select Theme"
+			],
+			[
+				"wrap",
+				"Word Wrap: Toggle"
+			],
+			[
+				"color uis",
+				"UI: Select Color Scheme"
+			],
+			[
+				"bui",
+				"Build With: Make - Clean"
+			],
+			[
+				"make clea",
+				"Build With: Make - Clean"
+			],
+			[
+				"setting",
+				"Preferences: Settings"
+			],
+			[
+				"settin",
+				"Preferences: Settings"
+			],
+			[
+				"refer",
+				"Preferences: Settings"
+			],
+			[
+				"add repo",
+				"Package Control: Add Repository"
+			],
+			[
+				"set syntax: c",
+				"Set Syntax: C"
+			],
+			[
+				"font",
+				"Set Syntax: Font"
+			],
+			[
+				"colo",
+				"UI: Customize Color Scheme"
+			],
+			[
+				"col",
+				"UI: Select Color Scheme"
+			],
+			[
+				"settig",
+				"Preferences: Settings"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 484.0,
+		"history":
+		[
+			"help",
+			"?"
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": false,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/home/mgs/devel/keda",
+		"/home/mgs/devel/keda/tests",
+		"/home/mgs/devel/keda/tests/scalers",
+		"/home/mgs/devel/keda/tests/scalers/rabbitmq",
+		"/home/mgs/devel/keda/tests/utils"
+	],
+	"file_history":
+	[
+		"/home/mgs/devel/keda/tests/scalers/rabbitmq/rabbitmq_helper.go",
+		"/home/mgs/devel/keda/tests/scalers/rabbitmq/rabbitmq_queue_http_aad_wi/rabbitmq_queue_http_aad_wi_test.go",
+		"/home/mgs/devel/keda/tests/run-all.go",
+		"/home/mgs/p/faktury/FVT-TRA-2025-07-1-S/FVT-TRA-2025-07-1-S.tex",
+		"/home/mgs/p/faktury/FVT-TRA-2025-07-1-S/Makefile",
+		"/home/mgs/devel/public/kubeshark/kubeshark.go",
+		"/home/mgs/devel/public/kubeshark/cmd/root.go",
+		"/home/mgs/devel/public/kubeshark/cmd/pcapDumpRunner.go",
+		"/home/mgs/devel/public/kubeshark/cmd/common.go",
+		"/home/mgs/devel/public/kubeshark/Makefile",
+		"/home/mgs/devel/public/kubeshark/cmd/tap.go",
+		"/home/mgs/devel/public/sample-controller/controller.go",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-cdn/eu-west-1/global/budget/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-cdn/eu-west-1/global/iam/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-cdn/eu-west-1/prod/dictionaries-t4/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-cdn/eu-west-1/prod/dictionaries/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-cdn/eu-west-1/prod/invoices/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-cdn/eu-west-1/prod/media-storage/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-cdn/eu-west-1/prod/nc/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-cdn/eu-west-1/prod/trans-frame-translations/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-cdn/eu-west-1/prod/truck-restrictions-tiles/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-cdn/eu-west-1/prod/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/backoffice-crm/eu-west-1/global/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-cdn/eu-west-1/global/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/db-testowa/rds/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/db-testowa/rds_autoconf/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/db-testowa/rds_consul_connect/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/db-testowa/rds_security_group/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/db-testowa/rds_security_group_search/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/db-testowa/vault/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/db-testowa/vpc_search/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/ec-testowy/redis/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/ec-testowy/redis_consul_connect/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/ec-testowy/redis_security_group/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/ec-testowy/redis_security_group_search/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/ec-testowy/vpc_search/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/ec2-testowa/compute/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/ec2-testowa/compute_iam_role/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/ec2-testowa/compute_security_group/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/ec2-testowa/compute_security_group_search/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/ec2-testowa/vpc_search/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/network/security_groups/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/consul/compute/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/consul/compute_iam_role/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/consul/compute_security_group/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/consul/compute_security_group_search/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/consul/consul_acl_config/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/consul/vpc_search/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/backups-common/Blue/s3v2/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/backups-common/Green/s3v2/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/srvecs-next/compute_pool_shared/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/srvecs-next/compute_pool_shared_arm64/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/srvecs-next/compute_security_group/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/srvecs-next/compute_security_group_search/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/srvecs-next/ecs_cluster/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/srvecs-next/ecs_conf/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/srvecs-next/ecs_iam/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/srvecs-next/efs/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/srvecs-next/efs_internal/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/srvecs-next/efs_security_group/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/srvecs-next/efs_subnet_search/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/srvecs-next/vpc_search/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/global/budget/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/global/iam/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/global/network/00-autoconf-subnets/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/global/network/10-autoconf-subnet-groups/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/global/s3-ansible-config/gitlab/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/global/s3-ansible-config/s3/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/global/s3-ansible-config/s3_iam_account/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/global/s3-tramline/s3v2/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/global/sns-cloudwatch-alarms/sns/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/global/s3-ecs-config/s3/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/dev/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-dev/eu-west-1/global/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/test/eu-west-1/global/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-recovery-test-0/eu-central-1/global/iam/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-recovery-test-0/eu-central-1/global/budget/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-recovery-test-0/eu-central-1/global/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-recovery-test-1/eu-central-1/global/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-recovery-test-0/eu-central-1/prod/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-recovery-test-0/eu-central-1/tss/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-recovery-test-1/eu-central-1/tss/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-recovery-test-1/eu-central-1/prod/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-recovery-test-1/eu-central-1/global/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-testlab3/eu-west-1/global/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-testlab2/eu-west-1/global/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-testlab1/eu-west-1/global/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-xmpp/eu-west-1/global/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-testlab3/eu-west-1/stsmap.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-xmpp/eu-west-1/dev/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/backoffice-crm/eu-west-1/dev/argocd/tools/argocd-app/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/access-management/eu-west-1/global/sso/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transinfo/eu-west-1/prod/network/security_groups/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transcash/eu-west-1/global/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/backoffice-crm/eu-west-1/prod/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/access-management/eu-west-1/global/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-xmpp/eu-west-1/stsmap.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-xmpp/eu-west-1/global/stsconf.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-xmpp/eu-west-1/global/stsmap.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-xmpp/eu-west-1/dev/stsconf.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-xmpp/eu-west-1/dev/stsmap.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/tfx-xmpp/eu-west-1/dev/terraform.tfvars",
+		"/home/mgs/devel/trans.eu/tg.2/org/com/bosh/mpde-transeu-cf/eu-west-1/global/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/com/bosh/mpde-transeu-cf/eu-west-1/prod/root.hcl",
+		"/home/mgs/devel/trans.eu/org-governance/Permissions/S3BillingBucketReadOnlyAccess.json",
+		"/home/mgs/devel/trans.eu/org-governance/Permissions/AWSBillingLimitedAccessPolicy.json",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/access-management/eu-west-1/global/iam/policies.d/sts/StsTeamAtt.yaml",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transcash/eu-west-1/global/budget/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transcash/eu-west-1/global/iam/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transinfo/eu-west-1/dev/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transcash/eu-west-1/stsmap.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transcash/eu-west-1/global/stsconf.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transcash/eu-west-1/global/stsmap.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transinfo/eu-west-1/dev/network/security_groups/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transinfo/eu-west-1/global/budget/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transinfo/eu-west-1/global/iam/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transinfo/eu-west-1/global/network/00-autoconf-subnets/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transinfo/eu-west-1/global/network/10-autoconf-subnet-groups/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transinfo/eu-west-1/rc/network/security_groups/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transinfo/eu-west-1/rc/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transinfo/eu-west-1/prod/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/transinfo/eu-west-1/global/root.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/backoffice-crm/eu-west-1/dev/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/backoffice-crm/eu-west-1/global/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/backoffice-crm/eu-west-1/rc/terragrunt.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/access-management/eu-west-1/product.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/access-management/eu-west-1/global/scope.hcl",
+		"/home/mgs/devel/trans.eu/tg.2/org/eu/trans/access-management/eu-west-1/global/terragrunt.hcl"
+	],
+	"find":
+	{
+		"height": 39.0
+	},
+	"find_in_files":
+	{
+		"height": 139.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"scrollbar_highlights": true,
+		"show_context": true,
+		"use_buffer2": true,
+		"use_gitignore": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"folders":
+	[
+		{
+			"path": "/home/mgs/devel/keda"
+		}
+	],
+	"groups":
+	[
+		{
+			"sheets":
+			[
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 39.0
+	},
+	"input":
+	{
+		"height": 57.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": false,
+	"output.LSP Log Panel":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.SublimeLinter":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.SublimeLinter Messages":
+	{
+		"height": 184.0,
+		"history":
+		[
+		]
+	},
+	"output.diagnostics":
+	{
+		"height": 184.0,
+		"history":
+		[
+		]
+	},
+	"output.exec":
+	{
+		"height": 280.0,
+		"history":
+		[
+		]
+	},
+	"output.find_results":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.mdpopups":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"pinned_build_system": "Packages/Makefile/Make.sublime-build",
+	"project": "",
+	"replace":
+	{
+		"height": 100.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"rabbitmq-queue.md",
+				"keda-docs/content/docs/2.18/scalers/rabbitmq-queue.md"
+			],
+			[
+				"rabbitmq-que",
+				"keda-docs/content/docs/2.17/scalers/rabbitmq-queue.md"
+			],
+			[
+				"rabbit-queue",
+				"keda-docs/content/docs/2.18/scalers/rabbitmq-queue.md"
+			],
+			[
+				"components/rds_multidb_search/",
+				"components/rds_multidb_search/module.hcl"
+			],
+			[
+				"nacl_ca",
+				"nacl_chains.tf"
+			],
+			[
+				"nacl",
+				"nacl_rulesets.tf"
+			],
+			[
+				"search_sub",
+				"search_subnet.tf"
+			],
+			[
+				"inteer",
+				"src/interface.tf"
+			],
+			[
+				"pset_at",
+				"src/pset_attachments.tf"
+			],
+			[
+				"rege",
+				"src/regex.tf"
+			],
+			[
+				"regex",
+				"src/regex.tf"
+			],
+			[
+				"inter",
+				"src/interface.tf"
+			],
+			[
+				"pset_att",
+				"src/pset_attachments.tf"
+			],
+			[
+				"quer",
+				"src/query.tf"
+			],
+			[
+				"query_pset",
+				"src/query_psets.tf"
+			],
+			[
+				"pset.tf",
+				"src/pset.tf"
+			],
+			[
+				"READ",
+				"README.md"
+			],
+			[
+				"",
+				"FVT-TRA-2025-04-1-S.tex"
+			],
+			[
+				"limiteda",
+				"policies.d/LimitedAccessToEC2.yaml"
+			],
+			[
+				"reslt",
+				"src/query/results.tf"
+			],
+			[
+				"for",
+				"roles.d/FortigateHAForTests.yaml"
+			],
+			[
+				"rab",
+				"pkg/scalers/rabbitmq_scaler.go"
+			],
+			[
+				"rabbo",
+				"pkg/scalers/rabbitmq_scaler_test.go"
+			],
+			[
+				"rabbi",
+				"pkg/scalers/rabbitmq_scaler_test.go"
+			],
+			[
+				"utils/setup",
+				"tests/utils/setup_test.go"
+			],
+			[
+				"rabbit",
+				"pkg/scalers/rabbitmq_scaler_test.go"
+			],
+			[
+				"ra",
+				"pkg/scalers/rabbitmq_scaler.go"
+			],
+			[
+				"rabbit_sca",
+				"pkg/scalers/rabbitmq_scaler.go"
+			],
+			[
+				"CHANGE",
+				"CHANGELOG.md"
+			],
+			[
+				"Limited",
+				"global/iam/policies.d/LimitedAccessToIAM.yaml"
+			],
+			[
+				"Makefil",
+				"Makefile"
+			],
+			[
+				"service.",
+				"service.hcl"
+			],
+			[
+				"service.hcl",
+				"service.hcl"
+			],
+			[
+				"todo",
+				"TODO"
+			],
+			[
+				"user",
+				"templates/user_data.tpl"
+			],
+			[
+				"bs_peol",
+				"src/query/bs_people.tf"
+			],
+			[
+				"results",
+				"src/query/results.tf"
+			],
+			[
+				"bs_peopl",
+				"src/query/bs_people.tf"
+			],
+			[
+				"bs_enti",
+				"src/query/bs_entities.tf"
+			],
+			[
+				"require",
+				"python/requirements.txt"
+			],
+			[
+				"ecs-comp",
+				"ecs-composer.py"
+			]
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 625.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"",
+				"~/devel/trans.eu/tg.2/transeu-terragrunt.sublime-project"
+			]
+		],
+		"width": 475.0
+	},
+	"select_symbol":
+	{
+		"height": 364.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"",
+				"all"
+			],
+			[
+				"module",
+				"module \"userExists\" {"
+			],
+			[
+				"modul",
+				"module \"getOrganizationData\" {"
+			]
+		],
+		"width": 740.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+		"lsp_show_inlay_hints": false
+	},
+	"show_minimap": true,
+	"show_open_files": true,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 562.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+		"max_columns": 1
+	}
+}
