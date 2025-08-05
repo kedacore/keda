@@ -572,7 +572,9 @@ func TestPrometheusScalerExecutePromQuery_AllSpecialCharactersCombined(t *testin
 		assert.Equal(t, "/metrics/api/v1/query", request.URL.Path)
 
 		writer.WriteHeader(http.StatusOK)
-		writer.Write([]byte(`{"data":{"result":[{"value": ["1", "789"]}]}}`))
+		if _, err := writer.Write([]byte(`{"data":{"result":[{"value": ["1", "789"]}]}}`)); err != nil {
+			t.Errorf("Failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -633,7 +635,9 @@ func TestPrometheusScalerExecutePromQuery_TrailingSlashBehavior(t *testing.T) {
 
 				// Return a valid response
 				writer.WriteHeader(http.StatusOK)
-				writer.Write([]byte(`{"data":{"result":[{"value": ["1", "42"]}]}}`))
+				if _, err := writer.Write([]byte(`{"data":{"result":[{"value": ["1", "42"]}]}}`)); err != nil {
+					t.Errorf("Failed to write response: %v", err)
+				}
 			}))
 			defer server.Close()
 
