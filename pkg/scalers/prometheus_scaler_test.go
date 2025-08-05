@@ -569,7 +569,7 @@ func TestPrometheusScalerExecutePromQuery_AllSpecialCharactersCombined(t *testin
 		assert.NotEmpty(t, query.Get("time"))
 
 		// Verify path
-		assert.Equal(t, "/metrics/api/v1/query", request.URL.Path)
+		assert.Equal(t, "/prometheus/api/v1/query", request.URL.Path)
 
 		writer.WriteHeader(http.StatusOK)
 		if _, err := writer.Write([]byte(`{"data":{"result":[{"value": ["1", "789"]}]}}`)); err != nil {
@@ -580,7 +580,7 @@ func TestPrometheusScalerExecutePromQuery_AllSpecialCharactersCombined(t *testin
 
 	scaler := prometheusScaler{
 		metadata: &prometheusMetadata{
-			ServerAddress:   server.URL + "/metrics",
+			ServerAddress:   server.URL + "/prometheus",
 			Query:           specialQuery,
 			QueryParameters: customParams,
 		},
