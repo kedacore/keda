@@ -48,6 +48,8 @@ type ScaledJob struct {
 	Status ScaledJobStatus `json:"status,omitempty"`
 }
 
+const ScaledJobExcludedLabelsAnnotation = "scaledjob.keda.sh/job-excluded-labels"
+
 // ScaledJobSpec defines the desired state of ScaledJob
 type ScaledJobSpec struct {
 	JobTargetRef *batchv1.JobSpec `json:"jobTargetRef"`
