@@ -14,9 +14,12 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"log"
 	"math/big"
 	"math/rand"
 	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"regexp"
@@ -38,7 +41,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/client-go/transport/spdy"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
@@ -1144,4 +1149,88 @@ func WatchForEventAfterTrigger(
 	case <-time.After(watchTimeout + 5*time.Second):
 		assert.Fail(t, "Timed out waiting for result from Kubernetes event watch channel")
 	}
+}
+
+func GetFreePortForward(ctx context.Context, clientset *kubernetes.Clientset, config *rest.Config, namespace, deploymentName string, remotePort int) (int, error) {
+	// 1. List pods in the namespace that belong to the deployment.
+	//    (Here we assume that the pods have a label like "app=gitea-webhook-api".)
+	podList, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("app=%s", deploymentName),
+	})
+	if err != nil {
+		return 0, err
+	}
+	if len(podList.Items) == 0 {
+		return 0, fmt.Errorf("no pods found for deployment %s", deploymentName)
+	}
+
+	// Choose the first pod.
+	podName := podList.Items[0].Name
+	log.Printf("Forwarding pod %s", podName)
+
+	// 2. Build the URL for port forwarding for this pod.
+	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward", namespace, podName)
+	// Remove any leading scheme (https:// or http://) from the host
+	host := strings.TrimPrefix(config.Host, "https://")
+	host = strings.TrimPrefix(host, "http://")
+	pfURL := url.URL{Scheme: "https", Host: host, Path: path}
+
+	// 3. Create the SPDY dialer.
+	transport, upgrader, err := spdy.RoundTripperFor(config)
+	if err != nil {
+		return 0, err
+	}
+	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", &pfURL)
+
+	// 4. Use "0:remotePort" to let the OS pick an ephemeral local port.
+	ports := []string{fmt.Sprintf("0:%d", remotePort)}
+
+	stopChan := make(chan struct{}, 1)
+	readyChan := make(chan struct{})
+
+	pf, err := portforward.New(dialer, ports, stopChan, readyChan, os.Stdout, os.Stderr)
+	if err != nil {
+		return 0, err
+	}
+
+	// 5. Start forwarding in a goroutine (this call blocks until stopChan is closed).
+	go func() {
+		// Port forwarder is ready
+		if err := pf.ForwardPorts(); err != nil {
+			fmt.Printf("Port forwarding error: %v\n", err)
+		}
+	}()
+
+	// 6. Wait for the port forwarder to be ready (or time out).
+	select {
+	case <-readyChan:
+		// ready
+	case <-time.After(10 * time.Second):
+		close(stopChan)
+		return 0, fmt.Errorf("timeout waiting for port forward")
+	}
+
+	go func() {
+		<-ctx.Done()
+		close(stopChan)
+	}()
+
+	// 7. Retrieve the assigned local port.
+	fwdPorts, err := pf.GetPorts()
+	if err != nil {
+		return 0, err
+	}
+	if len(fwdPorts) == 0 {
+		return 0, fmt.Errorf("no forwarded ports found")
+	}
+
+	localPort := int(fwdPorts[0].Local)
+
+	// Verify this forwarding is functional
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%d", fwdPorts[0].Local))
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	return localPort, nil
 }
