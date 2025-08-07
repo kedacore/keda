@@ -61,6 +61,7 @@ const FallbackBehaviorStatic = "static"
 const FallbackBehaviorCurrentReplicas = "currentReplicas"
 const FallbackBehaviorCurrentReplicasIfHigher = "currentReplicasIfHigher"
 const FallbackBehaviorCurrentReplicasIfLower = "currentReplicasIfLower"
+const FallbackBehaviorCached = "cached"
 
 // HealthStatus is the status for a ScaledObject's health
 type HealthStatus struct {
@@ -116,7 +117,7 @@ type Fallback struct {
 	Replicas         int32 `json:"replicas"`
 	// +optional
 	// +kubebuilder:default=static
-	// +kubebuilder:validation:Enum=static;currentReplicas;currentReplicasIfHigher;currentReplicasIfLower
+	// +kubebuilder:validation:Enum=static;currentReplicas;currentReplicasIfHigher;currentReplicasIfLower;cached
 	Behavior string `json:"behavior,omitempty"`
 }
 
