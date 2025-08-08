@@ -582,8 +582,8 @@ var _ = Describe("ScaledObjectController", func() {
 			Ω(hpa.Annotations).To(Equal(so.Annotations))
 		})
 
-		It("deploys ScaledObject and creates HPA with scale down select policy disabled when pause scaledown annotation set", func() {
-			deploymentName := "disable-scale-down"
+		It("deploys ScaledObject and creates HPA with scale down select policy disabled when pause scale-in annotation set", func() {
+			deploymentName := "disable-scale-in"
 			soName := "so-" + deploymentName
 
 			// Create the scaling target.
@@ -596,7 +596,7 @@ var _ = Describe("ScaledObjectController", func() {
 					Name:      soName,
 					Namespace: "default",
 					Annotations: map[string]string{
-						kedav1alpha1.PausedScaleDownAnnotation: "true",
+						kedav1alpha1.PausedScaleInAnnotation: "true",
 					}},
 				Spec: kedav1alpha1.ScaledObjectSpec{
 					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
@@ -628,7 +628,7 @@ var _ = Describe("ScaledObjectController", func() {
 		})
 
 		It("sets scale down select policy to disable when annotation added to existing object", func() {
-			deploymentName := "disable-scale-down-old-so"
+			deploymentName := "disable-scale-in-old-so"
 			soName := "so-" + deploymentName
 
 			// Create the scaling target.
@@ -684,7 +684,7 @@ var _ = Describe("ScaledObjectController", func() {
 				if so.Annotations == nil {
 					so.Annotations = make(map[string]string)
 				}
-				so.Annotations[kedav1alpha1.PausedScaleDownAnnotation] = "true"
+				so.Annotations[kedav1alpha1.PausedScaleInAnnotation] = "true"
 
 				return k8sClient.Update(context.Background(), so)
 			}).ShouldNot(HaveOccurred())
@@ -701,7 +701,7 @@ var _ = Describe("ScaledObjectController", func() {
 		})
 
 		It("sets scale down select policy to original policy when annotation removed", func() {
-			deploymentName := "remove-scale-down-disabled-annotation"
+			deploymentName := "remove-scale-in-disabled-annotation"
 			soName := "so-" + deploymentName
 
 			// Create the scaling target.
@@ -717,7 +717,7 @@ var _ = Describe("ScaledObjectController", func() {
 					Name:      soName,
 					Namespace: "default",
 					Annotations: map[string]string{
-						kedav1alpha1.PausedScaleDownAnnotation: "true",
+						kedav1alpha1.PausedScaleInAnnotation: "true",
 					},
 				},
 
@@ -764,7 +764,7 @@ var _ = Describe("ScaledObjectController", func() {
 			Eventually(func() error {
 				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 				Expect(err).ToNot(HaveOccurred())
-				delete(so.ObjectMeta.Annotations, kedav1alpha1.PausedScaleDownAnnotation)
+				delete(so.ObjectMeta.Annotations, kedav1alpha1.PausedScaleInAnnotation)
 				return k8sClient.Update(context.Background(), so)
 			}).ShouldNot(HaveOccurred())
 

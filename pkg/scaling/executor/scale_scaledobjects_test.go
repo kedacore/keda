@@ -461,7 +461,7 @@ func TestEventWitTriggerInfo(t *testing.T) {
 	assert.Equal(t, "Normal KEDAScaleTargetActivated Scaled  namespace/name from 2 to 5, triggered by testTrigger", eventstring)
 }
 
-func TestNoScaleToMinReplicasWhenNotActiveAndPauseScaleDownAnnotationSet(t *testing.T) {
+func TestNoScaleToMinReplicasWhenNotActiveAndPauseScaleInAnnotationSet(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
 	recorder := record.NewFakeRecorder(1)
@@ -478,7 +478,7 @@ func TestNoScaleToMinReplicasWhenNotActiveAndPauseScaleDownAnnotationSet(t *test
 			Name:      "name",
 			Namespace: "namespace",
 			Annotations: map[string]string{
-				v1alpha1.PausedScaleDownAnnotation: "true",
+				v1alpha1.PausedScaleInAnnotation: "true",
 			},
 		},
 		Spec: v1alpha1.ScaledObjectSpec{
@@ -526,7 +526,7 @@ func TestNoScaleToMinReplicasWhenNotActiveAndPauseScaleDownAnnotationSet(t *test
 	assert.Equal(t, true, condition.IsFalse())
 }
 
-func TestNoScaleToIdleReplicasWhenNotActiveAndPauseScaleDownAnnotationSet(t *testing.T) {
+func TestNoScaleToIdleReplicasWhenNotActiveAndPauseScaleInAnnotationSet(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
 	recorder := record.NewFakeRecorder(1)
@@ -544,7 +544,7 @@ func TestNoScaleToIdleReplicasWhenNotActiveAndPauseScaleDownAnnotationSet(t *tes
 			Name:      "name",
 			Namespace: "namespace",
 			Annotations: map[string]string{
-				v1alpha1.PausedScaleDownAnnotation: "true",
+				v1alpha1.PausedScaleInAnnotation: "true",
 			},
 		},
 		Spec: v1alpha1.ScaledObjectSpec{

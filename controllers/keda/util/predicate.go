@@ -56,12 +56,12 @@ func (PausedPredicate) Update(e event.UpdateEvent) bool {
 	return checkAnnotation(e, kedav1alpha1.PausedAnnotation)
 }
 
-type PausedScaleDownPredicate struct {
+type PausedScaleInPredicate struct {
 	predicate.Funcs
 }
 
-func (PausedScaleDownPredicate) Update(e event.UpdateEvent) bool {
-	return checkAnnotation(e, kedav1alpha1.PausedScaleDownAnnotation)
+func (PausedScaleInPredicate) Update(e event.UpdateEvent) bool {
+	return checkAnnotation(e, kedav1alpha1.PausedScaleInAnnotation)
 }
 
 func checkAnnotation(e event.UpdateEvent, annotation string) bool {

@@ -57,7 +57,7 @@ const ScaledObjectExcludedLabelsAnnotation = "scaledobject.keda.sh/hpa-excluded-
 const ValidationsHpaOwnershipAnnotation = "validations.keda.sh/hpa-ownership"
 const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
 const PausedAnnotation = "autoscaling.keda.sh/paused"
-const PausedScaleDownAnnotation = "autoscaling.keda.sh/paused-scale-down"
+const PausedScaleInAnnotation = "autoscaling.keda.sh/paused-scale-in"
 const FallbackBehaviorStatic = "static"
 const FallbackBehaviorCurrentReplicas = "currentReplicas"
 const FallbackBehaviorCurrentReplicasIfHigher = "currentReplicasIfHigher"
@@ -234,9 +234,9 @@ func (so *ScaledObject) NeedToBePausedByAnnotation() bool {
 	return getBoolAnnotation(so, PausedAnnotation)
 }
 
-// NeedToPauseScaleDown checks whether Scale Down actions for a ScaledObject need to be blocked based on the PausedScaleDown annotation
-func (so *ScaledObject) NeedToPauseScaleDown() bool {
-	return getBoolAnnotation(so, PausedScaleDownAnnotation)
+// NeedToPauseScaleIn checks whether Scale In actions for a ScaledObject need to be blocked based on the PausedScaleIn annotation
+func (so *ScaledObject) NeedToPauseScaleIn() bool {
+	return getBoolAnnotation(so, PausedScaleInAnnotation)
 }
 
 func getBoolAnnotation(so *ScaledObject, annotation string) bool {

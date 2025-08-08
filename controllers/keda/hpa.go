@@ -84,8 +84,8 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		behavior = nil
 	}
 
-	if scaledObject.NeedToPauseScaleDown() {
-		// If the paused-scale-down annotation is set, set the HPA ScaleDown Select policy to Disabled
+	if scaledObject.NeedToPauseScaleIn() {
+		// If the paused-scale-in annotation is set, set the HPA ScaleDown Select policy to Disabled
 		// to prevent the HPA from scaling down the scale target
 		if behavior == nil {
 			behavior = &autoscalingv2.HorizontalPodAutoscalerBehavior{}
@@ -98,7 +98,7 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		behavior.ScaleDown.SelectPolicy = &disabledPolicy
 
 		logger.Info(
-			"Scale down paused by annotation, setting HPA Scale Down Select Behavior to Disabled",
+			"Scale in paused by annotation, setting HPA Scale Down Select Behavior to Disabled",
 			"HPA.Namespace",
 			scaledObject.Namespace,
 			"HPA.Name",
