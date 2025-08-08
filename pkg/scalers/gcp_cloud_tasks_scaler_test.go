@@ -39,6 +39,7 @@ var testGcpCloudTasksMetadata = []parseGcpCloudTasksMetadataTestData{
 		FilterDuration:  0,
 		QueueName:       "myQueue",
 		ProjectID:       "myproject",
+		UsePromQL:       true,
 		gcpAuthorization: &gcp.AuthorizationMetadata{
 			GoogleApplicationCredentials: "{}",
 			PodIdentityProviderEnabled:   false,
@@ -55,10 +56,11 @@ var testGcpCloudTasksMetadata = []parseGcpCloudTasksMetadataTestData{
 
 	{nil, map[string]string{"queueName": "myQueue", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "projectID": "myproject", "activationValue": "AA"}, true, nil, "malformed activationTargetValue"},
 
-	{map[string]string{"GoogleApplicationCredentials": "Creds"}, map[string]string{"queueName": "myQueue", "value": "7", "projectID": "myproject"}, false, &gcpCloudTaskMetadata{
+	{map[string]string{"GoogleApplicationCredentials": "Creds"}, map[string]string{"queueName": "myQueue", "value": "7", "projectID": "myproject", "usePromQL": "false"}, false, &gcpCloudTaskMetadata{
 		Value:           7,
 		ActivationValue: 0,
 		FilterDuration:  0,
+		UsePromQL:       false,
 		QueueName:       "myQueue",
 		ProjectID:       "myproject",
 		gcpAuthorization: &gcp.AuthorizationMetadata{
@@ -75,6 +77,7 @@ var testGcpCloudTasksMetadata = []parseGcpCloudTasksMetadataTestData{
 		FilterDuration:  0,
 		QueueName:       "mysubscription",
 		ProjectID:       "myproject",
+		UsePromQL:       true,
 		gcpAuthorization: &gcp.AuthorizationMetadata{
 			GoogleApplicationCredentials: "{}",
 			PodIdentityProviderEnabled:   false,
@@ -87,6 +90,7 @@ var testGcpCloudTasksMetadata = []parseGcpCloudTasksMetadataTestData{
 		FilterDuration:  0,
 		QueueName:       "myQueue",
 		ProjectID:       "myProject",
+		UsePromQL:       true,
 		gcpAuthorization: &gcp.AuthorizationMetadata{
 			GoogleApplicationCredentials: "{}",
 			PodIdentityProviderEnabled:   false,
@@ -99,6 +103,7 @@ var testGcpCloudTasksMetadata = []parseGcpCloudTasksMetadataTestData{
 		FilterDuration:  0,
 		QueueName:       "myQueue",
 		ProjectID:       "myProject",
+		UsePromQL:       true,
 		gcpAuthorization: &gcp.AuthorizationMetadata{
 			GoogleApplicationCredentials: "{}",
 			PodIdentityProviderEnabled:   false,

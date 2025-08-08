@@ -86,6 +86,7 @@ spec:
       metadata:
         projectID: {{.ProjectID}}
         queueName: {{.QueueID}}
+        usePromQL: "false"
         value: "5"
         activationValue: "{{.ActivationThreshold}}"
 `
