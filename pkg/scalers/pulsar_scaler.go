@@ -35,21 +35,15 @@ type pulsarScaler struct {
 }
 
 type pulsarMetadata struct {
-	AdminURL                      string `keda:"name=adminURL,                      order=triggerMetadata;resolvedEnv"`
-	Topic                         string `keda:"name=topic,                         order=triggerMetadata;resolvedEnv"`
-	Subscription                  string `keda:"name=subscription,                  order=triggerMetadata;resolvedEnv"`
-	MsgBacklogThreshold           int64  `keda:"name=msgBacklogThreshold,           order=triggerMetadata, default=10"`
-	ActivationMsgBacklogThreshold int64  `keda:"name=activationMsgBacklogThreshold, order=triggerMetadata, default=0"`
-	IsPartitionedTopic            bool   `keda:"name=isPartitionedTopic,            order=triggerMetadata, default=false"`
-	TLS                           string `keda:"name=tls,                           order=triggerMetadata, optional"`
+	AdminURL                      string                 `keda:"name=adminURL,                      order=triggerMetadata;resolvedEnv"`
+	Topic                         string                 `keda:"name=topic,                         order=triggerMetadata;resolvedEnv"`
+	Subscription                  string                 `keda:"name=subscription,                  order=triggerMetadata;resolvedEnv"`
+	MsgBacklogThreshold           int64                  `keda:"name=msgBacklogThreshold,           order=triggerMetadata, default=10"`
+	ActivationMsgBacklogThreshold int64                  `keda:"name=activationMsgBacklogThreshold, order=triggerMetadata, default=0"`
+	IsPartitionedTopic            bool                   `keda:"name=isPartitionedTopic,            order=triggerMetadata, default=false"`
+	TLS                           string                 `keda:"name=tls,                           order=triggerMetadata, optional"`
+	PulsarAuth                    *authentication.Config `keda:"optional"`
 
-	// OAuth fields
-	OauthTokenURI  string `keda:"name=oauthTokenURI,  order=triggerMetadata, optional"`
-	Scope          string `keda:"name=scope,          order=triggerMetadata, optional"`
-	ClientID       string `keda:"name=clientID,       order=triggerMetadata, optional"`
-	EndpointParams string `keda:"name=EndpointParams, order=triggerMetadata, optional"`
-
-	pulsarAuth   *authentication.AuthMeta
 	statsURL     string
 	metricName   string
 	triggerIndex int
@@ -118,7 +112,7 @@ func (m *pulsarMetadata) buildMetricName() {
 // handleBackwardsCompatibility handles backwards compatibility for TLS configuration
 func (m *pulsarMetadata) handleBackwardsCompatibility(config *scalersconfig.ScalerConfig) {
 	// For backwards compatibility, we need to map "tls: enable" to auth modes
-	if m.TLS == enable && (config.AuthParams["cert"] != "" || config.AuthParams["key"] != "") {
+	if config.TriggerMetadata["tls"] == enable && (config.AuthParams["cert"] != "" || config.AuthParams["key"] != "") {
 		if authModes, authModesOk := config.TriggerMetadata[authentication.AuthModesKey]; authModesOk {
 			config.TriggerMetadata[authentication.AuthModesKey] = fmt.Sprintf("%s,%s", authModes, authentication.TLSAuthType)
 		} else {
@@ -127,47 +121,23 @@ func (m *pulsarMetadata) handleBackwardsCompatibility(config *scalersconfig.Scal
 	}
 }
 
-// setupAuthentication configures authentication for the pulsar scaler
-func (m *pulsarMetadata) setupAuthentication(config *scalersconfig.ScalerConfig) error {
-	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
-	if err != nil {
-		return fmt.Errorf("error parsing authentication: %w", err)
+// cleanupParsedMetadata cleans the parsed metadata to ensure backwards compatibility
+func (m *pulsarMetadata) cleanupParsedMetadata() {
+	if m.PulsarAuth.ClientSecret == "" {
+		// client_secret is not required for mtls OAuth(RFC8705)
+		// set secret to random string to work around the Go OAuth lib
+		m.PulsarAuth.ClientSecret = time.Now().String()
 	}
-
-	if auth != nil && auth.EnableOAuth {
-		if err := m.configureOAuth(auth); err != nil {
-			return err
+	var scopes []string
+	for _, scope := range m.PulsarAuth.Scopes {
+		if strings.TrimSpace(scope) != "" {
+			scopes = append(scopes, scope)
 		}
 	}
-
-	m.pulsarAuth = auth
-	return nil
-}
-
-// configureOAuth configures OAuth settings
-func (m *pulsarMetadata) configureOAuth(auth *authentication.AuthMeta) error {
-	if auth.OauthTokenURI == "" {
-		auth.OauthTokenURI = m.OauthTokenURI
+	m.PulsarAuth.Scopes = scopes
+	if len(m.PulsarAuth.Scopes) == 0 {
+		m.PulsarAuth.Scopes = nil
 	}
-	if auth.Scopes == nil {
-		auth.Scopes = authentication.ParseScope(m.Scope)
-	}
-	if auth.ClientID == "" {
-		auth.ClientID = m.ClientID
-	}
-	// client_secret is not required for mtls OAuth(RFC8705)
-	// set secret to random string to work around the Go OAuth lib
-	if auth.ClientSecret == "" {
-		auth.ClientSecret = time.Now().String()
-	}
-	if auth.EndpointParams == nil {
-		v, err := authentication.ParseEndpointParams(m.EndpointParams)
-		if err != nil {
-			return fmt.Errorf("error parsing EndpointParams: %s", m.EndpointParams)
-		}
-		auth.EndpointParams = v
-	}
-	return nil
 }
 
 // NewPulsarScaler creates a new PulsarScaler
@@ -180,16 +150,16 @@ func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	client := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
-	if pulsarMetadata.pulsarAuth != nil {
-		if pulsarMetadata.pulsarAuth.CA != "" || pulsarMetadata.pulsarAuth.EnableTLS {
-			config, err := authentication.NewTLSConfig(pulsarMetadata.pulsarAuth, false)
+	if !pulsarMetadata.PulsarAuth.Disabled() {
+		if pulsarMetadata.PulsarAuth.CA != "" || pulsarMetadata.PulsarAuth.EnabledTLS() {
+			config, err := authentication.NewTLSConfig(pulsarMetadata.PulsarAuth.ToAuthMeta(), false)
 			if err != nil {
 				return nil, err
 			}
 			client.Transport = kedautil.CreateHTTPTransportWithTLSConfig(config)
 		}
 
-		if pulsarMetadata.pulsarAuth.EnableBearerAuth || pulsarMetadata.pulsarAuth.EnableBasicAuth {
+		if pulsarMetadata.PulsarAuth.EnabledBearerAuth() || pulsarMetadata.PulsarAuth.EnabledBasicAuth() {
 			// The pulsar broker redirects HTTP calls to other brokers and expects the Authorization header
 			client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 				if len(via) != 0 && via[0].Response.StatusCode == http.StatusTemporaryRedirect {
@@ -209,18 +179,15 @@ func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 func parsePulsarMetadata(config *scalersconfig.ScalerConfig) (*pulsarMetadata, error) {
 	meta := &pulsarMetadata{triggerIndex: config.TriggerIndex}
+	meta.handleBackwardsCompatibility(config)
 
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing pulsar metadata: %w", err)
 	}
 
+	meta.cleanupParsedMetadata()
 	meta.buildStatsURL()
 	meta.buildMetricName()
-	meta.handleBackwardsCompatibility(config)
-
-	if err := meta.setupAuthentication(config); err != nil {
-		return nil, err
-	}
 
 	return meta, nil
 }
@@ -234,13 +201,13 @@ func (s *pulsarScaler) GetStats(ctx context.Context) (*pulsarStats, error) {
 	}
 
 	client := s.httpClient
-	if s.metadata.pulsarAuth != nil && s.metadata.pulsarAuth.EnableOAuth {
+	if s.metadata.PulsarAuth.EnabledOAuth() {
 		config := clientcredentials.Config{
-			ClientID:       s.metadata.pulsarAuth.ClientID,
-			ClientSecret:   s.metadata.pulsarAuth.ClientSecret,
-			TokenURL:       s.metadata.pulsarAuth.OauthTokenURI,
-			Scopes:         s.metadata.pulsarAuth.Scopes,
-			EndpointParams: s.metadata.pulsarAuth.EndpointParams,
+			ClientID:       s.metadata.PulsarAuth.ClientID,
+			ClientSecret:   s.metadata.PulsarAuth.ClientSecret,
+			TokenURL:       s.metadata.PulsarAuth.OauthTokenURI,
+			Scopes:         s.metadata.PulsarAuth.Scopes,
+			EndpointParams: s.metadata.PulsarAuth.EndpointParams,
 		}
 		client = config.Client(context.Background())
 	}
@@ -330,17 +297,17 @@ func (s *pulsarScaler) Close(context.Context) error {
 
 // addAuthHeaders add the relevant headers used by Pulsar to authenticate and authorize http requests
 func addAuthHeaders(req *http.Request, metadata *pulsarMetadata) {
-	if metadata.pulsarAuth == nil {
+	if metadata.PulsarAuth.Disabled() {
 		return
 	}
 	switch {
-	case metadata.pulsarAuth.EnableBearerAuth:
-		req.Header.Add("Authorization", authentication.GetBearerToken(metadata.pulsarAuth))
+	case metadata.PulsarAuth.EnabledBearerAuth():
+		req.Header.Add("Authorization", authentication.GetBearerToken(metadata.PulsarAuth.ToAuthMeta()))
 		req.Header.Add(pulsarAuthModeHeader, "token")
-	case metadata.pulsarAuth.EnableBasicAuth:
-		req.SetBasicAuth(metadata.pulsarAuth.Username, metadata.pulsarAuth.Password)
+	case metadata.PulsarAuth.EnabledBasicAuth():
+		req.SetBasicAuth(metadata.PulsarAuth.Username, metadata.PulsarAuth.Password)
 		req.Header.Add(pulsarAuthModeHeader, "basic")
-	case metadata.pulsarAuth.EnableTLS:
+	case metadata.PulsarAuth.EnabledTLS():
 		// When BearerAuth or BasicAuth are also configured, let them take precedence for the purposes of
 		// the authMode header.
 		req.Header.Add(pulsarAuthModeHeader, "tls")
