@@ -233,7 +233,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 	// and if so, stop the scale loop and delete the HPA on the scaledObject.
 	// Additionally, if the following annotations are present:
 	// - "autoscaling.keda.sh/paused-scale-in"
-	// we also set the status to paused even though the scale loop continues to run and the HPA does not get deleted.
+	// we also set the status to paused but we allow the scale loop to continue and do not delete the HPA because these are unidirectional pauses.
 	needsToPause := scaledObject.NeedToBePausedByAnnotation()
 	if needsToPause {
 		scaledToPausedCount := true
