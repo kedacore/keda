@@ -618,6 +618,12 @@ var _ = Describe("ScaledObjectController", func() {
 			err = k8sClient.Create(context.Background(), so)
 			Ω(err).ToNot(HaveOccurred())
 
+			Eventually(func() metav1.ConditionStatus {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Ω(err).ToNot(HaveOccurred())
+				return so.Status.Conditions.GetPausedCondition().Status
+			}, 5*time.Second).Should(Equal(metav1.ConditionTrue))
+
 			// Get and confirm the HPA
 			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
 			Eventually(func() error {
@@ -688,6 +694,12 @@ var _ = Describe("ScaledObjectController", func() {
 
 				return k8sClient.Update(context.Background(), so)
 			}).ShouldNot(HaveOccurred())
+
+			Eventually(func() metav1.ConditionStatus {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Ω(err).ToNot(HaveOccurred())
+				return so.Status.Conditions.GetPausedCondition().Status
+			}, 5*time.Second).Should(Equal(metav1.ConditionTrue))
 
 			Eventually(func() autoscalingv2.ScalingPolicySelect {
 				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
@@ -767,6 +779,12 @@ var _ = Describe("ScaledObjectController", func() {
 				delete(so.ObjectMeta.Annotations, kedav1alpha1.PausedScaleInAnnotation)
 				return k8sClient.Update(context.Background(), so)
 			}).ShouldNot(HaveOccurred())
+
+			Eventually(func() metav1.ConditionStatus {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Ω(err).ToNot(HaveOccurred())
+				return so.Status.Conditions.GetPausedCondition().Status
+			}, 5*time.Second).Should(Equal(metav1.ConditionFalse))
 
 			Eventually(func() autoscalingv2.ScalingPolicySelect {
 				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
