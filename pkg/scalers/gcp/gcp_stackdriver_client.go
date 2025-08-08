@@ -247,7 +247,6 @@ func (s StackDriverClient) GetMetrics(
 	// Set project to perform request in and update filter with project_id
 	pid := getActualProjectID(&s, projectID)
 	req.Name = "projects/" + pid
-	filter += ` AND resource.labels.project_id="` + pid + `"`
 
 	// Set filter on request
 	req.Filter = filter

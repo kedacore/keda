@@ -31,6 +31,7 @@ type gcpCloudTaskMetadata struct {
 
 	QueueName        string `keda:"name=queueName, order=triggerMetadata"`
 	ProjectID        string `keda:"name=projectID, order=triggerMetadata"`
+	UsePromQL        bool   `keda:"name=usePromQL, order=triggerMetadata, optional, default=true"`
 	gcpAuthorization *gcp.AuthorizationMetadata
 	triggerIndex     int
 }
@@ -140,7 +141,12 @@ func (s *gcpCloudTasksScaler) getMetrics(ctx context.Context, metricType string)
 			return -1, err
 		}
 	}
-	filter := `metric.type="` + metricType + `" AND resource.labels.queue_id="` + s.metadata.QueueName + `"`
+	filter := ""
+	if s.metadata.UsePromQL {
+		filter = `{"__name__"="` + metricType + `","monitored_resource"="cloud_tasks_queue","queue_id"="` + s.metadata.QueueName + `}`
+	} else {
+		filter = `metric.type="` + metricType + `" AND resource.labels.queue_id="` + s.metadata.QueueName + `"`
+	}
 
 	// Cloud Tasks metrics are collected every 60 seconds so no need to aggregate them.
 	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-cloudtasks
