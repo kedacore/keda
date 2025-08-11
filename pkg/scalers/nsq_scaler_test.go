@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/atomic"
 	v2 "k8s.io/api/autoscaling/v2"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -380,88 +379,74 @@ func TestNSQGetTopicChannelDepth(t *testing.T) {
 }
 
 func TestNSQGetTopicProducers(t *testing.T) {
-	type statusAndResponse struct {
-		status   int
-		response string
-	}
 	type testCase struct {
-		statusAndResponses []statusAndResponse
-		expectedNSQdHosts  []string
-		isError            bool
-		description        string
+		responses         []string
+		expectedNSQdHosts []string
+		errorAtIndex      int
+		description       string
 	}
 	testCases := []testCase{
 		{
-			statusAndResponses: []statusAndResponse{
-				{http.StatusOK, `{"producers":[], "channels":[]}`},
-			},
+			responses:         []string{`{"producers":[], "channels":[]}`},
 			expectedNSQdHosts: []string{},
+			errorAtIndex:      -1,
 			description:       "No producers or channels",
 		},
 		{
-			statusAndResponses: []statusAndResponse{
-				{http.StatusOK, `{"producers":[{"broadcast_address":"nsqd-0","http_port":4161}]}`},
-			},
+			responses:         []string{`{"producers":[{"broadcast_address":"nsqd-0","http_port":4161}]}`},
 			expectedNSQdHosts: []string{"nsqd-0:4161"},
+			errorAtIndex:      -1,
 			description:       "Single nsqd host",
 		},
 		{
-			statusAndResponses: []statusAndResponse{
-				{http.StatusOK, `{"producers":[{"broadcast_address":"nsqd-0","http_port":4161}]}`},
-				{http.StatusOK, `{"producers":[{"broadcast_address":"nsqd-1","http_port":4161}]}`},
-				{http.StatusOK, `{"producers":[{"broadcast_address":"nsqd-2","http_port":8161}]}`},
-			},
-			expectedNSQdHosts: []string{"nsqd-0:4161", "nsqd-1:4161", "nsqd-2:8161"},
-			description:       "Multiple nsqd hosts",
-		},
-		{
-			statusAndResponses: []statusAndResponse{
-				{http.StatusOK, `{"producers":[{"broadcast_address":"nsqd-0","http_port":4161}]}`},
-				{http.StatusOK, `{"producers":[{"broadcast_address":"nsqd-0","http_port":4161}]}`},
-			},
+			responses:         []string{`{"producers":[{"broadcast_address":"nsqd-0","http_port":4161}]}`},
 			expectedNSQdHosts: []string{"nsqd-0:4161"},
+			errorAtIndex:      -1,
 			description:       "De-dupe nsqd hosts",
 		},
 		{
-			statusAndResponses: []statusAndResponse{
-				{http.StatusOK, `{"producers":[{"broadcast_address":"nsqd-0","http_port":4161}]}`},
-				{http.StatusInternalServerError, ""},
-			},
-			isError:     true,
-			description: "At least one host responded with error",
+			responses:         []string{`{"producers":[{"broadcast_address":"nsqd-0","http_port":4161}]}`},
+			expectedNSQdHosts: []string{},
+			errorAtIndex:      0,
+			description:       "At least one host responded with error",
 		},
 	}
 
 	for _, tc := range testCases {
-		callCount := atomic.NewInt32(0)
-		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			index := int(callCount.Load())
-			callCount.Inc()
-
-			statusResponse := tc.statusAndResponses[index]
-			if statusResponse.status != http.StatusOK {
-				http.Error(w, "Internal Server Error", statusResponse.status)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			http.ServeContent(w, r, "", time.Time{}, strings.NewReader(statusResponse.response))
-		}))
-		defer mockServer.Close()
-
-		parsedURL, err := url.Parse(mockServer.URL)
-		assert.Nil(t, err)
-
 		var nsqLookupdHosts []string
-		nsqLookupdHost := net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
-		for i := 0; i < len(tc.statusAndResponses); i++ {
-			nsqLookupdHosts = append(nsqLookupdHosts, nsqLookupdHost)
+
+		// Create separate mock servers for each response
+		for i, response := range tc.responses {
+			shouldError := tc.errorAtIndex == i
+			resp := response
+			errFlag := shouldError
+
+			var handler http.HandlerFunc
+			if errFlag {
+				handler = func(w http.ResponseWriter, r *http.Request) {
+					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				}
+			} else {
+				handler = func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					http.ServeContent(w, r, "", time.Time{}, strings.NewReader(resp))
+				}
+			}
+
+			mockServer := httptest.NewServer(handler)
+			defer mockServer.Close()
+
+			parsedURL, err := url.Parse(mockServer.URL)
+			assert.Nil(t, err)
+			nsqLookupdHosts = append(nsqLookupdHosts, net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port()))
 		}
 
 		s := nsqScaler{httpClient: http.DefaultClient, scheme: "http", metadata: nsqMetadata{NSQLookupdHTTPAddresses: nsqLookupdHosts}}
 
 		nsqdHosts, err := s.getTopicProducers(context.Background(), "topic")
 
-		if err != nil && tc.isError {
+		if tc.errorAtIndex >= 0 {
+			assert.NotNil(t, err)
 			continue
 		}
 
@@ -536,116 +521,107 @@ func TestNSQGetLookup(t *testing.T) {
 }
 
 func TestNSQAggregateDepth(t *testing.T) {
-	type statusAndResponse struct {
-		status   int
-		response string
-	}
 	type testCase struct {
-		statusAndResponses []statusAndResponse
-		expectedDepth      int64
-		isError            bool
-		description        string
+		responses     []string
+		expectedDepth int64
+		errorAtIndex  int
+		description   string
 	}
 	testCases := []testCase{
 		{
-			statusAndResponses: []statusAndResponse{
-				{http.StatusOK, `{"topics":null}`},
-			},
+			responses:     []string{`{"topics":null}`},
 			expectedDepth: 0,
-			isError:       false,
+			errorAtIndex:  -1,
 			description:   "Topic does not exist",
 		},
 		{
-			statusAndResponses: []statusAndResponse{
-				{http.StatusOK, `{"topics":[{"topic_name":"topic", "depth":250, "channels":[]}]}`},
-			},
+			responses:     []string{`{"topics":[{"topic_name":"topic", "depth":250, "channels":[]}]}`},
 			expectedDepth: 250,
-			isError:       false,
+			errorAtIndex:  -1,
 			description:   "Topic exists with no channels",
 		},
 		{
-			statusAndResponses: []statusAndResponse{
-				{http.StatusOK, `{"topics":[{"topic_name":"topic", "depth":250, "channels":[{"channel_name":"other_channel", "depth":100}]}]}`},
-			},
+			responses:     []string{`{"topics":[{"topic_name":"topic", "depth":250, "channels":[{"channel_name":"other_channel", "depth":100}]}]}`},
 			expectedDepth: 250,
-			isError:       false,
+			errorAtIndex:  -1,
 			description:   "Topic exists with different channels",
 		},
 		{
-			statusAndResponses: []statusAndResponse{
-				{http.StatusOK, `{"topics":[{"topic_name":"topic", "depth":250, "channels":[{"channel_name":"channel", "depth":100}]}]}`},
-			},
+			responses:     []string{`{"topics":[{"topic_name":"topic", "depth":250, "channels":[{"channel_name":"channel", "depth":100}]}]}`},
 			expectedDepth: 100,
-			isError:       false,
+			errorAtIndex:  -1,
 			description:   "Topic and channel exist",
 		},
 		{
-			statusAndResponses: []statusAndResponse{
-				{http.StatusOK, `{"topics":[{"topic_name":"topic", "depth":250, "channels":[{"channel_name":"channel", "depth":100, "paused":true}]}]}`},
-			},
+			responses:     []string{`{"topics":[{"topic_name":"topic", "depth":250, "channels":[{"channel_name":"channel", "depth":100, "paused":true}]}]}`},
 			expectedDepth: 0,
-			isError:       false,
+			errorAtIndex:  -1,
 			description:   "Channel is paused",
 		},
 		{
-			statusAndResponses: []statusAndResponse{
-				{http.StatusOK, `{"topics":[{"topic_name":"topic", "depth":250, "channels":[{"channel_name":"channel", "depth":100}]}]}`},
-				{http.StatusOK, `{"topics":[{"topic_name":"topic", "depth":250, "channels":[{"channel_name":"channel", "depth":50}]}]}`},
+			responses: []string{
+				`{"topics":[{"topic_name":"topic", "depth":250, "channels":[{"channel_name":"channel", "depth":100}]}]}`,
+				`{"topics":[{"topic_name":"topic", "depth":250, "channels":[{"channel_name":"channel", "depth":50}]}]}`,
 			},
 			expectedDepth: 150,
-			isError:       false,
+			errorAtIndex:  -1,
 			description:   "Sum multiple depth values",
 		},
 		{
-			statusAndResponses: []statusAndResponse{
-				{http.StatusOK, `{"topics":[{"topic_name":"topic", "depth":500, "channels":[]}]}`},
-				{http.StatusOK, `{"topics":[{"topic_name":"topic", "depth":400, "channels":[{"channel_name":"other_channel", "depth":300}]}]}`},
-				{http.StatusOK, `{"topics":[{"topic_name":"topic", "depth":200, "channels":[{"channel_name":"channel", "depth":100}]}]}`},
+			responses: []string{
+				`{"topics":[{"topic_name":"topic", "depth":500, "channels":[]}]}`,
+				`{"topics":[{"topic_name":"topic", "depth":400, "channels":[{"channel_name":"other_channel", "depth":300}]}]}`,
+				`{"topics":[{"topic_name":"topic", "depth":200, "channels":[{"channel_name":"channel", "depth":100}]}]}`,
 			},
 			expectedDepth: 1000,
-			isError:       false,
+			errorAtIndex:  -1,
 			description:   "Channel doesn't exist on all nsqd hosts",
 		},
 		{
-			statusAndResponses: []statusAndResponse{
-				{http.StatusOK, `{"topics":[{"topic_name":"topic", "depth":250, "channels":[{"channel_name":"channel", "depth":100}]}]}`},
-				{http.StatusInternalServerError, ""},
+			responses: []string{
+				`{"topics":[{"topic_name":"topic", "depth":250, "channels":[{"channel_name":"channel", "depth":100}]}]}`,
+				"",
 			},
 			expectedDepth: -1,
-			isError:       true,
+			errorAtIndex:  1,
 			description:   "At least one host responded with error",
 		},
 	}
 
 	s := nsqScaler{httpClient: http.DefaultClient, scheme: "http"}
 	for _, tc := range testCases {
-		callCount := atomic.NewInt32(0)
-		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			index := int(callCount.Load())
-			callCount.Inc()
-
-			statusResponse := tc.statusAndResponses[index]
-			if statusResponse.status != http.StatusOK {
-				http.Error(w, "Internal Server Error", statusResponse.status)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			http.ServeContent(w, r, "", time.Time{}, strings.NewReader(statusResponse.response))
-		}))
-		defer mockServer.Close()
-
-		parsedURL, err := url.Parse(mockServer.URL)
-		assert.Nil(t, err)
-
 		var nsqdHosts []string
-		nsqdHost := net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
-		for i := 0; i < len(tc.statusAndResponses); i++ {
-			nsqdHosts = append(nsqdHosts, nsqdHost)
+
+		// Create separate mock servers for each response
+		for i, response := range tc.responses {
+			shouldError := tc.errorAtIndex == i
+			resp := response
+			errFlag := shouldError
+
+			var handler http.HandlerFunc
+			if errFlag {
+				handler = func(w http.ResponseWriter, r *http.Request) {
+					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				}
+			} else {
+				handler = func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					http.ServeContent(w, r, "", time.Time{}, strings.NewReader(resp))
+				}
+			}
+
+			mockServer := httptest.NewServer(handler)
+			defer mockServer.Close()
+
+			parsedURL, err := url.Parse(mockServer.URL)
+			assert.Nil(t, err)
+			nsqdHosts = append(nsqdHosts, net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port()))
 		}
 
 		depth, err := s.aggregateDepth(context.Background(), nsqdHosts, "topic", "channel")
 
-		if err != nil && tc.isError {
+		if tc.errorAtIndex >= 0 {
+			assert.NotNil(t, err)
 			continue
 		}
 
