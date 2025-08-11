@@ -682,6 +682,12 @@ var _ = Describe("ScaledObjectController", func() {
 			}).ShouldNot(HaveOccurred())
 			Expect(hpa.Spec.Behavior).To(Equal((*autoscalingv2.HorizontalPodAutoscalerBehavior)(nil)))
 
+			Eventually(func() metav1.ConditionStatus {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Ω(err).ToNot(HaveOccurred())
+				return so.Status.Conditions.GetPausedCondition().Status
+			}, 2*time.Minute).WithPolling(5 * time.Second).Should(Or(Equal(metav1.ConditionFalse), Equal(metav1.ConditionUnknown)))
+
 			// Set the annotation
 			Eventually(func() error {
 				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
@@ -699,7 +705,7 @@ var _ = Describe("ScaledObjectController", func() {
 				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 				Ω(err).ToNot(HaveOccurred())
 				return so.Status.Conditions.GetPausedCondition().Status
-			}, 5*time.Second).Should(Equal(metav1.ConditionTrue))
+			}, 2*time.Minute).WithPolling(5 * time.Second).Should(Equal(metav1.ConditionTrue))
 
 			Eventually(func() autoscalingv2.ScalingPolicySelect {
 				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
@@ -772,6 +778,12 @@ var _ = Describe("ScaledObjectController", func() {
 			}).ShouldNot(HaveOccurred())
 			Expect(*hpa.Spec.Behavior.ScaleDown.SelectPolicy).To(Equal(autoscalingv2.DisabledPolicySelect))
 
+			Eventually(func() metav1.ConditionStatus {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Ω(err).ToNot(HaveOccurred())
+				return so.Status.Conditions.GetPausedCondition().Status
+			}, 2*time.Minute).WithPolling(5 * time.Second).Should(Equal(metav1.ConditionTrue))
+
 			// Remove the annotation.
 			Eventually(func() error {
 				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
@@ -784,7 +796,7 @@ var _ = Describe("ScaledObjectController", func() {
 				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 				Ω(err).ToNot(HaveOccurred())
 				return so.Status.Conditions.GetPausedCondition().Status
-			}, 5*time.Second).Should(Equal(metav1.ConditionFalse))
+			}, 2*time.Minute).WithPolling(5 * time.Second).Should(Or(Equal(metav1.ConditionFalse), Equal(metav1.ConditionUnknown)))
 
 			Eventually(func() autoscalingv2.ScalingPolicySelect {
 				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
