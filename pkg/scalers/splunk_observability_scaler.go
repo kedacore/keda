@@ -96,7 +96,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 	go func() {
 		<-stopTimer
 		s.logger.V(1).Info("Stopping MTS stream after duration.")
-		if err := comp.Stop(context.Background()); err != nil {
+		if err := comp.Stop(ctx); err != nil {
 			s.logger.Error(err, "Failed to stop SignalFlow computation")
 		}
 	}()
