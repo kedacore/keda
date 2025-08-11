@@ -111,9 +111,9 @@ func NewDatadogScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (
 		if err != nil {
 			return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
 		}
-		apiClient, err = newDatadogAPIConnection(ctx, meta, config)
+		apiClient, err = newDatadogAPIClient(config)
 		if err != nil {
-			return nil, fmt.Errorf("error establishing Datadog connection: %w", err)
+			return nil, fmt.Errorf("error creating Datadog API client: %w", err)
 		}
 	}
 
@@ -257,35 +257,11 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 	return meta, nil
 }
 
-// newDatadogAPIConnection tests a connection to the Datadog API
-func newDatadogAPIConnection(ctx context.Context, meta *datadogMetadata, config *scalersconfig.ScalerConfig) (*datadog.APIClient, error) {
-	ctx = context.WithValue(
-		ctx,
-		datadog.ContextAPIKeys,
-		map[string]datadog.APIKey{
-			"apiKeyAuth": {
-				Key: meta.APIKey,
-			},
-			"appKeyAuth": {
-				Key: meta.AppKey,
-			},
-		},
-	)
-
-	ctx = context.WithValue(ctx,
-		datadog.ContextServerVariables,
-		map[string]string{
-			"site": meta.DatadogSite,
-		})
+func newDatadogAPIClient(config *scalersconfig.ScalerConfig) (*datadog.APIClient, error) {
 
 	configuration := datadog.NewConfiguration()
 	configuration.HTTPClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 	apiClient := datadog.NewAPIClient(configuration)
-
-	_, _, err := apiClient.AuthenticationApi.Validate(ctx) //nolint:bodyclose
-	if err != nil {
-		return nil, fmt.Errorf("error connecting to Datadog API endpoint: %w", err)
-	}
 
 	return apiClient, nil
 }
@@ -324,6 +300,10 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, timeWindowFrom, timeWindowTo, s.metadata.Query) //nolint:bodyclose
 
 	if r != nil {
+		if r.StatusCode == 403 {
+			return -1, fmt.Errorf("unauthorized to connect to Datadog. Check that your Datadog API and App keys are correct and that your App key has the correct permissions: %w", err)
+		}
+
 		if r.StatusCode == 429 {
 			rateLimit := r.Header.Get("X-Ratelimit-Limit")
 			rateLimitReset := r.Header.Get("X-Ratelimit-Reset")
