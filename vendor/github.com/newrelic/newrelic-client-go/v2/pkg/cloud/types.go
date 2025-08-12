@@ -471,6 +471,8 @@ type CloudAwsDisableIntegrationsInput struct {
 	AwsWafv2 []CloudDisableAccountIntegrationInput `json:"awsWafv2,omitempty"`
 	// X-Ray integration
 	AwsXray []CloudDisableAccountIntegrationInput `json:"awsXray,omitempty"`
+	// Auto Discovery integration
+	AwsAutoDiscovery []CloudDisableAccountIntegrationInput `json:"awsAutoDiscovery,omitempty"`
 	// Billing integration
 	Billing []CloudDisableAccountIntegrationInput `json:"billing,omitempty"`
 	// CloudFront integration
@@ -843,6 +845,8 @@ type CloudAwsIntegrationsInput struct {
 	AwsWafv2 []CloudAwsWafv2IntegrationInput `json:"awsWafv2,omitempty"`
 	// X-Ray integration
 	AwsXray []CloudAwsXrayIntegrationInput `json:"awsXray,omitempty"`
+	// Aws Auto Discovery Integration
+	AwsAutoDiscovery []CloudAwsAutoDiscoveryIntegrationInput `json:"awsAutoDiscovery,omitempty"`
 	// Billing integration
 	Billing []CloudBillingIntegrationInput `json:"billing,omitempty"`
 	// CloudFront integration
@@ -1537,6 +1541,44 @@ func (x *CloudAwsXrayIntegration) ImplementsCloudIntegration() {}
 
 // CloudAwsXrayIntegrationInput - X-Ray
 type CloudAwsXrayIntegrationInput struct {
+	// Specify each AWS region that includes the resources that you want to monitor.
+	AwsRegions []string `json:"awsRegions,omitempty"`
+	// [DEPRECATED] Multiple polling interval is no longer supported, use only metrics_polling_interval
+	InventoryPollingInterval int `json:"inventoryPollingInterval,omitempty"`
+	// The linked account identifier.
+	LinkedAccountId int `json:"linkedAccountId"`
+	// The data polling interval in seconds.
+	MetricsPollingInterval int `json:"metricsPollingInterval,omitempty"`
+}
+
+// CloudAwsAutoDiscoveryIntegration - Aws Auto Discovery Integration
+type CloudAwsAutoDiscoveryIntegration struct {
+	// Specify each AWS region that includes the resources that you want to monitor.
+	AwsRegions []string `json:"awsRegions,omitempty"`
+	// The object creation date, in epoch (Unix) time
+	CreatedAt nrtime.EpochSeconds `json:"createdAt"`
+	// The cloud service integration identifier.
+	ID int `json:"id,omitempty"`
+	// [DEPRECATED] Multiple polling interval is no longer supported, use only metrics_polling_interval
+	InventoryPollingInterval int `json:"inventoryPollingInterval,omitempty"`
+	// The parent linked account identifier.
+	LinkedAccount CloudLinkedAccount `json:"linkedAccount,omitempty"`
+	// The data polling interval in seconds.
+	MetricsPollingInterval int `json:"metricsPollingInterval,omitempty"`
+	// The cloud service integration name.
+	Name string `json:"name,omitempty"`
+	// The parent NewRelic account identifier.
+	NrAccountId int `json:"nrAccountId"`
+	// The cloud service used in the integration.
+	Service CloudService `json:"service,omitempty"`
+	// The object last update date, in epoch (Unix) time
+	UpdatedAt nrtime.EpochSeconds `json:"updatedAt"`
+}
+
+func (x *CloudAwsAutoDiscoveryIntegration) ImplementsCloudIntegration() {}
+
+// CloudAwsAutoDiscoveryIntegrationInput - AWS Auto Discovery Integration
+type CloudAwsAutoDiscoveryIntegrationInput struct {
 	// Specify each AWS region that includes the resources that you want to monitor.
 	AwsRegions []string `json:"awsRegions,omitempty"`
 	// [DEPRECATED] Multiple polling interval is no longer supported, use only metrics_polling_interval
@@ -6254,6 +6296,14 @@ func UnmarshalCloudIntegrationInterface(b []byte) (*CloudIntegrationInterface, e
 
 			var xxx CloudIntegrationInterface = &interfaceType
 
+			return &xxx, nil
+		case "CloudAwsAutoDiscoveryIntegration":
+			var interfaceType CloudAwsAutoDiscoveryIntegration
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+			var xxx CloudIntegrationInterface = &interfaceType
 			return &xxx, nil
 		case "CloudAzureApimanagementIntegration":
 			var interfaceType CloudAzureAPImanagementIntegration

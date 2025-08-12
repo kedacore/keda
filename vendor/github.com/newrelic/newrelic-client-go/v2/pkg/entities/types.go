@@ -245,6 +245,8 @@ var AiNotificationsChannelTypeTypes = struct {
 	SLACK_LEGACY AiNotificationsChannelType
 	// Webhook channel type
 	WEBHOOK AiNotificationsChannelType
+	// Workflow Automation channel type
+	WORKFLOW_AUTOMATION AiNotificationsChannelType
 }{
 	// Email channel type
 	EMAIL: "EMAIL",
@@ -276,6 +278,8 @@ var AiNotificationsChannelTypeTypes = struct {
 	SLACK_LEGACY: "SLACK_LEGACY",
 	// Webhook channel type
 	WEBHOOK: "WEBHOOK",
+	// Workflow Automation channel type
+	WORKFLOW_AUTOMATION: "WORKFLOW_AUTOMATION",
 }
 
 // AiNotificationsDestinationStatus - Destination statuses
@@ -379,6 +383,8 @@ var AiNotificationsDestinationTypeTypes = struct {
 	SLACK_LEGACY AiNotificationsDestinationType
 	// WebHook destination type
 	WEBHOOK AiNotificationsDestinationType
+	// Workflow Automation destination type
+	WORKFLOW_AUTOMATION AiNotificationsDestinationType
 }{
 	// Email destination type
 	EMAIL: "EMAIL",
@@ -406,6 +412,8 @@ var AiNotificationsDestinationTypeTypes = struct {
 	SLACK_LEGACY: "SLACK_LEGACY",
 	// WebHook destination type
 	WEBHOOK: "WEBHOOK",
+	// Workflow Automation destination type
+	WORKFLOW_AUTOMATION: "WORKFLOW_AUTOMATION",
 }
 
 // AiNotificationsProduct - Product types
@@ -555,6 +563,8 @@ var AiWorkflowsDestinationTypeTypes = struct {
 	SLACK_LEGACY AiWorkflowsDestinationType
 	// Webhook Destination Configuration type
 	WEBHOOK AiWorkflowsDestinationType
+	// Workflow Automation Destination Configuration type
+	WORKFLOW_AUTOMATION AiWorkflowsDestinationType
 }{
 	// Email Destination Configuration type
 	EMAIL: "EMAIL",
@@ -582,6 +592,8 @@ var AiWorkflowsDestinationTypeTypes = struct {
 	SLACK_LEGACY: "SLACK_LEGACY",
 	// Webhook Destination Configuration type
 	WEBHOOK: "WEBHOOK",
+	// Workflow Automation Destination Configuration type
+	WORKFLOW_AUTOMATION: "WORKFLOW_AUTOMATION",
 }
 
 // AiWorkflowsEnrichmentType - Type of Enrichment

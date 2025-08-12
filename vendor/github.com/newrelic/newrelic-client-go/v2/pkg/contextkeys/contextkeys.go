@@ -29,6 +29,7 @@ func (c contextKeys) SetAccountID(ctx context.Context, value string) context.Con
 		ctx = context.Background()
 	}
 
+	//nolint:staticcheck
 	return context.WithValue(ctx, c.accountID, value)
 }
 
