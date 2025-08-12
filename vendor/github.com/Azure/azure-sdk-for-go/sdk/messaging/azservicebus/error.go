@@ -31,6 +31,12 @@ const (
 	// any available sessions it will eventually time out and return an *azservicebus.Error
 	// with this code.
 	CodeTimeout = exported.CodeTimeout
+
+	// CodeNotFound means the entity you're attempting to connect to doesn't exist.
+	CodeNotFound = exported.CodeNotFound
+
+	// CodeClosed means the link or connection for this sender/receiver has been closed.
+	CodeClosed Code = "closed"
 )
 
 // Error represents a Service Bus specific error.
