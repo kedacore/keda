@@ -1297,6 +1297,119 @@
             ]
         },
         {
+            "type": "gcp-pubsub",
+            "metadata": [
+                {
+                    "name": "subscriptionSize",
+                    "type": "string",
+                    "optional": true,
+                    "deprecatedAnnounce": "The 'subscriptionSize' setting is DEPRECATED and will be removed in v2.20 - Use 'mode' and 'value' instead"
+                },
+                {
+                    "name": "mode",
+                    "type": "string",
+                    "default": "SubscriptionSize"
+                },
+                {
+                    "name": "value",
+                    "type": "string",
+                    "default": "10"
+                },
+                {
+                    "name": "activationValue",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "aggregation",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "timeHorizon",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "valueIfNull",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "subscriptionName",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "topicName",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "pulsar",
+            "metadata": [
+                {
+                    "name": "adminURL",
+                    "type": "string",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "topic",
+                    "type": "string",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "subscription",
+                    "type": "string",
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "msgBacklogThreshold",
+                    "type": "string",
+                    "default": "10"
+                },
+                {
+                    "name": "activationMsgBacklogThreshold",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "isPartitionedTopic",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "tls",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "oauthTokenURI",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "scope",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "clientID",
+                    "type": "string",
+                    "optional": true
+                },
+                {
+                    "name": "EndpointParams",
+                    "type": "string",
+                    "optional": true
+                }
+            ]
+        },
+        {
             "type": "rabbitmq",
             "metadata": [
                 {
@@ -2335,6 +2448,85 @@
                     "name": "capabilities",
                     "type": "string",
                     "optional": true
+                }
+            ]
+        },
+        {
+            "type": "solace-direct-messaging",
+            "metadata": [
+                {
+                    "name": "solaceSempBaseURL",
+                    "type": "string"
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "messageVpn",
+                    "type": "string"
+                },
+                {
+                    "name": "clientNamePattern",
+                    "type": "string"
+                },
+                {
+                    "name": "unsafeSSL",
+                    "type": "string",
+                    "default": "false"
+                },
+                {
+                    "name": "queuedMessagesFactor",
+                    "type": "string",
+                    "default": "3"
+                },
+                {
+                    "name": "aggregatedClientTxByteRateTarget",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "aggregatedClientAverageTxByteRateTarget",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "aggregatedClientTxMsgRateTarget",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "aggregatedClientAverageTxMsgRateTarget",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "activationAggregatedClientTxByteRateTarget",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "activationAggregatedClientAverageTxByteRateTarget",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "activationAggregatedClientTxMsgRateTarget",
+                    "type": "string",
+                    "default": "0"
+                },
+                {
+                    "name": "activationAggregatedClientAverageTxMsgRateTarget",
+                    "type": "string",
+                    "default": "0"
                 }
             ]
         },
