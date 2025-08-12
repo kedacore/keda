@@ -49,8 +49,8 @@ const (
 	AuthParams      ParsingOrder = "authParams"
 )
 
-// allowedParsingOrderMap is a map with set of valid parsing orders
-var allowedParsingOrderMap = map[ParsingOrder]bool{
+// AllowedParsingOrderMap is a map with set of valid parsing orders
+var AllowedParsingOrderMap = map[ParsingOrder]bool{
 	TriggerMetadata: true,
 	ResolvedEnv:     true,
 	AuthParams:      true,
@@ -59,28 +59,28 @@ var allowedParsingOrderMap = map[ParsingOrder]bool{
 // separators for field tag structure
 // e.g. name=stringVal,order=triggerMetadata;resolvedEnv;authParams,optional
 const (
-	tagSeparator      = ","
-	tagKeySeparator   = "="
-	tagValueSeparator = ";"
+	TagSeparator      = ","
+	TagKeySeparator   = "="
+	TagValueSeparator = ";"
 )
 
 // separators for map and slice elements
 const (
-	elemKeyValSeparator = "="
+	ElemKeyValSeparator = "="
 )
 
 // field tag parameters
 const (
-	optionalTag           = "optional"
-	deprecatedTag         = "deprecated"
-	deprecatedAnnounceTag = "deprecatedAnnounce"
-	defaultTag            = "default"
-	orderTag              = "order"
-	nameTag               = "name"
-	enumTag               = "enum"
-	exclusiveSetTag       = "exclusiveSet"
-	rangeTag              = "range"
-	separatorTag          = "separator"
+	OptionalTag           = "optional"
+	DeprecatedTag         = "deprecated"
+	DeprecatedAnnounceTag = "deprecatedAnnounce"
+	DefaultTag            = "default"
+	OrderTag              = "order"
+	NameTag               = "name"
+	EnumTag               = "enum"
+	ExclusiveSetTag       = "exclusiveSet"
+	RangeTag              = "range"
+	SeparatorTag          = "separator"
 )
 
 // Params is a struct that represents the parameter list that can be used in the keda tag
@@ -212,7 +212,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 	}
 	if !exists && !(params.Optional || params.IsDeprecated()) {
 		if len(params.Order) == 0 {
-			apo := slices.Sorted(maps.Keys(allowedParsingOrderMap))
+			apo := slices.Sorted(maps.Keys(AllowedParsingOrderMap))
 			return fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name(), apo)
 		}
 		return fmt.Errorf("missing required parameter %q in %v", params.Name(), params.Order)
@@ -294,9 +294,9 @@ func setConfigValueMap(params Params, valFromConfig string, field reflect.Value)
 	split := splitWithSeparator(valFromConfig, params.Separator)
 	for _, s := range split {
 		s := strings.TrimSpace(s)
-		kv := strings.Split(s, elemKeyValSeparator)
+		kv := strings.Split(s, ElemKeyValSeparator)
 		if len(kv) != 2 {
-			return fmt.Errorf("expected format key%vvalue, got %q", elemKeyValSeparator, s)
+			return fmt.Errorf("expected format key%vvalue, got %q", ElemKeyValSeparator, s)
 		}
 		key := strings.TrimSpace(kv[0])
 		val := strings.TrimSpace(kv[1])
@@ -473,66 +473,66 @@ func (sc *ScalerConfig) configParamValue(params Params) (string, bool) {
 // paramsFromTag is a function that returns the Params struct based on the field tag
 func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 	params := Params{FieldName: field.Name}
-	tagSplit := strings.Split(tag, tagSeparator)
+	tagSplit := strings.Split(tag, TagSeparator)
 	for _, ts := range tagSplit {
-		tsplit := strings.Split(ts, tagKeySeparator)
+		tsplit := strings.Split(ts, TagKeySeparator)
 		tsplit[0] = strings.TrimSpace(tsplit[0])
 		switch tsplit[0] {
-		case optionalTag:
+		case OptionalTag:
 			if len(tsplit) == 1 {
 				params.Optional = true
 			}
 			if len(tsplit) > 1 {
 				params.Optional, _ = strconv.ParseBool(strings.TrimSpace(tsplit[1]))
 			}
-		case orderTag:
+		case OrderTag:
 			if len(tsplit) > 1 {
-				order := strings.Split(tsplit[1], tagValueSeparator)
+				order := strings.Split(tsplit[1], TagValueSeparator)
 				for _, po := range order {
 					poTyped := ParsingOrder(strings.TrimSpace(po))
-					if !allowedParsingOrderMap[poTyped] {
-						apo := slices.Sorted(maps.Keys(allowedParsingOrderMap))
+					if !AllowedParsingOrderMap[poTyped] {
+						apo := slices.Sorted(maps.Keys(AllowedParsingOrderMap))
 						return params, fmt.Errorf("unknown parsing order value %s, has to be one of %s", po, apo)
 					}
 					params.Order = append(params.Order, poTyped)
 				}
 			}
-		case nameTag:
+		case NameTag:
 			if len(tsplit) > 1 {
-				params.Names = strings.Split(strings.TrimSpace(tsplit[1]), tagValueSeparator)
+				params.Names = strings.Split(strings.TrimSpace(tsplit[1]), TagValueSeparator)
 			}
-		case deprecatedTag:
+		case DeprecatedTag:
 			if len(tsplit) == 1 {
-				params.Deprecated = deprecatedTag
+				params.Deprecated = DeprecatedTag
 			} else {
 				params.Deprecated = strings.TrimSpace(tsplit[1])
 			}
-		case deprecatedAnnounceTag:
+		case DeprecatedAnnounceTag:
 			if len(tsplit) == 1 {
-				params.DeprecatedAnnounce = deprecatedAnnounceTag
+				params.DeprecatedAnnounce = DeprecatedAnnounceTag
 			} else {
 				params.DeprecatedAnnounce = strings.TrimSpace(tsplit[1])
 			}
-		case defaultTag:
+		case DefaultTag:
 			if len(tsplit) > 1 {
 				params.Default = strings.TrimSpace(tsplit[1])
 			}
-		case enumTag:
+		case EnumTag:
 			if len(tsplit) > 1 {
-				params.Enum = strings.Split(tsplit[1], tagValueSeparator)
+				params.Enum = strings.Split(tsplit[1], TagValueSeparator)
 			}
-		case exclusiveSetTag:
+		case ExclusiveSetTag:
 			if len(tsplit) > 1 {
-				params.ExclusiveSet = strings.Split(tsplit[1], tagValueSeparator)
+				params.ExclusiveSet = strings.Split(tsplit[1], TagValueSeparator)
 			}
-		case rangeTag:
+		case RangeTag:
 			if len(tsplit) == 1 {
 				params.RangeSeparator = "-"
 			}
 			if len(tsplit) == 2 {
 				params.RangeSeparator = strings.TrimSpace(tsplit[1])
 			}
-		case separatorTag:
+		case SeparatorTag:
 			if len(tsplit) > 1 {
 				params.Separator = strings.TrimSpace(tsplit[1])
 			}
