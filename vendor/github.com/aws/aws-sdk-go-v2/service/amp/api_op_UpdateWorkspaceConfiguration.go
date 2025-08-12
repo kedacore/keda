@@ -11,56 +11,56 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Updates an existing alert manager definition in a workspace. If the workspace
-// does not already have an alert manager definition, don't use this operation to
-// create it. Instead, use CreateAlertManagerDefinition .
-func (c *Client) PutAlertManagerDefinition(ctx context.Context, params *PutAlertManagerDefinitionInput, optFns ...func(*Options)) (*PutAlertManagerDefinitionOutput, error) {
+// Use this operation to create or update the label sets, label set limits, and
+// retention period of a workspace.
+//
+// You must specify at least one of limitsPerLabelSet or retentionPeriodInDays for
+// the request to be valid.
+func (c *Client) UpdateWorkspaceConfiguration(ctx context.Context, params *UpdateWorkspaceConfigurationInput, optFns ...func(*Options)) (*UpdateWorkspaceConfigurationOutput, error) {
 	if params == nil {
-		params = &PutAlertManagerDefinitionInput{}
+		params = &UpdateWorkspaceConfigurationInput{}
 	}
 
-	result, metadata, err := c.invokeOperation(ctx, "PutAlertManagerDefinition", params, optFns, c.addOperationPutAlertManagerDefinitionMiddlewares)
+	result, metadata, err := c.invokeOperation(ctx, "UpdateWorkspaceConfiguration", params, optFns, c.addOperationUpdateWorkspaceConfigurationMiddlewares)
 	if err != nil {
 		return nil, err
 	}
 
-	out := result.(*PutAlertManagerDefinitionOutput)
+	out := result.(*UpdateWorkspaceConfigurationOutput)
 	out.ResultMetadata = metadata
 	return out, nil
 }
 
-// Represents the input of a PutAlertManagerDefinition operation.
-type PutAlertManagerDefinitionInput struct {
+type UpdateWorkspaceConfigurationInput struct {
 
-	// The alert manager definition to use. A base64-encoded version of the YAML alert
-	// manager definition file.
+	// The ID of the workspace that you want to update. To find the IDs of your
+	// workspaces, use the [ListWorkspaces]operation.
 	//
-	// For details about the alert manager definition, see [AlertManagedDefinitionData].
-	//
-	// [AlertManagedDefinitionData]: https://docs.aws.amazon.com/prometheus/latest/APIReference/yaml-AlertManagerDefinitionData.html
-	//
-	// This member is required.
-	Data []byte
-
-	// The ID of the workspace to update the alert manager definition in.
+	// [ListWorkspaces]: https://docs.aws.amazon.com/prometheus/latest/APIReference/API_ListWorkspaces.htm
 	//
 	// This member is required.
 	WorkspaceId *string
 
-	// A unique identifier that you can provide to ensure the idempotency of the
-	// request. Case-sensitive.
+	// You can include a token in your operation to make it an idempotent opeartion.
 	ClientToken *string
+
+	// This is an array of structures, where each structure defines a label set for
+	// the workspace, and defines the active time series limit for each of those label
+	// sets. Each label name in a label set must be unique.
+	LimitsPerLabelSet []types.LimitsPerLabelSet
+
+	// Specifies how many days that metrics will be retained in the workspace.
+	RetentionPeriodInDays *int32
 
 	noSmithyDocumentSerde
 }
 
-// Represents the output of a PutAlertManagerDefinition operation.
-type PutAlertManagerDefinitionOutput struct {
+type UpdateWorkspaceConfigurationOutput struct {
 
-	// A structure that returns the current status of the alert manager definition.
+	// The status of the workspace configuration.
 	//
 	// This member is required.
-	Status *types.AlertManagerDefinitionStatus
+	Status *types.WorkspaceConfigurationStatus
 
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -68,19 +68,19 @@ type PutAlertManagerDefinitionOutput struct {
 	noSmithyDocumentSerde
 }
 
-func (c *Client) addOperationPutAlertManagerDefinitionMiddlewares(stack *middleware.Stack, options Options) (err error) {
+func (c *Client) addOperationUpdateWorkspaceConfigurationMiddlewares(stack *middleware.Stack, options Options) (err error) {
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpPutAlertManagerDefinition{}, middleware.After)
+	err = stack.Serialize.Add(&awsRestjson1_serializeOpUpdateWorkspaceConfiguration{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpPutAlertManagerDefinition{}, middleware.After)
+	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpUpdateWorkspaceConfiguration{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "PutAlertManagerDefinition"); err != nil {
+	if err := addProtocolFinalizerMiddlewares(stack, options, "UpdateWorkspaceConfiguration"); err != nil {
 		return fmt.Errorf("add protocol finalizers: %v", err)
 	}
 
@@ -135,13 +135,13 @@ func (c *Client) addOperationPutAlertManagerDefinitionMiddlewares(stack *middlew
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
-	if err = addIdempotencyToken_opPutAlertManagerDefinitionMiddleware(stack, options); err != nil {
+	if err = addIdempotencyToken_opUpdateWorkspaceConfigurationMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addOpPutAlertManagerDefinitionValidationMiddleware(stack); err != nil {
+	if err = addOpUpdateWorkspaceConfigurationValidationMiddleware(stack); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opPutAlertManagerDefinition(options.Region), middleware.Before); err != nil {
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUpdateWorkspaceConfiguration(options.Region), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRecursionDetection(stack); err != nil {
@@ -204,24 +204,24 @@ func (c *Client) addOperationPutAlertManagerDefinitionMiddlewares(stack *middlew
 	return nil
 }
 
-type idempotencyToken_initializeOpPutAlertManagerDefinition struct {
+type idempotencyToken_initializeOpUpdateWorkspaceConfiguration struct {
 	tokenProvider IdempotencyTokenProvider
 }
 
-func (*idempotencyToken_initializeOpPutAlertManagerDefinition) ID() string {
+func (*idempotencyToken_initializeOpUpdateWorkspaceConfiguration) ID() string {
 	return "OperationIdempotencyTokenAutoFill"
 }
 
-func (m *idempotencyToken_initializeOpPutAlertManagerDefinition) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+func (m *idempotencyToken_initializeOpUpdateWorkspaceConfiguration) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
 	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
 ) {
 	if m.tokenProvider == nil {
 		return next.HandleInitialize(ctx, in)
 	}
 
-	input, ok := in.Parameters.(*PutAlertManagerDefinitionInput)
+	input, ok := in.Parameters.(*UpdateWorkspaceConfigurationInput)
 	if !ok {
-		return out, metadata, fmt.Errorf("expected middleware input to be of type *PutAlertManagerDefinitionInput ")
+		return out, metadata, fmt.Errorf("expected middleware input to be of type *UpdateWorkspaceConfigurationInput ")
 	}
 
 	if input.ClientToken == nil {
@@ -233,14 +233,14 @@ func (m *idempotencyToken_initializeOpPutAlertManagerDefinition) HandleInitializ
 	}
 	return next.HandleInitialize(ctx, in)
 }
-func addIdempotencyToken_opPutAlertManagerDefinitionMiddleware(stack *middleware.Stack, cfg Options) error {
-	return stack.Initialize.Add(&idempotencyToken_initializeOpPutAlertManagerDefinition{tokenProvider: cfg.IdempotencyTokenProvider}, middleware.Before)
+func addIdempotencyToken_opUpdateWorkspaceConfigurationMiddleware(stack *middleware.Stack, cfg Options) error {
+	return stack.Initialize.Add(&idempotencyToken_initializeOpUpdateWorkspaceConfiguration{tokenProvider: cfg.IdempotencyTokenProvider}, middleware.Before)
 }
 
-func newServiceMetadataMiddleware_opPutAlertManagerDefinition(region string) *awsmiddleware.RegisterServiceMetadata {
+func newServiceMetadataMiddleware_opUpdateWorkspaceConfiguration(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		OperationName: "PutAlertManagerDefinition",
+		OperationName: "UpdateWorkspaceConfiguration",
 	}
 }

@@ -6,43 +6,45 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
+	"github.com/aws/aws-sdk-go-v2/service/amp/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// The ListTagsForResource operation returns the tags that are associated with an
-// Amazon Managed Service for Prometheus resource. Currently, the only resources
-// that can be tagged are scrapers, workspaces, and rule groups namespaces.
-func (c *Client) ListTagsForResource(ctx context.Context, params *ListTagsForResourceInput, optFns ...func(*Options)) (*ListTagsForResourceOutput, error) {
+// Retrieves the details of the query logging configuration for the specified
+// workspace.
+func (c *Client) DescribeQueryLoggingConfiguration(ctx context.Context, params *DescribeQueryLoggingConfigurationInput, optFns ...func(*Options)) (*DescribeQueryLoggingConfigurationOutput, error) {
 	if params == nil {
-		params = &ListTagsForResourceInput{}
+		params = &DescribeQueryLoggingConfigurationInput{}
 	}
 
-	result, metadata, err := c.invokeOperation(ctx, "ListTagsForResource", params, optFns, c.addOperationListTagsForResourceMiddlewares)
+	result, metadata, err := c.invokeOperation(ctx, "DescribeQueryLoggingConfiguration", params, optFns, c.addOperationDescribeQueryLoggingConfigurationMiddlewares)
 	if err != nil {
 		return nil, err
 	}
 
-	out := result.(*ListTagsForResourceOutput)
+	out := result.(*DescribeQueryLoggingConfigurationOutput)
 	out.ResultMetadata = metadata
 	return out, nil
 }
 
-type ListTagsForResourceInput struct {
+type DescribeQueryLoggingConfigurationInput struct {
 
-	// The ARN of the resource to list tages for. Must be a workspace, scraper, or
-	// rule groups namespace resource.
+	// The ID of the workspace for which to retrieve the query logging configuration.
 	//
 	// This member is required.
-	ResourceArn *string
+	WorkspaceId *string
 
 	noSmithyDocumentSerde
 }
 
-type ListTagsForResourceOutput struct {
+type DescribeQueryLoggingConfigurationOutput struct {
 
-	// The list of tag keys and values associated with the resource.
-	Tags map[string]string
+	// The detailed information about the query logging configuration for the
+	// specified workspace.
+	//
+	// This member is required.
+	QueryLoggingConfiguration *types.QueryLoggingConfigurationMetadata
 
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -50,19 +52,19 @@ type ListTagsForResourceOutput struct {
 	noSmithyDocumentSerde
 }
 
-func (c *Client) addOperationListTagsForResourceMiddlewares(stack *middleware.Stack, options Options) (err error) {
+func (c *Client) addOperationDescribeQueryLoggingConfigurationMiddlewares(stack *middleware.Stack, options Options) (err error) {
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsRestjson1_serializeOpListTagsForResource{}, middleware.After)
+	err = stack.Serialize.Add(&awsRestjson1_serializeOpDescribeQueryLoggingConfiguration{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpListTagsForResource{}, middleware.After)
+	err = stack.Deserialize.Add(&awsRestjson1_deserializeOpDescribeQueryLoggingConfiguration{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "ListTagsForResource"); err != nil {
+	if err := addProtocolFinalizerMiddlewares(stack, options, "DescribeQueryLoggingConfiguration"); err != nil {
 		return fmt.Errorf("add protocol finalizers: %v", err)
 	}
 
@@ -117,10 +119,10 @@ func (c *Client) addOperationListTagsForResourceMiddlewares(stack *middleware.St
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
-	if err = addOpListTagsForResourceValidationMiddleware(stack); err != nil {
+	if err = addOpDescribeQueryLoggingConfigurationValidationMiddleware(stack); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListTagsForResource(options.Region), middleware.Before); err != nil {
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeQueryLoggingConfiguration(options.Region), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRecursionDetection(stack); err != nil {
@@ -183,10 +185,10 @@ func (c *Client) addOperationListTagsForResourceMiddlewares(stack *middleware.St
 	return nil
 }
 
-func newServiceMetadataMiddleware_opListTagsForResource(region string) *awsmiddleware.RegisterServiceMetadata {
+func newServiceMetadataMiddleware_opDescribeQueryLoggingConfiguration(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		OperationName: "ListTagsForResource",
+		OperationName: "DescribeQueryLoggingConfiguration",
 	}
 }
