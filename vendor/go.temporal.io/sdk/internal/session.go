@@ -1,27 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2020 Temporal Technologies Inc.  All rights reserved.
-//
-// Copyright (c) 2020 Uber Technologies, Inc.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 import (
@@ -32,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pborman/uuid"
+	"github.com/google/uuid"
 
 	"go.temporal.io/sdk/internal/common/backoff"
 )
@@ -310,7 +286,7 @@ func createSession(ctx Context, creationTaskqueue string, options *SessionOption
 
 	taskqueueChan := GetSignalChannel(ctx, sessionID) // use sessionID as channel name
 	// Retry is only needed when creating new session and the error returned is
-	// NewApplicationError(errTooManySessionsMsg). Therefore we make sure to
+	// NewApplicationError(errTooManySessionsMsg). Therefore, we make sure to
 	// disable retrying for start-to-close and heartbeat timeouts which can occur
 	// when attempting to retry a create-session on a different worker.
 	retryPolicy := &RetryPolicy{
@@ -395,7 +371,7 @@ func createSession(ctx Context, creationTaskqueue string, options *SessionOption
 func generateSessionID(ctx Context) (string, error) {
 	var sessionID string
 	err := SideEffect(ctx, func(ctx Context) interface{} {
-		return uuid.New()
+		return uuid.NewString()
 	}).Get(&sessionID)
 	return sessionID, err
 }
@@ -441,6 +417,14 @@ func sessionCreationActivity(ctx context.Context, sessionID string) error {
 		select {
 		case <-ctx.Done():
 			sessionEnv.CompleteSession(sessionID)
+			// Because of how session creation configures retryPolicy, we need to wrap context cancels that don't
+			// originate from the server as non-retryable errors. See retrypolicy in createSession() above.
+			if !(ctx.Err() == context.Canceled && errors.Is(context.Cause(ctx), &CanceledError{})) {
+				return NewApplicationErrorWithOptions(
+					"session failed due to worker shutdown", "SessionWorkerShutdown",
+					ApplicationErrorOptions{NonRetryable: true, Cause: ctx.Err()})
+
+			}
 			return ctx.Err()
 		case <-ticker.C:
 			heartbeatOp := func() error {

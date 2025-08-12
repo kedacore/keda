@@ -1,27 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2020 Temporal Technologies Inc.  All rights reserved.
-//
-// Copyright (c) 2020 Uber Technologies, Inc.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 import (
@@ -469,6 +445,11 @@ func (env *testWorkflowEnvironmentImpl) newTestWorkflowEnvironmentForChild(
 	childEnv.workflowInfo.CronSchedule = cronSchedule
 	childEnv.workflowInfo.ParentWorkflowNamespace = env.workflowInfo.Namespace
 	childEnv.workflowInfo.ParentWorkflowExecution = &env.workflowInfo.WorkflowExecution
+	if env.workflowInfo.RootWorkflowExecution == nil {
+		childEnv.workflowInfo.RootWorkflowExecution = &env.workflowInfo.WorkflowExecution
+	} else {
+		childEnv.workflowInfo.ParentWorkflowExecution = env.workflowInfo.RootWorkflowExecution
+	}
 
 	searchAttrs, err := serializeSearchAttributes(params.SearchAttributes, params.TypedSearchAttributes)
 	if err != nil {
@@ -632,8 +613,13 @@ func (env *testWorkflowEnvironmentImpl) getWorkflowDefinition(wt WorkflowType) (
 		supported := strings.Join(env.registry.getRegisteredWorkflowTypes(), ", ")
 		return nil, fmt.Errorf("unable to find workflow type: %v. Supported types: [%v]", wt.Name, supported)
 	}
+	var dynamic bool
+	if d, ok := wf.(string); ok && d == "dynamic" {
+		wf = env.registry.dynamicWorkflow
+		dynamic = true
+	}
 	wd := &workflowExecutorWrapper{
-		workflowExecutor: &workflowExecutor{workflowType: wt.Name, fn: wf, interceptors: env.registry.interceptors},
+		workflowExecutor: &workflowExecutor{workflowType: wt.Name, fn: wf, interceptors: env.registry.interceptors, dynamic: dynamic},
 		env:              env,
 	}
 	return newSyncWorkflowDefinition(wd), nil
@@ -793,11 +779,12 @@ func (env *testWorkflowEnvironmentImpl) executeLocalActivity(
 		header:        params.Header,
 	}
 	taskHandler := localActivityTaskHandler{
-		userContext:        env.workerOptions.BackgroundActivityContext,
+		backgroundContext:  env.workerOptions.BackgroundActivityContext,
 		metricsHandler:     env.metricsHandler,
 		logger:             env.logger,
 		interceptors:       env.registry.interceptors,
 		contextPropagators: env.contextPropagators,
+		workerStopChannel:  env.workerStopChannel,
 	}
 
 	result := taskHandler.executeLocalActivityTask(task)
@@ -1586,12 +1573,13 @@ func (env *testWorkflowEnvironmentImpl) ExecuteLocalActivity(params ExecuteLocal
 
 	task := newLocalActivityTask(params, callback, activityID)
 	taskHandler := localActivityTaskHandler{
-		userContext:        env.workerOptions.BackgroundActivityContext,
+		backgroundContext:  env.workerOptions.BackgroundActivityContext,
 		metricsHandler:     env.metricsHandler,
 		logger:             env.logger,
 		dataConverter:      env.dataConverter,
 		contextPropagators: env.contextPropagators,
 		interceptors:       env.registry.interceptors,
+		workerStopChannel:  env.workerStopChannel,
 	}
 
 	env.localActivities[activityID] = task
@@ -2095,20 +2083,20 @@ func (env *testWorkflowEnvironmentImpl) newTestActivityTaskHandler(taskQueue str
 		Identity:           env.identity,
 		MetricsHandler:     env.metricsHandler,
 		Logger:             env.logger,
-		UserContext:        env.workerOptions.BackgroundActivityContext,
+		BackgroundContext:  env.workerOptions.BackgroundActivityContext,
 		FailureConverter:   env.failureConverter,
 		DataConverter:      dataConverter,
 		WorkerStopChannel:  env.workerStopChannel,
 		ContextPropagators: env.contextPropagators,
 	}
 	ensureRequiredParams(&params)
-	if params.UserContext == nil {
-		params.UserContext = context.Background()
+	if params.BackgroundContext == nil {
+		params.BackgroundContext = context.Background()
 	}
 	if env.workerOptions.EnableSessionWorker && env.sessionEnvironment == nil {
 		env.sessionEnvironment = newTestSessionEnvironment(env, &params, env.workerOptions.MaxConcurrentSessionExecutionSize)
 	}
-	params.UserContext = context.WithValue(params.UserContext, sessionEnvironmentContextKey, env.sessionEnvironment)
+	params.BackgroundContext = context.WithValue(params.BackgroundContext, sessionEnvironmentContextKey, env.sessionEnvironment)
 	registry := env.registry
 	if len(registry.getRegisteredActivities()) == 0 {
 		panic(fmt.Sprintf("no activity is registered for taskqueue '%v'", taskQueue))
@@ -2128,7 +2116,8 @@ func (env *testWorkflowEnvironmentImpl) newTestActivityTaskHandler(taskQueue str
 		if !ok {
 			return nil
 		}
-		ae := &activityExecutor{name: activity.ActivityType().Name, fn: activity.GetFunction()}
+		dynamic := activity == env.registry.dynamicActivity
+		ae := &activityExecutor{name: activity.ActivityType().Name, fn: activity.GetFunction(), dynamic: dynamic}
 
 		if env.sessionEnvironment != nil {
 			// Special handling for session creation and completion activities.
@@ -2173,6 +2162,7 @@ func newTestActivityTask(workflowID, runID, workflowTypeName, namespace string,
 		},
 		WorkflowNamespace: namespace,
 		Header:            attr.GetHeader(),
+		Priority:          attr.Priority,
 	}
 	return task
 }
@@ -2237,6 +2227,10 @@ func (env *testWorkflowEnvironmentImpl) RegisterWorkflowWithOptions(w interface{
 	env.registry.RegisterWorkflowWithOptions(w, options)
 }
 
+func (env *testWorkflowEnvironmentImpl) RegisterDynamicWorkflow(w interface{}, options DynamicRegisterWorkflowOptions) {
+	env.registry.RegisterDynamicWorkflow(w, options)
+}
+
 func (env *testWorkflowEnvironmentImpl) RegisterActivity(a interface{}) {
 	env.registry.RegisterActivityWithOptions(a, RegisterActivityOptions{DisableAlreadyRegisteredCheck: true})
 }
@@ -2244,6 +2238,10 @@ func (env *testWorkflowEnvironmentImpl) RegisterActivity(a interface{}) {
 func (env *testWorkflowEnvironmentImpl) RegisterActivityWithOptions(a interface{}, options RegisterActivityOptions) {
 	options.DisableAlreadyRegisteredCheck = true
 	env.registry.RegisterActivityWithOptions(a, options)
+}
+
+func (env *testWorkflowEnvironmentImpl) RegisterDynamicActivity(w interface{}, options DynamicRegisterActivityOptions) {
+	env.registry.RegisterDynamicActivity(w, options)
 }
 
 func (env *testWorkflowEnvironmentImpl) RegisterNexusService(s *nexus.Service) {

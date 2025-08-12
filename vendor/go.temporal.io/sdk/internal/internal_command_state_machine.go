@@ -1,27 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2020 Temporal Technologies Inc.  All rights reserved.
-//
-// Copyright (c) 2020 Uber Technologies, Inc.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 import (
@@ -153,13 +129,15 @@ type (
 		attributes       *commandpb.ScheduleNexusOperationCommandAttributes
 		// Instead of tracking cancelation as a state, we track it as a separate dimension with the request-cancel state
 		// machine.
-		cancelation *requestCancelNexusOperationStateMachine
+		cancelation   *requestCancelNexusOperationStateMachine
+		startMetadata *sdk.UserMetadata
 	}
 
 	// requestCancelNexusOperationStateMachine is the state machine for the RequestCancelNexusOperation command.
 	// Valid transitions:
 	// commandStateCreated -> commandStateCommandSent
-	// commandStateCommandSent - (NexusOperationCancelRequested) -> commandStateCompleted
+	// commandStateCommandSent - (NexusOperationCancelRequested) -> commandStateInitiated
+	// commandStateInitiated - (NexusOperationCancelRequest(Completed|Failed)) -> commandStateCompleted
 	requestCancelNexusOperationStateMachine struct {
 		*commandStateMachineBase
 		attributes *commandpb.RequestCancelNexusOperationCommandAttributes
@@ -371,6 +349,7 @@ func (h *commandsHelper) newCancelActivityStateMachine(attributes *commandpb.Req
 func (h *commandsHelper) newNexusOperationStateMachine(
 	seq int64,
 	attributes *commandpb.ScheduleNexusOperationCommandAttributes,
+	startMetadata *sdk.UserMetadata,
 ) *nexusOperationStateMachine {
 	base := h.newCommandStateMachineBase(commandTypeNexusOperation, strconv.FormatInt(seq, 10))
 	sm := &nexusOperationStateMachine{
@@ -378,6 +357,7 @@ func (h *commandsHelper) newNexusOperationStateMachine(
 		attributes:              attributes,
 		seq:                     seq,
 		// scheduledEventID will be assigned by the server when the corresponding event comes in.
+		startMetadata: startMetadata,
 	}
 	h.nexusOperationsWithoutScheduledID.PushBack(sm)
 	return sm
@@ -431,8 +411,8 @@ func (h *commandsHelper) newNaiveCommandStateMachine(commandType commandType, id
 	}
 }
 
-func (h *commandsHelper) newMarkerCommandStateMachine(id string, attributes *commandpb.RecordMarkerCommandAttributes) *markerCommandStateMachine {
-	d := createNewCommand(enumspb.COMMAND_TYPE_RECORD_MARKER)
+func (h *commandsHelper) newMarkerCommandStateMachine(id string, attributes *commandpb.RecordMarkerCommandAttributes, userMetadata *sdk.UserMetadata) *markerCommandStateMachine {
+	d := createNewCommandWithMetadata(enumspb.COMMAND_TYPE_RECORD_MARKER, userMetadata)
 	d.Attributes = &commandpb.Command_RecordMarkerCommandAttributes{RecordMarkerCommandAttributes: attributes}
 	return &markerCommandStateMachine{
 		naiveCommandStateMachine: h.newNaiveCommandStateMachine(commandTypeMarker, id, d),
@@ -941,7 +921,8 @@ func (sm *nexusOperationStateMachine) getCommand() *commandpb.Command {
 	if sm.state == commandStateCreated && sm.cancelation == nil {
 		// Only create the command in this state unlike other machines that also create it if canceled before sent.
 		return &commandpb.Command{
-			CommandType: enumspb.COMMAND_TYPE_SCHEDULE_NEXUS_OPERATION,
+			CommandType:  enumspb.COMMAND_TYPE_SCHEDULE_NEXUS_OPERATION,
+			UserMetadata: sm.startMetadata,
 			Attributes: &commandpb.Command_ScheduleNexusOperationCommandAttributes{
 				ScheduleNexusOperationCommandAttributes: sm.attributes,
 			},
@@ -965,7 +946,7 @@ func (sm *nexusOperationStateMachine) handleCompletionEvent() {
 		commandStateStarted:
 		sm.moveState(commandStateCompleted, eventCompletion)
 	default:
-		sm.failStateTransition(eventStarted)
+		sm.failStateTransition(eventCompletion)
 	}
 }
 
@@ -999,12 +980,22 @@ func (d *requestCancelNexusOperationStateMachine) getCommand() *commandpb.Comman
 	}
 }
 
-func (d *requestCancelNexusOperationStateMachine) handleCompletionEvent() {
-	if d.state != commandStateCommandSent && d.state != commandStateCreated {
-		d.failStateTransition(eventCompletion)
-		return
+func (d *requestCancelNexusOperationStateMachine) handleInitiatedEvent() {
+	switch d.state {
+	case commandStateCommandSent:
+		d.moveState(commandStateInitiated, eventInitiated)
+	default:
+		d.failStateTransition(eventInitiated)
 	}
-	d.moveState(commandStateCompleted, eventCompletion)
+}
+
+func (d *requestCancelNexusOperationStateMachine) handleCompletionEvent() {
+	switch d.state {
+	case commandStateCreated, commandStateInitiated:
+		d.moveState(commandStateCompleted, eventCompletion)
+	default:
+		d.failStateTransition(eventCompletion)
+	}
 }
 
 func newCommandsHelper() *commandsHelper {
@@ -1201,8 +1192,9 @@ func (h *commandsHelper) getActivityAndScheduledEventIDs(event *historypb.Histor
 func (h *commandsHelper) scheduleNexusOperation(
 	seq int64,
 	attributes *commandpb.ScheduleNexusOperationCommandAttributes,
+	startMetadata *sdk.UserMetadata,
 ) *nexusOperationStateMachine {
-	command := h.newNexusOperationStateMachine(seq, attributes)
+	command := h.newNexusOperationStateMachine(seq, attributes, startMetadata)
 	h.addCommand(command)
 	return command
 }
@@ -1241,9 +1233,26 @@ func (h *commandsHelper) handleNexusOperationCompleted(scheduledEventID int64) c
 	return command
 }
 
-func (h *commandsHelper) handleNexusOperationCancelRequested(scheduledEventID int64) {
-	command := h.getCommand(makeCommandID(commandTypeRequestCancelNexusOperation, strconv.FormatInt(scheduledEventID, 10)))
-	command.handleCompletionEvent()
+func (h *commandsHelper) handleNexusOperationCancelRequested(scheduledEventID int64) commandStateMachine {
+	seq, ok := h.scheduledEventIDToNexusSeq[scheduledEventID]
+	if !ok {
+		panicIllegalState(fmt.Sprintf("[TMPRL1100] unable to find nexus operation state machine for event ID: %v", scheduledEventID))
+	}
+	command := h.getCommand(makeCommandID(commandTypeNexusOperation, strconv.FormatInt(seq, 10)))
+	sm := command.(*nexusOperationStateMachine)
+	sm.cancelation.handleInitiatedEvent()
+	return command
+}
+
+func (h *commandsHelper) handleNexusOperationCancelRequestDelivered(scheduledEventID int64) commandStateMachine {
+	seq, ok := h.scheduledEventIDToNexusSeq[scheduledEventID]
+	if !ok {
+		panicIllegalState(fmt.Sprintf("[TMPRL1100] unable to find nexus operation state machine for event ID: %v", scheduledEventID))
+	}
+	command := h.getCommand(makeCommandID(commandTypeNexusOperation, strconv.FormatInt(seq, 10)))
+	sm := command.(*nexusOperationStateMachine)
+	sm.cancelation.handleCompletionEvent()
+	return command
 }
 
 func (h *commandsHelper) requestCancelNexusOperation(seq int64) commandStateMachine {
@@ -1292,7 +1301,7 @@ func (h *commandsHelper) recordVersionMarker(changeID string, version Version, d
 		recordMarker.Details[versionSearchAttributeUpdatedName] = searchAttributeWasUpdatedPayload
 	}
 
-	command := h.newMarkerCommandStateMachine(markerID, recordMarker)
+	command := h.newMarkerCommandStateMachine(markerID, recordMarker, nil)
 	h.addCommand(command)
 	return command
 }
@@ -1327,19 +1336,19 @@ func (h *commandsHelper) recordSideEffectMarker(sideEffectID int64, data *common
 			sideEffectMarkerDataName: data,
 		},
 	}
-	command := h.newMarkerCommandStateMachine(markerID, attributes)
+	command := h.newMarkerCommandStateMachine(markerID, attributes, nil)
 	h.addCommand(command)
 	return command
 }
 
-func (h *commandsHelper) recordLocalActivityMarker(activityID string, details map[string]*commonpb.Payloads, failure *failurepb.Failure) commandStateMachine {
+func (h *commandsHelper) recordLocalActivityMarker(activityID string, details map[string]*commonpb.Payloads, failure *failurepb.Failure, metadata *sdk.UserMetadata) commandStateMachine {
 	markerID := fmt.Sprintf("%v_%v", localActivityMarkerName, activityID)
 	attributes := &commandpb.RecordMarkerCommandAttributes{
 		MarkerName: localActivityMarkerName,
 		Failure:    failure,
 		Details:    details,
 	}
-	command := h.newMarkerCommandStateMachine(markerID, attributes)
+	command := h.newMarkerCommandStateMachine(markerID, attributes, metadata)
 	// LocalActivity marker is added only when it completes and schedule logic never relies on GenerateSequence to
 	// create a unique activity id like in the case of ExecuteActivity.  This causes the problem as we only perform
 	// the check to increment counter to account for GetVersion special handling as part of it.  This will result
@@ -1374,7 +1383,7 @@ func (h *commandsHelper) recordMutableSideEffectMarker(mutableSideEffectID strin
 			mutableSideEffectCallCounterName: mutableSideEffectCounterPayload,
 		},
 	}
-	command := h.newMarkerCommandStateMachine(markerID, attributes)
+	command := h.newMarkerCommandStateMachine(markerID, attributes, nil)
 	h.addCommand(command)
 	return command
 }

@@ -1,25 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2022 Temporal Technologies Inc.  All rights reserved.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 import (
@@ -31,6 +9,7 @@ import (
 
 // DeploymentReachability specifies which category of tasks may reach a worker
 // associated with a deployment, simplifying safe decommission.
+//
 // NOTE: Experimental
 //
 // Exposed as: [go.temporal.io/sdk/client.DeploymentReachability]
@@ -38,6 +17,7 @@ type DeploymentReachability int
 
 const (
 	// DeploymentReachabilityUnspecified - Reachability level not specified.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentReachabilityUnspecified]
@@ -45,6 +25,7 @@ const (
 
 	// DeploymentReachabilityReachable - The deployment is reachable by new
 	// and/or open workflows. The deployment cannot be decommissioned safely.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentReachabilityReachable]
@@ -54,6 +35,7 @@ const (
 	// by new or open workflows, but might be still needed by
 	// Queries sent to closed workflows. The deployment can be decommissioned
 	// safely if user does not query closed workflows.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentReachabilityClosedWorkflows]
@@ -63,6 +45,7 @@ const (
 	// any workflow because all the workflows who needed this
 	// deployment are out of the retention period. The deployment can be
 	// decommissioned safely.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentReachabilityUnreachable]
@@ -72,6 +55,7 @@ const (
 type (
 	// Deployment identifies a set of workers. This identifier combines
 	// the deployment series name with their Build ID.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.Deployment]
@@ -86,6 +70,7 @@ type (
 
 	// DeploymentTaskQueueInfo describes properties of the Task Queues involved
 	// in a deployment.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentTaskQueueInfo]
@@ -105,6 +90,7 @@ type (
 	// workers in this deployment.
 	// Workers can poll multiple task queues in a single deployment,
 	// which are listed in this message.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentInfo]
@@ -126,6 +112,7 @@ type (
 	}
 
 	// DeploymentDescription is the response type for [DeploymentClient.Describe].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentDescription]
@@ -135,6 +122,7 @@ type (
 	}
 
 	// DeploymentListEntry is a subset of fields from DeploymentInfo
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentListEntry]
@@ -150,6 +138,7 @@ type (
 	}
 
 	// DeploymentListIterator is an iterator for deployments.
+	//
 	// NOTE: Experimental
 	DeploymentListIterator interface {
 		// HasNext - Return whether this iterator has next value.
@@ -160,20 +149,24 @@ type (
 	}
 
 	// DeploymentListOptions are the parameters for configuring listing deployments.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentListOptions]
 	DeploymentListOptions struct {
 		// PageSize - How many results to fetch from the Server at a time.
+		//
 		// Optional: defaulted to 1000
 		PageSize int
 
 		// SeriesName - Filter with the name of the deployment series.
+		//
 		// Optional: If present, use an exact series name match.
 		SeriesName string
 	}
 
 	// DeploymentReachabilityInfo extends [DeploymentInfo] with reachability information.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentReachabilityInfo]
@@ -192,6 +185,7 @@ type (
 
 	// DeploymentMetadataUpdate modifies user-defined metadata entries that describe
 	// a deployment.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentMetadataUpdate]
@@ -206,6 +200,7 @@ type (
 	}
 
 	// DeploymentGetCurrentResponse is the response type for [DeploymentClient.GetCurrent]
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentGetCurrentResponse]
@@ -215,6 +210,7 @@ type (
 	}
 
 	// DeploymentSetCurrentOptions provides options for [DeploymentClient.SetCurrent].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentSetCurrentOptions]
@@ -228,6 +224,7 @@ type (
 	}
 
 	// DeploymentSetCurrentResponse is the response type for [DeploymentClient.SetCurrent].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentSetCurrentResponse]
@@ -240,6 +237,7 @@ type (
 	}
 
 	// DeploymentDescribeOptions provides options for [DeploymentClient.Describe].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentDescribeOptions]
@@ -249,6 +247,7 @@ type (
 	}
 
 	// DeploymentGetReachabilityOptions provides options for [DeploymentClient.GetReachability].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentGetReachabilityOptions]
@@ -258,6 +257,7 @@ type (
 	}
 
 	// DeploymentGetCurrentOptions provides options for [DeploymentClient.GetCurrent].
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.DeploymentGetCurrentOptions]
@@ -267,14 +267,17 @@ type (
 	}
 
 	// DeploymentClient is the client that manages deployments.
+	//
 	// NOTE: Experimental
 	DeploymentClient interface {
 		// Describes an existing deployment.
+		//
 		// NOTE: Experimental
 		Describe(ctx context.Context, options DeploymentDescribeOptions) (DeploymentDescription, error)
 
 		// List returns an iterator to enumerate deployments in the client's namespace.
 		// It can also optionally filter deployments by series name.
+		//
 		// NOTE: Experimental
 		List(ctx context.Context, options DeploymentListOptions) (DeploymentListIterator, error)
 
@@ -283,15 +286,18 @@ type (
 		// to estimate cache staleness.
 		// When reachability is not required, always prefer [Describe] over [GetReachability]
 		// for the most up-to-date information.
+		//
 		// NOTE: Experimental
 		GetReachability(ctx context.Context, options DeploymentGetReachabilityOptions) (DeploymentReachabilityInfo, error)
 
 		// GetCurrent returns the current deployment for a given deployment series.
+		//
 		// NOTE: Experimental
 		GetCurrent(ctx context.Context, options DeploymentGetCurrentOptions) (DeploymentGetCurrentResponse, error)
 
 		// SetCurrent changes the current deployment for a given deployment series. It can also
 		// update metadata for this deployment.
+		//
 		// NOTE: Experimental
 		SetCurrent(ctx context.Context, options DeploymentSetCurrentOptions) (DeploymentSetCurrentResponse, error)
 	}
