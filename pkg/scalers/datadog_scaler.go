@@ -2,8 +2,10 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"regexp"
 	"slices"
@@ -299,7 +301,11 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	timeWindowTo := time.Now().Unix() - int64(s.metadata.TimeWindowOffset)
 	timeWindowFrom := timeWindowTo - int64(s.metadata.Age)
+
+	httpClientTimeout := s.apiClient.GetConfig().HTTPClient.Timeout
+	startTime := time.Now()
 	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, timeWindowFrom, timeWindowTo, s.metadata.Query) //nolint:bodyclose
+	elapsed := time.Since(startTime)
 
 	if r != nil {
 		if r.StatusCode == 403 {
@@ -323,6 +329,22 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	}
 
 	if err != nil {
+		// Check for general network timeouts
+		if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+			if httpClientTimeout > 0 {
+				return -1, fmt.Errorf("KEDA reached a network timeout while retrieving Datadog metrics (HTTP client timeout: %s, request took: %s: %w)", httpClientTimeout, elapsed, err)
+			}
+			return -1, fmt.Errorf("KEDA reached a network timeout while retrieving Datadog metrics (request took: %s: %w)", elapsed, err)
+		}
+
+		if errors.Is(err, context.DeadlineExceeded) {
+			if deadline, ok := ctx.Deadline(); ok {
+				now := time.Now()
+				exceeded := now.Sub(deadline)
+				return -1, fmt.Errorf("KEDA reached a context deadline while retrieving Datadog metrics (deadline was: %v, exceeded by: %v: %w)", deadline.Format(time.RFC3339), exceeded, err)
+			}
+			return -1, fmt.Errorf("KEDA reached a context deadline while retrieving Datadog metrics: %w", err)
+		}
 		return -1, fmt.Errorf("error when retrieving Datadog metrics: %w", err)
 	}
 
