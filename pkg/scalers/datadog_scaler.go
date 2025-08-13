@@ -21,6 +21,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	"github.com/kedacore/keda/v2/version"
 )
 
 type datadogScaler struct {
@@ -260,6 +261,7 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 func newDatadogAPIClient(config *scalersconfig.ScalerConfig) (*datadog.APIClient, error) {
 
 	configuration := datadog.NewConfiguration()
+	configuration.UserAgent = fmt.Sprintf("%s - KEDA/%s", configuration.UserAgent, version.Version)
 	configuration.HTTPClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 	apiClient := datadog.NewAPIClient(configuration)
 
