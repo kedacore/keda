@@ -135,15 +135,6 @@ var testHuaweiCloudeyeMetadata = []parseHuaweiCloudeyeMetadataTestData{
 		true,
 		"metadata miss targetMetricValue"},
 	{map[string]string{
-		"namespace":         "SYS.ELB",
-		"dimensionName":     "lbaas_instance_id",
-		"dimensionValue":    "5e052238-0346-xxb0-86ea-92d9f33e29d2",
-		"metricName":        "mb_l7_qps",
-		"targetMetricValue": "100"},
-		testHuaweiAuthenticationWithCloud,
-		true,
-		"metadata miss minMetricValue"},
-	{map[string]string{
 		"namespace":                   "SYS.ELB",
 		"dimensionName":               "lbaas_instance_id",
 		"dimensionValue":              "5e052238-0346-xxb0-86ea-92d9f33e29d2",
@@ -153,6 +144,16 @@ var testHuaweiCloudeyeMetadata = []parseHuaweiCloudeyeMetadataTestData{
 		testHuaweiAuthenticationWithCloud,
 		true,
 		"invalid activationTargetMetricValue"},
+	{map[string]string{
+		"namespace":                   "SYS.ELB",
+		"dimensionName":               "lbaas_instance_id",
+		"dimensionValue":              "5e052238-0346-xxb0-86ea-92d9f33e29d2",
+		"metricName":                  "mb_l7_qps",
+		"targetMetricValue":           "100",
+		"activationTargetMetricValue": "5"},
+		testHuaweiAuthenticationWithCloud,
+		false,
+		"using activationTargetMetricValue"},
 }
 
 var huaweiCloudeyeMetricIdentifiers = []huaweiCloudeyeMetricIdentifier{
@@ -162,7 +163,7 @@ var huaweiCloudeyeMetricIdentifiers = []huaweiCloudeyeMetricIdentifier{
 
 func TestHuaweiCloudeyeParseMetadata(t *testing.T) {
 	for _, testData := range testHuaweiCloudeyeMetadata {
-		_, err := parseHuaweiCloudeyeMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams}, logr.Discard())
+		_, err := parseHuaweiCloudeyeMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams})
 		if err != nil && !testData.isError {
 			t.Errorf("%s: Expected success but got error %s", testData.comment, err)
 		}
@@ -174,11 +175,11 @@ func TestHuaweiCloudeyeParseMetadata(t *testing.T) {
 
 func TestHuaweiCloudeyeGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range huaweiCloudeyeMetricIdentifiers {
-		meta, err := parseHuaweiCloudeyeMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex}, logr.Discard())
+		meta, err := parseHuaweiCloudeyeMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockHuaweiCloudeyeScaler := huaweiCloudeyeScaler{"", meta, logr.Discard()}
+		mockHuaweiCloudeyeScaler := huaweiCloudeyeScaler{metricType: "", metadata: meta, logger: logr.Discard()}
 
 		metricSpec := mockHuaweiCloudeyeScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
