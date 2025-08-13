@@ -79,8 +79,10 @@ func (cm CertManager) AddCertificateRotation(ctx context.Context, mgr manager.Ma
 	}
 	var extraDNSNames []string
 	extraDNSNames = append(extraDNSNames, getDNSNames(cm.OperatorService, cm.K8sClusterDomain)...)
-	extraDNSNames = append(extraDNSNames, getDNSNames(cm.WebhookService, cm.K8sClusterDomain)...)
 	extraDNSNames = append(extraDNSNames, getDNSNames(cm.MetricsServerService, cm.K8sClusterDomain)...)
+	if cm.EnableWebhookPatching {
+		extraDNSNames = append(extraDNSNames, getDNSNames(cm.WebhookService, cm.K8sClusterDomain)...)
+	}
 
 	cm.Logger.V(1).Info("setting up cert rotation")
 	err = rotator.AddRotator(mgr, &rotator.CertRotator{
