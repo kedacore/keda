@@ -208,6 +208,9 @@ To avoid re-running tests when there are real failures, the re-run will be
 skipped when there are too many test failures. By default this value is 10, and
 can be changed with `--rerun-fails-max-failures=n`.
 
+You may use the `--rerun-fails-abort-on-data-race` flag to abort the re-run if
+a data race is detected.
+
 Note that using `--rerun-fails` may require the use of other flags, depending on
 how you specify args to `go test`:
 
