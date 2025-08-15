@@ -22,6 +22,7 @@ var (
 	scaledObject1Name                 = fmt.Sprintf("%s-so1", testName)
 	scaledObject2Name                 = fmt.Sprintf("%s-so2", testName)
 	emptyTriggersSoName               = fmt.Sprintf("%s-so-empty-triggers", testName)
+	excludedLabelsSoName              = fmt.Sprintf("%s-so-excluded-labels", testName)
 	hpaName                           = fmt.Sprintf("%s-hpa", testName)
 	ownershipTransferScaledObjectName = fmt.Sprintf("%s-ownership-transfer-so", testName)
 	ownershipTransferHpaName          = fmt.Sprintf("%s-ownership-transfer-hpa", testName)
@@ -185,6 +186,33 @@ spec:
     name: {{.DeploymentName}}
   triggers: []
 `
+
+	scaledObjectTemplateWithExcludedLabels = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+  annotations:
+    scaledobject.keda.sh/hpa-excluded-labels: "foo.bar/environment,foo.bar/version"
+  labels:
+    team: backend
+    foo.bar/environment: bf5011472247b67cce3ee7b24c9a08c5
+    foo.bar/version: "1"
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: {{.HpaName}}
+  triggers:
+  - type: cron
+    metadata:
+      timezone: Etc/UTC
+      start: 0 * * * *
+      end: 1 * * * *
+      desiredReplicas: '1'
+`
 )
 
 func TestScaledObjectValidations(t *testing.T) {
@@ -213,6 +241,8 @@ func TestScaledObjectValidations(t *testing.T) {
 	testWorkloadWithOnlyLimits(t, data)
 
 	testTriggersWithEmptyArray(t, data)
+
+	testScaledObjectWithExcludedLabels(t, data)
 
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
@@ -376,6 +406,25 @@ func testTriggersWithEmptyArray(t *testing.T, data templateData) {
 	err := KubectlApplyWithErrors(t, data, "emptyTriggersTemplate", emptyTriggersTemplate)
 	assert.Errorf(t, err, "can deploy the scaledObject - %s", err)
 	assert.Contains(t, err.Error(), "no triggers defined in the ScaledObject/ScaledJob")
+}
+
+func testScaledObjectWithExcludedLabels(t *testing.T, data templateData) {
+	t.Log("--- scaled object with excluded labels ---")
+
+	data.ScaledObjectName = excludedLabelsSoName
+	data.HpaName = hpaName
+
+	err := KubectlApplyWithErrors(t, data, "scaledObjectTemplateWithExcludedLabels", scaledObjectTemplateWithExcludedLabels)
+	assert.NoError(t, err, "scaledObject should be deployed")
+
+	hpa, err := WaitForHpaCreation(t, GetKubernetesClient(t), data.HpaName, data.TestNamespace, 10, 5)
+	assert.NoError(t, err, "hpa should be created")
+
+	// Ensure that foo.bar/environment and foo.bar/version labels are not propagated
+	assert.Equal(t, "", hpa.Labels["foo.bar/environment"], "hpa should not have the 'foo.bar/environment' label")
+	assert.Equal(t, "", hpa.Labels["foo.bar/version"], "hpa should not have the 'foo.bar/version' label")
+
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplateWithExcludedLabels", scaledObjectTemplateWithExcludedLabels)
 }
 
 func getTemplateData() (templateData, []Template) {
