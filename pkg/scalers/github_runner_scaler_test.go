@@ -461,9 +461,10 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithScalerLabels_WithoutJo
 		httpClient: http.DefaultClient,
 	}
 
-	mockGitHubRunnerScaler.metadata.repos = []string{"test"}
-	mockGitHubRunnerScaler.metadata.noDefaultLabels = false
-	mockGitHubRunnerScaler.metadata.labels = []string{"foo", "bar"}
+	mockGitHubRunnerScaler.metadata.Repos = []string{"test"}
+	mockGitHubRunnerScaler.metadata.NoDefaultLabels = false
+	mockGitHubRunnerScaler.metadata.MatchUnlabeledJobsWithUnlabeledRunners = true
+	mockGitHubRunnerScaler.metadata.Labels = []string{"foo", "bar"}
 
 	queueLen, err := mockGitHubRunnerScaler.GetWorkflowQueueLength(context.Background())
 

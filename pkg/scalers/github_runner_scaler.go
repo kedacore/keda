@@ -40,19 +40,20 @@ type githubRunnerScaler struct {
 }
 
 type githubRunnerMetadata struct {
-	GithubAPIURL              string   `keda:"name=githubApiURL, order=triggerMetadata;resolvedEnv, default=https://api.github.com"`
-	Owner                     string   `keda:"name=owner, order=triggerMetadata;resolvedEnv"`
-	RunnerScope               string   `keda:"name=runnerScope, order=triggerMetadata;resolvedEnv, enum=org;ent;repo"`
-	PersonalAccessToken       string   `keda:"name=personalAccessToken, order=authParams, optional"`
-	Repos                     []string `keda:"name=repos, order=triggerMetadata;resolvedEnv, optional"`
-	Labels                    []string `keda:"name=labels, order=triggerMetadata;resolvedEnv, optional"`
-	NoDefaultLabels           bool     `keda:"name=noDefaultLabels, order=triggerMetadata;resolvedEnv, default=false"`
-	EnableEtags               bool     `keda:"name=enableEtags, order=triggerMetadata;resolvedEnv, default=false"`
-	TargetWorkflowQueueLength int64    `keda:"name=targetWorkflowQueueLength, order=triggerMetadata;resolvedEnv, default=1"`
-	TriggerIndex              int
-	ApplicationID             int64  `keda:"name=applicationID, order=triggerMetadata;resolvedEnv, optional"`
-	InstallationID            int64  `keda:"name=installationID, order=triggerMetadata;resolvedEnv, optional"`
-	ApplicationKey            string `keda:"name=appKey, order=authParams, optional"`
+	GithubAPIURL                           string   `keda:"name=githubApiURL, order=triggerMetadata;resolvedEnv, default=https://api.github.com"`
+	Owner                                  string   `keda:"name=owner, order=triggerMetadata;resolvedEnv"`
+	RunnerScope                            string   `keda:"name=runnerScope, order=triggerMetadata;resolvedEnv, enum=org;ent;repo"`
+	PersonalAccessToken                    string   `keda:"name=personalAccessToken, order=authParams, optional"`
+	Repos                                  []string `keda:"name=repos, order=triggerMetadata;resolvedEnv, optional"`
+	Labels                                 []string `keda:"name=labels, order=triggerMetadata;resolvedEnv, optional"`
+	NoDefaultLabels                        bool     `keda:"name=noDefaultLabels, order=triggerMetadata;resolvedEnv, default=false"`
+	EnableEtags                            bool     `keda:"name=enableEtags, order=triggerMetadata;resolvedEnv, default=false"`
+	MatchUnlabeledJobsWithUnlabeledRunners bool     `keda:"name=matchUnlabeledJobsWithUnlabeledRunners, order=triggerMetadata;resolvedEnv, default=false"`
+	TargetWorkflowQueueLength              int64    `keda:"name=targetWorkflowQueueLength, order=triggerMetadata;resolvedEnv, default=1"`
+	TriggerIndex                           int
+	ApplicationID                          int64  `keda:"name=applicationID, order=triggerMetadata;resolvedEnv, optional"`
+	InstallationID                         int64  `keda:"name=installationID, order=triggerMetadata;resolvedEnv, optional"`
+	ApplicationKey                         string `keda:"name=appKey, order=authParams, optional"`
 }
 
 type WorkflowRuns struct {
@@ -606,9 +607,9 @@ func contains(s []string, e string) bool {
 }
 
 // canRunnerMatchLabels check Agent Label array will match runner label array
-func canRunnerMatchLabels(jobLabels []string, runnerLabels []string, noDefaultLabels bool) bool {
+func (s *githubRunnerScaler) canRunnerMatchLabels(jobLabels []string, runnerLabels []string, noDefaultLabels bool) bool {
 	// If job has no labels, only match if runner also has no specific labels configured
-	if len(jobLabels) == 0 {
+	if s.metadata.MatchUnlabeledJobsWithUnlabeledRunners && len(jobLabels) == 0 {
 		return len(runnerLabels) == 0
 	}
 	allLabels := runnerLabels
@@ -661,7 +662,7 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 			return -1, err
 		}
 		for _, job := range jobs {
-			if (job.Status == "queued" || job.Status == "in_progress") && canRunnerMatchLabels(job.Labels, s.metadata.Labels, s.metadata.NoDefaultLabels) {
+			if (job.Status == "queued" || job.Status == "in_progress") && s.canRunnerMatchLabels(job.Labels, s.metadata.Labels, s.metadata.NoDefaultLabels) {
 				queueCount++
 			}
 		}
