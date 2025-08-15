@@ -29,7 +29,7 @@ var validSplunkObservabilityMetadata = map[string]string{
 	"duration":              "10",
 	"targetValue":           "200.0",
 	"queryAggregator":       "avg",
-	"ActivationTargetValue": "1.1",
+	"activationTargetValue": "1.1",
 }
 
 var testSplunkObservabilityMetadata = []parseSplunkObservabilityMetadataTestData{
