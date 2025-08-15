@@ -608,7 +608,6 @@ func contains(s []string, e string) bool {
 
 // canRunnerMatchLabels check Agent Label array will match runner label array
 func (s *githubRunnerScaler) canRunnerMatchLabels(jobLabels []string, runnerLabels []string, noDefaultLabels bool) bool {
-	// If job has no labels, only match if runner also has no specific labels configured
 	if s.metadata.MatchUnlabeledJobsWithUnlabeledRunners && len(jobLabels) == 0 {
 		return len(runnerLabels) == 0
 	}
