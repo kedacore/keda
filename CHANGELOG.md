@@ -63,8 +63,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
 - **General**: Introduce new Solace Direct Messaging scaler ([#6545](https://github.com/kedacore/keda/issues/6545))
-- Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
 - **General**: Introduce new Sumo Logic Scaler ([#6734](https://github.com/kedacore/keda/issues/6734))
 
 #### Experimental
@@ -85,7 +85,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Fix prefixes on envFrom elements in a deployment spec aren't being interpreted and Environment variables are not prefixed with the prefix ([#6728](https://github.com/kedacore/keda/issues/6728))
 - **General**: Remove klogr dependency and replace with zap ([#5732](https://github.com/kedacore/keda/issues/5732))
 - **General**: Sets hpaName in Status when ScaledObject adopts/finds an existing HPA ([#6336](https://github.com/kedacore/keda/issues/6336))
-- **RabbitMQ**: Fix incorrect URL encoding in RabbitMQ vhosts containing %2f ([#6963](https://github.com/kedacore/keda/issues/6963))
+- **Cron Scaler**: Fix cron scaler to return zero metric value by default([#6886](https://github.com/kedacore/keda/issues/6886))
+- **RabbitMQ Scaler**: Fix incorrect URL encoding in RabbitMQ vhosts containing %2f ([#6963](https://github.com/kedacore/keda/issues/6963))
 
 ### Deprecations
 
