@@ -173,7 +173,7 @@ var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "passwordFromEnv": rabbitMQPassword}, v1alpha1.AuthPodIdentity{}, map[string]string{}, true, rmqTLSDisable, false},
 	// success, WorkloadIdentity
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "http"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, false, rmqTLSDisable, true},
-	// failure, WoekloadIdentity not supported for amqp
+	// failure, WorkloadIdentity not supported for amqp
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "amqp"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, true, rmqTLSDisable, false},
 }
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
@@ -318,33 +318,39 @@ type resolvedVhostAndPathTestData struct {
 var getVhostAndPathFromURLTestData = []resolvedVhostAndPathTestData{
 	// level 0 + vhost
 	{"myVhost", "", "/myVhost", ""},
+	{"%2FmyVhost", "", "/%2FmyVhost", ""},
 
 	// level 0 + vhost as /, // and empty
 	{"/", "", rabbitRootVhostPath, ""},
 	{"//", "", rabbitRootVhostPath, ""},
+	{"/%2F", "", rabbitRootVhostPath, ""},
 	{"", "", rabbitRootVhostPath, ""},
 
 	// level 1 + vhost
 	{"sub1/myVhost", "", "/myVhost", "/sub1"},
 	{"sub1/", "overridenVhost", "/overridenVhost", "/sub1"},
 	{"myVhost", "overridenVhost", "/overridenVhost", ""},
+	{"sub1/%2FmyVhost", "", "/%2FmyVhost", "/sub1"},
 
 	// level 1 + vhost as / and //
 	{"sub1/", "", rabbitRootVhostPath, "/sub1"},
 	{"sub1/", "myVhost", "/myVhost", "/sub1"},
 	{"myVhost", "overridenVhost", "/overridenVhost", ""},
 	{"sub1//", "", rabbitRootVhostPath, "/sub1"},
+	{"sub1/%2F", "", rabbitRootVhostPath, "/sub1"},
 
 	// level 2 + vhost
 	{"sub1/sub2/myVhost", "", "/myVhost", "/sub1/sub2"},
 	{"sub1/sub2/myVhost", "overridenVhost", "/overridenVhost", "/sub1/sub2"},
 	{"myVhost", "overridenVhost", "/overridenVhost", ""},
+	{"sub1/sub2/%2FmyVhost", "", "/%2FmyVhost", "/sub1/sub2"},
 
 	// level 2 + vhost as / and //
 	{"sub1/sub2/", "", rabbitRootVhostPath, "/sub1/sub2"},
 	{"sub1/sub2/", "myVhost", "/myVhost", "/sub1/sub2"},
 	{"sub1/myVhost", "overridenVhost", "/overridenVhost", "/sub1"},
 	{"sub1/sub2//", "", rabbitRootVhostPath, "/sub1/sub2"},
+	{"sub1/sub2/%2F", "", rabbitRootVhostPath, "/sub1/sub2"},
 }
 
 func Test_getVhostAndPathFromURL(t *testing.T) {
