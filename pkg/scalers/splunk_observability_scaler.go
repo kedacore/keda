@@ -45,10 +45,6 @@ func parseSplunkObservabilityMetadata(config *scalersconfig.ScalerConfig) (*splu
 }
 
 func newSplunkO11yConnection(meta *splunkObservabilityMetadata, logger logr.Logger) (*signalflow.Client, error) {
-	if meta.Realm == "" || meta.AccessToken == "" {
-		return nil, fmt.Errorf("error: Could not find splunk access token or realm")
-	}
-
 	apiClient, err := signalflow.NewClient(
 		signalflow.StreamURLForRealm(meta.Realm),
 		signalflow.AccessToken(meta.AccessToken),
@@ -168,6 +164,22 @@ func (s *splunkObservabilityScaler) GetMetricSpecForScaling(context.Context) []v
 		External: externalMetric, Type: externalMetricType,
 	}
 	return []v2.MetricSpec{metricSpec}
+}
+
+func (s *splunkObservabilityMetadata) Validate() error {
+	if s.AccessToken == "" {
+		return fmt.Errorf("No Splunk Observability Cloud access token found. Please configure a valid access token.")
+	}
+
+	if s.Realm == "" {
+		return fmt.Errorf("No Splunk Observability Cloud realm found. Please configure a valid realm.")
+	}
+
+	if s.Query == "" {
+		return fmt.Errorf("No SignalFlow query for Splunk Observability Cloud realm found. Please configure a SignalFlow query.")
+	}
+
+	return nil
 }
 
 func (s *splunkObservabilityScaler) Close(context.Context) error {

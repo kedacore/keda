@@ -24,6 +24,11 @@ var validSplunkObservabilityAuthParams = map[string]string{
 	"realm":       "my-realm",
 }
 
+var invalidSplunkObservabilityAuthParams = map[string]string{
+	"accessToken": "",
+	"realm":       "my-realm",
+}
+
 var validSplunkObservabilityMetadata = map[string]string{
 	"query":                 "data('demo.trans.latency').max().publish()",
 	"duration":              "10",
@@ -51,6 +56,8 @@ var testSplunkObservabilityMetadata = []parseSplunkObservabilityMetadataTestData
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},
 	// Missing 'activationTargetValue' field, fail
 	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "avg"}, validSplunkObservabilityAuthParams, true},
+	// Empty 'accessToken' field
+	{map[string]string{"query": "data('demo.trans.latency').max().publish()", "duration": "10", "targetValue": "200.0", "queryAggregator": "avg"}, invalidSplunkObservabilityAuthParams, true},
 }
 
 var SplunkObservabilityMetricIdentifiers = []SplunkObservabilityMetricIdentifier{
