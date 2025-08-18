@@ -7,15 +7,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
 
 // Load environment variables from .env file
 
 const (
-	testName = "pause-scaledobject-test"
+	testName = "pause-scalein-test"
 )
 
 var (
@@ -23,11 +21,6 @@ var (
 	deploymentName          = fmt.Sprintf("%s-deployment", testName)
 	monitoredDeploymentName = fmt.Sprintf("%s-monitored", testName)
 	scaledObjectName        = fmt.Sprintf("%s-so", testName)
-	maxReplicaCount         = 1
-	minReplicaCount         = 0
-	testScaleOutWaitMin     = 1
-	testPauseAtNWaitMin     = 1
-	testScaleInWaitMin      = 1
 )
 
 type templateData struct {
@@ -91,7 +84,7 @@ metadata:
   name: {{.ScaledObjectName}}
   namespace: {{.TestNamespace}}
   annotations:
-	autoscaling.keda.sh/paused-scale-in: 'true'
+    autoscaling.keda.sh/paused-scale-in: "true"
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
@@ -118,8 +111,7 @@ func TestScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// assert that the deployment did not scale down after one minute
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 1),
-		"replica count should be 2 after 1 minute")
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 2, 60)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
