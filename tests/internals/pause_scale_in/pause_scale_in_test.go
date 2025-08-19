@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package pause_scaledobject_test
+package pause_scale_in_test
 
 import (
 	"fmt"
