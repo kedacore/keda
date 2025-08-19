@@ -59,7 +59,7 @@ func (c *Client) createMetricsQuery(query string, quantization time.Duration, fr
 	}
 
 	url := fmt.Sprintf("%s/%s", c.config.Host, metricsQueryPath)
-	return c.makeRequest("POST", url, payload)
+	return c.makeRequestWithRetry("POST", url, payload)
 }
 
 func (c *Client) createMultiMetricsQuery(queries map[string]string, quantization time.Duration, from, to, rollup string) ([]byte, error) {
@@ -97,7 +97,7 @@ func (c *Client) createMultiMetricsQuery(queries map[string]string, quantization
 	}
 
 	url := fmt.Sprintf("%s/%s", c.config.Host, metricsQueryPath)
-	return c.makeRequest("POST", url, payload)
+	return c.makeRequestWithRetry("POST", url, payload)
 }
 
 func (c *Client) parseMetricsQueryResponse(response []byte) (*MetricsQueryResponse, error) {
