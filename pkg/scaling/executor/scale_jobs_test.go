@@ -645,7 +645,7 @@ func getMockClientForTestingPendingPods(t *testing.T, ctrl *gomock.Controller, p
 	return client
 }
 
-// New mock client function for testing multiple pods
+// getMockClientForTestingPendingPodsMultiple returns mock client function for testing pending pod conditions with multiple pods in a job
 func getMockClientForTestingPendingPodsMultiple(t *testing.T, ctrl *gomock.Controller, podStatuses []v1.PodStatus) *mock_client.MockClient {
 	client := mock_client.NewMockClient(ctrl)
 	gomock.InOrder(
