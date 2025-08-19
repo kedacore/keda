@@ -293,5 +293,5 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 	t.Log("--- waiting for replicas to scale in to zero ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 10),
-		"replica count should be 0 after 5 minute")
+		"replica count should be 0 after 5 minutes")
 }
