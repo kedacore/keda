@@ -81,6 +81,7 @@ type scaleHandler struct {
 func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder record.EventRecorder, authClientSet *authentication.AuthClientSet) ScaleHandler {
 	return &scaleHandler{
 		client:                   client,
+		scaleClient:              scaleClient,
 		scaleLoopContexts:        &sync.Map{},
 		scaleExecutor:            executor.NewScaleExecutor(client, scaleClient, reconcilerScheme, recorder),
 		globalHTTPTimeout:        globalHTTPTimeout,
