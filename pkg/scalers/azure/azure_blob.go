@@ -18,6 +18,7 @@ package azure
 
 import (
 	"context"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
@@ -41,26 +42,28 @@ type BlobMetadata struct {
 // GetAzureBlobListLength returns the count of the blobs in blob container in int
 func GetAzureBlobListLength(ctx context.Context, blobClient *azblob.Client, meta *BlobMetadata) (int64, error) {
 	containerClient := blobClient.ServiceClient().NewContainerClient(meta.BlobContainerName)
+
 	// When a glob is present, prefer hierarchical (DFS) listing if available (HNS),
 	// then fall back to flat blob listing.
 	if meta.GlobPattern != nil {
-	    // 1) Try ADLS Gen2 DFS listing (works correctly for hierarchical namespace).
+		// 1) Try ADLS Gen2 DFS listing (works correctly for hierarchical namespace).
 		if meta.Connection != "" {
 			if cnt, handled, err := tryCountWithDFS(ctx, meta); handled {
 				return cnt, err
 			}
-		    // handled == false -> DFS not usable (likely non-HNS or missing perms); fall back below.
+			// handled == false -> DFS not usable (likely non-HNS or missing perms); fall back below.
 		}
 
 		// 2) Fallback: flat Blob listing with client-side glob matching (works for classic Blob and most HNS cases).
 		globPattern := *meta.GlobPattern
 		var count int64
+
 		flatPager := containerClient.NewListBlobsFlatPager(&azblob.ListBlobsFlatOptions{
-			Prefix: meta.BlobPrefix,
+			Prefix: meta.BlobPrefix, // perf hint only
 		})
 
 		var normPrefix string
-		if meta.BlobPref != nil {
+		if meta.BlobPrefix != nil {
 			normPrefix = strings.TrimPrefix(*meta.BlobPrefix, "/")
 		}
 
@@ -73,14 +76,15 @@ func GetAzureBlobListLength(ctx context.Context, blobClient *azblob.Client, meta
 				if blobItem.Name == nil {
 					continue
 				}
-			full := *blobItem.Name
-			tail := full
-			if normPrefix != "" {
-				tail = strings.TrimPrefix(tail, normPrefix)	
-				tail = strings.TrimPrefix(tail, "/") // ensure no leading slash after prefix removal
-			}
-			if gl.Match(full) || gl.Match(tail) {
-				count++
+				full := *blobItem.Name
+				tail := full
+				if normPrefix != "" {
+					tail = strings.TrimPrefix(tail, normPrefix)
+					tail = strings.TrimPrefix(tail, "/") // ensure no leading slash after prefix removal
+				}
+				if globPattern.Match(full) || globPattern.Match(tail) {
+					count++
+				}
 			}
 		}
 		return count, nil
