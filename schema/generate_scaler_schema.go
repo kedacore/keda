@@ -355,11 +355,12 @@ func retrieveDataFromOrder(orders []string) (bool, bool, bool, error) {
 			slices.Sort(apo)
 			return false, false, false, fmt.Errorf("unknown parsing order value %s, has to be one of %s", po, apo)
 		}
-		if poTyped == scalersconfig.TriggerMetadata {
+		switch poTyped {
+		case scalersconfig.TriggerMetadata:
 			canReadFromMetadata = true
-		} else if poTyped == scalersconfig.ResolvedEnv {
+		case scalersconfig.ResolvedEnv:
 			canReadFromEnv = true
-		} else if poTyped == scalersconfig.AuthParams {
+		case scalersconfig.AuthParams:
 			canReadFromAuth = true
 		}
 	}
