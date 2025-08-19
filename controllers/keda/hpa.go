@@ -98,7 +98,20 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		"app.kubernetes.io/part-of":    scaledObject.Name,
 		"app.kubernetes.io/managed-by": "keda-operator",
 	}
+
+	excludedLabels := map[string]struct{}{}
+
+	if labels, ok := scaledObject.ObjectMeta.Annotations[kedav1alpha1.ScaledObjectExcludedLabelsAnnotation]; ok {
+		for _, excludedLabel := range strings.Split(labels, ",") {
+			excludedLabels[excludedLabel] = struct{}{}
+		}
+	}
+
 	for key, value := range scaledObject.ObjectMeta.Labels {
+		if _, ok := excludedLabels[key]; ok {
+			continue
+		}
+
 		labels[key] = value
 	}
 
