@@ -49,8 +49,8 @@ const (
 	creatorSymbol = "New"
 )
 
-// Metadata is a struct that represents each field of the scaler metadata
-type Metadata struct {
+// Parameters is a struct that represents each field of the scaler parameters
+type Parameters struct {
 	// Name is the name of the field
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 
@@ -81,6 +81,9 @@ type Metadata struct {
 	// RangeSeparator is the symbol that indicates the range of the field
 	RangeSeparator string `json:"rangeSeparator,omitempty" yaml:"rangeSeparator,omitempty"`
 
+	// MetadataVariableReadable is a boolean that indicates if the field can be read from the environment
+	MetadataVariableReadable bool `json:"metadataVariableReadable,omitempty" yaml:"metadataVariableReadable,omitempty"`
+
 	// EnvVariableReadable is a boolean that indicates if the field can be read from the environment
 	EnvVariableReadable bool `json:"envVariableReadable,omitempty" yaml:"envVariableReadable,omitempty"`
 
@@ -93,8 +96,8 @@ type ScalerMetadataSchema struct {
 	// Type is the name of the scaler
 	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 
-	// Metadata is a list of fields of the scaler
-	Metadata []Metadata `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	// Parameters is a list of fields of the scaler
+	Parameters []Parameters `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 }
 
 // FullMetadataSchema is a complete schema of the scaler metadata
@@ -139,7 +142,7 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 			if scalerSelectors[scalerName] == creatorName {
 				scalerMetadataSchema := ScalerMetadataSchema{}
 				scalerMetadataSchema.Type = scalerName
-				scalerMetadataSchema.Metadata = metadataFields
+				scalerMetadataSchema.Parameters = metadataFields
 				scalerMetadataSchemas = append(scalerMetadataSchemas, scalerMetadataSchema)
 				fmt.Printf("Scaler Metadata Schema Added: %s\n", scalerName)
 			}
@@ -216,8 +219,8 @@ func aggregateSchemaStruct(scalerSelectors map[string]string, kedaScalerStructs 
 }
 
 // generateMetadataFields is a function that generates the metadata fields of a scaler struct
-func generateMetadataFields(structType *ast.StructType, otherReferenceKedaTagStructs map[string]*ast.StructType) []Metadata {
-	scalerMetadata := []Metadata{}
+func generateMetadataFields(structType *ast.StructType, otherReferenceKedaTagStructs map[string]*ast.StructType) []Parameters {
+	scalerMetadata := []Parameters{}
 
 	// get the tag of each field and generate the metadata
 	for _, commentGroup := range structType.Fields.List {
@@ -253,9 +256,9 @@ func generateMetadataFields(structType *ast.StructType, otherReferenceKedaTagStr
 }
 
 // generateMetadatas is a function that generates the metadata field from tag
-func generateMetadatas(tag string) ([]Metadata, bool, error) {
+func generateMetadatas(tag string) ([]Parameters, bool, error) {
 	var fieldNames []string
-	metadata := Metadata{Type: "string"}
+	metadata := Parameters{Type: "string"}
 	tagSplit := strings.Split(strings.Trim(strings.Split(strings.Trim(tag, "`"), ":")[1], "\""), scalersconfig.TagSeparator)
 
 	if len(tagSplit) == 1 && tagSplit[0] == scalersconfig.OptionalTag {
@@ -280,10 +283,11 @@ func generateMetadatas(tag string) ([]Metadata, bool, error) {
 		case scalersconfig.OrderTag:
 			if len(tsplit) > 1 {
 				order := strings.Split(tsplit[1], scalersconfig.TagValueSeparator)
-				canReadFromEnv, canReadFromAuth, err := retrieveDataFromOrder(order)
+				canReadFromMetadata, canReadFromEnv, canReadFromAuth, err := retrieveDataFromOrder(order)
 				if err != nil {
 					return nil, false, err
 				}
+				metadata.MetadataVariableReadable = canReadFromMetadata
 				metadata.EnvVariableReadable = canReadFromEnv
 				metadata.TriggerAuthenticationVariableReadable = canReadFromAuth
 			}
@@ -342,27 +346,29 @@ func generateMetadatas(tag string) ([]Metadata, bool, error) {
 }
 
 // retrieveDataFromOrder is a function that retrieves the data from the order tag
-func retrieveDataFromOrder(orders []string) (bool, bool, error) {
-	var canReadFromEnv, canReadFromAuth = false, false
+func retrieveDataFromOrder(orders []string) (bool, bool, bool, error) {
+	var canReadFromMetadata, canReadFromEnv, canReadFromAuth = false, false, false
 	for _, po := range orders {
 		poTyped := scalersconfig.ParsingOrder(strings.TrimSpace(po))
 		if !scalersconfig.AllowedParsingOrderMap[poTyped] {
 			apo := maps.Keys(scalersconfig.AllowedParsingOrderMap)
 			slices.Sort(apo)
-			return false, false, fmt.Errorf("unknown parsing order value %s, has to be one of %s", po, apo)
+			return false, false, false, fmt.Errorf("unknown parsing order value %s, has to be one of %s", po, apo)
 		}
-		if poTyped == scalersconfig.ResolvedEnv {
+		if poTyped == scalersconfig.TriggerMetadata {
+			canReadFromMetadata = true
+		} else if poTyped == scalersconfig.ResolvedEnv {
 			canReadFromEnv = true
 		} else if poTyped == scalersconfig.AuthParams {
 			canReadFromAuth = true
 		}
 	}
-	return canReadFromEnv, canReadFromAuth, nil
+	return canReadFromMetadata, canReadFromEnv, canReadFromAuth, nil
 }
 
 // createMetadatas is a function that creates the metadata with the field names
-func createMetadatas(metadata Metadata, fieldNames []string) []Metadata {
-	metadatas := []Metadata{}
+func createMetadatas(metadata Parameters, fieldNames []string) []Parameters {
+	metadatas := []Parameters{}
 	for _, fieldName := range fieldNames {
 		metadata.Name = fieldName
 		metadatas = append(metadatas, metadata)
@@ -478,7 +484,7 @@ func getAllKedaTagedStructs(dir string) (map[string]*ast.StructType, map[string]
 					hasTriggerIndex := false
 					for _, v := range structType.Fields.List {
 						// Find `triggerIndex` field and identify the struct as a scaler struct, otherwise identify the struct as an abstract substruct
-						if len(v.Names) > 0 && v.Names[0].Name == "triggerIndex" {
+						if len(v.Names) > 0 && strings.EqualFold(v.Names[0].Name, "triggerIndex") {
 							hasTriggerIndex = true
 							continue
 						}
