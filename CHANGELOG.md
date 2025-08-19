@@ -95,7 +95,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 New deprecation(s):
 
 - **GCP Pub/Sub Scaler**: The 'subscriptionSize' setting is DEPRECATED and will be removed in v2.20 - Use 'mode' and 'value' instead" ([#6866](https://github.com/kedacore/keda/pull/6866))
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Huawei Cloudeye Scaler**: The 'minMetricValue' setting is DEPRECATED and will be removed in v2.20 - Use 'activationTargetMetricValue' instead" ([#6978](https://github.com/kedacore/keda/pull/6978))
 
 ### Breaking Changes
 
