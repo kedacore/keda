@@ -380,6 +380,8 @@ func (s *azurePipelinesScaler) GetAzurePipelinesQueueURL() (string, error) {
 	var urlString string
 	if s.metadata.FetchUnfinishedJobsOnly {
 		// Because completedRequestCount=0 does not change the format of the returned JSON like $top does, we can also use this URL when a `Parent` agent is given
+		// However, in order to not force existing users of the `Parent` property to always send the `completedRequestCount=0` query parameter (which may change over time
+		//  due it it being an undocumented API), we only send the query parameter when `FetchUnfinishedJobsOnly` is explicitly set to true.
 		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?completedRequestCount=0", s.metadata.OrganizationURL, s.metadata.PoolID)
 	} else if s.metadata.Parent != "" {
 		// HotFix Issue (#4387), $top changes the format of the returned JSON
