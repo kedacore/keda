@@ -114,6 +114,9 @@ e2e-test-clean-crds: ## Delete all scaled objects and jobs across all namespaces
 .PHONY: e2e-test-clean
 e2e-test-clean: get-cluster-context ## Delete all namespaces labeled with type=e2e
 	kubectl delete ns -l type=e2e
+	# Clean up the strimzi CRDs, helm will not update them on Strimzi install if they already exist
+	# and we get stranded on old versions when we try to upgrade
+	kubectl get crd -o name | grep kafka.strimzi.io | xargs -r kubectl delete --ignore-not-found=true --timeout=60s
 
 .PHONY: smoke-test
 smoke-test: ## Run e2e tests against Kubernetes cluster configured in ~/.kube/config.
