@@ -13,11 +13,13 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"golang.org/x/sync/semaphore"
+	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
@@ -44,9 +46,11 @@ func main() {
 	//
 	// Detect test cases
 	//
-	e2eRegex := os.Getenv("E2E_TEST_REGEX")
-	if e2eRegex == "" {
-		e2eRegex = ".*_test.go"
+
+	e2eRegex, err := getE2eRegex()
+	if err != nil {
+		fmt.Printf("Error getting e2e regex: %v\n", err)
+		os.Exit(1)
 	}
 
 	regularTestFiles := getRegularTestFiles(e2eRegex)
@@ -392,3 +396,171 @@ func saveLogToFile(file string, lines []string) {
 		}
 	}
 }
+
+// getE2eRegex gets the regex to filter which tests to run.
+// If E2E_TEST_REGEX is set, it overrides and uses that regex.
+// If not, it uses a config to build a regex. If the config is nil, it uses the default regex which is to run all tests.
+func getE2eRegex() (string, error) {
+	config, err := loadTestConfig()
+	if err != nil {
+		return "", err
+	}
+
+	// if there's a regex, use it
+	e2eRegex := os.Getenv("E2E_TEST_REGEX")
+	if e2eRegex != "" {
+		return e2eRegex, nil
+	}
+
+	return buildRegexFromConfig(config)
+}
+
+// loadTestConfig loads the test configuration from a file path
+func loadTestConfig() (*TestConfig, error) {
+	configPath := os.Getenv("E2E_TEST_CONFIG")
+	if configPath == "" {
+		return nil, nil
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var config TestConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, err
+	}
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
+
+	return &config, nil
+}
+
+// buildRegexFromConfig builds a regex string from a TestConfig
+func buildRegexFromConfig(config *TestConfig) (string, error) {
+	if config == nil {
+		return ".*_test.go", nil
+	}
+
+	var regexParts []string
+
+	// For each known category, we get all the available tests under the tests/category directory.
+	// We then filter the tests we actually run based on the config exclude and includes.
+	// Then we incrementally build a regex based on the filtered tests.
+	for _, category := range config.GetAllCategories() {
+		availableTests, err := getAvailableTests("tests/" + category)
+		if err != nil {
+			return "", fmt.Errorf("error getting %q tests: %w", category, err)
+		}
+
+		var supportedTests []string
+		if categoryConfig, exists := config.TestCategories[category]; exists {
+			supportedTests = filterTests(availableTests, categoryConfig)
+		} else {
+			// use all tests in the category if no config is specified
+			supportedTests = availableTests
+		}
+
+		if len(supportedTests) > 0 {
+			// go regex doesn't support negative lookaheads, so we need to explicily include the tests we want to run
+			regexParts = append(regexParts, fmt.Sprintf("%s/(%s)/.*", category, strings.Join(supportedTests, "|")))
+		}
+	}
+
+	if len(regexParts) == 0 {
+		return ".*_test.go", nil
+	}
+
+	return fmt.Sprintf("^tests/(%s)_test\\.go$", strings.Join(regexParts, "|")), nil
+}
+
+// getAvailableTests returns all available test suites/directories for a category, as a slice of strings
+func getAvailableTests(categoryPath string) ([]string, error) {
+	entries, err := os.ReadDir(categoryPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var tests []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			tests = append(tests, entry.Name())
+		}
+	}
+	return tests, nil
+}
+
+// filterTests returns the filtered tests as a slice of strings, based on the TestCategory
+func filterTests(tests []string, category TestCategory) []string {
+	var result []string
+	// If the mode is include, we include the tests that are listed in category.Tests, including all if empty.
+	// If the mode is exclude, we exclude the tests that are listed in category.Tests, excluding all if empty.
+	switch category.Mode {
+	case TestCategoryModeInclude:
+		if len(category.Tests) == 0 {
+			return tests
+		}
+		for _, test := range category.Tests {
+			if slices.Contains(tests, test) {
+				result = append(result, test)
+			}
+		}
+		return result
+	case TestCategoryModeExclude:
+		if len(category.Tests) == 0 {
+			return []string{}
+		}
+		for _, test := range tests {
+			if !slices.Contains(category.Tests, test) {
+				result = append(result, test)
+			}
+		}
+		return result
+	default:
+		// because of TestConfig.Validate(), we should never get here
+		panic(fmt.Sprintf("invalid mode %q", category.Mode))
+	}
+}
+
+type TestConfig struct {
+	TestCategories map[string]TestCategory `yaml:"test_categories"`
+}
+
+func (tc *TestConfig) GetAllCategories() []string {
+	return []string{"internals", "secret-providers", "sequential", "scalers"}
+}
+
+// Validate enforces that all categories have a mode, and that the mode is either include or exclude.
+func (tc *TestConfig) Validate() error {
+	// validate that test_categories exists
+	if tc.TestCategories == nil {
+		return fmt.Errorf("test_categories is a required field")
+	}
+
+	// validate that all categories have a mode, and that the mode is either include or exclude
+	for name, cat := range tc.TestCategories {
+		if cat.Mode == "" {
+			return fmt.Errorf("category %q: mode is a required field", name)
+		}
+		switch cat.Mode {
+		case TestCategoryModeInclude, TestCategoryModeExclude:
+		default:
+			return fmt.Errorf("category %q: invalid mode %q", name, cat.Mode)
+		}
+	}
+	return nil
+}
+
+type TestCategory struct {
+	Mode  TestCategoryMode `yaml:"mode"`
+	Tests []string         `yaml:"tests,omitempty"`
+}
+
+type TestCategoryMode string
+
+const (
+	TestCategoryModeInclude TestCategoryMode = "include"
+	TestCategoryModeExclude TestCategoryMode = "exclude"
+)

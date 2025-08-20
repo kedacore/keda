@@ -36,6 +36,69 @@ go test -v -tags e2e ./scalers/azure/azure_queue/azure_queue_test.go # Assumes t
 
 Refer to [this](https://pkg.go.dev/testing) for more information about testing in `Go`.
 
+### Running test suites with a custom config file
+
+The `E2E_TEST_CONFIG` environment variable can be used to run a subset of tests with a custom config file.
+
+```bash
+E2E_TEST_CONFIG=tests/example-config.yaml go test -v -tags e2e ./tests/run-all.go
+```
+
+The config file is a YAML file that defines the test categories and the test suites to run.
+You can include or exclude suites in a category, or exclude an entire category.
+The current categories that exist are defined in the `tests/` subdirectory:
+
+- `internals`
+- `scalers`
+- `secret-providers`
+- `sequential`
+
+Here is an example config that will run all tests in the `scalers` category, but `exclude` the tests in the `cpu` suite.
+It will also `exclude` all tests in the `internals` category.
+Omitting an existing category in the config file will run all tests in that category.
+
+```yaml
+test_categories:
+  # This will run all tests in the scalers category, but exclude the cpu test.
+  scalers:
+    mode: exclude
+    tests:
+      - cpu
+  # Using mode: exclude and omitting the tests list will exclude all tests in the category.
+  internals:
+    mode: exclude
+  secret-providers:
+    mode: exclude
+  sequential:
+    mode: exclude
+```
+
+You can also do the opposite, and `include` tests, but `exclude` the rest:
+
+```yaml
+test_categories:
+  # This will only run the cpu and kafka tests, and exclude the rest inside the scalers category.
+  scalers:
+    mode: include
+    tests:
+      - cpu
+      - kafka
+  # Since the other categories are not specified, all tests in those categories will be run.
+```
+
+A valid config file must have the `test_categories` field, and all defined categories must have a `mode` field which is either `include` or `exclude`.
+
+This is an example of an empty but valid config file.
+
+```yaml
+# This will run all tests in all categories.
+test_categories:
+```
+
+You can specify a custom go regex directly through the `E2E_TEST_REGEX` environment variable. This will override the config file environment variable.
+
+Not specifying either `E2E_TEST_CONFIG` or `E2E_TEST_REGEX` will run all tests in all categories.
+
 ## E2E Test Setup
 
 The test script will run in 3 phases:
