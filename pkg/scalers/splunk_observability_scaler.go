@@ -166,22 +166,6 @@ func (s *splunkObservabilityScaler) GetMetricSpecForScaling(context.Context) []v
 	return []v2.MetricSpec{metricSpec}
 }
 
-func (s *splunkObservabilityMetadata) Validate() error {
-	if s.AccessToken == "" {
-		return fmt.Errorf("no Splunk Observability Cloud access token found. Please configure a valid access token.")
-	}
-
-	if s.Realm == "" {
-		return fmt.Errorf("no Splunk Observability Cloud realm found. Please configure a valid realm.")
-	}
-
-	if s.Query == "" {
-		return fmt.Errorf("no SignalFlow query for Splunk Observability Cloud realm found. Please configure a SignalFlow query.")
-	}
-
-	return nil
-}
-
 func (s *splunkObservabilityScaler) Close(context.Context) error {
 	return nil
 }
