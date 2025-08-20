@@ -225,7 +225,17 @@ func TestDeployKEDA(t *testing.T) {
 	_, err := KubeClient.CoreV1().Secrets(KEDANamespace).Create(context.Background(), secret, v1.CreateOptions{})
 	require.NoErrorf(t, err, "error deploying custom CA - %s", err)
 
-	out, err := ExecuteCommandWithDir("make deploy", "../..")
+	envVars := make(map[string]string)
+	if KEDATestConfig.KEDA.ImageRegistry != "" {
+		envVars["IMAGE_REGISTRY"] = KEDATestConfig.KEDA.ImageRegistry
+	}
+	if KEDATestConfig.KEDA.ImageRepo != "" {
+		envVars["IMAGE_REPO"] = KEDATestConfig.KEDA.ImageRepo
+	}
+
+	// We shouldn't duplicate the defaults that exist in the Makefile.
+	// If the config file fields are not set, don't override. The Makefile will use default values.
+	out, err := ExecuteCommandWithDirAndEnv("make deploy", "../..", envVars)
 	require.NoErrorf(t, err, "error deploying KEDA - %s", err)
 
 	t.Log(string(out))
