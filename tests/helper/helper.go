@@ -87,9 +87,23 @@ var (
 	GcpIdentityTests              = os.Getenv("GCP_RUN_IDENTITY_TESTS")
 	EnableOpentelemetry           = os.Getenv("ENABLE_OPENTELEMETRY")
 	InstallCertManager            = AwsIdentityTests == StringTrue || GcpIdentityTests == StringTrue
-	InstallKeda                   = os.Getenv("E2E_INSTALL_KEDA")
-	InstallKafka                  = os.Getenv("E2E_INSTALL_KAFKA")
 )
+
+// Variables set in init()
+var (
+	InstallKeda  bool
+	InstallKafka bool
+)
+
+func init() {
+	if err := LoadTestConfig(); err != nil {
+		fmt.Printf("Error loading test config: %v\n", err)
+		os.Exit(1)
+	}
+
+	InstallKeda = os.Getenv("E2E_INSTALL_KEDA") == StringTrue || (os.Getenv("E2E_INSTALL_KEDA") != StringFalse && KEDATestConfig.KEDA.InstallKeda)
+	InstallKafka = os.Getenv("E2E_INSTALL_KAFKA") == StringTrue || (os.Getenv("E2E_INSTALL_KAFKA") != StringFalse && KEDATestConfig.KEDA.InstallKafka)
+}
 
 var (
 	KubeClient     *kubernetes.Clientset
@@ -142,10 +156,20 @@ func ExecuteCommand(cmdWithArgs string) ([]byte, error) {
 }
 
 func ExecuteCommandWithDir(cmdWithArgs, dir string) ([]byte, error) {
-	out, err := ParseCommandWithDir(cmdWithArgs, dir).Output()
+	return ExecuteCommandWithDirAndEnv(cmdWithArgs, dir, nil)
+}
+
+func ExecuteCommandWithDirAndEnv(cmdWithArgs, dir string, env map[string]string) ([]byte, error) {
+	cmd := ParseCommandWithDir(cmdWithArgs, dir)
+
+	cmd.Env = os.Environ()
+	for k, v := range env {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	out, err := cmd.Output()
 	if err != nil {
-		exitError, ok := err.(*exec.ExitError)
-		if ok {
+		if exitError, ok := err.(*exec.ExitError); ok {
 			return out, ExecutionError{StdError: exitError.Stderr}
 		}
 	}

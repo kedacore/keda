@@ -66,6 +66,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
 - **General**: Introduce new Solace Direct Messaging scaler ([#6545](https://github.com/kedacore/keda/issues/6545))
 - **General**: Introduce new Sumo Logic Scaler ([#6734](https://github.com/kedacore/keda/issues/6734))
+- **General**: Support for declarative e2e test setup and filtering ([#6989](https://github.com/kedacore/keda/issues/6989))
 
 #### Experimental
 

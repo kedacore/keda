@@ -13,6 +13,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -41,12 +42,16 @@ type TestResult struct {
 func main() {
 	ctx := context.Background()
 
+	setAbsoluteConfigPath()
+
 	//
 	// Detect test cases
 	//
-	e2eRegex := os.Getenv("E2E_TEST_REGEX")
-	if e2eRegex == "" {
-		e2eRegex = ".*_test.go"
+
+	e2eRegex, err := getE2eRegex()
+	if err != nil {
+		fmt.Printf("Error getting e2e regex: %v\n", err)
+		os.Exit(1)
 	}
 
 	regularTestFiles := getRegularTestFiles(e2eRegex)
@@ -390,5 +395,114 @@ func saveLogToFile(file string, lines []string) {
 		if err != nil {
 			fmt.Print(err)
 		}
+	}
+}
+
+// getE2eRegex gets the regex to filter which tests to run.
+// If E2E_TEST_REGEX is set, it overrides and uses that regex.
+// If not, it uses a config to build a regex. If the config is nil, it uses the default regex which is to run all tests.
+func getE2eRegex() (string, error) {
+	// if there's a regex, use it
+	e2eRegex := os.Getenv("E2E_TEST_REGEX")
+	if e2eRegex != "" {
+		return e2eRegex, nil
+	}
+
+	return buildRegexFromConfig(helper.KEDATestConfig)
+}
+
+// buildRegexFromConfig builds a regex string from a TestConfig
+func buildRegexFromConfig(config helper.TestConfig) (string, error) {
+	var regexParts []string
+
+	// For each known category, we get all the available tests under the tests/category directory.
+	// We then filter the tests we actually run based on the config exclude and includes.
+	// Then we incrementally build a regex based on the filtered tests.
+	for _, category := range config.GetAllCategories() {
+		availableTests, err := getAvailableTests("tests/" + category)
+		if err != nil {
+			return "", fmt.Errorf("error getting %q tests: %w", category, err)
+		}
+
+		var supportedTests []string
+		if categoryConfig, exists := config.TestCategories[category]; exists {
+			supportedTests = filterTests(availableTests, categoryConfig)
+		} else {
+			// use all tests in the category if no config is specified
+			supportedTests = availableTests
+		}
+
+		if len(supportedTests) > 0 {
+			// go regex doesn't support negative lookaheads, so we need to explicily include the tests we want to run
+			regexParts = append(regexParts, fmt.Sprintf("%s/(%s)/.*", category, strings.Join(supportedTests, "|")))
+		}
+	}
+
+	if len(regexParts) == 0 {
+		return ".*_test.go", nil
+	}
+
+	return fmt.Sprintf("^tests/(%s)_test\\.go$", strings.Join(regexParts, "|")), nil
+}
+
+// getAvailableTests returns all available test suites/directories for a category, as a slice of strings
+func getAvailableTests(categoryPath string) ([]string, error) {
+	entries, err := os.ReadDir(categoryPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var tests []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			tests = append(tests, entry.Name())
+		}
+	}
+	return tests, nil
+}
+
+// filterTests returns the filtered tests as a slice of strings, based on the TestCategory
+func filterTests(tests []string, category helper.TestCategory) []string {
+	var result []string
+	// If the mode is include, we include the tests that are listed in category.Tests, including all if empty.
+	// If the mode is exclude, we exclude the tests that are listed in category.Tests, excluding all if empty.
+	switch category.Mode {
+	case helper.TestCategoryModeInclude:
+		if len(category.Tests) == 0 {
+			return tests
+		}
+		for _, test := range category.Tests {
+			if slices.Contains(tests, test) {
+				result = append(result, test)
+			}
+		}
+		return result
+	case helper.TestCategoryModeExclude:
+		if len(category.Tests) == 0 {
+			return []string{}
+		}
+		for _, test := range tests {
+			if !slices.Contains(category.Tests, test) {
+				result = append(result, test)
+			}
+		}
+		return result
+	default:
+		// because of TestConfig.Validate(), we should never get here
+		panic(fmt.Sprintf("invalid mode %q", category.Mode))
+	}
+}
+
+// setAbsoluteConfigPath converts the potentially relative path E2E_TEST_CONFIG environment variable to an absolute path and sets it.
+// This is because this process executes sub processes (setup_test.go, etc.) and will cause the relative paths to be incorrect.
+func setAbsoluteConfigPath() {
+	configPath := os.Getenv("E2E_TEST_CONFIG")
+	if configPath != "" {
+		absConfigPath, err := filepath.Abs(configPath)
+		if err != nil {
+			fmt.Printf("Error resolving config path: %v\n", err)
+			os.Exit(1)
+		}
+		os.Setenv("E2E_TEST_CONFIG", absConfigPath)
 	}
 }
