@@ -195,7 +195,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	// Parse the base server address and join the API path directly
 	parsedURL, err := url_pkg.Parse(s.metadata.ServerAddress)
 	if err != nil {
-		return -1, err
+		return -1, fmt.Errorf("failed to parse server address %q: %w", s.metadata.ServerAddress, err)
 	}
 	parsedURL = parsedURL.JoinPath("api/v1/query")
 
