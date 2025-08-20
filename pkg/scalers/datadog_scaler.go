@@ -71,7 +71,8 @@ type datadogMetadata struct {
 	HpaMetricName string  `keda:"name=hpaMetricName,          order=triggerMetadata, optional"`
 	FillValue     float64 `keda:"name=metricUnavailableValue, order=triggerMetadata, default=0"`
 	UseFiller     bool
-	TargetValue   float64 `keda:"name=targetValue;queryValue, order=triggerMetadata, default=-1"`
+	TargetValue   float64       `keda:"name=targetValue;queryValue, order=triggerMetadata, default=-1"`
+	Timeout       time.Duration `keda:"name=timeout,             	order=triggerMetadata, optional"`
 	vType         v2.MetricTargetType
 }
 
@@ -108,13 +109,13 @@ func NewDatadogScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (
 		if err != nil {
 			return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
 		}
-		httpClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.UnsafeSsl)
+		httpClient = kedautil.CreateHTTPClient(meta.Timeout, meta.UnsafeSsl)
 	} else {
 		meta, err = parseDatadogAPIMetadata(config, logger)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
 		}
-		apiClient, err = newDatadogAPIClient(config)
+		apiClient, err = newDatadogAPIClient(meta)
 		if err != nil {
 			return nil, fmt.Errorf("error creating Datadog API client: %w", err)
 		}
@@ -172,6 +173,11 @@ func parseDatadogAPIMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 			return nil, fmt.Errorf("no targetValue or queryValue given")
 		}
 	}
+
+	if meta.Timeout == 0 {
+		meta.Timeout = config.GlobalHTTPTimeout
+	}
+
 	if val, ok := config.TriggerMetadata["type"]; ok {
 		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
 		if config.MetricType != "" {
@@ -232,6 +238,11 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 			return nil, fmt.Errorf("no targetValue or queryValue given")
 		}
 	}
+
+	if meta.Timeout == 0 {
+		meta.Timeout = config.GlobalHTTPTimeout
+	}
+
 	if val, ok := config.TriggerMetadata["type"]; ok {
 		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
 		if config.MetricType != "" {
@@ -260,11 +271,11 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 	return meta, nil
 }
 
-func newDatadogAPIClient(config *scalersconfig.ScalerConfig) (*datadog.APIClient, error) {
+func newDatadogAPIClient(s *datadogMetadata) (*datadog.APIClient, error) {
 
 	configuration := datadog.NewConfiguration()
 	configuration.UserAgent = fmt.Sprintf("%s - KEDA/%s", configuration.UserAgent, version.Version)
-	configuration.HTTPClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+	configuration.HTTPClient = kedautil.CreateHTTPClient(s.Timeout, false)
 	apiClient := datadog.NewAPIClient(configuration)
 
 	return apiClient, nil
