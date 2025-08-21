@@ -1,3 +1,4 @@
 # These owners will be the default owners for everything in
 # the repo. Unless a later match takes precedence
-*       @kedacore/keda-core-contributors
+*       @kedacore/keda-core-maintainers
+*       @kedacore/keda-maintainers
