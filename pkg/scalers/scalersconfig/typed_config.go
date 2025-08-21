@@ -497,7 +497,7 @@ func (sc *ScalerConfig) checkUnexpectedParameterExist(parsedParamNames []string,
 				message := fmt.Sprintf("Unmatched input property %s in scaler %s", key+suffix, sc.ScalableObjectType)
 				// Just logging as it's optional property checking and should not block the scaling
 				logger.Error(nil, message)
-				sc.Recorder.Event(sc.ScaledObject, corev1.EventTypeNormal, eventreason.KEDAScalersInfo, message)
+				sc.Recorder.Event(sc.ScaledObject, corev1.EventTypeWarning, eventreason.KEDAScalersInfo, message)
 			}
 		}
 	}
