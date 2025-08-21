@@ -239,7 +239,7 @@ type Credential struct {
 	Token string `json:"token,omitempty"`
 
 	// +optional
-	TokenSecretRef *AuthSecretTargetRef `json:"tokenSecretRef,omitempty"`
+	TokenSecretRef *SecretKeyRef `json:"tokenSecretRef,omitempty"`
 
 	// +optional
 	ServiceAccount string `json:"serviceAccount,omitempty"`

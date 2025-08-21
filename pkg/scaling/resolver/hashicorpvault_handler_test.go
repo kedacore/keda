@@ -614,7 +614,7 @@ func TestHashicorpVaultHandler_Initialize(t *testing.T) {
 				Address:        server.URL,
 				Authentication: kedav1alpha1.VaultAuthenticationToken,
 				Credential: &kedav1alpha1.Credential{
-					TokenSecretRef: &kedav1alpha1.AuthSecretTargetRef{
+					TokenSecretRef: &kedav1alpha1.SecretKeyRef{
 						Name: testData.secretName,
 						Key:  testData.secretKey,
 					},

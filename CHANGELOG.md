@@ -60,7 +60,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
-- **General**: Support token store in secret and fallback to current token string ([#6026](https://github.com/kedacore/keda/issues/6026))
 
 ### New
 
@@ -80,6 +79,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Datadog Scaler**: Fix bug with datadogNamespace config ([#6828](https://github.com/kedacore/keda/pull/6828))
 - **Metrics API**: Support multiple auth methods simultaneously in Metrics API scaler ([#6642](https://github.com/kedacore/keda/issues/6642))
 - **Temporal Scaler**: Support custom tlsServerName ([#6820](https://github.com/kedacore/keda/pull/6820))
+- **General**: Support token store in secret and fallback to current token string ([#6026](https://github.com/kedacore/keda/issues/6026))
 
 ### Fixes
 

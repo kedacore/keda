@@ -460,12 +460,9 @@ spec:
                             type: string
                           name:
                             type: string
-                          parameter:
-                            type: string
                         required:
                         - key
                         - name
-                        - parameter
                         type: object
                     type: object
                   mount:
