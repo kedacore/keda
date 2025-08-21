@@ -172,7 +172,7 @@ func TestSumologicScaler(t *testing.T) {
 
 	// Ensure deployment is at min replica count
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+		"replica count should be %d after 9 minutes", minReplicaCount)
 
 	// Test scaling
 	testActivation(t, kc)
