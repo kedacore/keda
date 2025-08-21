@@ -69,7 +69,7 @@ jobs:
 
   build-test-images:
     needs: triage
-    runs-on: ubuntu-latest
+    runs-on: ARM64
     name: Build images
     container: ghcr.io/kedacore/keda-tools:1.23.8
     if: needs.triage.outputs.run-e2e == 'true'
