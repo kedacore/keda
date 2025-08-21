@@ -453,6 +453,21 @@ spec:
                         type: string
                       token:
                         type: string
+                      tokenSecretRef:
+                        description: AuthSecretTargetRef is used to authenticate using
+                          a reference to a secret
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            type: string
+                          parameter:
+                            type: string
+                        required:
+                        - key
+                        - name
+                        - parameter
+                        type: object
                     type: object
                   mount:
                     type: string

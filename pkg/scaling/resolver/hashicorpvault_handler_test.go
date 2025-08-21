@@ -17,6 +17,7 @@ limitations under the License.
 package resolver
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -27,7 +28,14 @@ import (
 
 	vaultapi "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
+	corev1listers "k8s.io/client-go/listers/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
@@ -93,7 +101,7 @@ var pkiRequestTestDataset = []pkiRequestTestData{
 }
 
 func TestGetPkiRequest(t *testing.T) {
-	vault := NewHashicorpVaultHandler(nil)
+	vault := NewHashicorpVaultHandler(context.TODO(), nil, nil, nil, nil)
 
 	for _, testData := range pkiRequestTestDataset {
 		var secret kedav1alpha1.VaultSecret
@@ -181,8 +189,9 @@ func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) 
 			Token: vaultTestToken,
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault)
-	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	l := logf.Log.WithName("test")
+	vaultHandler := NewHashicorpVaultHandler(context.TODO(), nil, &vault, &l, nil)
+	err := vaultHandler.Initialize()
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
 	secrets := []kedav1alpha1.VaultSecret{{
@@ -321,8 +330,9 @@ func TestHashicorpVaultHandler_ResolveSecret(t *testing.T) {
 			Token: vaultTestToken,
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault)
-	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	l := logf.Log.WithName("test")
+	vaultHandler := NewHashicorpVaultHandler(context.TODO(), nil, &vault, &l, nil)
+	err := vaultHandler.Initialize()
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
 
@@ -357,8 +367,9 @@ func TestHashicorpVaultHandler_ResolveSecret_UsingRootToken(t *testing.T) {
 			Token: vaultTestToken,
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault)
-	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	l := logf.Log.WithName("test")
+	vaultHandler := NewHashicorpVaultHandler(context.TODO(), nil, &vault, &l, nil)
+	err := vaultHandler.Initialize()
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
 
@@ -394,8 +405,9 @@ func TestHashicorpVaultHandler_DefaultKubernetesVaultRole(t *testing.T) {
 		Role:           "my-role",
 	}
 
-	vaultHandler := NewHashicorpVaultHandler(&vault)
-	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	l := logf.Log.WithName("test")
+	vaultHandler := NewHashicorpVaultHandler(context.TODO(), nil, &vault, &l, nil)
+	err := vaultHandler.Initialize()
 	defer vaultHandler.Stop()
 	assert.Errorf(t, err, "open %s : no such file or directory", defaultServiceAccountPath)
 	assert.Equal(t, vaultHandler.vault.Credential.ServiceAccount, defaultServiceAccountPath)
@@ -412,8 +424,9 @@ func TestHashicorpVaultHandler_ResolveSecrets_SameCertAndKey(t *testing.T) {
 			Token: vaultTestToken,
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault)
-	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	l := logf.Log.WithName("test")
+	vaultHandler := NewHashicorpVaultHandler(context.TODO(), nil, &vault, &l, nil)
+	err := vaultHandler.Initialize()
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
 	secrets := []kedav1alpha1.VaultSecret{{
@@ -480,8 +493,9 @@ func TestHashicorpVaultHandler_fetchSecret(t *testing.T) {
 			Token: vaultTestToken,
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault)
-	err := vaultHandler.Initialize(logf.Log.WithName("test"))
+	l := logf.Log.WithName("test")
+	vaultHandler := NewHashicorpVaultHandler(context.TODO(), nil, &vault, &l, nil)
+	err := vaultHandler.Initialize()
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
 
@@ -501,30 +515,98 @@ func TestHashicorpVaultHandler_fetchSecret(t *testing.T) {
 }
 
 type initializeTestData struct {
-	name      string
-	namespace string
-	token     string
-	isError   bool
+	name          string
+	namespace     string
+	token         string
+	expectedToken string
+	isError       bool
+	secretKey     string
+	secretName    string
+	existing      []runtime.Object
 }
 
 var initialiseTestDataSet = []initializeTestData{
 	{
-		name:      "Namespace and Token",
-		namespace: "testNamespace",
-		token:     "testToken",
-		isError:   false,
+		name:          "Namespace and Token",
+		namespace:     "testNamespace",
+		token:         "testToken",
+		expectedToken: "testToken",
+		isError:       false,
 	},
 	{
-		name:      "No Namespace",
-		namespace: "",
-		token:     "testToken",
-		isError:   false,
+		name:          "No Namespace",
+		namespace:     "",
+		token:         "testToken",
+		expectedToken: "testToken",
+		isError:       false,
+	},
+	{
+		name:          "Token in Secret Name",
+		namespace:     "testNamespace",
+		token:         "testToken",
+		expectedToken: secretData,
+		isError:       false,
+		secretKey:     secretKey,
+		secretName:    secretName,
+		existing: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "testNamespace",
+					Name:      secretName,
+				},
+				Data: map[string][]byte{
+					secretKey: []byte(secretData),
+				},
+			},
+		},
+	},
+	{
+		name:          "Token in Secret Not Found, fallback",
+		namespace:     "testNamespace",
+		token:         "testToken",
+		expectedToken: "testToken",
+		isError:       false,
+		secretKey:     "otherSecretKey",
+		secretName:    secretName,
+		existing: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      secretName,
+				},
+				Data: map[string][]byte{
+					secretKey: []byte(secretData),
+				},
+			},
+		},
+	},
+	{
+		name:          "Token in Secret Not Found, fallback",
+		namespace:     "testNamespace",
+		token:         "",
+		expectedToken: "testToken",
+		isError:       true,
+		secretKey:     "otherSecretKey",
+		secretName:    secretName,
+		existing: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      secretName,
+				},
+				Data: map[string][]byte{
+					secretKey: []byte(secretData),
+				},
+			},
+		},
 	},
 }
 
 func TestHashicorpVaultHandler_Initialize(t *testing.T) {
 	server := mockVault(t, false)
 	defer server.Close()
+	logf.SetLogger(zap.New(zap.UseDevMode(true)))
+	var secretsLister corev1listers.SecretLister
 
 	for _, testData := range initialiseTestDataSet {
 		func() {
@@ -532,20 +614,25 @@ func TestHashicorpVaultHandler_Initialize(t *testing.T) {
 				Address:        server.URL,
 				Authentication: kedav1alpha1.VaultAuthenticationToken,
 				Credential: &kedav1alpha1.Credential{
+					TokenSecretRef: &kedav1alpha1.AuthSecretTargetRef{
+						Name: testData.secretName,
+						Key:  testData.secretKey,
+					},
 					Token: testData.token,
 				},
 				Namespace: testData.namespace,
 			}
-			vaultHandler := NewHashicorpVaultHandler(&vault)
-			err := vaultHandler.Initialize(logf.Log.WithName("test"))
+			l := logf.Log.WithName("test")
+			vaultHandler := NewHashicorpVaultHandler(context.Background(), fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(testData.existing...).Build(), &vault, &l, secretsLister)
+			err := vaultHandler.Initialize()
 			defer vaultHandler.Stop()
-			assert.Nil(t, err)
 
 			if testData.isError {
 				assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
 			} else {
+				assert.Nil(t, err)
 				assert.Equalf(t, vaultHandler.client.Address(), server.URL, "test case %s", testData.name)
-				assert.Equalf(t, vaultHandler.client.Token(), testData.token, "test case %s", testData.name)
+				assert.Equalf(t, vaultHandler.client.Token(), testData.expectedToken, "test case %s", testData.name)
 				assert.Equalf(t, vaultHandler.client.Namespace(), testData.namespace, "test case %s", testData.name)
 			}
 		}()
@@ -610,7 +697,8 @@ func TestHashicorpVaultHandler_Token_VaultTokenAuth(t *testing.T) {
 				Role:           testData.role,
 				Mount:          testData.mount,
 			}
-			vaultHandler := NewHashicorpVaultHandler(&vault)
+			l := logf.Log.WithName("test")
+			vaultHandler := NewHashicorpVaultHandler(context.TODO(), nil, &vault, &l, nil)
 			defer vaultHandler.Stop()
 
 			config := vaultapi.DefaultConfig()

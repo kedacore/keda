@@ -17,6 +17,7 @@ limitations under the License.
 package resolver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,26 +26,36 @@ import (
 
 	"github.com/go-logr/logr"
 	vaultapi "github.com/hashicorp/vault/api"
+	corev1listers "k8s.io/client-go/listers/core/v1"
+	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 // HashicorpVaultHandler is specification of Hashi Corp Vault
 type HashicorpVaultHandler struct {
-	vault  *kedav1alpha1.HashiCorpVault
-	client *vaultapi.Client
-	stopCh chan struct{}
+	vault         *kedav1alpha1.HashiCorpVault
+	client        *vaultapi.Client
+	k8sClient     k8sClient.Client
+	stopCh        chan struct{}
+	ctx           context.Context
+	logger        *logr.Logger
+	secretsLister corev1listers.SecretLister
 }
 
 // NewHashicorpVaultHandler creates a HashicorpVaultHandler object
-func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault) *HashicorpVaultHandler {
+func NewHashicorpVaultHandler(ctx context.Context, client k8sClient.Client, v *kedav1alpha1.HashiCorpVault, logger *logr.Logger, secretListener corev1listers.SecretLister) *HashicorpVaultHandler {
 	return &HashicorpVaultHandler{
-		vault: v,
+		vault:         v,
+		ctx:           ctx,
+		logger:        logger,
+		secretsLister: secretListener,
+		k8sClient:     client,
 	}
 }
 
 // Initialize the Vault client
-func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
+func (vh *HashicorpVaultHandler) Initialize() error {
 	config := vaultapi.DefaultConfig()
 	client, err := vaultapi.NewClient(config)
 	if err != nil {
@@ -77,7 +88,7 @@ func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
 
 	if renew, ok := lookup.Data["renewable"].(bool); ok && renew {
 		vh.stopCh = make(chan struct{})
-		go vh.renewToken(logger)
+		go vh.renewToken()
 	}
 
 	vh.client = client
@@ -92,14 +103,24 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 	switch vh.vault.Authentication {
 	case kedav1alpha1.VaultAuthenticationToken:
 		// Got token from VAULT_TOKEN env variable
-		switch {
-		case len(client.Token()) > 0:
-			break
-		case len(vh.vault.Credential.Token) > 0:
-			token = vh.vault.Credential.Token
-		default:
-			return token, errors.New("could not get Vault token")
+		if len(client.Token()) > 0 {
+			return "", nil
 		}
+
+		// consume token from k8s secret
+		if vh.vault.Credential.TokenSecretRef != nil && vh.vault.Credential.TokenSecretRef.Name != "" && vh.vault.Credential.TokenSecretRef.Key != "" {
+			token = resolveAuthSecret(vh.ctx, vh.k8sClient, *vh.logger, vh.vault.Credential.TokenSecretRef.Name, vh.vault.Namespace, vh.vault.Credential.TokenSecretRef.Key, vh.secretsLister)
+			if token != "" {
+				return token, nil
+			}
+		}
+
+		// if the token is not set in the secret will fallback to the previews approach
+		if len(vh.vault.Credential.Token) > 0 {
+			return vh.vault.Credential.Token, nil
+		}
+		return token, errors.New("could not get Vault token")
+
 	case kedav1alpha1.VaultAuthenticationKubernetes:
 		if len(vh.vault.Mount) == 0 {
 			return token, errors.New("auth mount not in config")
@@ -141,10 +162,10 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 }
 
 // renewToken takes charge of renewing the vault token
-func (vh *HashicorpVaultHandler) renewToken(logger logr.Logger) {
+func (vh *HashicorpVaultHandler) renewToken() {
 	secret, err := vh.client.Auth().Token().RenewSelf(0)
 	if err != nil {
-		logger.Error(err, "Vault renew token: failed to create the payload")
+		vh.logger.Error(err, "Vault renew token: failed to create the payload")
 	}
 
 	renewer, err := vh.client.NewLifetimeWatcher(&vaultapi.RenewerInput{
@@ -153,7 +174,7 @@ func (vh *HashicorpVaultHandler) renewToken(logger logr.Logger) {
 		//Increment: 60,
 	})
 	if err != nil {
-		logger.Error(err, "Vault renew token: cannot create the renewer")
+		vh.logger.Error(err, "Vault renew token: cannot create the renewer")
 	}
 
 	go renewer.Renew()
@@ -169,7 +190,7 @@ RenewWatcherLoop:
 			break RenewWatcherLoop
 		case err := <-renewer.DoneCh():
 			if err != nil {
-				logger.Error(err, "error renewing token")
+				vh.logger.Error(err, "error renewing token")
 			}
 			break RenewWatcherLoop
 		}

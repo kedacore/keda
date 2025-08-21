@@ -60,6 +60,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
+- **General**: Support token store in secret and fallback to current token string ([#6026](https://github.com/kedacore/keda/issues/6026))
 
 ### New
 

@@ -235,7 +235,11 @@ type HashiCorpVault struct {
 // Credential defines the Hashicorp Vault credentials depending on the authentication method
 type Credential struct {
 	// +optional
+	// +kubebuilder:deprecated:warning="field `token` is deprecated and might be removed in further versions, use `tokenSecretRef` field instead"
 	Token string `json:"token,omitempty"`
+
+	// +optional
+	TokenSecretRef *AuthSecretTargetRef `json:"tokenSecretRef,omitempty"`
 
 	// +optional
 	ServiceAccount string `json:"serviceAccount,omitempty"`
