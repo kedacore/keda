@@ -176,7 +176,7 @@ func TestScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+		"replica count should be 0 after 1 minute")
 
 	sdkReady := WaitForDeploymentReplicaReadyCount(t, kc, "gcp-sdk", testNamespace, 1, 60, 1)
 	assert.True(t, sdkReady, "gcp-sdk deployment should be ready after a minute")
@@ -273,7 +273,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 
 	t.Log("--- waiting for replicas to scale out ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 30, 10),
-		fmt.Sprintf("replica count should be %d after five minutes", maxReplicaCount))
+		fmt.Sprintf("replica count should be %d after 5 minutes", maxReplicaCount))
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
@@ -284,5 +284,5 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 	t.Log("--- waiting for replicas to scale in to zero ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 10),
-		"replica count should be 0 after five minute")
+		"replica count should be 0 after 5 minute")
 }
