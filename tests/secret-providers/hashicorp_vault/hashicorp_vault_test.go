@@ -520,9 +520,9 @@ func TestSecretsEngine(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			// Create kubernetes resources for PostgreSQL server
 			kc := GetKubernetesClient(t)
-			data, postgreSQLtemplates := getPostgreSQLTemplateData()
+			testData, postgreSQLtemplates := getPostgreSQLTemplateData()
 
-			CreateKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
+			CreateKubernetesResources(t, kc, testNamespace, testData, postgreSQLtemplates)
 			hashiCorpToken, _ := setupHashiCorpVault(t, kc, test.vaultEngineVersion, false, false)
 
 			assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
@@ -533,27 +533,27 @@ func TestSecretsEngine(t *testing.T) {
 
 			ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace, psqlCreateTableCmd, 60, 3)
 			assert.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
-
+			var templates []Template
 			if test.useSecrets {
 				// Create kubernetes resources for testing using secrets to get the token
-				data, templates := getTemplateDataWithTokenSecret()
+				testData, templates = getTemplateDataWithTokenSecret()
 			} else {
 				// Create kubernetes resources for testing
-				data, templates := getTemplateData()
+				testData, templates = getTemplateData()
 			}
-			data.HashiCorpToken = RemoveANSI(hashiCorpToken)
-			data.VaultSecretPath = test.vaultSecretPath
+			d.HashiCorpToken = RemoveANSI(hashiCorpToken)
+			d.VaultSecretPath = test.vaultSecretPath
 
-			KubectlApplyMultipleWithTemplate(t, data, templates)
+			KubectlApplyMultipleWithTemplate(t, testData, templates)
 			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 				"replica count should be %d after 3 minutes", minReplicaCount)
 
-			testScaleOut(t, kc, data)
+			testScaleOut(t, kc, testData)
 
 			// cleanup
-			KubectlDeleteMultipleWithTemplate(t, data, templates)
+			KubectlDeleteMultipleWithTemplate(t, testData, templates)
 			cleanupHashiCorpVault(t)
-			DeleteKubernetesResources(t, testNamespace, data, postgreSQLtemplates)
+			DeleteKubernetesResources(t, testNamespace, testData, postgreSQLtemplates)
 		})
 	}
 }
