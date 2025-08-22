@@ -637,7 +637,7 @@ func TestDurationParsing(t *testing.T) {
 	Expect(ts.TimeoutDuration).To(Equal(30 * time.Second))
 	Expect(ts.TimeoutZero).To(Equal(0 * time.Millisecond))
 }
-    
+
 // TestUnexpectedOptional tests the unexpected optional input
 func TestUnexpectedOptional(t *testing.T) {
 	RegisterTestingT(t)
