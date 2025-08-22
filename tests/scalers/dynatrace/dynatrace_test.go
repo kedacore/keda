@@ -146,7 +146,7 @@ func TestDynatraceScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
-		"replica count should be %s after a minute", minReplicaCount)
+		"replica count should be %s after 1 minute", minReplicaCount)
 
 	// test scaling
 	testActivation(t, kc)
@@ -167,7 +167,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	stopCh := make(chan struct{})
 	go setMetricValue(t, 10, stopCh)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
-		"replica count should be %d after 2 minutes", maxReplicaCount)
+		"replica count should be %d after 3 minutes", maxReplicaCount)
 	close(stopCh)
 }
 
@@ -177,7 +177,7 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	stopCh := make(chan struct{})
 	go setMetricValue(t, 0, stopCh)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
-		"replica count should be %d after 2 minutes", minReplicaCount)
+		"replica count should be %d after 3 minutes", minReplicaCount)
 	close(stopCh)
 }
 
