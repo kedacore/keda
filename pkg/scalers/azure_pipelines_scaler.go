@@ -144,6 +144,7 @@ type azurePipelinesMetadata struct {
 	TargetPipelinesQueueLength           int64  `keda:"name=targetPipelinesQueueLength,          order=triggerMetadata, default=1, optional"`
 	ActivationTargetPipelinesQueueLength int64  `keda:"name=activationTargetPipelinesQueueLength,          order=triggerMetadata, default=0, optional"`
 	JobsToFetch                          int64  `keda:"name=jobsToFetch,          order=triggerMetadata, default=250, optional"`
+	FetchUnfinishedJobsOnly              bool   `keda:"name=fetchUnfinishedJobsOnly,          order=triggerMetadata, default=false, optional"`
 	triggerIndex                         int
 	RequireAllDemands                    bool `keda:"name=requireAllDemands,          order=triggerMetadata, default=false, optional"`
 	RequireAllDemandsAndIgnoreOthers     bool `keda:"name=requireAllDemandsAndIgnoreOthers,          order=triggerMetadata, default=false, optional"`
@@ -213,6 +214,13 @@ func getAuthMethod(logger logr.Logger, config *scalersconfig.ScalerConfig) (stri
 }
 
 func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config *scalersconfig.ScalerConfig, httpClient *http.Client) (*azurePipelinesMetadata, kedav1alpha1.AuthPodIdentity, error) {
+	if config.TriggerMetadata["jobsToFetch"] != "" && config.TriggerMetadata["fetchUnfinishedJobsOnly"] != "" {
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("cannot specify both jobsToFetch and fetchUnfinishedJobsOnly at the same time")
+	}
+	if config.TriggerMetadata["jobsToFetch"] != "" && config.TriggerMetadata["parent"] != "" {
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("cannot specify both jobsToFetch and parent at the same time")
+	}
+
 	meta := &azurePipelinesMetadata{}
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure pipeline metadata: %w", err)
@@ -368,14 +376,29 @@ func getAzurePipelineRequest(ctx context.Context, logger logr.Logger, urlString 
 	return b, nil
 }
 
-func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int64, error) {
-	// HotFix Issue (#4387), $top changes the format of the returned JSON
+func (s *azurePipelinesScaler) GetAzurePipelinesQueueURL() (string, error) {
 	var urlString string
-	if s.metadata.Parent != "" {
+	if s.metadata.FetchUnfinishedJobsOnly {
+		// Because completedRequestCount=0 does not change the format of the returned JSON like $top does, we can also use this URL when a `Parent` agent is given
+		// However, in order to not force existing users of the `Parent` property to always send the `completedRequestCount=0` query parameter (which may change over time
+		//  due it it being an undocumented API), we only send the query parameter when `FetchUnfinishedJobsOnly` is explicitly set to true.
+		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?completedRequestCount=0", s.metadata.OrganizationURL, s.metadata.PoolID)
+	} else if s.metadata.Parent != "" {
+		// HotFix Issue (#4387), $top changes the format of the returned JSON
 		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests", s.metadata.OrganizationURL, s.metadata.PoolID)
 	} else {
 		urlString = fmt.Sprintf("%s/_apis/distributedtask/pools/%d/jobrequests?$top=%d", s.metadata.OrganizationURL, s.metadata.PoolID, s.metadata.JobsToFetch)
 	}
+
+	return urlString, nil
+}
+
+func (s *azurePipelinesScaler) GetAzurePipelinesQueueLength(ctx context.Context) (int64, error) {
+	urlString, err := s.GetAzurePipelinesQueueURL()
+	if err != nil {
+		return -1, err
+	}
+
 	body, err := getAzurePipelineRequest(ctx, s.logger, urlString, s.metadata, s.podIdentity, s.httpClient)
 	if err != nil {
 		return -1, err
