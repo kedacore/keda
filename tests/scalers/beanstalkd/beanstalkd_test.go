@@ -183,7 +183,7 @@ func TestBeanstalkdScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, beanstalkdDeploymentName, testNamespace, 1, 60, 1),
-		"replica count should be 0 after a minute")
+		"replica count should be 0 after 1 minute")
 
 	// test activation
 	testActivation(t, kc, data)
@@ -245,7 +245,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	addBeanstalkdJobs(t, kc, &data)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 3, 60, 1),
-		"replica count should be 3 after a minute")
+		"replica count should be 3 after 1 minute")
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -263,5 +263,5 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	removeBeanstalkdJobs(t, kc, &data)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after a minute")
+		"replica count should be 0 after 1 minute")
 }
