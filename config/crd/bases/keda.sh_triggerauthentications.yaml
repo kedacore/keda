@@ -453,8 +453,6 @@ spec:
                       token:
                         type: string
                       tokenSecretRef:
-                        description: AuthSecretTargetRef is used to authenticate using
-                          a reference to a secret
                         properties:
                           key:
                             type: string
