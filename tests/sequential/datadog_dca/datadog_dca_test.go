@@ -24,6 +24,7 @@ import (
 // Load environment variables from .env file
 var _ = godotenv.Load("../../.env")
 
+
 const (
 	testName = "datadog-dca-test"
 )
