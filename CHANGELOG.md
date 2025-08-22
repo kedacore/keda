@@ -63,8 +63,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Add error and event for mismatching input property ([#6721](https://github.com/kedacore/keda/issues/6721))
+- **General**: Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
 - **General**: Introduce new Solace Direct Messaging scaler ([#6545](https://github.com/kedacore/keda/issues/6545))
-- Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
 - **General**: Introduce new Sumo Logic Scaler ([#6734](https://github.com/kedacore/keda/issues/6734))
 
 #### Experimental
@@ -82,9 +83,12 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Fixes
 
 - **General**: Add missing omitempty json tags in the AuthPodIdentity struct ([#6779](https://github.com/kedacore/keda/issues/6779))
+- **General**: Correct pending pod condition logic for ScaledJobs ([#6727](https://github.com/kedacore/keda/issues/6727))
 - **General**: Fix prefixes on envFrom elements in a deployment spec aren't being interpreted and Environment variables are not prefixed with the prefix ([#6728](https://github.com/kedacore/keda/issues/6728))
 - **General**: Remove klogr dependency and replace with zap ([#5732](https://github.com/kedacore/keda/issues/5732))
 - **General**: Sets hpaName in Status when ScaledObject adopts/finds an existing HPA ([#6336](https://github.com/kedacore/keda/issues/6336))
+- **Cron Scaler**: Fix cron scaler to return zero metric value by default([#6886](https://github.com/kedacore/keda/issues/6886))
+- **RabbitMQ Scaler**: Fix incorrect URL encoding in RabbitMQ vhosts containing %2f ([#6963](https://github.com/kedacore/keda/issues/6963))
 
 ### Deprecations
 
@@ -93,7 +97,7 @@ You can find all deprecations in [this overview](https://github.com/kedacore/ked
 New deprecation(s):
 
 - **GCP Pub/Sub Scaler**: The 'subscriptionSize' setting is DEPRECATED and will be removed in v2.20 - Use 'mode' and 'value' instead" ([#6866](https://github.com/kedacore/keda/pull/6866))
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Huawei Cloudeye Scaler**: The 'minMetricValue' setting is DEPRECATED and will be removed in v2.20 - Use 'activationTargetMetricValue' instead" ([#6978](https://github.com/kedacore/keda/pull/6978))
 
 ### Breaking Changes
 
