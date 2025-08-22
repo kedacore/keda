@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/InfluxCommunity/influxdb3-go/v2/influxdb3"
@@ -35,8 +34,8 @@ type influxDBMetadata struct {
 	AuthToken                string  `keda:"name=authToken,                order=triggerMetadata;resolvedEnv;authParams"`
 	OrganizationName         string  `keda:"name=organizationName,         order=triggerMetadata;resolvedEnv;authParams, optional"`
 	Query                    string  `keda:"name=query,                    order=triggerMetadata"`
-	InfluxVersion            string  `keda:"name=influxVersion,            order=triggerMetadata,                        default=2"`
-	QueryType                string  `keda:"name=queryType,                order=triggerMetadata,                        default=influxql"`
+	InfluxVersion            string  `keda:"name=influxVersion,            order=triggerMetadata,                        default=2,       enum=2;3"`
+	QueryType                string  `keda:"name=queryType,                order=triggerMetadata,                        default=InfluxQL"`
 	Database                 string  `keda:"name=database,                 order=triggerMetadata;authParams,             optional"`
 	MetricKey                string  `keda:"name=metricKey,                order=triggerMetadata,                        optional"`
 	ServerURL                string  `keda:"name=serverURL,                order=triggerMetadata;authParams"`
@@ -48,18 +47,13 @@ type influxDBMetadata struct {
 }
 
 func (i *influxDBMetadata) Validate() error {
-	validInfluxVersions := []string{"2", "3"}
-	if !slices.Contains(validInfluxVersions, i.InfluxVersion) {
-		return fmt.Errorf("invalid Influx version: %s", i.InfluxVersion)
-	}
-
 	if i.InfluxVersion == "3" {
 		if i.Database == "" {
-			return fmt.Errorf("database is required")
+			return fmt.Errorf("database is required if influxVersion is 3")
 		}
 
 		if i.MetricKey == "" {
-			return fmt.Errorf("metricKey is required")
+			return fmt.Errorf("metricKey is required if influxVersion is 3")
 		}
 
 		if strings.ToLower(i.QueryType) != "influxql" && strings.ToLower(i.QueryType) != "flightsql" {
