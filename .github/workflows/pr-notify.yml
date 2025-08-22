@@ -1,0 +1,12 @@
+name: Auto Assign
+on:
+  - pull_request_target
+
+jobs:
+  assign_reviewer:
+    runs-on: ARM64
+    steps:
+      - uses: shufo/auto-assign-reviewer-by-files@0a7fae44d02e841755d0caaac2ef05ad12a3bbc9 # v1.2.1
+        with:
+          config: ".github/reviewers.yml"
+          token: ${{ secrets.GH_AUTOMATION_PAT }}

@@ -16,6 +16,7 @@ var testPubSubResolvedEnv = map[string]string{
 }
 
 type parsePubSubMetadataTestData struct {
+	testName   string
 	authParams map[string]string
 	metadata   map[string]string
 	isError    bool
@@ -35,57 +36,57 @@ type gcpPubSubSubscription struct {
 }
 
 var testPubSubMetadata = []parsePubSubMetadataTestData{
-	{map[string]string{}, map[string]string{}, true},
+	{"empty", map[string]string{}, map[string]string{}, true},
 	// all properly formed with deprecated field
-	{nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{"all properly formed with deprecated field", nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// all properly formed with subscriptionName
-	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "5"}, false},
+	{"all properly formed with subscriptionName", nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "5"}, false},
 	// all properly formed with oldest unacked message age mode
-	{nil, map[string]string{"subscriptionName": "mysubscription", "mode": "OldestUnackedMessageAge", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{"all properly formed with oldest unacked message age mode", nil, map[string]string{"subscriptionName": "mysubscription", "mode": "OldestUnackedMessageAge", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// missing subscriptionName
-	{nil, map[string]string{"subscriptionName": "", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{"missing subscriptionName", nil, map[string]string{"subscriptionName": "", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// missing credentials
-	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": ""}, true},
+	{"missing credentials", nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": ""}, true},
 	// malformed subscriptionSize
-	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "AA", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{"malformed subscriptionSize", nil, map[string]string{"subscriptionName": "mysubscription", "value": "AA", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// malformed mode
-	{nil, map[string]string{"subscriptionName": "", "mode": "AA", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{"malformed mode", nil, map[string]string{"subscriptionName": "", "mode": "AA", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// malformed activationTargetValue
-	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "AA"}, true},
+	{"malformed activationTargetValue", nil, map[string]string{"subscriptionName": "mysubscription", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "AA"}, true},
 	// Credentials from AuthParams
-	{map[string]string{"GoogleApplicationCredentials": "Creds"}, map[string]string{"subscriptionName": "mysubscription", "value": "7"}, false},
+	{"Credentials from AuthParams", map[string]string{"GoogleApplicationCredentials": "Creds"}, map[string]string{"subscriptionName": "mysubscription", "value": "7"}, false},
 	// Credentials from AuthParams with empty creds
-	{map[string]string{"GoogleApplicationCredentials": ""}, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7"}, true},
+	{"Credentials from AuthParams with empty creds", map[string]string{"GoogleApplicationCredentials": ""}, map[string]string{"subscriptionName": "mysubscription", "subscriptionSize": "7"}, true},
 	// with full link to subscription
-	{nil, map[string]string{"subscriptionName": "projects/myproject/subscriptions/mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{"with full link to subscription", nil, map[string]string{"subscriptionName": "projects/myproject/subscriptions/mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// with full (bad) link to subscription
-	{nil, map[string]string{"subscriptionName": "projects/myproject/mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{"with full (bad) link to subscription", nil, map[string]string{"subscriptionName": "projects/myproject/mysubscription", "subscriptionSize": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// properly formed float value and activationTargetValue
-	{nil, map[string]string{"subscriptionName": "mysubscription", "value": "7.1", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "2.1"}, false},
+	{"properly formed float value and activationTargetValue", nil, map[string]string{"subscriptionName": "mysubscription", "value": "7.1", "credentialsFromEnv": "SAMPLE_CREDS", "activationValue": "2.1"}, false},
 	// All optional omitted
-	{nil, map[string]string{"subscriptionName": "mysubscription", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{"All optional omitted", nil, map[string]string{"subscriptionName": "mysubscription", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// value omitted when mode present
-	{nil, map[string]string{"subscriptionName": "mysubscription", "mode": "SubscriptionSize", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{"value omitted when mode present", nil, map[string]string{"subscriptionName": "mysubscription", "mode": "SubscriptionSize", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// all properly formed with topicName
-	{nil, map[string]string{"topicName": "mytopic", "mode": "MessageSizes", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{"all properly formed with topicName", nil, map[string]string{"topicName": "mytopic", "mode": "MessageSizes", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// with full link to topic
-	{nil, map[string]string{"topicName": "projects/myproject/topics/mytopic", "mode": "MessageSizes", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{"with full link to topic", nil, map[string]string{"topicName": "projects/myproject/topics/mytopic", "mode": "MessageSizes", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// with full (bad) link to topic
-	{nil, map[string]string{"topicName": "projects/myproject/mytopic", "mode": "MessageSizes", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{"with full (bad) link to topic", nil, map[string]string{"topicName": "projects/myproject/mytopic", "mode": "MessageSizes", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// both subscriptionName and topicName present
-	{nil, map[string]string{"subscriptionName": "mysubscription", "topicName": "mytopic", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{"both subscriptionName and topicName present", nil, map[string]string{"subscriptionName": "mysubscription", "topicName": "mytopic", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// both subscriptionName and topicName missing
-	{nil, map[string]string{"value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{"both subscriptionName and topicName missing", nil, map[string]string{"value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// both subscriptionSize and topicName present
-	{nil, map[string]string{"subscriptionSize": "7", "topicName": "mytopic", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{"both subscriptionSize and topicName present", nil, map[string]string{"subscriptionSize": "7", "topicName": "mytopic", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
 	// both subscriptionName and subscriptionNameFromEnv present
-	{nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionNameFromEnv": "MY_ENV_SUBSCRIPTION", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{"both subscriptionName and subscriptionNameFromEnv present", nil, map[string]string{"subscriptionName": "mysubscription", "subscriptionNameFromEnv": "MY_ENV_SUBSCRIPTION", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// both topicName and topicNameFromEnv present
-	{nil, map[string]string{"topicName": "mytopic", "topicNameFromEnv": "MY_ENV_TOPIC", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, true},
+	{"both topicName and topicNameFromEnv present", nil, map[string]string{"topicName": "mytopic", "topicNameFromEnv": "MY_ENV_TOPIC", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// subscriptionNameFromEnv present
-	{nil, map[string]string{"subscriptionNameFromEnv": "MY_ENV_SUBSCRIPTION", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{"subscriptionNameFromEnv present", nil, map[string]string{"subscriptionNameFromEnv": "MY_ENV_SUBSCRIPTION", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 	// topicNameFromEnv present
-	{nil, map[string]string{"topicNameFromEnv": "MY_ENV_TOPIC", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
+	{"topicNameFromEnv present", nil, map[string]string{"topicNameFromEnv": "MY_ENV_TOPIC", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS"}, false},
 }
 
 var gcpPubSubMetricIdentifiers = []gcpPubSubMetricIdentifier{
@@ -111,59 +112,67 @@ var gcpSubscriptionDefaults = []gcpPubSubSubscription{
 
 func TestPubSubParseMetadata(t *testing.T) {
 	for _, testData := range testPubSubMetadata {
-		_, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testPubSubResolvedEnv}, logr.Discard())
-		if err != nil && !testData.isError {
-			t.Error("Expected success but got error", err)
-		}
-		if testData.isError && err == nil {
-			t.Error("Expected error but got success")
-		}
+		t.Run(testData.testName, func(t *testing.T) {
+			_, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{AuthParams: testData.authParams, TriggerMetadata: testData.metadata, ResolvedEnv: testPubSubResolvedEnv})
+			if err != nil && !testData.isError {
+				t.Error("Expected success but got error", err)
+			}
+			if testData.isError && err == nil {
+				t.Error("Expected error but got success")
+			}
+		})
 	}
 }
 
 func TestPubSubMetadataDefaultValues(t *testing.T) {
 	for _, testData := range gcpSubscriptionDefaults {
-		metaData, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv}, logr.Discard())
-		if err != nil {
-			t.Error("Expected success but got error", err)
-		}
-		if pubSubModeSubscriptionSize != metaData.mode {
-			t.Errorf(`Expected mode "%s" but got "%s"`, pubSubModeSubscriptionSize, metaData.mode)
-		}
-		if pubSubDefaultValue != metaData.value {
-			t.Errorf(`Expected value "%d" but got "%f"`, pubSubDefaultValue, metaData.value)
-		}
+		t.Run(testData.metadataTestData.testName, func(t *testing.T) {
+			metaData, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{AuthParams: testData.metadataTestData.authParams, TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv})
+			if err != nil {
+				t.Error("Expected success but got error", err)
+			}
+			if pubSubDefaultModeSubscriptionSize != metaData.Mode {
+				t.Errorf(`Expected mode "%s" but got "%s"`, pubSubDefaultModeSubscriptionSize, metaData.Mode)
+			}
+			if pubSubDefaultValue != metaData.Value {
+				t.Errorf(`Expected value "%d" but got "%f"`, pubSubDefaultValue, metaData.Value)
+			}
+		})
 	}
 }
 
 func TestGcpPubSubGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range gcpPubSubMetricIdentifiers {
-		meta, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
-		if err != nil {
-			t.Fatal("Could not parse metadata:", err)
-		}
-		mockGcpPubSubScaler := pubsubScaler{nil, "", meta, logr.Discard()}
+		t.Run(testData.metadataTestData.testName, func(t *testing.T) {
+			meta, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex})
+			if err != nil {
+				t.Fatal("Could not parse metadata:", err)
+			}
+			mockGcpPubSubScaler := pubsubScaler{nil, "", meta, logr.Discard()}
 
-		metricSpec := mockGcpPubSubScaler.GetMetricSpecForScaling(context.Background())
-		metricName := metricSpec[0].External.Metric.Name
-		if metricName != testData.name {
-			t.Error("Wrong External metric source name:", metricName)
-		}
+			metricSpec := mockGcpPubSubScaler.GetMetricSpecForScaling(context.Background())
+			metricName := metricSpec[0].External.Metric.Name
+			if metricName != testData.name {
+				t.Error("Wrong External metric source name:", metricName)
+			}
+		})
 	}
 }
 
 func TestGcpPubSubResourceName(t *testing.T) {
 	for _, testData := range gcpResourceNameTests {
-		meta, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex}, logr.Discard())
-		if err != nil {
-			t.Fatal("Could not parse metadata:", err)
-		}
-		mockGcpPubSubScaler := pubsubScaler{nil, "", meta, logr.Discard()}
-		resourceID, projectID := getResourceData(&mockGcpPubSubScaler)
+		t.Run(testData.metadataTestData.testName, func(t *testing.T) {
+			meta, err := parsePubSubMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testPubSubResolvedEnv, TriggerIndex: testData.triggerIndex})
+			if err != nil {
+				t.Fatal("Could not parse metadata:", err)
+			}
+			mockGcpPubSubScaler := pubsubScaler{nil, "", meta, logr.Discard()}
+			resourceID, projectID := getResourceData(&mockGcpPubSubScaler)
 
-		if resourceID != testData.name || projectID != testData.projectID {
-			t.Error("Wrong Resource parsing:", resourceID, projectID)
-		}
+			if resourceID != testData.name || projectID != testData.projectID {
+				t.Error("Wrong Resource parsing:", resourceID, projectID)
+			}
+		})
 	}
 }
 
