@@ -19,6 +19,7 @@ package scalersconfig
 import (
 	"net/url"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -608,6 +609,33 @@ func TestMultiName(t *testing.T) {
 	err = sc2.TypedConfig(&ts)
 	Expect(err).To(BeNil())
 	Expect(ts.Property).To(Equal("bbb"))
+}
+
+// TestDurationParsing tests the time.Duration parsing for both string and numeric values
+func TestDurationParsing(t *testing.T) {
+	RegisterTestingT(t)
+
+	sc := &ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"timeoutNumeric":  "1000", // milliseconds as number
+			"timeoutDuration": "30s",  // duration string
+			"timeoutZero":     "0",    // edge case
+		},
+	}
+
+	type testStruct struct {
+		TimeoutNumeric  time.Duration `keda:"name=timeoutNumeric,  order=triggerMetadata"`
+		TimeoutDuration time.Duration `keda:"name=timeoutDuration, order=triggerMetadata"`
+		TimeoutZero     time.Duration `keda:"name=timeoutZero,     order=triggerMetadata"`
+	}
+
+	ts := testStruct{}
+	err := sc.TypedConfig(&ts)
+	Expect(err).To(BeNil())
+
+	Expect(ts.TimeoutNumeric).To(Equal(1000 * time.Millisecond))
+	Expect(ts.TimeoutDuration).To(Equal(30 * time.Second))
+	Expect(ts.TimeoutZero).To(Equal(0 * time.Millisecond))
 }
 
 // TestUnexpectedOptional tests the unexpected optional input

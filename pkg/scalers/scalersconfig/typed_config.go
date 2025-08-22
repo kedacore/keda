@@ -418,15 +418,15 @@ func setConfigValueHelper(params Params, valFromConfig string, field reflect.Val
 			field.Set(reflect.ValueOf(duration))
 			return nil
 		}
-		// If that fails, interpret as number of seconds
-		seconds, err := strconv.ParseInt(valFromConfig, 10, 64)
+		// If that fails, interpret as number of milliseconds
+		milliseconds, err := strconv.ParseInt(valFromConfig, 10, 64)
 		if err != nil {
-			return fmt.Errorf("unable to parse duration value %q: must be either a duration string (e.g. '30s', '5m') or a number of seconds", valFromConfig)
+			return fmt.Errorf("unable to parse duration value %q: must be either a duration string (e.g. '30s', '5m') or a number of milliseconds", valFromConfig)
 		}
-		if seconds < 0 {
-			return fmt.Errorf("duration cannot be negative: %d seconds", seconds)
+		if milliseconds < 0 {
+			return fmt.Errorf("duration cannot be negative: %d milliseconds", milliseconds)
 		}
-		field.Set(reflect.ValueOf(time.Duration(seconds) * time.Second))
+		field.Set(reflect.ValueOf(time.Duration(milliseconds) * time.Millisecond))
 		return nil
 	}
 	if field.Type() == reflect.TypeOf(url.Values{}) {
