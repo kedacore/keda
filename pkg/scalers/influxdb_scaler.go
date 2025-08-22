@@ -150,7 +150,9 @@ func (s *influxDBScaler) Close(context.Context) error {
 
 // Close closes the connection of the client to the server
 func (s *influxDBScalerV3) Close(context.Context) error {
-	s.client.Close()
+	if s.client != nil {
+		s.client.Close()
+	}
 	return nil
 }
 
