@@ -541,8 +541,8 @@ func TestSecretsEngine(t *testing.T) {
 				// Create kubernetes resources for testing
 				testData, templates = getTemplateData()
 			}
-			d.HashiCorpToken = RemoveANSI(hashiCorpToken)
-			d.VaultSecretPath = test.vaultSecretPath
+			testData.HashiCorpToken = RemoveANSI(hashiCorpToken)
+			testData.VaultSecretPath = test.vaultSecretPath
 
 			KubectlApplyMultipleWithTemplate(t, testData, templates)
 			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
