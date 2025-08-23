@@ -274,7 +274,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				}
 			}
 			if triggerAuthSpec.HashiCorpVault != nil && len(triggerAuthSpec.HashiCorpVault.Secrets) > 0 {
-				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault)
+				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault, authClientSet, namespace)
 				err := vault.Initialize(logger)
 				defer vault.Stop()
 				if err != nil {
@@ -628,12 +628,12 @@ func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, 
 		logger.Error(err, "error trying to get service account from namespace", "ServiceAccount.Namespace", namespace, "ServiceAccount.Name", serviceAccountName)
 		return ""
 	}
-	return generateBoundServiceAccountToken(ctx, serviceAccountName, namespace, acs)
+	return GenerateBoundServiceAccountToken(ctx, serviceAccountName, namespace, acs)
 }
 
-// generateBoundServiceAccountToken creates a Kubernetes token for a namespaced service account with a runtime-configurable expiration time and returns the token string.
-func generateBoundServiceAccountToken(ctx context.Context, serviceAccountName, namespace string, acs *authentication.AuthClientSet) string {
-	expirationSeconds := ptr.To[int64](int64(boundServiceAccountTokenExpiry.Seconds()))
+// GenerateBoundServiceAccountToken creates a Kubernetes token for a namespaced service account with a runtime-configurable expiration time and returns the token string.
+func GenerateBoundServiceAccountToken(ctx context.Context, serviceAccountName, namespace string, acs *authentication.AuthClientSet) string {
+	expirationSeconds := ptr.To(int64(boundServiceAccountTokenExpiry.Seconds()))
 	token, err := acs.CoreV1Interface.ServiceAccounts(namespace).CreateToken(
 		ctx,
 		serviceAccountName,
