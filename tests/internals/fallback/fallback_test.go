@@ -231,6 +231,41 @@ spec:
       name: {{.TriggerAuthName}}
 `
 
+	scaledObjectTemplateWithTriggersOfValueType = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObject}}
+  namespace: {{.Namespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  minReplicaCount: {{.MinReplicas}}
+  maxReplicaCount: {{.MaxReplicas}}
+  fallback:
+    failureThreshold: 3
+    replicas: {{.DefaultFallback}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 1
+  cooldownPeriod: 1
+  pollingInterval: 5
+  triggers:
+  - type: metrics-api
+    metricType: Value
+    metadata:
+      targetValue: "5"
+      url: "{{.MetricsServerEndpoint}}"
+      valueLocation: 'value'
+      method: "query"
+    authenticationRef:
+      name: {{.TriggerAuthName}}
+`
+
 	scaledObjectTemplateWithCurrentReplicasIfHigher = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -464,6 +499,31 @@ func TestFallbackWithScaledObjectWithoutMetricType(t *testing.T) {
 
 	// Ensure the replica count remains stable
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 4, 30)
+
+	DeleteKubernetesResources(t, namespace, data, templates)
+}
+
+func TestFallbackForValueMetrics(t *testing.T) {
+	// setup
+	t.Log("--- setting up ---")
+	kc := GetKubernetesClient(t)
+	data, templates := getTemplateData()
+
+	// Replace the default scaledObject template
+	for i, tmpl := range templates {
+		if tmpl.Name == "scaledObjectTemplate" {
+			templates[i].Config = scaledObjectTemplateWithTriggersOfValueType
+			break
+		}
+	}
+
+	CreateKubernetesResources(t, kc, namespace, data, templates)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
+		"replica count should be %d after 3 minutes", minReplicas)
+	testScaleOut(t, kc, data)
+	testFallback(t, kc, data)
+	testRestoreAfterFallback(t, kc, data)
 
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
