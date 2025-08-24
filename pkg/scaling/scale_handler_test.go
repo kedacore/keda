@@ -39,12 +39,12 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/keda-scalers"
+	"github.com/kedacore/keda/v2/keda-scalers/authentication"
+	"github.com/kedacore/keda/v2/keda-scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
 	mock_scalers "github.com/kedacore/keda/v2/pkg/mock/mock_scaler"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling/mock_executor"
-	"github.com/kedacore/keda/v2/pkg/scalers"
-	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
-	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache"
 	"github.com/kedacore/keda/v2/pkg/scaling/cache/metricscache"
 )

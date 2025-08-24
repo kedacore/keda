@@ -1,3 +1,4 @@
+## workspace
 # cel.dev/expr v0.19.2
 ## explicit; go 1.21.1
 cel.dev/expr
@@ -560,7 +561,6 @@ github.com/dysnix/predictkube-libs/external/configs
 github.com/dysnix/predictkube-libs/external/enums
 github.com/dysnix/predictkube-libs/external/grpc
 github.com/dysnix/predictkube-libs/external/grpc/client
-github.com/dysnix/predictkube-libs/external/grpc/server
 github.com/dysnix/predictkube-libs/external/grpc/zstd_compressor
 github.com/dysnix/predictkube-libs/external/http_transport
 github.com/dysnix/predictkube-libs/external/types_convertation
@@ -1091,6 +1091,21 @@ github.com/jstemmer/go-junit-report/v2/junit
 github.com/jstemmer/go-junit-report/v2/parser/gotest
 github.com/jstemmer/go-junit-report/v2/parser/gotest/internal/collector
 github.com/jstemmer/go-junit-report/v2/parser/gotest/internal/reader
+# github.com/kedacore/keda/v2/keda-scalers v0.0.0 => ./keda-scalers
+## explicit; go 1.23.8
+github.com/kedacore/keda/v2/keda-scalers
+github.com/kedacore/keda/v2/keda-scalers/authentication
+github.com/kedacore/keda/v2/keda-scalers/aws
+github.com/kedacore/keda/v2/keda-scalers/azure
+github.com/kedacore/keda/v2/keda-scalers/externalscaler
+github.com/kedacore/keda/v2/keda-scalers/gcp
+github.com/kedacore/keda/v2/keda-scalers/kafka
+github.com/kedacore/keda/v2/keda-scalers/liiklus
+github.com/kedacore/keda/v2/keda-scalers/openstack
+github.com/kedacore/keda/v2/keda-scalers/openstack/utils
+github.com/kedacore/keda/v2/keda-scalers/scalersconfig
+github.com/kedacore/keda/v2/keda-scalers/splunk
+github.com/kedacore/keda/v2/keda-scalers/sumologic
 # github.com/klauspost/compress v1.17.11
 ## explicit; go 1.21
 github.com/klauspost/compress
@@ -1301,7 +1316,6 @@ github.com/open-policy-agent/cert-controller/pkg/rotator
 github.com/pborman/uuid
 # github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 ## explicit
-github.com/phayes/freeport
 # github.com/pierrec/lz4/v4 v4.1.22
 ## explicit; go 1.14
 github.com/pierrec/lz4/v4
@@ -3213,6 +3227,7 @@ sigs.k8s.io/structured-merge-diff/v4/value
 sigs.k8s.io/yaml
 sigs.k8s.io/yaml/goyaml.v2
 sigs.k8s.io/yaml/goyaml.v3
+# github.com/kedacore/keda/v2/keda-scalers => ./keda-scalers
 # github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
 # github.com/google/cel-go => github.com/google/cel-go v0.20.1
 # github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.19.1
