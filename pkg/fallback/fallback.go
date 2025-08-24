@@ -23,9 +23,10 @@ import (
 	"strconv"
 
 	v2 "k8s.io/api/autoscaling/v2"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/scale"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -81,7 +82,7 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, sc
 			}
 		}
 
-		l := doFallback(ctx, client, scaledObject, metricSpec, metricName, currentReplicas, suppressedError)
+		l := doFallback(ctx, client, scaleClient, scaledObject, metricSpec, metricName, currentReplicas, suppressedError)
 		if l == nil {
 			return l, false, fmt.Errorf("error performing fallback")
 		}
@@ -113,59 +114,51 @@ func HasValidFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
 		modifierChecking
 }
 
-// This depends on the fact that Deployment, StatefulSet, ReplicaSet (and Argo Rollouts CRD) all have the status.readyReplicas
-// field that we can use directly instead of getting their selector and listing all pods with that selector, the way HPA actually
-// does it. Thus, we offset that overhead to the respective controller of the CRD.
-// Any other CRD that doesn't have `.status.readyReplicas` won't support scaling on Value metrics.
-func getReadyReplicasCount(ctx context.Context, client runtimeclient.Client, scaledObject *kedav1alpha1.ScaledObject) (int32, error) {
-	// Fetching the scaleTargetRef as an unstructured.
-	u := &unstructured.Unstructured{}
-	if scaledObject.Status.ScaleTargetGVKR == nil {
-		return 0, fmt.Errorf("scaledObject.Status.ScaleTargetGVKR is empty")
+// IsPodReady returns true if a pod is ready; false otherwise.
+func IsPodReady(pod *v1.Pod) bool {
+	if pod != nil {
+		for _, c := range pod.Status.Conditions {
+			if c.Type == v1.PodReady {
+				return c.Status == v1.ConditionTrue
+			}
+		}
 	}
-	u.SetGroupVersionKind(scaledObject.Status.ScaleTargetGVKR.GroupVersionKind())
-
-	if err := client.Get(ctx, runtimeclient.ObjectKey{Namespace: scaledObject.Namespace, Name: scaledObject.Spec.ScaleTargetRef.Name}, u); err != nil {
-		return 0, fmt.Errorf("error getting scaleTargetRef: %w", err)
-	}
-
-	readyReplicasField, found, err := unstructured.NestedFieldCopy(u.Object, "status", "readyReplicas")
-	if !found {
-		return 0, fmt.Errorf("error accessing status.readyReplicas in scaleTarget object: no such field exists")
-	}
-	if err != nil {
-		return 0, fmt.Errorf("error accessing status.readyReplicas in scaleTarget object: %w", err)
-	}
-
-	v := reflect.ValueOf(readyReplicasField)
-	// This is probably impossible if the field is found, but just for extra guard.
-	if v.IsZero() {
-		return 0, fmt.Errorf("error accessing status.readyReplicas in scaleTarget object: field is nil")
-	}
-
-	var readyReplicas int32
-	// readyReplicas can be a signed or unsigned integer, otherwise return an error.
-	switch {
-	case v.CanInt():
-		readyReplicas = int32(v.Int())
-	case v.CanUint():
-		readyReplicas = int32(v.Uint())
-	default:
-		return 0, fmt.Errorf("unexpected type of status.readyReplicas in scaleTarget object, expected integer or unsigned integer, got: %v", reflect.TypeOf(readyReplicas))
-	}
-
-	// Guard against the case where readyReplicas<0.
-	// Guard against the case where readyReplicas==0, because we'll be dividing by it later.
-	if readyReplicas < 0 {
-		return 0, fmt.Errorf("status.readyReplicas is < 0 in scaleTargetRef")
-	} else if readyReplicas == 0 {
-		return 0, fmt.Errorf("status.readyReplicas is 0 in scaleTargetRef")
-	}
-
-	return readyReplicas, nil
+	return false
 }
 
-func doFallback(ctx context.Context, client runtimeclient.Client, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, currentReplicas int32, suppressedError error) []external_metrics.ExternalMetricValue {
+// Similar to how it's done in HPA's code: https://github.com/kubernetes/kubernetes/blob/091f87c10bc3532041b77a783a5f832de5506dc8/pkg/controller/podautoscaler/replica_calculator.go#L323
+func getReadyReplicasCount(ctx context.Context, client runtimeclient.Client, scaleClient scale.ScalesGetter, scaledObject *kedav1alpha1.ScaledObject) (int32, error) {
+	if scaledObject == nil || scaledObject.Spec.ScaleTargetRef == nil || scaledObject.Status.ScaleTargetGVKR == nil {
+		return -1, fmt.Errorf("")
+	}
+
+	scale, err := scaleClient.Scales(scaledObject.Namespace).Get(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+	if err != nil {
+		return -1, err
+	}
+
+	parsedSelector, err := labels.Parse(scale.Status.Selector)
+	if err != nil {
+		return -1, err
+	}
+
+	podList := v1.PodList{}
+	err = client.List(ctx, &podList, runtimeclient.InNamespace(scaledObject.Namespace), runtimeclient.MatchingLabelsSelector{Selector: parsedSelector})
+	if err != nil {
+		return -1, err
+	}
+
+	var readyPodCount int32
+	for _, pod := range podList.Items {
+		if pod.Status.Phase == v1.PodRunning && IsPodReady(&pod) {
+			readyPodCount++
+		}
+	}
+
+	return readyPodCount, nil
+}
+
+func doFallback(ctx context.Context, client runtimeclient.Client, scaleClient scale.ScalesGetter, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, currentReplicas int32, suppressedError error) []external_metrics.ExternalMetricValue {
 	fallbackBehavior := scaledObject.Spec.Fallback.Behavior
 	fallbackReplicas := int64(scaledObject.Spec.Fallback.Replicas)
 	var replicas float64
@@ -196,9 +189,13 @@ func doFallback(ctx context.Context, client runtimeclient.Client, scaledObject *
 	// If the metricType is Value, we get the number of readyReplicas, and divide replicas by it.
 	if (!scaledObject.IsUsingModifiers() && metricSpec.External.Target.Type == v2.ValueMetricType) ||
 		(scaledObject.IsUsingModifiers() && scaledObject.Spec.Advanced.ScalingModifiers.MetricType == v2.ValueMetricType) {
-		readyReplicas, err := getReadyReplicasCount(ctx, client, scaledObject)
+		readyReplicas, err := getReadyReplicasCount(ctx, client, scaleClient, scaledObject)
 		if err != nil {
 			log.Error(err, "failed to do fallback for metric of type Value", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "metricName", metricName)
+			return nil
+		}
+		if readyReplicas == 0 {
+			log.Error(fmt.Errorf("readyReplicas is zero, cannot do fallback"), "failed to do fallback for metric of type Value", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "metricName", metricName)
 			return nil
 		}
 		replicas /= float64(readyReplicas)
