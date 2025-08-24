@@ -46,6 +46,8 @@ var (
 	prometheusServerName = fmt.Sprintf("%s-prom-server", testName)
 	minReplicaCount      = 0
 	maxReplicaCount      = 1
+	HashiCorpSecretName  = "hashicorp-secret-name"
+	HashiCorpSecretKey   = "hashicorp-secret-key"
 )
 
 type templateData struct {
@@ -59,6 +61,8 @@ type templateData struct {
 	SecretName                       string
 	HashiCorpAuthentication          string
 	HashiCorpToken                   string
+	HashiCorpSecretName              string
+	HashiCorpSecretKey               string
 	PostgreSQLStatefulSetName        string
 	PostgreSQLConnectionStringBase64 string
 	PostgreSQLUsername               string
@@ -119,6 +123,17 @@ data:
   postgresql_conn_str: {{.PostgreSQLConnectionStringBase64}}
 `
 
+	secretHashicorpTokenTemplate = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.HashiCorpSecretName}}
+  namespace: {{.TestNamespace}}
+type: Opaque
+data:
+  {{.HashiCorpSecretKey}}: {{.HashiCorpToken}}
+`
+
 	triggerAuthenticationTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
@@ -131,6 +146,25 @@ spec:
     authentication: token
     credential:
       token: {{.HashiCorpToken}}
+    secrets:
+    - parameter: connection
+      key: connectionString
+      path: {{.VaultSecretPath}}
+`
+	triggerAuthenticationWithSecretTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TriggerAuthenticationName}}
+  namespace: {{.TestNamespace}}
+spec:
+  hashiCorpVault:
+    address: http://vault.{{.VaultNamespace}}:8200
+    authentication: token
+    credential:
+      tokenSecretRef:
+        name: {{.HashiCorpSecretName}}
+        key: {{.HashiCorpSecretKey}}
     secrets:
     - parameter: connection
       key: connectionString
@@ -460,16 +494,25 @@ func TestSecretsEngine(t *testing.T) {
 		name               string
 		vaultEngineVersion uint
 		vaultSecretPath    string
+		useSecrets         bool
 	}{
 		{
 			name:               "vault kv engine v1",
 			vaultEngineVersion: 1,
 			vaultSecretPath:    "secret/keda",
+			useSecrets:         false,
 		},
 		{
 			name:               "vault kv engine v2",
 			vaultEngineVersion: 2,
 			vaultSecretPath:    "secret/data/keda",
+			useSecrets:         false,
+		},
+		{
+			name:               "vault kv engine v1",
+			vaultEngineVersion: 1,
+			vaultSecretPath:    "secret/keda",
+			useSecrets:         true,
 		},
 	}
 
@@ -477,9 +520,9 @@ func TestSecretsEngine(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			// Create kubernetes resources for PostgreSQL server
 			kc := GetKubernetesClient(t)
-			data, postgreSQLtemplates := getPostgreSQLTemplateData()
+			testData, postgreSQLtemplates := getPostgreSQLTemplateData()
 
-			CreateKubernetesResources(t, kc, testNamespace, data, postgreSQLtemplates)
+			CreateKubernetesResources(t, kc, testNamespace, testData, postgreSQLtemplates)
 			hashiCorpToken, _ := setupHashiCorpVault(t, kc, test.vaultEngineVersion, false, false)
 
 			assert.True(t, WaitForStatefulsetReplicaReadyCount(t, kc, postgreSQLStatefulSetName, testNamespace, 1, 60, 3),
@@ -490,22 +533,27 @@ func TestSecretsEngine(t *testing.T) {
 
 			ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, postgresqlPodName, testNamespace, psqlCreateTableCmd, 60, 3)
 			assert.True(t, ok, "executing a command on PostreSQL Pod should work; Output: %s, ErrorOutput: %s, Error: %s", out, errOut, err)
+			var templates []Template
+			if test.useSecrets {
+				// Create kubernetes resources for testing using secrets to get the token
+				testData, templates = getTemplateDataWithTokenSecret()
+			} else {
+				// Create kubernetes resources for testing
+				testData, templates = getTemplateData()
+			}
+			testData.HashiCorpToken = RemoveANSI(hashiCorpToken)
+			testData.VaultSecretPath = test.vaultSecretPath
 
-			// Create kubernetes resources for testing
-			data, templates := getTemplateData()
-			data.HashiCorpToken = RemoveANSI(hashiCorpToken)
-			data.VaultSecretPath = test.vaultSecretPath
-
-			KubectlApplyMultipleWithTemplate(t, data, templates)
+			KubectlApplyMultipleWithTemplate(t, testData, templates)
 			assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
 				"replica count should be %d after 3 minutes", minReplicaCount)
 
-			testScaleOut(t, kc, data)
+			testScaleOut(t, kc, testData)
 
 			// cleanup
-			KubectlDeleteMultipleWithTemplate(t, data, templates)
+			KubectlDeleteMultipleWithTemplate(t, testData, templates)
 			cleanupHashiCorpVault(t)
-			DeleteKubernetesResources(t, testNamespace, data, postgreSQLtemplates)
+			DeleteKubernetesResources(t, testNamespace, testData, postgreSQLtemplates)
 		})
 	}
 }
@@ -651,6 +699,8 @@ var data = templateData{
 	VaultNamespace:                   vaultNamespace,
 	VaultPromDomain:                  vaultPromDomain,
 	VaultPkiCommonName:               fmt.Sprintf("keda.%s.svc", testNamespace),
+	HashiCorpSecretName:              HashiCorpSecretName,
+	HashiCorpSecretKey:               HashiCorpSecretKey,
 }
 
 func getPostgreSQLTemplateData() (templateData, []Template) {
@@ -675,6 +725,15 @@ func getTemplateData() (templateData, []Template) {
 		{Name: "secretTemplate", Config: secretTemplate},
 		{Name: "deploymentTemplate", Config: deploymentTemplate},
 		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+	}
+}
+func getTemplateDataWithTokenSecret() (templateData, []Template) {
+	return data, []Template{
+		{Name: "secretTemplate", Config: secretTemplate},
+		{Name: "secretHashicorpTokenTemplate", Config: secretHashicorpTokenTemplate},
+		{Name: "deploymentTemplate", Config: deploymentTemplate},
+		{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationWithSecretTemplate},
 		{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 	}
 }

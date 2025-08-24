@@ -274,8 +274,8 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				}
 			}
 			if triggerAuthSpec.HashiCorpVault != nil && len(triggerAuthSpec.HashiCorpVault.Secrets) > 0 {
-				vault := NewHashicorpVaultHandler(triggerAuthSpec.HashiCorpVault)
-				err := vault.Initialize(logger)
+				vault := NewHashicorpVaultHandler(ctx, client, triggerAuthSpec.HashiCorpVault, &logger, authClientSet.SecretLister)
+				err = vault.Initialize()
 				defer vault.Stop()
 				if err != nil {
 					logger.Error(err, "error authenticating to Vault", "triggerAuthRef.Name", triggerAuthRef.Name)
