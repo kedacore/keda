@@ -1,0 +1,13 @@
+# This is an example test config file to be used with the run-all.go file.
+# The e2e launcher will only run the cpu scaler test.
+test_categories:
+  internals:
+    mode: exclude
+  scalers:
+    mode: include
+    tests:
+      - cpu
+  secret-providers:
+    mode: exclude
+  sequential:
+    mode: exclude
