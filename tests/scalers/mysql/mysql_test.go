@@ -291,9 +291,9 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
-	// Check if deployment scale in to 0 after 5 minutes
+	// Check if deployment scale in to 0 after 6 minutes
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 360, 1),
-		"Replica count should be 0 after 5 minutes")
+		"Replica count should be 0 after 6 minutes")
 }
 
 func getTemplateData() (templateData, []Template) {

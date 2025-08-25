@@ -420,7 +420,7 @@ func TestFallback(t *testing.T) {
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicas)
+		"replica count should be %d after 9 minutes", minReplicas)
 
 	testScaleOut(t, kc, data)
 	testFallback(t, kc, data)
@@ -446,7 +446,7 @@ func TestFallbackWithScaledObjectWithoutMetricType(t *testing.T) {
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicas)
+		"replica count should be %d after 9 minutes", minReplicas)
 
 	// Scale out to 4 replicas (20 / 5 = 4)
 	data.MetricValue = 20
@@ -485,7 +485,7 @@ func TestFallbackWithCurrentReplicasIfHigher(t *testing.T) {
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicas)
+		"replica count should be %d after 9 minutes", minReplicas)
 
 	// Scale out to 4 replicas (20 / 5 = 4)
 	data.MetricValue = 20
@@ -524,7 +524,7 @@ func TestFallbackWithCurrentReplicasIfLower(t *testing.T) {
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicas)
+		"replica count should be %d after 9 minutes", minReplicas)
 
 	// Scale out to 4 replicas (20 / 5 = 4)
 	data.MetricValue = 20
@@ -563,7 +563,7 @@ func TestFallbackWithCurrentReplicas(t *testing.T) {
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicas)
+		"replica count should be %d after 9 minutes", minReplicas)
 
 	// Scale out to 4 replicas (20 / 5 = 4)
 	data.MetricValue = 20
@@ -602,7 +602,7 @@ func TestFallbackWithStatic(t *testing.T) {
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicas)
+		"replica count should be %d after 9 minutes", minReplicas)
 
 	// Scale out to 4 replicas (20 / 5 = 4)
 	data.MetricValue = 20

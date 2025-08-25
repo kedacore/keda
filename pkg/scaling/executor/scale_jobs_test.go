@@ -302,18 +302,110 @@ func TestGetPendingJobCount(t *testing.T) {
 		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{readyCondition}}, PendingJobCount: 1},
 		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{podScheduledCondition}}, PendingJobCount: 1},
 		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{readyCondition, podScheduledCondition}}, PendingJobCount: 0},
+
+		// Test case: Job with 2 pods, both have all conditions - should NOT be pending
+		{
+			PendingPodConditions: pendingPodConditions,
+			PodStatuses: []v1.PodStatus{
+				{Conditions: []v1.PodCondition{readyCondition, podScheduledCondition}},
+				{Conditions: []v1.PodCondition{readyCondition, podScheduledCondition}},
+			},
+			PendingJobCount: 0,
+		},
+
+		// Test case: Job with 2 pods, 1 has all conditions, 1 doesn't - should NOT be pending
+		{
+			PendingPodConditions: pendingPodConditions,
+			PodStatuses: []v1.PodStatus{
+				{Conditions: []v1.PodCondition{readyCondition, podScheduledCondition}},
+				{Conditions: []v1.PodCondition{readyCondition}}, // missing PodScheduled
+			},
+			PendingJobCount: 0,
+		},
+
+		// Test case: Job with 2 pods, neither has all conditions - should be pending
+		{
+			PendingPodConditions: pendingPodConditions,
+			PodStatuses: []v1.PodStatus{
+				{Conditions: []v1.PodCondition{readyCondition}},        // missing PodScheduled
+				{Conditions: []v1.PodCondition{podScheduledCondition}}, // missing Ready
+			},
+			PendingJobCount: 1,
+		},
+
+		// Test case: Job with 3 pods, 1 has all conditions - should NOT be pending
+		{
+			PendingPodConditions: pendingPodConditions,
+			PodStatuses: []v1.PodStatus{
+				{Conditions: []v1.PodCondition{}},                                      // no conditions
+				{Conditions: []v1.PodCondition{readyCondition}},                        // partial conditions
+				{Conditions: []v1.PodCondition{readyCondition, podScheduledCondition}}, // all conditions
+			},
+			PendingJobCount: 0,
+		},
+
+		// Test case: Job with 3 pods, none have all conditions - should be pending
+		{
+			PendingPodConditions: pendingPodConditions,
+			PodStatuses: []v1.PodStatus{
+				{Conditions: []v1.PodCondition{}},                      // no conditions
+				{Conditions: []v1.PodCondition{readyCondition}},        // partial conditions
+				{Conditions: []v1.PodCondition{podScheduledCondition}}, // partial conditions
+			},
+			PendingJobCount: 1,
+		},
+		// Edge case: Empty conditions list
+		{
+			PendingPodConditions: []string{},
+			PodStatuses: []v1.PodStatus{
+				{Phase: v1.PodRunning, Conditions: []v1.PodCondition{readyCondition}},
+			},
+			PendingJobCount: 0, // No conditions to check, pod is running, so not pending
+		},
 	}
 
-	for _, testData := range testPendingJobTestData {
+	for i, testData := range testPendingJobTestData {
 		ctx := context.Background()
-		client := getMockClientForTestingPendingPods(t, ctrl, testData.PodStatus)
-		scaleExecutor := getMockScaleExecutor(client)
 
+		// Support both single pod and multiple pods test cases
+		var client *mock_client.MockClient
+		if len(testData.PodStatuses) > 0 {
+			client = getMockClientForTestingPendingPodsMultiple(t, ctrl, testData.PodStatuses)
+		} else {
+			client = getMockClientForTestingPendingPods(t, ctrl, testData.PodStatus)
+		}
+
+		scaleExecutor := getMockScaleExecutor(client)
 		scaledJob := getMockScaledJobWithPendingPodConditions(testData.PendingPodConditions)
 		result := scaleExecutor.getPendingJobCount(ctx, scaledJob)
 
-		assert.Equal(t, testData.PendingJobCount, result)
+		assert.Equal(t, testData.PendingJobCount, result, "Test case %d failed", i)
 	}
+}
+
+// Test to check issue #6727
+func TestAreAllPendingPodConditionsFulfilledBugScenario(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	pendingPodConditions := []string{"Ready", "PodScheduled"}
+	readyCondition := getPodCondition(v1.PodReady)
+	podScheduledCondition := getPodCondition(v1.PodScheduled)
+
+	podStatuses := []v1.PodStatus{
+		{Conditions: []v1.PodCondition{readyCondition, podScheduledCondition}},
+		{Conditions: []v1.PodCondition{readyCondition, podScheduledCondition}},
+	}
+
+	ctx := context.Background()
+	client := getMockClientForTestingPendingPodsMultiple(t, ctrl, podStatuses)
+	scaleExecutor := getMockScaleExecutor(client)
+	scaledJob := getMockScaledJobWithPendingPodConditions(pendingPodConditions)
+
+	result := scaleExecutor.getPendingJobCount(ctx, scaledJob)
+
+	// Should be 0, because both pods have all required conditions
+	assert.Equal(t, int64(0), result, "Job with pods having all conditions should not be pending")
 }
 
 func TestCreateJobs(t *testing.T) {
@@ -382,7 +474,8 @@ type mockJobParameter struct {
 
 type pendingJobTestData struct {
 	PendingPodConditions []string
-	PodStatus            v1.PodStatus
+	PodStatus            v1.PodStatus   // For single pod tests
+	PodStatuses          []v1.PodStatus // For multiple pods tests
 	PendingJobCount      int64
 }
 
@@ -544,6 +637,45 @@ func getMockClientForTestingPendingPods(t *testing.T, ctrl *gomock.Controller, p
 
 			if ok {
 				p.Items = append(p.Items, v1.Pod{Status: podStatus})
+			}
+		}).
+			Return(nil),
+	)
+
+	return client
+}
+
+// getMockClientForTestingPendingPodsMultiple returns mock client function for testing pending pod conditions with multiple pods in a job
+func getMockClientForTestingPendingPodsMultiple(t *testing.T, ctrl *gomock.Controller, podStatuses []v1.PodStatus) *mock_client.MockClient {
+	client := mock_client.NewMockClient(ctrl)
+	gomock.InOrder(
+		// listing jobs
+		client.EXPECT().
+			List(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, list runtime.Object, _ ...runtimeclient.ListOption) {
+			j, ok := list.(*batchv1.JobList)
+
+			if !ok {
+				t.Error("Cast failed on batchv1.JobList at mocking client.List()")
+			}
+
+			if ok {
+				j.Items = append(j.Items, batchv1.Job{})
+			}
+		}).
+			Return(nil),
+		// listing pods - multiple pods this time
+		client.EXPECT().
+			List(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, list runtime.Object, _ ...runtimeclient.ListOption) {
+			p, ok := list.(*v1.PodList)
+
+			if !ok {
+				t.Error("Cast failed on v1.PodList at mocking client.List()")
+			}
+
+			if ok {
+				for _, podStatus := range podStatuses {
+					p.Items = append(p.Items, v1.Pod{Status: podStatus})
+				}
 			}
 		}).
 			Return(nil),
