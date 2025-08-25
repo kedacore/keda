@@ -1069,6 +1069,49 @@ scalers:
           type: string
           optional: true
           triggerAuthenticationVariableReadable: true
+    - type: huawei-cloudeye
+      parameters:
+        - name: namespace
+          type: string
+          metadataVariableReadable: true
+        - name: metricName
+          type: string
+          metadataVariableReadable: true
+        - name: dimensionName
+          type: string
+          metadataVariableReadable: true
+        - name: dimensionValue
+          type: string
+          metadataVariableReadable: true
+        - name: targetMetricValue
+          type: string
+          metadataVariableReadable: true
+        - name: activationTargetMetricValue
+          type: string
+          default: "0"
+          metadataVariableReadable: true
+        - name: minMetricValue
+          type: string
+          optional: true
+          deprecatedAnnounce: The 'minMetricValue' setting is DEPRECATED and will be removed in v2.20 - Use 'activationTargetMetricValue' instead
+          metadataVariableReadable: true
+        - name: metricCollectionTime
+          type: string
+          default: "300"
+          metadataVariableReadable: true
+        - name: metricFilter
+          type: string
+          default: average
+          allowedValue:
+            - average
+            - max
+            - min
+            - sum
+          metadataVariableReadable: true
+        - name: metricPeriod
+          type: string
+          default: "300"
+          metadataVariableReadable: true
     - type: ibmmq
       parameters:
         - name: host
@@ -1415,6 +1458,32 @@ scalers:
         - name: activationThreshold
           type: string
           default: "0"
+          metadataVariableReadable: true
+    - type: openstack-metric
+      parameters:
+        - name: metricsURL
+          type: string
+          metadataVariableReadable: true
+        - name: metricID
+          type: string
+          metadataVariableReadable: true
+        - name: aggregationMethod
+          type: string
+          metadataVariableReadable: true
+        - name: granularity
+          type: string
+          metadataVariableReadable: true
+        - name: threshold
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: activationThreshold
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: timeout
+          type: string
+          default: "30"
           metadataVariableReadable: true
     - type: postgresql
       parameters:
