@@ -206,8 +206,14 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 }
 
 // An object will be scaled down to 0 only if it's passed its cooldown period
-// or if LastActiveTime is nil
+// or if LastActiveTime is nil and scale in is not paused
 func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) {
+	if scaledObject.NeedToPauseScaleIn() {
+		// The Pause Scale Down annotation is set so we should not scale down this target
+		logger.Info("Pause Scale Down annotation set on ScaledObject, no scaling down on inactive trigger")
+		return
+	}
+
 	var initialCooldownPeriod, cooldownPeriod time.Duration
 
 	if scaledObject.Spec.InitialCooldownPeriod != nil {
