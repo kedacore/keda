@@ -79,6 +79,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Datadog Scaler**: Add a specific timeout configuration parameter for the Datadog trigger ([#6999](https://github.com/kedacore/keda/pull/6999))
 - **Datadog Scaler**: Improve Datadog scaler error messages ([#6999](https://github.com/kedacore/keda/pull/6999))
 - **Metrics API**: Support multiple auth methods simultaneously in Metrics API scaler ([#6642](https://github.com/kedacore/keda/issues/6642))
+- **Metrics API**: Add ignoreUnavailable to Metrics API scaler to ignore errors when the metrics API can't be reached ([#6962](https://github.com/kedacore/keda/pull/6962)
 - **Temporal Scaler**: Support custom tlsServerName ([#6820](https://github.com/kedacore/keda/pull/6820))
 
 ### Fixes
