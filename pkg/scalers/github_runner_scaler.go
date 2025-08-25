@@ -37,6 +37,7 @@ type githubRunnerScaler struct {
 	previousRepos []string
 	previousWfrs  map[string]map[string]*WorkflowRuns
 	previousJobs  map[string][]Job
+	rateLimit     RateLimit
 }
 
 type githubRunnerMetadata struct {
@@ -48,6 +49,7 @@ type githubRunnerMetadata struct {
 	Labels                    []string `keda:"name=labels, order=triggerMetadata;resolvedEnv, optional"`
 	NoDefaultLabels           bool     `keda:"name=noDefaultLabels, order=triggerMetadata;resolvedEnv, default=false"`
 	EnableEtags               bool     `keda:"name=enableEtags, order=triggerMetadata;resolvedEnv, default=false"`
+	EnableBackoff             bool     `keda:"name=enableBackoff, order=triggerMetadata;resolvedEnv, default=false"`
 	TargetWorkflowQueueLength int64    `keda:"name=targetWorkflowQueueLength, order=triggerMetadata;resolvedEnv, default=1"`
 	TriggerIndex              int
 	ApplicationID             int64  `keda:"name=applicationID, order=triggerMetadata;resolvedEnv, optional"`
@@ -330,6 +332,12 @@ type Job struct {
 	HeadBranch      string   `json:"head_branch"`
 }
 
+type RateLimit struct {
+	Remaining      int       `json:"remaining"`
+	ResetTime      time.Time `json:"resetTime"`
+	RetryAfterTime time.Time `json:"retryAfterTime"`
+}
+
 // NewGitHubRunnerScaler creates a new GitHub Runner Scaler
 func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
@@ -358,6 +366,7 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	previousRepos := []string{}
 	previousJobs := make(map[string][]Job)
 	previousWfrs := make(map[string]map[string]*WorkflowRuns)
+	rateLimit := RateLimit{}
 
 	return &githubRunnerScaler{
 		metricType:    metricType,
@@ -368,6 +377,7 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		previousRepos: previousRepos,
 		previousJobs:  previousJobs,
 		previousWfrs:  previousWfrs,
+		rateLimit:     rateLimit,
 	}, nil
 }
 
@@ -465,6 +475,32 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 	return repoList, nil
 }
 
+func (s *githubRunnerScaler) getRateLimit(header http.Header) RateLimit {
+	var retryAfterTime time.Time
+
+	remaining, _ := strconv.Atoi(header.Get("X-RateLimit-Remaining"))
+	reset, _ := strconv.ParseInt(header.Get("X-RateLimit-Reset"), 10, 64)
+	resetTime := time.Unix(reset, 0)
+
+	if retryAfterStr := header.Get("Retry-After"); retryAfterStr != "" {
+		if retrySeconds, err := strconv.Atoi(retryAfterStr); err == nil {
+			retryAfterTime = time.Now().Add(time.Duration(retrySeconds) * time.Second)
+		}
+	}
+
+	if retryAfterTime.IsZero() {
+		s.logger.V(1).Info(fmt.Sprintf("Github API rate limit: Remaining: %d, ResetTime: %s", remaining, resetTime))
+	} else {
+		s.logger.V(1).Info(fmt.Sprintf("Github API rate limit: Remaining: %d, ResetTime: %s, Retry-After: %s", remaining, resetTime, retryAfterTime))
+	}
+
+	return RateLimit{
+		Remaining:      remaining,
+		ResetTime:      resetTime,
+		RetryAfterTime: retryAfterTime,
+	}
+}
+
 func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, metadata *githubRunnerMetadata, httpClient *http.Client) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -495,19 +531,22 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 	}
 	_ = r.Body.Close()
 
+	if r.Header.Get("X-RateLimit-Remaining") != "" {
+		s.rateLimit = s.getRateLimit(r.Header)
+	}
+
 	if r.StatusCode != 200 {
 		if r.StatusCode == 304 && s.metadata.EnableEtags {
 			s.logger.V(1).Info(fmt.Sprintf("The github rest api for the url: %s returned status %d %s", url, r.StatusCode, http.StatusText(r.StatusCode)))
 			return []byte{}, r.StatusCode, nil
 		}
 
-		if r.Header.Get("X-RateLimit-Remaining") != "" {
-			githubAPIRemaining, _ := strconv.Atoi(r.Header.Get("X-RateLimit-Remaining"))
+		if s.rateLimit.Remaining == 0 && !s.rateLimit.ResetTime.IsZero() {
+			return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, reset time %s", s.rateLimit.ResetTime)
+		}
 
-			if githubAPIRemaining == 0 {
-				resetTime, _ := strconv.ParseInt(r.Header.Get("X-RateLimit-Reset"), 10, 64)
-				return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, resets at %s", time.Unix(resetTime, 0))
-			}
+		if !s.rateLimit.RetryAfterTime.IsZero() && time.Now().Before(s.rateLimit.RetryAfterTime) {
+			return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, retry after %s", s.rateLimit.RetryAfterTime)
 		}
 
 		return []byte{}, r.StatusCode, fmt.Errorf("the GitHub REST API returned error. url: %s status: %d response: %s", url, r.StatusCode, string(b))
@@ -666,9 +705,36 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	return queueCount, nil
 }
 
-func (s *githubRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	queueLen, err := s.GetWorkflowQueueLength(ctx)
+func (s *githubRunnerScaler) shouldWaitForRateLimit() (bool, time.Duration) {
+	if s.rateLimit.Remaining == 0 && !s.rateLimit.ResetTime.IsZero() && time.Now().Before(s.rateLimit.ResetTime) {
+		reset := time.Until(s.rateLimit.ResetTime)
+		s.logger.V(1).Info(fmt.Sprintf("Rate limit exceeded, resets at %s, waiting for %s", s.rateLimit.ResetTime, reset))
+		return true, reset
+	}
 
+	if !s.rateLimit.RetryAfterTime.IsZero() && time.Now().Before(s.rateLimit.RetryAfterTime) {
+		retry := time.Until(s.rateLimit.RetryAfterTime)
+		s.logger.V(1).Info(fmt.Sprintf("Rate limit exceeded, retry after %s, waiting for %s", s.rateLimit.RetryAfterTime, retry))
+		return true, retry
+	}
+
+	return false, 0
+}
+
+func (s *githubRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	if s.metadata.EnableBackoff {
+		wait, waitDuration := s.shouldWaitForRateLimit()
+		if wait {
+			select {
+			case <-ctx.Done():
+				return nil, false, ctx.Err()
+			case <-time.After(waitDuration):
+				// Proceed after wait
+			}
+		}
+	}
+
+	queueLen, err := s.GetWorkflowQueueLength(ctx)
 	if err != nil {
 		s.logger.Error(err, "error getting workflow queue length")
 		return []external_metrics.ExternalMetricValue{}, false, err

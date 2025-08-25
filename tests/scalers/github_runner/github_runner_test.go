@@ -219,6 +219,7 @@ spec:
       labels: {{.Labels}}
       runnerScopeFromEnv: "RUNNER_SCOPE"
       enableEtags: "true"
+      enableBackoff: "true"
     authenticationRef:
      name: github-trigger-auth
 `
