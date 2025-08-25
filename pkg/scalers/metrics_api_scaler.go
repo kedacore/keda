@@ -516,7 +516,7 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 			}
 		}
 		if foundPort == "" {
-			s.logger.Info(fmt.Sprintf("Warning : could not find port %s in endpoint slice for service %s.%s definition. Will infer port from %s scheme", podPort, serviceName, namespace, url.Scheme))
+			s.logger.V(1).Info(fmt.Sprintf("Warning : could not find port %s in endpoint slice for service %s.%s definition. Will infer port from %s scheme", podPort, serviceName, namespace, url.Scheme))
 		}
 		for _, address := range subset.Addresses {
 			if address.NodeName != nil {
@@ -551,7 +551,6 @@ func (s *metricsAPIScaler) aggregateMetricsFromMultipleEndpoints(ctx context.Con
 	// call s.getMetricValueFromURL() for each endpointsUrls in parallel goroutines (maximum 5 at a time) and sum them up
 	const maxGoroutines = 5
 	var mu sync.Mutex
-	var wg sync.WaitGroup
 	sem := semaphore.NewWeighted(maxGoroutines)
 	expectedNbMetrics := len(endpointsUrls)
 	nbErrors := 0
@@ -559,19 +558,16 @@ func (s *metricsAPIScaler) aggregateMetricsFromMultipleEndpoints(ctx context.Con
 	var firstMetricEncountered bool
 	var aggregation float64
 	for _, endpointURL := range endpointsUrls {
-		wg.Add(1)
 		if err := sem.Acquire(ctx, 1); err != nil {
 			s.logger.Error(err, "Failed to acquire semaphore")
-			wg.Done()
 			continue
 		}
 		go func(url string) {
-			defer wg.Done()
 			defer sem.Release(1)
 			metric, err := s.getMetricValueFromURL(ctx, &endpointURL)
 
 			if err != nil {
-				s.logger.Info(fmt.Sprintf("Error fetching metric for %s: %v\n", url, err))
+				s.logger.V(1).Info(fmt.Sprintf("Error fetching metric for %s: %v\n", url, err))
 				// we will ignore metric for computing aggregation when encountering error : decrease expectedNbMetrics
 				mu.Lock()
 				expectedNbMetrics--
@@ -599,7 +595,6 @@ func (s *metricsAPIScaler) aggregateMetricsFromMultipleEndpoints(ctx context.Con
 		}(endpointURL)
 	}
 
-	wg.Wait()
 	if nbErrors > 0 && nbErrors == len(endpointsUrls) {
 		err = fmt.Errorf("could not get any metric successfully from the %d provided endpoints", len(endpointsUrls))
 	}
