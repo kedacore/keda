@@ -4,30 +4,16 @@ go 1.23.8
 
 require (
 	cloud.google.com/go/compute/metadata v0.6.0
-	cloud.google.com/go/monitoring v1.24.1
 	cloud.google.com/go/secretmanager v1.14.6
-	cloud.google.com/go/storage v1.51.0
-	dario.cat/mergo v1.0.1
-	github.com/Azure/azure-amqp-common-go/v4 v4.2.0
-	github.com/Azure/azure-kusto-go v0.16.1
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.2
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid v0.5.0
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.3.1
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.8.0
-	github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.1.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.3.1
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue v1.0.0
-	github.com/Azure/go-autorest/autorest v0.11.30
-	github.com/Azure/go-autorest/autorest/azure/auth v0.5.13
-	github.com/AzureAD/microsoft-authentication-library-for-go v1.4.2
-	github.com/DataDog/datadog-api-client-go v1.16.0
-	github.com/Huawei/gophercloud v1.0.21
-	github.com/IBM/sarama v1.45.1
-	github.com/arangodb/go-driver v1.6.6
-	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.1
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.13
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.66
@@ -38,76 +24,42 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.33.2
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.35.3
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.38.4
-	github.com/aws/aws-sdk-go-v2/service/sts v1.33.18
-	github.com/beanstalkd/go-beanstalk v0.2.0
-	github.com/bradleyfalzon/ghinstallation/v2 v2.14.0
 	github.com/cloudevents/sdk-go/v2 v2.16.0
-	github.com/dysnix/predictkube-libs v0.0.4-0.20230109175007-5a82fccd31c7
-	github.com/dysnix/predictkube-proto v0.0.0-20241017230806-4c74c627f2bb
-	github.com/elastic/go-elasticsearch/v7 v7.17.10
 	github.com/expr-lang/expr v1.17.2
-	github.com/go-kivik/couchdb/v3 v3.4.1
-	github.com/go-kivik/kivik/v3 v3.2.4
 	github.com/go-logr/logr v1.4.2
-	github.com/go-playground/validator/v10 v10.26.0
-	github.com/go-sql-driver/mysql v1.9.1
-	github.com/gobwas/glob v0.2.3
-	github.com/gocql/gocql v1.7.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v50 v50.2.0
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud v1.14.1
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.0.1
 	github.com/hashicorp/vault/api v1.16.0
-	github.com/influxdata/influxdb-client-go/v2 v2.14.0
-	github.com/jackc/pgx/v5 v5.7.4
 	github.com/joho/godotenv v1.5.1
 	github.com/jstemmer/go-junit-report/v2 v2.1.0
+	github.com/kedacore/keda/v2/keda-scalers v0.0.0
 	github.com/microsoft/ApplicationInsights-Go v0.4.4
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
-	github.com/mitchellh/hashstructure v1.1.0
-	github.com/mitchellh/mapstructure v1.5.0
-	github.com/newrelic/newrelic-client-go/v2 v2.55.4
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.37.0
 	github.com/open-policy-agent/cert-controller v0.12.0
-	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.21.1
 	github.com/prometheus/client_model v0.6.1
 	github.com/prometheus/common v0.63.0
-	github.com/prometheus/prometheus v0.54.0
-	github.com/rabbitmq/amqp091-go v1.10.0
-	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9
-	github.com/redis/go-redis/v9 v9.7.3
-	github.com/robfig/cron/v3 v3.0.1
-	github.com/segmentio/kafka-go v0.4.47
-	github.com/segmentio/kafka-go/sasl/aws_msk_iam_v2 v0.1.0
-	github.com/spf13/cast v1.7.1
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
-	github.com/tidwall/gjson v1.18.0
-	github.com/xdg-go/scram v1.1.2
-	github.com/xhit/go-str2duration/v2 v2.1.0
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
-	go.etcd.io/etcd/client/v3 v3.5.21
-	go.mongodb.org/mongo-driver v1.17.3
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.35.0
 	go.opentelemetry.io/otel/metric v1.35.0
-	go.temporal.io/sdk v1.33.1
-	go.uber.org/atomic v1.11.0
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/mock v0.5.0
-	golang.org/x/crypto v0.37.0
 	golang.org/x/oauth2 v0.29.0
 	golang.org/x/sync v0.13.0
 	google.golang.org/api v0.228.0
 	google.golang.org/grpc v1.71.1
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1
 	google.golang.org/protobuf v1.36.6
-	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/gotestsum v1.12.1
 	k8s.io/api v0.32.2
 	k8s.io/apimachinery v0.32.2
@@ -126,6 +78,60 @@ require (
 	sigs.k8s.io/custom-metrics-apiserver v1.30.1-0.20241105195130-84dc8cfe2555
 	sigs.k8s.io/kustomize/kustomize/v5 v5.6.0
 )
+
+require (
+	cloud.google.com/go/monitoring v1.24.1 // indirect
+	cloud.google.com/go/storage v1.51.0 // indirect
+	dario.cat/mergo v1.0.1 // indirect
+	github.com/Azure/azure-amqp-common-go/v4 v4.2.0 // indirect
+	github.com/Azure/azure-kusto-go v0.16.1 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.1.0 // indirect
+	github.com/Azure/go-autorest/autorest v0.11.30 // indirect
+	github.com/Azure/go-autorest/autorest/azure/auth v0.5.13 // indirect
+	github.com/AzureAD/microsoft-authentication-library-for-go v1.4.2 // indirect
+	github.com/DataDog/datadog-api-client-go v1.16.0 // indirect
+	github.com/Huawei/gophercloud v1.0.21 // indirect
+	github.com/IBM/sarama v1.45.1 // indirect
+	github.com/arangodb/go-driver v1.6.6 // indirect
+	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.33.18 // indirect
+	github.com/beanstalkd/go-beanstalk v0.2.0 // indirect
+	github.com/bradleyfalzon/ghinstallation/v2 v2.14.0 // indirect
+	github.com/dysnix/predictkube-libs v0.0.4-0.20230109175007-5a82fccd31c7 // indirect
+	github.com/dysnix/predictkube-proto v0.0.0-20241017230806-4c74c627f2bb // indirect
+	github.com/elastic/go-elasticsearch/v7 v7.17.10 // indirect
+	github.com/go-kivik/couchdb/v3 v3.4.1 // indirect
+	github.com/go-kivik/kivik/v3 v3.2.4 // indirect
+	github.com/go-playground/validator/v10 v10.26.0 // indirect
+	github.com/go-sql-driver/mysql v1.9.1 // indirect
+	github.com/gobwas/glob v0.2.3 // indirect
+	github.com/gocql/gocql v1.7.0 // indirect
+	github.com/influxdata/influxdb-client-go/v2 v2.14.0 // indirect
+	github.com/jackc/pgx/v5 v5.7.4 // indirect
+	github.com/mitchellh/hashstructure v1.1.0 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/newrelic/newrelic-client-go/v2 v2.55.4 // indirect
+	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5 // indirect
+	github.com/prometheus/prometheus v0.54.0 // indirect
+	github.com/rabbitmq/amqp091-go v1.10.0 // indirect
+	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
+	github.com/redis/go-redis/v9 v9.7.3 // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
+	github.com/segmentio/kafka-go v0.4.47 // indirect
+	github.com/segmentio/kafka-go/sasl/aws_msk_iam_v2 v0.1.0 // indirect
+	github.com/spf13/cast v1.7.1 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/xdg-go/scram v1.1.2 // indirect
+	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
+	go.etcd.io/etcd/client/v3 v3.5.21 // indirect
+	go.mongodb.org/mongo-driver v1.17.3 // indirect
+	go.temporal.io/sdk v1.33.1 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
+	golang.org/x/crypto v0.37.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+replace github.com/kedacore/keda/v2/keda-scalers => ./keda-scalers
 
 replace (
 	// we need a version with a proper license
@@ -212,7 +218,7 @@ require (
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/fsnotify/fsnotify v1.9.0 // indirect
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect

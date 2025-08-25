@@ -67,7 +67,7 @@ all: build
 
 ##@ Test
 .PHONY: test
-test: manifests generate fmt vet envtest gotestsum ## Run tests and export the result to junit format.
+test: fmt vet envtest gotestsum ## Run tests and export the result to junit format.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" $(GOTESTSUM) --format standard-quiet --rerun-fails --junitfile report.xml
 
 .PHONY: test-race
@@ -162,8 +162,8 @@ clientset-generate: ## Generate client-go clientset, listers and informers.
 	./hack/update-codegen.sh
 
 proto-gen: protoc-gen ## Generate Liiklus, ExternalScaler and MetricsService proto
-	PATH="$(LOCALBIN):$(PATH)" protoc -I vendor --proto_path=hack LiiklusService.proto --go_out=pkg/scalers/liiklus --go-grpc_out=pkg/scalers/liiklus
-	PATH="$(LOCALBIN):$(PATH)" protoc -I vendor --proto_path=pkg/scalers/externalscaler externalscaler.proto --go_out=pkg/scalers/externalscaler --go-grpc_out=pkg/scalers/externalscaler
+	PATH="$(LOCALBIN):$(PATH)" protoc -I vendor --proto_path=hack LiiklusService.proto --go_out=keda-scalers/liiklus --go-grpc_out=keda-scalers/liiklus
+	PATH="$(LOCALBIN):$(PATH)" protoc -I vendor --proto_path=keda-scalers/externalscaler externalscaler.proto --go_out=keda-scalers/externalscaler --go-grpc_out=keda-scalers/externalscaler
 	PATH="$(LOCALBIN):$(PATH)" protoc -I vendor --proto_path=pkg/metricsservice/api metrics.proto --go_out=pkg/metricsservice/api --go-grpc_out=pkg/metricsservice/api
 
 .PHONY: mockgen-gen
@@ -173,8 +173,8 @@ pkg/mock/mock_scaling/mock_interface.go: pkg/scaling/scale_handler.go
 	$(MOCKGEN) -destination=$@ -package=mock_scaling -source=$^
 pkg/mock/mock_scaling/mock_executor/mock_interface.go: pkg/scaling/executor/scale_executor.go
 	$(MOCKGEN) -destination=$@ -package=mock_executor -source=$^
-pkg/mock/mock_scaler/mock_scaler.go: pkg/scalers/scaler.go
-	$(MOCKGEN) -destination=$@ -package=mock_scalers -source=$^
+pkg/mock/mock_scaler/mock_scaler.go: keda-scalers/scaler.go
+	$(MOCKGEN) -destination=$@ -package=mock_scalers -source=keda-scalers/scaler.go
 pkg/mock/mock_eventemitter/mock_interface.go: pkg/eventemitter/eventemitter.go
 	$(MOCKGEN) -destination=$@ -package=mock_eventemitter -source=$^
 pkg/mock/mock_secretlister/mock_interfaces.go: vendor/k8s.io/client-go/listers/core/v1/secret.go
@@ -187,7 +187,7 @@ pkg/mock/mock_client/mock_interfaces.go: vendor/sigs.k8s.io/controller-runtime/p
 	mkdir -p pkg/mock/mock_client
 	$(MOCKGEN) sigs.k8s.io/controller-runtime/pkg/client Patch,Reader,Writer,StatusClient,StatusWriter,Client,WithWatch,FieldIndexer > $@
 pkg/scalers/liiklus/mocks/mock_liiklus.go:
-	$(MOCKGEN) -destination=$@ github.com/kedacore/keda/v2/pkg/scalers/liiklus LiiklusServiceClient
+	$(MOCKGEN) -destination=$@ github.com/kedacore/keda/v2/keda-scalers/liiklus LiiklusServiceClient
 
 ##################################################
 # Build                                          #
