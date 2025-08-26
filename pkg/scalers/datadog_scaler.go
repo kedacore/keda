@@ -2,8 +2,10 @@ package scalers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"regexp"
 	"slices"
@@ -21,6 +23,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	"github.com/kedacore/keda/v2/version"
 )
 
 type datadogScaler struct {
@@ -68,7 +71,8 @@ type datadogMetadata struct {
 	HpaMetricName string  `keda:"name=hpaMetricName,          order=triggerMetadata, optional"`
 	FillValue     float64 `keda:"name=metricUnavailableValue, order=triggerMetadata, default=0"`
 	UseFiller     bool
-	TargetValue   float64 `keda:"name=targetValue;queryValue, order=triggerMetadata, default=-1"`
+	TargetValue   float64       `keda:"name=targetValue;queryValue, order=triggerMetadata, default=-1"`
+	Timeout       time.Duration `keda:"name=timeout,             	order=triggerMetadata, optional"`
 	vType         v2.MetricTargetType
 }
 
@@ -81,7 +85,7 @@ func init() {
 }
 
 // NewDatadogScaler creates a new Datadog scaler
-func NewDatadogScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewDatadogScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -105,16 +109,13 @@ func NewDatadogScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (
 		if err != nil {
 			return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
 		}
-		httpClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.UnsafeSsl)
+		httpClient = kedautil.CreateHTTPClient(meta.Timeout, meta.UnsafeSsl)
 	} else {
 		meta, err = parseDatadogAPIMetadata(config, logger)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
 		}
-		apiClient, err = newDatadogAPIConnection(ctx, meta, config)
-		if err != nil {
-			return nil, fmt.Errorf("error establishing Datadog connection: %w", err)
-		}
+		apiClient = newDatadogAPIClient(meta)
 	}
 
 	return &datadogScaler{
@@ -169,6 +170,11 @@ func parseDatadogAPIMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 			return nil, fmt.Errorf("no targetValue or queryValue given")
 		}
 	}
+
+	if meta.Timeout == 0 {
+		meta.Timeout = config.GlobalHTTPTimeout
+	}
+
 	if val, ok := config.TriggerMetadata["type"]; ok {
 		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
 		if config.MetricType != "" {
@@ -229,6 +235,11 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 			return nil, fmt.Errorf("no targetValue or queryValue given")
 		}
 	}
+
+	if meta.Timeout == 0 {
+		meta.Timeout = config.GlobalHTTPTimeout
+	}
+
 	if val, ok := config.TriggerMetadata["type"]; ok {
 		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
 		if config.MetricType != "" {
@@ -257,37 +268,13 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 	return meta, nil
 }
 
-// newDatadogAPIConnection tests a connection to the Datadog API
-func newDatadogAPIConnection(ctx context.Context, meta *datadogMetadata, config *scalersconfig.ScalerConfig) (*datadog.APIClient, error) {
-	ctx = context.WithValue(
-		ctx,
-		datadog.ContextAPIKeys,
-		map[string]datadog.APIKey{
-			"apiKeyAuth": {
-				Key: meta.APIKey,
-			},
-			"appKeyAuth": {
-				Key: meta.AppKey,
-			},
-		},
-	)
-
-	ctx = context.WithValue(ctx,
-		datadog.ContextServerVariables,
-		map[string]string{
-			"site": meta.DatadogSite,
-		})
-
+func newDatadogAPIClient(s *datadogMetadata) *datadog.APIClient {
 	configuration := datadog.NewConfiguration()
-	configuration.HTTPClient = kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
+	configuration.UserAgent = fmt.Sprintf("%s - KEDA/%s", configuration.UserAgent, version.Version)
+	configuration.HTTPClient = kedautil.CreateHTTPClient(s.Timeout, false)
 	apiClient := datadog.NewAPIClient(configuration)
 
-	_, _, err := apiClient.AuthenticationApi.Validate(ctx) //nolint:bodyclose
-	if err != nil {
-		return nil, fmt.Errorf("error connecting to Datadog API endpoint: %w", err)
-	}
-
-	return apiClient, nil
+	return apiClient
 }
 
 // No need to close connections
@@ -321,9 +308,17 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	timeWindowTo := time.Now().Unix() - int64(s.metadata.TimeWindowOffset)
 	timeWindowFrom := timeWindowTo - int64(s.metadata.Age)
+
+	httpClientTimeout := s.apiClient.GetConfig().HTTPClient.Timeout
+	startTime := time.Now()
 	resp, r, err := s.apiClient.MetricsApi.QueryMetrics(ctx, timeWindowFrom, timeWindowTo, s.metadata.Query) //nolint:bodyclose
+	elapsed := time.Since(startTime)
 
 	if r != nil {
+		if r.StatusCode == 403 {
+			return -1, fmt.Errorf("unauthorized to connect to Datadog. Check that your Datadog API and App keys are correct and that your App key has the correct permissions: %w", err)
+		}
+
 		if r.StatusCode == 429 {
 			rateLimit := r.Header.Get("X-Ratelimit-Limit")
 			rateLimitReset := r.Header.Get("X-Ratelimit-Reset")
@@ -341,6 +336,22 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	}
 
 	if err != nil {
+		// Check for general network timeouts
+		if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+			if httpClientTimeout > 0 {
+				return -1, fmt.Errorf("KEDA reached a network timeout while retrieving Datadog metrics (HTTP client timeout: %s, request took: %s: %w)", httpClientTimeout, elapsed, err)
+			}
+			return -1, fmt.Errorf("KEDA reached a network timeout while retrieving Datadog metrics (request took: %s: %w)", elapsed, err)
+		}
+
+		if errors.Is(err, context.DeadlineExceeded) {
+			if deadline, ok := ctx.Deadline(); ok {
+				now := time.Now()
+				exceeded := now.Sub(deadline)
+				return -1, fmt.Errorf("KEDA reached a context deadline while retrieving Datadog metrics (deadline was: %v, exceeded by: %v: %w)", deadline.Format(time.RFC3339), exceeded, err)
+			}
+			return -1, fmt.Errorf("KEDA reached a context deadline while retrieving Datadog metrics: %w", err)
+		}
 		return -1, fmt.Errorf("error when retrieving Datadog metrics: %w", err)
 	}
 

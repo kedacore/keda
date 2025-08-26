@@ -261,7 +261,7 @@ var eventHubMetricIdentifiers = []eventHubMetricIdentifier{
 
 var testEventHubScaler = azureEventHubScaler{
 	metadata: &eventHubMetadata{
-		eventHubInfo: azure.EventHubInfo{
+		EventHubInfo: azure.EventHubInfo{
 			EventHubConnection: "none",
 			StorageConnection:  "none",
 		},
@@ -326,10 +326,10 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 		}
 
 		// Can actually test that numbers return
-		testEventHubScaler.metadata.eventHubInfo.EventHubConnection = eventHubConnectionString
+		testEventHubScaler.metadata.EventHubInfo.EventHubConnection = eventHubConnectionString
 		testEventHubScaler.eventHubClient = eventHubProducer
 		testEventHubScaler.blobStorageClient = blobClient
-		testEventHubScaler.metadata.eventHubInfo.EventHubConsumerGroup = "$Default"
+		testEventHubScaler.metadata.EventHubInfo.EventHubConsumerGroup = "$Default"
 
 		// Send 1 message to event hub first
 		t.Log("Sending message to event hub")
@@ -411,10 +411,10 @@ func TestGetUnprocessedEventCountIfNoCheckpointExists(t *testing.T) {
 		}
 
 		// Can actually test that numbers return
-		testEventHubScaler.metadata.eventHubInfo.EventHubConnection = eventHubConnectionString
+		testEventHubScaler.metadata.EventHubInfo.EventHubConnection = eventHubConnectionString
 		testEventHubScaler.eventHubClient = client
 		testEventHubScaler.blobStorageClient = blobClient
-		testEventHubScaler.metadata.eventHubInfo.EventHubConsumerGroup = "$Default"
+		testEventHubScaler.metadata.EventHubInfo.EventHubConsumerGroup = "$Default"
 
 		// Send 1 message to event hub first
 		t.Log("Sending message to event hub")

@@ -82,7 +82,7 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	// handle HTTP client timeout
 	httpClientTimeout := config.GlobalHTTPTimeout
 	if meta.Timeout > 0 {
-		httpClientTimeout = meta.Timeout * time.Millisecond
+		httpClientTimeout = meta.Timeout
 	}
 
 	httpClient := kedautil.CreateHTTPClient(httpClientTimeout, meta.UnsafeSSL)
@@ -284,7 +284,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
-		err := fmt.Errorf("promtheus query returns %f", v)
+		err := fmt.Errorf("prometheus query returns %f", v)
 		s.logger.Error(err, "Error converting prometheus value")
 		return -1, err
 	}

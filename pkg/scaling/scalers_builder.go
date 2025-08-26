@@ -166,7 +166,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "cron":
 		return scalers.NewCronScaler(config)
 	case "datadog":
-		return scalers.NewDatadogScaler(ctx, config)
+		return scalers.NewDatadogScaler(config)
 	case "dynatrace":
 		return scalers.NewDynatraceScaler(config)
 	case "elasticsearch":
@@ -250,6 +250,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewRedisStreamsScaler(ctx, false, false, config)
 	case "selenium-grid":
 		return scalers.NewSeleniumGridScaler(config)
+	case "solace-direct-messaging":
+		return scalers.NewSolaceDMScaler(config)
 	case "solace-event-queue":
 		return scalers.NewSolaceScaler(config)
 	case "solr":
@@ -258,6 +260,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewSplunkScaler(config)
 	case "stan":
 		return scalers.NewStanScaler(config)
+	case "sumologic":
+		return scalers.NewSumologicScaler(config)
 	case "temporal":
 		return scalers.NewTemporalScaler(ctx, config)
 	default:
