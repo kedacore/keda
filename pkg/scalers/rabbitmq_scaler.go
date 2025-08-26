@@ -259,7 +259,7 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	timeout := config.GlobalHTTPTimeout
 	if s.metadata.Timeout != 0 {
-		timeout = s.metadata.Timeout * time.Millisecond
+		timeout = s.metadata.Timeout
 	}
 
 	s.httpClient = kedautil.CreateHTTPClient(timeout, meta.UnsafeSsl)
