@@ -10,5 +10,5 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
 - name: ghcr.io/kedacore/keda-metrics-apiserver
-  newName: docker.io/aliaqel736/keda-metrics-apiserver
-  newTag: 2.18-aliaqel-test-force-activation
+  newName: ghcr.io/kedacore/keda-metrics-apiserver
+  newTag: main
