@@ -452,6 +452,16 @@ spec:
                         type: string
                       token:
                         type: string
+                      tokenSecretRef:
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
                     type: object
                   mount:
                     type: string
