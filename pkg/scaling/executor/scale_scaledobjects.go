@@ -193,17 +193,20 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 
 	condition := scaledObject.Status.Conditions.GetActiveCondition()
 	if condition.IsUnknown() || condition.IsTrue() != (isActive || scaledObject.NeedToForceActivation()) {
-		if isActive {
+		switch {
+		case isActive:
+			// Scaler is active because of metrics
 			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active"); err != nil {
 				logger.Error(err, "Error setting active condition when triggers are active")
 				return
 			}
-		} else if scaledObject.NeedToForceActivation() {
+		case scaledObject.NeedToForceActivation():
+			// Annotation is set to force scaler to activate
 			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because activation is being forced by annotation"); err != nil {
 				logger.Error(err, "Error setting active condition when activation is forced")
 				return
 			}
-		} else {
+		default:
 			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
 				logger.Error(err, "Error setting active condition when triggers are not active")
 				return
