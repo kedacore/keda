@@ -396,16 +396,16 @@ func WaitForPodsCompleted(t *testing.T, kc *kubernetes.Clientset, selector, name
 			return true
 		}
 
-		succedCount := 0
+		succeededCount := 0
 
 		for _, pod := range pods.Items {
 			if pod.Status.Phase == corev1.PodSucceeded {
 				t.Logf("Pod %s in namespace %s is in completed status", pod.Name, namespace)
-				succedCount++
+				succeededCount++
 			}
 		}
 
-		if succedCount == len(pods.Items) {
+		if succeededCount == len(pods.Items) {
 			return true
 		}
 

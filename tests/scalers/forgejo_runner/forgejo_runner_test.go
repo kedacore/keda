@@ -186,9 +186,6 @@ func TestForgejoScaler(t *testing.T) {
 
 	kc := GetKubernetesClient(t)
 	dataForgejo, templatesForgejo := getForgejoData()
-	t.Cleanup(func() {
-
-	})
 
 	CreateNamespace(t, kc, testNamespace)
 	KubectlApplyMultipleWithTemplate(t, dataForgejo, templatesForgejo)
