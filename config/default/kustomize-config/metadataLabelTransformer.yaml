@@ -3,7 +3,7 @@ kind: LabelTransformer
 metadata:
   name: metadataLabelTransformer
 labels:
-  app.kubernetes.io/version: main
+  app.kubernetes.io/version: 2.18-aliaqel-test-force-activation
   app.kubernetes.io/part-of: keda-operator
 fieldSpecs:
 - path: metadata/labels
