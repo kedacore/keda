@@ -7,11 +7,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"time"
+	"strings"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -72,16 +71,14 @@ func parseForgejoRunnerMetadata(config *scalersconfig.ScalerConfig) (*forgejoRun
 		return nil, fmt.Errorf("error parsing forgejo metadata: %w", err)
 	}
 
-	if meta.Address[len(meta.Address)-1:] == "/" {
-		meta.Address = meta.Address[:len(meta.Address)-1]
-	}
+	meta.Address = strings.TrimSuffix(meta.Address, "/")
 
 	return meta, nil
 }
 
 // NewForgejoRunnerScaler creates a new Forgejo Runner Scaler
 func NewForgejoRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
-	c := kedautil.CreateHTTPClient(30*time.Second, false)
+	c := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
@@ -111,8 +108,6 @@ func (s *forgejoRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricN
 
 	metric := GenerateMetricInMili(metricName, float64(len(jobList)))
 
-	metric.Value.Add(resource.Quantity{})
-
 	return []external_metrics.ExternalMetricValue{metric}, true, nil
 }
 
@@ -135,12 +130,16 @@ func (s *forgejoRunnerScaler) getJobsList(ctx context.Context) ([]ForgejoJob, er
 	if err != nil {
 		return jobList, err
 	}
+	defer func() {
+		if closeErr := r.Body.Close(); closeErr != nil {
+			s.logger.Error(closeErr, "Failed to close response body")
+		}
+	}()
 
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		return jobList, err
 	}
-	_ = r.Body.Close()
 
 	if r.StatusCode != 200 {
 		return jobList,
