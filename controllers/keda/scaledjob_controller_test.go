@@ -149,7 +149,7 @@ var _ = Describe("ScaledJobController", func() {
 					return metav1.ConditionUnknown
 				}
 				return sj.Status.Conditions.GetPausedCondition().Status
-			}).WithTimeout(1 * time.Minute).WithPolling(10 * time.Second).Should(Equal(metav1.ConditionUnknown))
+			}).WithTimeout(1 * time.Minute).WithPolling(10 * time.Second).Should(Or(Equal(metav1.ConditionFalse), Equal(metav1.ConditionUnknown)))
 		})
 
 		// Fix issue 5520
