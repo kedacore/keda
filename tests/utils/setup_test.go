@@ -268,3 +268,18 @@ func TestSetUpStrimzi(t *testing.T) {
 
 	t.Log("--- kafka operator installed ---")
 }
+
+func TestVerifyStrimzi(t *testing.T) {
+	// default to true
+	if InstallKafka == StringFalse {
+		t.Skip("skipping as requested -- Kafka assumed to be unneeded or already installed")
+	}
+	t.Log("--- verifying kafka operator is ready ---")
+
+	// Wait for the Strimzi cluster operator deployment to be ready
+	// This ensures the operator is fully initialized before tests proceed
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, KubeClient, "strimzi-cluster-operator", StrimziNamespace, 1, 120, 5),
+		"Strimzi cluster operator should be ready after 10 minutes")
+
+	t.Log("--- kafka operator verified and ready ---")
+}

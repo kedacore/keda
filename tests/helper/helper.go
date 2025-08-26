@@ -26,9 +26,11 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	prommodel "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,7 +63,7 @@ const (
 	StringFalse = "false"
 	StringTrue  = "true"
 
-	StrimziVersion   = "0.35.0"
+	StrimziVersion   = "0.47.0"
 	StrimziChartName = "strimzi"
 	StrimziNamespace = "strimzi"
 )
@@ -367,6 +369,27 @@ func WaitForJobCountUntilIteration(t *testing.T, kc *kubernetes.Clientset, names
 	}
 
 	return isTargetAchieved
+}
+
+func WaitForJobCreation(t *testing.T, kc *kubernetes.Clientset, scaledJobName, namespace string, iterations, intervalSeconds int) (*batchv1.Job, error) {
+	jobList := &batchv1.JobList{}
+	var err error
+
+	for i := 0; i < iterations; i++ {
+		jobList, err = kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("scaledjob.keda.sh/name=%s", scaledJobName),
+		})
+
+		t.Log("Waiting for job creation")
+
+		if len(jobList.Items) > 0 {
+			return &jobList.Items[0], nil
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return nil, err
 }
 
 // Waits until deployment count hits target or number of iterations are done.
@@ -1173,4 +1196,13 @@ func WatchForEventAfterTrigger(
 	case <-time.After(watchTimeout + 5*time.Second):
 		assert.Fail(t, "Timed out waiting for result from Kubernetes event watch channel")
 	}
+}
+
+func ExtractPrometheusLabelValue(key string, labels []*prommodel.LabelPair) string {
+	for _, label := range labels {
+		if label.Name != nil && *label.Name == key {
+			return *label.Value
+		}
+	}
+	return ""
 }
