@@ -106,6 +106,28 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		)
 	}
 
+	if scaledObject.NeedToPauseScaleOut() {
+		// If the paused-scale-out annotation is set, set the HPA ScaleUp Select policy to Disabled
+		// to prevent the HPA from scaling down the scale target
+		if behavior == nil {
+			behavior = &autoscalingv2.HorizontalPodAutoscalerBehavior{}
+		}
+		if behavior.ScaleUp == nil {
+			behavior.ScaleUp = &autoscalingv2.HPAScalingRules{}
+		}
+
+		disabledPolicy := autoscalingv2.DisabledPolicySelect
+		behavior.ScaleUp.SelectPolicy = &disabledPolicy
+
+		logger.Info(
+			"Scale out paused by annotation, setting HPA Scale Up Select Behavior to Disabled",
+			"HPA.Namespace",
+			scaledObject.Namespace,
+			"HPA.Name",
+			getHPAName(scaledObject),
+		)
+	}
+
 	// label can have max 63 chars
 	labelName := getHPAName(scaledObject)
 	if len(labelName) > 63 {
