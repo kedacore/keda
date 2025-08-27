@@ -64,6 +64,14 @@ func (PausedScaleInPredicate) Update(e event.UpdateEvent) bool {
 	return checkAnnotation(e, kedav1alpha1.PausedScaleInAnnotation)
 }
 
+type ForceActivationPredicate struct {
+	predicate.Funcs
+}
+
+func (ForceActivationPredicate) Update(e event.UpdateEvent) bool {
+	return checkAnnotation(e, kedav1alpha1.ForceActivationAnnotation)
+}
+
 func checkAnnotation(e event.UpdateEvent, annotation string) bool {
 	if e.ObjectOld == nil || e.ObjectNew == nil {
 		return false
