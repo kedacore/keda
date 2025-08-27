@@ -1461,6 +1461,13 @@ github.com/sergi/go-diff/diffmatchpatch
 # github.com/shopspring/decimal v1.3.1
 ## explicit; go 1.13
 github.com/shopspring/decimal
+# github.com/signalfx/signalflow-client-go/v2 v2.3.0
+## explicit; go 1.21
+github.com/signalfx/signalflow-client-go/v2/signalflow
+github.com/signalfx/signalflow-client-go/v2/signalflow/messages
+# github.com/signalfx/signalfx-go v1.34.0
+## explicit; go 1.17
+github.com/signalfx/signalfx-go/idtool
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
@@ -1789,7 +1796,7 @@ go.uber.org/zap/internal/pool
 go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
-# golang.org/x/crypto v0.37.0
+# golang.org/x/crypto v0.39.0
 ## explicit; go 1.23.0
 golang.org/x/crypto/argon2
 golang.org/x/crypto/blake2b
@@ -1815,13 +1822,13 @@ golang.org/x/crypto/sha3
 golang.org/x/exp/constraints
 golang.org/x/exp/maps
 golang.org/x/exp/slices
-# golang.org/x/mod v0.24.0
+# golang.org/x/mod v0.25.0
 ## explicit; go 1.23.0
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.38.0
+# golang.org/x/net v0.41.0
 ## explicit; go 1.23.0
 golang.org/x/net/context
 golang.org/x/net/html
@@ -1852,22 +1859,22 @@ golang.org/x/oauth2/google/internal/stsexchange
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sync v0.13.0
+# golang.org/x/sync v0.15.0
 ## explicit; go 1.23.0
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.32.0
+# golang.org/x/sys v0.33.0
 ## explicit; go 1.23.0
 golang.org/x/sys/cpu
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/term v0.31.0
+# golang.org/x/term v0.32.0
 ## explicit; go 1.23.0
 golang.org/x/term
-# golang.org/x/text v0.24.0
+# golang.org/x/text v0.26.0
 ## explicit; go 1.23.0
 golang.org/x/text/cases
 golang.org/x/text/encoding
@@ -1903,10 +1910,11 @@ golang.org/x/text/width
 # golang.org/x/time v0.11.0
 ## explicit; go 1.23.0
 golang.org/x/time/rate
-# golang.org/x/tools v0.31.0
+# golang.org/x/tools v0.34.0
 ## explicit; go 1.23.0
 golang.org/x/tools/cover
 golang.org/x/tools/go/ast/astutil
+golang.org/x/tools/go/ast/edge
 golang.org/x/tools/go/ast/inspector
 golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/packages
@@ -1914,7 +1922,6 @@ golang.org/x/tools/go/types/objectpath
 golang.org/x/tools/go/types/typeutil
 golang.org/x/tools/imports
 golang.org/x/tools/internal/aliases
-golang.org/x/tools/internal/astutil/edge
 golang.org/x/tools/internal/event
 golang.org/x/tools/internal/event/core
 golang.org/x/tools/internal/event/keys
@@ -2194,8 +2201,8 @@ gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
-# gotest.tools/gotestsum v1.12.1
-## explicit; go 1.21
+# gotest.tools/gotestsum v1.12.3
+## explicit; go 1.23.0
 gotest.tools/gotestsum
 gotest.tools/gotestsum/cmd
 gotest.tools/gotestsum/cmd/tool/matrix
