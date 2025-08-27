@@ -286,6 +286,12 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 }
 
 func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale, activeTriggers []string) {
+	if scaledObject.NeedToPauseScaleOut() {
+		// The Pause Scale Out annotation is set so we should not scale down this target
+		logger.Info("Pause Scale Out annotation set on ScaledObject, no scaling out on active trigger")
+		return
+	}
+
 	var replicas int32
 	if scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.MinReplicaCount > 0 {
 		replicas = *scaledObject.Spec.MinReplicaCount
