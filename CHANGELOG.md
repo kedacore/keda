@@ -92,6 +92,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Correct pending pod condition logic for ScaledJobs ([#6727](https://github.com/kedacore/keda/issues/6727))
 - **General**: Fix parse timeout config as milliseconds instead of seconds ([#6997](https://github.com/kedacore/keda/pull/6997))
 - **General**: Fix prefixes on envFrom elements in a deployment spec aren't being interpreted and Environment variables are not prefixed with the prefix ([#6728](https://github.com/kedacore/keda/issues/6728))
+- **General**: Fix SIGSEGV when doing fallback of non-static behavior on any ScaleTargetRef that is neither a Deployment nor a StatefulSet ([#6992](https://github.com/kedacore/keda/pull/6992))
 - **General**: Remove klogr dependency and replace with zap ([#5732](https://github.com/kedacore/keda/issues/5732))
 - **General**: Sets hpaName in Status when ScaledObject adopts/finds an existing HPA ([#6336](https://github.com/kedacore/keda/issues/6336))
 - **Cron Scaler**: Fix cron scaler to return zero metric value by default([#6886](https://github.com/kedacore/keda/issues/6886))
