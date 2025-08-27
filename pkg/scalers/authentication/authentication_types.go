@@ -79,11 +79,11 @@ type CertAuth struct {
 
 // OAuth is an oAuth2 authentication type
 type OAuth struct {
-	OauthTokenURI  string     `keda:"name=oauthTokenURI,  order=authParams"`
-	Scopes         []string   `keda:"name=scopes,         order=authParams"`
-	ClientID       string     `keda:"name=clientID,       order=authParams"`
+	OauthTokenURI  string     `keda:"name=oauthTokenURI,  order=authParams;triggerMetadata"`
+	Scopes         []string   `keda:"name=scopes;scope,   order=authParams;triggerMetadata"`
+	ClientID       string     `keda:"name=clientID,       order=authParams;triggerMetadata"`
 	ClientSecret   string     `keda:"name=clientSecret,   order=authParams"`
-	EndpointParams url.Values `keda:"name=endpointParams, order=authParams"`
+	EndpointParams url.Values `keda:"name=endpointParams, order=authParams;triggerMetadata"`
 }
 
 // CustomAuth is a custom header authentication type
@@ -136,21 +136,29 @@ func (c *Config) Validate() error {
 		return nil
 	}
 	if c.EnabledBearerAuth() && c.BearerToken == "" {
-		return fmt.Errorf("bearer token is required when bearer auth is enabled")
+		return fmt.Errorf("bearer token=%v is required when bearer auth is enabled", empty(c.BearerToken))
 	}
 	if c.EnabledBasicAuth() && c.Username == "" {
-		return fmt.Errorf("username is required when basic auth is enabled")
+		return fmt.Errorf("username=%v is required when basic auth is enabled", empty(c.Username))
 	}
 	if c.EnabledTLS() && (c.Cert == "" || c.Key == "") {
-		return fmt.Errorf("cert and key are required when tls auth is enabled")
+		return fmt.Errorf("cert=%v and key=%v are required when tls auth is enabled", empty(c.Cert), empty(c.Key))
 	}
-	if c.EnabledOAuth() && (c.OauthTokenURI == "" || c.ClientID == "" || c.ClientSecret == "") {
-		return fmt.Errorf("oauthTokenURI, clientID and clientSecret are required when oauth is enabled")
+	if c.EnabledOAuth() && (c.OauthTokenURI == "" || c.ClientID == "") {
+		return fmt.Errorf("oauthTokenURI=%v and clientID=%v are required when oauth is enabled", empty(c.OauthTokenURI), empty(c.ClientID))
 	}
 	if c.EnabledCustomAuth() && (c.CustomAuthHeader == "" || c.CustomAuthValue == "") {
-		return fmt.Errorf("customAuthHeader and customAuthValue are required when custom auth is enabled")
+		return fmt.Errorf("customAuthHeader=%v and customAuthValue=%v are required when custom auth is enabled", empty(c.CustomAuthHeader), empty(c.CustomAuthValue))
 	}
 	return nil
+}
+
+// empty is a helper function for more readable errors when auth params are misconfigured
+func empty(a string) string {
+	if a == "" {
+		return "<empty>"
+	}
+	return "<present>"
 }
 
 // ToAuthMeta converts the Config to deprecated AuthMeta
