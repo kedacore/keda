@@ -82,9 +82,11 @@ func (c *ScalersCache) GetPushScalers() []scalers.PushScaler {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 	var result []scalers.PushScaler
-	for _, s := range c.Scalers {
-		if ps, ok := s.Scaler.(scalers.PushScaler); ok {
-			result = append(result, ps)
+	if !c.ScaledObject.IsUsingModifiers() {
+		for _, s := range c.Scalers {
+			if ps, ok := s.Scaler.(scalers.PushScaler); ok {
+				result = append(result, ps)
+			}
 		}
 	}
 	return result
