@@ -109,6 +109,18 @@ You can specify a custom go regex directly through the `E2E_TEST_REGEX` environm
 
 Not specifying either `E2E_TEST_CONFIG` or `E2E_TEST_REGEX` will run all tests in all categories.
 
+You can also check what tests would be executed and other configurations without actually running them by setting the `dryRun` field to `true`.
+
+e.g.,
+
+```yaml
+dryRun: true
+keda:
+  # ...omitted
+testCategories:
+  # ...omitted
+```
+
 #### Customizing test setup
 
 The config file can also be used to customize the test setup. For example, to deploy KEDA using custom images.

@@ -1,4 +1,5 @@
 # This is an example test config file to be used with the run-all.go file.
+dryRun: false # set to true to see what tests would run without executing them
 keda:
   installKeda: true # e2e tests will setup KEDA for you
   installKafka: true # e2e tests will setup Kafka for you

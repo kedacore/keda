@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log"
 	"math/rand"
 	"os"
@@ -62,6 +63,11 @@ func main() {
 	}
 
 	if len(os.Args) > 1 && os.Args[1] == "regex-check" {
+		return
+	}
+
+	if helper.KEDATestConfig.DryRun {
+		showDryRunOutput(regularTestFiles, sequentialTestFiles, e2eRegex)
 		return
 	}
 
@@ -447,18 +453,33 @@ func buildRegexFromConfig(config helper.TestConfig) (string, error) {
 
 // getAvailableTests returns all available test suites/directories for a category, as a slice of strings
 func getAvailableTests(categoryPath string) ([]string, error) {
-	entries, err := os.ReadDir(categoryPath)
-	if err != nil {
-		return nil, err
-	}
-
 	var tests []string
-	for _, entry := range entries {
-		if entry.IsDir() {
-			tests = append(tests, entry.Name())
+
+	err := filepath.WalkDir(categoryPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
-	}
-	return tests, nil
+		// don't count root directory
+		if path == categoryPath {
+			return nil
+		}
+		if d.Name() == "helper" || d.Name() == "helpers" {
+			return fs.SkipDir
+		}
+		// we don't want to include the root in the path for UX purposes
+		// this is so that users can just specify paths like
+		// "aws" or "aws/aws_cloudwatch" instead of tests/aws/aws_cloudwatch
+		returnPath := strings.TrimPrefix(path, categoryPath+string(filepath.Separator))
+		if returnPath == "" {
+			return nil
+		}
+		if d.IsDir() {
+			tests = append(tests, returnPath)
+		}
+		return nil
+	})
+
+	return tests, err
 }
 
 // filterTests returns the filtered tests as a slice of strings, based on the TestCategory
@@ -505,4 +526,66 @@ func setAbsoluteConfigPath() {
 		}
 		os.Setenv("E2E_TEST_CONFIG", absConfigPath)
 	}
+}
+
+func showDryRunOutput(regularTestFiles, sequentialTestFiles []string, e2eRegex string) {
+	slices.Sort(regularTestFiles)
+	slices.Sort(sequentialTestFiles)
+
+	fmt.Println("##############################################")
+	fmt.Println("##############################################")
+	fmt.Println("DRY-RUN SUMMARY")
+	fmt.Println("##############################################")
+	fmt.Println("##############################################")
+
+	fmt.Printf("\nConverted test filter regex: %s\n", e2eRegex)
+	fmt.Printf("Total Regular Tests: %d\n", len(regularTestFiles))
+	fmt.Printf("Total Sequential Tests: %d\n", len(sequentialTestFiles))
+	fmt.Printf("Total Tests: %d\n", len(regularTestFiles)+len(sequentialTestFiles))
+
+	fmt.Println("\nTests to be executed:")
+
+	if len(regularTestFiles) > 0 {
+		fmt.Println("├── Regular Tests (concurrent)")
+		for i, file := range regularTestFiles {
+			prefix := "│   ├── "
+			if i == len(regularTestFiles)-1 && len(sequentialTestFiles) == 0 {
+				prefix = "│   └── "
+			}
+			fmt.Printf("%s%s\n", prefix, file)
+		}
+	}
+
+	if len(sequentialTestFiles) > 0 {
+		fmt.Println("├── Sequential Tests")
+		for i, file := range sequentialTestFiles {
+			prefix := "│   ├── "
+			if i == len(sequentialTestFiles)-1 {
+				prefix = "│   └── "
+			}
+			fmt.Printf("%s%s\n", prefix, file)
+		}
+	}
+
+	// Show configuration summary
+	fmt.Println("\nConfiguration:")
+	fmt.Printf("├── Install KEDA: %t\n", helper.KEDATestConfig.KEDA.InstallKeda)
+	fmt.Printf("├── Install Kafka: %t\n", helper.KEDATestConfig.KEDA.InstallKafka)
+	fmt.Printf("├── Image Registry: %s\n", helper.KEDATestConfig.KEDA.ImageRegistry)
+	fmt.Printf("├── Image Repo: %s\n", helper.KEDATestConfig.KEDA.ImageRepo)
+
+	// Show test categories configuration
+	if len(helper.KEDATestConfig.TestCategories) > 0 {
+		fmt.Println("\nTest Categories:")
+		for category, config := range helper.KEDATestConfig.TestCategories {
+			fmt.Printf("├── %s: %s", category, config.Mode)
+			if len(config.Tests) > 0 {
+				fmt.Printf(" (%s)\n", strings.Join(config.Tests, ", "))
+			} else {
+				fmt.Println()
+			}
+		}
+	}
+
+	fmt.Println("\nThis was a dry-run. No actual tests were executed.")
 }

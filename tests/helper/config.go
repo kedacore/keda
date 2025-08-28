@@ -3,6 +3,7 @@ package helper
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -15,11 +16,13 @@ var KEDATestConfig = TestConfig{
 		ImageRepo:     "", // default to Makefile settings
 	},
 	TestCategories: map[string]TestCategory{},
+	DryRun:         false,
 }
 
 type TestConfig struct {
 	KEDA           *KEDAConfig             `yaml:"keda"`
 	TestCategories map[string]TestCategory `yaml:"testCategories"`
+	DryRun         bool                    `yaml:"dryRun,omitempty"`
 }
 
 type KEDAConfig struct {
@@ -49,6 +52,12 @@ func (tc *TestConfig) Validate() error {
 		case TestCategoryModeInclude, TestCategoryModeExclude:
 		default:
 			return fmt.Errorf("category %q: invalid mode %q", name, cat.Mode)
+		}
+		for i, test := range cat.Tests {
+			// check if there's trailing slashes in the path, if so, don't throw an error, just remove them
+			if strings.HasSuffix(test, string(os.PathSeparator)) {
+				cat.Tests[i] = strings.TrimSuffix(test, string(os.PathSeparator))
+			}
 		}
 	}
 	return nil
