@@ -88,9 +88,9 @@ type OAuth struct {
 
 // APIKeyAuth is an API key authentication type
 type APIKeyAuth struct {
-	APIKey       string `keda:"name=apiKey, order=authParams"`
-	Method       string `keda:"name=method, order=authParams, default=header, enum=header;query"`
-	KeyParamName string `keda:"name=keyParamName, order=authParams, optional"`
+	APIKey       string `keda:"name=apiKey, order=triggerMetadata;authParams"`
+	Method       string `keda:"name=method, order=triggerMetadata;authParams, default=header, enum=header;query"`
+	KeyParamName string `keda:"name=keyParamName, order=triggerMetadata;authParams, optional"`
 }
 
 // CustomAuth is a custom header authentication type
@@ -101,7 +101,7 @@ type CustomAuth struct {
 
 // Config is the configuration for the authentication types
 type Config struct {
-	Modes []Type `keda:"name=authModes;authMode, order=triggerMetadata, enum=apiKey;basic;tls;bearer;custom;oauth, exclusiveSet=bearer;basic;oauth, optional"`
+	Modes []Type `keda:"name=authModes;authMode, order=triggerMetadata;authParams, enum=apiKey;basic;tls;bearer;custom;oauth, exclusiveSet=bearer;basic;oauth, optional"`
 
 	BearerToken string `keda:"name=bearerToken;token, order=authParams, optional"`
 	BasicAuth   `keda:"optional"`
