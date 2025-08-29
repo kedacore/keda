@@ -92,7 +92,7 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, sc
 				return nil, false, suppressedError
 			}
 		}
-		return doFallback(scaledObject, metricSpec, metricName, currentReplicas, suppressedError), true, nil
+		return doFallback(scaledObject, metricSpec, metricName, currentReplicas, suppressedError, metrics), true, nil
 	default:
 		return nil, false, suppressedError
 	}
@@ -119,7 +119,7 @@ func HasValidFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
 		modifierChecking
 }
 
-func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, currentReplicas int32, suppressedError error) []external_metrics.ExternalMetricValue {
+func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, currentReplicas int32, suppressedError error, metrics []external_metrics.ExternalMetricValue) []external_metrics.ExternalMetricValue {
 	fallbackBehavior := scaledObject.Spec.Fallback.Behavior
 	fallbackReplicas := int64(scaledObject.Spec.Fallback.Replicas)
 	var replicas int64
@@ -141,6 +141,14 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpe
 		if currentReplicasCount < fallbackReplicas {
 			replicas = currentReplicasCount
 		} else {
+			replicas = fallbackReplicas
+		}
+	case kedav1alpha1.FallbackBehaviorCached:
+		if len(metrics) > 0 {
+			log.Info("Fallback behavior is set to cached, using metrics from cache", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "metricName", metricName)
+			return metrics
+		} else {
+			log.Info("Fallback behavior is set to cached, but no metrics were found in the cache", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "metricName", metricName)
 			replicas = fallbackReplicas
 		}
 	default:
