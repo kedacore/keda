@@ -218,28 +218,6 @@ var _ = Describe("fallback", func() {
 		Expect(so.Status.Health[metricName]).To(haveFailureAndStatus(4, kedav1alpha1.HealthStatusFailing))
 	})
 
-	It("should behave as if fallback is disabled when the metrics spec target type is not average value metric", func() {
-		so := buildScaledObject(
-			&kedav1alpha1.Fallback{
-				FailureThreshold: int32(3),
-				Replicas:         int32(10),
-			}, nil,
-		)
-
-		qty := resource.NewQuantity(int64(3), resource.DecimalSI)
-		metricsSpec := v2.MetricSpec{
-			External: &v2.ExternalMetricSource{
-				Target: v2.MetricTarget{
-					Type:  v2.UtilizationMetricType,
-					Value: qty,
-				},
-			},
-		}
-
-		isEnabled := isFallbackEnabled(so, metricsSpec)
-		Expect(isEnabled).Should(BeFalse())
-	})
-
 	It("should ignore error if we fail to update kubernetes status", func() {
 		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
 		startingNumberOfFailures := int32(3)

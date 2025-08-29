@@ -18,12 +18,15 @@ package fallback
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strconv"
 
 	v2 "k8s.io/api/autoscaling/v2"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/scale"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,22 +38,8 @@ import (
 
 var log = logf.Log.WithName("fallback")
 
-func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) bool {
-	if scaledObject.Spec.Fallback == nil {
-		return false
-	}
-
-	// If we are using ScalingModifiers, we only care whether its metric type is AverageValue (or not not set -> default, which is AverageValue).
-	// If not, test the type of metricSpec passed.
-	if scaledObject.IsUsingModifiers() && (scaledObject.Spec.Advanced.ScalingModifiers.MetricType != v2.AverageValueMetricType && scaledObject.Spec.Advanced.ScalingModifiers.MetricType != "") {
-		log.V(0).Info("Fallback can only be enabled for scalingModifiers with metric of type AverageValue", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "scalingModifiers.MetricType", scaledObject.Spec.Advanced.ScalingModifiers.MetricType)
-		return false
-	} else if !scaledObject.IsUsingModifiers() && metricSpec.External.Target.Type != v2.AverageValueMetricType {
-		log.V(0).Info("Fallback can only be enabled for triggers with metric of type AverageValue", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "metricSpec.External.Target.Type", metricSpec.External.Target.Type)
-		return false
-	}
-
-	return true
+func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject) bool {
+	return scaledObject.Spec.Fallback != nil
 }
 
 func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, scaleClient scale.ScalesGetter, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) ([]external_metrics.ExternalMetricValue, bool, error) {
@@ -65,7 +54,7 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, sc
 		healthStatus.Status = kedav1alpha1.HealthStatusHappy
 		status.Health[metricName] = *healthStatus
 
-		updateStatus(ctx, client, scaledObject, status, metricSpec)
+		updateStatus(ctx, client, scaledObject, status)
 
 		return metrics, false, nil
 	}
@@ -74,10 +63,10 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, sc
 	*healthStatus.NumberOfFailures++
 	status.Health[metricName] = *healthStatus
 
-	updateStatus(ctx, client, scaledObject, status, metricSpec)
+	updateStatus(ctx, client, scaledObject, status)
 
 	switch {
-	case !isFallbackEnabled(scaledObject, metricSpec):
+	case !isFallbackEnabled(scaledObject):
 		return nil, false, suppressedError
 	case !HasValidFallback(scaledObject):
 		log.Info("Failed to validate ScaledObject Spec. Please check that parameters are positive integers", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
@@ -92,7 +81,13 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, sc
 				return nil, false, suppressedError
 			}
 		}
-		return doFallback(scaledObject, metricSpec, metricName, currentReplicas, suppressedError), true, nil
+
+		l := doFallback(ctx, client, scaleClient, scaledObject, metricSpec, metricName, currentReplicas, suppressedError)
+		if l == nil {
+			return l, false, fmt.Errorf("error performing fallback")
+		}
+		return l, true, nil
+
 	default:
 		return nil, false, suppressedError
 	}
@@ -119,46 +114,109 @@ func HasValidFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
 		modifierChecking
 }
 
-func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, currentReplicas int32, suppressedError error) []external_metrics.ExternalMetricValue {
+// IsPodReady returns true if a pod is ready; false otherwise.
+func IsPodReady(pod *v1.Pod) bool {
+	if pod != nil {
+		for _, c := range pod.Status.Conditions {
+			if c.Type == v1.PodReady {
+				return c.Status == v1.ConditionTrue
+			}
+		}
+	}
+	return false
+}
+
+// Similar to how it's done in HPA's code: https://github.com/kubernetes/kubernetes/blob/091f87c10bc3532041b77a783a5f832de5506dc8/pkg/controller/podautoscaler/replica_calculator.go#L323
+func getReadyReplicasCount(ctx context.Context, client runtimeclient.Client, scaleClient scale.ScalesGetter, scaledObject *kedav1alpha1.ScaledObject) (int32, error) {
+	if scaledObject == nil || scaledObject.Spec.ScaleTargetRef == nil || scaledObject.Status.ScaleTargetGVKR == nil {
+		return -1, fmt.Errorf("")
+	}
+
+	scale, err := scaleClient.Scales(scaledObject.Namespace).Get(ctx, scaledObject.Status.ScaleTargetGVKR.GroupResource(), scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+	if err != nil {
+		return -1, err
+	}
+
+	parsedSelector, err := labels.Parse(scale.Status.Selector)
+	if err != nil {
+		return -1, err
+	}
+
+	podList := v1.PodList{}
+	err = client.List(ctx, &podList, runtimeclient.InNamespace(scaledObject.Namespace), runtimeclient.MatchingLabelsSelector{Selector: parsedSelector})
+	if err != nil {
+		return -1, err
+	}
+
+	var readyPodCount int32
+	for _, pod := range podList.Items {
+		if pod.Status.Phase == v1.PodRunning && IsPodReady(&pod) {
+			readyPodCount++
+		}
+	}
+
+	return readyPodCount, nil
+}
+
+func doFallback(ctx context.Context, client runtimeclient.Client, scaleClient scale.ScalesGetter, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, currentReplicas int32, suppressedError error) []external_metrics.ExternalMetricValue {
 	fallbackBehavior := scaledObject.Spec.Fallback.Behavior
 	fallbackReplicas := int64(scaledObject.Spec.Fallback.Replicas)
-	var replicas int64
+	var replicas float64
 
 	switch fallbackBehavior {
 	case kedav1alpha1.FallbackBehaviorStatic:
-		replicas = fallbackReplicas
+		replicas = float64(fallbackReplicas)
 	case kedav1alpha1.FallbackBehaviorCurrentReplicas:
-		replicas = int64(currentReplicas)
+		replicas = float64(currentReplicas)
 	case kedav1alpha1.FallbackBehaviorCurrentReplicasIfHigher:
 		currentReplicasCount := int64(currentReplicas)
 		if currentReplicasCount > fallbackReplicas {
-			replicas = currentReplicasCount
+			replicas = float64(currentReplicasCount)
 		} else {
-			replicas = fallbackReplicas
+			replicas = float64(fallbackReplicas)
 		}
 	case kedav1alpha1.FallbackBehaviorCurrentReplicasIfLower:
 		currentReplicasCount := int64(currentReplicas)
 		if currentReplicasCount < fallbackReplicas {
-			replicas = currentReplicasCount
+			replicas = float64(currentReplicasCount)
 		} else {
-			replicas = fallbackReplicas
+			replicas = float64(fallbackReplicas)
 		}
 	default:
-		replicas = fallbackReplicas
+		replicas = float64(fallbackReplicas)
 	}
 
-	var normalisationValue int64
+	// If the metricType is Value, we get the number of readyReplicas, and divide replicas by it.
+	if (!scaledObject.IsUsingModifiers() && metricSpec.External.Target.Type == v2.ValueMetricType) ||
+		(scaledObject.IsUsingModifiers() && scaledObject.Spec.Advanced.ScalingModifiers.MetricType == v2.ValueMetricType) {
+		readyReplicas, err := getReadyReplicasCount(ctx, client, scaleClient, scaledObject)
+		if err != nil {
+			log.Error(err, "failed to do fallback for metric of type Value", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "metricName", metricName)
+			return nil
+		}
+		if readyReplicas == 0 {
+			log.Error(fmt.Errorf("readyReplicas is zero, cannot do fallback"), "failed to do fallback for metric of type Value", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "metricName", metricName)
+			return nil
+		}
+		replicas /= float64(readyReplicas)
+	}
+
+	var normalisationValue float64
 	if !scaledObject.IsUsingModifiers() {
-		normalisationValue = int64(metricSpec.External.Target.AverageValue.AsApproximateFloat64())
+		if metricSpec.External.Target.Type == v2.AverageValueMetricType {
+			normalisationValue = metricSpec.External.Target.AverageValue.AsApproximateFloat64()
+		} else if metricSpec.External.Target.Type == v2.ValueMetricType {
+			normalisationValue = metricSpec.External.Target.Value.AsApproximateFloat64()
+		}
 	} else {
-		value, _ := strconv.ParseInt(scaledObject.Spec.Advanced.ScalingModifiers.Target, 10, 64)
+		value, _ := strconv.ParseFloat(scaledObject.Spec.Advanced.ScalingModifiers.Target, 64)
 		normalisationValue = value
 		metricName = kedav1alpha1.CompositeMetricName
 	}
 
 	metric := external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewMilliQuantity(normalisationValue*1000*replicas, resource.DecimalSI),
+		Value:      *resource.NewMilliQuantity(int64(normalisationValue*1000*replicas), resource.DecimalSI),
 		Timestamp:  metav1.Now(),
 	}
 	fallbackMetrics := []external_metrics.ExternalMetricValue{metric}
@@ -173,10 +231,10 @@ func doFallback(scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpe
 	return fallbackMetrics
 }
 
-func updateStatus(ctx context.Context, client runtimeclient.Client, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus, metricSpec v2.MetricSpec) {
+func updateStatus(ctx context.Context, client runtimeclient.Client, scaledObject *kedav1alpha1.ScaledObject, status *kedav1alpha1.ScaledObjectStatus) {
 	patch := runtimeclient.MergeFrom(scaledObject.DeepCopy())
 
-	if !isFallbackEnabled(scaledObject, metricSpec) || !HasValidFallback(scaledObject) {
+	if !isFallbackEnabled(scaledObject) || !HasValidFallback(scaledObject) {
 		log.V(1).Info("Fallback is not enabled, hence skipping the health update to the scaledobject", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 		return
 	}
