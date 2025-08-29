@@ -369,17 +369,21 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	previousJobs := make(map[string][]Job)
 	previousWfrs := make(map[string]map[string]*WorkflowRuns)
 	rateLimit := RateLimit{}
+	previousQueueLength := int64(0)
+	previousQueueLengthTime := time.Time{}
 
 	return &githubRunnerScaler{
-		metricType:    metricType,
-		metadata:      meta,
-		httpClient:    httpClient,
-		logger:        InitializeLogger(config, "github_runner_scaler"),
-		etags:         etags,
-		previousRepos: previousRepos,
-		previousJobs:  previousJobs,
-		previousWfrs:  previousWfrs,
-		rateLimit:     rateLimit,
+		metricType:              metricType,
+		metadata:                meta,
+		httpClient:              httpClient,
+		logger:                  InitializeLogger(config, "github_runner_scaler"),
+		etags:                   etags,
+		previousRepos:           previousRepos,
+		previousJobs:            previousJobs,
+		previousWfrs:            previousWfrs,
+		rateLimit:               rateLimit,
+		previousQueueLength:     previousQueueLength,
+		previousQueueLengthTime: previousQueueLengthTime,
 	}, nil
 }
 
@@ -662,13 +666,21 @@ func canRunnerMatchLabels(jobLabels []string, runnerLabels []string, noDefaultLa
 
 // GetWorkflowQueueLength returns the number of workflow jobs in the queue
 func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64, error) {
-	if s.metadata.EnableBackoff && s.rateLimit.Remaining == 0 && !s.rateLimit.ResetTime.IsZero() && time.Now().Before(s.rateLimit.ResetTime) {
-		s.logger.V(1).Info(fmt.Sprintf("Rate limit exceeded, resets at %s, returning previous queue length %d, last successful queue length check %s", s.rateLimit.ResetTime, s.previousQueueLength, s.previousQueueLengthTime))
-		return s.previousQueueLength, nil
-	}
-	if s.metadata.EnableBackoff && !s.rateLimit.RetryAfterTime.IsZero() && time.Now().Before(s.rateLimit.RetryAfterTime) {
-		s.logger.V(1).Info(fmt.Sprintf("Rate limit exceeded, retry after %s, returning previous queue length %d, last successful queue length check %s", s.rateLimit.RetryAfterTime, s.previousQueueLength, s.previousQueueLengthTime))
-		return s.previousQueueLength, nil
+	if s.metadata.EnableBackoff {
+		var backoffUntilTime time.Time
+		if s.rateLimit.Remaining == 0 && !s.rateLimit.ResetTime.IsZero() && time.Now().Before(s.rateLimit.ResetTime) {
+			backoffUntilTime = s.rateLimit.ResetTime
+		} else if !s.rateLimit.RetryAfterTime.IsZero() && time.Now().Before(s.rateLimit.RetryAfterTime) {
+			backoffUntilTime = s.rateLimit.RetryAfterTime
+		}
+		if !backoffUntilTime.IsZero() {
+			if !s.previousQueueLengthTime.IsZero() {
+				s.logger.V(1).Info(fmt.Sprintf("Github API rate limit exceeded, returning previous queue length %d, last successful queue length check %s, backing off until %s", s.previousQueueLength, s.previousQueueLengthTime, backoffUntilTime))
+				return s.previousQueueLength, nil
+			}
+
+			return -1, fmt.Errorf("github API rate limit exceeded, no valid previous queue length available, API available at %s", backoffUntilTime)
+		}
 	}
 
 	var repos []string
@@ -713,13 +725,15 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 		}
 	}
 
-	s.previousQueueLength = queueCount
-	s.previousQueueLengthTime = time.Now()
+	if s.metadata.EnableBackoff {
+		s.previousQueueLength = queueCount
+		s.previousQueueLengthTime = time.Now()
+	}
+
 	return queueCount, nil
 }
 
 func (s *githubRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-
 	queueLen, err := s.GetWorkflowQueueLength(ctx)
 	if err != nil {
 		s.logger.Error(err, "error getting workflow queue length")
