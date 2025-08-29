@@ -9,6 +9,7 @@ rules:
   resources:
   - configmaps
   - configmaps/status
+  - endpoints
   - external
   - pods
   - secrets
