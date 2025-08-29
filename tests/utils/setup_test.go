@@ -219,7 +219,7 @@ func TestSetupOpentelemetryComponents(t *testing.T) {
 
 func TestDeployKEDA(t *testing.T) {
 	// default to true
-	if InstallKeda == StringFalse {
+	if !InstallKeda {
 		t.Skip("skipping as requested -- KEDA assumed to be already installed")
 	}
 	KubeClient = GetKubernetesClient(t)
@@ -239,7 +239,17 @@ func TestDeployKEDA(t *testing.T) {
 	_, err := KubeClient.CoreV1().Secrets(KEDANamespace).Create(context.Background(), secret, v1.CreateOptions{})
 	require.NoErrorf(t, err, "error deploying custom CA - %s", err)
 
-	out, err := ExecuteCommandWithDir("make deploy", "../..")
+	envVars := make(map[string]string)
+	if KEDATestConfig.KEDA.ImageRegistry != "" {
+		envVars["IMAGE_REGISTRY"] = KEDATestConfig.KEDA.ImageRegistry
+	}
+	if KEDATestConfig.KEDA.ImageRepo != "" {
+		envVars["IMAGE_REPO"] = KEDATestConfig.KEDA.ImageRepo
+	}
+
+	// We shouldn't duplicate the defaults that exist in the Makefile.
+	// If the config file fields are not set, don't override. The Makefile will use default values.
+	out, err := ExecuteCommandWithDirAndEnv("make deploy", "../..", envVars)
 	require.NoErrorf(t, err, "error deploying KEDA - %s", err)
 
 	t.Log(string(out))
@@ -248,7 +258,7 @@ func TestDeployKEDA(t *testing.T) {
 
 func TestVerifyKEDA(t *testing.T) {
 	// default to true
-	if InstallKeda == StringFalse {
+	if !InstallKeda {
 		t.Skip("skipping as requested -- KEDA assumed to be already installed")
 	}
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, KubeClient, KEDAOperator, KEDANamespace, 1, 30, 6),
@@ -261,7 +271,7 @@ func TestVerifyKEDA(t *testing.T) {
 
 func TestSetUpStrimzi(t *testing.T) {
 	// default to true
-	if InstallKafka == StringFalse {
+	if !InstallKafka {
 		t.Skip("skipping as requested -- Kafka assumed to be unneeded or already installed")
 	}
 	t.Log("--- installing kafka operator ---")
@@ -285,7 +295,7 @@ func TestSetUpStrimzi(t *testing.T) {
 
 func TestVerifyStrimzi(t *testing.T) {
 	// default to true
-	if InstallKafka == StringFalse {
+	if !InstallKafka {
 		t.Skip("skipping as requested -- Kafka assumed to be unneeded or already installed")
 	}
 	t.Log("--- verifying kafka operator is ready ---")

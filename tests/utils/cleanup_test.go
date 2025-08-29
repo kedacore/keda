@@ -14,8 +14,8 @@ import (
 )
 
 func TestRemoveKEDA(t *testing.T) {
-	// default to true
-	if InstallKeda == StringFalse {
+	// default to true, env var takes precedence over config
+	if !InstallKeda {
 		t.Skip("skipping as requested -- KEDA not installed via these tests")
 	}
 	out, err := ExecuteCommandWithDir("make undeploy", "../..")
@@ -94,7 +94,7 @@ func TestRemoveAzureManagedPrometheusComponents(t *testing.T) {
 
 func TestRemoveStrimzi(t *testing.T) {
 	// default to true
-	if InstallKafka == StringFalse {
+	if !InstallKafka {
 		t.Skip("skipping as requested -- Kafka not managed by E2E tests")
 	}
 	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall --namespace %s %s`,

@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log"
 	"math/rand"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -41,12 +43,16 @@ type TestResult struct {
 func main() {
 	ctx := context.Background()
 
+	setAbsoluteConfigPath()
+
 	//
 	// Detect test cases
 	//
-	e2eRegex := os.Getenv("E2E_TEST_REGEX")
-	if e2eRegex == "" {
-		e2eRegex = ".*_test.go"
+
+	e2eRegex, err := getE2eRegex()
+	if err != nil {
+		fmt.Printf("Error getting e2e regex: %v\n", err)
+		os.Exit(1)
 	}
 
 	regularTestFiles := getRegularTestFiles(e2eRegex)
@@ -57,6 +63,11 @@ func main() {
 	}
 
 	if len(os.Args) > 1 && os.Args[1] == "regex-check" {
+		return
+	}
+
+	if helper.KEDATestConfig.DryRun {
+		showDryRunOutput(regularTestFiles, sequentialTestFiles, e2eRegex)
 		return
 	}
 
@@ -391,4 +402,190 @@ func saveLogToFile(file string, lines []string) {
 			fmt.Print(err)
 		}
 	}
+}
+
+// getE2eRegex gets the regex to filter which tests to run.
+// If E2E_TEST_REGEX is set, it overrides and uses that regex.
+// If not, it uses a config to build a regex. If the config is nil, it uses the default regex which is to run all tests.
+func getE2eRegex() (string, error) {
+	// if there's a regex, use it
+	e2eRegex := os.Getenv("E2E_TEST_REGEX")
+	if e2eRegex != "" {
+		return e2eRegex, nil
+	}
+
+	return buildRegexFromConfig(helper.KEDATestConfig)
+}
+
+// buildRegexFromConfig builds a regex string from a TestConfig
+func buildRegexFromConfig(config helper.TestConfig) (string, error) {
+	var regexParts []string
+
+	// For each known category, we get all the available tests under the tests/category directory.
+	// We then filter the tests we actually run based on the config exclude and includes.
+	// Then we incrementally build a regex based on the filtered tests.
+	for _, category := range config.GetAllCategories() {
+		availableTests, err := getAvailableTests("tests/" + category)
+		if err != nil {
+			return "", fmt.Errorf("error getting %q tests: %w", category, err)
+		}
+
+		var supportedTests []string
+		if categoryConfig, exists := config.TestCategories[category]; exists {
+			supportedTests = filterTests(availableTests, categoryConfig)
+		} else {
+			// use all tests in the category if no config is specified
+			supportedTests = availableTests
+		}
+
+		if len(supportedTests) > 0 {
+			// go regex doesn't support negative lookaheads, so we need to explicily include the tests we want to run
+			regexParts = append(regexParts, fmt.Sprintf("%s/(%s)/.*", category, strings.Join(supportedTests, "|")))
+		}
+	}
+
+	if len(regexParts) == 0 {
+		return ".*_test.go", nil
+	}
+
+	return fmt.Sprintf("^tests/(%s)_test\\.go$", strings.Join(regexParts, "|")), nil
+}
+
+// getAvailableTests returns all available test suites/directories for a category, as a slice of strings
+func getAvailableTests(categoryPath string) ([]string, error) {
+	var tests []string
+
+	err := filepath.WalkDir(categoryPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		// don't count root directory
+		if path == categoryPath {
+			return nil
+		}
+		if d.Name() == "helper" || d.Name() == "helpers" {
+			return fs.SkipDir
+		}
+		// we don't want to include the root in the path for UX purposes
+		// this is so that users can just specify paths like
+		// "aws" or "aws/aws_cloudwatch" instead of tests/aws/aws_cloudwatch
+		returnPath := strings.TrimPrefix(path, categoryPath+string(filepath.Separator))
+		if returnPath == "" {
+			return nil
+		}
+		if d.IsDir() {
+			tests = append(tests, returnPath)
+		}
+		return nil
+	})
+
+	return tests, err
+}
+
+// filterTests returns the filtered tests as a slice of strings, based on the TestCategory
+func filterTests(tests []string, category helper.TestCategory) []string {
+	var result []string
+	// If the mode is include, we include the tests that are listed in category.Tests, including all if empty.
+	// If the mode is exclude, we exclude the tests that are listed in category.Tests, excluding all if empty.
+	switch category.Mode {
+	case helper.TestCategoryModeInclude:
+		if len(category.Tests) == 0 {
+			return tests
+		}
+		for _, test := range category.Tests {
+			if slices.Contains(tests, test) {
+				result = append(result, test)
+			}
+		}
+		return result
+	case helper.TestCategoryModeExclude:
+		if len(category.Tests) == 0 {
+			return []string{}
+		}
+		for _, test := range tests {
+			if !slices.Contains(category.Tests, test) {
+				result = append(result, test)
+			}
+		}
+		return result
+	default:
+		// because of TestConfig.Validate(), we should never get here
+		panic(fmt.Sprintf("invalid mode %q", category.Mode))
+	}
+}
+
+// setAbsoluteConfigPath converts the potentially relative path E2E_TEST_CONFIG environment variable to an absolute path and sets it.
+// This is because this process executes sub processes (setup_test.go, etc.) and will cause the relative paths to be incorrect.
+func setAbsoluteConfigPath() {
+	configPath := os.Getenv("E2E_TEST_CONFIG")
+	if configPath != "" {
+		absConfigPath, err := filepath.Abs(configPath)
+		if err != nil {
+			fmt.Printf("Error resolving config path: %v\n", err)
+			os.Exit(1)
+		}
+		os.Setenv("E2E_TEST_CONFIG", absConfigPath)
+	}
+}
+
+func showDryRunOutput(regularTestFiles, sequentialTestFiles []string, e2eRegex string) {
+	slices.Sort(regularTestFiles)
+	slices.Sort(sequentialTestFiles)
+
+	fmt.Println("##############################################")
+	fmt.Println("##############################################")
+	fmt.Println("DRY-RUN SUMMARY")
+	fmt.Println("##############################################")
+	fmt.Println("##############################################")
+
+	fmt.Printf("\nConverted test filter regex: %s\n", e2eRegex)
+	fmt.Printf("Total Regular Tests: %d\n", len(regularTestFiles))
+	fmt.Printf("Total Sequential Tests: %d\n", len(sequentialTestFiles))
+	fmt.Printf("Total Tests: %d\n", len(regularTestFiles)+len(sequentialTestFiles))
+
+	fmt.Println("\nTests to be executed:")
+
+	if len(regularTestFiles) > 0 {
+		fmt.Println("├── Regular Tests (concurrent)")
+		for i, file := range regularTestFiles {
+			prefix := "│   ├── "
+			if i == len(regularTestFiles)-1 && len(sequentialTestFiles) == 0 {
+				prefix = "│   └── "
+			}
+			fmt.Printf("%s%s\n", prefix, file)
+		}
+	}
+
+	if len(sequentialTestFiles) > 0 {
+		fmt.Println("├── Sequential Tests")
+		for i, file := range sequentialTestFiles {
+			prefix := "│   ├── "
+			if i == len(sequentialTestFiles)-1 {
+				prefix = "│   └── "
+			}
+			fmt.Printf("%s%s\n", prefix, file)
+		}
+	}
+
+	// Show configuration summary
+	fmt.Println("\nConfiguration:")
+	fmt.Printf("├── Install KEDA: %t\n", helper.KEDATestConfig.KEDA.InstallKeda)
+	fmt.Printf("├── Install Kafka: %t\n", helper.KEDATestConfig.KEDA.InstallKafka)
+	fmt.Printf("├── Image Registry: %s\n", helper.KEDATestConfig.KEDA.ImageRegistry)
+	fmt.Printf("├── Image Repo: %s\n", helper.KEDATestConfig.KEDA.ImageRepo)
+
+	// Show test categories configuration
+	if len(helper.KEDATestConfig.TestCategories) > 0 {
+		fmt.Println("\nTest Categories:")
+		for category, config := range helper.KEDATestConfig.TestCategories {
+			fmt.Printf("├── %s: %s", category, config.Mode)
+			if len(config.Tests) > 0 {
+				fmt.Printf(" (%s)\n", strings.Join(config.Tests, ", "))
+			} else {
+				fmt.Println()
+			}
+		}
+	}
+
+	fmt.Println("\nThis was a dry-run. No actual tests were executed.")
 }
