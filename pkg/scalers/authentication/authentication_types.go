@@ -150,7 +150,7 @@ func (c *Config) Validate() error {
 	if c.EnabledBasicAuth() && c.Username == "" {
 		return fmt.Errorf("username is required when basic auth is enabled")
 	}
-	if c.EnabledTLS() && (c.Cert == "" || c.Key == "" || c.CA == "") {
+	if c.EnabledTLS() && (c.Cert == "" || c.Key == "") {
 		return fmt.Errorf("cert and key are required when tls auth is enabled")
 	}
 	if c.EnabledOAuth() && (c.OauthTokenURI == "" || c.ClientID == "" || c.ClientSecret == "") {
