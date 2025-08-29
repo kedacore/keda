@@ -32,7 +32,7 @@ required for a consistent and seamless developer experience.
 
 This means you don't have to install and configure your dev environment as the container handles this for you.
 
-To get started install [VSCode](https://code.visualstudio.com/) and the [Dev Containers extensions](
+To get started, install [VSCode](https://code.visualstudio.com/) and the [Dev Containers extensions](
 https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 
 Clone the repo and launch code:
@@ -50,7 +50,7 @@ terminal to run:
 make build
 ```
 
-> Note: The first time you run the container it will take some time to build and install the tooling. The image
+> Note: The first time you run the container, it will take some time to build and install the tooling. The image
 > will be cached so this is only required the first time.
 
 ### Locally directly
@@ -67,7 +67,7 @@ make build
 
 If the build process fails due to some "checksum mismatch" errors, make sure that `GOPROXY` and `GOSUMDB`
  environment variables are set properly.
-With Go installation on Fedora, for example, it could happen they are wrong.
+With Go installation on Fedora, for example, it could happen if they are wrong.
 
 ```bash
 go env GOPROXY GOSUMDB
@@ -75,7 +75,7 @@ direct
 off
 ```
 
-If not set properly you can just run.
+If not set properly, you can just run.
 
 ```bash
 go env -w GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org
@@ -86,9 +86,18 @@ go env -w GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org
 ### Custom KEDA locally outside cluster
 
 The Operator SDK framework allows you to run the operator/controller locally outside the cluster without
-a need of building an image. This should help during development/debugging of KEDA Operator or Scalers.
+a need to build an image. This should help during development/debugging of KEDA Operator or Scalers.
 > Note: This approach works only on Linux or macOS.
 
+KEDA uses certificates to encrypt any HTTP communication. Inside the cluster, certificates are mounted from a secret, but local debugging that isn't possible, so the generation of those certificates is required (or KEDA won't start).
+
+All components inspect the folder `/certs` for any certificates inside it. Argument `--cert-dir` can be used to specify another folder to be used as a source for certificates. You can generate the certificates (assuming the default path) using `openssl`:
+
+```bash
+mkdir -p /certs
+openssl req -newkey rsa:2048 -subj '/CN=localhost' -addext "subjectAltName = DNS:localhost" -nodes -keyout /certs/tls.key -x509 -days 3650 -out /certs/tls.crt
+cp /certs/tls.crt /certs/ca.crt
+```
 
 To have fully operational KEDA we need to deploy Metrics Server first.
 
@@ -128,16 +137,7 @@ to deploy it as part of KEDA. Do the following:
     ```
 
 ## Debugging with VS Code
-
-KEDA uses certificates to encrypt any HTTP communication. Inside the cluster, certificates are mounted from a secret but locally debugging that isn't possible, so the generation of those certificates is required (or KEDA won't start).
-
-All components inspect the folder `/certs` for any certificates inside it. Argument `--cert-dir` can be used to specify another folder to be used as a source for certificates. You can generate the certificates (assuming the default path) using `openssl`:
-
-```bash
-mkdir -p /certs
-openssl req -newkey rsa:2048 -subj '/CN=localhost' -addext "subjectAltName = DNS:localhost" -nodes -keyout /certs/tls.key -x509 -days 3650 -out /certs/tls.crt
-cp /certs/tls.crt /certs/ca.crt
-```
+Please follow until step 3 in [Custom KEDA locally outside cluster](#custom-keda-locally-outside-cluster) to set up the certificates and CRDs
 
 ### Operator
 
@@ -232,7 +232,7 @@ subjects:
   namespace: default
 ```
 
-**NOTE:** This granting allows to any unauthenticated user to do any operation in external metrics API, this is potentially unsecure, and we strongly discourage doing it on production clusters.
+**NOTE:** This granting allows any unauthenticated user to do any operation in external metrics API, this is potentially unsecure, and we strongly discourage doing it on production clusters.
 
 You can query list metrics executing `curl --insecure https://localhost:6443/apis/external.metrics.k8s.io/v1beta1/` or query a specific metrics value executing `curl --insecure https://localhost:6443/apis/external.metrics.k8s.io/v1beta1/namespaces/NAMESPACE/METRIC_NAME` ([similar to the process using `kubectl get --raw`](https://keda.sh/docs/latest/operate/metrics-server/#querying-metrics-exposed-by-keda-metrics-server) but using `curl --insecure https://localhost:6443` instead)
 
@@ -266,7 +266,7 @@ Follow these instructions if you want to debug the KEDA webhook using VS Code.
    }
    ```
    Refer to [this](https://code.visualstudio.com/docs/editor/debugging) for more information about debugging with VS Code.
-2. Expose your local instance to internet. If you can't expose it directly, you can use something like [localtunnel](https://theboroer.github.io/localtunnel-www/) using the command `lt --port 9443 --local-https --allow-invalid-cert` after installing the tool.
+2. Expose your local instance to the internet. If you can't expose it directly, you can use something like [localtunnel](https://theboroer.github.io/localtunnel-www/) using the command `lt --port 9443 --local-https --allow-invalid-cert` after installing the tool.
 
 3. Update the `admissing_webhooks.yaml` in `config/webhooks`, replacing the section (but not committing this change)
    ```yaml
@@ -340,7 +340,7 @@ rfc3339nano - 2022-05-24T12:10:19.411Z
 
 ### Metrics Server logging
 
-The Metrics Server logging can be configured in a similar way to the KEDA Operator and Admission Webhooks. The configuration is done in the `config/metrics-server/deployment.yaml` file.
+The Metrics Server logging can be configured similarly to the KEDA Operator and Admission Webhooks. The configuration is done in the `config/metrics-server/deployment.yaml` file.
 
 To change the logging format, find the `--zap-encoder=` argument and modify its value. The allowed values are `json` and `console`. The default value is `console`.
 
