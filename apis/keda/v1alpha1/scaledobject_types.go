@@ -57,6 +57,7 @@ const ScaledObjectExcludedLabelsAnnotation = "scaledobject.keda.sh/hpa-excluded-
 const ValidationsHpaOwnershipAnnotation = "validations.keda.sh/hpa-ownership"
 const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
 const PausedAnnotation = "autoscaling.keda.sh/paused"
+const PausedScaleInAnnotation = "autoscaling.keda.sh/paused-scale-in"
 const FallbackBehaviorStatic = "static"
 const FallbackBehaviorCurrentReplicas = "currentReplicas"
 const FallbackBehaviorCurrentReplicasIfHigher = "currentReplicasIfHigher"
@@ -230,16 +231,25 @@ func (so *ScaledObject) NeedToBePausedByAnnotation() bool {
 		return so.Status.PausedReplicaCount != nil
 	}
 
-	pausedAnnotationValue, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
-	if !pausedAnnotationFound {
+	return getBoolAnnotation(so, PausedAnnotation)
+}
+
+// NeedToPauseScaleIn checks whether Scale In actions for a ScaledObject need to be blocked based on the PausedScaleIn annotation
+func (so *ScaledObject) NeedToPauseScaleIn() bool {
+	return getBoolAnnotation(so, PausedScaleInAnnotation)
+}
+
+func getBoolAnnotation(so *ScaledObject, annotation string) bool {
+	value, found := so.GetAnnotations()[annotation]
+	if !found {
 		return false
 	}
-	shouldPause, err := strconv.ParseBool(pausedAnnotationValue)
+	boolVal, err := strconv.ParseBool(value)
 	if err != nil {
-		// if annotation value is not a boolean, we assume user wants to pause the ScaledObject
+		// if annotation value is not a boolean, we assume true
 		return true
 	}
-	return shouldPause
+	return boolVal
 }
 
 // IsUsingModifiers determines whether scalingModifiers are defined or not
