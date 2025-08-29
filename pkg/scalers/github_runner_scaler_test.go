@@ -503,48 +503,6 @@ func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithNotModified(t *testing
 	}
 }
 
-func TestNewGitHubRunnerScaler_ShouldWait_ResetTime(t *testing.T) {
-	mockGitHubRunnerScaler := githubRunnerScaler{
-		rateLimit: RateLimit{
-			Remaining:      0,
-			ResetTime:      time.Now().Add(15 * time.Second),
-			RetryAfterTime: time.Now(),
-		},
-	}
-
-	wait, waitDuration := mockGitHubRunnerScaler.shouldWaitForRateLimit()
-
-	if !wait {
-		t.Fail()
-	}
-
-	expectedWait := 15 * time.Second
-	if waitDuration < expectedWait-1*time.Second || waitDuration > expectedWait+1*time.Second {
-		t.Fail()
-	}
-}
-
-func TestNewGitHubRunnerScaler_ShouldWait_RetryAfterTime(t *testing.T) {
-	mockGitHubRunnerScaler := githubRunnerScaler{
-		rateLimit: RateLimit{
-			Remaining:      0,
-			ResetTime:      time.Now(),
-			RetryAfterTime: time.Now().Add(15 * time.Second),
-		},
-	}
-
-	wait, waitDuration := mockGitHubRunnerScaler.shouldWaitForRateLimit()
-
-	if !wait {
-		t.Fail()
-	}
-
-	expectedWait := 15 * time.Second
-	if waitDuration < expectedWait-1*time.Second || waitDuration > expectedWait+1*time.Second {
-		t.Fail()
-	}
-}
-
 func TestNewGitHubRunnerScaler_404(t *testing.T) {
 	var apiStub = apiStubHandler404()
 
@@ -831,6 +789,41 @@ func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledRepos_NoRate(t *testi
 	}
 
 	if !strings.HasPrefix(err.Error(), "GitHub API rate limit exceeded") {
+		t.Fail()
+	}
+}
+
+func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithRateLimitBackoff(t *testing.T) {
+	// First call will set previous queue length
+	apiStub := apiStubHandler(true, false)
+	meta := getGitHubTestMetaData(apiStub.URL)
+	meta.EnableBackoff = true
+
+	scaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+	scaler.metadata.Repos = []string{"test"}
+	scaler.metadata.Labels = []string{"foo", "bar"}
+
+	if queueLen, err := scaler.GetWorkflowQueueLength(context.Background()); err != nil {
+		fmt.Println(err)
+		t.Fail()
+	} else if queueLen != 1 {
+		fmt.Printf("Expected queue length of 1 got %d\n", queueLen)
+		t.Fail()
+	}
+
+	// Second call simulating that there is a rate limit
+	// should return previous queue length
+	scaler.rateLimit.Remaining = 0
+	scaler.rateLimit.ResetTime = time.Now().Add(5 * time.Minute)
+
+	if queueLen, err := scaler.GetWorkflowQueueLength(context.Background()); err != nil {
+		fmt.Println(err)
+		t.Fail()
+	} else if queueLen != 1 {
+		fmt.Printf("Expected queue length of 1 after rate limit backoff got %d\n", queueLen)
 		t.Fail()
 	}
 }
