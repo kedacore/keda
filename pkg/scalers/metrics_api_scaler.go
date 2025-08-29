@@ -39,78 +39,10 @@ type metricsAPIScalerMetadata struct {
 	ValueLocation         string    `keda:"name=valueLocation,order=triggerMetadata"`
 	UnsafeSsl             bool      `keda:"name=unsafeSsl,order=triggerMetadata,default=false"`
 
-	// Auth method configuration
-	AuthMode string `keda:"name=authMode,order=triggerMetadata;authParams,optional"`
-
-	// apiKeyAuth
-	enableAPIKeyAuth bool
-	Method           string `keda:"name=method,order=triggerMetadata;authParams,default=header,enum=header;query"`
-	// keyParamName  is either header key or query param used for passing apikey
-	// default header is "X-API-KEY", default query param is "api_key"
-	KeyParamName string `keda:"name=keyParamName,order=triggerMetadata;authParams,optional"`
-	APIKey       string `keda:"name=apiKey,order=authParams,optional"`
-
-	// base auth
-	enableBaseAuth bool
-	Username       string `keda:"name=username,order=authParams,optional"`
-	Password       string `keda:"name=password,order=authParams,optional"` // +optional
-
-	// client certification
-	enableTLS bool
-	Cert      string `keda:"name=cert,order=authParams,optional"`
-	Key       string `keda:"name=key,order=authParams,optional"`
-	CA        string `keda:"name=ca,order=authParams,optional"`
-
-	// bearer
-	enableBearerAuth bool
-	BearerToken      string `keda:"name=token,order=authParams,optional"`
+	// Authentication parameters for connecting to the metrics API
+	MetricsAPIAuth *authentication.Config `keda:"optional"`
 
 	triggerIndex int
-}
-
-func (m *metricsAPIScalerMetadata) Validate() error {
-	// Handle authentication based on authMode and set enable flags
-	if m.AuthMode != "" {
-		authModes := strings.Split(m.AuthMode, ",")
-		for _, authMode := range authModes {
-			authType := authentication.Type(strings.TrimSpace(authMode))
-
-			switch authType {
-			case authentication.APIKeyAuthType:
-				if m.APIKey == "" {
-					return errors.New("no apikey provided")
-				}
-				m.enableAPIKeyAuth = true
-			case authentication.BasicAuthType:
-				if m.Username == "" {
-					return errors.New("no username given")
-				}
-				m.enableBaseAuth = true
-			case authentication.TLSAuthType:
-				if m.CA == "" {
-					return errors.New("no ca given")
-				}
-				if m.Cert == "" {
-					return errors.New("no cert given")
-				}
-				if m.Key == "" {
-					return errors.New("no key given")
-				}
-				m.enableTLS = true
-			case authentication.BearerAuthType:
-				if m.BearerToken == "" {
-					return errors.New("no token provided")
-				}
-				m.enableBearerAuth = true
-			case "":
-				// Skip empty auth type
-				continue
-			default:
-				return fmt.Errorf("err incorrect value for authMode is given: %s", authMode)
-			}
-		}
-	}
-	return nil
 }
 
 const (
@@ -142,12 +74,13 @@ func NewMetricsAPIScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.UnsafeSsl)
 
-	if meta.enableTLS || len(meta.CA) > 0 {
-		config, err := kedautil.NewTLSConfig(meta.Cert, meta.Key, meta.CA, meta.UnsafeSsl)
+	// Handle TLS configuration with authentication config
+	if meta.MetricsAPIAuth != nil && meta.MetricsAPIAuth.EnabledTLS() {
+		tlsConfig, err := kedautil.NewTLSConfig(meta.MetricsAPIAuth.Cert, meta.MetricsAPIAuth.Key, meta.MetricsAPIAuth.CA, meta.UnsafeSsl)
 		if err != nil {
 			return nil, err
 		}
-		httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(config)
+		httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
 	}
 
 	return &metricsAPIScaler{
@@ -411,13 +344,13 @@ func getMetricAPIServerRequest(ctx context.Context, meta *metricsAPIScalerMetada
 	var requestURL string
 
 	// Handle API Key as query parameter if needed
-	if meta.enableAPIKeyAuth && meta.Method == methodValueQuery {
+	if meta.MetricsAPIAuth != nil && meta.MetricsAPIAuth.EnabledAPIKeyAuth() && meta.MetricsAPIAuth.Method == methodValueQuery {
 		url, _ := neturl.Parse(meta.URL)
 		queryString := url.Query()
-		if meta.KeyParamName == "" {
-			queryString.Set("api_key", meta.APIKey)
+		if meta.MetricsAPIAuth.KeyParamName == "" {
+			queryString.Set("api_key", meta.MetricsAPIAuth.APIKey)
 		} else {
-			queryString.Set(meta.KeyParamName, meta.APIKey)
+			queryString.Set(meta.MetricsAPIAuth.KeyParamName, meta.MetricsAPIAuth.APIKey)
 		}
 		url.RawQuery = queryString.Encode()
 		requestURL = url.String()
@@ -432,22 +365,22 @@ func getMetricAPIServerRequest(ctx context.Context, meta *metricsAPIScalerMetada
 	}
 
 	// Add API Key as header if needed
-	if meta.enableAPIKeyAuth && meta.Method != methodValueQuery {
-		if meta.KeyParamName == "" {
-			req.Header.Add("X-API-KEY", meta.APIKey)
+	if meta.MetricsAPIAuth != nil && meta.MetricsAPIAuth.EnabledAPIKeyAuth() && meta.MetricsAPIAuth.Method != methodValueQuery {
+		if meta.MetricsAPIAuth.KeyParamName == "" {
+			req.Header.Add("X-API-KEY", meta.MetricsAPIAuth.APIKey)
 		} else {
-			req.Header.Add(meta.KeyParamName, meta.APIKey)
+			req.Header.Add(meta.MetricsAPIAuth.KeyParamName, meta.MetricsAPIAuth.APIKey)
 		}
 	}
 
 	// Add Basic Auth if enabled
-	if meta.enableBaseAuth {
-		req.SetBasicAuth(meta.Username, meta.Password)
+	if meta.MetricsAPIAuth != nil && meta.MetricsAPIAuth.EnabledBasicAuth() {
+		req.SetBasicAuth(meta.MetricsAPIAuth.Username, meta.MetricsAPIAuth.Password)
 	}
 
 	// Add Bearer token if enabled
-	if meta.enableBearerAuth {
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", meta.BearerToken))
+	if meta.MetricsAPIAuth != nil && meta.MetricsAPIAuth.EnabledBearerAuth() {
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", meta.MetricsAPIAuth.BearerToken))
 	}
 
 	return req, nil

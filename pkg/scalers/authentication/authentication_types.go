@@ -86,6 +86,13 @@ type OAuth struct {
 	EndpointParams url.Values `keda:"name=endpointParams, order=authParams"`
 }
 
+// APIKeyAuth is an API key authentication type
+type APIKeyAuth struct {
+	APIKey       string `keda:"name=apiKey, order=authParams"`
+	Method       string `keda:"name=method, order=authParams, default=header, enum=header;query"`
+	KeyParamName string `keda:"name=keyParamName, order=authParams, optional"`
+}
+
 // CustomAuth is a custom header authentication type
 type CustomAuth struct {
 	CustomAuthHeader string `keda:"name=customAuthHeader, order=authParams"`
@@ -94,13 +101,14 @@ type CustomAuth struct {
 
 // Config is the configuration for the authentication types
 type Config struct {
-	Modes []Type `keda:"name=authModes, order=triggerMetadata, enum=apiKey;basic;tls;bearer;custom;oauth, exclusiveSet=bearer;basic;oauth, optional"`
+	Modes []Type `keda:"name=authModes;authMode, order=triggerMetadata, enum=apiKey;basic;tls;bearer;custom;oauth, exclusiveSet=bearer;basic;oauth, optional"`
 
-	BearerToken string `keda:"name=bearerToken, order=authParams, optional"`
+	BearerToken string `keda:"name=bearerToken;token, order=authParams, optional"`
 	BasicAuth   `keda:"optional"`
 	CertAuth    `keda:"optional"`
 	OAuth       `keda:"optional"`
 	CustomAuth  `keda:"optional"`
+	APIKeyAuth  `keda:"optional"`
 }
 
 // Disabled returns true if no auth modes are enabled
@@ -124,6 +132,7 @@ func (c *Config) EnabledBasicAuth() bool  { return c.Enabled(BasicAuthType) }
 func (c *Config) EnabledBearerAuth() bool { return c.Enabled(BearerAuthType) }
 func (c *Config) EnabledOAuth() bool      { return c.Enabled(OAuthType) }
 func (c *Config) EnabledCustomAuth() bool { return c.Enabled(CustomAuthType) }
+func (c *Config) EnabledAPIKeyAuth() bool { return c.Enabled(APIKeyAuthType) }
 
 // GetBearerToken returns the bearer token with the Bearer prefix
 func (c *Config) GetBearerToken() string {
@@ -141,7 +150,7 @@ func (c *Config) Validate() error {
 	if c.EnabledBasicAuth() && c.Username == "" {
 		return fmt.Errorf("username is required when basic auth is enabled")
 	}
-	if c.EnabledTLS() && (c.Cert == "" || c.Key == "") {
+	if c.EnabledTLS() && (c.Cert == "" || c.Key == "" || c.CA == "") {
 		return fmt.Errorf("cert and key are required when tls auth is enabled")
 	}
 	if c.EnabledOAuth() && (c.OauthTokenURI == "" || c.ClientID == "" || c.ClientSecret == "") {
@@ -149,6 +158,9 @@ func (c *Config) Validate() error {
 	}
 	if c.EnabledCustomAuth() && (c.CustomAuthHeader == "" || c.CustomAuthValue == "") {
 		return fmt.Errorf("customAuthHeader and customAuthValue are required when custom auth is enabled")
+	}
+	if c.EnabledAPIKeyAuth() && c.APIKey == "" {
+		return fmt.Errorf("apiKey is required when apiKey auth is enabled")
 	}
 	return nil
 }
