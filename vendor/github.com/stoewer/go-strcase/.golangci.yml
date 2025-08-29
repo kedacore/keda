@@ -1,26 +1,19 @@
-run:
-  deadline: 10m
+version: "2"
 
 linters:
   enable:
-  - dupl
-  - goconst
-  - gocyclo
-  - godox
-  - gosec
-  - interfacer
-  - lll
-  - maligned
-  - misspell
-  - prealloc
-  - stylecheck
-  - unconvert
-  - unparam
-  - errcheck
-  - golint
-  - gofmt
-  disable: []
-  fast: false
+    - dupl
+    - goconst
+    - gocyclo
+    - godox
+    - gosec
+    - lll
+    - misspell
+    - prealloc
+    - staticcheck
+    - unconvert
+    - unparam
 
-issues:
-  exclude-use-default: false
+formatters:
+  enable:
+    - gofmt
