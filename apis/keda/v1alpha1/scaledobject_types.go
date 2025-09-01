@@ -213,11 +213,6 @@ func (so *ScaledObject) GenerateIdentifier() string {
 	return GenerateIdentifier("ScaledObject", so.Namespace, so.Name)
 }
 
-func (so *ScaledObject) HasPausedReplicaAnnotation() bool {
-	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
-	return pausedReplicasAnnotationFound
-}
-
 // HasPausedAnnotation returns whether this ScaledObject has PausedAnnotation or PausedReplicasAnnotation
 func (so *ScaledObject) HasPausedAnnotation() bool {
 	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
@@ -229,7 +224,7 @@ func (so *ScaledObject) HasPausedAnnotation() bool {
 func (so *ScaledObject) NeedToBePausedByAnnotation() bool {
 	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
 	if pausedReplicasAnnotationFound {
-		return so.Status.PausedReplicaCount != nil
+		return true
 	}
 
 	return getBoolAnnotation(so, PausedAnnotation)

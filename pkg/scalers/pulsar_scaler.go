@@ -192,7 +192,7 @@ func NewPulsarScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		if pulsarMetadata.pulsarAuth.EnableBearerAuth || pulsarMetadata.pulsarAuth.EnableBasicAuth {
 			// The pulsar broker redirects HTTP calls to other brokers and expects the Authorization header
 			client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-				if len(via) != 0 && via[0].Response.StatusCode == http.StatusTemporaryRedirect {
+				if len(via) != 0 && via[0] != nil && via[0].Response != nil && via[0].Response.StatusCode == http.StatusTemporaryRedirect {
 					addAuthHeaders(req, pulsarMetadata)
 				}
 				return nil
