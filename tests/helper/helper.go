@@ -605,8 +605,7 @@ func AssertReplicaCountNotChangeDuringTimePeriodRollout(t *testing.T, _ *kuberne
 			replicas, err = strconv.ParseInt(unquotedOutput, 10, 64)
 			assert.NoErrorf(t, err, "cannot convert rollout count to int - %s", err)
 
-			t.Logf("Waiting for rollout replicas to hit target. Rollout - %s, Current  - %d, Target - %d",
-				name, replicas, target)
+			t.Logf("Rollout - %s, Current  - %d", name, replicas)
 
 			if replicas != int64(target) {
 				assert.Fail(t, fmt.Sprintf("%s replica count has changed from %d to %d", name, target, replicas))
