@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand/v2"
 	"net/http"
 	"os"
 	"testing"
@@ -152,9 +151,9 @@ func sendTestMetrics(ctx context.Context, token string, realm string) {
 			tNow := time.Now()
 			var value float64
 			if tNow.Sub(tStart) < 3*time.Minute {
-				value = 1000 + rand.Float64()*100
+				value = 1000.0
 			} else {
-				value = rand.Float64() * 100
+				value = 100.0
 			}
 
 			body := map[string]interface{}{
@@ -247,7 +246,7 @@ func testScaleIn(ctx context.Context, t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("waiting for 10 minutes")
 	time.Sleep(time.Duration(600) * time.Second)
 
-	assert.True(t, getPodCount(ctx, kc, testNamespace) > minReplicaCount, "number of pods in deployment should be less than %d after 10 minutes", maxReplicaCount)
+	assert.True(t, getPodCount(ctx, kc, testNamespace) < maxReplicaCount, "number of pods in deployment should be less than %d after 10 minutes", maxReplicaCount)
 }
 
 func getTemplateData() (templateData, []Template) {
