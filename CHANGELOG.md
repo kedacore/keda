@@ -90,6 +90,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Github Scaler**: Add support to control unlabeled job/runner matching ([#6900](https://github.com/kedacore/keda/issues/6900))
 - **Metrics API Scaler**: Support AuthParams for authMode ([#6939](https://github.com/kedacore/keda/issues/6939))
 - **Metrics API Scaler**: Support multiple auth methods simultaneously ([#6642](https://github.com/kedacore/keda/issues/6642))
+- **Prometheus Scaler**: Emit metric tracking empty responses from prometheus ([#7060](https://github.com/kedacore/keda/pull/7060))
 - **Temporal Scaler**: Support custom tlsServerName ([#6820](https://github.com/kedacore/keda/pull/6820))
 
 ### Fixes
