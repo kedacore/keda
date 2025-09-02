@@ -19,6 +19,7 @@ package resolver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -31,7 +32,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 )
 
-// HashicorpVaultHandler is specification of Hashi Corp Vault
+// HashicorpVaultHandler is a specification of HashiCorp Vault
 type HashicorpVaultHandler struct {
 	vault     *kedav1alpha1.HashiCorpVault
 	client    *vaultapi.Client
@@ -161,7 +162,7 @@ func (vh *HashicorpVaultHandler) renewToken(logger logr.Logger) {
 
 	renewer, err := vh.client.NewLifetimeWatcher(&vaultapi.RenewerInput{
 		Secret: secret,
-		//Grace:  time.Duration(15 * time.Second),
+		//Grace: time.Duration(15 * time.Second),
 		//Increment: 60,
 	})
 	if err != nil {
@@ -188,12 +189,12 @@ RenewWatcherLoop:
 	}
 }
 
-// Read is used to get a secret from vault Read api. (e.g. secret)
+// Read is used to get a secret from vault Read api. (e.g., secret)
 func (vh *HashicorpVaultHandler) Read(path string) (*vaultapi.Secret, error) {
 	return vh.client.Logical().Read(path)
 }
 
-// Write is used to get a secret from vault that needs to pass along data and uses the vault Write api. (e.g. pki)
+// Write is used to get a secret from vault that needs to pass along data and uses the vault Write api. (e.g., pki)
 func (vh *HashicorpVaultHandler) Write(path string, data map[string]interface{}) (*vaultapi.Secret, error) {
 	return vh.client.Logical().Write(path, data)
 }
@@ -206,17 +207,31 @@ func (vh *HashicorpVaultHandler) Stop() {
 }
 
 // getPkiRequest format the pkiData in a format that the vault sdk understands.
-func (vh *HashicorpVaultHandler) getPkiRequest(pkiData *kedav1alpha1.VaultPkiData) (map[string]interface{}, error) {
-	var data map[string]interface{}
-	a, err := json.Marshal(pkiData)
-	if err != nil {
-		return nil, err
+func (vh *HashicorpVaultHandler) getPkiRequest(pkiData *kedav1alpha1.VaultPkiData) map[string]interface{} {
+	data := make(map[string]interface{})
+	if pkiData.CommonName != "" {
+		data["common_name"] = pkiData.CommonName
 	}
-	err = json.Unmarshal(a, &data)
-	if err != nil {
-		return nil, err
+	if pkiData.AltNames != "" {
+		data["alt_names"] = pkiData.AltNames
 	}
-	return data, nil
+	if pkiData.IPSans != "" {
+		data["ip_sans"] = pkiData.IPSans
+	}
+	if pkiData.URISans != "" {
+		data["uri_sans"] = pkiData.URISans
+	}
+	if pkiData.OtherSans != "" {
+		data["other_sans"] = pkiData.OtherSans
+	}
+	if pkiData.TTL != "" {
+		data["ttl"] = pkiData.TTL
+	}
+	if pkiData.Format != "" {
+		data["format"] = pkiData.Format
+	}
+
+	return data
 }
 
 // getSecretValue extract the secret value from the vault api response. As the vault api returns us a map[string]interface{},
@@ -299,10 +314,7 @@ func (vh *HashicorpVaultHandler) fetchSecret(secretType kedav1alpha1.VaultSecret
 	var err error
 	switch secretType {
 	case kedav1alpha1.VaultSecretTypePki:
-		data, err := vh.getPkiRequest(vaultPkiData)
-		if err != nil {
-			return nil, err
-		}
+		data := vh.getPkiRequest(vaultPkiData)
 		vaultSecret, err = vh.Write(path, data)
 		if err != nil {
 			return nil, err
@@ -319,8 +331,8 @@ func (vh *HashicorpVaultHandler) fetchSecret(secretType kedav1alpha1.VaultSecret
 	return vaultSecret, nil
 }
 
-// ResolveSecrets allows to resolve a slice of secrets by vault. The function returns the list of secrets with the value updated.
-// If multiple secret refers to the same SecretGroup, the secret will be fetched only once.
+// ResolveSecrets allows resolving a slice of secrets by vault. The function returns the list of secrets with the value updated.
+// If multiple secrets refer to the same SecretGroup, the secret will be fetched only once.
 func (vh *HashicorpVaultHandler) ResolveSecrets(secrets []kedav1alpha1.VaultSecret) ([]kedav1alpha1.VaultSecret, error) {
 	// Group secret by path and type, this allows to fetch a path only once. This is useful for dynamic credentials
 	grouped := make(map[SecretGroup][]kedav1alpha1.VaultSecret)
