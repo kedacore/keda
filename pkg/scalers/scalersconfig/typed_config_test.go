@@ -19,6 +19,7 @@ package scalersconfig
 import (
 	"net/url"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -610,15 +611,83 @@ func TestMultiName(t *testing.T) {
 	Expect(ts.Property).To(Equal("bbb"))
 }
 
+// TestDurationParsing tests the time.Duration parsing for both string and numeric values
+func TestDurationParsing(t *testing.T) {
+	RegisterTestingT(t)
+
+	sc := &ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"timeoutNumeric":  "1000", // milliseconds as number
+			"timeoutDuration": "30s",  // duration string
+			"timeoutZero":     "0",    // edge case
+		},
+	}
+
+	type testStruct struct {
+		TimeoutNumeric  time.Duration `keda:"name=timeoutNumeric,  order=triggerMetadata"`
+		TimeoutDuration time.Duration `keda:"name=timeoutDuration, order=triggerMetadata"`
+		TimeoutZero     time.Duration `keda:"name=timeoutZero,     order=triggerMetadata"`
+	}
+
+	ts := testStruct{}
+	err := sc.TypedConfig(&ts)
+	Expect(err).To(BeNil())
+
+	Expect(ts.TimeoutNumeric).To(Equal(1000 * time.Millisecond))
+	Expect(ts.TimeoutDuration).To(Equal(30 * time.Second))
+	Expect(ts.TimeoutZero).To(Equal(0 * time.Millisecond))
+}
+
+// TestUnexpectedOptional tests the unexpected optional input
+func TestUnexpectedOptional(t *testing.T) {
+	RegisterTestingT(t)
+
+	// Create a mock recorder to capture the event
+	mockRecorder := &MockEventRecorder{Messages: make([]string, 0)}
+
+	sc := &ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"stringVal":     "value1",
+			"nestVal":       "nestVal",
+			"notexistVal":   "aaa",
+			"notValFromEnv": "bbb",
+		},
+		ResolvedEnv: map[string]string{
+			"bbb": "1.1",
+		},
+		Recorder:           mockRecorder,
+		ScalableObjectType: "test",
+	}
+	type nestStruct struct {
+		Nest string `keda:"name=nestVal, order=triggerMetadata"`
+	}
+
+	type testStruct struct {
+		BA        nestStruct `keda:""`
+		StringVal string     `keda:"name=stringVal, order=triggerMetadata"`
+	}
+
+	ts := testStruct{}
+	err := sc.TypedConfig(&ts)
+	Expect(err).To(BeNil())
+
+	// Verify that the event was recorded
+	Expect(mockRecorder.EventCalled).To(BeTrue())
+	Expect(mockRecorder.Messages[0]).To(Equal("Unmatched input property notexistVal in scaler test"))
+	Expect(mockRecorder.Messages[1]).To(Equal("Unmatched input property notValFromEnv in scaler test"))
+}
+
 // MockEventRecorder is a mock implementation of record.EventRecorder
 type MockEventRecorder struct {
 	EventCalled bool
 	Message     string
+	Messages    []string
 }
 
 func (m *MockEventRecorder) Event(object runtime.Object, eventtype, reason, message string) {
 	m.EventCalled = true
 	m.Message = message
+	m.Messages = append(m.Messages, message)
 }
 
 func (m *MockEventRecorder) Eventf(object runtime.Object, eventtype, reason, messageFmt string, args ...interface{}) {

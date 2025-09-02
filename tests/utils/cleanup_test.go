@@ -67,6 +67,17 @@ func TestRemoveOpentelemetryComponents(t *testing.T) {
 	DeleteNamespace(t, OpentelemetryNamespace)
 }
 
+func TestRemoveArgoRollouts(t *testing.T) {
+	// default to true
+	if InstallArgoRollouts == StringFalse {
+		t.Skip("skipping as requested -- Argo Rollouts not installed via these tests")
+	}
+
+	_, err := ExecuteCommand(fmt.Sprintf("kubectl delete -n %s -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml", ArgoRolloutsNamespace))
+	require.NoErrorf(t, err, "cannot uninstall argo rollouts - %s", err)
+	DeleteNamespace(t, ArgoRolloutsNamespace)
+}
+
 func TestRemoveCertManager(t *testing.T) {
 	if !InstallCertManager {
 		t.Skip("skipping as cert manager isn't required")
