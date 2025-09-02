@@ -616,7 +616,7 @@ func AssertReplicaCountNotChangeDuringTimePeriodRollout(t *testing.T, _ *kuberne
 			assert.Fail(t, fmt.Sprintf("%s replicas are not set in its status, expected %d", name, target))
 		}
 
-		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+		time.Sleep(time.Second)
 	}
 }
 
