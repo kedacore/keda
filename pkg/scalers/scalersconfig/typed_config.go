@@ -191,7 +191,7 @@ func (sc *ScalerConfig) validateTriggerIndex(typedConfig any) error {
 	}
 
 	if !hasTriggerIndex {
-		return fmt.Errorf("Metadata struct of scaler must have a field named 'triggerIndex' or 'TriggerIndex'")
+		return fmt.Errorf("metadata struct of scaler must have a field named 'triggerIndex' or 'TriggerIndex'")
 	}
 
 	return nil
