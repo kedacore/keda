@@ -67,6 +67,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Add support for pause scale in annotation ([#6902](https://github.com/kedacore/keda/issues/6902))
 - **General**: Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
 - **General**: Introduce new Solace Direct Messaging scaler ([#6545](https://github.com/kedacore/keda/issues/6545))
+- **General**: Introduce new Splunk Observability Cloud Scaler ([#6534](https://github.com/kedacore/keda/pull/6534))
 - **General**: Introduce new Sumo Logic Scaler ([#6734](https://github.com/kedacore/keda/issues/6734))
 
 #### Experimental
