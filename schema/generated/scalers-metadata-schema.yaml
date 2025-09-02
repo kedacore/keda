@@ -540,6 +540,11 @@ scalers:
           optional: true
           default: "250"
           metadataVariableReadable: true
+        - name: fetchUnfinishedJobsOnly
+          type: string
+          optional: true
+          default: "false"
+          metadataVariableReadable: true
         - name: requireAllDemands
           type: string
           optional: true
