@@ -54,7 +54,7 @@ cloud.google.com/go/storage/internal/apiv2/storagepb
 # code.cloudfoundry.org/clock v1.2.0
 ## explicit; go 1.20
 code.cloudfoundry.org/clock
-# dario.cat/mergo v1.0.1
+# dario.cat/mergo v1.0.2
 ## explicit; go 1.13
 dario.cat/mergo
 # filippo.io/edwards25519 v1.1.0
