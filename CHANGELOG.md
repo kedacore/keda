@@ -78,7 +78,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Datadog Scaler**: Fix bug with datadogNamespace config ([#6828](https://github.com/kedacore/keda/pull/6828))
 - **Metrics API**: Support multiple auth methods simultaneously in Metrics API scaler ([#6642](https://github.com/kedacore/keda/issues/6642))
 - **Temporal Scaler**: Support custom tlsServerName ([#6820](https://github.com/kedacore/keda/pull/6820))
-- **Github Scaler**: Add support to control unlabeled job/runner matching
+- **Github Scaler**: Add support to control unlabeled job/runner matching ([#7029](https://github.com/kedacore/keda/pull/7029))
 
 ### Fixes
 
