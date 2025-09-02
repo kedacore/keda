@@ -155,6 +155,11 @@ func (sc *ScalerConfig) TypedConfig(typedConfig any) (err error) {
 
 	logger := logf.Log.WithName("typed_config").WithValues("type", sc.ScalableObjectType, "namespace", sc.ScalableObjectNamespace, "name", sc.ScalableObjectName)
 
+	// Validate that typedConfig has required triggerIndex field
+	if err := sc.validateTriggerIndex(typedConfig); err != nil {
+		return err
+	}
+
 	parsedParamNames, err := sc.parseTypedConfig(typedConfig, false)
 
 	if err == nil {
@@ -162,6 +167,34 @@ func (sc *ScalerConfig) TypedConfig(typedConfig any) (err error) {
 	}
 
 	return
+}
+
+// validateTriggerIndex validates that the typedConfig has a required triggerIndex field
+func (sc *ScalerConfig) validateTriggerIndex(typedConfig any) error {
+	t := reflect.TypeOf(typedConfig)
+	if t.Kind() != reflect.Pointer {
+		return fmt.Errorf("typedConfig must be a pointer")
+	}
+	t = t.Elem()
+
+	if t.Kind() != reflect.Struct {
+		return fmt.Errorf("typedConfig must be a struct")
+	}
+
+	hasTriggerIndex := false
+	for i := 0; i < t.NumField(); i++ {
+		fieldName := t.Field(i).Name
+		if fieldName == "triggerIndex" || fieldName == "TriggerIndex" {
+			hasTriggerIndex = true
+			break
+		}
+	}
+
+	if !hasTriggerIndex {
+		return fmt.Errorf("Metadata struct of scaler must have a field named 'triggerIndex' or 'TriggerIndex'")
+	}
+
+	return nil
 }
 
 // parseTypedConfig is a function that is used to unmarshal the TriggerMetadata, ResolvedEnv and AuthParams
@@ -176,9 +209,11 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) (
 
 	errs := []error{}
 	parsedParamNames := []string{}
+
 	for i := 0; i < t.NumField(); i++ {
 		fieldType := t.Field(i)
 		fieldValue := v.Field(i)
+
 		tag, exists := fieldType.Tag.Lookup("keda")
 		if !exists {
 			continue
@@ -196,6 +231,7 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) (
 			parsedParamNames = append(parsedParamNames, parsed...)
 		}
 	}
+
 	if validator, ok := typedConfig.(CustomValidator); ok {
 		if err := validator.Validate(); err != nil {
 			errs = append(errs, err)
