@@ -1,5 +1,7 @@
 # Azure Monitor Query client module for Go
 
+> Use the [azmetrics][azmetrics] package for access to data plane metrics
+
 The Azure Monitor Query client module is used to execute read-only queries against [Azure Monitor][azure_monitor_overview]'s two data platforms:
 
 - [Logs][logs_overview] - Collects and organizes log and performance data from monitored resources. Data from different sources such as platform logs from Azure services, log and performance data from virtual machines agents, and usage and performance data from apps can be consolidated into a single [Azure Log Analytics workspace][log_analytics_workspace]. The various data types can be analyzed together using the [Kusto Query Language][kusto_query_language]. See the [Kusto to SQL cheat sheet][kusto_to_sql] for more information.
@@ -11,10 +13,12 @@ The Azure Monitor Query client module is used to execute read-only queries again
 
 ### Prerequisites
 
-* Go, version 1.18 or higher - [Install Go](https://go.dev/doc/install)
+* [Supported](https://aka.ms/azsdk/go/supported-versions) version of Go - [Install Go](https://go.dev/doc/install)
 * Azure subscription - [Create a free account][azure_sub]
-* To query some logs, an Azure Log Analytics workspace ID - Create an [Azure Log Analytics workspace][log_analytics_workspace_create]
-* To query metrics and some logs, the Resource URI of an Azure resource (Storage Account, Key Vault, CosmosDB, etc.) that you plan to monitor
+* To query Logs, you need one of the following things:
+  * An [Azure Log Analytics workspace][log_analytics_workspace_create]
+  * The resource URI of an Azure resource (Storage Account, Key Vault, Cosmos DB, etc.)
+* To query Metrics, the resource URI of an Azure resource (Storage Account, Key Vault, CosmosDB, etc.) that you plan to monitor
 
 ### Install the packages
 
@@ -121,6 +125,7 @@ the [Code of Conduct FAQ][coc_faq] or contact [opencode@microsoft.com][coc_conta
 comments.
 
 <!-- LINKS -->
+[azmetrics]: https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/monitor/query/azmetrics
 [azquery_repo]: https://github.com/Azure/azure-sdk-for-go/tree/main/sdk/monitor/azquery
 [azquery_pkg_go]: https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery
 [azquery_pkg_go_docs]: https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery#section-documentation
@@ -140,6 +145,7 @@ comments.
 [log_analytics_workspace_create]: https://learn.microsoft.com/azure/azure-monitor/logs/quick-create-workspace
 [logs_overview]: https://learn.microsoft.com/azure/azure-monitor/logs/data-platform-logs
 [metrics_overview]: https://learn.microsoft.com/azure/azure-monitor/essentials/data-platform-metrics
+[metric_namespaces]: https://learn.microsoft.com/azure/azure-monitor/reference/supported-metrics/metrics-index#metrics-by-resource-provider
 [monitor_docs]: https://learn.microsoft.com/azure/azure-monitor/
 [monitor_rest_docs]: https://learn.microsoft.com/rest/api/monitor/
 [multi-metrics]: https://learn.microsoft.com/azure/azure-monitor/essentials/data-platform-metrics#multi-dimensional-metrics

@@ -1,6 +1,3 @@
-//go:build go1.18
-// +build go1.18
-
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
@@ -46,7 +43,7 @@ func NewLogsClient(credential azcore.TokenCredential, options *LogsClientOptions
 	}
 
 	authPolicy := runtime.NewBearerTokenPolicy(credential, []string{c.Audience + "/.default"}, nil)
-	azcoreClient, err := azcore.NewClient("azquery.LogsClient", version, runtime.PipelineOptions{PerRetry: []policy.Policy{authPolicy}}, &options.ClientOptions)
+	azcoreClient, err := azcore.NewClient(moduleName, version, runtime.PipelineOptions{PerRetry: []policy.Policy{authPolicy}}, &options.ClientOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +64,14 @@ func NewMetricsClient(credential azcore.TokenCredential, options *MetricsClientO
 	}
 
 	authPolicy := runtime.NewBearerTokenPolicy(credential, []string{c.Audience + "/.default"}, nil)
-	azcoreClient, err := azcore.NewClient("azquery.MetricsClient", version, runtime.PipelineOptions{PerRetry: []policy.Policy{authPolicy}}, &options.ClientOptions)
+	pipelineOptions := runtime.PipelineOptions{
+		APIVersion: runtime.APIVersionOptions{
+			Location: runtime.APIVersionLocationQueryParam,
+			Name:     "api-version",
+		},
+		PerRetry: []policy.Policy{authPolicy},
+	}
+	azcoreClient, err := azcore.NewClient(moduleName, version, pipelineOptions, &options.ClientOptions)
 	if err != nil {
 		return nil, err
 	}
