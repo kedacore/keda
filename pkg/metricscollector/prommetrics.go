@@ -104,6 +104,14 @@ var (
 		},
 		[]string{"namespace", "scaledJob"},
 	)
+	emptyPrometheusMetricError = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: DefaultPromMetricsNamespace,
+			Subsystem: "prometheus",
+			Name:      "metrics_empty_error_total",
+			Help:      "Number of times a prometheus query returns an empty result",
+		},
+	)
 	triggerRegistered = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: DefaultPromMetricsNamespace,
@@ -326,6 +334,11 @@ func (p *PromMetrics) RecordCloudEventEmittedError(namespace string, cloudevents
 // RecordCloudEventQueueStatus record the number of cloudevents that are waiting for emitting
 func (p *PromMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 	cloudeventQueueStatus.With(prometheus.Labels{"namespace": namespace}).Set(float64(value))
+}
+
+// RecordEmptyPrometheusMetricError counts the number of times a prometheus query returns an empty result
+func (p *PromMetrics) RecordEmptyPrometheusMetricError() {
+	emptyPrometheusMetricError.Inc()
 }
 
 // Returns a grpcprom server Metrics object and registers the metrics. The object contains
