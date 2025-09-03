@@ -111,7 +111,7 @@ func TestOptional(t *testing.T) {
 	}
 
 	type testStruct struct {
-		TriggerIndex int
+		TriggerIndex       int
 		StringVal          string `keda:"name=stringVal, order=triggerMetadata"`
 		IntValOptional     int    `keda:"name=intVal,    order=triggerMetadata, optional"`
 		IntValAlsoOptional int    `keda:"name=intVal,    order=triggerMetadata, optional=true"`
@@ -134,7 +134,7 @@ func TestMissing(t *testing.T) {
 
 	type testStruct struct {
 		TriggerIndex int
-		StringVal string `keda:"name=stringVal,  order=triggerMetadata"`
+		StringVal    string `keda:"name=stringVal,  order=triggerMetadata"`
 	}
 
 	ts := testStruct{}
@@ -159,7 +159,7 @@ func TestDeprecatedAnnounce(t *testing.T) {
 
 	type testStruct struct {
 		TriggerIndex int
-		OldParam string `keda:"name=oldParam, order=triggerMetadata, deprecatedAnnounce=This parameter is deprecated and will be removed in - Use newParam instead"`
+		OldParam     string `keda:"name=oldParam, order=triggerMetadata, deprecatedAnnounce=This parameter is deprecated and will be removed in - Use newParam instead"`
 	}
 
 	ts := testStruct{}
@@ -188,7 +188,7 @@ func TestDeprecated(t *testing.T) {
 
 	type testStruct struct {
 		TriggerIndex int
-		OldParam string `keda:"name=oldParam, order=triggerMetadata, deprecated=This parameter is deprecated and is removed - Use newParam instead"`
+		OldParam     string `keda:"name=oldParam, order=triggerMetadata, deprecated=This parameter is deprecated and is removed - Use newParam instead"`
 	}
 
 	ts := testStruct{}
@@ -208,9 +208,9 @@ func TestDefaultValue(t *testing.T) {
 
 	type testStruct struct {
 		TriggerIndex int
-		BoolVal    bool   `keda:"name=boolVal,    order=triggerMetadata, optional, default=true"`
-		StringVal  string `keda:"name=stringVal,  order=triggerMetadata, optional, default=d"`
-		StringVal2 string `keda:"name=stringVal2, order=triggerMetadata, optional, default=d"`
+		BoolVal      bool   `keda:"name=boolVal,    order=triggerMetadata, optional, default=true"`
+		StringVal    string `keda:"name=stringVal,  order=triggerMetadata, optional, default=d"`
+		StringVal2   string `keda:"name=stringVal2, order=triggerMetadata, optional, default=d"`
 	}
 
 	ts := testStruct{}
@@ -234,7 +234,7 @@ func TestMap(t *testing.T) {
 
 	type testStruct struct {
 		TriggerIndex int
-		MapVal map[string]int `keda:"name=mapVal, order=triggerMetadata"`
+		MapVal       map[string]int `keda:"name=mapVal, order=triggerMetadata"`
 	}
 
 	ts := testStruct{}
@@ -258,7 +258,7 @@ func TestSlice(t *testing.T) {
 	}
 
 	type testStruct struct {
-		TriggerIndex int
+		TriggerIndex               int
 		SliceVal                   []int `keda:"name=sliceVal, order=triggerMetadata"`
 		SliceValWithSpaces         []int `keda:"name=sliceValWithSpaces, order=triggerMetadata"`
 		SliceValWithOtherSeparator []int `keda:"name=sliceValWithOtherSeparator, order=triggerMetadata, separator=;"`
@@ -294,8 +294,8 @@ func TestEnum(t *testing.T) {
 
 	type testStruct struct {
 		TriggerIndex int
-		EnumVal   string   `keda:"name=enumVal,   order=triggerMetadata, enum=value1;value2"`
-		EnumSlice []string `keda:"name=enumSlice, order=triggerMetadata, enum=value1;value2, optional"`
+		EnumVal      string   `keda:"name=enumVal,   order=triggerMetadata, enum=value1;value2"`
+		EnumSlice    []string `keda:"name=enumSlice, order=triggerMetadata, enum=value1;value2, optional"`
 	}
 
 	ts := testStruct{}
@@ -322,7 +322,7 @@ func TestExclusive(t *testing.T) {
 
 	type testStruct struct {
 		TriggerIndex int
-		IntVal []int `keda:"name=intVal, order=triggerMetadata, exclusiveSet=1;4;5"`
+		IntVal       []int `keda:"name=intVal, order=triggerMetadata, exclusiveSet=1;4;5"`
 	}
 
 	sc := &ScalerConfig{
@@ -357,7 +357,7 @@ func TestURLValues(t *testing.T) {
 	}
 
 	type testStruct struct {
-		TriggerIndex int
+		TriggerIndex   int
 		EndpointParams url.Values `keda:"name=endpointParams, order=authParams"`
 	}
 
@@ -383,7 +383,7 @@ func TestGenericMap(t *testing.T) {
 
 	// structurally similar to url.Values but should behave as generic map
 	type testStruct struct {
-		TriggerIndex int
+		TriggerIndex   int
 		EndpointParams map[string][]string `keda:"name=endpointParams, order=authParams"`
 	}
 
@@ -417,7 +417,7 @@ func TestNestedStruct(t *testing.T) {
 
 	type testStruct struct {
 		TriggerIndex int
-		BA basicAuth `keda:""`
+		BA           basicAuth `keda:""`
 	}
 
 	ts := testStruct{}
@@ -440,7 +440,7 @@ func TestEmbeddedStruct(t *testing.T) {
 
 	type testStruct struct {
 		TriggerIndex int
-		BasicAuth struct {
+		BasicAuth    struct {
 			Username string `keda:"name=username, order=authParams"`
 			Password string `keda:"name=password, order=authParams"`
 		} `keda:""`
@@ -492,7 +492,7 @@ func TestNestedOptional(t *testing.T) {
 
 	type testStruct struct {
 		TriggerIndex int
-		BA basicAuth `keda:"optional"`
+		BA           basicAuth `keda:"optional"`
 	}
 
 	ts := testStruct{}
@@ -521,7 +521,7 @@ func TestNestedPointer(t *testing.T) {
 
 	type testStruct struct {
 		TriggerIndex int
-		BA *basicAuth `keda:""`
+		BA           *basicAuth `keda:""`
 	}
 
 	ts := testStruct{}
@@ -585,10 +585,10 @@ func TestRange(t *testing.T) {
 
 	type testStruct struct {
 		TriggerIndex int
-		Range       []int `keda:"name=range,       order=triggerMetadata, range=-"`
-		MultiRange  []int `keda:"name=multiRange,  order=triggerMetadata, range"`
-		DottedRange []int `keda:"name=dottedRange, order=triggerMetadata, range=.."`
-		WrongRange  []int `keda:"name=wrongRange,  order=triggerMetadata, range=.."`
+		Range        []int `keda:"name=range,       order=triggerMetadata, range=-"`
+		MultiRange   []int `keda:"name=multiRange,  order=triggerMetadata, range"`
+		DottedRange  []int `keda:"name=dottedRange, order=triggerMetadata, range=.."`
+		WrongRange   []int `keda:"name=wrongRange,  order=triggerMetadata, range=.."`
 	}
 
 	ts := testStruct{}
@@ -621,7 +621,7 @@ func TestMultiName(t *testing.T) {
 
 	type testStruct struct {
 		TriggerIndex int
-		Property string `keda:"name=property1;property2, order=triggerMetadata"`
+		Property     string `keda:"name=property1;property2, order=triggerMetadata"`
 	}
 
 	ts := testStruct{}
