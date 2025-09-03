@@ -515,8 +515,5 @@ func (o *OtelMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 
 // RecordEmptyPrometheusMetricError counts the number of times a prometheus query returns an empty result
 func (o *OtelMetrics) RecordEmptyPrometheusMetricError() {
-	if err != nil {
-		otEmptyPrometheusMetricError.Add(context.Background(), 1, nil)
-		return
-	}
+	otEmptyPrometheusMetricError.Add(context.Background(), 1, nil)
 }
