@@ -71,6 +71,11 @@ const (
 )
 
 const (
+	WaitShort     = 20 * time.Second
+	IntervalShort = 1 * time.Second
+)
+
+const (
 	caCrtPath = "/tmp/keda-e2e-ca.crt"
 	caKeyPath = "/tmp/keda-e2e-ca.key"
 )
@@ -1023,6 +1028,42 @@ func CheckKubectlGetResult(t *testing.T, kind string, name string, namespace str
 
 	unqoutedOutput := strings.ReplaceAll(string(output), "\"", "")
 	assert.Equal(t, expected, unqoutedOutput)
+}
+
+// KedaEventually checks if the provided conditionFunc eventually returns true
+// (and no error) within the context's deadline. It polls the conditionFunc
+// at the given interval until the condition is met or the context times out.
+func KedaEventually(ctx context.Context, conditionFunc wait.ConditionWithContextFunc, interval time.Duration) error {
+	if interval <= 0 {
+		return fmt.Errorf("polling interval must be positive, got %v", interval)
+	}
+
+	ok, err := conditionFunc(ctx)
+	if err != nil {
+		return fmt.Errorf("eventually check failed on initial check: %w", err)
+	}
+	if ok {
+		return nil
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("eventually check failed: context deadline exceeded before condition was met")
+
+		case <-ticker.C:
+			ok, err := conditionFunc(ctx)
+			if err != nil {
+				return fmt.Errorf("eventually check failed during polling: %w", err)
+			}
+			if ok {
+				return nil
+			}
+		}
+	}
 }
 
 // KedaConsistently checks if the provided conditionFunc consistently returns true
