@@ -90,7 +90,7 @@ func GetAzureBlobListLength(ctx context.Context, blobClient *azblob.Client, meta
 		return count, nil
 	}
 
-	// No glob -> preserve your original one-level hierarchical behavior.
+	// No glob -> preserve original one-level hierarchical behavior.
 	hierarchyPager := containerClient.NewListBlobsHierarchyPager(meta.BlobDelimiter, &container.ListBlobsHierarchyOptions{
 		Prefix: meta.BlobPrefix,
 	})
@@ -106,14 +106,15 @@ func GetAzureBlobListLength(ctx context.Context, blobClient *azblob.Client, meta
 }
 
 // tryCountWithDFS counts files using ADLS Gen2 DFS listing (hierarchical).
-// Returns (count, handled=true, err) if DFS was attempted; (0, handled=false, nil) if DFS couldn't be used.
+// Returns (count, handled=true, err) if DFS was attempted;
+//         (0, handled=false, err) if DFS couldn't be used (caller should fall back).
 func tryCountWithDFS(ctx context.Context, meta *BlobMetadata) (int64, bool, error) {
 	// Build a filesystem client from the connection string; this will target the DFS endpoint
 	// and gracefully fail on non-HNS accounts (allowing us to fallback).
 	fs, err := adlsfs.NewClientFromConnectionString(meta.Connection, meta.BlobContainerName, nil)
 	if err != nil {
 		// Connection string missing parts or not suitable -> let caller fallback.
-		return 0, false, nil
+		return 0, false, err
 	}
 
 	var prefix string
@@ -131,7 +132,7 @@ func tryCountWithDFS(ctx context.Context, meta *BlobMetadata) (int64, bool, erro
 		resp, err := pager.NextPage(ctx)
 		if err != nil {
 			// If DFS listing fails (e.g., non-HNS account, auth not allowed), tell caller to fallback.
-			return 0, false, nil
+			return 0, false, err
 		}
 		for _, p := range resp.Paths {
 			// Skip directories; we only count files (blobs).
