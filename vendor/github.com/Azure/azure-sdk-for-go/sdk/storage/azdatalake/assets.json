@@ -1,0 +1,6 @@
+{
+  "AssetsRepo": "Azure/azure-sdk-assets",
+  "AssetsRepoPrefixPath": "go",
+  "TagPrefix": "go/storage/azdatalake",
+  "Tag": "go/storage/azdatalake_4f6d93ffc3"
+}
