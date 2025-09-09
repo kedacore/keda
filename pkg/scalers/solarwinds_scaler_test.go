@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	v2 "k8s.io/api/autoscaling/v2"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
@@ -85,16 +86,18 @@ func TestParseSolarWindsMetadata(t *testing.T) {
 	}
 }
 
-func TestSolarWindsScaler_GetMetricSpecForScaling(t *testing.T) {
+func TestSolarWindsScalerGetMetricSpecForScaling(t *testing.T) {
 	meta := &solarWindsMetadata{
-		MetricName:  "testMetric",
-		TargetValue: 3,
+		MetricName:   "testMetric",
+		TargetValue:  3,
+		triggerIndex: 0,
 	}
 	scaler := &solarWindsScaler{
-		metadata: meta,
+		metricType: v2.AverageValueMetricType,
+		metadata:   meta,
 	}
 
 	metricSpec := scaler.GetMetricSpecForScaling(context.Background())
-	assert.Equal(t, "testMetric", metricSpec[0].External.Metric.Name)
+	assert.Equal(t, "s0-solarwinds", metricSpec[0].External.Metric.Name)
 	assert.Equal(t, int64(3), metricSpec[0].External.Target.AverageValue.Value())
 }

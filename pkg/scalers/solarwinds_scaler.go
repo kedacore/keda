@@ -18,7 +18,8 @@ import (
 )
 
 type solarWindsScaler struct {
-	metadata *solarWindsMetadata
+	metricType v2.MetricTargetType
+	metadata   *solarWindsMetadata
 }
 
 type solarWindsMetadata struct {
@@ -30,21 +31,30 @@ type solarWindsMetadata struct {
 	Aggregation     string  `keda:"name=aggregation,     order=triggerMetadata, enum=COUNT;MIN;MAX;AVG;SUM;LAST"`
 	IntervalS       int     `keda:"name=intervalS,       order=triggerMetadata"`
 	Filter          string  `keda:"name=filter,          order=triggerMetadata, optional"`
+
+	triggerIndex int
 }
 
 func NewSolarWindsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
+	metricType, err := GetMetricTargetType(config)
+	if err != nil {
+		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
+	}
+
 	meta, err := parseSolarWindsMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing SolarWinds metadata: %w", err)
 	}
 
 	return &solarWindsScaler{
-		metadata: meta,
+		metricType: metricType,
+		metadata:   meta,
 	}, nil
 }
 
 func parseSolarWindsMetadata(config *scalersconfig.ScalerConfig) (*solarWindsMetadata, error) {
 	meta := &solarWindsMetadata{}
+	meta.triggerIndex = config.TriggerIndex
 
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing solarwinds metadata: %w", err)
@@ -65,9 +75,9 @@ func (s *solarWindsScaler) Close(context.Context) error {
 func (s *solarWindsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: s.metadata.MetricName,
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, "solarwinds"),
 		},
-		Target: GetMetricTargetMili(v2.AverageValueMetricType, s.metadata.TargetValue),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.TargetValue),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: "External"}
 	return []v2.MetricSpec{metricSpec}
