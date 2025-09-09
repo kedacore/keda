@@ -97,9 +97,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Sets hpaName in Status when ScaledObject adopts/finds an existing HPA ([#6336](https://github.com/kedacore/keda/issues/6336))
 - **Cron Scaler**: Fix cron scaler to return zero metric value by default([#6886](https://github.com/kedacore/keda/issues/6886))
 - **Hashicorp Vault**: Fix Vault PKI param using camel case param when making API call to Vault PKI endpoint ([#6864](https://github.com/kedacore/keda/issues/6864))
+- **Kafka Scaler**: Fix throwing error when using sasl=none ([#7061](https://github.com/kedacore/keda/issues/7061))
 - **Pulsar Scaler**: Resolve nil pointer dereference in Pulsar scaler redirect handling ([#7024](https://github.com/kedacore/keda/issues/7024))
 - **RabbitMQ Scaler**: Fix incorrect URL encoding in RabbitMQ vhosts containing %2f ([#6963](https://github.com/kedacore/keda/issues/6963))
-- **Kafka Scaler**: Fix throwing error when using sasl=none ([#7061](https://github.com/kedacore/keda/issues/7061))
 
 ### Deprecations
 
