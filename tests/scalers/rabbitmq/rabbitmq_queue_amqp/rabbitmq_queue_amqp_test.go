@@ -122,7 +122,7 @@ func testScaling(t *testing.T, kc *kubernetes.Clientset) {
 func testActivationValue(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing activation value ---")
 	messagesToQueue := 3
-	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messagesToQueue)
+	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messagesToQueue, 0)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }
