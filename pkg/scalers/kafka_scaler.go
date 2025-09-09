@@ -225,7 +225,6 @@ func parseKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadat
 	saslAuthType = strings.TrimSpace(saslAuthType)
 	mode := kafkaSaslType(saslAuthType)
 	if saslAuthType != "" && mode != KafkaSASLTypeNone {
-
 		switch {
 		case mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512:
 			err := parseSaslParams(config, meta, mode)
