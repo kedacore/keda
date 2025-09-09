@@ -73,10 +73,11 @@ spec:
         app: mssql-consumer-worker
     spec:
       containers:
-      - image: docker.io/cgillum/mssqlscalertest:latest
+      - image: ghcr.io/kedacore/tests-mssql:latest
         imagePullPolicy: Always
         name: mssql-consumer-worker
-        args: [consumer]
+        command: ["/app"]
+        args: ["-mode", "consumer"]
         env:
           - name: SQL_CONNECTION_STRING
             valueFrom:
@@ -203,10 +204,11 @@ spec:
         app: mssql-producer-job
     spec:
       containers:
-      - image: docker.io/cgillum/mssqlscalertest:latest
+      - image: ghcr.io/kedacore/tests-mssql:latest
         imagePullPolicy: Always
         name: mssql-test-producer
-        args: ["producer"]
+        command: ["/app"]
+        args: ["-mode", "producer"]
         env:
           - name: SQL_CONNECTION_STRING
             valueFrom:
@@ -232,10 +234,11 @@ spec:
         app: mssql-producer-job
     spec:
       containers:
-      - image: docker.io/cgillum/mssqlscalertest:latest
+      - image: ghcr.io/kedacore/tests-mssql:latest
         imagePullPolicy: Always
         name: mssql-test-producer
-        args: ["producer"]
+        command: ["/app"]
+        args: ["-mode", "producer"]
         env:
           - name: SQL_CONNECTION_STRING
             valueFrom:

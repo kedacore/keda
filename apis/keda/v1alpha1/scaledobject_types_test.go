@@ -290,44 +290,6 @@ func TestCheckFallbackValid(t *testing.T) {
 	}
 }
 
-func TestHasPausedReplicaAnnotation(t *testing.T) {
-	tests := []struct {
-		name         string
-		annotations  map[string]string
-		expectResult bool
-	}{
-		{
-			name:         "No annotations",
-			annotations:  nil,
-			expectResult: false,
-		},
-		{
-			name:         "Has PausedReplicasAnnotation",
-			annotations:  map[string]string{PausedReplicasAnnotation: "5"},
-			expectResult: true,
-		},
-		{
-			name:         "Has other annotations but not PausedReplicasAnnotation",
-			annotations:  map[string]string{"some-other-annotation": "value"},
-			expectResult: false,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			so := &ScaledObject{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: test.annotations,
-				},
-			}
-			result := so.HasPausedReplicaAnnotation()
-			if result != test.expectResult {
-				t.Errorf("Expected HasPausedReplicaAnnotation to return %v, got %v", test.expectResult, result)
-			}
-		})
-	}
-}
-
 func TestHasPausedAnnotation(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -419,13 +381,19 @@ func TestNeedToBePausedByAnnotation(t *testing.T) {
 			name:               "PausedReplicasAnnotation with value but no status set",
 			annotations:        map[string]string{PausedReplicasAnnotation: "5"},
 			pausedReplicaCount: nil,
-			expectResult:       false,
+			expectResult:       true,
 		},
 		{
 			name:               "Both annotations set",
 			annotations:        map[string]string{PausedAnnotation: "true", PausedReplicasAnnotation: "5"},
 			pausedReplicaCount: &pausedReplicaCount,
 			expectResult:       true, // PausedReplicasAnnotation has precedence
+		},
+		{
+			name:               "Both annotations set, PausedAnnotation false",
+			annotations:        map[string]string{PausedAnnotation: "false", PausedReplicasAnnotation: "5"},
+			pausedReplicaCount: &pausedReplicaCount,
+			expectResult:       true,
 		},
 	}
 

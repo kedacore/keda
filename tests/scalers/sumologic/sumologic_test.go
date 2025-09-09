@@ -94,7 +94,7 @@ spec:
     name: {{.DeploymentName}}
   minReplicaCount: {{.MinReplicaCount}}
   maxReplicaCount: {{.MaxReplicaCount}}
-  pollingInterval: 3
+  pollingInterval: 5
   cooldownPeriod: 1
   fallback:
     failureThreshold: 3
@@ -112,6 +112,7 @@ spec:
         queryAggregator: "{{.QueryAggregator}}"
         threshold: "{{.TargetValue}}"
         activationValue: "{{.ActivationValue}}"
+        maxRetries: "3"
       authenticationRef:
         name: keda-trigger-auth-sumologic
 `
@@ -171,7 +172,7 @@ func TestSumologicScaler(t *testing.T) {
 
 	// Ensure deployment is at min replica count
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+		"replica count should be %d after 9 minutes", minReplicaCount)
 
 	// Test scaling
 	testActivation(t, kc)

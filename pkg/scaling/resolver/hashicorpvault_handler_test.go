@@ -76,7 +76,6 @@ var (
 type pkiRequestTestData struct {
 	name     string
 	raw      string
-	isError  bool
 	secret   kedav1alpha1.VaultSecret
 	expected map[string]interface{}
 }
@@ -87,7 +86,30 @@ var pkiRequestTestDataset = []pkiRequestTestData{
 		raw:    `{ "commonName": "test" }`,
 		secret: kedav1alpha1.VaultSecret{},
 		expected: map[string]interface{}{
-			"commonName": "test",
+			"common_name": "test",
+		},
+	},
+	{
+		name: "full pki request with all fields",
+		secret: kedav1alpha1.VaultSecret{
+			PkiData: kedav1alpha1.VaultPkiData{
+				CommonName: "test",
+				AltNames:   "test2",
+				IPSans:     "192.168.1.1",
+				URISans:    "test.com",
+				OtherSans:  "othersans.com",
+				TTL:        "24h",
+				Format:     "pem",
+			},
+		},
+		expected: map[string]interface{}{
+			"common_name": "test",
+			"alt_names":   "test2",
+			"ip_sans":     "192.168.1.1",
+			"uri_sans":    "test.com",
+			"other_sans":  "othersans.com",
+			"ttl":         "24h",
+			"format":      "pem",
 		},
 	},
 }
@@ -106,12 +128,7 @@ func TestGetPkiRequest(t *testing.T) {
 		} else {
 			secret = testData.secret
 		}
-		data, err := vault.getPkiRequest(&secret.PkiData)
-		if testData.isError {
-			assert.NotNilf(t, err, "test %s: expected error but got success, testData - %+v", testData.name, testData)
-			continue
-		}
-		assert.Nilf(t, err, "test %s: expected success but got error - %s", testData.name, err)
+		data := vault.getPkiRequest(&secret.PkiData)
 		assert.Equalf(t, testData.expected, data, "test %s: expected data does not match given secret", testData.name)
 	}
 }
@@ -123,7 +140,7 @@ func mockVault(t *testing.T, useRootToken bool) *httptest.Server {
 		case "/v1/auth/token/lookup-self":
 			data = vaultTokenSelf
 			if useRootToken {
-				// remove renewable field
+				// remove the renewable field
 				delete(data, "renewable")
 			}
 		case "/v1/kv_v2/data/keda": //todo: more generic
