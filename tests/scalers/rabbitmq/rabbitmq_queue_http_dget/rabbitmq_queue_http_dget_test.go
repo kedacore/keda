@@ -35,7 +35,6 @@ var (
 	vhost                = "/"
 	connectionString     = fmt.Sprintf("amqp://%s:%s@rabbitmq.%s.svc.cluster.local/", user, password, rmqNamespace)
 	httpConnectionString = fmt.Sprintf("http://%s:%s@rabbitmq.%s.svc.cluster.local/", user, password, rmqNamespace)
-	messageCount         = 100
 )
 
 const (

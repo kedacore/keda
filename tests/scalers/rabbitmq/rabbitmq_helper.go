@@ -414,12 +414,12 @@ func RMQPublishMessages(t *testing.T, namespace, connectionString, queueName str
 	}
 
 	// Before pushing new messages, remove all previous publishing jobs, if any.
-	RMQStopPublishingMessages(t, namespace, queueName)
+	RMQStopPublishingMessages(namespace, queueName)
 
 	helper.KubectlApplyWithTemplate(t, data, "rmqPublishTemplate", publishTemplate)
 }
 
-func RMQStopPublishingMessages(t *testing.T, namespace, queueName string) {
+func RMQStopPublishingMessages(namespace, queueName string) {
 	_, _ = helper.ExecuteCommand(fmt.Sprintf("kubectl delete jobs/rabbitmq-publish-%s --namespace %s", queueName, namespace))
 }
 
@@ -431,12 +431,12 @@ func RMQConsumeMessages(t *testing.T, namespace, connectionString, queueName str
 	}
 
 	// Before consuming messages, remove all previous consumer jobs, if any.
-	RMQStopConsumingMessages(t, namespace, queueName)
+	RMQStopConsumingMessages(namespace, queueName)
 
 	helper.KubectlApplyWithTemplate(t, data, "rmqConsumerTemplate", consumeTemplate)
 }
 
-func RMQStopConsumingMessages(t *testing.T, namespace, queueName string) {
+func RMQStopConsumingMessages(namespace, queueName string) {
 	for i := 0; i < consumeTemplateJobCount; i++ {
 		_, _ = helper.ExecuteCommand(fmt.Sprintf("kubectl delete jobs/rabbitmq-consume-%d-%s --namespace %s", i, queueName, namespace))
 	}
