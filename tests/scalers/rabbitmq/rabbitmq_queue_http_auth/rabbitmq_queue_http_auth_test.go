@@ -204,7 +204,7 @@ func testAuthFromSecret(t *testing.T, kc *kubernetes.Clientset, data templateDat
 	KubectlApplyWithTemplate(t, data, "triggerAuthenticationTemplate", triggerAuthenticationTemplate)
 	defer KubectlDeleteWithTemplate(t, data, "triggerAuthenticationTemplate", triggerAuthenticationTemplate)
 
-	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messageCount)
+	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messageCount, 0)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 1),
 		"replica count should be 4 after 1 minute")
 
@@ -218,7 +218,7 @@ func testAuthFromEnv(t *testing.T, kc *kubernetes.Clientset, data templateData) 
 	KubectlApplyWithTemplate(t, data, "scaledObjectAuthFromEnvTemplate", scaledObjectAuthFromEnvTemplate)
 	defer KubectlDeleteWithTemplate(t, data, "scaledObjectAuthFromEnvTemplate", scaledObjectAuthFromEnvTemplate)
 
-	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messageCount)
+	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messageCount, 0)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 1),
 		"replica count should be 4 after 1 minute")
 

@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package rabbitmq_queue_http_regex_test
+package rabbitmq_queue_http_dpratio_test
 
 import (
 	"encoding/base64"
@@ -20,7 +20,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "rmq-queue-http-regex-test"
+	testName = "rmq-queue-http-dpratio-test"
 )
 
 var (
@@ -30,13 +30,12 @@ var (
 	secretName           = fmt.Sprintf("%s-secret", testName)
 	scaledObjectName     = fmt.Sprintf("%s-so", testName)
 	queueName            = "hello"
-	queueRegex           = "^hell.{1}$"
 	user                 = fmt.Sprintf("%s-user", testName)
 	password             = fmt.Sprintf("%s-password", testName)
 	vhost                = "/"
 	connectionString     = fmt.Sprintf("amqp://%s:%s@rabbitmq.%s.svc.cluster.local/", user, password, rmqNamespace)
 	httpConnectionString = fmt.Sprintf("http://%s:%s@rabbitmq.%s.svc.cluster.local/", user, password, rmqNamespace)
-	messageCount         = 100
+	messageCount         = 4
 )
 
 const (
@@ -49,20 +48,25 @@ metadata:
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
-  pollingInterval: 5
-  cooldownPeriod: 10
+  pollingInterval: 1
+  cooldownPeriod: 5
   minReplicaCount: 0
   maxReplicaCount: 4
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 5
   triggers:
     - type: rabbitmq
+      metricType: Value
       metadata:
         queueName: {{.QueueName}}
         hostFromEnv: RabbitApiHost
         protocol: http
-        mode: QueueLength
-        value: '10'
-        useRegex: 'true'
-        operation: sum
+        mode: PublishedToDeliveredRatio
+        value: '1'
+        activationValue: '1'
 `
 )
 
@@ -101,7 +105,7 @@ func getTemplateData() (templateData, []Template) {
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
 			SecretName:       secretName,
-			QueueName:        queueRegex,
+			QueueName:        queueName,
 			Connection:       connectionString,
 			Base64Connection: base64.StdEncoding.EncodeToString([]byte(httpConnectionString)),
 		}, []Template{
@@ -112,14 +116,11 @@ func getTemplateData() (templateData, []Template) {
 
 func testScaling(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
-	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messageCount, 0)
-	// dummies
-	RMQPublishMessages(t, rmqNamespace, connectionString, fmt.Sprintf("%s-1", queueName), messageCount)
-	RMQPublishMessages(t, rmqNamespace, connectionString, fmt.Sprintf("%s-%s", queueName, queueName), messageCount)
+	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messageCount, 1)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 3),
+		"replica count should be 4 after 3 minute")
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 2),
-		"replica count should be 4 after 2 minute")
-
+	RMQStopPublishingMessages(t, rmqNamespace, queueName)
 	t.Log("--- testing scale in ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")

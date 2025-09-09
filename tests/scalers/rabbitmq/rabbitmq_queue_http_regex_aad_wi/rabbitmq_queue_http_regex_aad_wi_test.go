@@ -163,7 +163,7 @@ func getTemplateData() (templateData, []Template) {
 
 func testScaling(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
-	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messageCount)
+	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messageCount, 0)
 	// dummies
 	RMQPublishMessages(t, rmqNamespace, connectionString, fmt.Sprintf("%s-1", queueName), messageCount)
 	RMQPublishMessages(t, rmqNamespace, connectionString, fmt.Sprintf("%s-%s", queueName, queueName), messageCount)

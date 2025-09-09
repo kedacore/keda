@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package rabbitmq_queue_http_regex_test
+package rabbitmq_queue_http_dget_test
 
 import (
 	"encoding/base64"
@@ -20,7 +20,7 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "rmq-queue-http-regex-test"
+	testName = "rmq-queue-http-dget-test"
 )
 
 var (
@@ -30,7 +30,6 @@ var (
 	secretName           = fmt.Sprintf("%s-secret", testName)
 	scaledObjectName     = fmt.Sprintf("%s-so", testName)
 	queueName            = "hello"
-	queueRegex           = "^hell.{1}$"
 	user                 = fmt.Sprintf("%s-user", testName)
 	password             = fmt.Sprintf("%s-password", testName)
 	vhost                = "/"
@@ -49,20 +48,25 @@ metadata:
 spec:
   scaleTargetRef:
     name: {{.DeploymentName}}
-  pollingInterval: 5
-  cooldownPeriod: 10
-  minReplicaCount: 0
+  pollingInterval: 1
+  cooldownPeriod: 5
+  minReplicaCount: 1
   maxReplicaCount: 4
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 5
   triggers:
     - type: rabbitmq
+      metricType: Value
       metadata:
         queueName: {{.QueueName}}
         hostFromEnv: RabbitApiHost
         protocol: http
-        mode: QueueLength
-        value: '10'
-        useRegex: 'true'
-        operation: sum
+        mode: DeliverGetRate
+        value: '3'
+        activationValue: '0'
 `
 )
 
@@ -75,8 +79,8 @@ type templateData struct {
 	Connection, Base64Connection string
 }
 
+// Setup environment and run tests
 func TestScaler(t *testing.T) {
-	// setup
 	t.Log("--- setting up ---")
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
@@ -85,13 +89,14 @@ func TestScaler(t *testing.T) {
 		RMQUninstall(t, rmqNamespace, user, password, vhost, WithoutOAuth())
 	})
 
-	// Create kubernetes resources
+	// Create Kubernetes resources
 	RMQInstall(t, kc, rmqNamespace, user, password, vhost, WithoutOAuth())
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
 
+	// Run tests
 	testScaling(t, kc)
 }
 
@@ -101,26 +106,23 @@ func getTemplateData() (templateData, []Template) {
 			DeploymentName:   deploymentName,
 			ScaledObjectName: scaledObjectName,
 			SecretName:       secretName,
-			QueueName:        queueRegex,
+			QueueName:        queueName,
 			Connection:       connectionString,
 			Base64Connection: base64.StdEncoding.EncodeToString([]byte(httpConnectionString)),
 		}, []Template{
-			{Name: "deploymentTemplate", Config: RMQTargetDeploymentTemplate},
+			{Name: "deploymentTemplate", Config: RMQPublisherTargetDeploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }
 
 func testScaling(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
-	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messageCount, 0)
-	// dummies
-	RMQPublishMessages(t, rmqNamespace, connectionString, fmt.Sprintf("%s-1", queueName), messageCount)
-	RMQPublishMessages(t, rmqNamespace, connectionString, fmt.Sprintf("%s-%s", queueName, queueName), messageCount)
+	RMQConsumeMessages(t, rmqNamespace, connectionString, queueName)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 3),
+		"replica count should be 4 after 3 minute")
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 2),
-		"replica count should be 4 after 2 minute")
-
+	RMQStopConsumingMessages(t, rmqNamespace, queueName)
 	t.Log("--- testing scale in ---")
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be 0 after 1 minute")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 1),
+		"replica count should be 1 after 1 minute")
 }
