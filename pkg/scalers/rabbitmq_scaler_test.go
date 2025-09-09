@@ -720,15 +720,15 @@ type rabbitMQErrorTestData struct {
 }
 
 var anonymizeRabbitMQErrorTestData = []rabbitMQErrorTestData{
-	{fmt.Errorf("https://user1:password1@domain.com"), "error inspecting rabbitMQ: https://user:password@domain.com"},
-	{fmt.Errorf("https://fdasr345_-:password1@domain.com"), "error inspecting rabbitMQ: https://user:password@domain.com"},
-	{fmt.Errorf("https://user1:fdasr345_-@domain.com"), "error inspecting rabbitMQ: https://user:password@domain.com"},
-	{fmt.Errorf("https://fdakls_dsa:password1@domain.com"), "error inspecting rabbitMQ: https://user:password@domain.com"},
-	{fmt.Errorf("fdasr345_-:password1@domain.com"), "error inspecting rabbitMQ: user:password@domain.com"},
-	{fmt.Errorf("this user1:password1@domain.com fails"), "error inspecting rabbitMQ: this user:password@domain.com fails"},
-	{fmt.Errorf("this https://user1:password1@domain.com fails also"), "error inspecting rabbitMQ: this https://user:password@domain.com fails also"},
-	{fmt.Errorf("nothing to replace here"), "error inspecting rabbitMQ: nothing to replace here"},
-	{fmt.Errorf("the queue https://user1:fdasr345_-@domain.com/api/virtual is unavailable"), "error inspecting rabbitMQ: the queue https://user:password@domain.com/api/virtual is unavailable"},
+	{fmt.Errorf("https://user1:password1@domain.com"), "error inspecting RabbitMQ: https://user:password@domain.com"},
+	{fmt.Errorf("https://fdasr345_-:password1@domain.com"), "error inspecting RabbitMQ: https://user:password@domain.com"},
+	{fmt.Errorf("https://user1:fdasr345_-@domain.com"), "error inspecting RabbitMQ: https://user:password@domain.com"},
+	{fmt.Errorf("https://fdakls_dsa:password1@domain.com"), "error inspecting RabbitMQ: https://user:password@domain.com"},
+	{fmt.Errorf("fdasr345_-:password1@domain.com"), "error inspecting RabbitMQ: user:password@domain.com"},
+	{fmt.Errorf("this user1:password1@domain.com fails"), "error inspecting RabbitMQ: this user:password@domain.com fails"},
+	{fmt.Errorf("this https://user1:password1@domain.com fails also"), "error inspecting RabbitMQ: this https://user:password@domain.com fails also"},
+	{fmt.Errorf("nothing to replace here"), "error inspecting RabbitMQ: nothing to replace here"},
+	{fmt.Errorf("the queue https://user1:fdasr345_-@domain.com/api/virtual is unavailable"), "error inspecting RabbitMQ: the queue https://user:password@domain.com/api/virtual is unavailable"},
 }
 
 func TestRabbitMQAnonymizeRabbitMQError(t *testing.T) {
