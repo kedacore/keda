@@ -120,7 +120,7 @@ func testScaling(t *testing.T, kc *kubernetes.Clientset) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 3),
 		"replica count should be 4 after 3 minute")
 
-	RMQStopPublishingMessages(t, rmqNamespace, queueName)
+	RMQStopPublishingMessages(rmqNamespace, queueName)
 	t.Log("--- testing scale in ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
