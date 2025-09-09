@@ -99,6 +99,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Hashicorp Vault**: Fix Vault PKI param using camel case param when making API call to Vault PKI endpoint ([#6864](https://github.com/kedacore/keda/issues/6864))
 - **Pulsar Scaler**: Resolve nil pointer dereference in Pulsar scaler redirect handling ([#7024](https://github.com/kedacore/keda/issues/7024))
 - **RabbitMQ Scaler**: Fix incorrect URL encoding in RabbitMQ vhosts containing %2f ([#6963](https://github.com/kedacore/keda/issues/6963))
+- **Kafka Scaler**: Fix throwing error when using sasl=none ([#7061](https://github.com/kedacore/keda/issues/7061))
 
 ### Deprecations
 
