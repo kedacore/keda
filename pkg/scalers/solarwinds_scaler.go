@@ -94,7 +94,7 @@ func (s *solarWindsScaler) GetMetricsAndActivity(ctx context.Context, metricName
 	return []external_metrics.ExternalMetricValue{metric}, value > s.metadata.ActivationValue, nil
 }
 
-func (s *solarWindsScaler) getMetricValueViaSDK(ctx context.Context, metricName string) (float64, error) {
+func (s *solarWindsScaler) getMetricValueViaSDK(ctx context.Context, _ string) (float64, error) {
 	session := swov1.New(
 		swov1.WithSecurity(s.metadata.APIToken),
 		swov1.WithServerURL(s.metadata.Host),
