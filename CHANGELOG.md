@@ -63,7 +63,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
 - **General**: Add error and event for mismatching input property ([#6721](https://github.com/kedacore/keda/issues/6721))
 - **General**: Add support for pause scale in annotation ([#6902](https://github.com/kedacore/keda/issues/6902))
 - **General**: Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
