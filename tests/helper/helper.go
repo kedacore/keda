@@ -20,15 +20,18 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"text/template"
 	"time"
 
 	"github.com/joho/godotenv"
+	prommodel "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,6 +49,7 @@ import (
 )
 
 const (
+	ArgoRolloutsNamespace          = "argo-rollouts"
 	AzureWorkloadIdentityNamespace = "azure-workload-identity-system"
 	AwsIdentityNamespace           = "aws-identity-system"
 	GcpIdentityNamespace           = "gcp-identity-system"
@@ -61,7 +65,7 @@ const (
 	StringFalse = "false"
 	StringTrue  = "true"
 
-	StrimziVersion   = "0.35.0"
+	StrimziVersion   = "0.47.0"
 	StrimziChartName = "strimzi"
 	StrimziNamespace = "strimzi"
 )
@@ -84,6 +88,7 @@ var (
 	AwsIdentityTests              = os.Getenv("AWS_RUN_IDENTITY_TESTS")
 	GcpIdentityTests              = os.Getenv("GCP_RUN_IDENTITY_TESTS")
 	EnableOpentelemetry           = os.Getenv("ENABLE_OPENTELEMETRY")
+	InstallArgoRollouts           = os.Getenv("E2E_INSTALL_ARGO_ROLLOUTS")
 	InstallCertManager            = AwsIdentityTests == StringTrue || GcpIdentityTests == StringTrue
 	InstallKeda                   = os.Getenv("E2E_INSTALL_KEDA")
 	InstallKafka                  = os.Getenv("E2E_INSTALL_KAFKA")
@@ -369,6 +374,27 @@ func WaitForJobCountUntilIteration(t *testing.T, kc *kubernetes.Clientset, names
 	return isTargetAchieved
 }
 
+func WaitForJobCreation(t *testing.T, kc *kubernetes.Clientset, scaledJobName, namespace string, iterations, intervalSeconds int) (*batchv1.Job, error) {
+	jobList := &batchv1.JobList{}
+	var err error
+
+	for i := 0; i < iterations; i++ {
+		jobList, err = kc.BatchV1().Jobs(namespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("scaledjob.keda.sh/name=%s", scaledJobName),
+		})
+
+		t.Log("Waiting for job creation")
+
+		if len(jobList.Items) > 0 {
+			return &jobList.Items[0], nil
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return nil, err
+}
+
 // Waits until deployment count hits target or number of iterations are done.
 func WaitForPodCountInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
@@ -458,6 +484,41 @@ func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, 
 	return false
 }
 
+// Waits until rollout ready replica count hits target or number of iterations are done.
+func WaitForArgoRolloutReplicaReadyCount(t *testing.T, _ *kubernetes.Clientset, name, namespace string, target, iterations, intervalSeconds int) bool {
+	for i := 0; i < iterations; i++ {
+		// If target==0, we check for spec replicas, since .status.readyReplicas won't be set by the controller.
+		jsonPath := ".status.readyReplicas"
+		if target == 0 {
+			jsonPath = ".spec.replicas"
+		}
+
+		kctlGetCmd := fmt.Sprintf(`kubectl get rollouts.argoproj.io/%s -n %s -o jsonpath="{%s}"`, name, namespace, jsonPath)
+		output, err := ExecuteCommand(kctlGetCmd)
+		assert.NoErrorf(t, err, "cannot get rollout info - %s", err)
+
+		unquotedOutput := strings.ReplaceAll(string(output), "\"", "")
+
+		// Length of output can be zero, which means .status.readyReplicas is not yet set by the controller.
+		// In that case, sleep and check in the next iteration. Otherwise compare.
+		if len(unquotedOutput) != 0 {
+			replicas, err := strconv.ParseInt(unquotedOutput, 10, 64)
+			assert.NoErrorf(t, err, "cannot convert rollout count to int - %s", err)
+
+			t.Logf("Waiting for rollout replicas to hit target. Rollout - %s, Current  - %d, Target - %d",
+				name, replicas, target)
+
+			if replicas == int64(target) {
+				return true
+			}
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+
+	return false
+}
+
 // Waits until statefulset count hits target or number of iterations are done.
 func WaitForStatefulsetReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
@@ -517,6 +578,45 @@ func AssertReplicaCountNotChangeDuringTimePeriod(t *testing.T, kc *kubernetes.Cl
 		}
 
 		time.Sleep(time.Second)
+	}
+}
+
+// Waits some time to ensure that the replica count doesn't change.
+func AssertReplicaCountNotChangeDuringTimePeriodRollout(t *testing.T, _ *kubernetes.Clientset, name, namespace string, target, intervalSeconds int) {
+	t.Logf("Waiting for some time to ensure rollout replica count doesn't change from %d", target)
+	var replicas int64
+
+	for i := 0; i < intervalSeconds; i++ {
+		// If target==0, we check for spec replicas, since .status.readyReplicas won't be set by the controller.
+		jsonPath := ".status.replicas"
+		if target == 0 {
+			jsonPath = ".spec.replicas"
+		}
+
+		kctlGetCmd := fmt.Sprintf(`kubectl get rollouts.argoproj.io/%s -n %s -o jsonpath="{%s}"`, name, namespace, jsonPath)
+		output, err := ExecuteCommand(kctlGetCmd)
+		assert.NoErrorf(t, err, "cannot get rollout info - %s", err)
+
+		unquotedOutput := strings.ReplaceAll(string(output), "\"", "")
+
+		// Length of output can be zero, which means .status.replicas is not set by the controller.
+		// In that case, fail the test. Otherwise, compare.
+		if len(unquotedOutput) != 0 {
+			replicas, err = strconv.ParseInt(unquotedOutput, 10, 64)
+			assert.NoErrorf(t, err, "cannot convert rollout count to int - %s", err)
+
+			t.Logf("Waiting for rollout replicas to hit target. Rollout - %s, Current  - %d, Target - %d",
+				name, replicas, target)
+
+			if replicas != int64(target) {
+				assert.Fail(t, fmt.Sprintf("%s replica count has changed from %d to %d", name, target, replicas))
+				return
+			}
+		} else {
+			assert.Fail(t, fmt.Sprintf("%s replicas are not set in its status, expected %d", name, target))
+		}
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
 	}
 }
 
@@ -1144,4 +1244,13 @@ func WatchForEventAfterTrigger(
 	case <-time.After(watchTimeout + 5*time.Second):
 		assert.Fail(t, "Timed out waiting for result from Kubernetes event watch channel")
 	}
+}
+
+func ExtractPrometheusLabelValue(key string, labels []*prommodel.LabelPair) string {
+	for _, label := range labels {
+		if label.Name != nil && *label.Name == key {
+			return *label.Value
+		}
+	}
+	return ""
 }

@@ -1,0 +1,8 @@
+# https://github.com/marketplace/actions/auto-assign-reviewer-by-files
+"**/*":
+  - team: keda-core-contributors
+  - team: keda-core-maintainers
+
+# Any datadog file in pkg or tests folder
+"+(pkg|tests)/**/datadog*.go":
+  - arapulido

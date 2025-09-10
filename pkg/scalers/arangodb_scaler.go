@@ -190,7 +190,7 @@ func (s *arangoDBScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	var result dbResult
 	if _, err = cursor.ReadDocument(ctx, &result); err != nil {
-		return -1, fmt.Errorf("query result is not in the specified format, pleast check the query, %w", err)
+		return -1, fmt.Errorf("query result is not in the specified format, please check the query, %w", err)
 	}
 
 	return result.Value, nil
