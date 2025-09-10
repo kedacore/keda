@@ -108,8 +108,9 @@ func (s *solarWindsScaler) getMetricValueViaSDK(ctx context.Context, metricName 
 		filter = &s.metadata.Filter
 	}
 
+	// Use the actual SolarWinds metric name, not the KEDA-generated metric name
 	res, err := session.Metrics.ListMetricMeasurements(ctx, operations.ListMetricMeasurementsRequest{
-		Name:        metricName,
+		Name:        s.metadata.MetricName,
 		Filter:      filter,
 		AggregateBy: s.convertAggregation(s.metadata.Aggregation),
 		StartTime:   &startTime,
