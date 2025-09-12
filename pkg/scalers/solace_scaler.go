@@ -77,7 +77,6 @@ type SolaceScaler struct {
 	metadata   *SolaceMetadata
 	httpClient *http.Client
 	logger     logr.Logger
-	stateLock  sync.Mutex
 	curHostIdx int
 }
 
@@ -217,7 +216,7 @@ func parseSolaceMetadata(config *scalersconfig.ScalerConfig) (*SolaceMetadata, e
 			sempURL,
 			solaceAPIName,
 			solaceAPIVersion,
-			meta.MessageVpn,
+			url.QueryEscape(meta.MessageVpn),
 		))
 	}
 
@@ -358,9 +357,6 @@ func (s *SolaceScaler) getQueueMetrics(ctx context.Context, sempURL string) (Sol
 func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (SolaceMetricValues, error) {
 	var metricValues SolaceMetricValues
 	var errorList []string
-
-	s.stateLock.Lock()
-	defer s.stateLock.Unlock()
 
 	//	RETRIEVE METRICS FROM SOLACE SEMP API
 	for i := 0; i < len(s.metadata.endpointURLsList); i++ {

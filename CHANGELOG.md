@@ -84,6 +84,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Datadog Scaler**: Improve Datadog scaler error messages ([#6999](https://github.com/kedacore/keda/pull/6999))
 - **Metrics API**: Support multiple auth methods simultaneously in Metrics API scaler ([#6642](https://github.com/kedacore/keda/issues/6642))
 - **Temporal Scaler**: Support custom tlsServerName ([#6820](https://github.com/kedacore/keda/pull/6820))
+- **Solace Scaler**: Add hostlist support for Solace brokers ([#6566](https://github.com/kedacore/keda/issues/6566))
 
 ### Fixes
 
@@ -396,7 +397,6 @@ Here is an overview of all new **experimental** features:
 - **GCP Stackdriver Scaler**: Add missing parameters 'rate' and 'count' for GCP Stackdriver Scaler alignment ([#5633](https://github.com/kedacore/keda/issues/5633))
 - **Metrics API Scaler**: Add support for various formats: json, xml, yaml, prometheus ([#2633](https://github.com/kedacore/keda/issues/2633))
 - **MongoDB Scaler**: Add scheme field support srv record ([#5544](https://github.com/kedacore/keda/issues/5544))
-- **Solace Scaler**: Add hostlist support for Solace brokers ([#6566](https://github.com/kedacore/keda/issues/6566))
 
 ### Fixes
 
