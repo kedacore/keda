@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
