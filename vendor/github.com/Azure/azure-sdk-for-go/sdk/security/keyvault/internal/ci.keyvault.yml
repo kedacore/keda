@@ -26,3 +26,4 @@ extends:
   parameters:
     ServiceDirectory: 'security/keyvault/internal'
     RunLiveTests: false
+    EnableRaceDetector: true

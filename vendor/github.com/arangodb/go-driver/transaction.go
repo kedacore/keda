@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2020-2023 ArangoDB GmbH, Cologne, Germany
+// Copyright 2020-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,7 +34,8 @@ type TransactionOptions struct {
 	// all data to disk before returning.
 	WaitForSync bool
 
-	// @deprecated
+	// Deprecated
+	//
 	// Maximum number of operations after which an intermediate commit is performed
 	// automatically. Honored by the RocksDB storage engine only.
 	IntermediateCommitCount *int
@@ -42,7 +43,8 @@ type TransactionOptions struct {
 	// Optional arguments passed to action.
 	Params []interface{}
 
-	// @deprecated
+	// Deprecated:
+	//
 	// Maximum total size of operations after which an intermediate commit is
 	// performed automatically. Honored by the RocksDB storage engine only.
 	IntermediateCommitSize *int

@@ -18,17 +18,17 @@ func (h UnimplementedHandler) StartOperation(ctx context.Context, service, opera
 }
 
 // GetOperationResult implements the Handler interface.
-func (h UnimplementedHandler) GetOperationResult(ctx context.Context, service, operation, operationID string, options GetOperationResultOptions) (any, error) {
+func (h UnimplementedHandler) GetOperationResult(ctx context.Context, service, operation, token string, options GetOperationResultOptions) (any, error) {
 	return nil, HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }
 
 // GetOperationInfo implements the Handler interface.
-func (h UnimplementedHandler) GetOperationInfo(ctx context.Context, service, operation, operationID string, options GetOperationInfoOptions) (*OperationInfo, error) {
+func (h UnimplementedHandler) GetOperationInfo(ctx context.Context, service, operation, token string, options GetOperationInfoOptions) (*OperationInfo, error) {
 	return nil, HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }
 
 // CancelOperation implements the Handler interface.
-func (h UnimplementedHandler) CancelOperation(ctx context.Context, service, operation, operationID string, options CancelOperationOptions) error {
+func (h UnimplementedHandler) CancelOperation(ctx context.Context, service, operation, token string, options CancelOperationOptions) error {
 	return HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }
 
@@ -52,17 +52,17 @@ func (*UnimplementedOperation[I, O]) OutputType() reflect.Type {
 }
 
 // Cancel implements Operation.
-func (*UnimplementedOperation[I, O]) Cancel(context.Context, string, CancelOperationOptions) error {
+func (*UnimplementedOperation[I, O]) Cancel(ctx context.Context, token string, options CancelOperationOptions) error {
 	return HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }
 
 // GetInfo implements Operation.
-func (*UnimplementedOperation[I, O]) GetInfo(context.Context, string, GetOperationInfoOptions) (*OperationInfo, error) {
+func (*UnimplementedOperation[I, O]) GetInfo(ctx context.Context, token string, options GetOperationInfoOptions) (*OperationInfo, error) {
 	return nil, HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }
 
 // GetResult implements Operation.
-func (*UnimplementedOperation[I, O]) GetResult(context.Context, string, GetOperationResultOptions) (O, error) {
+func (*UnimplementedOperation[I, O]) GetResult(ctx context.Context, token string, options GetOperationResultOptions) (O, error) {
 	var empty O
 	return empty, HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }

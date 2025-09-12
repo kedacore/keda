@@ -59,7 +59,7 @@ spec:
     spec:
       containers:
       - name: my-app
-        image: nginxinc/nginx-unprivileged
+        image: ghcr.io/nginx/nginx-unprivileged:1.26
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80

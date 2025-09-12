@@ -32,6 +32,7 @@ type nexusWorkerOptions struct {
 	client              Client
 	workflowService     workflowservice.WorkflowServiceClient
 	handler             nexus.Handler
+	registry            *registry
 }
 
 type nexusWorker struct {
@@ -57,6 +58,7 @@ func newNexusWorker(opts nexusWorkerOptions) (*nexusWorker, error) {
 			opts.executionParameters.FailureConverter,
 			opts.executionParameters.Logger,
 			opts.executionParameters.MetricsHandler,
+			opts.registry,
 		),
 		opts.workflowService,
 		params,

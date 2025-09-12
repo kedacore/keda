@@ -2,11 +2,15 @@
 
 ## [master](https://github.com/arangodb/go-driver/tree/master) (N/A)
 
-## [1.6.5(https://github.com/arangodb/go-driver/tree/v1.6.5) (2024-11-15)
+## [1.6.6](https://github.com/arangodb/go-driver/tree/v1.6.6) (2025-02-21)
+- Switch to Go 1.22.11
+- Switch to jwt-go v5
+
+## [1.6.5](https://github.com/arangodb/go-driver/tree/v1.6.5) (2024-11-15)
 - Expose `NewType` method
 - Switch to Go 1.22.8
 
-## [1.6.4(https://github.com/arangodb/go-driver/tree/v1.6.4) (2024-09-27)
+## [1.6.4](https://github.com/arangodb/go-driver/tree/v1.6.4) (2024-09-27)
 - Switch to Go 1.22.5
 - Switch to Go 1.22.6
 

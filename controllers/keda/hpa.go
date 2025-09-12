@@ -38,6 +38,19 @@ import (
 	version "github.com/kedacore/keda/v2/version"
 )
 
+// storeHpaNameInStatus updates the ScaledObject status subresource with the hpaName.
+func (r *ScaledObjectReconciler) storeHpaNameInStatus(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, hpaName string) error {
+	status := scaledObject.Status.DeepCopy()
+	status.HpaName = hpaName
+
+	err := kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
+	if err != nil {
+		logger.Error(err, "Failed to update scaledObject status with used hpaName")
+		return err
+	}
+	return nil
+}
+
 // createAndDeployNewHPA creates and deploy HPA in the cluster for specified ScaledObject
 func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, gvkr *kedav1alpha1.GroupVersionKindResource) error {
 	hpaName := getHPAName(scaledObject)
@@ -54,17 +67,7 @@ func (r *ScaledObjectReconciler) createAndDeployNewHPA(ctx context.Context, logg
 		return err
 	}
 
-	// store hpaName in the ScaledObject
-	status := scaledObject.Status.DeepCopy()
-	status.HpaName = hpaName
-
-	err = kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
-	if err != nil {
-		logger.Error(err, "Failed to update scaledObject status with used hpaName")
-		return err
-	}
-
-	return nil
+	return r.storeHpaNameInStatus(ctx, logger, scaledObject, hpaName)
 }
 
 // newHPAForScaledObject returns HPA as it is specified in ScaledObject
@@ -81,6 +84,28 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		behavior = nil
 	}
 
+	if scaledObject.NeedToPauseScaleIn() {
+		// If the paused-scale-in annotation is set, set the HPA ScaleDown Select policy to Disabled
+		// to prevent the HPA from scaling down the scale target
+		if behavior == nil {
+			behavior = &autoscalingv2.HorizontalPodAutoscalerBehavior{}
+		}
+		if behavior.ScaleDown == nil {
+			behavior.ScaleDown = &autoscalingv2.HPAScalingRules{}
+		}
+
+		disabledPolicy := autoscalingv2.DisabledPolicySelect
+		behavior.ScaleDown.SelectPolicy = &disabledPolicy
+
+		logger.Info(
+			"Scale in paused by annotation, setting HPA Scale Down Select Behavior to Disabled",
+			"HPA.Namespace",
+			scaledObject.Namespace,
+			"HPA.Name",
+			getHPAName(scaledObject),
+		)
+	}
+
 	// label can have max 63 chars
 	labelName := getHPAName(scaledObject)
 	if len(labelName) > 63 {
@@ -95,7 +120,20 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 		"app.kubernetes.io/part-of":    scaledObject.Name,
 		"app.kubernetes.io/managed-by": "keda-operator",
 	}
+
+	excludedLabels := map[string]struct{}{}
+
+	if labels, ok := scaledObject.ObjectMeta.Annotations[kedav1alpha1.ScaledObjectExcludedLabelsAnnotation]; ok {
+		for _, excludedLabel := range strings.Split(labels, ",") {
+			excludedLabels[excludedLabel] = struct{}{}
+		}
+	}
+
 	for key, value := range scaledObject.ObjectMeta.Labels {
+		if _, ok := excludedLabels[key]; ok {
+			continue
+		}
+
 		labels[key] = value
 	}
 

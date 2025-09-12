@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"strconv"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
@@ -57,19 +56,69 @@ type azureServiceBusScaler struct {
 }
 
 type azureServiceBusMetadata struct {
-	targetLength            int64
-	activationTargetLength  int64
-	queueName               string
-	topicName               string
-	subscriptionName        string
-	connection              string
-	entityType              entityType
-	fullyQualifiedNamespace string
-	useRegex                bool
-	entityNameRegex         *regexp.Regexp
-	operation               string
+	TargetLength            int64  `keda:"name=messageCount,          order=triggerMetadata, default=5"`
+	ActivationTargetLength  int64  `keda:"name=activationMessageCount,          order=triggerMetadata, optional"`
+	QueueName               string `keda:"name=queueName,          order=triggerMetadata, optional"`
+	TopicName               string `keda:"name=topicName,          order=triggerMetadata, optional"`
+	SubscriptionName        string `keda:"name=subscriptionName,          order=triggerMetadata, optional"`
+	Connection              string `keda:"name=connection,          order=authParams;resolvedEnv, optional"`
+	Namespace               string `keda:"name=namespace,          order=triggerMetadata, optional"`
+	EntityType              entityType
+	FullyQualifiedNamespace string
+	UseRegex                bool `keda:"name=useRegex,          order=triggerMetadata, optional"`
+	EntityNameRegex         *regexp.Regexp
+	Operation               string `keda:"name=operation,          order=triggerMetadata, enum=sum;max;avg, default=sum"`
 	triggerIndex            int
 	timeout                 time.Duration
+}
+
+func (a *azureServiceBusMetadata) Validate() error {
+	a.EntityType = none
+
+	// get queue name OR topic and subscription name & set entity type accordingly
+	if a.QueueName != "" {
+		a.EntityType = queue
+
+		if a.SubscriptionName != "" {
+			return fmt.Errorf("subscription name provided with queue name")
+		}
+
+		if a.UseRegex {
+			entityNameRegex, err := regexp.Compile(a.QueueName)
+			if err != nil {
+				return fmt.Errorf("queueName is not a valid regular expression")
+			}
+			entityNameRegex.Longest()
+
+			a.EntityNameRegex = entityNameRegex
+		}
+	}
+
+	if a.TopicName != "" {
+		if a.EntityType == queue {
+			return fmt.Errorf("both topic and queue name metadata provided")
+		}
+		a.EntityType = subscription
+
+		if a.SubscriptionName == "" {
+			return fmt.Errorf("no subscription name provided with topic name")
+		}
+
+		if a.UseRegex {
+			entityNameRegex, err := regexp.Compile(a.SubscriptionName)
+			if err != nil {
+				return fmt.Errorf("subscriptionName is not a valid regular expression")
+			}
+			entityNameRegex.Longest()
+
+			a.EntityNameRegex = entityNameRegex
+		}
+	}
+	if a.EntityType == none {
+		return fmt.Errorf("no service bus entity type set")
+	}
+
+	return nil
 }
 
 // NewAzureServiceBusScaler creates a new AzureServiceBusScaler
@@ -81,7 +130,7 @@ func NewAzureServiceBusScaler(ctx context.Context, config *scalersconfig.ScalerC
 
 	logger := InitializeLogger(config, "azure_servicebus_scaler")
 
-	meta, err := parseAzureServiceBusMetadata(config, logger)
+	meta, err := parseAzureServiceBusMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure service bus metadata: %w", err)
 	}
@@ -96,115 +145,23 @@ func NewAzureServiceBusScaler(ctx context.Context, config *scalersconfig.ScalerC
 }
 
 // Creates an azureServiceBusMetadata struct from input metadata/env variables
-func parseAzureServiceBusMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azureServiceBusMetadata, error) {
-	meta := azureServiceBusMetadata{}
-	meta.entityType = none
-	meta.targetLength = defaultTargetMessageCount
+func parseAzureServiceBusMetadata(config *scalersconfig.ScalerConfig) (*azureServiceBusMetadata, error) {
+	meta := &azureServiceBusMetadata{}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing azure service bus metadata: %w", err)
+	}
+
+	meta.triggerIndex = config.TriggerIndex
 	meta.timeout = config.GlobalHTTPTimeout
-
-	// get target metric value
-	if val, ok := config.TriggerMetadata[messageCountMetricName]; ok {
-		messageCount, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			logger.Error(err, "Error parsing azure queue metadata", "messageCount", messageCountMetricName)
-		} else {
-			meta.targetLength = messageCount
-		}
-	}
-
-	meta.activationTargetLength = 0
-	if val, ok := config.TriggerMetadata[activationMessageCountMetricName]; ok {
-		activationMessageCount, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			logger.Error(err, "Error parsing azure queue metadata", activationMessageCountMetricName, activationMessageCountMetricName)
-			return nil, fmt.Errorf("error parsing azure queue metadata %s", activationMessageCountMetricName)
-		}
-		meta.activationTargetLength = activationMessageCount
-	}
-
-	meta.useRegex = false
-	if val, ok := config.TriggerMetadata["useRegex"]; ok {
-		useRegex, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("useRegex has invalid value")
-		}
-		meta.useRegex = useRegex
-	}
-
-	meta.operation = sumOperation
-	if meta.useRegex {
-		if val, ok := config.TriggerMetadata["operation"]; ok {
-			meta.operation = val
-		}
-
-		switch meta.operation {
-		case avgOperation, maxOperation, sumOperation:
-		default:
-			return nil, fmt.Errorf("operation must be one of avg, max, or sum")
-		}
-	}
-
-	// get queue name OR topic and subscription name & set entity type accordingly
-	if val, ok := config.TriggerMetadata["queueName"]; ok {
-		meta.queueName = val
-		meta.entityType = queue
-
-		if _, ok := config.TriggerMetadata["subscriptionName"]; ok {
-			return nil, fmt.Errorf("subscription name provided with queue name")
-		}
-
-		if meta.useRegex {
-			entityNameRegex, err := regexp.Compile(meta.queueName)
-			if err != nil {
-				return nil, fmt.Errorf("queueName is not a valid regular expression")
-			}
-			entityNameRegex.Longest()
-
-			meta.entityNameRegex = entityNameRegex
-		}
-	}
-
-	if val, ok := config.TriggerMetadata["topicName"]; ok {
-		if meta.entityType == queue {
-			return nil, fmt.Errorf("both topic and queue name metadata provided")
-		}
-		meta.topicName = val
-		meta.entityType = subscription
-
-		if val, ok := config.TriggerMetadata["subscriptionName"]; ok {
-			meta.subscriptionName = val
-		} else {
-			return nil, fmt.Errorf("no subscription name provided with topic name")
-		}
-
-		if meta.useRegex {
-			entityNameRegex, err := regexp.Compile(meta.subscriptionName)
-			if err != nil {
-				return nil, fmt.Errorf("subscriptionName is not a valid regular expression")
-			}
-			entityNameRegex.Longest()
-
-			meta.entityNameRegex = entityNameRegex
-		}
-	}
-	if meta.entityType == none {
-		return nil, fmt.Errorf("no service bus entity type set")
-	}
 
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		// get servicebus connection string
-		if config.AuthParams["connection"] != "" {
-			meta.connection = config.AuthParams["connection"]
-		} else if config.TriggerMetadata["connectionFromEnv"] != "" {
-			meta.connection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
-		}
-
-		if len(meta.connection) == 0 {
-			return nil, fmt.Errorf("no connection setting given")
+		if meta.Connection == "" {
+			return meta, fmt.Errorf("no connection setting given")
 		}
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		if val, ok := config.TriggerMetadata["namespace"]; ok {
+		if meta.Namespace != "" {
 			envSuffixProvider := func(env az.Environment) (string, error) {
 				return env.ServiceBusEndpointSuffix, nil
 			}
@@ -213,7 +170,7 @@ func parseAzureServiceBusMetadata(config *scalersconfig.ScalerConfig, logger log
 			if err != nil {
 				return nil, err
 			}
-			meta.fullyQualifiedNamespace = fmt.Sprintf("%s.%s", val, endpointSuffix)
+			meta.FullyQualifiedNamespace = fmt.Sprintf("%s.%s", meta.Namespace, endpointSuffix)
 		} else {
 			return nil, fmt.Errorf("namespace are required when using pod identity")
 		}
@@ -222,9 +179,7 @@ func parseAzureServiceBusMetadata(config *scalersconfig.ScalerConfig, logger log
 		return nil, fmt.Errorf("azure service bus doesn't support pod identity %s", config.PodIdentity.Provider)
 	}
 
-	meta.triggerIndex = config.TriggerIndex
-
-	return &meta, nil
+	return meta, nil
 }
 
 // Close - nothing to close for SB
@@ -237,15 +192,15 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2.Me
 	metricName := ""
 
 	var entityType string
-	if s.metadata.entityType == queue {
-		metricName = s.metadata.queueName
+	if s.metadata.EntityType == queue {
+		metricName = s.metadata.QueueName
 		entityType = "queue"
 	} else {
-		metricName = s.metadata.topicName
+		metricName = s.metadata.TopicName
 		entityType = "topic"
 	}
 
-	if s.metadata.useRegex {
+	if s.metadata.UseRegex {
 		metricName = fmt.Sprintf("%s-regex", entityType)
 	}
 
@@ -253,7 +208,7 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2.Me
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-servicebus-%s", metricName))),
 		},
-		Target: GetMetricTarget(s.metricType, s.metadata.targetLength),
+		Target: GetMetricTarget(s.metricType, s.metadata.TargetLength),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
@@ -270,7 +225,7 @@ func (s *azureServiceBusScaler) GetMetricsAndActivity(ctx context.Context, metri
 
 	metric := GenerateMetricInMili(metricName, float64(queuelen))
 
-	return []external_metrics.ExternalMetricValue{metric}, queuelen > s.metadata.activationTargetLength, nil
+	return []external_metrics.ExternalMetricValue{metric}, queuelen > s.metadata.ActivationTargetLength, nil
 }
 
 // Returns the length of the queue or subscription
@@ -281,7 +236,7 @@ func (s *azureServiceBusScaler) getAzureServiceBusLength(ctx context.Context) (i
 		return -1, err
 	}
 	// switch case for queue vs topic here
-	switch s.metadata.entityType {
+	switch s.metadata.EntityType {
 	case queue:
 		return getQueueLength(ctx, adminClient, s.metadata)
 	case subscription:
@@ -306,13 +261,13 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error
 
 	switch s.podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		client, err = admin.NewClientFromConnectionString(s.metadata.connection, opts)
+		client, err = admin.NewClientFromConnectionString(s.metadata.Connection, opts)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		creds, chainedErr := azure.NewChainedCredential(s.logger, s.podIdentity)
 		if chainedErr != nil {
 			return nil, chainedErr
 		}
-		client, err = admin.NewClient(s.metadata.fullyQualifiedNamespace, creds, opts)
+		client, err = admin.NewClient(s.metadata.FullyQualifiedNamespace, creds, opts)
 	default:
 		err = fmt.Errorf("incorrect podIdentity type")
 	}
@@ -322,13 +277,13 @@ func (s *azureServiceBusScaler) getServiceBusAdminClient() (*admin.Client, error
 }
 
 func getQueueLength(ctx context.Context, adminClient *admin.Client, meta *azureServiceBusMetadata) (int64, error) {
-	if !meta.useRegex {
-		queueEntity, err := adminClient.GetQueueRuntimeProperties(ctx, meta.queueName, &admin.GetQueueRuntimePropertiesOptions{})
+	if !meta.UseRegex {
+		queueEntity, err := adminClient.GetQueueRuntimeProperties(ctx, meta.QueueName, &admin.GetQueueRuntimePropertiesOptions{})
 		if err != nil {
 			return -1, err
 		}
 		if queueEntity == nil {
-			return -1, fmt.Errorf("queue %s doesn't exist", meta.queueName)
+			return -1, fmt.Errorf("queue %s doesn't exist", meta.QueueName)
 		}
 
 		return int64(queueEntity.ActiveMessageCount), nil
@@ -344,24 +299,24 @@ func getQueueLength(ctx context.Context, adminClient *admin.Client, meta *azureS
 		}
 
 		for _, queue := range page.QueueRuntimeProperties {
-			if meta.entityNameRegex.FindString(queue.QueueName) == queue.QueueName {
+			if meta.EntityNameRegex.FindString(queue.QueueName) == queue.QueueName {
 				messageCounts = append(messageCounts, int64(queue.ActiveMessageCount))
 			}
 		}
 	}
 
-	return performOperation(messageCounts, meta.operation), nil
+	return performOperation(messageCounts, meta.Operation), nil
 }
 
 func getSubscriptionLength(ctx context.Context, adminClient *admin.Client, meta *azureServiceBusMetadata) (int64, error) {
-	if !meta.useRegex {
-		subscriptionEntity, err := adminClient.GetSubscriptionRuntimeProperties(ctx, meta.topicName, meta.subscriptionName,
+	if !meta.UseRegex {
+		subscriptionEntity, err := adminClient.GetSubscriptionRuntimeProperties(ctx, meta.TopicName, meta.SubscriptionName,
 			&admin.GetSubscriptionRuntimePropertiesOptions{})
 		if err != nil {
 			return -1, err
 		}
 		if subscriptionEntity == nil {
-			return -1, fmt.Errorf("subscription %s doesn't exist in topic %s", meta.subscriptionName, meta.topicName)
+			return -1, fmt.Errorf("subscription %s doesn't exist in topic %s", meta.SubscriptionName, meta.TopicName)
 		}
 
 		return int64(subscriptionEntity.ActiveMessageCount), nil
@@ -369,7 +324,7 @@ func getSubscriptionLength(ctx context.Context, adminClient *admin.Client, meta 
 
 	messageCounts := make([]int64, 0)
 
-	subscriptionPager := adminClient.NewListSubscriptionsRuntimePropertiesPager(meta.topicName, nil)
+	subscriptionPager := adminClient.NewListSubscriptionsRuntimePropertiesPager(meta.TopicName, nil)
 	for subscriptionPager.More() {
 		page, err := subscriptionPager.NextPage(ctx)
 		if err != nil {
@@ -377,13 +332,13 @@ func getSubscriptionLength(ctx context.Context, adminClient *admin.Client, meta 
 		}
 
 		for _, subscription := range page.SubscriptionRuntimeProperties {
-			if meta.entityNameRegex.FindString(subscription.SubscriptionName) == subscription.SubscriptionName {
+			if meta.EntityNameRegex.FindString(subscription.SubscriptionName) == subscription.SubscriptionName {
 				messageCounts = append(messageCounts, int64(subscription.ActiveMessageCount))
 			}
 		}
 	}
 
-	return performOperation(messageCounts, meta.operation), nil
+	return performOperation(messageCounts, meta.Operation), nil
 }
 
 func performOperation(messageCounts []int64, operation string) int64 {

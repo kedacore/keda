@@ -54,12 +54,11 @@ spec:
                   fieldPath: metadata.namespace
             - name: KEDA_HTTP_DEFAULT_TIMEOUT
               value: ""
+          command:
+            - /keda-adapter
           args:
-          - /usr/local/bin/keda-adapter
           - --secure-port=6443
-          - --logtostderr=true
-          - --stderrthreshold=ERROR
-          - --v=0
+          - --zap-log-level=error
           - --client-ca-file=/certs/ca.crt
           - --tls-cert-file=/certs/tls.crt
           - --tls-private-key-file=/certs/tls.key

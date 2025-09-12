@@ -43,10 +43,10 @@ func TestCheckpointFromBlobStorageAzureFunction(t *testing.T) {
 	}
 
 	client, err := GetStorageBlobClient(logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint, 3*time.Second)
-	assert.NoError(t, err, "error creting the blob client")
+	assert.NoError(t, err, "error creating the blob client")
 
 	err = createNewCheckpointInStorage(ctx, client, containerName, urlPath, checkpoint, nil)
-	assert.NoError(t, err, "error creating checkoiunt")
+	assert.NoError(t, err, "error creating checkpoint")
 
 	expectedCheckpoint := Checkpoint{
 		PartitionID:    partitionID,
@@ -81,10 +81,10 @@ func TestCheckpointFromBlobStorageDefault(t *testing.T) {
 		BlobContainer:         containerName,
 	}
 	client, err := GetStorageBlobClient(logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint, 3*time.Second)
-	assert.NoError(t, err, "error creting the blob client")
+	assert.NoError(t, err, "error creating the blob client")
 
 	err = createNewCheckpointInStorage(ctx, client, containerName, urlPath, checkpoint, nil)
-	assert.NoError(t, err, "error creating checkoiunt")
+	assert.NoError(t, err, "error creating checkpoint")
 
 	expectedCheckpoint := Checkpoint{
 		PartitionID:    partitionID,
@@ -120,10 +120,10 @@ func TestCheckpointFromBlobStorageDefaultDeprecatedPythonCheckpoint(t *testing.T
 	}
 
 	client, err := GetStorageBlobClient(logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint, 3*time.Second)
-	assert.NoError(t, err, "error creting the blob client")
+	assert.NoError(t, err, "error creating the blob client")
 
 	err = createNewCheckpointInStorage(ctx, client, containerName, urlPath, checkpoint, nil)
-	assert.NoError(t, err, "error creating checkoiunt")
+	assert.NoError(t, err, "error creating checkpoint")
 
 	expectedCheckpoint := Checkpoint{
 		PartitionID:    partitionID,
@@ -162,10 +162,10 @@ func TestCheckpointFromBlobStorageWithBlobMetadata(t *testing.T) {
 	}
 
 	client, err := GetStorageBlobClient(logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint, 3*time.Second)
-	assert.NoError(t, err, "error creting the blob client")
+	assert.NoError(t, err, "error creating the blob client")
 
 	err = createNewCheckpointInStorage(ctx, client, containerName, urlPath, "", metadata)
-	assert.NoError(t, err, "error creating checkoiunt")
+	assert.NoError(t, err, "error creating checkpoint")
 
 	expectedCheckpoint := Checkpoint{
 		PartitionID:    partitionID,
@@ -201,10 +201,10 @@ func TestCheckpointFromBlobStorageGoSdk(t *testing.T) {
 	}
 
 	client, err := GetStorageBlobClient(logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint, 3*time.Second)
-	assert.NoError(t, err, "error creting the blob client")
+	assert.NoError(t, err, "error creating the blob client")
 
 	err = createNewCheckpointInStorage(ctx, client, containerName, urlPath, checkpoint, nil)
-	assert.NoError(t, err, "error creating checkoiunt")
+	assert.NoError(t, err, "error creating checkpoint")
 
 	expectedCheckpoint := Checkpoint{
 		PartitionID:    partitionID,
@@ -243,10 +243,10 @@ func TestCheckpointFromBlobStorageDapr(t *testing.T) {
 	}
 
 	client, err := GetStorageBlobClient(logr.Discard(), eventHubInfo.PodIdentity, eventHubInfo.StorageConnection, eventHubInfo.StorageAccountName, eventHubInfo.BlobStorageEndpoint, 3*time.Second)
-	assert.NoError(t, err, "error creting the blob client")
+	assert.NoError(t, err, "error creating the blob client")
 
 	err = createNewCheckpointInStorage(ctx, client, containerName, urlPath, checkpoint, nil)
-	assert.NoError(t, err, "error creating checkoiunt")
+	assert.NoError(t, err, "error creating checkpoint")
 
 	expectedCheckpoint := Checkpoint{
 		PartitionID:    partitionID,

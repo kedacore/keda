@@ -68,7 +68,7 @@ type parseExternalScalerMetadataTestData struct {
 var testExternalScalerMetadata = []parseExternalScalerMetadataTestData{
 	{map[string]string{}, true, map[string]string{}},
 	// all properly formed
-	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS", "insecureSkipVerify": "true"}, false, map[string]string{"caCert": serverRootCA, "tlsClientCert": clientCert}},
+	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS", "enableTLS": "true", "insecureSkipVerify": "true"}, false, map[string]string{"caCert": serverRootCA, "tlsClientCert": clientCert}},
 	// missing scalerAddress
 	{map[string]string{"test1": "1", "test2": "SAMPLE_CREDS"}, true, map[string]string{}},
 }
@@ -80,8 +80,11 @@ func TestExternalScalerParseMetadata(t *testing.T) {
 			t.Error("Expected success but got error", err)
 		}
 
-		if testData.metadata["unsafeSsl"] == "true" && !metadata.unsafeSsl {
-			t.Error("Expected unsafeSsl to be true but got", metadata.unsafeSsl)
+		if testData.metadata["unsafeSsl"] == "true" && !metadata.UnsafeSsl {
+			t.Error("Expected unsafeSsl to be true but got", metadata.UnsafeSsl)
+		}
+		if testData.metadata["enableTLS"] == "true" && !metadata.EnableTLS {
+			t.Error("Expected enableTLS to be true but got", metadata.EnableTLS)
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
@@ -130,14 +133,16 @@ func TestExternalPushScaler_Run(t *testing.T) {
 	defer cancel()
 	for {
 		<-time.After(time.Second * 1)
-		if resultCount == serverCount*iterationCount {
-			t.Logf("resultCount == %d", resultCount)
+		currentCount := atomic.LoadInt64(&resultCount)
+		if currentCount == serverCount*iterationCount {
+			t.Logf("resultCount == %d", currentCount)
 			return
 		}
 
 		retries++
 		if retries > 10 {
-			t.Fatalf("Expected resultCount to be %d after %d retries, but got %d", serverCount*iterationCount, retries, resultCount)
+			currentCount = atomic.LoadInt64(&resultCount)
+			t.Fatalf("Expected resultCount to be %d after %d retries, but got %d", serverCount*iterationCount, retries, currentCount)
 			return
 		}
 	}

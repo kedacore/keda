@@ -100,7 +100,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginxinc/nginx-unprivileged
+        image: ghcr.io/nginx/nginx-unprivileged:1.26
         ports:
         - containerPort: 80
 `
@@ -269,7 +269,7 @@ func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templa
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, maxReplicas, 60)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 12, 10),
-		"replica count should be %d after 1 minutes", maxReplicas)
+		"replica count should be %d after 2 minutes", maxReplicas)
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }

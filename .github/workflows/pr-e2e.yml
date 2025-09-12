@@ -5,12 +5,14 @@ on:
 
 env:
   E2E_CHECK_NAME: e2e tests
+  ARM_SMOKE_CHECK_NAME: ARM smoke tests
+  S390X_SMOKE_CHECK_NAME: S390x smoke tests
 
 jobs:
   triage:
     runs-on: ubuntu-latest
     name: Comment evaluate
-    container: ghcr.io/kedacore/keda-tools:1.23.6
+    container: ghcr.io/kedacore/keda-tools:1.23.8
     outputs:
       run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
       pr_num: ${{ steps.parser.outputs.pr_num }}
@@ -67,9 +69,9 @@ jobs:
 
   build-test-images:
     needs: triage
-    runs-on: ubuntu-latest
+    runs-on: ARM64
     name: Build images
-    container: ghcr.io/kedacore/keda-tools:1.23.6
+    container: ghcr.io/kedacore/keda-tools:1.23.8
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -78,6 +80,24 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.E2E_CHECK_NAME }}
+          status: in_progress
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+
+      - name: Set status in-progress
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.ARM_SMOKE_CHECK_NAME }}
+          status: in_progress
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+
+      - name: Set status in-progress
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.S390X_SMOKE_CHECK_NAME }}
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
@@ -126,12 +146,32 @@ jobs:
           conclusion: failure
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
+      - name: Set status failure
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        if: steps.regex-validation.outcome != 'success'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.ARM_SMOKE_CHECK_NAME }}
+          status: failure
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+
+      - name: Set status failure
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        if: steps.regex-validation.outcome != 'success'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.S390X_SMOKE_CHECK_NAME }}
+          status: failure
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+
       - name: Exit on failure
         if: steps.regex-validation.outcome != 'success'
         run: exit 1
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           # Username used to log in to a Docker registry. If not set then no login will occur
           username: ${{ github.repository_owner }}
@@ -140,16 +180,20 @@ jobs:
           # Server address of Docker registry. If not set then will default to Docker Hub
           registry: ghcr.io
 
-      - name: Publish on GitHub Container Registry
-        run: make publish
-        env:
-          E2E_IMAGE_TAG: ${{ needs.triage.outputs.image_tag }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
 
-  run-test:
+      - name: Publish on GitHub Container Registry
+        run: make publish-multiarch
+        env:
+          VERSION: ${{ needs.triage.outputs.image_tag }}
+          SUFFIX: "-test"
+
+  run-e2e-test:
     needs: [triage, build-test-images]
     runs-on: e2e
     name: Execute e2e tests
-    container: ghcr.io/kedacore/keda-tools:1.23.6
+    container: ghcr.io/kedacore/keda-tools:1.23.8
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -192,7 +236,8 @@ jobs:
           AZURE_RUN_WORKLOAD_IDENTITY_TESTS: true
           GCP_RUN_IDENTITY_TESTS: true
           ENABLE_OPENTELEMETRY: true
-          E2E_IMAGE_TAG: ${{ needs.triage.outputs.image_tag }}
+          VERSION: ${{ needs.triage.outputs.image_tag }}
+          SUFFIX: "-test"
           TEST_CLUSTER_NAME: keda-e2e-cluster-pr
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
@@ -255,8 +300,200 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
 
       - name: Upload test logs
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: e2e-test-logs
+          path: "${{ github.workspace }}/**/*.log"
+          if-no-files-found: ignore
+
+  run-arm-smoke-test:
+    needs: [triage, build-test-images]
+    runs-on: ARM64
+    name: Execute ARM smoke tests
+    if: needs.triage.outputs.run-e2e == 'true'
+    steps:
+      - name: Set status in-progress
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.ARM_SMOKE_CHECK_NAME }}
+          status: in_progress
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+
+      - name: Setup Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+        with:
+          go-version: "1.23"
+
+      - name: Install prerequisites
+        run: |
+          sudo apt update
+          sudo apt install curl make ca-certificates gcc libc-dev wget -y
+        env:
+          DEBIAN_FRONTEND: noninteractive
+
+      - name: Check out code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 1
+
+      - name: Create k8s ${{ inputs.kubernetesVersion }} Kind Cluster
+        uses: helm/kind-action@0025e74a8c7512023d06dc019c617aa3cf561fde # v1.10.0
+        with:
+          node_image: kindest/node:v1.32.0@sha256:c48c62eac5da28cdadcf560d1d8616cfa6783b58f0d94cf63ad1bf49600cb027
+          cluster_name: ${{ runner.name }}
+
+      - name: Run smoke test
+        continue-on-error: true
+        run: make smoke-test
+        id: test
+        env:
+          VERSION: ${{ needs.triage.outputs.image_tag }}
+          SUFFIX: "-test"
+
+      - name: React to comment with success
+        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
+        if: steps.test.outcome == 'success'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commentId: ${{ github.event.comment.id }}
+          reaction: "+1"
+
+      - name: Set status success
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        if: steps.test.outcome == 'success'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.ARM_SMOKE_CHECK_NAME }}
+          conclusion: success
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+
+      - name: React to comment with failure
+        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
+        if: steps.test.outcome != 'success'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commentId: ${{ github.event.comment.id }}
+          reaction: "-1"
+
+      - name: Set status failure
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        if: steps.test.outcome != 'success'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.ARM_SMOKE_CHECK_NAME }}
+          conclusion: failure
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+
+      - name: Upload test logs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: arm-smoke-test-logs
+          path: "${{ github.workspace }}/**/*.log"
+          if-no-files-found: ignore
+
+  run-s390x-smoke-test:
+    needs: [triage, build-test-images]
+    runs-on: s390x
+    name: Execute s390x smoke tests
+    if: needs.triage.outputs.run-e2e == 'true'
+    steps:
+      - name: Set status in-progress
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.S390X_SMOKE_CHECK_NAME }}
+          status: in_progress
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+
+      - name: Setup Go
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5
+        with:
+          go-version: "1.23"
+
+      - name: Install prerequisites
+        run: |
+          apt update
+          apt install curl make ca-certificates gcc libc-dev wget -y
+        env:
+          DEBIAN_FRONTEND: noninteractive
+
+      - name: Check out code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 1
+
+      - name: Install Kubernetes
+        run: |
+          go install sigs.k8s.io/kind@v0.29.0
+          kind create cluster --name ${{ runner.name }} --image vishnubijukumar/kindest-node-s390x:v0.29.0
+          kubectl -n kube-system set image daemonset/kindnet kindnet-cni=docker.io/vishnubijukumar/kindnetd:v20250512-s390x
+          kubectl -n local-path-storage set image deployment/local-path-provisioner local-path-provisioner=docker.io/vishnubijukumar/local-path-provisioner:v1
+
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/s390x/kubectl"
+          chmod +x kubectl
+          mkdir -p ~/.local/bin
+          mv ./kubectl ~/.local/bin/kubectl
+          kubectl version
+
+      - name: Run smoke test
+        continue-on-error: true
+        run: make smoke-test
+        id: test
+        env:
+          VERSION: ${{ needs.triage.outputs.image_tag }}
+          SUFFIX: "-test"
+
+      - name: React to comment with success
+        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
+        if: steps.test.outcome == 'success'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commentId: ${{ github.event.comment.id }}
+          reaction: "+1"
+
+      - name: Set status success
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        if: steps.test.outcome == 'success'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.S390X_SMOKE_CHECK_NAME }}
+          conclusion: success
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+
+      - name: React to comment with failure
+        uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
+        if: steps.test.outcome != 'success'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commentId: ${{ github.event.comment.id }}
+          reaction: "-1"
+
+      - name: Set status failure
+        uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
+        if: steps.test.outcome != 'success'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sha: ${{ needs.triage.outputs.commit_sha }}
+          name: ${{ env.S390X_SMOKE_CHECK_NAME }}
+          conclusion: failure
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+
+      - name: Remove Kubernetes
+        run: |
+          kind delete cluster --name ${{ runner.name }}
+        if: ${{ always() }}
+        env:
+          DEBIAN_FRONTEND: noninteractive
+
+      - name: Upload test logs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: s390x-smoke-test-logs
           path: "${{ github.workspace }}/**/*.log"
           if-no-files-found: ignore

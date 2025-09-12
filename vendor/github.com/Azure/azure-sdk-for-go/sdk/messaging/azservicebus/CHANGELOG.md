@@ -1,5 +1,27 @@
 # Release History
 
+## 1.8.0 (2025-02-11)
+
+### Features Added
+
+- ServiceBusClient allows the endpoint to be overridden with ServiceBusClientOptions.CustomEndpoint, to use TCP proxies with AMQP. (PR#23843)
+
+## 1.8.0-beta.2 (2025-01-14)
+
+### Features Added
+
+- ServiceBusClient allows the endpoint to be overridden with ServiceBusClientOptions.CustomEndpoint, to use TCP proxies with AMQP. (PR#23843)
+
+### Bugs Fixed
+
+- Receivers had a bug where a message could be received but not returned to the user. Callers would see that, occasionally, a message would not be returned from ReceiveMessages(), but would appear to have been received. Thanks to @patrickwhite256 for reporting this issue. (PR#23929)
+
+## 1.7.4 (2025-01-13)
+
+### Bugs Fixed
+
+- Receivers had a bug where a message could be received but not returned to the user. Callers would see that, occasionally, a message would not be returned from ReceiveMessages(), but would appear to have been received. Thanks to @patrickwhite256 for reporting this issue. (PR#23929)
+
 ## 1.7.3 (2024-10-14)
 
 ### Bugs Fixed

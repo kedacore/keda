@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ type DatabaseGraphs interface {
 
 	// CreateGraph creates a new graph with given name and options, and opens a connection to it.
 	// If a graph with given name already exists within the database, a DuplicateError is returned.
+	//
 	// Deprecated: since ArangoDB 3.9 - please use CreateGraphV2 instead
 	CreateGraph(ctx context.Context, name string, options *CreateGraphOptions) (Graph, error)
 

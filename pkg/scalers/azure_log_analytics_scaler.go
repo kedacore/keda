@@ -19,8 +19,8 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	azcloud "github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
@@ -47,17 +47,67 @@ type azureLogAnalyticsScaler struct {
 }
 
 type azureLogAnalyticsMetadata struct {
-	tenantID            string
-	clientID            string
-	clientSecret        string
-	workspaceID         string
-	podIdentity         kedav1alpha1.AuthPodIdentity
-	query               string
-	threshold           float64
-	activationThreshold float64
-	triggerIndex        int
-	cloud               azcloud.Configuration
-	unsafeSsl           bool
+	TenantID                string `keda:"name=tenantId, order=authParams;triggerMetadata;resolvedEnv, optional"`
+	ClientID                string `keda:"name=clientId, order=authParams;triggerMetadata;resolvedEnv, optional"`
+	ClientSecret            string `keda:"name=clientSecret, order=authParams;triggerMetadata;resolvedEnv, optional"`
+	WorkspaceID             string `keda:"name=workspaceId, order=authParams;triggerMetadata;resolvedEnv"`
+	PodIdentity             kedav1alpha1.AuthPodIdentity
+	Query                   string  `keda:"name=query, order=triggerMetadata"`
+	Threshold               float64 `keda:"name=threshold, order=triggerMetadata"`
+	ActivationThreshold     float64 `keda:"name=activationThreshold, order=triggerMetadata, default=0"`
+	LogAnalyticsResourceURL string  `keda:"name=logAnalyticsResourceURL, order=triggerMetadata, optional"`
+	TriggerIndex            int
+	CloudName               string `keda:"name=cloud, order=triggerMetadata, default=azurePublicCloud"`
+	Cloud                   azcloud.Configuration
+	UnsafeSsl               bool          `keda:"name=unsafeSsl, order=triggerMetadata, default=false"`
+	Timeout                 time.Duration `keda:"name=timeout, order=triggerMetadata, optional"`
+}
+
+func (m *azureLogAnalyticsMetadata) Validate() error {
+	missingParameter := ""
+
+	switch m.PodIdentity.Provider {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		if m.TenantID == "" {
+			missingParameter = "tenantId"
+		}
+		if m.ClientID == "" {
+			missingParameter = "clientId"
+		}
+		if m.ClientSecret == "" {
+			missingParameter = "clientSecret"
+		}
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		break
+	default:
+		return fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", m.PodIdentity.Provider)
+	}
+
+	m.Cloud = azcloud.AzurePublic
+	if strings.EqualFold(m.CloudName, azure.PrivateCloud) {
+		if m.LogAnalyticsResourceURL != "" {
+			m.Cloud.Services[azquery.ServiceNameLogs] = azcloud.ServiceConfiguration{
+				Endpoint: fmt.Sprintf("%s/v1", m.LogAnalyticsResourceURL),
+				Audience: m.LogAnalyticsResourceURL,
+			}
+		} else {
+			return fmt.Errorf("logAnalyticsResourceURL must be provided for %s cloud type", azure.PrivateCloud)
+		}
+	} else if resource, ok := azure.AzureClouds[strings.ToUpper(m.CloudName)]; ok {
+		m.Cloud = resource
+	} else {
+		return fmt.Errorf("there is no cloud environment matching the name %s", m.CloudName)
+	}
+
+	if m.Timeout > 0 {
+		m.Timeout *= time.Millisecond
+	}
+
+	if missingParameter != "" {
+		return fmt.Errorf("error parsing metadata. Details: %s was not found in metadata. Check your ScaledObject configuration", missingParameter)
+	}
+
+	return nil
 }
 
 // NewAzureLogAnalyticsScaler creates a new Azure Log Analytics Scaler
@@ -94,7 +144,7 @@ func CreateAzureLogsClient(config *scalersconfig.ScalerConfig, meta *azureLogAna
 	var err error
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		creds, err = azidentity.NewClientSecretCredential(meta.tenantID, meta.clientID, meta.clientSecret, nil)
+		creds, err = azidentity.NewClientSecretCredential(meta.TenantID, meta.ClientID, meta.ClientSecret, nil)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		creds, err = azure.NewChainedCredential(logger, config.PodIdentity)
 	default:
@@ -105,8 +155,8 @@ func CreateAzureLogsClient(config *scalersconfig.ScalerConfig, meta *azureLogAna
 	}
 	client, err := azquery.NewLogsClient(creds, &azquery.LogsClientOptions{
 		ClientOptions: policy.ClientOptions{
-			Transport: kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.unsafeSsl),
-			Cloud:     meta.cloud,
+			Transport: kedautil.CreateHTTPClient(meta.Timeout, meta.UnsafeSsl),
+			Cloud:     meta.Cloud,
 		},
 	})
 	if err != nil {
@@ -116,108 +166,15 @@ func CreateAzureLogsClient(config *scalersconfig.ScalerConfig, meta *azureLogAna
 }
 
 func parseAzureLogAnalyticsMetadata(config *scalersconfig.ScalerConfig) (*azureLogAnalyticsMetadata, error) {
-	meta := azureLogAnalyticsMetadata{}
-	switch config.PodIdentity.Provider {
-	case "", kedav1alpha1.PodIdentityProviderNone:
-		// Getting tenantId
-		tenantID, err := getParameterFromConfig(config, "tenantId", true)
-		if err != nil {
-			return nil, err
-		}
-		meta.tenantID = tenantID
-
-		// Getting clientId
-		clientID, err := getParameterFromConfig(config, "clientId", true)
-		if err != nil {
-			return nil, err
-		}
-		meta.clientID = clientID
-
-		// Getting clientSecret
-		clientSecret, err := getParameterFromConfig(config, "clientSecret", true)
-		if err != nil {
-			return nil, err
-		}
-		meta.clientSecret = clientSecret
-
-		meta.podIdentity = config.PodIdentity
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		meta.podIdentity = config.PodIdentity
-	default:
-		return nil, fmt.Errorf("error parsing metadata. Details: Log Analytics Scaler doesn't support pod identity %s", config.PodIdentity.Provider)
+	meta := &azureLogAnalyticsMetadata{}
+	meta.TriggerIndex = config.TriggerIndex
+	meta.Timeout = config.GlobalHTTPTimeout
+	meta.PodIdentity = config.PodIdentity
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing azure loganalytics metadata: %w", err)
 	}
 
-	// Getting workspaceId
-	workspaceID, err := getParameterFromConfig(config, "workspaceId", true)
-	if err != nil {
-		return nil, err
-	}
-	meta.workspaceID = workspaceID
-
-	// Getting query, observe that we dont check AuthParams for query
-	query, err := getParameterFromConfig(config, "query", false)
-	if err != nil {
-		return nil, err
-	}
-	meta.query = query
-
-	// Getting threshold, observe that we don't check AuthParams for threshold
-	val, err := getParameterFromConfig(config, "threshold", false)
-	if err != nil {
-		if config.AsMetricSource {
-			val = "0"
-		} else {
-			return nil, err
-		}
-	}
-	threshold, err := strconv.ParseFloat(val, 64)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %w", err)
-	}
-	meta.threshold = threshold
-
-	// Getting activationThreshold
-	meta.activationThreshold = 0
-	val, err = getParameterFromConfig(config, "activationThreshold", false)
-	if err == nil {
-		activationThreshold, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata. Details: can't parse threshold. Inner Error: %w", err)
-		}
-		meta.activationThreshold = activationThreshold
-	}
-	meta.triggerIndex = config.TriggerIndex
-
-	meta.cloud = azcloud.AzurePublic
-	if cloud, ok := config.TriggerMetadata["cloud"]; ok {
-		if strings.EqualFold(cloud, azure.PrivateCloud) {
-			if resource, ok := config.TriggerMetadata["logAnalyticsResourceURL"]; ok && resource != "" {
-				meta.cloud.Services[azquery.ServiceNameLogs] = azcloud.ServiceConfiguration{
-					Endpoint: fmt.Sprintf("%s/v1", resource),
-					Audience: resource,
-				}
-			} else {
-				return nil, fmt.Errorf("logAnalyticsResourceURL must be provided for %s cloud type", azure.PrivateCloud)
-			}
-		} else if resource, ok := azure.AzureClouds[strings.ToUpper(cloud)]; ok {
-			meta.cloud = resource
-		} else {
-			return nil, fmt.Errorf("there is no cloud environment matching the name %s", cloud)
-		}
-	}
-
-	// Getting unsafeSsl, observe that we don't check AuthParams for unsafeSsl
-	meta.unsafeSsl = false
-	unsafeSslVal, err := getParameterFromConfig(config, "unsafeSsl", false)
-	if err == nil {
-		unsafeSsl, err := strconv.ParseBool(unsafeSslVal)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing metadata. Details: can't parse unsafeSsl. Inner Error: %w", err)
-		}
-		meta.unsafeSsl = unsafeSsl
-	}
-
-	return &meta, nil
+	return meta, nil
 }
 
 // getParameterFromConfig gets the parameter from the configs, if checkAuthParams is true
@@ -236,9 +193,9 @@ func getParameterFromConfig(config *scalersconfig.ScalerConfig, parameter string
 func (s *azureLogAnalyticsScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", s.metadata.workspaceID))),
+			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("%s-%s", "azure-log-analytics", s.metadata.WorkspaceID))),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.Threshold),
 	}
 	metricSpec := v2.MetricSpec{External: externalMetric, Type: externalMetricType}
 	return []v2.MetricSpec{metricSpec}
@@ -254,7 +211,7 @@ func (s *azureLogAnalyticsScaler) GetMetricsAndActivity(ctx context.Context, met
 
 	metric := GenerateMetricInMili(metricName, val)
 
-	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationThreshold, nil
+	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.ActivationThreshold, nil
 }
 
 func (s *azureLogAnalyticsScaler) Close(context.Context) error {
@@ -262,8 +219,8 @@ func (s *azureLogAnalyticsScaler) Close(context.Context) error {
 }
 
 func (s *azureLogAnalyticsScaler) getMetricData(ctx context.Context) (float64, error) {
-	response, err := s.client.QueryWorkspace(ctx, s.metadata.workspaceID, azquery.Body{
-		Query: &s.metadata.query,
+	response, err := s.client.QueryWorkspace(ctx, s.metadata.WorkspaceID, azquery.Body{
+		Query: &s.metadata.Query,
 	}, nil)
 	if err != nil {
 		return -1, err

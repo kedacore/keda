@@ -148,6 +148,19 @@ type LoggingConfigurationStatus struct {
 	noSmithyDocumentSerde
 }
 
+// To configure roles that allows users to write to an Amazon Managed Service for
+// Prometheus workspace in a different account.
+type RoleConfiguration struct {
+
+	// A ARN identifying the source role configuration.
+	SourceRoleArn *string
+
+	// A ARN identifying the target role configuration.
+	TargetRoleArn *string
+
+	noSmithyDocumentSerde
+}
+
 // The details about one rule groups namespace.
 type RuleGroupsNamespaceDescription struct {
 
@@ -324,6 +337,10 @@ type ScraperDescription struct {
 	// (Optional) A name associated with the scraper.
 	Alias *string
 
+	// To configure roles that allows users to write to an Amazon Managed Service for
+	// Prometheus workspace in a different account.
+	RoleConfiguration *RoleConfiguration
+
 	// If there is a failure, the reason for the failure.
 	StatusReason *string
 
@@ -392,6 +409,10 @@ type ScraperSummary struct {
 
 	// (Optional) A name associated with the scraper.
 	Alias *string
+
+	// To configure roles that allows users to write to an Amazon Managed Service for
+	// Prometheus workspace in a different account.
+	RoleConfiguration *RoleConfiguration
 
 	// If there is a failure, the reason for the failure.
 	StatusReason *string

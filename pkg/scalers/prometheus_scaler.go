@@ -42,14 +42,15 @@ type prometheusMetadata struct {
 	PrometheusAuth      *authentication.Config `keda:"optional"`
 	ServerAddress       string                 `keda:"name=serverAddress,       order=triggerMetadata"`
 	Query               string                 `keda:"name=query,               order=triggerMetadata"`
-	QueryParameters     map[string]string      `keda:"name=queryParameters,     order=triggerMetadata,    				optional"`
+	QueryParameters     map[string]string      `keda:"name=queryParameters,     order=triggerMetadata,            optional"`
 	Threshold           float64                `keda:"name=threshold,           order=triggerMetadata"`
-	ActivationThreshold float64                `keda:"name=activationThreshold, order=triggerMetadata, 				    optional"`
-	Namespace           string                 `keda:"name=namespace,           order=triggerMetadata, 				    optional"`
-	CustomHeaders       map[string]string      `keda:"name=customHeaders,       order=triggerMetadata, 				    optional"`
-	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    order=triggerMetadata, 				    default=true"`
-	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata, 				    optional"`
-	AwsRegion           string                 `keda:"name=awsRegion, 			    order=triggerMetadata;authParams, optional"`
+	ActivationThreshold float64                `keda:"name=activationThreshold, order=triggerMetadata,            optional"`
+	Namespace           string                 `keda:"name=namespace,           order=triggerMetadata,            optional"`
+	CustomHeaders       map[string]string      `keda:"name=customHeaders,       order=triggerMetadata,            optional"`
+	IgnoreNullValues    bool                   `keda:"name=ignoreNullValues,    order=triggerMetadata,            default=true"`
+	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata,            optional"`
+	AwsRegion           string                 `keda:"name=awsRegion,           order=triggerMetadata;authParams, optional"`
+	Timeout             time.Duration          `keda:"name=timeout,             order=triggerMetadata,            optional"` // custom HTTP client timeout
 }
 
 type promQueryResult struct {
@@ -78,7 +79,13 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
 	}
 
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, meta.UnsafeSSL)
+	// handle HTTP client timeout
+	httpClientTimeout := config.GlobalHTTPTimeout
+	if meta.Timeout > 0 {
+		httpClientTimeout = meta.Timeout
+	}
+
+	httpClient := kedautil.CreateHTTPClient(httpClientTimeout, meta.UnsafeSSL)
 
 	if !meta.PrometheusAuth.Disabled() {
 		if meta.PrometheusAuth.CA != "" || meta.PrometheusAuth.EnabledTLS() {
@@ -277,7 +284,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
-		err := fmt.Errorf("promtheus query returns %f", v)
+		err := fmt.Errorf("prometheus query returns %f", v)
 		s.logger.Error(err, "Error converting prometheus value")
 		return -1, err
 	}

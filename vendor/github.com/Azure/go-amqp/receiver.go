@@ -231,6 +231,12 @@ func (r *Receiver) LinkSourceFilterValue(name string) any {
 	return filter.Value
 }
 
+// Properties returns the peer's link properties.
+// Returns nil if the peer didn't send any properties.
+func (r *Receiver) Properties() map[string]any {
+	return r.l.peerProperties
+}
+
 // Close closes the Receiver and AMQP link.
 //   - ctx controls waiting for the peer to acknowledge the close
 //

@@ -105,7 +105,7 @@ spec:
     spec:
       containers:
         - name: {{.MonitoredDeploymentName}}
-          image: nginxinc/nginx-unprivileged
+          image: ghcr.io/nginx/nginx-unprivileged:1.26
 `
 
 	deploymentTemplate = `
@@ -128,7 +128,7 @@ spec:
     spec:
       containers:
         - name: {{.DeploymentName}}
-          image: nginxinc/nginx-unprivileged
+          image: ghcr.io/nginx/nginx-unprivileged:1.26
 `
 
 	scaledObjectTemplate = `
@@ -1213,10 +1213,10 @@ func testCloudEventEmitted(t *testing.T, data templateData) {
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
 			if len(labels) >= 5 &&
-				*labels[0].Value == "opentelemetry-metrics-test-ce" &&
-				*labels[1].Value == "http" &&
-				*labels[3].Value == "opentelemetry-metrics-test-ns" &&
-				*labels[4].Value == "emitted" {
+				ExtractPrometheusLabelValue("cloudEventSource", labels) == "opentelemetry-metrics-test-ce" &&
+				ExtractPrometheusLabelValue("eventsink", labels) == "http" &&
+				ExtractPrometheusLabelValue("namespace", labels) == "opentelemetry-metrics-test-ns" &&
+				ExtractPrometheusLabelValue("state", labels) == "emitted" {
 				assert.GreaterOrEqual(t, *metric.Counter.Value, float64(1))
 				found = true
 			}
@@ -1245,10 +1245,10 @@ func testCloudEventEmittedError(t *testing.T, data templateData) {
 		for _, metric := range metrics {
 			labels := metric.GetLabel()
 			if len(labels) >= 5 &&
-				*labels[0].Value == "opentelemetry-metrics-test-ce-w" &&
-				*labels[1].Value == "http" &&
-				*labels[3].Value == "opentelemetry-metrics-test-ns" &&
-				*labels[4].Value == "failed" {
+				ExtractPrometheusLabelValue("cloudEventSource", labels) == "opentelemetry-metrics-test-ce-w" &&
+				ExtractPrometheusLabelValue("eventsink", labels) == "http" &&
+				ExtractPrometheusLabelValue("namespace", labels) == "opentelemetry-metrics-test-ns" &&
+				ExtractPrometheusLabelValue("state", labels) == "failed" {
 				assert.GreaterOrEqual(t, *metric.Counter.Value, float64(5))
 				found = true
 			}

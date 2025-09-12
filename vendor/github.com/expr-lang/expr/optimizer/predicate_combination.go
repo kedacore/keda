@@ -21,19 +21,19 @@ func (v *predicateCombination) Visit(node *Node) {
 			if combinedOp, ok := combinedOperator(left.Name, op.Operator); ok {
 				if right, ok := op.Right.(*BuiltinNode); ok && right.Name == left.Name {
 					if left.Arguments[0].Type() == right.Arguments[0].Type() && left.Arguments[0].String() == right.Arguments[0].String() {
-						closure := &ClosureNode{
+						predicate := &PredicateNode{
 							Node: &BinaryNode{
 								Operator: combinedOp,
-								Left:     left.Arguments[1].(*ClosureNode).Node,
-								Right:    right.Arguments[1].(*ClosureNode).Node,
+								Left:     left.Arguments[1].(*PredicateNode).Node,
+								Right:    right.Arguments[1].(*PredicateNode).Node,
 							},
 						}
-						v.Visit(&closure.Node)
-						Patch(node, &BuiltinNode{
+						v.Visit(&predicate.Node)
+						patchCopyType(node, &BuiltinNode{
 							Name: left.Name,
 							Arguments: []Node{
 								left.Arguments[0],
-								closure,
+								predicate,
 							},
 						})
 					}

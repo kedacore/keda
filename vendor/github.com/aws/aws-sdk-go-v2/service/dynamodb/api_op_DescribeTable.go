@@ -13,7 +13,6 @@ import (
 	smithytime "github.com/aws/smithy-go/time"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	smithywaiter "github.com/aws/smithy-go/waiter"
-	jmespath "github.com/jmespath/go-jmespath"
 	"time"
 )
 
@@ -53,6 +52,12 @@ type DescribeTableInput struct {
 	TableName *string
 
 	noSmithyDocumentSerde
+}
+
+func (in *DescribeTableInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
 }
 
 // Represents the output of a DescribeTable operation.
@@ -132,6 +137,12 @@ func (c *Client) addOperationDescribeTableMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeTableValidationMiddleware(stack); err != nil {
@@ -335,18 +346,16 @@ func (w *TableExistsWaiter) WaitForOutput(ctx context.Context, params *DescribeT
 func tableExistsStateRetryable(ctx context.Context, input *DescribeTableInput, output *DescribeTableOutput, err error) (bool, error) {
 
 	if err == nil {
-		pathValue, err := jmespath.Search("Table.TableStatus", output)
-		if err != nil {
-			return false, fmt.Errorf("error evaluating waiter state: %w", err)
+		v1 := output.Table
+		var v2 types.TableStatus
+		if v1 != nil {
+			v3 := v1.TableStatus
+			v2 = v3
 		}
-
 		expectedValue := "ACTIVE"
-		value, ok := pathValue.(types.TableStatus)
-		if !ok {
-			return false, fmt.Errorf("waiter comparator expected types.TableStatus value, got %T", pathValue)
-		}
-
-		if string(value) == expectedValue {
+		var pathValue string
+		pathValue = string(v2)
+		if pathValue == expectedValue {
 			return false, nil
 		}
 	}
@@ -358,6 +367,9 @@ func tableExistsStateRetryable(ctx context.Context, input *DescribeTableInput, o
 		}
 	}
 
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
@@ -527,6 +539,9 @@ func tableNotExistsStateRetryable(ctx context.Context, input *DescribeTableInput
 		}
 	}
 
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 

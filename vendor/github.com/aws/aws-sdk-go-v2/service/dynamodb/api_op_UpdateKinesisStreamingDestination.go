@@ -47,6 +47,12 @@ type UpdateKinesisStreamingDestinationInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *UpdateKinesisStreamingDestinationInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 type UpdateKinesisStreamingDestinationOutput struct {
 
 	// The status of the attempt to update the Kinesis streaming destination output.
@@ -132,6 +138,12 @@ func (c *Client) addOperationUpdateKinesisStreamingDestinationMiddlewares(stack 
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpUpdateKinesisStreamingDestinationValidationMiddleware(stack); err != nil {

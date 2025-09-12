@@ -252,6 +252,8 @@ type InstallationStatusError struct {
 	Details string `json:"details,omitempty"`
 	// The actual error message.
 	Message string `json:"message,omitempty"`
+	// An optimised message for the error.
+	OptimizedMessage string `json:"optimizedMessage,omitempty"`
 }
 
 // InstallationStatusErrorInput - An object that represents a status error whenever an recipe has failed to install.
@@ -260,4 +262,6 @@ type InstallationStatusErrorInput struct {
 	Details string `json:"details,omitempty"`
 	// The actual error message.
 	Message string `json:"message,omitempty"`
+	// An optimised message for the error.
+	OptimizedMessage string `json:"optimizedMessage,omitempty"`
 }

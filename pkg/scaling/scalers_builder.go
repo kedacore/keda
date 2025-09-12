@@ -48,7 +48,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 
 		factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 			if podTemplateSpec != nil {
-				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.secretsLister)
+				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.authClientSet.SecretLister)
 				if err != nil {
 					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %w", err)
 				}
@@ -72,7 +72,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 				TriggerUniqueKey:        fmt.Sprintf("%s-%s-%s-%d", withTriggers.Kind, withTriggers.Namespace, withTriggers.Name, triggerIndex),
 			}
 
-			authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.secretsLister)
+			authParams, podIdentity, err := resolver.ResolveAuthRefAndPodIdentity(ctx, h.client, logger, trigger.AuthenticationRef, podTemplateSpec, withTriggers.Namespace, h.authClientSet)
 			switch podIdentity.Provider {
 			case kedav1alpha1.PodIdentityProviderAwsEKS:
 				// FIXME: Delete this for v3
@@ -166,7 +166,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "cron":
 		return scalers.NewCronScaler(config)
 	case "datadog":
-		return scalers.NewDatadogScaler(ctx, config)
+		return scalers.NewDatadogScaler(config)
 	case "dynatrace":
 		return scalers.NewDynatraceScaler(config)
 	case "elasticsearch":
@@ -250,6 +250,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewRedisStreamsScaler(ctx, false, false, config)
 	case "selenium-grid":
 		return scalers.NewSeleniumGridScaler(config)
+	case "solace-direct-messaging":
+		return scalers.NewSolaceDMScaler(config)
 	case "solace-event-queue":
 		return scalers.NewSolaceScaler(config)
 	case "solr":
@@ -258,6 +260,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewSplunkScaler(config)
 	case "stan":
 		return scalers.NewStanScaler(config)
+	case "sumologic":
+		return scalers.NewSumologicScaler(config)
 	case "temporal":
 		return scalers.NewTemporalScaler(ctx, config)
 	default:

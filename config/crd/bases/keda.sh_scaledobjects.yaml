@@ -214,6 +214,9 @@ spec:
                         description: |-
                           MetricTargetType specifies the type of metric being targeted, and should be either
                           "Value", "AverageValue", or "Utilization"
+                        enum:
+                        - AverageValue
+                        - Value
                         type: string
                       target:
                         type: string
@@ -225,6 +228,14 @@ spec:
               fallback:
                 description: Fallback is the spec for fallback options
                 properties:
+                  behavior:
+                    default: static
+                    enum:
+                    - static
+                    - currentReplicas
+                    - currentReplicasIfHigher
+                    - currentReplicasIfLower
+                    type: string
                   failureThreshold:
                     format: int32
                     type: integer

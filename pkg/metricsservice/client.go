@@ -37,7 +37,7 @@ type GrpcClient struct {
 	connection *grpc.ClientConn
 }
 
-func NewGrpcClient(url, certDir, authority string, clientMetrics *grpcprom.ClientMetrics) (*GrpcClient, error) {
+func NewGrpcClient(ctx context.Context, url, certDir, authority string, clientMetrics *grpcprom.ClientMetrics) (*GrpcClient, error) {
 	defaultConfig := `{
 		"methodConfig": [{
 		  "timeout": "3s",
@@ -50,7 +50,7 @@ func NewGrpcClient(url, certDir, authority string, clientMetrics *grpcprom.Clien
 		  }
 		}]}`
 
-	creds, err := utils.LoadGrpcTLSCredentials(certDir, false)
+	creds, err := utils.LoadGrpcTLSCredentials(ctx, certDir, false)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObj
 }
 
 // WaitForConnectionReady waits for gRPC connection to be ready
-// returns true if the connection was successful, false if we hit a timeut from context
+// returns true if the connection was successful, false if we hit a timeout from context
 func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, logger logr.Logger) bool {
 	currentState := c.connection.GetState()
 	if currentState != connectivity.Ready {

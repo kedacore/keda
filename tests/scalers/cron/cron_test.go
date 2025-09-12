@@ -58,7 +58,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: 'nginxinc/nginx-unprivileged'
+          image: 'ghcr.io/nginx/nginx-unprivileged:1.26'
 `
 
 	scaledObjectTemplate = `
@@ -100,7 +100,7 @@ func TestScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
-		"replica count should be 1 after 1 minute")
+		"replica count should be 1 after 2 minute")
 
 	// test scaling
 	testScaleOut(t, kc)
@@ -126,11 +126,11 @@ func getTemplateData() (templateData, []Template) {
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 2),
-		"replica count should be 4 after 1 minute")
+		"replica count should be 4 after 2 minutes")
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
-		"replica count should be 1 after 1 minute")
+		"replica count should be 1 after 2 minutes")
 }

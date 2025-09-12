@@ -236,6 +236,12 @@ type PutItemInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *PutItemInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.TableName
+
+}
+
 // Represents the output of a PutItem operation.
 type PutItemOutput struct {
 
@@ -345,6 +351,12 @@ func (c *Client) addOperationPutItemMiddlewares(stack *middleware.Stack, options
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpPutItemValidationMiddleware(stack); err != nil {

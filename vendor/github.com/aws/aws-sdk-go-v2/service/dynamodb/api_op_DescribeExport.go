@@ -37,6 +37,12 @@ type DescribeExportInput struct {
 	noSmithyDocumentSerde
 }
 
+func (in *DescribeExportInput) bindEndpointParams(p *EndpointParameters) {
+
+	p.ResourceArn = in.ExportArn
+
+}
+
 type DescribeExportOutput struct {
 
 	// Represents the properties of the export.
@@ -110,6 +116,12 @@ func (c *Client) addOperationDescribeExportMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentAccountIDEndpointMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addOpDescribeExportValidationMiddleware(stack); err != nil {

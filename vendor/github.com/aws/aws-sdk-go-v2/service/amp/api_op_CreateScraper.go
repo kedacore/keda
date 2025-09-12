@@ -76,6 +76,9 @@ type CreateScraperInput struct {
 	// the idempotency of the request.
 	ClientToken *string
 
+	// The scraper role configuration for the workspace.
+	RoleConfiguration *types.RoleConfiguration
+
 	// (Optional) The list of tag keys and values to associate with the scraper.
 	Tags map[string]string
 
@@ -171,6 +174,9 @@ func (c *Client) addOperationCreateScraperMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opCreateScraperMiddleware(stack, options); err != nil {

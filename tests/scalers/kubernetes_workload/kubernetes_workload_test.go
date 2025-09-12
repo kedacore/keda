@@ -51,7 +51,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: 'nginxinc/nginx-unprivileged'`
+          image: 'ghcr.io/nginx/nginx-unprivileged:1.26'`
 
 	sutDeploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
@@ -72,7 +72,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: 'nginxinc/nginx-unprivileged'`
+        image: 'ghcr.io/nginx/nginx-unprivileged:1.26'`
 
 	scaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -131,24 +131,24 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to 5 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, sutDeploymentName, testNamespace, 5, 60, 2),
-		"replica count should be 5 after 1 minute")
+		"replica count should be 5 after 2 minutes")
 
 	// scale monitored deployment to 10 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 10, testNamespace)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, sutDeploymentName, testNamespace, 10, 60, 2),
-		"replica count should be 10 after 1 minute")
+		"replica count should be 10 after 2 minutes")
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	// scale monitored deployment to 5 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, sutDeploymentName, testNamespace, 5, 60, 2),
-		"replica count should be 5 after 1 minute")
+		"replica count should be 5 after 2 minutes")
 
 	// scale monitored deployment to 0 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, sutDeploymentName, testNamespace, 0, 60, 2),
-		"replica count should be 0 after 1 minute")
+		"replica count should be 0 after 2 minutes")
 }
 
 func getTemplateData() (templateData, []Template) {

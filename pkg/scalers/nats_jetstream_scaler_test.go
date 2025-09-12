@@ -38,12 +38,14 @@ type natsJetStreamMetricIdentifier struct {
 
 var testNATSJetStreamMetadata = []parseNATSJetStreamMetadataTestData{
 	// All good localhost.
-	{map[string]string{"natsServerMonitoringEndpoint": "localhost:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "false"}, map[string]string{}, false},
+	{map[string]string{"natsServerMonitoringEndpoint": "localhost:8222", "account": "$G", "accountID": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "false"}, map[string]string{}, false},
 	// All good url.
 	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "true"}, map[string]string{}, false},
+	// All good uses ID over name
+	{map[string]string{"natsServerMonitoringEndpoint": "localhost:8222", "accountID": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "false"}, map[string]string{}, false},
 	// nothing passed
 	{map[string]string{}, map[string]string{}, true},
-	// Missing account name, should fail
+	// Missing account name and ID, should fail
 	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "stream": "mystream", "consumer": "pull_consumer"}, map[string]string{}, true},
 	// Missing stream name, should fail
 	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "consumer": "pull_consumer"}, map[string]string{}, true},
@@ -127,100 +129,127 @@ var testNATSJetStreamMockResponses = []parseNATSJetStreamMockResponsesTestData{
 		"All Good - no messages waiting (not active)",
 		&natsJetStreamMetricIdentifier{
 			&parseNATSJetStreamMetadataTestData{
-				testNATSJetStreamGoodMetadata, map[string]string{}, false},
+				testNATSJetStreamGoodMetadata, map[string]string{}, false,
+			},
 			0, "s0-nats-jetstream-mystream",
 		},
 		&jetStreamEndpointResponse{
-			Accounts: []accountDetail{{Name: "$G",
-				Streams: []*streamDetail{{Name: "mystream",
+			Accounts: []accountDetail{{
+				Name: "$G",
+				Streams: []*streamDetail{{
+					Name:      "mystream",
 					Consumers: []consumerDetail{{Name: "pull_consumer"}},
 				}},
 			}},
-		}, false, false},
+		}, false, false,
+	},
 	{
 		"All Good - messages waiting (active)",
 		&natsJetStreamMetricIdentifier{
 			&parseNATSJetStreamMetadataTestData{
-				testNATSJetStreamGoodMetadata, map[string]string{}, false},
+				testNATSJetStreamGoodMetadata, map[string]string{}, false,
+			},
 			0, "s0-nats-jetstream-mystream",
 		},
 		&jetStreamEndpointResponse{
-			Accounts: []accountDetail{{Name: "$G",
-				Streams: []*streamDetail{{Name: "mystream",
+			Accounts: []accountDetail{{
+				Name: "$G",
+				Streams: []*streamDetail{{
+					Name:      "mystream",
 					Consumers: []consumerDetail{{Name: "pull_consumer", NumPending: 100}},
 				}},
 			}},
-		}, true, false},
+		}, true, false,
+	},
 	{
 		"Not Active - Bad consumer name uses stream last sequence",
 		&natsJetStreamMetricIdentifier{
 			&parseNATSJetStreamMetadataTestData{
-				testNATSJetStreamGoodMetadata, map[string]string{}, false},
+				testNATSJetStreamGoodMetadata, map[string]string{}, false,
+			},
 			0, "s0-nats-jetstream-mystream",
 		},
 		&jetStreamEndpointResponse{
-			Accounts: []accountDetail{{Name: "$G",
-				Streams: []*streamDetail{{Name: "mystream", State: streamState{LastSequence: 1},
+			Accounts: []accountDetail{{
+				Name: "$G",
+				Streams: []*streamDetail{{
+					Name: "mystream", State: streamState{LastSequence: 1},
 					Consumers: []consumerDetail{{Name: "pull_consumer_bad", NumPending: 100}},
 				}},
 			}},
-		}, false, false},
+		}, false, false,
+	},
 	{
 		"Fail - Non-matching stream name",
 		&natsJetStreamMetricIdentifier{
 			&parseNATSJetStreamMetadataTestData{
-				testNATSJetStreamGoodMetadata, map[string]string{}, false},
+				testNATSJetStreamGoodMetadata, map[string]string{}, false,
+			},
 			0, "s0-nats-jetstream-mystream",
 		},
 		&jetStreamEndpointResponse{
-			Accounts: []accountDetail{{Name: "$G",
-				Streams: []*streamDetail{{Name: "mystreamBad", State: streamState{LastSequence: 1},
+			Accounts: []accountDetail{{
+				Name: "$G",
+				Streams: []*streamDetail{{
+					Name: "mystreamBad", State: streamState{LastSequence: 1},
 					Consumers: []consumerDetail{{Name: "pull_consumer", NumPending: 100}},
 				}},
 			}},
-		}, false, true},
+		}, false, true,
+	},
 	{
 		"Fail - Unresolvable nats endpoint from config",
 		&natsJetStreamMetricIdentifier{
 			&parseNATSJetStreamMetadataTestData{
-				map[string]string{"natsServerMonitoringEndpoint": "asdf32423fdsafdasdf:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "activationLagThreshold": "10"}, map[string]string{}, false},
+				map[string]string{"natsServerMonitoringEndpoint": "asdf32423fdsafdasdf:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "activationLagThreshold": "10"}, map[string]string{}, false,
+			},
 			0, "s0-nats-jetstream-mystream",
 		},
 		&jetStreamEndpointResponse{
-			Accounts: []accountDetail{{Name: "$G",
-				Streams: []*streamDetail{{Name: "mystream",
+			Accounts: []accountDetail{{
+				Name: "$G",
+				Streams: []*streamDetail{{
+					Name:      "mystream",
 					Consumers: []consumerDetail{{Name: "pull_consumer", NumPending: 100}},
 				}},
 			}},
-		}, false, true},
+		}, false, true,
+	},
 	{
 		"All Good - messages waiting (clustered)",
 		&natsJetStreamMetricIdentifier{
 			&parseNATSJetStreamMetadataTestData{
-				testNATSJetStreamGoodMetadata, map[string]string{}, false},
+				testNATSJetStreamGoodMetadata, map[string]string{}, false,
+			},
 			0, "s0-nats-jetstream-mystream",
 		},
 		&jetStreamEndpointResponse{
 			MetaCluster: metaCluster{ClusterSize: 3},
-			Accounts: []accountDetail{{Name: "$G",
-				Streams: []*streamDetail{{Name: "mystream",
+			Accounts: []accountDetail{{
+				Name: "$G",
+				Streams: []*streamDetail{{
+					Name:      "mystream",
 					Consumers: []consumerDetail{{Name: "pull_consumer", NumPending: 100, Cluster: consumerCluster{Leader: "leader"}}},
 				}},
 			}},
-		}, true, false},
+		}, true, false,
+	},
 	{
 		"Not Active - consumer missing - connected to node without consumer info (clustered)",
 		&natsJetStreamMetricIdentifier{
 			&parseNATSJetStreamMetadataTestData{
-				testNATSJetStreamGoodMetadata, map[string]string{}, false},
+				testNATSJetStreamGoodMetadata, map[string]string{}, false,
+			},
 			0, "s0-nats-jetstream-mystream",
 		},
 		&jetStreamEndpointResponse{
 			MetaCluster: metaCluster{ClusterSize: 3},
-			Accounts: []accountDetail{{Name: "$G",
+			Accounts: []accountDetail{{
+				Name:    "$G",
 				Streams: []*streamDetail{{Name: "mystream"}},
 			}},
-		}, false, true},
+		}, false, true,
+	},
 }
 
 var testNATSJetStreamServerMockResponses = map[string][]byte{

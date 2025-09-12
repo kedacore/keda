@@ -84,7 +84,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginxinc/nginx-unprivileged
+        image: ghcr.io/nginx/nginx-unprivileged:1.26
         ports:
         - containerPort: 80
 `
@@ -150,7 +150,7 @@ func TestScaler(t *testing.T) {
 	t.Log("--- assert ---")
 	expectedReplicaCountNumber := 2 // as mentioned above, as the AMP returns 100 and the threshold set to 50, the expected replica count is 100 / 50 = 2
 	assert.Truef(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 1),
-		"replica count should be %d after a minute", expectedReplicaCountNumber)
+		"replica count should be %d after 1 minute", expectedReplicaCountNumber)
 
 	t.Log("--- cleaning up ---")
 	deleteWSInput := amp.DeleteWorkspaceInput{

@@ -23,10 +23,7 @@ import (
 
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
-
-var scaledobjecttypeslog = logf.Log.WithName("scaledobject-types")
 
 // +genclient
 // +kubebuilder:object:root=true
@@ -56,9 +53,15 @@ type ScaledObject struct {
 
 const ScaledObjectOwnerAnnotation = "scaledobject.keda.sh/name"
 const ScaledObjectTransferHpaOwnershipAnnotation = "scaledobject.keda.sh/transfer-hpa-ownership"
+const ScaledObjectExcludedLabelsAnnotation = "scaledobject.keda.sh/hpa-excluded-labels"
 const ValidationsHpaOwnershipAnnotation = "validations.keda.sh/hpa-ownership"
 const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
 const PausedAnnotation = "autoscaling.keda.sh/paused"
+const PausedScaleInAnnotation = "autoscaling.keda.sh/paused-scale-in"
+const FallbackBehaviorStatic = "static"
+const FallbackBehaviorCurrentReplicas = "currentReplicas"
+const FallbackBehaviorCurrentReplicasIfHigher = "currentReplicasIfHigher"
+const FallbackBehaviorCurrentReplicasIfLower = "currentReplicasIfLower"
 
 // HealthStatus is the status for a ScaledObject's health
 type HealthStatus struct {
@@ -112,6 +115,10 @@ type ScaledObjectSpec struct {
 type Fallback struct {
 	FailureThreshold int32 `json:"failureThreshold"`
 	Replicas         int32 `json:"replicas"`
+	// +optional
+	// +kubebuilder:default=static
+	// +kubebuilder:validation:Enum=static;currentReplicas;currentReplicasIfHigher;currentReplicasIfLower
+	Behavior string `json:"behavior,omitempty"`
 }
 
 // AdvancedConfig specifies advance scaling options
@@ -131,6 +138,7 @@ type ScalingModifiers struct {
 	// +optional
 	ActivationTarget string `json:"activationTarget,omitempty"`
 	// +optional
+	// +kubebuilder:validation:Enum=AverageValue;Value
 	MetricType autoscalingv2.MetricTargetType `json:"metricType,omitempty"`
 }
 
@@ -204,11 +212,6 @@ func (so *ScaledObject) GenerateIdentifier() string {
 	return GenerateIdentifier("ScaledObject", so.Namespace, so.Name)
 }
 
-func (so *ScaledObject) HasPausedReplicaAnnotation() bool {
-	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
-	return pausedReplicasAnnotationFound
-}
-
 // HasPausedAnnotation returns whether this ScaledObject has PausedAnnotation or PausedReplicasAnnotation
 func (so *ScaledObject) HasPausedAnnotation() bool {
 	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
@@ -220,19 +223,28 @@ func (so *ScaledObject) HasPausedAnnotation() bool {
 func (so *ScaledObject) NeedToBePausedByAnnotation() bool {
 	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
 	if pausedReplicasAnnotationFound {
-		return so.Status.PausedReplicaCount != nil
-	}
-
-	pausedAnnotationValue, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
-	if !pausedAnnotationFound {
-		return false
-	}
-	shouldPause, err := strconv.ParseBool(pausedAnnotationValue)
-	if err != nil {
-		// if annotation value is not a boolean, we assume user wants to pause the ScaledObject
 		return true
 	}
-	return shouldPause
+
+	return getBoolAnnotation(so, PausedAnnotation)
+}
+
+// NeedToPauseScaleIn checks whether Scale In actions for a ScaledObject need to be blocked based on the PausedScaleIn annotation
+func (so *ScaledObject) NeedToPauseScaleIn() bool {
+	return getBoolAnnotation(so, PausedScaleInAnnotation)
+}
+
+func getBoolAnnotation(so *ScaledObject, annotation string) bool {
+	value, found := so.GetAnnotations()[annotation]
+	if !found {
+		return false
+	}
+	boolVal, err := strconv.ParseBool(value)
+	if err != nil {
+		// if annotation value is not a boolean, we assume true
+		return true
+	}
+	return boolVal
 }
 
 // IsUsingModifiers determines whether scalingModifiers are defined or not
@@ -289,12 +301,30 @@ func CheckFallbackValid(scaledObject *ScaledObject) error {
 			scaledObject.Spec.Fallback.FailureThreshold, scaledObject.Spec.Fallback.Replicas)
 	}
 
-	for _, trigger := range scaledObject.Spec.Triggers {
-		if trigger.Type == cpuString || trigger.Type == memoryString {
-			scaledobjecttypeslog.Error(nil, fmt.Sprintf("type is %s , but fallback it is not supported by the CPU & memory scalers", trigger.Type))
+	if scaledObject.IsUsingModifiers() {
+		if scaledObject.Spec.Advanced.ScalingModifiers.MetricType == autoscalingv2.ValueMetricType {
+			return fmt.Errorf("when using ScalingModifiers, ScaledObject.Spec.Advanced.ScalingModifiers.MetricType must be AverageValue to have fallback enabled")
 		}
-		if trigger.MetricType != autoscalingv2.AverageValueMetricType {
-			return fmt.Errorf("MetricType=%s, but fallback can only be enabled for triggers with metric of type AverageValue", trigger.MetricType)
+	} else {
+		fallbackValid := false
+		for _, trigger := range scaledObject.Spec.Triggers {
+			if trigger.Type == cpuString || trigger.Type == memoryString {
+				continue
+			}
+
+			effectiveMetricType := trigger.MetricType
+			if effectiveMetricType == "" {
+				effectiveMetricType = autoscalingv2.AverageValueMetricType
+			}
+
+			if effectiveMetricType == autoscalingv2.AverageValueMetricType {
+				fallbackValid = true
+				break
+			}
+		}
+
+		if !fallbackValid {
+			return fmt.Errorf("at least one trigger (that is not cpu or memory) has to have the `AverageValue` type for the fallback to be enabled")
 		}
 	}
 	return nil

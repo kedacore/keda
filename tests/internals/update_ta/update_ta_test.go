@@ -97,7 +97,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginxinc/nginx-unprivileged
+        image: ghcr.io/nginx/nginx-unprivileged:1.26
         ports:
         - containerPort: 80
 `
@@ -122,7 +122,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginxinc/nginx-unprivileged
+        image: ghcr.io/nginx/nginx-unprivileged:1.26
         ports:
         - containerPort: 80
 `
@@ -275,7 +275,7 @@ func TestTriggerAuthenticationGeneral(t *testing.T) {
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicas)
+		"replica count should be %d after 9 minutes", minReplicas)
 
 	testTriggerAuthenticationStatusValue(t, data, triggerAuthKind)
 
@@ -287,7 +287,7 @@ func TestTriggerAuthenticationGeneral(t *testing.T) {
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicas)
+		"replica count should be %d after 9 minutes", minReplicas)
 
 	testTriggerAuthenticationStatusValue(t, data, clusterTriggerAuthKind)
 	DeleteKubernetesResources(t, namespace, data, templates)

@@ -91,7 +91,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginxinc/nginx-unprivileged
+        image: ghcr.io/nginx/nginx-unprivileged:1.26
         ports:
         - containerPort: 80
 `
@@ -237,7 +237,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: 'nginxinc/nginx-unprivileged'`
+          image: 'ghcr.io/nginx/nginx-unprivileged:1.26'`
 
 	updateMetricsTemplate = `
 apiVersion: batch/v1
@@ -282,7 +282,7 @@ func TestScalingModifiers(t *testing.T) {
 
 	// we ensure that the metrics api server is up and ready
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, metricsServerDeploymentName, namespace, 1, 60, 2),
-		"replica count should be 1 after 1 minute")
+		"replica count should be 1 after 2 minutes")
 
 	testFormula(t, kc, data)
 
@@ -307,7 +307,7 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	assert.NoErrorf(t, err, "cannot scale workload deployment - %s", err)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "depl-workload-base", namespace, 2, 12, 10),
-		"replica count should be %d after 1 minute", 2)
+		"replica count should be %d after 2 minutes", 2)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 3, 12, 10),
 		"replica count should be %d after 2 minutes", 3)
 
@@ -326,7 +326,7 @@ func testFormula(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 
 	// we ensure that the metrics api server is up and ready
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, metricsServerDeploymentName, namespace, 1, 60, 2),
-		"replica count should be 1 after 1 minute")
+		"replica count should be 1 after 2 minutes")
 
 	data.MetricValue = 2
 	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)

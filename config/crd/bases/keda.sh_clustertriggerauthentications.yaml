@@ -304,6 +304,18 @@ spec:
                 - secrets
                 - vaultUri
                 type: object
+              boundServiceAccountToken:
+                items:
+                  properties:
+                    parameter:
+                      type: string
+                    serviceAccountName:
+                      type: string
+                  required:
+                  - parameter
+                  - serviceAccountName
+                  type: object
+                type: array
               configMapTargetRef:
                 items:
                   description: AuthConfigMapTargetRef is used to authenticate using

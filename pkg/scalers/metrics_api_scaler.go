@@ -44,7 +44,7 @@ type metricsAPIScalerMetadata struct {
 	enableAPIKeyAuth bool
 	method           string // way of providing auth key, either "header" (default) or "query"
 	// keyParamName  is either header key or query param used for passing apikey
-	// default header is "X-API-KEY", defaul query param is "api_key"
+	// default header is "X-API-KEY", default query param is "api_key"
 	keyParamName string
 	apiKey       string
 
@@ -178,71 +178,75 @@ func parseMetricsAPIMetadata(config *scalersconfig.ScalerConfig) (*metricsAPISca
 		return nil, fmt.Errorf("no valueLocation given in metadata")
 	}
 
-	authMode, ok := config.TriggerMetadata["authMode"]
-	// no authMode specified
-	if !ok {
-		return &meta, nil
+	// Check for multiple authentication methods
+	authModes := strings.Split(config.TriggerMetadata["authMode"], ",")
+	for _, authMode := range authModes {
+		authType := authentication.Type(strings.TrimSpace(authMode))
+
+		switch authType {
+		case authentication.APIKeyAuthType:
+			if len(config.AuthParams["apiKey"]) == 0 {
+				return nil, errors.New("no apikey provided")
+			}
+
+			meta.apiKey = config.AuthParams["apiKey"]
+			// default behaviour is header. only change if query param requested
+			meta.method = "header"
+			meta.enableAPIKeyAuth = true
+
+			if config.TriggerMetadata["method"] == methodValueQuery {
+				meta.method = methodValueQuery
+			}
+
+			if len(config.TriggerMetadata["keyParamName"]) > 0 {
+				meta.keyParamName = config.TriggerMetadata["keyParamName"]
+			}
+		case authentication.BasicAuthType:
+			if len(config.AuthParams["username"]) == 0 {
+				return nil, errors.New("no username given")
+			}
+
+			meta.username = config.AuthParams["username"]
+			// password is optional. For convenience, many application implements basic auth with
+			// username as apikey and password as empty
+			meta.password = config.AuthParams["password"]
+			meta.enableBaseAuth = true
+		case authentication.TLSAuthType:
+			if len(config.AuthParams["ca"]) == 0 {
+				return nil, errors.New("no ca given")
+			}
+
+			if len(config.AuthParams["cert"]) == 0 {
+				return nil, errors.New("no cert given")
+			}
+			meta.cert = config.AuthParams["cert"]
+
+			if len(config.AuthParams["key"]) == 0 {
+				return nil, errors.New("no key given")
+			}
+
+			meta.key = config.AuthParams["key"]
+			meta.enableTLS = true
+		case authentication.BearerAuthType:
+			if len(config.AuthParams["token"]) == 0 {
+				return nil, errors.New("no token provided")
+			}
+
+			meta.bearerToken = config.AuthParams["token"]
+			meta.enableBearerAuth = true
+		case "":
+			// Skip empty auth type (can happen when splitting comma-separated list)
+			continue
+		default:
+			return nil, fmt.Errorf("err incorrect value for authMode is given: %s", authMode)
+		}
 	}
 
-	authType := authentication.Type(strings.TrimSpace(authMode))
-	switch authType {
-	case authentication.APIKeyAuthType:
-		if len(config.AuthParams["apiKey"]) == 0 {
-			return nil, errors.New("no apikey provided")
-		}
-
-		meta.apiKey = config.AuthParams["apiKey"]
-		// default behaviour is header. only change if query param requested
-		meta.method = "header"
-		meta.enableAPIKeyAuth = true
-
-		if config.TriggerMetadata["method"] == methodValueQuery {
-			meta.method = methodValueQuery
-		}
-
-		if len(config.TriggerMetadata["keyParamName"]) > 0 {
-			meta.keyParamName = config.TriggerMetadata["keyParamName"]
-		}
-	case authentication.BasicAuthType:
-		if len(config.AuthParams["username"]) == 0 {
-			return nil, errors.New("no username given")
-		}
-
-		meta.username = config.AuthParams["username"]
-		// password is optional. For convenience, many application implements basic auth with
-		// username as apikey and password as empty
-		meta.password = config.AuthParams["password"]
-		meta.enableBaseAuth = true
-	case authentication.TLSAuthType:
-		if len(config.AuthParams["ca"]) == 0 {
-			return nil, errors.New("no ca given")
-		}
-
-		if len(config.AuthParams["cert"]) == 0 {
-			return nil, errors.New("no cert given")
-		}
-		meta.cert = config.AuthParams["cert"]
-
-		if len(config.AuthParams["key"]) == 0 {
-			return nil, errors.New("no key given")
-		}
-
-		meta.key = config.AuthParams["key"]
-		meta.enableTLS = true
-	case authentication.BearerAuthType:
-		if len(config.AuthParams["token"]) == 0 {
-			return nil, errors.New("no token provided")
-		}
-
-		meta.bearerToken = config.AuthParams["token"]
-		meta.enableBearerAuth = true
-	default:
-		return nil, fmt.Errorf("err incorrect value for authMode is given: %s", authMode)
-	}
-
+	// Handle CA certificate separately to allow it to be used with other auth methods
 	if len(config.AuthParams["ca"]) > 0 {
 		meta.ca = config.AuthParams["ca"]
 	}
+
 	return &meta, nil
 }
 
@@ -274,13 +278,22 @@ func getValueFromPrometheusResponse(body []byte, valueLocation string) (float64,
 			metricName = v.Value
 		}
 	}
+
 	// Ensure EOL
-	reader := strings.NewReader(strings.ReplaceAll(string(body), "\r\n", "\n"))
+	bodyStr := strings.ReplaceAll(string(body), "\r\n", "\n")
+
+	// Check if newline is present
+	if len(bodyStr) > 0 && !strings.HasSuffix(bodyStr, "\n") {
+		bodyStr += "\n"
+	}
+
+	reader := strings.NewReader(bodyStr)
 	familiesParser := expfmt.TextParser{}
 	families, err := familiesParser.TextToMetricFamilies(reader)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("prometheus format parsing error: %w", err)
 	}
+
 	family, ok := families[metricName]
 	if !ok {
 		return 0, fmt.Errorf("metric '%s' not found", metricName)
@@ -471,56 +484,46 @@ func (s *metricsAPIScaler) GetMetricsAndActivity(ctx context.Context, metricName
 }
 
 func getMetricAPIServerRequest(ctx context.Context, meta *metricsAPIScalerMetadata) (*http.Request, error) {
-	var req *http.Request
-	var err error
+	var requestURL string
 
-	switch {
-	case meta.enableAPIKeyAuth:
-		if meta.method == methodValueQuery {
-			url, _ := neturl.Parse(meta.url)
-			queryString := url.Query()
-			if len(meta.keyParamName) == 0 {
-				queryString.Set("api_key", meta.apiKey)
-			} else {
-				queryString.Set(meta.keyParamName, meta.apiKey)
-			}
-
-			url.RawQuery = queryString.Encode()
-			req, err = http.NewRequestWithContext(ctx, "GET", url.String(), nil)
-			if err != nil {
-				return nil, err
-			}
+	// Handle API Key as query parameter if needed
+	if meta.enableAPIKeyAuth && meta.method == methodValueQuery {
+		url, _ := neturl.Parse(meta.url)
+		queryString := url.Query()
+		if len(meta.keyParamName) == 0 {
+			queryString.Set("api_key", meta.apiKey)
 		} else {
-			// default behaviour is to use header method
-			req, err = http.NewRequestWithContext(ctx, "GET", meta.url, nil)
-			if err != nil {
-				return nil, err
-			}
-
-			if len(meta.keyParamName) == 0 {
-				req.Header.Add("X-API-KEY", meta.apiKey)
-			} else {
-				req.Header.Add(meta.keyParamName, meta.apiKey)
-			}
+			queryString.Set(meta.keyParamName, meta.apiKey)
 		}
-	case meta.enableBaseAuth:
-		req, err = http.NewRequestWithContext(ctx, "GET", meta.url, nil)
-		if err != nil {
-			return nil, err
-		}
+		url.RawQuery = queryString.Encode()
+		requestURL = url.String()
+	} else {
+		requestURL = meta.url
+	}
 
+	// Create the request
+	req, err := http.NewRequestWithContext(ctx, "GET", requestURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add API Key as header if needed
+	if meta.enableAPIKeyAuth && meta.method != methodValueQuery {
+		if len(meta.keyParamName) == 0 {
+			req.Header.Add("X-API-KEY", meta.apiKey)
+		} else {
+			req.Header.Add(meta.keyParamName, meta.apiKey)
+		}
+	}
+
+	// Add Basic Auth if enabled
+	if meta.enableBaseAuth {
 		req.SetBasicAuth(meta.username, meta.password)
-	case meta.enableBearerAuth:
-		req, err = http.NewRequestWithContext(ctx, "GET", meta.url, nil)
-		if err != nil {
-			return nil, err
-		}
+	}
+
+	// Add Bearer token if enabled
+	if meta.enableBearerAuth {
 		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", meta.bearerToken))
-	default:
-		req, err = http.NewRequestWithContext(ctx, "GET", meta.url, nil)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return req, nil

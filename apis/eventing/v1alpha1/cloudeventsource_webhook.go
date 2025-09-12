@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -33,28 +34,61 @@ var cloudeventsourcelog = logf.Log.WithName("cloudeventsource-validation-webhook
 
 func (ces *CloudEventSource) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&CloudEventSourceCustomValidator{}).
 		For(ces).
 		Complete()
 }
 
 func (cces *ClusterCloudEventSource) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithValidator(&ClusterCloudEventSourceCustomValidator{}).
 		For(cces).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-eventing-keda-sh-v1alpha1-cloudeventsource,mutating=false,failurePolicy=ignore,sideEffects=None,groups=eventing.keda.sh,resources=cloudeventsources,verbs=create;update,versions=v1alpha1,name=vcloudeventsource.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &CloudEventSource{}
+// CloudEventSourceCustomValidator is a custom validator for CloudEventSource objects
+type CloudEventSourceCustomValidator struct{}
+
+func (cescv CloudEventSourceCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ces := obj.(*CloudEventSource)
+	return ces.ValidateCreate(request.DryRun)
+}
+
+func (cescv CloudEventSourceCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ces := newObj.(*CloudEventSource)
+	old := oldObj.(*CloudEventSource)
+	return ces.ValidateUpdate(old, request.DryRun)
+}
+
+func (cescv CloudEventSourceCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ces := obj.(*CloudEventSource)
+	return ces.ValidateDelete(request.DryRun)
+}
+
+var _ webhook.CustomValidator = &CloudEventSourceCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (ces *CloudEventSource) ValidateCreate() (admission.Warnings, error) {
+func (ces *CloudEventSource) ValidateCreate(_ *bool) (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(ces, "", "  ")
 	cloudeventsourcelog.Info(fmt.Sprintf("validating cloudeventsource creation for %s", string(val)))
 	return validateSpec(&ces.Spec)
 }
 
-func (ces *CloudEventSource) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (ces *CloudEventSource) ValidateUpdate(old runtime.Object, _ *bool) (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(ces, "", "  ")
 	cloudeventsourcelog.V(1).Info(fmt.Sprintf("validating cloudeventsource update for %s", string(val)))
 
@@ -66,22 +100,53 @@ func (ces *CloudEventSource) ValidateUpdate(old runtime.Object) (admission.Warni
 	return validateSpec(&ces.Spec)
 }
 
-func (ces *CloudEventSource) ValidateDelete() (admission.Warnings, error) {
+func (ces *CloudEventSource) ValidateDelete(_ *bool) (admission.Warnings, error) {
 	return nil, nil
 }
 
 // +kubebuilder:webhook:path=/validate-eventing-keda-sh-v1alpha1-clustercloudeventsource,mutating=false,failurePolicy=ignore,sideEffects=None,groups=eventing.keda.sh,resources=clustercloudeventsources,verbs=create;update,versions=v1alpha1,name=vclustercloudeventsource.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &ClusterCloudEventSource{}
+// ClusterCloudEventSourceCustomValidator is a custom validator for ClusterCloudEventSource objects
+type ClusterCloudEventSourceCustomValidator struct{}
+
+func (ccescv ClusterCloudEventSourceCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cces := obj.(*ClusterCloudEventSource)
+	return cces.ValidateCreate(request.DryRun)
+}
+
+func (ccescv ClusterCloudEventSourceCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cces := newObj.(*ClusterCloudEventSource)
+	old := oldObj.(*ClusterCloudEventSource)
+	return cces.ValidateUpdate(old, request.DryRun)
+}
+
+func (ccescv ClusterCloudEventSourceCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	request, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cces := obj.(*ClusterCloudEventSource)
+	return cces.ValidateDelete(request.DryRun)
+}
+
+var _ webhook.CustomValidator = &ClusterCloudEventSourceCustomValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (cces *ClusterCloudEventSource) ValidateCreate() (admission.Warnings, error) {
+func (cces *ClusterCloudEventSource) ValidateCreate(_ *bool) (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(cces, "", "  ")
 	cloudeventsourcelog.Info(fmt.Sprintf("validating clustercloudeventsource creation for %s", string(val)))
 	return validateSpec(&cces.Spec)
 }
 
-func (cces *ClusterCloudEventSource) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (cces *ClusterCloudEventSource) ValidateUpdate(old runtime.Object, _ *bool) (admission.Warnings, error) {
 	val, _ := json.MarshalIndent(cces, "", "  ")
 	cloudeventsourcelog.V(1).Info(fmt.Sprintf("validating clustercloudeventsource update for %s", string(val)))
 
@@ -93,7 +158,7 @@ func (cces *ClusterCloudEventSource) ValidateUpdate(old runtime.Object) (admissi
 	return validateSpec(&cces.Spec)
 }
 
-func (cces *ClusterCloudEventSource) ValidateDelete() (admission.Warnings, error) {
+func (cces *ClusterCloudEventSource) ValidateDelete(_ *bool) (admission.Warnings, error) {
 	return nil, nil
 }
 
