@@ -88,8 +88,8 @@ func maxScaleValue(maxValue, _ int64) int64 {
 func TestDefaultScalingStrategy(t *testing.T) {
 	logger := logf.Log.WithName("ScaledJobTest")
 	strategy := NewScalingStrategy(logger, getMockScaledJobWithDefaultStrategy("default"))
-	// maxScale doesn't exceed MaxReplicaCount. You can ignore on this sceanrio
-	// pendingJobCount isn't relevant on this scenario
+	// maxScale doesn't exceed MaxReplicaCount. You can ignore on this scenario
+	// inactiveJobCount isn't relevant on this scenario
 	assert.Equal(t, int64(1), maxScaleValue(strategy.GetEffectiveMaxScale(3, 2, 0, 5, 1)))
 	assert.Equal(t, int64(2), maxScaleValue(strategy.GetEffectiveMaxScale(2, 0, 0, 5, 1)))
 }
@@ -99,8 +99,8 @@ func TestCustomScalingStrategy(t *testing.T) {
 	customScalingQueueLengthDeduction := int32(1)
 	customScalingRunningJobPercentage := "0.5"
 	strategy := NewScalingStrategy(logger, getMockScaledJobWithStrategy("custom", "custom", customScalingQueueLengthDeduction, customScalingRunningJobPercentage))
-	// maxScale doesn't exceed MaxReplicaCount. You can ignore on this sceanrio
-	// pendingJobCount isn't relevant on this scenario
+	// maxScale doesn't exceed MaxReplicaCount. You can ignore on this scenario
+	// inactiveJobCount isn't relevant on this scenario
 	assert.Equal(t, int64(1), maxScaleValue(strategy.GetEffectiveMaxScale(3, 2, 0, 5, 1)))
 	assert.Equal(t, int64(9), maxScaleValue(strategy.GetEffectiveMaxScale(10, 0, 0, 10, 1)))
 	strategy = NewScalingStrategy(logger, getMockScaledJobWithCustomStrategyWithNilParameter("custom", "custom"))
@@ -131,11 +131,11 @@ func TestCustomScalingStrategy(t *testing.T) {
 func TestAccurateScalingStrategy(t *testing.T) {
 	logger := logf.Log.WithName("ScaledJobTest")
 	strategy := NewScalingStrategy(logger, getMockScaledJobWithStrategy("accurate", "accurate", 0, "0"))
-	// maxScale doesn't exceed MaxReplicaCount. You can ignore on this sceanrio
+	// maxScale doesn't exceed MaxReplicaCount. You can ignore on this scenario
 	assert.Equal(t, int64(3), maxScaleValue(strategy.GetEffectiveMaxScale(3, 2, 0, 5, 1)))
 	assert.Equal(t, int64(3), maxScaleValue(strategy.GetEffectiveMaxScale(5, 2, 0, 5, 1)))
 
-	// Test with 2 pending jobs
+	// Test with 2 inactive jobs
 	assert.Equal(t, int64(1), maxScaleValue(strategy.GetEffectiveMaxScale(3, 4, 2, 10, 1)))
 	assert.Equal(t, int64(1), maxScaleValue(strategy.GetEffectiveMaxScale(5, 4, 2, 5, 1)))
 }
@@ -208,9 +208,9 @@ func TestRunningJobCountSmallerMinReplicaCount(t *testing.T) {
 	var runningJobCount int64
 	var scaleTo int64
 	var maxScale int64
-	var pendingJobCount int64
+	var inactiveJobCount int64
 
-	effectiveMaxScale, scaleTo := scaleExecutor.getScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, pendingJobCount, scaleExecutor.logger)
+	effectiveMaxScale, scaleTo := scaleExecutor.getScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, inactiveJobCount, scaleExecutor.logger)
 	assert.Equal(t, int64(2), effectiveMaxScale)
 	assert.Equal(t, int64(2), scaleTo)
 }
@@ -222,9 +222,9 @@ func TestRunningJobCountIsDeductedFromMinReplicaCount(t *testing.T) {
 	var runningJobCount int64 = 1
 	var scaleTo int64
 	var maxScale int64
-	var pendingJobCount int64
+	var inactiveJobCount int64
 
-	effectiveMaxScale, scaleTo := scaleExecutor.getScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, pendingJobCount, scaleExecutor.logger)
+	effectiveMaxScale, scaleTo := scaleExecutor.getScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, inactiveJobCount, scaleExecutor.logger)
 	assert.Equal(t, int64(1), effectiveMaxScale)
 	assert.Equal(t, int64(1), scaleTo)
 }
@@ -236,9 +236,9 @@ func TestRunningJobCountGreaterOrEqualMinReplicaCountExecutesScalingStrategy(t *
 	var runningJobCount int64 = 1
 	var scaleTo int64 = 2
 	var maxScale int64 = 2
-	var pendingJobCount int64
+	var inactiveJobCount int64
 
-	effectiveMaxScale, scaleTo := scaleExecutor.getScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, pendingJobCount, scaleExecutor.logger)
+	effectiveMaxScale, scaleTo := scaleExecutor.getScalingDecision(scaledJob, runningJobCount, scaleTo, maxScale, inactiveJobCount, scaleExecutor.logger)
 	assert.Equal(t, int64(2), effectiveMaxScale)
 	assert.Equal(t, int64(2), scaleTo)
 }
@@ -284,7 +284,7 @@ func TestCleanUpDefaultValue(t *testing.T) {
 	assert.True(t, ok)
 }
 
-func TestGetPendingJobCount(t *testing.T) {
+func TestGetInactiveJobCount(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -292,48 +292,55 @@ func TestGetPendingJobCount(t *testing.T) {
 	readyCondition := getPodCondition(v1.PodReady)
 	podScheduledCondition := getPodCondition(v1.PodScheduled)
 
-	testPendingJobTestData := []pendingJobTestData{
-		{PodStatus: v1.PodStatus{Phase: v1.PodSucceeded}, PendingJobCount: 0},
-		{PodStatus: v1.PodStatus{Phase: v1.PodRunning}, PendingJobCount: 0},
-		{PodStatus: v1.PodStatus{Phase: v1.PodFailed}, PendingJobCount: 1},
-		{PodStatus: v1.PodStatus{Phase: v1.PodPending}, PendingJobCount: 1},
-		{PodStatus: v1.PodStatus{Phase: v1.PodUnknown}, PendingJobCount: 1},
-		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{}}, PendingJobCount: 1},
-		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{readyCondition}}, PendingJobCount: 1},
-		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{podScheduledCondition}}, PendingJobCount: 1},
-		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{readyCondition, podScheduledCondition}}, PendingJobCount: 0},
+	testInactiveJobTestData := []inactiveJobTestData{
+		// Jobs with successful/running pods are active (not inactive)
+		{PodStatus: v1.PodStatus{Phase: v1.PodSucceeded}, InactiveJobCount: 0},
+		{PodStatus: v1.PodStatus{Phase: v1.PodRunning}, InactiveJobCount: 0},
 
-		// Test case: Job with 2 pods, both have all conditions - should NOT be pending
+		// Jobs with pending pods are active (not inactive)
+		{PodStatus: v1.PodStatus{Phase: v1.PodPending}, InactiveJobCount: 0},
+
+		// Jobs with failed/unknown pods are inactive
+		{PodStatus: v1.PodStatus{Phase: v1.PodFailed}, InactiveJobCount: 1},
+		{PodStatus: v1.PodStatus{Phase: v1.PodUnknown}, InactiveJobCount: 1},
+
+		// When pendingPodConditions are specified, different logic applies
+		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{}}, InactiveJobCount: 1},
+		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{readyCondition}}, InactiveJobCount: 1},
+		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{podScheduledCondition}}, InactiveJobCount: 1},
+		{PendingPodConditions: pendingPodConditions, PodStatus: v1.PodStatus{Conditions: []v1.PodCondition{readyCondition, podScheduledCondition}}, InactiveJobCount: 0},
+
+		// Test case: Job with 2 pods, both have all conditions - should NOT be inactive
 		{
 			PendingPodConditions: pendingPodConditions,
 			PodStatuses: []v1.PodStatus{
 				{Conditions: []v1.PodCondition{readyCondition, podScheduledCondition}},
 				{Conditions: []v1.PodCondition{readyCondition, podScheduledCondition}},
 			},
-			PendingJobCount: 0,
+			InactiveJobCount: 0,
 		},
 
-		// Test case: Job with 2 pods, 1 has all conditions, 1 doesn't - should NOT be pending
+		// Test case: Job with 2 pods, 1 has all conditions, 1 doesn't - should NOT be inactive
 		{
 			PendingPodConditions: pendingPodConditions,
 			PodStatuses: []v1.PodStatus{
 				{Conditions: []v1.PodCondition{readyCondition, podScheduledCondition}},
 				{Conditions: []v1.PodCondition{readyCondition}}, // missing PodScheduled
 			},
-			PendingJobCount: 0,
+			InactiveJobCount: 0,
 		},
 
-		// Test case: Job with 2 pods, neither has all conditions - should be pending
+		// Test case: Job with 2 pods, neither has all conditions - should be inactive
 		{
 			PendingPodConditions: pendingPodConditions,
 			PodStatuses: []v1.PodStatus{
 				{Conditions: []v1.PodCondition{readyCondition}},        // missing PodScheduled
 				{Conditions: []v1.PodCondition{podScheduledCondition}}, // missing Ready
 			},
-			PendingJobCount: 1,
+			InactiveJobCount: 1,
 		},
 
-		// Test case: Job with 3 pods, 1 has all conditions - should NOT be pending
+		// Test case: Job with 3 pods, 1 has all conditions - should NOT be inactive
 		{
 			PendingPodConditions: pendingPodConditions,
 			PodStatuses: []v1.PodStatus{
@@ -341,10 +348,10 @@ func TestGetPendingJobCount(t *testing.T) {
 				{Conditions: []v1.PodCondition{readyCondition}},                        // partial conditions
 				{Conditions: []v1.PodCondition{readyCondition, podScheduledCondition}}, // all conditions
 			},
-			PendingJobCount: 0,
+			InactiveJobCount: 0,
 		},
 
-		// Test case: Job with 3 pods, none have all conditions - should be pending
+		// Test case: Job with 3 pods, none have all conditions - should be inactive
 		{
 			PendingPodConditions: pendingPodConditions,
 			PodStatuses: []v1.PodStatus{
@@ -352,7 +359,7 @@ func TestGetPendingJobCount(t *testing.T) {
 				{Conditions: []v1.PodCondition{readyCondition}},        // partial conditions
 				{Conditions: []v1.PodCondition{podScheduledCondition}}, // partial conditions
 			},
-			PendingJobCount: 1,
+			InactiveJobCount: 1,
 		},
 		// Edge case: Empty conditions list
 		{
@@ -360,26 +367,26 @@ func TestGetPendingJobCount(t *testing.T) {
 			PodStatuses: []v1.PodStatus{
 				{Phase: v1.PodRunning, Conditions: []v1.PodCondition{readyCondition}},
 			},
-			PendingJobCount: 0, // No conditions to check, pod is running, so not pending
+			InactiveJobCount: 0, // No conditions to check, pod is running, so not inactive
 		},
 	}
 
-	for i, testData := range testPendingJobTestData {
+	for i, testData := range testInactiveJobTestData {
 		ctx := context.Background()
 
 		// Support both single pod and multiple pods test cases
 		var client *mock_client.MockClient
 		if len(testData.PodStatuses) > 0 {
-			client = getMockClientForTestingPendingPodsMultiple(t, ctrl, testData.PodStatuses)
+			client = getMockClientForTestingInactiveJobsMultiple(t, ctrl, testData.PodStatuses)
 		} else {
-			client = getMockClientForTestingPendingPods(t, ctrl, testData.PodStatus)
+			client = getMockClientForTestingInactiveJobs(t, ctrl, testData.PodStatus)
 		}
 
 		scaleExecutor := getMockScaleExecutor(client)
 		scaledJob := getMockScaledJobWithPendingPodConditions(testData.PendingPodConditions)
-		result := scaleExecutor.getPendingJobCount(ctx, scaledJob)
+		result := scaleExecutor.getInactiveJobCount(ctx, scaledJob)
 
-		assert.Equal(t, testData.PendingJobCount, result, "Test case %d failed", i)
+		assert.Equal(t, testData.InactiveJobCount, result, "Test case %d failed", i)
 	}
 }
 
@@ -398,14 +405,14 @@ func TestAreAllPendingPodConditionsFulfilledBugScenario(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	client := getMockClientForTestingPendingPodsMultiple(t, ctrl, podStatuses)
+	client := getMockClientForTestingInactiveJobsMultiple(t, ctrl, podStatuses)
 	scaleExecutor := getMockScaleExecutor(client)
 	scaledJob := getMockScaledJobWithPendingPodConditions(pendingPodConditions)
 
-	result := scaleExecutor.getPendingJobCount(ctx, scaledJob)
+	result := scaleExecutor.getInactiveJobCount(ctx, scaledJob)
 
 	// Should be 0, because both pods have all required conditions
-	assert.Equal(t, int64(0), result, "Job with pods having all conditions should not be pending")
+	assert.Equal(t, int64(0), result, "Job with pods having all conditions should not be inactive")
 }
 
 func TestCreateJobs(t *testing.T) {
@@ -472,11 +479,11 @@ type mockJobParameter struct {
 	JobConditionType batchv1.JobConditionType
 }
 
-type pendingJobTestData struct {
+type inactiveJobTestData struct {
 	PendingPodConditions []string
 	PodStatus            v1.PodStatus   // For single pod tests
 	PodStatuses          []v1.PodStatus // For multiple pods tests
-	PendingJobCount      int64
+	InactiveJobCount     int64
 }
 
 func getMockScaleExecutor(client *mock_client.MockClient) *scaleExecutor {
@@ -609,7 +616,7 @@ func getMockClient(t *testing.T, ctrl *gomock.Controller, jobs *[]mockJobParamet
 	return client
 }
 
-func getMockClientForTestingPendingPods(t *testing.T, ctrl *gomock.Controller, podStatus v1.PodStatus) *mock_client.MockClient {
+func getMockClientForTestingInactiveJobs(t *testing.T, ctrl *gomock.Controller, podStatus v1.PodStatus) *mock_client.MockClient {
 	client := mock_client.NewMockClient(ctrl)
 	gomock.InOrder(
 		// listing jobs
@@ -645,8 +652,8 @@ func getMockClientForTestingPendingPods(t *testing.T, ctrl *gomock.Controller, p
 	return client
 }
 
-// getMockClientForTestingPendingPodsMultiple returns mock client function for testing pending pod conditions with multiple pods in a job
-func getMockClientForTestingPendingPodsMultiple(t *testing.T, ctrl *gomock.Controller, podStatuses []v1.PodStatus) *mock_client.MockClient {
+// getMockClientForTestingInactiveJobsMultiple returns mock client function for testing inactive job conditions with multiple pods in a job
+func getMockClientForTestingInactiveJobsMultiple(t *testing.T, ctrl *gomock.Controller, podStatuses []v1.PodStatus) *mock_client.MockClient {
 	client := mock_client.NewMockClient(ctrl)
 	gomock.InOrder(
 		// listing jobs
