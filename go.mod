@@ -119,7 +119,7 @@ require (
 	k8s.io/metrics v0.32.3
 	k8s.io/utils v0.0.0-20241210054802-24370beab758
 	knative.dev/pkg v0.0.0-20250326102644-9f3e60a9244c
-	sigs.k8s.io/controller-runtime v0.20.0
+	sigs.k8s.io/controller-runtime v0.20.4
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20240804232438-89b5deec030c
 	sigs.k8s.io/controller-tools v0.16.5
 	sigs.k8s.io/custom-metrics-apiserver v1.32.0
