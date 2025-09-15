@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	apiskedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	versioned "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/kedacore/keda/v2/pkg/generated/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/kedacore/keda/v2/pkg/generated/listers/keda/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/pkg/generated/listers/keda/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // TriggerAuthentications.
 type TriggerAuthenticationInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.TriggerAuthenticationLister
+	Lister() kedav1alpha1.TriggerAuthenticationLister
 }
 
 type triggerAuthenticationInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredTriggerAuthenticationInformer(client versioned.Interface, namesp
 				return client.KedaV1alpha1().TriggerAuthentications(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&kedav1alpha1.TriggerAuthentication{},
+		&apiskedav1alpha1.TriggerAuthentication{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *triggerAuthenticationInformer) defaultInformer(client versioned.Interfa
 }
 
 func (f *triggerAuthenticationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&kedav1alpha1.TriggerAuthentication{}, f.defaultInformer)
+	return f.factory.InformerFor(&apiskedav1alpha1.TriggerAuthentication{}, f.defaultInformer)
 }
 
-func (f *triggerAuthenticationInformer) Lister() v1alpha1.TriggerAuthenticationLister {
-	return v1alpha1.NewTriggerAuthenticationLister(f.Informer().GetIndexer())
+func (f *triggerAuthenticationInformer) Lister() kedav1alpha1.TriggerAuthenticationLister {
+	return kedav1alpha1.NewTriggerAuthenticationLister(f.Informer().GetIndexer())
 }

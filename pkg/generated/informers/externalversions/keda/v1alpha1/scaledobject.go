@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	apiskedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	versioned "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/kedacore/keda/v2/pkg/generated/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/kedacore/keda/v2/pkg/generated/listers/keda/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/pkg/generated/listers/keda/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // ScaledObjects.
 type ScaledObjectInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.ScaledObjectLister
+	Lister() kedav1alpha1.ScaledObjectLister
 }
 
 type scaledObjectInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredScaledObjectInformer(client versioned.Interface, namespace strin
 				return client.KedaV1alpha1().ScaledObjects(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&kedav1alpha1.ScaledObject{},
+		&apiskedav1alpha1.ScaledObject{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *scaledObjectInformer) defaultInformer(client versioned.Interface, resyn
 }
 
 func (f *scaledObjectInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&kedav1alpha1.ScaledObject{}, f.defaultInformer)
+	return f.factory.InformerFor(&apiskedav1alpha1.ScaledObject{}, f.defaultInformer)
 }
 
-func (f *scaledObjectInformer) Lister() v1alpha1.ScaledObjectLister {
-	return v1alpha1.NewScaledObjectLister(f.Informer().GetIndexer())
+func (f *scaledObjectInformer) Lister() kedav1alpha1.ScaledObjectLister {
+	return kedav1alpha1.NewScaledObjectLister(f.Informer().GetIndexer())
 }

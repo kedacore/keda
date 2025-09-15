@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	apiskedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	versioned "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/kedacore/keda/v2/pkg/generated/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/kedacore/keda/v2/pkg/generated/listers/keda/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/pkg/generated/listers/keda/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // ClusterTriggerAuthentications.
 type ClusterTriggerAuthenticationInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.ClusterTriggerAuthenticationLister
+	Lister() kedav1alpha1.ClusterTriggerAuthenticationLister
 }
 
 type clusterTriggerAuthenticationInformer struct {
@@ -70,7 +70,7 @@ func NewFilteredClusterTriggerAuthenticationInformer(client versioned.Interface,
 				return client.KedaV1alpha1().ClusterTriggerAuthentications().Watch(context.TODO(), options)
 			},
 		},
-		&kedav1alpha1.ClusterTriggerAuthentication{},
+		&apiskedav1alpha1.ClusterTriggerAuthentication{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,9 +81,9 @@ func (f *clusterTriggerAuthenticationInformer) defaultInformer(client versioned.
 }
 
 func (f *clusterTriggerAuthenticationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&kedav1alpha1.ClusterTriggerAuthentication{}, f.defaultInformer)
+	return f.factory.InformerFor(&apiskedav1alpha1.ClusterTriggerAuthentication{}, f.defaultInformer)
 }
 
-func (f *clusterTriggerAuthenticationInformer) Lister() v1alpha1.ClusterTriggerAuthenticationLister {
-	return v1alpha1.NewClusterTriggerAuthenticationLister(f.Informer().GetIndexer())
+func (f *clusterTriggerAuthenticationInformer) Lister() kedav1alpha1.ClusterTriggerAuthenticationLister {
+	return kedav1alpha1.NewClusterTriggerAuthenticationLister(f.Informer().GetIndexer())
 }

@@ -29,19 +29,19 @@ type FakeKedaV1alpha1 struct {
 }
 
 func (c *FakeKedaV1alpha1) ClusterTriggerAuthentications() v1alpha1.ClusterTriggerAuthenticationInterface {
-	return &FakeClusterTriggerAuthentications{c}
+	return newFakeClusterTriggerAuthentications(c)
 }
 
 func (c *FakeKedaV1alpha1) ScaledJobs(namespace string) v1alpha1.ScaledJobInterface {
-	return &FakeScaledJobs{c, namespace}
+	return newFakeScaledJobs(c, namespace)
 }
 
 func (c *FakeKedaV1alpha1) ScaledObjects(namespace string) v1alpha1.ScaledObjectInterface {
-	return &FakeScaledObjects{c, namespace}
+	return newFakeScaledObjects(c, namespace)
 }
 
 func (c *FakeKedaV1alpha1) TriggerAuthentications(namespace string) v1alpha1.TriggerAuthenticationInterface {
-	return &FakeTriggerAuthentications{c, namespace}
+	return newFakeTriggerAuthentications(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate
