@@ -78,9 +78,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **General**: Allow excluding labels from being propagated from ScaledObject and ScaledJob to generated HPA and Job objects ([#6849](https://github.com/kedacore/keda/issues/6849))
+- **General**: Bump Controller Runtime version to v0.20.4 ([#7081](https://github.com/kedacore/keda/pull/7081))
 - **General**: chore: only add webhook DNS names when webhook patching is enabled ([#7002](https://github.com/kedacore/keda/issues/7002))
 - **General**: Improve Events emitted from ScaledObject controller ([#6802](https://github.com/kedacore/keda/issues/6802))
-- **General**: Bump Controller Runtime version to v0.20.4 ([#7081](https://github.com/kedacore/keda/pull/7081))
 - **Azure Pipelines Scaler**: Add new `fetchUnfinishedJobsOnly` property to fetch only unfinished pipeline jobs for a pool ([#6819](https://github.com/kedacore/keda/issues/6819))
 - **Datadog Scaler**: Add a specific timeout configuration parameter for the Datadog trigger ([#6999](https://github.com/kedacore/keda/pull/6999))
 - **Datadog Scaler**: Fix bug with datadogNamespace config ([#6828](https://github.com/kedacore/keda/pull/6828))
