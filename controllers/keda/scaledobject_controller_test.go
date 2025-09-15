@@ -394,7 +394,7 @@ var _ = Describe("ScaledObjectController", func() {
 				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 				Expect(err).ToNot(HaveOccurred())
 				so.Status.HpaName = ""
-				so.Generation = so.Generation + 1 // since the reconcile ignores status update we force generation change to trigger reconcile
+				so.Generation++ // since the reconcile ignores status update we force generation change to trigger reconcile
 				return k8sClient.Update(context.Background(), so)
 			}).ShouldNot(HaveOccurred())
 
