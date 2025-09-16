@@ -67,6 +67,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Add file-based authentication support for ClusterTriggerAuthentication ([#7083](https://github.com/kedacore/keda/issues/7083))
 - **General**: Introduce new Kubernetes Resource Scaler ([#7212](https://github.com/kedacore/keda/issues/7212))
 
 #### Experimental

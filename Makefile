@@ -320,6 +320,11 @@ deploy: install ## Deploy controller to the K8s cluster specified in ~/.kube/con
 		$(KUSTOMIZE) edit add patch --path opentelemetry/patch_operator.yml --group apps --kind Deployment --name keda-operator --version v1; \
 	fi
 
+	if [ "$(ENABLE_FILE_AUTH)" = true ]; then \
+		cd config/e2e && \
+		$(KUSTOMIZE) edit add patch --path file_auth/patch_operator.yml --group apps --kind Deployment --name keda-operator --version v1; \
+	fi
+
 	cd config/webhooks && \
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda-admission-webhooks=${IMAGE_WEBHOOKS}
 
