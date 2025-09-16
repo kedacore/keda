@@ -47,6 +47,11 @@ spec:
                   AuthenticationRef points to the TriggerAuthentication or ClusterTriggerAuthentication object that
                   is used to authenticate the scaler with the environment
                 properties:
+                  filePath:
+                    description: |-
+                      FilePath specifies a file containing auth parameters as JSON map[string]string.
+                      When set, auth params are read directly from this file instead of fetching TriggerAuthentication.
+                    type: string
                   kind:
                     description: Kind of the resource being referred to. Defaults
                       to TriggerAuthentication.
