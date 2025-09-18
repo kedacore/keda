@@ -646,7 +646,7 @@ func TestNoScaleFromMinReplicasWhenActiveAndPausedScaleOutAnnotationSet(t *testi
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-	client.EXPECT().Status().Times(2).Return(statusWriter).Times(2)
+	client.EXPECT().Status().Times(2).Return(statusWriter)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 
 	scaleExecutor.RequestScale(context.TODO(), &scaledObject, true, false, &ScaleExecutorOptions{})
