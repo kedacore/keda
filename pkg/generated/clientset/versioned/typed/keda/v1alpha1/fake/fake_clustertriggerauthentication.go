@@ -19,120 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	kedav1alpha1 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeClusterTriggerAuthentications implements ClusterTriggerAuthenticationInterface
-type FakeClusterTriggerAuthentications struct {
+// fakeClusterTriggerAuthentications implements ClusterTriggerAuthenticationInterface
+type fakeClusterTriggerAuthentications struct {
+	*gentype.FakeClientWithList[*v1alpha1.ClusterTriggerAuthentication, *v1alpha1.ClusterTriggerAuthenticationList]
 	Fake *FakeKedaV1alpha1
 }
 
-var clustertriggerauthenticationsResource = v1alpha1.SchemeGroupVersion.WithResource("clustertriggerauthentications")
-
-var clustertriggerauthenticationsKind = v1alpha1.SchemeGroupVersion.WithKind("ClusterTriggerAuthentication")
-
-// Get takes name of the clusterTriggerAuthentication, and returns the corresponding clusterTriggerAuthentication object, and an error if there is any.
-func (c *FakeClusterTriggerAuthentications) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ClusterTriggerAuthentication, err error) {
-	emptyResult := &v1alpha1.ClusterTriggerAuthentication{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootGetActionWithOptions(clustertriggerauthenticationsResource, name, options), emptyResult)
-	if obj == nil {
-		return emptyResult, err
+func newFakeClusterTriggerAuthentications(fake *FakeKedaV1alpha1) kedav1alpha1.ClusterTriggerAuthenticationInterface {
+	return &fakeClusterTriggerAuthentications{
+		gentype.NewFakeClientWithList[*v1alpha1.ClusterTriggerAuthentication, *v1alpha1.ClusterTriggerAuthenticationList](
+			fake.Fake,
+			"",
+			v1alpha1.SchemeGroupVersion.WithResource("clustertriggerauthentications"),
+			v1alpha1.SchemeGroupVersion.WithKind("ClusterTriggerAuthentication"),
+			func() *v1alpha1.ClusterTriggerAuthentication { return &v1alpha1.ClusterTriggerAuthentication{} },
+			func() *v1alpha1.ClusterTriggerAuthenticationList { return &v1alpha1.ClusterTriggerAuthenticationList{} },
+			func(dst, src *v1alpha1.ClusterTriggerAuthenticationList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.ClusterTriggerAuthenticationList) []*v1alpha1.ClusterTriggerAuthentication {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.ClusterTriggerAuthenticationList, items []*v1alpha1.ClusterTriggerAuthentication) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.ClusterTriggerAuthentication), err
-}
-
-// List takes label and field selectors, and returns the list of ClusterTriggerAuthentications that match those selectors.
-func (c *FakeClusterTriggerAuthentications) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ClusterTriggerAuthenticationList, err error) {
-	emptyResult := &v1alpha1.ClusterTriggerAuthenticationList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootListActionWithOptions(clustertriggerauthenticationsResource, clustertriggerauthenticationsKind, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.ClusterTriggerAuthenticationList{ListMeta: obj.(*v1alpha1.ClusterTriggerAuthenticationList).ListMeta}
-	for _, item := range obj.(*v1alpha1.ClusterTriggerAuthenticationList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested clusterTriggerAuthentications.
-func (c *FakeClusterTriggerAuthentications) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewRootWatchActionWithOptions(clustertriggerauthenticationsResource, opts))
-}
-
-// Create takes the representation of a clusterTriggerAuthentication and creates it.  Returns the server's representation of the clusterTriggerAuthentication, and an error, if there is any.
-func (c *FakeClusterTriggerAuthentications) Create(ctx context.Context, clusterTriggerAuthentication *v1alpha1.ClusterTriggerAuthentication, opts v1.CreateOptions) (result *v1alpha1.ClusterTriggerAuthentication, err error) {
-	emptyResult := &v1alpha1.ClusterTriggerAuthentication{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateActionWithOptions(clustertriggerauthenticationsResource, clusterTriggerAuthentication, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ClusterTriggerAuthentication), err
-}
-
-// Update takes the representation of a clusterTriggerAuthentication and updates it. Returns the server's representation of the clusterTriggerAuthentication, and an error, if there is any.
-func (c *FakeClusterTriggerAuthentications) Update(ctx context.Context, clusterTriggerAuthentication *v1alpha1.ClusterTriggerAuthentication, opts v1.UpdateOptions) (result *v1alpha1.ClusterTriggerAuthentication, err error) {
-	emptyResult := &v1alpha1.ClusterTriggerAuthentication{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateActionWithOptions(clustertriggerauthenticationsResource, clusterTriggerAuthentication, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ClusterTriggerAuthentication), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeClusterTriggerAuthentications) UpdateStatus(ctx context.Context, clusterTriggerAuthentication *v1alpha1.ClusterTriggerAuthentication, opts v1.UpdateOptions) (result *v1alpha1.ClusterTriggerAuthentication, err error) {
-	emptyResult := &v1alpha1.ClusterTriggerAuthentication{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceActionWithOptions(clustertriggerauthenticationsResource, "status", clusterTriggerAuthentication, opts), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ClusterTriggerAuthentication), err
-}
-
-// Delete takes name of the clusterTriggerAuthentication and deletes it. Returns an error if one occurs.
-func (c *FakeClusterTriggerAuthentications) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteActionWithOptions(clustertriggerauthenticationsResource, name, opts), &v1alpha1.ClusterTriggerAuthentication{})
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeClusterTriggerAuthentications) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionActionWithOptions(clustertriggerauthenticationsResource, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.ClusterTriggerAuthenticationList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched clusterTriggerAuthentication.
-func (c *FakeClusterTriggerAuthentications) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ClusterTriggerAuthentication, err error) {
-	emptyResult := &v1alpha1.ClusterTriggerAuthentication{}
-	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceActionWithOptions(clustertriggerauthenticationsResource, name, pt, data, opts, subresources...), emptyResult)
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ClusterTriggerAuthentication), err
 }

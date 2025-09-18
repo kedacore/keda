@@ -294,10 +294,10 @@ func (o *WebhookInstallOptions) setupCA() error {
 		return fmt.Errorf("unable to marshal webhook serving certs: %w", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(localServingCertsDir, "tls.crt"), certData, 0640); err != nil { //nolint:gosec
+	if err := os.WriteFile(filepath.Join(localServingCertsDir, "tls.crt"), certData, 0640); err != nil {
 		return fmt.Errorf("unable to write webhook serving cert to disk: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(localServingCertsDir, "tls.key"), keyData, 0640); err != nil { //nolint:gosec
+	if err := os.WriteFile(filepath.Join(localServingCertsDir, "tls.key"), keyData, 0640); err != nil {
 		return fmt.Errorf("unable to write webhook serving key to disk: %w", err)
 	}
 
@@ -313,14 +313,12 @@ func createWebhooks(config *rest.Config, mutHooks []*admissionv1.MutatingWebhook
 
 	// Create each webhook
 	for _, hook := range mutHooks {
-		hook := hook
 		log.V(1).Info("installing mutating webhook", "webhook", hook.GetName())
 		if err := ensureCreated(cs, hook); err != nil {
 			return err
 		}
 	}
 	for _, hook := range valHooks {
-		hook := hook
 		log.V(1).Info("installing validating webhook", "webhook", hook.GetName())
 		if err := ensureCreated(cs, hook); err != nil {
 			return err
