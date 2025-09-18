@@ -435,6 +435,35 @@ func WaitForPodCountInNamespace(t *testing.T, kc *kubernetes.Clientset, namespac
 	return false
 }
 
+// Waits until all the pods with a defined label are in completed status.
+func WaitForPodsCompleted(t *testing.T, kc *kubernetes.Clientset, selector, namespace string, iterations, intervalSeconds int) bool {
+	for i := 0; i < iterations; i++ {
+		pods, err := kc.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: selector})
+		if (err != nil && errors.IsNotFound(err)) || len(pods.Items) == 0 {
+			t.Logf("No pods with label %s", selector)
+			return true
+		}
+
+		succeededCount := 0
+
+		for _, pod := range pods.Items {
+			if pod.Status.Phase == corev1.PodSucceeded {
+				t.Logf("Pod %s in namespace %s is in completed status", pod.Name, namespace)
+				succeededCount++
+			}
+		}
+
+		if succeededCount == len(pods.Items) {
+			return true
+		}
+
+		t.Logf("Waiting for pods with label %s to complete", selector)
+
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+	return false
+}
+
 // Waits until all the pods in the namespace have a running status.
 func WaitForAllPodRunningInNamespace(t *testing.T, kc *kubernetes.Clientset, namespace string, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
