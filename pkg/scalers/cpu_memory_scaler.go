@@ -24,6 +24,7 @@ type cpuMemoryMetadata struct {
 	Type               string `keda:"name=type,          order=triggerMetadata, enum=Utilization;AverageValue, optional, deprecated=The 'type' setting is DEPRECATED and is removed in v2.18 - Use 'metricType' instead."`
 	Value              string `keda:"name=value,         order=triggerMetadata"`
 	ContainerName      string `keda:"name=containerName, order=triggerMetadata, optional"`
+	TriggerIndex       int
 	AverageValue       *resource.Quantity
 	AverageUtilization *int32
 	MetricType         v2.MetricTargetType
@@ -53,6 +54,8 @@ func parseResourceMetadata(config *scalersconfig.ScalerConfig) (cpuMemoryMetadat
 	if err != nil {
 		return meta, err
 	}
+
+	meta.TriggerIndex = config.TriggerIndex
 
 	if config.MetricType != "" {
 		meta.MetricType = config.MetricType
