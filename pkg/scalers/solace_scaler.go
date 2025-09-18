@@ -17,7 +17,6 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-
 const (
 	solaceExtMetricType = "External"
 	solaceScalerID      = "solace"
