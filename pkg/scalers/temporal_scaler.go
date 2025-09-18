@@ -210,23 +210,24 @@ func getTemporalClient(ctx context.Context, meta *temporalMetadata, log logr.Log
 		}),
 	}
 
+	dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(
+		func(ctx context.Context, method string, req any, reply any,
+			cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption,
+		) error {
+			return invoker(
+				metadata.AppendToOutgoingContext(ctx, "temporal-namespace", meta.Namespace),
+				method,
+				req,
+				reply,
+				cc,
+				opts...,
+			)
+		},
+	))
+
 	var tlsConfig *tls.Config
 
 	if meta.APIKey != "" {
-		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(
-			func(ctx context.Context, method string, req any, reply any,
-				cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption,
-			) error {
-				return invoker(
-					metadata.AppendToOutgoingContext(ctx, "temporal-namespace", meta.Namespace),
-					method,
-					req,
-					reply,
-					cc,
-					opts...,
-				)
-			},
-		))
 		options.Credentials = sdk.NewAPIKeyStaticCredentials(meta.APIKey)
 		tlsConfig = &tls.Config{
 			MinVersion: kedautil.GetMinTLSVersion(),
