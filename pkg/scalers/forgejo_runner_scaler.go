@@ -157,7 +157,7 @@ func (s *forgejoRunnerScaler) getJobsList(ctx context.Context) ([]ForgejoJob, er
 func (s *forgejoRunnerScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString("forgejo")),
+			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, kedautil.NormalizeString("forgejo")),
 		},
 		Target: GetMetricTarget(s.metricType, defaultForgejoJobsLen),
 	}
