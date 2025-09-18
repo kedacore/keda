@@ -108,7 +108,7 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 
 	if scaledObject.NeedToPauseScaleOut() {
 		// If the paused-scale-out annotation is set, set the HPA ScaleUp Select policy to Disabled
-		// to prevent the HPA from scaling down the scale target
+		// to prevent the HPA from scaling up the scale target
 		if behavior == nil {
 			behavior = &autoscalingv2.HorizontalPodAutoscalerBehavior{}
 		}
