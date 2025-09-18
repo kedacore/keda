@@ -649,7 +649,7 @@ func TestScaleFromMinReplicasWhenActivationForced(t *testing.T) {
 	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
 	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
 
-	client.EXPECT().Status().Times(2).Return(statusWriter).Times(3)
+	client.EXPECT().Status().Return(statusWriter).Times(3)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(3)
 
 	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, &ScaleExecutorOptions{})
