@@ -35,6 +35,8 @@ type metricsAPIScaler struct {
 type metricsAPIScalerMetadata struct {
 	targetValue           float64
 	activationTargetValue float64
+	ignoreUnavailable     bool
+	defaultValue          float64
 	url                   string
 	format                APIFormat
 	valueLocation         string
@@ -154,6 +156,24 @@ func parseMetricsAPIMetadata(config *scalersconfig.ScalerConfig) (*metricsAPISca
 			return nil, fmt.Errorf("targetValue parsing error %w", err)
 		}
 		meta.activationTargetValue = activationTargetValue
+	}
+
+	meta.ignoreUnavailable = false
+	if val, ok := config.TriggerMetadata["ignoreUnavailable"]; ok {
+		ignoreUnavailable, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("targetValue parsing error %w", err)
+		}
+		meta.ignoreUnavailable = ignoreUnavailable
+	}
+
+	meta.defaultValue = 0
+	if val, ok := config.TriggerMetadata["defaultValue"]; ok {
+		defaultValue, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, fmt.Errorf("defaultValue parsing error %w", err)
+		}
+		meta.defaultValue = defaultValue
 	}
 
 	if val, ok := config.TriggerMetadata["url"]; ok {
@@ -474,13 +494,18 @@ func (s *metricsAPIScaler) GetMetricSpecForScaling(context.Context) []v2.MetricS
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *metricsAPIScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	val, err := s.getMetricValue(ctx)
+
 	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error requesting metrics endpoint: %w", err)
+		if !s.metadata.ignoreUnavailable {
+			return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error requesting metrics endpoint: %w", err)
+		} else {
+			metric := GenerateMetricInMili(metricName, s.metadata.defaultValue)
+			return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationTargetValue, nil
+		}
+	} else {
+		metric := GenerateMetricInMili(metricName, val)
+		return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationTargetValue, nil
 	}
-
-	metric := GenerateMetricInMili(metricName, val)
-
-	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationTargetValue, nil
 }
 
 func getMetricAPIServerRequest(ctx context.Context, meta *metricsAPIScalerMetadata) (*http.Request, error) {
