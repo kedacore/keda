@@ -1186,6 +1186,11 @@ scalers:
           default: "false"
           metadataVariableReadable: true
           envVariableReadable: true
+        - name: matchUnlabeledJobsWithUnlabeledRunners
+          type: string
+          default: "false"
+          metadataVariableReadable: true
+          envVariableReadable: true
         - name: targetWorkflowQueueLength
           type: string
           default: "1"
@@ -1445,6 +1450,35 @@ scalers:
         - name: activationTargetValue
           type: string
           default: "0"
+          metadataVariableReadable: true
+    - type: metrics-api
+      parameters:
+        - name: targetValue
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: activationTargetValue
+          type: string
+          default: "0"
+          metadataVariableReadable: true
+        - name: url
+          type: string
+          metadataVariableReadable: true
+        - name: format
+          type: string
+          default: json
+          allowedValue:
+            - prometheus
+            - json
+            - xml
+            - yaml
+          metadataVariableReadable: true
+        - name: valueLocation
+          type: string
+          metadataVariableReadable: true
+        - name: unsafeSsl
+          type: string
+          default: "false"
           metadataVariableReadable: true
     - type: mongodb
       parameters:
