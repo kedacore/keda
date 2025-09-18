@@ -52,7 +52,7 @@ type forgejoRunnerScaler struct {
 }
 
 type forgejoRunnerMetadata struct {
-	triggerIndex int
+	TriggerIndex int
 
 	Token   string `keda:"name=token, order=authParams;triggerMetadata"`
 	Address string `keda:"name=address, order=triggerMetadata"`
