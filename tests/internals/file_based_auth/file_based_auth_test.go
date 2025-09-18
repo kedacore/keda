@@ -10,7 +10,8 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -90,6 +91,7 @@ spec:
         desiredReplicas: "1"
       authenticationRef:
         name: file-auth
+        kind: ClusterTriggerAuthentication
         filePath: /mnt/auth/creds.json
 `
 )
@@ -100,6 +102,9 @@ func TestFileBasedAuthentication(t *testing.T) {
 
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
+
+	// Patch the operator deployment to add init container and volume for auth file
+	patchOperatorDeployment(t, kc)
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
@@ -123,6 +128,43 @@ func TestFileBasedAuthTemplates(t *testing.T) {
 	assert.Contains(t, deploymentTemplate, "emptyDir: {}")
 }
 
+func patchOperatorDeployment(t *testing.T, kc *kubernetes.Clientset) {
+	operatorDeployment, err := kc.AppsV1().Deployments("keda").Get(context.Background(), "keda-operator", metav1.GetOptions{})
+	if err != nil {
+		t.Logf("Operator deployment not found, skipping patch: %v", err)
+		return
+	}
+
+	// Add volume
+	operatorDeployment.Spec.Template.Spec.Volumes = append(operatorDeployment.Spec.Template.Spec.Volumes, corev1.Volume{
+		Name: "auth-volume",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+
+	// Add init container
+	operatorDeployment.Spec.Template.Spec.InitContainers = append(operatorDeployment.Spec.Template.Spec.InitContainers, corev1.Container{
+		Name:    "init-auth",
+		Image:   "busybox",
+		Command: []string{"sh", "-c", "echo '{\"testParam\": \"testValue\"}' > /mnt/auth/creds.json"},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "auth-volume",
+				MountPath: "/mnt/auth",
+			},
+		},
+	})
+
+	// Update the deployment
+	_, err = kc.AppsV1().Deployments("keda").Update(context.Background(), operatorDeployment, metav1.UpdateOptions{})
+	if err != nil {
+		t.Logf("Failed to patch operator deployment: %v", err)
+	} else {
+		t.Log("Patched operator deployment with auth init container")
+	}
+}
+
 func getTemplateData() (templateData, []Template) {
 	return templateData{
 			TestNamespace:    testNamespace,
@@ -140,7 +182,7 @@ func testScaledObjectWithFileAuth(t *testing.T, kc *kubernetes.Clientset) {
 	kedaKc := GetKedaKubernetesClient(t)
 
 	// Verify ScaledObject was created successfully
-	scaledObject, err := kedaKc.ScaledObjects(testNamespace).Get(context.Background(), scaledObjectName, v1.GetOptions{})
+	scaledObject, err := kedaKc.ScaledObjects(testNamespace).Get(context.Background(), scaledObjectName, metav1.GetOptions{})
 	if err != nil {
 		t.Logf("ScaledObject not found (expected in e2e environment): %v", err)
 		return
@@ -154,7 +196,7 @@ func testScaledObjectWithFileAuth(t *testing.T, kc *kubernetes.Clientset) {
 	}
 
 	// Verify deployment has init container that creates the auth file
-	deployment, err := kc.AppsV1().Deployments(testNamespace).Get(context.Background(), deploymentName, v1.GetOptions{})
+	deployment, err := kc.AppsV1().Deployments(testNamespace).Get(context.Background(), deploymentName, metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.NotNil(t, deployment)
 
