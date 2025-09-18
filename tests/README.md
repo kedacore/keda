@@ -300,6 +300,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
     ...
     ...
     // Sleep / poll for replica count using helper method.
+    // Duration should be iterations * intervalSeconds
     require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 10, 60, 1),
 		"replica count should be 10 after 1 minute")
 }
