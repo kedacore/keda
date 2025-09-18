@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -46,6 +47,10 @@ type externalScalerMetadata struct {
 	CaCert        string `keda:"name=caCert, order=authParams, optional"`
 	TLSClientCert string `keda:"name=tlsClientCert, order=authParams, optional"`
 	TLSClientKey  string `keda:"name=tlsClientKey, order=authParams, optional"`
+
+	CaCertFile        string `keda:"name=caCertFile, order=authParams, optional"`
+	TLSClientCertFile string `keda:"name=tlsClientCertFile, order=authParams, optional"`
+	TLSClientKeyFile  string `keda:"name=tlsClientKeyFile, order=authParams, optional"`
 }
 
 type connectionGroup struct {
@@ -296,12 +301,22 @@ func getClientForConnectionPool(metadata externalScalerMetadata) (pb.ExternalSca
 	defer connectionPoolMutex.Unlock()
 
 	buildGRPCConnection := func(metadata externalScalerMetadata) (*grpc.ClientConn, error) {
-		tlsConfig, err := util.NewTLSConfig(metadata.TLSClientCert, metadata.TLSClientKey, metadata.CaCert, metadata.UnsafeSsl)
-		if err != nil {
-			return nil, err
+		var tlsConfig *tls.Config
+		var err error
+		if metadata.EnableTLS {
+			if (metadata.TLSClientCert != "" && metadata.TLSClientKey != "") || metadata.CaCert != "" {
+				// load the certs from in-lined PEM representation
+				tlsConfig, err = util.NewTLSConfig(metadata.TLSClientCert, metadata.TLSClientKey, metadata.CaCert, metadata.UnsafeSsl)
+			} else if (metadata.TLSClientCertFile != "" || metadata.TLSClientKeyFile != "") || metadata.CaCertFile != "" {
+				// load the certs from mounted files (they will be reloaded when file is changed)
+				tlsConfig, err = util.NewTLSConfigFromFiles(metadata.TLSClientCertFile, metadata.TLSClientKeyFile, metadata.CaCertFile, metadata.UnsafeSsl)
+			}
+			if err != nil {
+				return nil, err
+			}
 		}
 
-		if metadata.EnableTLS || len(tlsConfig.Certificates) > 0 || metadata.CaCert != "" {
+		if tlsConfig != nil && (len(tlsConfig.Certificates) > 0 || tlsConfig.RootCAs != nil) {
 			// nosemgrep: go.grpc.ssrf.grpc-tainted-url-host.grpc-tainted-url-host
 			return grpc.NewClient(metadata.ScalerAddress,
 				grpc.WithDefaultServiceConfig(grpcConfig),
