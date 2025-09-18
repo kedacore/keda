@@ -65,7 +65,7 @@ type forgejoRunnerMetadata struct {
 
 func parseForgejoRunnerMetadata(config *scalersconfig.ScalerConfig) (*forgejoRunnerMetadata, error) {
 	meta := &forgejoRunnerMetadata{}
-	meta.triggerIndex = config.TriggerIndex
+	meta.TriggerIndex = config.TriggerIndex
 
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing forgejo metadata: %w", err)
