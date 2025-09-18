@@ -27,9 +27,14 @@ import (
 
 	vaultapi "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
+	authv1 "k8s.io/api/authentication/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	mock_secretlister "github.com/kedacore/keda/v2/pkg/mock/mock_secretlister"
+	mock_serviceaccounts "github.com/kedacore/keda/v2/pkg/mock/mock_serviceaccounts"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 )
 
 const (
@@ -115,7 +120,15 @@ var pkiRequestTestDataset = []pkiRequestTestData{
 }
 
 func TestGetPkiRequest(t *testing.T) {
-	vault := NewHashicorpVaultHandler(nil)
+	ctrl := gomock.NewController(t)
+	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
+	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
+	authClientSet := &authentication.AuthClientSet{
+		CoreV1Interface: mockCoreV1Interface,
+		SecretLister:    mockSecretLister,
+	}
+
+	vault := NewHashicorpVaultHandler(nil, authClientSet, "default")
 
 	for _, testData := range pkiRequestTestDataset {
 		var secret kedav1alpha1.VaultSecret
@@ -136,6 +149,7 @@ func TestGetPkiRequest(t *testing.T) {
 func mockVault(t *testing.T, useRootToken bool) *httptest.Server {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var data map[string]interface{}
+		var auth *vaultapi.SecretAuth
 		switch r.URL.Path {
 		case "/v1/auth/token/lookup-self":
 			data = vaultTokenSelf
@@ -165,7 +179,10 @@ func mockVault(t *testing.T, useRootToken bool) *httptest.Server {
 				"private_key_type": "rsa",
 				"serial_number":    "4c:79:c6:2c:23:65:77:73:c2:79:49:8c:c8:fe:ad:e3:78:68:0f:86",
 			}
-
+		case "/v1/auth/kubernetes/login":
+			auth = &vaultapi.SecretAuth{
+				ClientToken: vaultTestToken,
+			}
 		default:
 			t.Logf("Got request at path %s", r.URL.Path)
 			w.WriteHeader(404)
@@ -178,7 +195,7 @@ func mockVault(t *testing.T, useRootToken bool) *httptest.Server {
 			Data:          data,
 			Renewable:     false,
 			Warnings:      nil,
-			Auth:          nil,
+			Auth:          auth,
 			WrapInfo:      nil,
 		}
 		var out, _ = json.Marshal(secret)
@@ -190,6 +207,13 @@ func mockVault(t *testing.T, useRootToken bool) *httptest.Server {
 func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) {
 	server := mockVault(t, false)
 	defer server.Close()
+	ctrl := gomock.NewController(t)
+	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
+	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
+	authClientSet := &authentication.AuthClientSet{
+		CoreV1Interface: mockCoreV1Interface,
+		SecretLister:    mockSecretLister,
+	}
 
 	vault := kedav1alpha1.HashiCorpVault{
 		Address:        server.URL,
@@ -198,7 +222,7 @@ func TestHashicorpVaultHandler_getSecretValue_specify_secret_type(t *testing.T) 
 			Token: vaultTestToken,
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault)
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -330,6 +354,13 @@ var resolveRequestTestDataSet = []resolveRequestTestData{
 func TestHashicorpVaultHandler_ResolveSecret(t *testing.T) {
 	server := mockVault(t, false)
 	defer server.Close()
+	ctrl := gomock.NewController(t)
+	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
+	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
+	authClientSet := &authentication.AuthClientSet{
+		CoreV1Interface: mockCoreV1Interface,
+		SecretLister:    mockSecretLister,
+	}
 
 	vault := kedav1alpha1.HashiCorpVault{
 		Address:        server.URL,
@@ -338,7 +369,7 @@ func TestHashicorpVaultHandler_ResolveSecret(t *testing.T) {
 			Token: vaultTestToken,
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault)
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -374,7 +405,15 @@ func TestHashicorpVaultHandler_ResolveSecret_UsingRootToken(t *testing.T) {
 			Token: vaultTestToken,
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault)
+	ctrl := gomock.NewController(t)
+	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
+	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
+	authClientSet := &authentication.AuthClientSet{
+		CoreV1Interface: mockCoreV1Interface,
+		SecretLister:    mockSecretLister,
+	}
+
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -403,6 +442,13 @@ func TestHashicorpVaultHandler_DefaultKubernetesVaultRole(t *testing.T) {
 	defaultServiceAccountPath := "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	server := mockVault(t, false)
 	defer server.Close()
+	ctrl := gomock.NewController(t)
+	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
+	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
+	authClientSet := &authentication.AuthClientSet{
+		CoreV1Interface: mockCoreV1Interface,
+		SecretLister:    mockSecretLister,
+	}
 
 	vault := kedav1alpha1.HashiCorpVault{
 		Address:        server.URL,
@@ -411,7 +457,7 @@ func TestHashicorpVaultHandler_DefaultKubernetesVaultRole(t *testing.T) {
 		Role:           "my-role",
 	}
 
-	vaultHandler := NewHashicorpVaultHandler(&vault)
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Errorf(t, err, "open %s : no such file or directory", defaultServiceAccountPath)
@@ -421,6 +467,13 @@ func TestHashicorpVaultHandler_DefaultKubernetesVaultRole(t *testing.T) {
 func TestHashicorpVaultHandler_ResolveSecrets_SameCertAndKey(t *testing.T) {
 	server := mockVault(t, false)
 	defer server.Close()
+	ctrl := gomock.NewController(t)
+	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
+	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
+	authClientSet := &authentication.AuthClientSet{
+		CoreV1Interface: mockCoreV1Interface,
+		SecretLister:    mockSecretLister,
+	}
 
 	vault := kedav1alpha1.HashiCorpVault{
 		Address:        server.URL,
@@ -429,7 +482,7 @@ func TestHashicorpVaultHandler_ResolveSecrets_SameCertAndKey(t *testing.T) {
 			Token: vaultTestToken,
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault)
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -490,6 +543,14 @@ func TestHashicorpVaultHandler_fetchSecret(t *testing.T) {
 	server := mockVault(t, false)
 	defer server.Close()
 
+	ctrl := gomock.NewController(t)
+	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
+	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
+	authClientSet := &authentication.AuthClientSet{
+		CoreV1Interface: mockCoreV1Interface,
+		SecretLister:    mockSecretLister,
+	}
+
 	vault := kedav1alpha1.HashiCorpVault{
 		Address:        server.URL,
 		Authentication: kedav1alpha1.VaultAuthenticationToken,
@@ -497,7 +558,8 @@ func TestHashicorpVaultHandler_fetchSecret(t *testing.T) {
 			Token: vaultTestToken,
 		},
 	}
-	vaultHandler := NewHashicorpVaultHandler(&vault)
+
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
 	err := vaultHandler.Initialize(logf.Log.WithName("test"))
 	defer vaultHandler.Stop()
 	assert.Nil(t, err)
@@ -543,6 +605,14 @@ func TestHashicorpVaultHandler_Initialize(t *testing.T) {
 	server := mockVault(t, false)
 	defer server.Close()
 
+	ctrl := gomock.NewController(t)
+	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
+	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
+	authClientSet := &authentication.AuthClientSet{
+		CoreV1Interface: mockCoreV1Interface,
+		SecretLister:    mockSecretLister,
+	}
+
 	for _, testData := range initialiseTestDataSet {
 		func() {
 			vault := kedav1alpha1.HashiCorpVault{
@@ -553,7 +623,7 @@ func TestHashicorpVaultHandler_Initialize(t *testing.T) {
 				},
 				Namespace: testData.namespace,
 			}
-			vaultHandler := NewHashicorpVaultHandler(&vault)
+			vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, testData.namespace)
 			err := vaultHandler.Initialize(logf.Log.WithName("test"))
 			defer vaultHandler.Stop()
 			assert.Nil(t, err)
@@ -618,6 +688,14 @@ func TestHashicorpVaultHandler_Token_VaultTokenAuth(t *testing.T) {
 	server := mockVault(t, false)
 	defer server.Close()
 
+	ctrl := gomock.NewController(t)
+	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
+	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
+	authClientSet := &authentication.AuthClientSet{
+		CoreV1Interface: mockCoreV1Interface,
+		SecretLister:    mockSecretLister,
+	}
+
 	for _, testData := range tokenTestDataSet {
 		func() {
 			vault := kedav1alpha1.HashiCorpVault{
@@ -627,7 +705,7 @@ func TestHashicorpVaultHandler_Token_VaultTokenAuth(t *testing.T) {
 				Role:           testData.role,
 				Mount:          testData.mount,
 			}
-			vaultHandler := NewHashicorpVaultHandler(&vault)
+			vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
 			defer vaultHandler.Stop()
 
 			config := vaultapi.DefaultConfig()
@@ -643,4 +721,49 @@ func TestHashicorpVaultHandler_Token_VaultTokenAuth(t *testing.T) {
 			}
 		}()
 	}
+}
+
+func TestHashicorpVaultHandler_Token_ServiceAccountAuth(t *testing.T) {
+	server := mockVault(t, false)
+	defer server.Close()
+
+	ctrl := gomock.NewController(t)
+	mockCoreV1Interface := mock_serviceaccounts.NewMockCoreV1Interface(ctrl)
+	mockSecretLister := mock_secretlister.NewMockSecretLister(ctrl)
+	authClientSet := &authentication.AuthClientSet{
+		CoreV1Interface: mockCoreV1Interface,
+		SecretLister:    mockSecretLister,
+	}
+
+	defer ctrl.Finish()
+
+	mockServiceAccountInterface := mockCoreV1Interface.GetServiceAccountInterface()
+	tokenRequest := &authv1.TokenRequest{
+		Status: authv1.TokenRequestStatus{
+			Token: bsatData,
+		},
+	}
+	mockServiceAccountInterface.EXPECT().CreateToken(gomock.Any(), gomock.Eq(bsatSAName), gomock.Any(), gomock.Any()).Return(tokenRequest, nil).AnyTimes()
+
+	vault := kedav1alpha1.HashiCorpVault{
+		Address:        server.URL,
+		Authentication: kedav1alpha1.VaultAuthenticationKubernetes,
+		Mount:          "kubernetes",
+		Role:           "keda-role",
+		Credential: &kedav1alpha1.Credential{
+			ServiceAccountName: bsatSAName,
+		},
+	}
+
+	vaultHandler := NewHashicorpVaultHandler(&vault, authClientSet, "default")
+	defer vaultHandler.Stop()
+
+	config := vaultapi.DefaultConfig()
+	config.Address = server.URL
+	client, err := vaultapi.NewClient(config)
+	assert.NoError(t, err)
+
+	token, err := vaultHandler.token(client)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, token)
 }
