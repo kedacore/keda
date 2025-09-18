@@ -212,11 +212,6 @@ func (so *ScaledObject) GenerateIdentifier() string {
 	return GenerateIdentifier("ScaledObject", so.Namespace, so.Name)
 }
 
-func (so *ScaledObject) HasPausedReplicaAnnotation() bool {
-	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
-	return pausedReplicasAnnotationFound
-}
-
 // HasPausedAnnotation returns whether this ScaledObject has PausedAnnotation or PausedReplicasAnnotation
 func (so *ScaledObject) HasPausedAnnotation() bool {
 	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
@@ -228,7 +223,7 @@ func (so *ScaledObject) HasPausedAnnotation() bool {
 func (so *ScaledObject) NeedToBePausedByAnnotation() bool {
 	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
 	if pausedReplicasAnnotationFound {
-		return so.Status.PausedReplicaCount != nil
+		return true
 	}
 
 	return getBoolAnnotation(so, PausedAnnotation)
@@ -306,26 +301,14 @@ func CheckFallbackValid(scaledObject *ScaledObject) error {
 			scaledObject.Spec.Fallback.FailureThreshold, scaledObject.Spec.Fallback.Replicas)
 	}
 
-	if scaledObject.IsUsingModifiers() {
-		if scaledObject.Spec.Advanced.ScalingModifiers.MetricType == autoscalingv2.ValueMetricType {
-			return fmt.Errorf("when using ScalingModifiers, ScaledObject.Spec.Advanced.ScalingModifiers.MetricType must be AverageValue to have fallback enabled")
-		}
-	} else {
+	if !scaledObject.IsUsingModifiers() {
 		fallbackValid := false
 		for _, trigger := range scaledObject.Spec.Triggers {
 			if trigger.Type == cpuString || trigger.Type == memoryString {
 				continue
 			}
-
-			effectiveMetricType := trigger.MetricType
-			if effectiveMetricType == "" {
-				effectiveMetricType = autoscalingv2.AverageValueMetricType
-			}
-
-			if effectiveMetricType == autoscalingv2.AverageValueMetricType {
-				fallbackValid = true
-				break
-			}
+			fallbackValid = true
+			break
 		}
 
 		if !fallbackValid {
