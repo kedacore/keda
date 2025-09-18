@@ -54,7 +54,7 @@ type forgejoRunnerScaler struct {
 type forgejoRunnerMetadata struct {
 	TriggerIndex int
 
-	Token   string `keda:"name=token, order=authParams;triggerMetadata"`
+	Token   string `keda:"name=token, order=authParams;resolvedEnv"`
 	Address string `keda:"name=address, order=triggerMetadata"`
 	Labels  string `keda:"name=labels, order=triggerMetadata"` // comma separated runner labels
 	Global  bool   `keda:"name=global, order=triggerMetadata, optional"`
