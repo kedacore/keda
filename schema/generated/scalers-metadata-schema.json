@@ -1822,6 +1822,13 @@
                     "envVariableReadable": true
                 },
                 {
+                    "name": "matchUnlabeledJobsWithUnlabeledRunners",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
                     "name": "targetWorkflowQueueLength",
                     "type": "string",
                     "default": "1",
@@ -2017,13 +2024,21 @@
                 {
                     "name": "authToken",
                     "type": "string",
-                    "metadataVariableReadable": true,
+                    "optional": true,
+                    "deprecatedAnnounce": "The 'authToken' setting from triggerMetadata is DEPRECATED and will be removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "authToken",
+                    "type": "string",
+                    "optional": true,
                     "envVariableReadable": true,
                     "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "organizationName",
                     "type": "string",
+                    "optional": true,
                     "metadataVariableReadable": true,
                     "envVariableReadable": true,
                     "triggerAuthenticationVariableReadable": true
@@ -2031,6 +2046,35 @@
                 {
                     "name": "query",
                     "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "influxVersion",
+                    "type": "string",
+                    "default": "2",
+                    "allowedValue": [
+                        "2",
+                        "3"
+                    ],
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "queryType",
+                    "type": "string",
+                    "default": "InfluxQL",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "database",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "metricKey",
+                    "type": "string",
+                    "optional": true,
                     "metadataVariableReadable": true
                 },
                 {
@@ -2222,6 +2266,51 @@
                     "name": "activationTargetValue",
                     "type": "string",
                     "default": "0",
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "metrics-api",
+            "parameters": [
+                {
+                    "name": "targetValue",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationTargetValue",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "url",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "format",
+                    "type": "string",
+                    "default": "json",
+                    "allowedValue": [
+                        "prometheus",
+                        "json",
+                        "xml",
+                        "yaml"
+                    ],
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "valueLocation",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false",
                     "metadataVariableReadable": true
                 }
             ]
