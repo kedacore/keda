@@ -259,7 +259,7 @@ func generateMetadataFields(structType *ast.StructType, otherReferenceKedaTagStr
 func generateMetadatas(tag string) ([]Parameters, bool, error) {
 	var fieldNames []string
 	metadata := Parameters{Type: "string"}
-	tagSplit := strings.Split(strings.Trim(strings.Split(strings.Trim(tag, "`"), ":")[1], "\""), scalersconfig.TagSeparator)
+	tagSplit := strings.Split(strings.Trim(strings.Join(strings.Split(strings.Trim(tag, "`"), ":")[1:], ":"), "\""), scalersconfig.TagSeparator)
 
 	if len(tagSplit) == 1 && tagSplit[0] == scalersconfig.OptionalTag {
 		return nil, true, nil
