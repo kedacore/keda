@@ -16,6 +16,7 @@ COPY cmd/ cmd/
 COPY apis/ apis/
 COPY controllers/ controllers/
 COPY pkg/ pkg/
+COPY schema/ schema/
 COPY vendor/ vendor/
 COPY go.mod go.mod
 COPY go.sum go.sum

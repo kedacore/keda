@@ -73,6 +73,7 @@ type datadogMetadata struct {
 	UseFiller     bool
 	TargetValue   float64       `keda:"name=targetValue;queryValue, order=triggerMetadata, default=-1"`
 	Timeout       time.Duration `keda:"name=timeout,             	order=triggerMetadata, optional"`
+	TriggerIndex  int
 	vType         v2.MetricTargetType
 }
 
@@ -153,6 +154,7 @@ func parseDatadogAPIMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
 	}
+	meta.TriggerIndex = config.TriggerIndex
 
 	if meta.Age < 60 {
 		logger.Info("selecting a window smaller than 60 seconds can cause Datadog not finding a metric value for the query")
@@ -215,6 +217,7 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
 	}
+	meta.TriggerIndex = config.TriggerIndex
 	if meta.DatadogMetricsService == "" {
 		return nil, fmt.Errorf("datadog metrics service is required")
 	}

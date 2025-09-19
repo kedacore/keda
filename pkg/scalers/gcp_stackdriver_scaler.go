@@ -30,6 +30,7 @@ type stackdriverMetadata struct {
 	metricName            string
 	ValueIfNull           *float64 `keda:"name=valueIfNull, order=triggerMetadata, optional"`
 	FilterDuration        int64    `keda:"name=filterDuration, order=triggerMetadata, optional"`
+	TriggerIndex          int
 
 	gcpAuthorization *gcp.AuthorizationMetadata
 	aggregation      *monitoringpb.Aggregation
@@ -69,6 +70,7 @@ func parseStackdriverMetadata(config *scalersconfig.ScalerConfig, logger logr.Lo
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing Stackdriver metadata: %w", err)
 	}
+	meta.TriggerIndex = config.TriggerIndex
 
 	name := kedautil.NormalizeString(fmt.Sprintf("gcp-stackdriver-%s", meta.ProjectID))
 	meta.metricName = GenerateMetricNameWithIndex(config.TriggerIndex, name)
