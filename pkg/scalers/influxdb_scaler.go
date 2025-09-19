@@ -31,7 +31,8 @@ type influxDBScalerV3 struct {
 }
 
 type influxDBMetadata struct {
-	AuthToken                string  `keda:"name=authToken,                order=triggerMetadata;resolvedEnv;authParams"`
+	AuthTokenOld             string  `keda:"name=authToken,                order=triggerMetadata,                        optional,        deprecatedAnnounce=The 'authToken' setting from triggerMetadata is DEPRECATED and will be removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead"`
+	AuthToken                string  `keda:"name=authToken,                order=resolvedEnv;authParams,                 optional"`
 	OrganizationName         string  `keda:"name=organizationName,         order=triggerMetadata;resolvedEnv;authParams, optional"`
 	Query                    string  `keda:"name=query,                    order=triggerMetadata"`
 	InfluxVersion            string  `keda:"name=influxVersion,            order=triggerMetadata,                        default=2,       enum=2;3"`
@@ -47,6 +48,18 @@ type influxDBMetadata struct {
 }
 
 func (i *influxDBMetadata) Validate() error {
+	if i.AuthTokenOld != "" && i.AuthToken != "" {
+		return fmt.Errorf("authToken cannot be specified in both triggerMetadata and resolvedEnv/authParams")
+	}
+
+	if i.AuthTokenOld != "" {
+		i.AuthToken = i.AuthTokenOld
+	}
+
+	if i.AuthToken == "" {
+		return fmt.Errorf("authToken is required")
+	}
+
 	if i.InfluxVersion == "3" {
 		if i.Database == "" {
 			return fmt.Errorf("database is required if influxVersion is 3")
