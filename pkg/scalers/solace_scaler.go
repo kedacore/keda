@@ -275,17 +275,17 @@ func (s *SolaceScaler) getVpnState(ctx context.Context, sempURL string) (string,
 	var httpClient = s.httpClient
 	var sempResponse solaceVpnSEMPResponse
 
-	//	Define HTTP Request
+	// Define HTTP Request
 	request, err := http.NewRequestWithContext(ctx, "GET", sempURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed attempting request to solace semp api: %s url: %s", err.Error(), sempURL)
 	}
 
-	//	Add HTTP Auth and Headers
+	// Add HTTP Auth and Headers
 	request.SetBasicAuth(s.metadata.Username, s.metadata.Password)
 	request.Header.Set("Content-Type", "application/json")
 
-	//	Call Solace SEMP API
+	// Call Solace SEMP API
 	response, err := httpClient.Do(request)
 	if err != nil {
 		return "", fmt.Errorf("call to solace semp api failed: %s, url: %s", err.Error(), sempURL)
@@ -314,17 +314,17 @@ func (s *SolaceScaler) getQueueMetrics(ctx context.Context, sempURL string) (Sol
 	var sempResponse solaceQueueSEMPResponse
 	var metricValues SolaceMetricValues
 
-	//	Define HTTP Request
+	// Define HTTP Request
 	request, err := http.NewRequestWithContext(ctx, "GET", sempURL, nil)
 	if err != nil {
 		return SolaceMetricValues{}, fmt.Errorf("failed attempting request to solace semp api: %s, url: %s", err.Error(), sempURL)
 	}
 
-	//	Add HTTP Auth and Headers
+	// Add HTTP Auth and Headers
 	request.SetBasicAuth(s.metadata.Username, s.metadata.Password)
 	request.Header.Set("Content-Type", "application/json")
 
-	//	Call Solace SEMP API
+	// Call Solace SEMP API
 	response, err := httpClient.Do(request)
 	if err != nil {
 		return SolaceMetricValues{}, fmt.Errorf("call to solace semp api failed: %s, url: %s", err.Error(), sempURL)
@@ -357,10 +357,9 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (Solac
 	var metricValues SolaceMetricValues
 	var errorList []string
 
-	//	RETRIEVE METRICS FROM SOLACE SEMP API
+	// RETRIEVE METRICS FROM SOLACE SEMP API
 	for i := 0; i < len(s.metadata.endpointURLsList); i++ {
 		idx := (s.curHostIdx + i) % len(s.metadata.endpointURLsList)
-		s.curHostIdx = idx
 		sempQueueURL := s.metadata.endpointURLsList[idx]
 		sempVpnStateURL := s.metadata.vpnStateURLsList[idx]
 
@@ -379,6 +378,11 @@ func (s *SolaceScaler) getSolaceQueueMetricsFromSEMP(ctx context.Context) (Solac
 		if err != nil {
 			errorList = append(errorList, "Host "+strconv.Itoa(idx+1)+" Error: "+err.Error())
 			continue
+		}
+
+		// Found active broker, update currHostIdx if it has changed
+		if idx != s.curHostIdx {
+			s.curHostIdx = idx
 		}
 
 		return metricValues, nil
