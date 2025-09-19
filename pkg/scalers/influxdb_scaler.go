@@ -69,7 +69,8 @@ func (i *influxDBMetadata) Validate() error {
 			return fmt.Errorf("metricKey is required if influxVersion is 3")
 		}
 
-		if strings.ToLower(i.QueryType) != "influxql" && strings.ToLower(i.QueryType) != "flightsql" {
+		queryTypeLower := strings.ToLower(i.QueryType)
+		if queryTypeLower != "influxql" && queryTypeLower != "flightsql" {
 			return fmt.Errorf("query type must be 'influxql' or 'flightsql'")
 		}
 	}
