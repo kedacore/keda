@@ -39,7 +39,7 @@ type pubsubScaler struct {
 type pubsubMetadata struct {
 	SubscriptionSize int           `keda:"name=subscriptionSize, order=triggerMetadata, optional, deprecatedAnnounce=The 'subscriptionSize' setting is DEPRECATED and will be removed in v2.20 - Use 'mode' and 'value' instead"`
 	Mode             string        `keda:"name=mode, order=triggerMetadata, default=SubscriptionSize"`
-	Value            float64       `keda:"name=value, order=triggerMetadata, default=10"`
+	Value            float64       `keda:"name=value, order=triggerMetadata, default=10, deprecatedAnnounce=This scaler is deprecated, more info -> https://keda.sh/blog/2025-09-15-gcp-deprecations"`
 	ActivationValue  float64       `keda:"name=activationValue, order=triggerMetadata, default=0"`
 	Aggregation      string        `keda:"name=aggregation, order=triggerMetadata, optional"`
 	TimeHorizon      time.Duration `keda:"name=timeHorizon, order=triggerMetadata, optional"`

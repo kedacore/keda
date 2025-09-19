@@ -24,7 +24,7 @@ type stackdriverScaler struct {
 
 type stackdriverMetadata struct {
 	ProjectID             string  `keda:"name=projectId, order=triggerMetadata"`
-	Filter                string  `keda:"name=filter, order=triggerMetadata"`
+	Filter                string  `keda:"name=filter, order=triggerMetadata, deprecatedAnnounce=This scaler is deprecated, more info -> https://keda.sh/blog/2025-09-15-gcp-deprecations"`
 	TargetValue           float64 `keda:"name=targetValue, order=triggerMetadata, default=5"`
 	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
 	metricName            string
