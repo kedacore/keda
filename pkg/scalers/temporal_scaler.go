@@ -186,7 +186,7 @@ func getQueueTypes(queueTypes []string) []sdk.TaskQueueType {
 func getCombinedBacklogCount(description sdk.TaskQueueDescription) int64 {
 	var count int64
 
-	for _, versionInfo := range description.VersionsInfo { // Tracked by https://github.com/kedacore/keda/issues/6690
+	for _, versionInfo := range description.VersionsInfo { //nolint: staticcheck
 		for _, typeInfo := range versionInfo.TypesInfo {
 			if typeInfo.Stats != nil {
 				count += typeInfo.Stats.ApproximateBacklogCount
