@@ -419,8 +419,8 @@ func readWebhooks(path string) ([]*admissionv1.MutatingWebhookConfiguration, []*
 			const (
 				admissionregv1 = "admissionregistration.k8s.io/v1"
 			)
-			switch {
-			case generic.Kind == "MutatingWebhookConfiguration":
+			switch generic.Kind {
+			case "MutatingWebhookConfiguration":
 				if generic.APIVersion != admissionregv1 {
 					return nil, nil, fmt.Errorf("only v1 is supported right now for MutatingWebhookConfiguration (name: %s)", generic.Name)
 				}
@@ -429,7 +429,7 @@ func readWebhooks(path string) ([]*admissionv1.MutatingWebhookConfiguration, []*
 					return nil, nil, err
 				}
 				mutHooks = append(mutHooks, hook)
-			case generic.Kind == "ValidatingWebhookConfiguration":
+			case "ValidatingWebhookConfiguration":
 				if generic.APIVersion != admissionregv1 {
 					return nil, nil, fmt.Errorf("only v1 is supported right now for ValidatingWebhookConfiguration (name: %s)", generic.Name)
 				}
