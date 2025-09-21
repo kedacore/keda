@@ -71,6 +71,11 @@ const (
 )
 
 const (
+	WaitShort     = 20 * time.Second
+	IntervalShort = 1 * time.Second
+)
+
+const (
 	caCrtPath = "/tmp/keda-e2e-ca.crt"
 	caKeyPath = "/tmp/keda-e2e-ca.key"
 )
@@ -93,6 +98,13 @@ var (
 	InstallKeda                   = os.Getenv("E2E_INSTALL_KEDA")
 	InstallKafka                  = os.Getenv("E2E_INSTALL_KAFKA")
 )
+
+func init() {
+	if err := LoadTestConfig(); err != nil {
+		fmt.Printf("Error loading test config: %v\n", err)
+		os.Exit(1)
+	}
+}
 
 var (
 	KubeClient     *kubernetes.Clientset
@@ -145,10 +157,20 @@ func ExecuteCommand(cmdWithArgs string) ([]byte, error) {
 }
 
 func ExecuteCommandWithDir(cmdWithArgs, dir string) ([]byte, error) {
-	out, err := ParseCommandWithDir(cmdWithArgs, dir).Output()
+	return ExecuteCommandWithDirAndEnv(cmdWithArgs, dir, nil)
+}
+
+func ExecuteCommandWithDirAndEnv(cmdWithArgs, dir string, env map[string]string) ([]byte, error) {
+	cmd := ParseCommandWithDir(cmdWithArgs, dir)
+
+	cmd.Env = os.Environ()
+	for k, v := range env {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	out, err := cmd.Output()
 	if err != nil {
-		exitError, ok := err.(*exec.ExitError)
-		if ok {
+		if exitError, ok := err.(*exec.ExitError); ok {
 			return out, ExecutionError{StdError: exitError.Stderr}
 		}
 	}
@@ -1022,6 +1044,42 @@ func CheckKubectlGetResult(t *testing.T, kind string, name string, namespace str
 
 	unqoutedOutput := strings.ReplaceAll(string(output), "\"", "")
 	assert.Equal(t, expected, unqoutedOutput)
+}
+
+// KedaEventually checks if the provided conditionFunc eventually returns true
+// (and no error) within the context's deadline. It polls the conditionFunc
+// at the given interval until the condition is met or the context times out.
+func KedaEventually(ctx context.Context, conditionFunc wait.ConditionWithContextFunc, interval time.Duration) error {
+	if interval <= 0 {
+		return fmt.Errorf("polling interval must be positive, got %v", interval)
+	}
+
+	ok, err := conditionFunc(ctx)
+	if err != nil {
+		return fmt.Errorf("eventually check failed on initial check: %w", err)
+	}
+	if ok {
+		return nil
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("eventually check failed: context deadline exceeded before condition was met")
+
+		case <-ticker.C:
+			ok, err := conditionFunc(ctx)
+			if err != nil {
+				return fmt.Errorf("eventually check failed during polling: %w", err)
+			}
+			if ok {
+				return nil
+			}
+		}
+	}
 }
 
 // KedaConsistently checks if the provided conditionFunc consistently returns true
