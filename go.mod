@@ -108,12 +108,12 @@ require (
 	google.golang.org/protobuf v1.36.7
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/gotestsum v1.12.1
-	k8s.io/api v0.34.0
-	k8s.io/apimachinery v0.34.0
-	k8s.io/apiserver v0.34.0
-	k8s.io/client-go v0.34.0
+	k8s.io/api v0.33.5
+	k8s.io/apimachinery v0.33.5
+	k8s.io/apiserver v0.33.5
+	k8s.io/client-go v0.33.5
 	k8s.io/code-generator v0.33.5
-	k8s.io/component-base v0.34.0
+	k8s.io/component-base v0.33.5
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kube-openapi v0.0.0-20250627150254-e9823e99808e
 	k8s.io/metrics v0.33.1
@@ -130,7 +130,7 @@ replace (
 	// we need a version with a proper license
 	github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
 
-	// pin k8s.io to v0.33.5 & sigs.k8s.io/controller-runtime to v0.19.7
+	// pin k8s.io to v0.33.5 & sigs.k8s.io/controller-runtime to v0.21.0
 	github.com/google/cel-go => github.com/google/cel-go v0.22.0
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.6.1
@@ -364,7 +364,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/apiextensions-apiserver v0.34.0 // indirect
+	k8s.io/apiextensions-apiserver v0.33.5 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250604051438-85fd79dbfd9f // indirect
 	k8s.io/kms v0.33.5 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.31.2 // indirect
