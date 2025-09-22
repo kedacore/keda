@@ -158,7 +158,7 @@ kind: ScaledJob
 metadata:
   labels:
     app: forgejo-runner
-  name: {{.ScaledJobtName}}
+  name: {{.ScaledJobName}}
   namespace: {{.TestNamespace}}
 spec:
   jobTargetRef:
