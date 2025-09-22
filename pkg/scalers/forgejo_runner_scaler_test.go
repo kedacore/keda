@@ -15,65 +15,66 @@ import (
 )
 
 type parseForgejoRunnerMetadataTestData struct {
-	testName      string
-	metadata      map[string]string
-	isError       bool
-	expectedError string
-	global        bool
-	address       string
+	testName       string
+	metadata       map[string]string
+	authentication map[string]string
+	isError        bool
+	expectedError  string
+	global         bool
+	address        string
+}
+
+var testForgejoRunnerAuthParams = map[string]string{
+	"token": "some-token",
 }
 
 var testForgejoRunnerMetadata = []parseForgejoRunnerMetadataTestData{
 	{"no address given", map[string]string{
 		"token": "some-token", "name": "some-name", "labels": "some-label",
-	}, true, "error parsing forgejo metadata: missing required parameter \"address\" in [triggerMetadata]", false, ""},
+	}, testForgejoRunnerAuthParams, true, "error parsing forgejo metadata: missing required parameter \"address\" in [triggerMetadata]", false, ""},
 	{"no token given", map[string]string{
 		"address": "https://code.forgejo.org", "name": "some-name", "labels": "some-label",
-	}, true, "error parsing forgejo metadata: missing required parameter \"token\" in [authParams triggerMetadata]", false, ""},
+	}, map[string]string{}, true, "error parsing forgejo metadata: missing required parameter \"token\" in [authParams resolvedEnv]", false, ""},
 	{"no label given", map[string]string{
 		"address": "https://code.forgejo.org", "token": "some-token", "name": "some-name",
-	}, true, "error parsing forgejo metadata: missing required parameter \"labels\" in [triggerMetadata]", false, ""},
+	}, testForgejoRunnerAuthParams, true, "error parsing forgejo metadata: missing required parameter \"labels\" in [triggerMetadata]", false, ""},
 	{"no name given use default", map[string]string{
 		"address": "https://code.forgejo.org", "token": "some-token", "labels": "some-label",
-	}, false, "", false, "https://code.forgejo.org"},
+	}, testForgejoRunnerAuthParams, false, "", false, "https://code.forgejo.org"},
 	{"no metric path given use default", map[string]string{
 		"address": "https://code.forgejo.org", "token": "some-token", "name": "some-name", "labels": "some-label",
-	}, false, "", false, "https://code.forgejo.org"},
+	}, testForgejoRunnerAuthParams, false, "", false, "https://code.forgejo.org"},
 	// properly formed
 	{"properly formed", map[string]string{
 		"address": "https://code.forgejo.org",
-		"token":   "some-token",
 		"name":    "some-name",
 		"labels":  "some-labels",
-	}, false, "", false, "https://code.forgejo.org"},
+	}, testForgejoRunnerAuthParams, false, "", false, "https://code.forgejo.org"},
 	{"properly formed with global", map[string]string{
 		"address": "https://code.forgejo.org",
-		"token":   "some-token",
 		"name":    "some-name",
 		"labels":  "some-labels",
 		"global":  "true",
-	}, false, "", true, "https://code.forgejo.org"},
+	}, testForgejoRunnerAuthParams, false, "", true, "https://code.forgejo.org"},
 	{"properly formed with address with an extra slash", map[string]string{
 		"address": "https://code.forgejo.org/",
-		"token":   "some-token",
 		"name":    "some-name",
 		"labels":  "some-labels",
 		"global":  "true",
-	}, false, "", true, "https://code.forgejo.org"},
+	}, testForgejoRunnerAuthParams, false, "", true, "https://code.forgejo.org"},
 	{"properly formed with global", map[string]string{
 		"address": "https://code.forgejo.org",
-		"token":   "some-token",
 		"name":    "some-name",
 		"labels":  "some-labels",
 		"owner":   "owner",
 		"repo":    "my-repo",
-	}, false, "", false, "https://code.forgejo.org"},
+	}, testForgejoRunnerAuthParams, false, "", false, "https://code.forgejo.org"},
 }
 
 func TestForgejoRunnerParseMetadata(t *testing.T) {
 	for _, testData := range testForgejoRunnerMetadata {
 		t.Run(testData.testName, func(t *testing.T) {
-			got, err := parseForgejoRunnerMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testAuthParams})
+			got, err := parseForgejoRunnerMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authentication})
 
 			if testData.isError && err == nil {
 				t.Fatal("expected error but got none")
