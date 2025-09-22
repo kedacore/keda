@@ -1686,6 +1686,51 @@
             ]
         },
         {
+            "type": "forgejo-runner",
+            "parameters": [
+                {
+                    "name": "token",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "address",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "labels",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "global",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "owner",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "org",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "repo",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "gcp-cloudtasks",
             "parameters": [
                 {
@@ -1816,6 +1861,13 @@
                 },
                 {
                     "name": "enableEtags",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "matchUnlabeledJobsWithUnlabeledRunners",
                     "type": "string",
                     "default": "false",
                     "metadataVariableReadable": true,
@@ -2222,6 +2274,51 @@
                     "name": "activationTargetValue",
                     "type": "string",
                     "default": "0",
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
+            "type": "metrics-api",
+            "parameters": [
+                {
+                    "name": "targetValue",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationTargetValue",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "url",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "format",
+                    "type": "string",
+                    "default": "json",
+                    "allowedValue": [
+                        "prometheus",
+                        "json",
+                        "xml",
+                        "yaml"
+                    ],
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "valueLocation",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false",
                     "metadataVariableReadable": true
                 }
             ]
