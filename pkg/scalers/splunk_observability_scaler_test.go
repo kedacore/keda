@@ -20,7 +20,7 @@ type SplunkObservabilityMetricIdentifier struct {
 }
 
 var validSplunkObservabilityAuthParams = map[string]string{
-	"accessToken": "my-suyper-secret-access-token",
+	"accessToken": "my-super-secret-access-token",
 	"realm":       "my-realm",
 }
 
@@ -42,9 +42,9 @@ var testSplunkObservabilityMetadata = []parseSplunkObservabilityMetadataTestData
 	{validSplunkObservabilityMetadata, validSplunkObservabilityAuthParams, false},
 	// no params at all, fail
 	{map[string]string{}, map[string]string{}, true},
-	// No meta dada but valid auth, fail.
+	// No metadada but valid auth, fail.
 	{map[string]string{}, validSplunkObservabilityAuthParams, true},
-	// Valid meta dada but no auth params, fail.
+	// Valid metadada but no auth params, fail.
 	{validSplunkObservabilityMetadata, map[string]string{}, true},
 	// Missing 'query' field, fail
 	{map[string]string{"duration": "10", "targetValue": "200.0", "queryAggregator": "avg", "activationTargetValue": "1.1"}, validSplunkObservabilityAuthParams, true},

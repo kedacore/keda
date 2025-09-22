@@ -91,7 +91,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx
+  name: {{.DeploymentName}}
   namespace: {{.TestNamespace}}
 spec:
   selector:
@@ -120,7 +120,7 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: nginx
+    name: {{.DeploymentName}}
   pollingInterval: 3
   cooldownPeriod: 1
   minReplicaCount: {{.MinReplicaCount}}
@@ -235,18 +235,15 @@ func getPodCount(ctx context.Context, kc *kubernetes.Clientset, namespace string
 func testScaleOut(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, namespace string) {
 	t.Log("--- testing scale out ---")
 	t.Log("waiting for 3 minutes")
-	time.Sleep(time.Duration(180) * time.Second)
 
-	assert.True(t, getPodCount(ctx, kc, namespace) > minReplicaCount, "number of pods in deployment should be more than %d after 3 minutes", minReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 10, 3, 60), "replica count should be 10 after 3 minutes")
 }
 
 func testScaleIn(ctx context.Context, t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
-
 	t.Log("waiting for 10 minutes")
-	time.Sleep(time.Duration(600) * time.Second)
 
-	assert.True(t, getPodCount(ctx, kc, testNamespace) < maxReplicaCount, "number of pods in deployment should be less than %d after 10 minutes", maxReplicaCount)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 10, 60), "replica count should be 4 after 10 minutes")
 }
 
 func getTemplateData() (templateData, []Template) {

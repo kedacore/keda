@@ -120,6 +120,10 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 		}
 	}
 
+	if valueCount == 0 {
+		return 0, fmt.Errorf("query returned no data points")
+	}
+
 	if valueCount > 1 && s.metadata.QueryAggregator == "" {
 		return 0, fmt.Errorf("query returned more than 1 series; modify the query to return only 1 series or add a queryAggregator")
 	}
@@ -136,7 +140,7 @@ func (s *splunkObservabilityScaler) getQueryResult(ctx context.Context) (float64
 		s.logger.V(1).Info(fmt.Sprintf("Returning avg value: %.4f\n", avg))
 		return avg, nil
 	default:
-		return maxValue, nil
+		return 0, fmt.Errorf("invalid queryAggregator: %q", s.metadata.QueryAggregator)
 	}
 }
 
