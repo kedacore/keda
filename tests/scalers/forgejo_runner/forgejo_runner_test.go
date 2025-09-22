@@ -4,6 +4,7 @@
 package forgejo_runner_test
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"testing"
@@ -243,7 +244,7 @@ func getForgejoData() (templateData, []Template) {
 			ForgejoToken:       forgejoToken,
 			ForgejoGlobal:      forgejoGlobal,
 			ForgejoLabel:       forgejoLabel,
-			ForgejoAccessToken: forgejoAccessToken,
+			ForgejoAccessToken: base64.StdEncoding.EncodeToString([]byte(forgejoAccessToken)),
 			ForgejoAddress:     forgejoAddress,
 		}, []Template{
 			{Name: "forgejoDeploymentTemplate", Config: forgejoDeployment},
@@ -264,7 +265,7 @@ func getTemplateData() (templateData, []Template) {
 			ForgejoToken:       forgejoToken,
 			ForgejoGlobal:      forgejoGlobal,
 			ForgejoLabel:       forgejoLabel,
-			ForgejoAccessToken: forgejoAccessToken,
+			ForgejoAccessToken: base64.StdEncoding.EncodeToString([]byte(forgejoAccessToken)),
 			ForgejoAddress:     forgejoAddress,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
