@@ -195,7 +195,6 @@ spec:
   - type: forgejo-runner
     metadata:
       name: "{{.ForgejoRunnerName}}"
-      token: "{{.ForgejoAccessToken}}"
       address: "{{.ForgejoAddress}}"
       global: "{{.ForgejoGlobal}}"
       labels: "{{.ForgejoLabel}}"
