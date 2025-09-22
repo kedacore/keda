@@ -194,7 +194,6 @@ spec:
   triggers:
   - type: forgejo-runner
     metadata:
-      name: "{{.ForgejoRunnerName}}"
       address: "{{.ForgejoAddress}}"
       global: "{{.ForgejoGlobal}}"
       labels: "{{.ForgejoLabel}}"
