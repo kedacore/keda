@@ -27,6 +27,8 @@ const (
 var (
 	testNamespace    = fmt.Sprintf("%s-ns", testName)
 	deploymentName   = fmt.Sprintf("%s-deployment", testName)
+	secretName       = fmt.Sprintf("%s-secret", testName)
+	triggerAuthName  = fmt.Sprintf("%s-auth", testName)
 	scaledJobName    = fmt.Sprintf("%s-so", testName)
 	configName       = fmt.Sprintf("%s-configmap", testName)
 	registrationName = fmt.Sprintf("%s-registration", testName)
@@ -45,7 +47,9 @@ var (
 type templateData struct {
 	TestNamespace    string
 	DeploymentName   string
-	ScaledObjectName string
+	SecretName       string
+	TriggerAuthName  string
+	ScaledJobtName   string
 	ConfigName       string
 	RegistrationName string
 	NewTimestamp     int64
@@ -129,12 +133,32 @@ spec:
         runAsUser: 1000
  `
 
-	scaledJob = `apiVersion: keda.sh/v1alpha1
+	secretTemplate = `apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.SecretName}}
+  namespace: {{.TestNamespace}}
+data:
+  forgejo-token: {{.ForgejoAccessToken}}
+`
+	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{.TriggerAuthName}}
+  namespace: {{.TestNamespace}}
+spec:
+  secretTargetRef:
+    - parameter: token
+      name: {{.SecretName}}
+      key: forgejo-token
+`
+
+	scaledJobTemplate = `apiVersion: keda.sh/v1alpha1
 kind: ScaledJob
 metadata:
   labels:
     app: forgejo-runner
-  name: forgejo-runner
+  name: {{.ScaledJobtName}}
   namespace: {{.TestNamespace}}
 spec:
   jobTargetRef:
@@ -175,6 +199,8 @@ spec:
       address: "{{.ForgejoAddress}}"
       global: "{{.ForgejoGlobal}}"
       labels: "{{.ForgejoLabel}}"
+    authenticationRef:
+      name: {{.TriggerAuthName}}
 `
 )
 
@@ -210,7 +236,9 @@ func getForgejoData() (templateData, []Template) {
 			TestNamespace:      testNamespace,
 			DeploymentName:     deploymentName,
 			NewTimestamp:       newTimestamp,
-			ScaledObjectName:   scaledJobName,
+			SecretName:         secretName,
+			TriggerAuthName:    triggerAuthName,
+			ScaledJobtName:     scaledJobName,
 			ConfigName:         configName,
 			RegistrationName:   registrationName,
 			ForgejoRunnerName:  forgejoRunnerName,
@@ -229,7 +257,9 @@ func getTemplateData() (templateData, []Template) {
 			TestNamespace:      testNamespace,
 			DeploymentName:     deploymentName,
 			NewTimestamp:       newTimestamp,
-			ScaledObjectName:   scaledJobName,
+			SecretName:         secretName,
+			TriggerAuthName:    triggerAuthName,
+			ScaledJobtName:     scaledJobName,
 			ConfigName:         configName,
 			RegistrationName:   registrationName,
 			ForgejoRunnerName:  forgejoRunnerName,
@@ -239,7 +269,9 @@ func getTemplateData() (templateData, []Template) {
 			ForgejoAccessToken: forgejoAccessToken,
 			ForgejoAddress:     forgejoAddress,
 		}, []Template{
-			{Name: "scaledObjectTemplate", Config: scaledJob},
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
+			{Name: "scaledJobTemplate", Config: scaledJobTemplate},
 		}
 }
 
