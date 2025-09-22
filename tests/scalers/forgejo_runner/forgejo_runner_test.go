@@ -49,7 +49,7 @@ type templateData struct {
 	DeploymentName   string
 	SecretName       string
 	TriggerAuthName  string
-	ScaledJobtName   string
+	ScaledJobName    string
 	ConfigName       string
 	RegistrationName string
 	NewTimestamp     int64
@@ -238,7 +238,7 @@ func getForgejoData() (templateData, []Template) {
 			NewTimestamp:       newTimestamp,
 			SecretName:         secretName,
 			TriggerAuthName:    triggerAuthName,
-			ScaledJobtName:     scaledJobName,
+			ScaledJobName:      scaledJobName,
 			ConfigName:         configName,
 			RegistrationName:   registrationName,
 			ForgejoRunnerName:  forgejoRunnerName,
@@ -259,7 +259,7 @@ func getTemplateData() (templateData, []Template) {
 			NewTimestamp:       newTimestamp,
 			SecretName:         secretName,
 			TriggerAuthName:    triggerAuthName,
-			ScaledJobtName:     scaledJobName,
+			ScaledJobName:      scaledJobName,
 			ConfigName:         configName,
 			RegistrationName:   registrationName,
 			ForgejoRunnerName:  forgejoRunnerName,
