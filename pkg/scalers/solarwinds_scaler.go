@@ -162,5 +162,5 @@ func (s *solarWindsScaler) getFirstMeasurement(res *operations.ListMetricMeasure
 			}
 		}
 	}
-	return firstValue, nil
+	return 0, fmt.Errorf("no measurements found in response")
 }
