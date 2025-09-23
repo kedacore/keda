@@ -4,5 +4,5 @@
   - team: keda-core-maintainers
 
 # Any datadog file in pkg or tests folder
-+(pkg|tests)/**/datadog*.go":
+"+(pkg|tests)/**/datadog*.go":
   - arapulido

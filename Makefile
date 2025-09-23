@@ -55,6 +55,16 @@ GOLANGCI_VERSION:=1.63.4
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+# Scaler schema generation parameters
+SCALERS_SCHEMA_SCALERS_BUILDER_FILE ?= pkg/scaling/scalers_builder.go
+SCALERS_SCHEMA_SCALERS_FILES_DIR ?= pkg/scalers
+SCALERS_SCHEMA_OUTPUT_FILE_PATH ?= schema/generated/
+SCALERS_SCHEMA_OUTPUT_FILE_NAME ?= scalers-metadata-schema
+
+ifneq '${VERSION}' 'main'
+  OUTPUT_FILE_NAME :="${OUTPUT_FILE_NAME}-${VERSION}"
+endif
+
 ##################################################
 # All                                            #
 ##################################################
@@ -135,7 +145,7 @@ manifests: controller-gen ## Generate ClusterRole and CustomResourceDefinition o
 	# until this issue is fixed: https://github.com/kubernetes-sigs/controller-tools/issues/398
 	rm config/crd/bases/keda.sh_withtriggers.yaml
 
-generate: controller-gen mockgen-gen proto-gen ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations (API), mocks and proto.
+generate: controller-gen mockgen-gen proto-gen generate-scalers-schema ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations (API), mocks and proto.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 fmt: ## Run go fmt against code.
@@ -211,7 +221,7 @@ webhooks: generate
 	${GO_BUILD_VARS} go build -ldflags $(GO_LDFLAGS) -mod=vendor -o bin/keda-admission-webhooks cmd/webhooks/main.go
 
 run: manifests generate ## Run a controller from your host.
-	WATCH_NAMESPACE="" go run -ldflags $(GO_LDFLAGS) ./cmd/operator/main.go $(ARGS)
+	KEDA_CLUSTER_OBJECT_NAMESPACE=keda WATCH_NAMESPACE="" go run -ldflags $(GO_LDFLAGS) ./cmd/operator/main.go $(ARGS)
 
 docker-build: ## Build docker images with the KEDA Operator and Metrics Server.
 	DOCKER_BUILDKIT=1 docker build . -t ${IMAGE_CONTROLLER} --build-arg BUILD_VERSION=${VERSION} --build-arg GIT_VERSION=${GIT_VERSION} --build-arg GIT_COMMIT=${GIT_COMMIT}
@@ -234,7 +244,7 @@ publish-webhooks-multiarch: ## Build and push multi-arch Docker image for KEDA H
 
 publish-multiarch: publish-controller-multiarch publish-adapter-multiarch publish-webhooks-multiarch ## Push multi-arch Docker images on to Container Registry (default: ghcr.io).
 
-release: manifests kustomize set-version ## Produce new KEDA release in keda-$(VERSION).yaml file.
+release: manifests kustomize set-version generate-scalers-schema ## Produce new KEDA release in keda-$(VERSION).yaml file.
 	cd config/manager && \
 	$(KUSTOMIZE) edit set image ghcr.io/kedacore/keda=${IMAGE_CONTROLLER}
 	cd config/metrics-server && \
@@ -259,6 +269,14 @@ sign-images: ## Sign KEDA images published on GitHub Container Registry
 set-version:
 	@sed -i".out" -e 's@Version[ ]*=.*@Version = "$(VERSION)"@g' ./version/version.go;
 	rm -rf ./version/version.go.out
+
+.PHONY: generate-scalers-schema
+generate-scalers-schema: ## Generate scalers schema
+	GOBIN=$(LOCALBIN) go run ./schema/generate_scaler_schema.go --keda-version $(VERSION) --scalers-builder-file $(SCALERS_SCHEMA_SCALERS_BUILDER_FILE) --scalers-files-dir $(SCALERS_SCHEMA_SCALERS_FILES_DIR) --output-file-path $(SCALERS_SCHEMA_OUTPUT_FILE_PATH) --output-file-name $(SCALERS_SCHEMA_OUTPUT_FILE_NAME) --output-file-format both
+
+.PHONY: verify-scalers-schema
+verify-scalers-schema: ## Verify scalers schema
+	./hack/verify-schema.sh
 
 ##################################################
 # Deployment                                     #
