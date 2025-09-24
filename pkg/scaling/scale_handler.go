@@ -216,6 +216,32 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 				case <-ctx.Done():
 					return
 				case active := <-activeCh:
+					if *kedav1alpha1.ScaledObject.IsUsingModifiers() {
+						//Evaluate *kedav1alpha1.ScaledObject.Spec.Advanced.ScalingModifiers.Formula
+					}
+					for idx := range cache.Scalers {
+						if active {
+							//If it arrives here, it means a scaler is active and is not safe to scale to 0
+							//TODO: Validate if its scaling either from or to 0, if it is to 0 it must break both for loops
+							break
+						}
+						spec, err := cache.GetMetricSpecForScalingForScaler(ctx, idx)
+						if err != nil {
+							continue
+						}
+						for _, metric := range spec {
+							if metric.External == nil {
+								continue
+							}
+							_, isActive, _, err := cache.GetMetricsAndActivityForScaler(ctx, idx, metric.External.Metric.Name)
+							if err != nil {
+								continue
+							}
+							if isActive {
+								active = isActive
+							}
+						}
+					}
 					scalingMutex.Lock()
 					switch obj := scalableObject.(type) {
 					case *kedav1alpha1.ScaledObject:
