@@ -19,16 +19,16 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	storagev1 "k8s.io/api/storage/v1"
+	apistoragev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	internalinterfaces "k8s.io/client-go/informers/internalinterfaces"
 	kubernetes "k8s.io/client-go/kubernetes"
-	v1 "k8s.io/client-go/listers/storage/v1"
+	storagev1 "k8s.io/client-go/listers/storage/v1"
 	cache "k8s.io/client-go/tools/cache"
 )
 
@@ -36,7 +36,7 @@ import (
 // CSINodes.
 type CSINodeInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.CSINodeLister
+	Lister() storagev1.CSINodeLister
 }
 
 type cSINodeInformer struct {
@@ -61,16 +61,28 @@ func NewFilteredCSINodeInformer(client kubernetes.Interface, resyncPeriod time.D
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StorageV1().CSINodes().List(context.TODO(), options)
+				return client.StorageV1().CSINodes().List(context.Background(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StorageV1().CSINodes().Watch(context.TODO(), options)
+				return client.StorageV1().CSINodes().Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.StorageV1().CSINodes().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.StorageV1().CSINodes().Watch(ctx, options)
 			},
 		},
-		&storagev1.CSINode{},
+		&apistoragev1.CSINode{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,9 +93,9 @@ func (f *cSINodeInformer) defaultInformer(client kubernetes.Interface, resyncPer
 }
 
 func (f *cSINodeInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&storagev1.CSINode{}, f.defaultInformer)
+	return f.factory.InformerFor(&apistoragev1.CSINode{}, f.defaultInformer)
 }
 
-func (f *cSINodeInformer) Lister() v1.CSINodeLister {
-	return v1.NewCSINodeLister(f.Informer().GetIndexer())
+func (f *cSINodeInformer) Lister() storagev1.CSINodeLister {
+	return storagev1.NewCSINodeLister(f.Informer().GetIndexer())
 }

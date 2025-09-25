@@ -12,6 +12,7 @@ import (
 	_ "google.golang.org/protobuf/cmd/protoc-gen-go"
 	_ "gotest.tools/gotestsum"
 	_ "k8s.io/code-generator"
+	_ "k8s.io/code-generator/cmd/validation-gen"
 	_ "k8s.io/kube-openapi/cmd/openapi-gen"
 	_ "sigs.k8s.io/controller-runtime/tools/setup-envtest"
 	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"

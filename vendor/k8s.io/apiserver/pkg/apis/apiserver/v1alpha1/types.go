@@ -352,7 +352,9 @@ type ClaimMappings struct {
 	// If username.expression uses 'claims.email', then 'claims.email_verified' must be used in
 	// username.expression or extra[*].valueExpression or claimValidationRules[*].expression.
 	// An example claim validation rule expression that matches the validation automatically
-	// applied when username.claim is set to 'email' is 'claims.?email_verified.orValue(true)'.
+	// applied when username.claim is set to 'email' is 'claims.?email_verified.orValue(true) == true'. By explicitly comparing
+	// the value to true, we let type-checking see the result will be a boolean, and to make sure a non-boolean email_verified
+	// claim will be caught at runtime.
 	//
 	// In the flag based approach, the --oidc-username-claim and --oidc-username-prefix are optional. If --oidc-username-claim is not set,
 	// the default value is "sub". For the authentication config, there is no defaulting for claim or prefix. The claim and prefix must be set explicitly.
@@ -614,6 +616,13 @@ type WebhookMatchCondition struct {
 	// CEL expressions have access to the contents of the SubjectAccessReview in v1 version.
 	// If version specified by subjectAccessReviewVersion in the request variable is v1beta1,
 	// the contents would be converted to the v1 version before evaluating the CEL expression.
+	//
+	// - 'resourceAttributes' describes information for a resource access request and is unset for non-resource requests. e.g. has(request.resourceAttributes) && request.resourceAttributes.namespace == 'default'
+	// - 'nonResourceAttributes' describes information for a non-resource access request and is unset for resource requests. e.g. has(request.nonResourceAttributes) && request.nonResourceAttributes.path == '/healthz'.
+	// - 'user' is the user to test for. e.g. request.user == 'alice'
+	// - 'groups' is the groups to test for. e.g. ('group1' in request.groups)
+	// - 'extra' corresponds to the user.Info.GetExtra() method from the authenticator.
+	// - 'uid' is the information about the requesting user. e.g. request.uid == '1'
 	//
 	// Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/
 	Expression string `json:"expression"`

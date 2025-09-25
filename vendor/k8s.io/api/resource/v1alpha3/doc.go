@@ -17,8 +17,8 @@ limitations under the License.
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen=package
 // +k8s:protobuf-gen=package
-
+// +k8s:prerelease-lifecycle-gen=true
 // +groupName=resource.k8s.io
 
 // Package v1alpha3 is the v1alpha3 version of the resource API.
-package v1alpha3 // import "k8s.io/api/resource/v1alpha3"
+package v1alpha3
