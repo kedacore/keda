@@ -213,6 +213,8 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	{map[string]string{"sasl": "gssapi", "username": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "tst.com", "kerberosDisableFAST": "true"}, false, false},
 	// failure, SASL GSSAPI/disableFast incorrect
 	{map[string]string{"sasl": "gssapi", "username": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "tst.com", "kerberosDisableFAST": "notabool"}, true, false},
+	// success, SASL none
+	{map[string]string{"sasl": "none"}, false, false},
 }
 var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	// success, SASL plaintext
@@ -305,6 +307,8 @@ var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "scram_sha512\n", "username": "admin", "password": "admin"}, false, true},
 	// success, setting SASL scram_sha512 value with extra space in TriggerAuthentication
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "scram_sha512 ", "username": "admin", "password": "admin"}, false, true},
+	// success, SASL none
+	{map[string]string{"sasl": "none", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{}, false, false},
 }
 
 var parseKafkaOAuthbearerAuthParamsTestDataset = []parseKafkaOAuthbearerAuthParamsTestData{
