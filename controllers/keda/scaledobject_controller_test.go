@@ -1180,7 +1180,7 @@ var _ = Describe("ScaledObjectController", func() {
 				return metav1.ConditionTrue
 			}
 			return so.Status.Conditions.GetPausedCondition().Status
-		}, 5*time.Second).Should(Or(Equal(metav1.ConditionFalse), Equal(metav1.ConditionUnknown)))
+		}, 5*time.Second).Should(Equal(metav1.ConditionFalse))
 
 		// set annotation
 		Eventually(func() error {
@@ -1205,7 +1205,7 @@ var _ = Describe("ScaledObjectController", func() {
 		Eventually(func() metav1.ConditionStatus {
 			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 			if err != nil {
-				return metav1.ConditionUnknown
+				return metav1.ConditionFalse
 			}
 			return so.Status.Conditions.GetPausedCondition().Status
 		}).WithTimeout(2 * time.Minute).WithPolling(10 * time.Second).Should(Equal(metav1.ConditionTrue))
@@ -1269,7 +1269,7 @@ var _ = Describe("ScaledObjectController", func() {
 				return metav1.ConditionTrue
 			}
 			return so.Status.Conditions.GetPausedCondition().Status
-		}, 5*time.Second).Should(Or(Equal(metav1.ConditionFalse), Equal(metav1.ConditionUnknown)))
+		}, 5*time.Second).Should(Equal(metav1.ConditionFalse))
 
 		// set annotation to true at first
 		Eventually(func() error {
@@ -1294,7 +1294,7 @@ var _ = Describe("ScaledObjectController", func() {
 		Eventually(func() metav1.ConditionStatus {
 			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 			if err != nil {
-				return metav1.ConditionUnknown
+				return metav1.ConditionFalse
 			}
 			return so.Status.Conditions.GetPausedCondition().Status
 		}).WithTimeout(2 * time.Minute).WithPolling(10 * time.Second).Should(Equal(metav1.ConditionTrue))
@@ -1323,7 +1323,7 @@ var _ = Describe("ScaledObjectController", func() {
 		Eventually(func() metav1.ConditionStatus {
 			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 			if err != nil {
-				return metav1.ConditionUnknown
+				return metav1.ConditionTrue
 			}
 			return so.Status.Conditions.GetPausedCondition().Status
 		}).WithTimeout(2 * time.Minute).WithPolling(10 * time.Second).Should(Equal(metav1.ConditionFalse))
@@ -1402,7 +1402,7 @@ var _ = Describe("ScaledObjectController", func() {
 		Eventually(func() metav1.ConditionStatus {
 			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 			if err != nil {
-				return metav1.ConditionUnknown
+				return metav1.ConditionFalse
 			}
 			return so.Status.Conditions.GetPausedCondition().Status
 		}).Should(Equal(metav1.ConditionTrue))
@@ -1411,7 +1411,7 @@ var _ = Describe("ScaledObjectController", func() {
 		Eventually(func() metav1.ConditionStatus {
 			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
 			if err != nil {
-				return metav1.ConditionUnknown
+				return metav1.ConditionFalse
 			}
 			return so.Status.Conditions.GetPausedCondition().Status
 		}).WithTimeout(1 * time.Minute).WithPolling(10 * time.Second).Should(Equal(metav1.ConditionTrue))
