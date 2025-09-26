@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -16,7 +17,9 @@ import (
 
 const (
 	// AWS IAM authentication token validity period (tokens are valid for 15 minutes)
-	awsIAMTokenValidity = 14 * time.Minute // Refresh 1 minute before expiry
+	// We refresh at 75% of the validity period to provide sufficient buffer for network issues
+	awsIAMTokenValidityPeriod = 15 * time.Minute
+	awsIAMTokenRefreshPercent = 0.75 // Refresh when 75% of validity period has passed
 )
 
 type awsIAMAuthContext struct {
@@ -30,11 +33,24 @@ func isRDSHost(host string) bool {
 		return false
 	}
 
-	// Check for common RDS endpoint patterns
+	// Check for comprehensive RDS endpoint patterns
+	// RDS endpoints follow the pattern: <instance-id>.<unique-string>.<region>.rds.amazonaws.com
+	// We support various AWS partitions and service variations
 	rdsPatterns := []string{
-		".rds.amazonaws.com",
-		".rds.amazonaws.com.cn",  // China regions
-		".rds-fips.amazonaws.com", // FIPS endpoints
+		// Standard AWS partitions
+		".rds.amazonaws.com",        // Standard regions
+		".rds.amazonaws.com.cn",     // China regions
+
+		// FIPS endpoints
+		".rds-fips.amazonaws.com",   // FIPS standard regions
+
+		// GovCloud regions
+		".rds.us-gov-east-1.amazonaws.com",
+		".rds.us-gov-west-1.amazonaws.com",
+
+		// New API endpoints (some regions support both formats)
+		".rds.api.aws",
+		".rds-fips.api.aws",
 	}
 
 	for _, pattern := range rdsPatterns {
@@ -91,7 +107,7 @@ func generateRDSIAMToken(ctx context.Context, host, port, username string, logge
 	}
 
 	// Build the RDS endpoint
-	endpoint := fmt.Sprintf("%s:%s", host, port)
+	endpoint := net.JoinHostPort(host, port)
 
 	// Generate the IAM auth token
 	token, err := auth.BuildAuthToken(ctx, endpoint, region, username, cfg.Credentials)
@@ -141,11 +157,17 @@ func refreshAWSIAMTokenIfNeeded(ctx context.Context, meta *postgreSQLMetadata, l
 		return false, nil
 	}
 
-	if time.Now().Before(meta.awsIAMContext.expiresAt) {
-		return false, nil // Token still valid
+	// Calculate refresh time based on percentage of validity period
+	tokenAge := time.Since(meta.awsIAMContext.expiresAt.Add(-awsIAMTokenValidityPeriod))
+	refreshThreshold := time.Duration(float64(awsIAMTokenValidityPeriod) * awsIAMTokenRefreshPercent)
+
+	if tokenAge < refreshThreshold {
+		return false, nil // Token still within acceptable age
 	}
 
-	logger.Info("AWS RDS IAM token expired, generating new token")
+	logger.Info("AWS RDS IAM token needs refresh based on age threshold",
+		"tokenAge", tokenAge,
+		"refreshThreshold", refreshThreshold)
 
 	// Generate new token
 	token, err := generateRDSIAMToken(ctx, meta.Host, meta.Port, meta.UserName, logger)
@@ -155,7 +177,7 @@ func refreshAWSIAMTokenIfNeeded(ctx context.Context, meta *postgreSQLMetadata, l
 
 	// Update token context
 	meta.awsIAMContext.token = token
-	meta.awsIAMContext.expiresAt = time.Now().Add(awsIAMTokenValidity)
+	meta.awsIAMContext.expiresAt = time.Now().Add(awsIAMTokenValidityPeriod)
 
 	// Update connection string with new token
 	params := buildConnArray(meta)
@@ -176,7 +198,7 @@ func setupAWSIAMAuth(ctx context.Context, meta *postgreSQLMetadata, logger logr.
 	// Store token metadata for refresh checks
 	meta.awsIAMContext = &awsIAMAuthContext{
 		token:     token,
-		expiresAt: time.Now().Add(awsIAMTokenValidity),
+		expiresAt: time.Now().Add(awsIAMTokenValidityPeriod),
 	}
 
 	// Build connection string with IAM token as password
