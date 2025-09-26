@@ -26,6 +26,9 @@ const (
 	// Azure AD resource ID for Azure Database for PostgreSQL is https://ossrdbms-aad.database.windows.net
 	// https://learn.microsoft.com/en-us/azure/postgresql/single-server/how-to-connect-with-managed-identity
 	azureDatabasePostgresResource = "https://ossrdbms-aad.database.windows.net/.default"
+
+	// PodIdentityProviderAWS is used when AWS IRSA is used for authentication
+	PodIdentityProviderAWS kedav1alpha1.PodIdentityProvider = "aws-irsa"
 )
 
 var (
@@ -47,6 +50,7 @@ type postgreSQLMetadata struct {
 	Query                      string  `keda:"name=query,                      order=triggerMetadata"`
 	triggerIndex               int
 	azureAuthContext           azureAuthContext
+	awsIAMContext              *awsIAMAuthContext
 
 	Host     string `keda:"name=host,     order=authParams;triggerMetadata, optional"`
 	Port     string `keda:"name=port,     order=authParams;triggerMetadata, optional"`
@@ -127,6 +131,23 @@ func parsePostgreSQLMetadata(logger logr.Logger, config *scalersconfig.ScalerCon
 		return nil, authPodIdentity, fmt.Errorf("no targetQueryValue given")
 	}
 
+	// Check if we should use AWS IAM authentication
+	if shouldUseAWSIAM(meta, authPodIdentity) {
+		logger.Info("Using AWS RDS IAM authentication for PostgreSQL connection",
+			"host", meta.Host,
+			"username", meta.UserName)
+
+		// Setup AWS IAM authentication
+		ctx := context.Background()
+		if err := setupAWSIAMAuth(ctx, meta, logger); err != nil {
+			return nil, authPodIdentity, fmt.Errorf("failed to setup AWS RDS IAM authentication: %w", err)
+		}
+
+		// Set AWS pod identity provider
+		authPodIdentity = kedav1alpha1.AuthPodIdentity{Provider: PodIdentityProviderAWS}
+		return meta, authPodIdentity, nil
+	}
+
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		if meta.Connection == "" {
@@ -200,6 +221,24 @@ func (s *postgreSQLScaler) Close(context.Context) error {
 
 func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error) {
 	var id float64
+
+	// Handle AWS IAM token refresh
+	if s.podIdentity.Provider == PodIdentityProviderAWS {
+		needsRefresh, err := refreshAWSIAMTokenIfNeeded(ctx, s.metadata, s.logger)
+		if err != nil {
+			s.logger.Error(err, "Failed to refresh AWS RDS IAM token")
+			// Continue with existing connection, it might still work
+		}
+		if needsRefresh {
+			// Close and recreate connection with new token
+			s.connection.Close()
+			newConnection, err := getConnection(ctx, s.metadata, s.podIdentity, s.logger)
+			if err != nil {
+				return 0, fmt.Errorf("error establishing postgreSQL connection with new IAM token: %w", err)
+			}
+			s.connection = newConnection
+		}
+	}
 
 	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
 		if s.metadata.azureAuthContext.token.ExpiresOn.Before(time.Now()) {
