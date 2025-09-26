@@ -51,3 +51,7 @@ report.xml
 
 # KEDA Certs
 certs/*
+
+# VS
+.vs/
+.vscode/
