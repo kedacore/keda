@@ -154,7 +154,7 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
-HAS_GOLANGCI_VERSION:=$(shell $(GOPATH)/bin/golangci-lint version --format=short)
+HAS_GOLANGCI_VERSION:=$(shell $(GOPATH)/bin/golangci-lint version --short)
 .PHONY: golangci
 golangci: ## Run golangci against code.
 ifneq ($(HAS_GOLANGCI_VERSION), $(GOLANGCI_VERSION))
