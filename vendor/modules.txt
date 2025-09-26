@@ -176,6 +176,16 @@ github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/internal/shared
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/pageblob
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/sas
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/service
+# github.com/Azure/azure-sdk-for-go/sdk/storage/azdatalake v1.4.2
+## explicit; go 1.18
+github.com/Azure/azure-sdk-for-go/sdk/storage/azdatalake
+github.com/Azure/azure-sdk-for-go/sdk/storage/azdatalake/datalakeerror
+github.com/Azure/azure-sdk-for-go/sdk/storage/azdatalake/directory
+github.com/Azure/azure-sdk-for-go/sdk/storage/azdatalake/file
+github.com/Azure/azure-sdk-for-go/sdk/storage/azdatalake/filesystem
+github.com/Azure/azure-sdk-for-go/sdk/storage/azdatalake/lease
+github.com/Azure/azure-sdk-for-go/sdk/storage/azdatalake/sas
+github.com/Azure/azure-sdk-for-go/sdk/storage/azdatalake/service
 # github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue v1.0.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue
