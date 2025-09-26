@@ -133,6 +133,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 				kedacontrollerutil.PausedReplicasPredicate{},
 				kedacontrollerutil.PausedScaleInPredicate{},
 				kedacontrollerutil.ScaleObjectReadyConditionPredicate{},
+				kedacontrollerutil.ForceActivationPredicate{},
 				predicate.GenerationChangedPredicate{},
 			),
 		)).

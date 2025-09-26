@@ -34,6 +34,7 @@ type mySQLMetadata struct {
 	QueryValue           float64 `keda:"name=queryValue,                 order=triggerMetadata"`
 	ActivationQueryValue float64 `keda:"name=activationQueryValue,       order=triggerMetadata, default=0"`
 	MetricName           string  `keda:"name=metricName,                 order=triggerMetadata, optional"`
+	TriggerIndex         int
 }
 
 // NewMySQLScaler creates a new MySQL scaler
@@ -68,6 +69,7 @@ func parseMySQLMetadata(config *scalersconfig.ScalerConfig) (*mySQLMetadata, err
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing mysql metadata: %w", err)
 	}
+	meta.TriggerIndex = config.TriggerIndex
 
 	if meta.ConnectionString != "" {
 		meta.DBName = parseMySQLDbNameFromConnectionStr(meta.ConnectionString)
