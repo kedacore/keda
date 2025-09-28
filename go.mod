@@ -84,6 +84,8 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/segmentio/kafka-go v0.4.49
 	github.com/segmentio/kafka-go/sasl/aws_msk_iam_v2 v0.1.0
+	github.com/signalfx/signalflow-client-go/v2 v2.3.0
+	github.com/solarwinds/swo-sdk-go/swov1 v0.3.0
 	github.com/spf13/cast v1.10.0
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
@@ -129,12 +131,13 @@ require (
 
 require (
 	github.com/apache/arrow-go/v18 v18.4.1 // indirect
+	github.com/ericlagergren/decimal v0.0.0-20221120152707-495c53812d05 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/google/flatbuffers v25.2.10+incompatible // indirect
 	github.com/influxdata/line-protocol/v2 v2.2.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
-	github.com/signalfx/signalflow-client-go/v2 v2.3.0
 	github.com/signalfx/signalfx-go v1.34.0 // indirect
+	github.com/spyzhov/ajson v0.8.0 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	golang.org/x/telemetry v0.0.0-20250908211612-aef8a434d053 // indirect
 )
@@ -220,7 +223,6 @@ require (
 	github.com/emicklei/go-restful/v3 v3.12.2 // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
-	github.com/ericlagergren/decimal v0.0.0-20221120152707-495c53812d05 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/fatih/color v1.18.0 // indirect
@@ -322,11 +324,9 @@ require (
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/solarwinds/swo-sdk-go/swov1 v0.3.0
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.5.0 // indirect
-	github.com/spyzhov/ajson v0.8.0 // indirect
 	github.com/stoewer/go-strcase v1.3.1 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
