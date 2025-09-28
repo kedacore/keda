@@ -18,6 +18,7 @@ package scaling
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -95,10 +96,10 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			logger.Error(err, "error resolving auth params", "triggerIndex", triggerIndex)
 			if scaler != nil {
-				_ = scaler.Close(ctx)
+				err = errors.Join(err, scaler.Close(ctx))
 			}
 			for _, builder := range result {
-				_ = builder.Scaler.Close(ctx)
+				err = errors.Join(err, builder.Scaler.Close(ctx))
 			}
 			return nil, err
 		}
