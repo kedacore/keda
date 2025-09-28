@@ -1761,6 +1761,7 @@
                 {
                     "name": "projectID",
                     "type": "string",
+                    "deprecatedAnnounce": "This scaler is deprecated. More info -\u003e 'https://keda.sh/blog/2025-09-15-gcp-deprecations'",
                     "metadataVariableReadable": true
                 }
             ]
@@ -1811,7 +1812,7 @@
                 {
                     "name": "githubApiURL",
                     "type": "string",
-                    "default": "https",
+                    "default": "https://api.github.com",
                     "metadataVariableReadable": true,
                     "envVariableReadable": true
                 },
@@ -2870,6 +2871,7 @@
                     "name": "value",
                     "type": "string",
                     "default": "10",
+                    "deprecatedAnnounce": "This scaler is deprecated. More info -\u003e 'https://keda.sh/blog/2025-09-15-gcp-deprecations'",
                     "metadataVariableReadable": true
                 },
                 {
@@ -4430,6 +4432,7 @@
                 {
                     "name": "filter",
                     "type": "string",
+                    "deprecatedAnnounce": "This scaler is deprecated. More info -\u003e 'https://keda.sh/blog/2025-09-15-gcp-deprecations'",
                     "metadataVariableReadable": true
                 },
                 {

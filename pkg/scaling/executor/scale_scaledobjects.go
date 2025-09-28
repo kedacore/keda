@@ -18,6 +18,7 @@ package executor
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -97,7 +98,8 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		minReplicas = *scaledObject.Spec.MinReplicaCount
 	}
 
-	if isActive {
+	if isActive || scaledObject.NeedToForceActivation() {
+		// A scale target is active if triggers are active or if activation is being forced via annotation
 		switch {
 		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas < minReplicas,
 			// triggers are active, Idle Replicas mode is enabled
@@ -190,13 +192,21 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 	}
 
 	condition := scaledObject.Status.Conditions.GetActiveCondition()
-	if condition.IsUnknown() || condition.IsTrue() != isActive {
-		if isActive {
+	if condition.IsUnknown() || condition.IsTrue() != (isActive || scaledObject.NeedToForceActivation()) {
+		switch {
+		case isActive:
+			// Scaler is active because of metrics
 			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active"); err != nil {
 				logger.Error(err, "Error setting active condition when triggers are active")
 				return
 			}
-		} else {
+		case scaledObject.NeedToForceActivation():
+			// Annotation is set to force scaler to activate
+			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because activation is being forced by annotation"); err != nil {
+				logger.Error(err, "Error setting active condition when activation is forced")
+				return
+			}
+		default:
 			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
 				logger.Error(err, "Error setting active condition when triggers are not active")
 				return
@@ -289,7 +299,35 @@ func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Log
 		logger.Info("Successfully updated ScaleTarget",
 			"Original Replicas Count", currentReplicas,
 			"New Replicas Count", replicas)
-		e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetActivated, "Scaled %s %s/%s from %d to %d, triggered by %s", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas, strings.Join(activeTriggers, ";"))
+
+		eventMessage := fmt.Sprintf(
+			"Scaled %s %s/%s from %d to %d, triggered by %s",
+			scaledObject.Status.ScaleTargetKind,
+			scaledObject.Namespace,
+			scaledObject.Spec.ScaleTargetRef.Name,
+			currentReplicas,
+			replicas,
+			strings.Join(activeTriggers, ";"),
+		)
+
+		if scaledObject.NeedToForceActivation() {
+			// If activation is caused by the force annotation, record a different event message
+			eventMessage = fmt.Sprintf(
+				"Scaled %s %s/%s from %d to %d, caused by forced activation annotation",
+				scaledObject.Status.ScaleTargetKind,
+				scaledObject.Namespace,
+				scaledObject.Spec.ScaleTargetRef.Name,
+				currentReplicas,
+				replicas,
+			)
+		}
+
+		e.recorder.Event(
+			scaledObject,
+			corev1.EventTypeNormal,
+			eventreason.KEDAScaleTargetActivated,
+			eventMessage,
+		)
 
 		// Scale was successful. Update lastScaleTime and lastActiveTime on the scaledObject
 		if err := e.updateLastActiveTime(ctx, logger, scaledObject); err != nil {
