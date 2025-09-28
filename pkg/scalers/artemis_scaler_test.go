@@ -207,3 +207,74 @@ func TestArtemisUnsafeSslFalse(t *testing.T) {
 		t.Errorf("Expected UnsafeSsl to be false, but got %v", meta.UnsafeSsl)
 	}
 }
+
+func TestArtemisTLSWithCertAndKey(t *testing.T) {
+	metadata := map[string]string{"managementEndpoint": "localhost:8443", "queueName": "queue1", "brokerName": "broker-activemq", "brokerAddress": "test", "username": "myUserName", "password": "myPassword"}
+	authParams := map[string]string{"ca": "caaa", "cert": "ceert", "key": "keey"}
+	meta, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: metadata, AuthParams: authParams})
+
+	if err != nil {
+		t.Error("Expected success but got error", err)
+	}
+	if meta.Ca != "caaa" {
+		t.Errorf("Expected Ca to be 'caaa', but got %s", meta.Ca)
+	}
+	if meta.Cert != "ceert" {
+		t.Errorf("Expected Cert to be 'ceert', but got %s", meta.Cert)
+	}
+	if meta.Key != "keey" {
+		t.Errorf("Expected Key to be 'keey', but got %s", meta.Key)
+	}
+}
+
+func TestArtemisTLSWithKeyPassword(t *testing.T) {
+	metadata := map[string]string{"managementEndpoint": "localhost:8443", "queueName": "queue1", "brokerName": "broker-activemq", "brokerAddress": "test", "username": "myUserName", "password": "myPassword"}
+	authParams := map[string]string{"ca": "caaa", "cert": "ceert", "key": "keey", "keyPassword": "secret123"}
+	meta, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: metadata, AuthParams: authParams})
+
+	if err != nil {
+		t.Error("Expected success but got error", err)
+	}
+	if meta.KeyPassword != "secret123" {
+		t.Errorf("Expected KeyPassword to be 'secret123', but got %s", meta.KeyPassword)
+	}
+}
+
+func TestArtemisTLSMissingCert(t *testing.T) {
+	metadata := map[string]string{"managementEndpoint": "localhost:8443", "queueName": "queue1", "brokerName": "broker-activemq", "brokerAddress": "test", "username": "myUserName", "password": "myPassword"}
+	authParams := map[string]string{"ca": "caaa", "key": "keey"}
+	_, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: metadata, AuthParams: authParams})
+
+	if err == nil {
+		t.Error("Expected error for missing cert when key is provided, but got success")
+	}
+}
+
+func TestArtemisTLSMissingKey(t *testing.T) {
+	metadata := map[string]string{"managementEndpoint": "localhost:8443", "queueName": "queue1", "brokerName": "broker-activemq", "brokerAddress": "test", "username": "myUserName", "password": "myPassword"}
+	authParams := map[string]string{"ca": "caaa", "cert": "ceert"}
+	_, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: metadata, AuthParams: authParams})
+
+	if err == nil {
+		t.Error("Expected error for missing key when cert is provided, but got success")
+	}
+}
+
+func TestArtemisTLSCaOnly(t *testing.T) {
+	metadata := map[string]string{"managementEndpoint": "localhost:8443", "queueName": "queue1", "brokerName": "broker-activemq", "brokerAddress": "test", "username": "myUserName", "password": "myPassword"}
+	authParams := map[string]string{"ca": "caaa"}
+	meta, err := parseArtemisMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleArtemisResolvedEnv, TriggerMetadata: metadata, AuthParams: authParams})
+
+	if err != nil {
+		t.Error("Expected success but got error", err)
+	}
+	if meta.Ca != "caaa" {
+		t.Errorf("Expected Ca to be 'caaa', but got %s", meta.Ca)
+	}
+	if meta.Cert != "" {
+		t.Error("Expected empty Cert")
+	}
+	if meta.Key != "" {
+		t.Error("Expected empty Key")
+	}
+}

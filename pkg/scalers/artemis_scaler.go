@@ -38,6 +38,10 @@ type artemisMetadata struct {
 	ActivationQueueLength int64  `keda:"name=activationQueueLength, order=triggerMetadata, default=10"`
 	CorsHeader            string `keda:"name=corsHeader,            order=triggerMetadata, optional"`
 	UnsafeSsl             bool   `keda:"name=unsafeSsl,             order=triggerMetadata, default=false"`
+	Ca                    string `keda:"name=ca,                    order=authParams, optional"`
+	Cert                  string `keda:"name=cert,                  order=authParams, optional"`
+	Key                   string `keda:"name=key,                   order=authParams, optional"`
+	KeyPassword           string `keda:"name=keyPassword,           order=authParams, optional"`
 }
 
 //revive:enable:var-naming
@@ -78,6 +82,11 @@ func (a *artemisMetadata) Validate() error {
 	if a.CorsHeader == "" {
 		a.CorsHeader = fmt.Sprintf(defaultCorsHeader, a.ManagementEndpoint)
 	}
+	certGiven := a.Cert != ""
+	keyGiven := a.Key != ""
+	if certGiven != keyGiven {
+		return fmt.Errorf("both cert and key must be provided")
+	}
 	return nil
 }
 
@@ -94,6 +103,14 @@ func NewArtemisQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, artemisMetadata.UnsafeSsl)
+
+	if artemisMetadata.Cert != "" && artemisMetadata.Key != "" {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(artemisMetadata.Cert, artemisMetadata.Key, artemisMetadata.KeyPassword, artemisMetadata.Ca, artemisMetadata.UnsafeSsl)
+		if err != nil {
+			return nil, fmt.Errorf("error creating TLS config: %w", err)
+		}
+		httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
+	}
 
 	return &artemisScaler{
 		metricType: metricType,
