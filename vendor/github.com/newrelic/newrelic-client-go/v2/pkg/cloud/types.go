@@ -471,6 +471,8 @@ type CloudAwsDisableIntegrationsInput struct {
 	AwsWafv2 []CloudDisableAccountIntegrationInput `json:"awsWafv2,omitempty"`
 	// X-Ray integration
 	AwsXray []CloudDisableAccountIntegrationInput `json:"awsXray,omitempty"`
+	// Auto Discovery integration
+	AwsAutoDiscovery []CloudDisableAccountIntegrationInput `json:"awsAutoDiscovery,omitempty"`
 	// Billing integration
 	Billing []CloudDisableAccountIntegrationInput `json:"billing,omitempty"`
 	// CloudFront integration
@@ -843,6 +845,8 @@ type CloudAwsIntegrationsInput struct {
 	AwsWafv2 []CloudAwsWafv2IntegrationInput `json:"awsWafv2,omitempty"`
 	// X-Ray integration
 	AwsXray []CloudAwsXrayIntegrationInput `json:"awsXray,omitempty"`
+	// Aws Auto Discovery Integration
+	AwsAutoDiscovery []CloudAwsAutoDiscoveryIntegrationInput `json:"awsAutoDiscovery,omitempty"`
 	// Billing integration
 	Billing []CloudBillingIntegrationInput `json:"billing,omitempty"`
 	// CloudFront integration
@@ -1537,6 +1541,44 @@ func (x *CloudAwsXrayIntegration) ImplementsCloudIntegration() {}
 
 // CloudAwsXrayIntegrationInput - X-Ray
 type CloudAwsXrayIntegrationInput struct {
+	// Specify each AWS region that includes the resources that you want to monitor.
+	AwsRegions []string `json:"awsRegions,omitempty"`
+	// [DEPRECATED] Multiple polling interval is no longer supported, use only metrics_polling_interval
+	InventoryPollingInterval int `json:"inventoryPollingInterval,omitempty"`
+	// The linked account identifier.
+	LinkedAccountId int `json:"linkedAccountId"`
+	// The data polling interval in seconds.
+	MetricsPollingInterval int `json:"metricsPollingInterval,omitempty"`
+}
+
+// CloudAwsAutoDiscoveryIntegration - Aws Auto Discovery Integration
+type CloudAwsAutoDiscoveryIntegration struct {
+	// Specify each AWS region that includes the resources that you want to monitor.
+	AwsRegions []string `json:"awsRegions,omitempty"`
+	// The object creation date, in epoch (Unix) time
+	CreatedAt nrtime.EpochSeconds `json:"createdAt"`
+	// The cloud service integration identifier.
+	ID int `json:"id,omitempty"`
+	// [DEPRECATED] Multiple polling interval is no longer supported, use only metrics_polling_interval
+	InventoryPollingInterval int `json:"inventoryPollingInterval,omitempty"`
+	// The parent linked account identifier.
+	LinkedAccount CloudLinkedAccount `json:"linkedAccount,omitempty"`
+	// The data polling interval in seconds.
+	MetricsPollingInterval int `json:"metricsPollingInterval,omitempty"`
+	// The cloud service integration name.
+	Name string `json:"name,omitempty"`
+	// The parent NewRelic account identifier.
+	NrAccountId int `json:"nrAccountId"`
+	// The cloud service used in the integration.
+	Service CloudService `json:"service,omitempty"`
+	// The object last update date, in epoch (Unix) time
+	UpdatedAt nrtime.EpochSeconds `json:"updatedAt"`
+}
+
+func (x *CloudAwsAutoDiscoveryIntegration) ImplementsCloudIntegration() {}
+
+// CloudAwsAutoDiscoveryIntegrationInput - AWS Auto Discovery Integration
+type CloudAwsAutoDiscoveryIntegrationInput struct {
 	// Specify each AWS region that includes the resources that you want to monitor.
 	AwsRegions []string `json:"awsRegions,omitempty"`
 	// [DEPRECATED] Multiple polling interval is no longer supported, use only metrics_polling_interval
@@ -3265,6 +3307,8 @@ type CloudDisableIntegrationsInput struct {
 	Azure CloudAzureDisableIntegrationsInput `json:"azure,omitempty"`
 	// Gcp provider
 	Gcp CloudGcpDisableIntegrationsInput `json:"gcp,omitempty"`
+	// OCI Provider
+	Oci CloudOciDisableIntegrationsInput `json:"oci,omitempty"`
 }
 
 // CloudDynamodbIntegration - DynamoDB Integration
@@ -5009,6 +5053,8 @@ type CloudIntegrationsInput struct {
 	Azure CloudAzureIntegrationsInput `json:"azure,omitempty"`
 	// Gcp provider
 	Gcp CloudGcpIntegrationsInput `json:"gcp,omitempty"`
+	// OCI Provider
+	Oci CloudOciIntegrationsInput `json:"oci,omitempty"`
 }
 
 // CloudIotIntegration - IoT Integration
@@ -5209,6 +5255,8 @@ type CloudLinkCloudAccountsInput struct {
 	Azure []CloudAzureLinkAccountInput `json:"azure,omitempty"`
 	// Gcp provider
 	Gcp []CloudGcpLinkAccountInput `json:"gcp,omitempty"`
+	// OCI Provider
+	Oci []CloudOciLinkAccountInput `json:"oci,omitempty"`
 }
 
 // CloudLinkedAccount - A cloud account linked to a NewRelic account.
@@ -5346,6 +5394,152 @@ func (x *CloudLinkedAccount) UnmarshalJSON(b []byte) error {
 	}
 
 	return nil
+}
+
+// CloudOciDisableIntegrationsInput - List of integrations
+type CloudOciDisableIntegrationsInput struct {
+	// Fetch Metadata for OCI Logs integrations integration
+	OciLogs []CloudDisableAccountIntegrationInput `json:"ociLogs,omitempty"`
+	// Fetch Metadata for OCI integrations integration
+	OciMetadataAndTags []CloudDisableAccountIntegrationInput `json:"ociMetadataAndTags,omitempty"`
+}
+
+// CloudOciIntegrationsInput - List of integrations
+type CloudOciIntegrationsInput struct {
+	// Metadata and Tags for OCI Logs integrations
+	OciLogs []CloudOciLogsIntegrationInput `json:"ociLogs,omitempty"`
+	// Metadata and Tags for OCI integrations
+	OciMetadataAndTags []CloudOciMetadataAndTagsIntegrationInput `json:"ociMetadataAndTags,omitempty"`
+}
+
+// CloudOciLinkAccountInput - Information required to link a OCI tenancy to a NewRelic account.
+type CloudOciLinkAccountInput struct {
+	// The New Relic compartment OCID in OCI.
+	CompartmentOcid string `json:"compartmentOcid"`
+	// The OCI ingest secret OCID.
+	IngestVaultOcid string `json:"ingestVaultOcid"`
+	// Specifies the type of integration, such as metrics, logs, or a combination of logs and metrics.
+	InstrumentationType string `json:"instrumentationType,omitempty"`
+	// The linked account name.
+	Name string `json:"name"`
+	// The client ID for OCI WIF.
+	OciClientId string `json:"ociClientId"`
+	// The client secret for OCI WIF.
+	OciClientSecret SecureValue `json:"ociClientSecret"`
+	// The OCI domain URL for WIF.
+	OciDomainURL string `json:"ociDomainUrl"`
+	// The home region of the tenancy.
+	OciHomeRegion string `json:"ociHomeRegion"`
+	// The service user name for OCI WIF.
+	OciSvcUserName string `json:"ociSvcUserName"`
+	// The OCI tenant identifier.
+	TenantId string `json:"tenantId"`
+	// The user secret OCID.
+	UserVaultOcid string `json:"userVaultOcid"`
+}
+
+// CloudOciLogsIntegration - Fetch Metadata and Tags for OCI Logs integrations Integration
+type CloudOciLogsIntegration struct {
+	// The object creation date, in epoch (Unix) time
+	CreatedAt nrtime.EpochSeconds `json:"createdAt"`
+	// The cloud service integration identifier.
+	ID int `json:"id,omitempty"`
+	// Specifies the type of integration, such as metrics, logs, or a combination of logs and metrics.
+	InstrumentationType string `json:"instrumentationType,omitempty"`
+	// The parent linked account identifier.
+	LinkedAccount CloudLinkedAccount `json:"linkedAccount,omitempty"`
+	// The logging OCI stack IDs.
+	LoggingStacks []string `json:"loggingStacks,omitempty"`
+	// The metrics OCI stack IDs.
+	MetricStacks []string `json:"metricStacks,omitempty"`
+	// The data polling interval in seconds.
+	MetricsPollingInterval int `json:"metricsPollingInterval,omitempty"`
+	// The cloud service integration name.
+	Name string `json:"name,omitempty"`
+	// The parent NewRelic account identifier.
+	NrAccountId int `json:"nrAccountId"`
+	// The cloud service used in the integration.
+	Service CloudService `json:"service,omitempty"`
+	// The object last update date, in epoch (Unix) time
+	UpdatedAt nrtime.EpochSeconds `json:"updatedAt"`
+}
+
+func (x *CloudOciLogsIntegration) ImplementsCloudIntegration() {}
+
+// CloudOciLogsIntegrationInput - Fetch Metadata and Tags for OCI Logs integrations
+type CloudOciLogsIntegrationInput struct {
+	// The linked account identifier.
+	LinkedAccountId int `json:"linkedAccountId"`
+}
+
+// CloudOciMetadataAndTagsIntegration - Fetch Metadata and Tags for OCI integrations Integration
+type CloudOciMetadataAndTagsIntegration struct {
+	// The object creation date, in epoch (Unix) time
+	CreatedAt nrtime.EpochSeconds `json:"createdAt"`
+	// The cloud service integration identifier.
+	ID int `json:"id,omitempty"`
+	// Specifies the type of integration, such as metrics, logs, or a combination of logs and metrics.
+	InstrumentationType string `json:"instrumentationType,omitempty"`
+	// The parent linked account identifier.
+	LinkedAccount CloudLinkedAccount `json:"linkedAccount,omitempty"`
+	// The logging OCI stack IDs.
+	LoggingStacks []string `json:"loggingStacks,omitempty"`
+	// The metrics OCI stack IDs.
+	MetricStacks []string `json:"metricStacks,omitempty"`
+	// The data polling interval in seconds.
+	MetricsPollingInterval int `json:"metricsPollingInterval,omitempty"`
+	// The cloud service integration name.
+	Name string `json:"name,omitempty"`
+	// The parent NewRelic account identifier.
+	NrAccountId int `json:"nrAccountId"`
+	// The cloud service used in the integration.
+	Service CloudService `json:"service,omitempty"`
+	// The object last update date, in epoch (Unix) time
+	UpdatedAt nrtime.EpochSeconds `json:"updatedAt"`
+}
+
+func (x *CloudOciMetadataAndTagsIntegration) ImplementsCloudIntegration() {}
+
+// CloudOciMetadataAndTagsIntegrationInput - Fetch Metadata and Tags for OCI integrations
+type CloudOciMetadataAndTagsIntegrationInput struct {
+	// The linked account identifier.
+	LinkedAccountId int `json:"linkedAccountId"`
+}
+
+// CloudOciUpdateAccountInput - Information required to update a AWS account to a NewRelic account.
+type CloudOciUpdateAccountInput struct {
+	// The New Relic compartment OCID in OCI.
+	CompartmentOcid string `json:"compartmentOcid,omitempty"`
+	// Disable the linked account.
+	Disabled bool `json:"disabled,omitempty"`
+	// The OCI ingest secret OCID.
+	IngestVaultOcid string `json:"ingestVaultOcid,omitempty"`
+	// Specifies the type of integration, such as metrics, logs, or a combination of logs and metrics.
+	InstrumentationType string `json:"instrumentationType,omitempty"`
+	// The linked account identifier.
+	LinkedAccountId int `json:"linkedAccountId"`
+	// The Logging stack identifier for the OCI account.
+	LoggingStackOcid string `json:"loggingStackOcid,omitempty"`
+	// The metric stack identifier for the OCI account.
+	MetricStackOcid string `json:"metricStackOcid,omitempty"`
+	// The linked account new name.
+	Name string `json:"name,omitempty"`
+	// The client ID for OCI WIF.
+	OciClientId string `json:"ociClientId,omitempty"`
+	// The client secret for OCI WIF.
+	OciClientSecret SecureValue `json:"ociClientSecret,omitempty"`
+	// The domain URL for OCI WIF.
+	OciDomainURL string `json:"ociDomainUrl,omitempty"`
+	// The home region of the tenancy.
+	OciHomeRegion string `json:"ociHomeRegion,omitempty"`
+	// The OCI region for the account.
+	OciRegion string `json:"ociRegion,omitempty"`
+	// The service user name for OCI WIF.
+	OciSvcUserName string `json:"ociSvcUserName,omitempty"`
+	// The OCI tenant (used to fetch data).
+	TenantId string `json:"tenantId,omitempty"`
+	// The OCI user secret OCID.
+	UserVaultOcid string `json:"userVaultOcid,omitempty"`
 }
 
 // CloudProvider - A cloud services provider.
@@ -5888,6 +6082,8 @@ type CloudUpdateCloudAccountsInput struct {
 	Fossa []CloudFossaUpdateAccountInput `json:"fossa,omitempty"`
 	// Gcp provider
 	Gcp []CloudGcpUpdateAccountInput `json:"gcp,omitempty"`
+	// OCI Provider
+	Oci []CloudOciUpdateAccountInput `json:"oci,omitempty"`
 }
 
 // CloudVpcIntegration - VPC Integration
@@ -6254,6 +6450,14 @@ func UnmarshalCloudIntegrationInterface(b []byte) (*CloudIntegrationInterface, e
 
 			var xxx CloudIntegrationInterface = &interfaceType
 
+			return &xxx, nil
+		case "CloudAwsAutoDiscoveryIntegration":
+			var interfaceType CloudAwsAutoDiscoveryIntegration
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+			var xxx CloudIntegrationInterface = &interfaceType
 			return &xxx, nil
 		case "CloudAzureApimanagementIntegration":
 			var interfaceType CloudAzureAPImanagementIntegration
@@ -7037,6 +7241,26 @@ func UnmarshalCloudIntegrationInterface(b []byte) (*CloudIntegrationInterface, e
 			return &xxx, nil
 		case "CloudLambdaIntegration":
 			var interfaceType CloudLambdaIntegration
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx CloudIntegrationInterface = &interfaceType
+
+			return &xxx, nil
+		case "CloudOciLogsIntegration":
+			var interfaceType CloudOciLogsIntegration
+			err = json.Unmarshal(b, &interfaceType)
+			if err != nil {
+				return nil, err
+			}
+
+			var xxx CloudIntegrationInterface = &interfaceType
+
+			return &xxx, nil
+		case "CloudOciMetadataAndTagsIntegration":
+			var interfaceType CloudOciMetadataAndTagsIntegration
 			err = json.Unmarshal(b, &interfaceType)
 			if err != nil {
 				return nil, err

@@ -84,9 +84,9 @@ func (c *compIO) reset() {
 	c.buff.Reset()
 }
 
-func (c *compIO) readNext(need int, r readerFunc) ([]byte, error) {
+func (c *compIO) readNext(need int) ([]byte, error) {
 	for c.buff.Len() < need {
-		if err := c.readCompressedPacket(r); err != nil {
+		if err := c.readCompressedPacket(); err != nil {
 			return nil, err
 		}
 	}
@@ -94,8 +94,8 @@ func (c *compIO) readNext(need int, r readerFunc) ([]byte, error) {
 	return data[:need:need], nil // prevent caller writes into c.buff
 }
 
-func (c *compIO) readCompressedPacket(r readerFunc) error {
-	header, err := c.mc.buf.readNext(7, r) // size of compressed header
+func (c *compIO) readCompressedPacket() error {
+	header, err := c.mc.readNext(7)
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func (c *compIO) readCompressedPacket(r readerFunc) error {
 
 	// compressed header structure
 	comprLength := getUint24(header[0:3])
-	compressionSequence := uint8(header[3])
+	compressionSequence := header[3]
 	uncompressedLength := getUint24(header[4:7])
 	if debug {
 		fmt.Printf("uncompress cmplen=%v uncomplen=%v pkt_cmp_seq=%v expected_cmp_seq=%v\n",
@@ -113,14 +113,13 @@ func (c *compIO) readCompressedPacket(r readerFunc) error {
 	// Server may return error packet (e.g. 1153 Got a packet bigger than 'max_allowed_packet' bytes)
 	// before receiving all packets from client. In this case, seqnr is younger than expected.
 	// NOTE: Both of mariadbclient and mysqlclient do not check seqnr. Only server checks it.
-	if debug && compressionSequence != c.mc.sequence {
+	if debug && compressionSequence != c.mc.compressSequence {
 		fmt.Printf("WARN: unexpected cmpress seq nr: expected %v, got %v",
-			c.mc.sequence, compressionSequence)
+			c.mc.compressSequence, compressionSequence)
 	}
-	c.mc.sequence = compressionSequence + 1
-	c.mc.compressSequence = c.mc.sequence
+	c.mc.compressSequence = compressionSequence + 1
 
-	comprData, err := c.mc.buf.readNext(comprLength, r)
+	comprData, err := c.mc.readNext(comprLength)
 	if err != nil {
 		return err
 	}
@@ -200,7 +199,7 @@ func (c *compIO) writeCompressedPacket(data []byte, uncompressedLen int) (int, e
 	comprLength := len(data) - 7
 	if debug {
 		fmt.Printf(
-			"writeCompressedPacket: comprLength=%v, uncompressedLen=%v, seq=%v",
+			"writeCompressedPacket: comprLength=%v, uncompressedLen=%v, seq=%v\n",
 			comprLength, uncompressedLen, mc.compressSequence)
 	}
 

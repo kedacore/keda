@@ -42,6 +42,23 @@ func (OperationType) Values() []OperationType {
 	}
 }
 
+type ShardFilterType string
+
+// Enum values for ShardFilterType
+const (
+	ShardFilterTypeChildShards ShardFilterType = "CHILD_SHARDS"
+)
+
+// Values returns all known values for ShardFilterType. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (ShardFilterType) Values() []ShardFilterType {
+	return []ShardFilterType{
+		"CHILD_SHARDS",
+	}
+}
+
 type ShardIteratorType string
 
 // Enum values for ShardIteratorType

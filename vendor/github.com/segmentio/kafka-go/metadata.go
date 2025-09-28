@@ -19,7 +19,7 @@ type MetadataRequest struct {
 	Topics []string
 }
 
-// MetadatResponse represents a response from a kafka broker to a metadata
+// MetadataResponse represents a response from a kafka broker to a metadata
 // request.
 type MetadataResponse struct {
 	// The amount of time that the broker throttled the request.

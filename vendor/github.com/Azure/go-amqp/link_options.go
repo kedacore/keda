@@ -19,6 +19,9 @@ type SenderOptions struct {
 	// Default: false.
 	DynamicAddress bool
 
+	// DesiredCapabilities maps to the desired-capabilities of an ATTACH frame.
+	DesiredCapabilities []string
+
 	// ExpiryPolicy determines when the expiry timer of the sender starts counting
 	// down from the timeout value.  If the link is subsequently re-attached before
 	// the timeout is reached, the count down is aborted.
@@ -96,6 +99,9 @@ type ReceiverOptions struct {
 	//
 	// Default: 1.
 	Credit int32
+
+	// DesiredCapabilities maps to the desired-capabilities of an ATTACH frame.
+	DesiredCapabilities []string
 
 	// Durability indicates what state of the receiver will be retained durably.
 	//

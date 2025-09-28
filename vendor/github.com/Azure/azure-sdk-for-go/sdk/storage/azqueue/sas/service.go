@@ -32,11 +32,11 @@ type QueueSignatureValues struct {
 
 // SignWithSharedKey uses an account's SharedKeyCredential to sign this signature values to produce the proper SAS query parameters.
 func (v QueueSignatureValues) SignWithSharedKey(sharedKeyCredential *SharedKeyCredential) (QueryParameters, error) {
-	if v.ExpiryTime.IsZero() || v.Permissions == "" {
+	if v.Identifier == "" && (v.ExpiryTime.IsZero() || v.Permissions == "") {
 		return QueryParameters{}, errors.New("service SAS is missing at least one of these: ExpiryTime or Permissions")
 	}
 
-	//Make sure the permission characters are in the correct order
+	// Make sure the permission characters are in the correct order
 	perms, err := parseQueuePermissions(v.Permissions)
 	if err != nil {
 		return QueryParameters{}, err
@@ -75,7 +75,8 @@ func (v QueueSignatureValues) SignWithSharedKey(sharedKeyCredential *SharedKeyCr
 		permissions: v.Permissions,
 		ipRange:     v.IPRange,
 		// Calculated SAS signature
-		signature: signature,
+		signature:  signature,
+		identifier: signedIdentifier,
 	}
 
 	return p, nil

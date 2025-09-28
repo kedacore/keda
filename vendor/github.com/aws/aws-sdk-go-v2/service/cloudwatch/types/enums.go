@@ -132,9 +132,11 @@ type HistoryItemType string
 
 // Enum values for HistoryItemType
 const (
-	HistoryItemTypeConfigurationUpdate HistoryItemType = "ConfigurationUpdate"
-	HistoryItemTypeStateUpdate         HistoryItemType = "StateUpdate"
-	HistoryItemTypeAction              HistoryItemType = "Action"
+	HistoryItemTypeConfigurationUpdate         HistoryItemType = "ConfigurationUpdate"
+	HistoryItemTypeStateUpdate                 HistoryItemType = "StateUpdate"
+	HistoryItemTypeAction                      HistoryItemType = "Action"
+	HistoryItemTypeAlarmContributorStateUpdate HistoryItemType = "AlarmContributorStateUpdate"
+	HistoryItemTypeAlarmContributorAction      HistoryItemType = "AlarmContributorAction"
 )
 
 // Values returns all known values for HistoryItemType. Note that this can be
@@ -146,6 +148,8 @@ func (HistoryItemType) Values() []HistoryItemType {
 		"ConfigurationUpdate",
 		"StateUpdate",
 		"Action",
+		"AlarmContributorStateUpdate",
+		"AlarmContributorAction",
 	}
 }
 

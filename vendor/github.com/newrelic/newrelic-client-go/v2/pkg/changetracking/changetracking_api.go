@@ -69,3 +69,188 @@ const ChangeTrackingCreateDeploymentMutation = `mutation(
 	user
 	version
 } }`
+
+// Coming soon! If you'd like to sign up to receive access to our Public Preview, you can sign up under Administration -> Previews & Trial.
+//
+// US, AMEA, LATAM: [Sign Up Here](https://one.newrelic.com/launcher/promotion-flow.launcher?pane=eyJvZmZlclR5cGVJZCI6ImYwNTQwYTU4LWY0YTAtNGIxOS1hMjNlLTlmZjQ0ZTNhZGJmNCJ9)
+// EU: [Sign Up Here](https://one.eu.newrelic.com/launcher/promotion-flow.launcher?pane=eyJvZmZlclR5cGVJZCI6ImYwNTQwYTU4LWY0YTAtNGIxOS1hMjNlLTlmZjQ0ZTNhZGJmNCJ9)
+//
+// Creates a new change tracking event in NRDB and its associated marker.
+func (a *Changetracking) ChangeTrackingCreateEvent(
+	changeTrackingEvent ChangeTrackingCreateEventInput,
+	dataHandlingRules ChangeTrackingDataHandlingRules,
+) (*ChangeTrackingCreateEventResponse, error) {
+	// DO NOT DELETE the following function call
+	// This is NOT covered by Tutone, but is needed to reformat milliseconds in timestamps
+	// in order to align with the expected format of the timestamp by the API
+	inputTimestamp := changeTrackingEvent.Timestamp
+	timestamp := utils.GetSafeTimestampWithMilliseconds(inputTimestamp)
+	changeTrackingEvent.Timestamp = timestamp
+	// DO NOT DELETE the above function call
+
+	return a.ChangeTrackingCreateEventWithContext(context.Background(),
+		changeTrackingEvent,
+		dataHandlingRules,
+	)
+}
+
+// Coming soon! If you'd like to sign up to receive access to our Public Preview, you can sign up under Administration -> Previews & Trial.
+//
+// US, AMEA, LATAM: [Sign Up Here](https://one.newrelic.com/launcher/promotion-flow.launcher?pane=eyJvZmZlclR5cGVJZCI6ImYwNTQwYTU4LWY0YTAtNGIxOS1hMjNlLTlmZjQ0ZTNhZGJmNCJ9)
+// EU: [Sign Up Here](https://one.eu.newrelic.com/launcher/promotion-flow.launcher?pane=eyJvZmZlclR5cGVJZCI6ImYwNTQwYTU4LWY0YTAtNGIxOS1hMjNlLTlmZjQ0ZTNhZGJmNCJ9)
+//
+// Creates a new change tracking event in NRDB and its associated marker.
+func (a *Changetracking) ChangeTrackingCreateEventWithContext(
+	ctx context.Context,
+	changeTrackingEvent ChangeTrackingCreateEventInput,
+	dataHandlingRules ChangeTrackingDataHandlingRules,
+) (*ChangeTrackingCreateEventResponse, error) {
+
+	resp := ChangeTrackingCreateEventQueryResponse{}
+	vars := map[string]interface{}{
+		"changeTrackingEvent": changeTrackingEvent,
+		"dataHandlingRules":   dataHandlingRules,
+	}
+
+	if err := a.client.NerdGraphQueryWithContext(ctx, ChangeTrackingCreateEventMutation, vars, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp.ChangeTrackingCreateEventResponse, nil
+}
+
+type ChangeTrackingCreateEventQueryResponse struct {
+	ChangeTrackingCreateEventResponse ChangeTrackingCreateEventResponse `json:"ChangeTrackingCreateEvent"`
+}
+
+const ChangeTrackingCreateEventMutation = `mutation(
+	$changeTrackingEvent: ChangeTrackingCreateEventInput!,
+	$dataHandlingRules: ChangeTrackingDataHandlingRules,
+) { changeTrackingCreateEvent(
+	changeTrackingEvent: $changeTrackingEvent,
+	dataHandlingRules: $dataHandlingRules,
+) {
+	changeTrackingEvent {
+		__typename
+		category
+		categoryAndType
+		changeTrackingId
+		customAttributes
+		description
+		entity {
+			__typename
+			accountId
+			alertSeverity
+			domain
+			entityType
+			firstIndexedAt
+			guid
+			indexedAt
+			lastReportingChangeAt
+			name
+			permalink
+			reporting
+			type
+			... on ApmApplicationEntityOutline {
+				__typename
+				applicationId
+				language
+			}
+			... on ApmDatabaseInstanceEntityOutline {
+				__typename
+				host
+				portOrPath
+				vendor
+			}
+			... on ApmExternalServiceEntityOutline {
+				__typename
+				host
+			}
+			... on BrowserApplicationEntityOutline {
+				__typename
+				agentInstallType
+				applicationId
+				servingApmApplicationId
+			}
+			... on DashboardEntityOutline {
+				__typename
+				createdAt
+				dashboardParentGuid
+				permissions
+				updatedAt
+			}
+			... on ExternalEntityOutline {
+				__typename
+			}
+			... on GenericEntityOutline {
+				__typename
+			}
+			... on GenericInfrastructureEntityOutline {
+				__typename
+				integrationTypeCode
+			}
+			... on InfrastructureAwsLambdaFunctionEntityOutline {
+				__typename
+				integrationTypeCode
+				runtime
+			}
+			... on InfrastructureHostEntityOutline {
+				__typename
+			}
+			... on KeyTransactionEntityOutline {
+				__typename
+			}
+			... on MobileApplicationEntityOutline {
+				__typename
+				applicationId
+			}
+			... on SecureCredentialEntityOutline {
+				__typename
+				description
+				secureCredentialId
+				updatedAt
+			}
+			... on SyntheticMonitorEntityOutline {
+				__typename
+				monitorId
+				monitorType
+				monitoredUrl
+				period
+			}
+			... on TeamEntityOutline {
+				__typename
+			}
+			... on ThirdPartyServiceEntityOutline {
+				__typename
+			}
+			... on UnavailableEntityOutline {
+				__typename
+			}
+			... on WorkloadEntityOutline {
+				__typename
+				createdAt
+				updatedAt
+			}
+		}
+		groupId
+		shortDescription
+		timestamp
+		type
+		user
+		... on ChangeTrackingDeploymentEvent {
+			__typename
+			changelog
+			commit
+			deepLink
+			version
+		}
+		... on ChangeTrackingFeatureFlagEvent {
+			__typename
+			featureFlagId
+		}
+		... on ChangeTrackingGenericEvent {
+			__typename
+		}
+	}
+	messages
+} }`

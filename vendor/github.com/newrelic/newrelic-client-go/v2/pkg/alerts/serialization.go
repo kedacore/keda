@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-// UnmarshalJSON is responsible for unmarshaling the ConditionTerm type.
+// UnmarshalJSON is responsible for unmarshalling the ConditionTerm type.
 func (c *ConditionTerm) UnmarshalJSON(data []byte) error {
 	var v map[string]interface{}
 	if err := json.Unmarshal(data, &v); err != nil {

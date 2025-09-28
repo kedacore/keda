@@ -121,7 +121,7 @@ func (r *Reader) Release() {
 // LatestAppMetadata returns the bytes from the AppMetadata field of the
 // most recently read FlightData message that was processed by calling
 // the Next function. The metadata returned would correspond to the record
-// retrieved by calling Record().
+// retrieved by calling RecordBatch().
 func (r *Reader) LatestAppMetadata() []byte {
 	return r.dmr.lastAppMetadata
 }
@@ -129,7 +129,7 @@ func (r *Reader) LatestAppMetadata() []byte {
 // LatestFlightDescriptor returns a pointer to the last FlightDescriptor object
 // that was received in the most recently read FlightData message that was
 // processed by calling the Next function. The descriptor returned would correspond
-// to the record retrieved by calling Record().
+// to the record batch retrieved by calling RecordBatch().
 func (r *Reader) LatestFlightDescriptor() *FlightDescriptor {
 	return r.dmr.descr
 }
@@ -188,7 +188,7 @@ func DeserializeSchema(info []byte, mem memory.Allocator) (*arrow.Schema, error)
 
 // StreamChunk represents a single chunk of a FlightData stream
 type StreamChunk struct {
-	Data        arrow.Record
+	Data        arrow.RecordBatch
 	Desc        *FlightDescriptor
 	AppMetadata []byte
 	Err         error
