@@ -37,6 +37,7 @@ type artemisMetadata struct {
 	QueueLength           int64  `keda:"name=queueLength,           order=triggerMetadata, default=10"`
 	ActivationQueueLength int64  `keda:"name=activationQueueLength, order=triggerMetadata, default=10"`
 	CorsHeader            string `keda:"name=corsHeader,            order=triggerMetadata, optional"`
+	UnsafeSsl             bool   `keda:"name=unsafeSsl,             order=triggerMetadata, default=false"`
 }
 
 //revive:enable:var-naming
@@ -82,11 +83,6 @@ func (a *artemisMetadata) Validate() error {
 
 // NewArtemisQueueScaler creates a new artemis queue Scaler
 func NewArtemisQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
-	// do we need to guarantee this timeout for a specific
-	// reason? if not, we can have buildScaler pass in
-	// the global client
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
-
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -96,6 +92,8 @@ func NewArtemisQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing artemis metadata: %w", err)
 	}
+
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, artemisMetadata.UnsafeSsl)
 
 	return &artemisScaler{
 		metricType: metricType,
