@@ -134,8 +134,8 @@ func AddRotator(mgr manager.Manager, cr *CertRotator) error {
 			return err
 		}
 	}
-	if cr.controllerName == "" {
-		cr.controllerName = defaultControllerName
+	if cr.ControllerName == "" {
+		cr.ControllerName = defaultControllerName
 	}
 	if cr.CertName == "" {
 		cr.CertName = defaultCertName
@@ -158,7 +158,7 @@ func AddRotator(mgr manager.Manager, cr *CertRotator) error {
 	}
 
 	if cr.RotationCheckFrequency == time.Duration(0) {
-		cr.RotationCheckFrequency = defaultLookaheadInterval
+		cr.RotationCheckFrequency = defaultRotationCheckFrequency
 	}
 
 	if cr.ExtKeyUsages == nil {
@@ -176,8 +176,11 @@ func AddRotator(mgr manager.Manager, cr *CertRotator) error {
 		needLeaderElection:          cr.RequireLeaderElection,
 		refreshCertIfNeededDelegate: cr.refreshCertIfNeeded,
 		fieldOwner:                  cr.FieldOwner,
+		certsMounted:                cr.certsMounted,
+		certsNotMounted:             cr.certsNotMounted,
+		enableReadinessCheck:        cr.EnableReadinessCheck,
 	}
-	if err := addController(mgr, reconciler, cr.controllerName); err != nil {
+	if err := addController(mgr, reconciler, cr.ControllerName); err != nil {
 		return err
 	}
 	return nil
@@ -251,6 +254,14 @@ type CertRotator struct {
 	CertName string
 	KeyName  string
 
+	// EnableReadinessCheck if true, reconcilation loop will wait for controller-runtime's
+	// runnable to finish execution.
+	EnableReadinessCheck bool
+
+	// ControllerName allows registering multiple cert-rotator controllers.
+	// Use the default value unless rotating multiple certificate secrets.
+	ControllerName string
+
 	certsMounted    chan struct{}
 	certsNotMounted chan struct{}
 	wasCAInjected   *atomic.Bool
@@ -259,10 +270,6 @@ type CertRotator struct {
 	// testNoBackgroundRotation doesn't actually start the rotator in the background.
 	// This should only be used for testing.
 	testNoBackgroundRotation bool
-	// controllerName allows setting the controller name to register it multiple times
-	// fixing the new k8s check that produces 'controller with name cert-rotator already exists'
-	// This should only be used for testing.
-	controllerName string
 }
 
 func (cr *CertRotator) NeedLeaderElection() bool {
@@ -701,7 +708,7 @@ func reconcileSecretAndWebhookMapFunc(webhook WebhookInfo, r *ReconcileWH) func(
 // add adds a new Controller to mgr with r as the reconcile.Reconciler.
 func addController(mgr manager.Manager, r *ReconcileWH, controllerName string) error {
 	// Create a new controller
-	c, err := controller.NewUnmanaged(controllerName, mgr, controller.Options{Reconciler: r})
+	c, err := controller.NewUnmanaged(controllerName, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
@@ -743,6 +750,9 @@ type ReconcileWH struct {
 	needLeaderElection          bool
 	refreshCertIfNeededDelegate func() (bool, error)
 	fieldOwner                  string
+	certsMounted                chan struct{}
+	certsNotMounted             chan struct{}
+	enableReadinessCheck        bool
 }
 
 // Reconcile reads that state of the cluster for a validatingwebhookconfiguration
@@ -750,6 +760,19 @@ type ReconcileWH struct {
 func (r *ReconcileWH) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	if request.NamespacedName != r.secretKey {
 		return reconcile.Result{}, nil
+	}
+
+	if r.enableReadinessCheck {
+		select {
+		case <-r.certsMounted:
+			// Continue with reconciliation
+		case <-ctx.Done():
+			// controller-runtime will requeue with backoff strategy when this error is returned
+			return reconcile.Result{}, fmt.Errorf("context done, retrying reconciliation: %w", ctx.Err())
+		case <-r.certsNotMounted:
+			// controller-runtime will requeue with backoff strategy when this error is returned
+			return reconcile.Result{}, errors.New("certs not mounted, retrying reconciliation")
+		}
 	}
 
 	if !r.cache.WaitForCacheSync(ctx) {

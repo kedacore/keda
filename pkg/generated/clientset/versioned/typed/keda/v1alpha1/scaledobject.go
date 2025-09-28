@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	scheme "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,33 +37,34 @@ type ScaledObjectsGetter interface {
 
 // ScaledObjectInterface has methods to work with ScaledObject resources.
 type ScaledObjectInterface interface {
-	Create(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.CreateOptions) (*v1alpha1.ScaledObject, error)
-	Update(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.UpdateOptions) (*v1alpha1.ScaledObject, error)
+	Create(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, opts v1.CreateOptions) (*kedav1alpha1.ScaledObject, error)
+	Update(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, opts v1.UpdateOptions) (*kedav1alpha1.ScaledObject, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, scaledObject *v1alpha1.ScaledObject, opts v1.UpdateOptions) (*v1alpha1.ScaledObject, error)
+	UpdateStatus(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, opts v1.UpdateOptions) (*kedav1alpha1.ScaledObject, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ScaledObject, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ScaledObjectList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*kedav1alpha1.ScaledObject, error)
+	List(ctx context.Context, opts v1.ListOptions) (*kedav1alpha1.ScaledObjectList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScaledObject, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *kedav1alpha1.ScaledObject, err error)
 	ScaledObjectExpansion
 }
 
 // scaledObjects implements ScaledObjectInterface
 type scaledObjects struct {
-	*gentype.ClientWithList[*v1alpha1.ScaledObject, *v1alpha1.ScaledObjectList]
+	*gentype.ClientWithList[*kedav1alpha1.ScaledObject, *kedav1alpha1.ScaledObjectList]
 }
 
 // newScaledObjects returns a ScaledObjects
 func newScaledObjects(c *KedaV1alpha1Client, namespace string) *scaledObjects {
 	return &scaledObjects{
-		gentype.NewClientWithList[*v1alpha1.ScaledObject, *v1alpha1.ScaledObjectList](
+		gentype.NewClientWithList[*kedav1alpha1.ScaledObject, *kedav1alpha1.ScaledObjectList](
 			"scaledobjects",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.ScaledObject { return &v1alpha1.ScaledObject{} },
-			func() *v1alpha1.ScaledObjectList { return &v1alpha1.ScaledObjectList{} }),
+			func() *kedav1alpha1.ScaledObject { return &kedav1alpha1.ScaledObject{} },
+			func() *kedav1alpha1.ScaledObjectList { return &kedav1alpha1.ScaledObjectList{} },
+		),
 	}
 }
