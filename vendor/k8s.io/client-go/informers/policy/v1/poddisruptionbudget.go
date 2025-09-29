@@ -19,16 +19,16 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	policyv1 "k8s.io/api/policy/v1"
+	apipolicyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	internalinterfaces "k8s.io/client-go/informers/internalinterfaces"
 	kubernetes "k8s.io/client-go/kubernetes"
-	v1 "k8s.io/client-go/listers/policy/v1"
+	policyv1 "k8s.io/client-go/listers/policy/v1"
 	cache "k8s.io/client-go/tools/cache"
 )
 
@@ -36,7 +36,7 @@ import (
 // PodDisruptionBudgets.
 type PodDisruptionBudgetInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.PodDisruptionBudgetLister
+	Lister() policyv1.PodDisruptionBudgetLister
 }
 
 type podDisruptionBudgetInformer struct {
@@ -62,16 +62,28 @@ func NewFilteredPodDisruptionBudgetInformer(client kubernetes.Interface, namespa
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PolicyV1().PodDisruptionBudgets(namespace).List(context.TODO(), options)
+				return client.PolicyV1().PodDisruptionBudgets(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PolicyV1().PodDisruptionBudgets(namespace).Watch(context.TODO(), options)
+				return client.PolicyV1().PodDisruptionBudgets(namespace).Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.PolicyV1().PodDisruptionBudgets(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.PolicyV1().PodDisruptionBudgets(namespace).Watch(ctx, options)
 			},
 		},
-		&policyv1.PodDisruptionBudget{},
+		&apipolicyv1.PodDisruptionBudget{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +94,9 @@ func (f *podDisruptionBudgetInformer) defaultInformer(client kubernetes.Interfac
 }
 
 func (f *podDisruptionBudgetInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&policyv1.PodDisruptionBudget{}, f.defaultInformer)
+	return f.factory.InformerFor(&apipolicyv1.PodDisruptionBudget{}, f.defaultInformer)
 }
 
-func (f *podDisruptionBudgetInformer) Lister() v1.PodDisruptionBudgetLister {
-	return v1.NewPodDisruptionBudgetLister(f.Informer().GetIndexer())
+func (f *podDisruptionBudgetInformer) Lister() policyv1.PodDisruptionBudgetLister {
+	return policyv1.NewPodDisruptionBudgetLister(f.Informer().GetIndexer())
 }

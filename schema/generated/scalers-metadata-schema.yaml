@@ -1117,6 +1117,7 @@ scalers:
           metadataVariableReadable: true
         - name: projectID
           type: string
+          deprecatedAnnounce: This scaler is deprecated. More info -> 'https://keda.sh/blog/2025-09-15-gcp-deprecations'
           metadataVariableReadable: true
     - type: gcp-storage
       parameters:
@@ -1147,7 +1148,7 @@ scalers:
       parameters:
         - name: githubApiURL
           type: string
-          default: https
+          default: https://api.github.com
           metadataVariableReadable: true
           envVariableReadable: true
         - name: owner
@@ -1182,6 +1183,11 @@ scalers:
           metadataVariableReadable: true
           envVariableReadable: true
         - name: enableEtags
+          type: string
+          default: "false"
+          metadataVariableReadable: true
+          envVariableReadable: true
+        - name: matchUnlabeledJobsWithUnlabeledRunners
           type: string
           default: "false"
           metadataVariableReadable: true
@@ -1445,6 +1451,35 @@ scalers:
         - name: activationTargetValue
           type: string
           default: "0"
+          metadataVariableReadable: true
+    - type: metrics-api
+      parameters:
+        - name: targetValue
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: activationTargetValue
+          type: string
+          default: "0"
+          metadataVariableReadable: true
+        - name: url
+          type: string
+          metadataVariableReadable: true
+        - name: format
+          type: string
+          default: json
+          allowedValue:
+            - prometheus
+            - json
+            - xml
+            - yaml
+          metadataVariableReadable: true
+        - name: valueLocation
+          type: string
+          metadataVariableReadable: true
+        - name: unsafeSsl
+          type: string
+          default: "false"
           metadataVariableReadable: true
     - type: mongodb
       parameters:
@@ -1802,6 +1837,7 @@ scalers:
         - name: value
           type: string
           default: "10"
+          deprecatedAnnounce: This scaler is deprecated. More info -> 'https://keda.sh/blog/2025-09-15-gcp-deprecations'
           metadataVariableReadable: true
         - name: activationValue
           type: string
@@ -2867,6 +2903,7 @@ scalers:
           metadataVariableReadable: true
         - name: filter
           type: string
+          deprecatedAnnounce: This scaler is deprecated. More info -> 'https://keda.sh/blog/2025-09-15-gcp-deprecations'
           metadataVariableReadable: true
         - name: targetValue
           type: string
