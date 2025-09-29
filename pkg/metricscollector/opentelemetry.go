@@ -34,7 +34,7 @@ var (
 	otCrdTotalsCounterDeprecated     api.Int64UpDownCounter
 	otTriggerRegisteredTotalsCounter api.Int64UpDownCounter
 	otCrdRegisteredTotalsCounter     api.Int64UpDownCounter
-	otEmptyPrometheusMetricError     api.Int64Counter
+	otEmptyUpstreamResponses         api.Int64Counter
 
 	otelScalerMetricVals                  []OtelMetricFloat64Val
 	otelScalerMetricsLatencyVals          []OtelMetricFloat64Val
@@ -136,7 +136,7 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
-	otEmptyPrometheusMetricError, err = meter.Int64Counter("keda.prometheus.metrics.empty.error", api.WithDescription("Number of times a prometheus query returns an empty result"))
+	otEmptyUpstreamResponses, err = meter.Int64Counter("keda.empty.upstream.responses", api.WithDescription("Number of times a query returns an empty result"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
@@ -513,7 +513,7 @@ func (o *OtelMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 	otCloudEventQueueStatusVals = append(otCloudEventQueueStatusVals, otCloudEventQueueStatus)
 }
 
-// RecordEmptyPrometheusMetricError counts the number of times a prometheus query returns an empty result
-func (o *OtelMetrics) RecordEmptyPrometheusMetricError() {
-	otEmptyPrometheusMetricError.Add(context.Background(), 1, nil)
+// RecordEmptyUpstreamResponse counts the number of times a query returns an empty result
+func (o *OtelMetrics) RecordEmptyUpstreamResponse() {
+	otEmptyUpstreamResponses.Add(context.Background(), 1, nil)
 }
