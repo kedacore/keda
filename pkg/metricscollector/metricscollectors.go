@@ -208,7 +208,7 @@ func RecordCloudEventQueueStatus(namespace string, value int) {
 	}
 }
 
-// RecordEmptyPrometheusMetricError counts the number of times a prometheus query returns an empty result
+// RecordEmptyPrometheusMetricError counts the number of times a query returns an empty result
 func RecordEmptyUpstreamResponse() {
 	for _, element := range collectors {
 		element.RecordEmptyUpstreamResponse()
