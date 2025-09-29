@@ -69,6 +69,7 @@ func TestParseAzurePipelinesMetadata(t *testing.T) {
 					w.WriteHeader(http.StatusUnauthorized)
 				} else {
 					w.WriteHeader(http.StatusOK)
+					// nosemgrep: no-direct-write-to-responsewriter
 					_, _ = w.Write([]byte(`{"count":1,"value":[{"id":1}]}`))
 				}
 			}))
@@ -83,6 +84,7 @@ func TestParseAzurePipelinesMetadata(t *testing.T) {
 
 			logger := logr.Discard()
 
+			// nosemgrep: context-todo
 			_, _, err := parseAzurePipelinesMetadata(context.TODO(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams}, http.DefaultClient)
 			if err != nil && !testData.isError {
 				t.Error("Expected success but got error", err)
@@ -129,6 +131,7 @@ func TestValidateAzurePipelinesPool(t *testing.T) {
 					t.Error("Wrong QueryParam")
 				}
 				w.WriteHeader(testData.httpCode)
+				// nosemgrep: no-direct-write-to-responsewriter
 				_, _ = w.Write([]byte(testData.response))
 			}))
 
@@ -137,6 +140,7 @@ func TestValidateAzurePipelinesPool(t *testing.T) {
 				"personalAccessToken": "PAT",
 			}
 			logger := logr.Discard()
+			// nosemgrep: context-todo
 			_, _, err := parseAzurePipelinesMetadata(context.TODO(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: nil, AuthParams: authParams}, http.DefaultClient)
 			if err != nil && !testData.isError {
 				t.Error("Expected success but got error", err)
@@ -162,6 +166,7 @@ func TestAzurePipelinesGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azurePipelinesMetricIdentifiers {
 		var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
+			// nosemgrep: no-direct-write-to-responsewriter
 			_, _ = w.Write([]byte(`{"id":1}`))
 		}))
 
@@ -177,6 +182,7 @@ func TestAzurePipelinesGetMetricSpecForScaling(t *testing.T) {
 
 		logger := logr.Discard()
 
+		// nosemgrep: context-todo
 		meta, _, err := parseAzurePipelinesMetadata(context.TODO(), logger, &scalersconfig.ScalerConfig{TriggerMetadata: metadata, ResolvedEnv: nil, AuthParams: authParams, TriggerIndex: testData.triggerIndex}, http.DefaultClient)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
@@ -210,6 +216,7 @@ func getMatchedAgentMetaData(url string) *azurePipelinesMetadata {
 func TestAzurePipelinesMatchedAgent(t *testing.T) {
 	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
 		_, _ = w.Write(buildLoadJSON())
 	}))
 
@@ -220,6 +227,7 @@ func TestAzurePipelinesMatchedAgent(t *testing.T) {
 		httpClient: http.DefaultClient,
 	}
 
+	// nosemgrep: context-todo
 	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
 
 	if err != nil {
@@ -238,6 +246,7 @@ func TestAzurePipelinesDelayed(t *testing.T) {
 		// nosemgrep: no-direct-write-to-responsewriter
 		w.Header().Add("X-RateLimit-Delay", "42")
 		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
 		_, _ = w.Write(buildLoadJSON())
 	}))
 
@@ -286,6 +295,7 @@ func getMismatchDemandJobMetaData(url string) *azurePipelinesMetadata {
 func TestAzurePipelinesMatchedDemandAgent(t *testing.T) {
 	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
 		_, _ = w.Write(buildLoadJSON())
 	}))
 
@@ -296,6 +306,7 @@ func TestAzurePipelinesMatchedDemandAgent(t *testing.T) {
 		httpClient: http.DefaultClient,
 	}
 
+	// nosemgrep: context-todo
 	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
 
 	if err != nil {
@@ -310,6 +321,7 @@ func TestAzurePipelinesMatchedDemandAgent(t *testing.T) {
 func TestAzurePipelinesNonMatchedDemandAgent(t *testing.T) {
 	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
 		_, _ = w.Write(buildLoadJSON())
 	}))
 
@@ -321,6 +333,7 @@ func TestAzurePipelinesNonMatchedDemandAgent(t *testing.T) {
 		httpClient: http.DefaultClient,
 	}
 
+	// nosemgrep: context-todo
 	queueLen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
 
 	if err != nil {
@@ -335,6 +348,7 @@ func TestAzurePipelinesNonMatchedDemandAgent(t *testing.T) {
 func TestAzurePipelinesMatchedDemandAgentWithRequireAllDemands(t *testing.T) {
 	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
 		_, _ = w.Write(buildLoadJSON())
 	}))
 
@@ -346,6 +360,7 @@ func TestAzurePipelinesMatchedDemandAgentWithRequireAllDemands(t *testing.T) {
 		httpClient: http.DefaultClient,
 	}
 
+	// nosemgrep: context-todo
 	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
 
 	if err != nil {
@@ -412,6 +427,63 @@ func TestAzurePipelinesNotMatchedPartialRequiredTriggerDemands(t *testing.T) {
 	}
 }
 
+func TestAzurePipelinesDemandsComparisonDefaultCaseSensitive(t *testing.T) {
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write(buildLoadJSON())
+	}))
+
+	meta := getDemandJobMetaData(apiStub.URL)
+	meta.RequireAllDemands = true
+	meta.Demands = "KUBECTL"
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	// nosemgrep: context-todo
+	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queuelen > 0 {
+		t.Fail()
+	}
+}
+
+func TestAzurePipelinesDemandsComparisonCaseInsensitive(t *testing.T) {
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		// nosemgrep: no-direct-write-to-responsewriter
+		_, _ = w.Write(buildLoadJSON())
+	}))
+
+	meta := getDemandJobMetaData(apiStub.URL)
+	meta.RequireAllDemands = true
+	meta.Demands = "KUBECTL"
+	meta.CaseInsensitiveDemandsProcessing = true
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	// nosemgrep: context-todo
+	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.TODO())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queuelen < 1 {
+		t.Fail()
+	}
+}
+
 func buildLoadJSON() []byte {
 	output := testJobRequestResponse[0 : len(testJobRequestResponse)-2]
 	for i := 1; i < loadCount; i++ {
@@ -445,6 +517,7 @@ func TestAzurePipelinesQueueURLTest(t *testing.T) {
 		t.Run(testData.testName, func(t *testing.T) {
 			var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
+				// nosemgrep: no-direct-write-to-responsewriter
 				_, _ = w.Write(buildLoadJSON())
 			}))
 
