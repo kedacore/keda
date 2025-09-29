@@ -126,6 +126,7 @@ New deprecation(s):
 
 ### Other
 
+- **General**: Add gRPC service that allows subscribing to a raw metric values ([#7094](https://github.com/kedacore/keda/issues/7094))
 - **General**: Bump Controller Runtime version to v0.20.4 ([#7081](https://github.com/kedacore/keda/pull/7081))
 - **General**: Fix several typos ([#6909](https://github.com/kedacore/keda/pull/6909))
 - **General**: Replace deprecated webhook.Validator with webhook.CustomValidator ([#6660](https://github.com/kedacore/keda/issues/6660))
