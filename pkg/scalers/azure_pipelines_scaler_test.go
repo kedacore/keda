@@ -412,6 +412,59 @@ func TestAzurePipelinesNotMatchedPartialRequiredTriggerDemands(t *testing.T) {
 	}
 }
 
+func TestAzurePipelinesDemandsComparisonDefaultCaseSensitive(t *testing.T) {
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(buildLoadJSON())
+	}))
+
+	meta := getDemandJobMetaData(apiStub.URL)
+	meta.RequireAllDemands = true
+	meta.Demands = "KUBECTL"
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queuelen > 0 {
+		t.Fail()
+	}
+}
+
+func TestAzurePipelinesDemandsComparisonCaseInsensitive(t *testing.T) {
+	var apiStub = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(buildLoadJSON())
+	}))
+
+	meta := getDemandJobMetaData(apiStub.URL)
+	meta.RequireAllDemands = true
+	meta.Demands = "KUBECTL"
+	meta.CaseInsensitiveDemandsProcessing = true
+
+	mockAzurePipelinesScaler := azurePipelinesScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+
+	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
+
+	if err != nil {
+		t.Fail()
+	}
+
+	if queuelen < 1 {
+		t.Fail()
+	}
+}
+
 func buildLoadJSON() []byte {
 	output := testJobRequestResponse[0 : len(testJobRequestResponse)-2]
 	for i := 1; i < loadCount; i++ {
