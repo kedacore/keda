@@ -256,7 +256,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
-		metricscollector.RecordEmptyPrometheusMetricError()
+		metricscollector.RecordEmptyUpstreamResponse()
 		return -1, fmt.Errorf("prometheus metrics 'prometheus' target may be lost, the result is empty")
 	} else if len(result.Data.Result) > 1 {
 		return -1, fmt.Errorf("prometheus query %s returned multiple elements", s.metadata.Query)
@@ -267,7 +267,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
-		metricscollector.RecordEmptyPrometheusMetricError()
+		metricscollector.RecordEmptyUpstreamResponse()
 		return -1, fmt.Errorf("prometheus metrics 'prometheus' target may be lost, the value list is empty")
 	} else if valueLen < 2 {
 		return -1, fmt.Errorf("prometheus query %s didn't return enough values", s.metadata.Query)
