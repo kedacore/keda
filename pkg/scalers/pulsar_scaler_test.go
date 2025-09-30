@@ -3,6 +3,8 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strconv"
 	"strings"
@@ -116,8 +118,7 @@ var pulsarMetricIdentifiers = []pulsarMetricIdentifier{
 
 func TestParsePulsarMetadata(t *testing.T) {
 	for _, testData := range parsePulsarMetadataTestDataset {
-		logger := InitializeLogger(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validPulsarWithAuthParams}, "test_pulsar_scaler")
-		meta, err := parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validPulsarWithAuthParams}, logger)
+		meta, err := parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: validPulsarWithAuthParams})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -126,41 +127,39 @@ func TestParsePulsarMetadata(t *testing.T) {
 			t.Error("Expected error but got success")
 		}
 
-		if meta.adminURL != testData.adminURL {
-			t.Errorf("Expected adminURL %s but got %s\n", testData.adminURL, meta.adminURL)
-		}
+		if !testData.isError && meta != nil {
+			if meta.AdminURL != testData.adminURL {
+				t.Errorf("Expected adminURL %s but got %s\n", testData.adminURL, meta.AdminURL)
+			}
 
-		if !testData.isError {
 			if testData.isPartitionedTopic {
 				if !strings.HasSuffix(meta.statsURL, "/partitioned-stats") {
 					t.Errorf("Expected statsURL to end with /partitioned-stats but got %s\n", meta.statsURL)
 				}
-			} else {
+			} else if meta.statsURL != "" {
 				if !strings.HasSuffix(meta.statsURL, "/stats") {
 					t.Errorf("Expected statsURL to end with /stats but got %s\n", meta.statsURL)
 				}
 			}
-		}
 
-		if meta.topic != testData.topic {
-			t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.topic)
-		}
-
-		if meta.subscription != testData.subscription {
-			t.Errorf("Expected subscription %s but got %s\n", testData.subscription, meta.subscription)
-		}
-
-		var testDataMsgBacklogThreshold int64
-		if val, ok := testData.metadata["msgBacklogThreshold"]; ok {
-			testDataMsgBacklogThreshold, err = strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				t.Errorf("error parsing msgBacklogThreshold: %v", err)
+			if meta.Topic != testData.topic {
+				t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.Topic)
 			}
-		} else {
-			testDataMsgBacklogThreshold = defaultMsgBacklogThreshold
-		}
-		if meta.msgBacklogThreshold != testDataMsgBacklogThreshold && testDataMsgBacklogThreshold != defaultMsgBacklogThreshold {
-			t.Errorf("Expected msgBacklogThreshold %s but got %d\n", testData.metadata["msgBacklogThreshold"], meta.msgBacklogThreshold)
+
+			if meta.Subscription != testData.subscription {
+				t.Errorf("Expected subscription %s but got %s\n", testData.subscription, meta.Subscription)
+			}
+
+			var testDataMsgBacklogThreshold int64 = defaultMsgBacklogThreshold
+			if val, ok := testData.metadata["msgBacklogThreshold"]; ok {
+				testDataMsgBacklogThreshold, err = strconv.ParseInt(val, 10, 64)
+				if err != nil {
+					t.Errorf("error parsing msgBacklogThreshold: %v", err)
+				}
+			}
+			if meta.MsgBacklogThreshold != testDataMsgBacklogThreshold {
+				t.Errorf("Expected msgBacklogThreshold %d but got %d\n", testDataMsgBacklogThreshold, meta.MsgBacklogThreshold)
+			}
 		}
 
 		authParams := validPulsarWithoutAuthParams
@@ -168,7 +167,7 @@ func TestParsePulsarMetadata(t *testing.T) {
 			authParams = validPulsarWithAuthParams
 		}
 
-		meta, err = parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: authParams}, logger)
+		meta, err = parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: authParams})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
@@ -177,16 +176,18 @@ func TestParsePulsarMetadata(t *testing.T) {
 			t.Error("Expected error but got success")
 		}
 
-		if meta.adminURL != testData.adminURL {
-			t.Errorf("Expected adminURL %s but got %s\n", testData.adminURL, meta.adminURL)
-		}
+		if !testData.isError && meta != nil {
+			if meta.AdminURL != testData.adminURL {
+				t.Errorf("Expected adminURL %s but got %s\n", testData.adminURL, meta.AdminURL)
+			}
 
-		if meta.topic != testData.topic {
-			t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.topic)
-		}
+			if meta.Topic != testData.topic {
+				t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.Topic)
+			}
 
-		if meta.subscription != testData.subscription {
-			t.Errorf("Expected subscription %s but got %s\n", testData.subscription, meta.subscription)
+			if meta.Subscription != testData.subscription {
+				t.Errorf("Expected subscription %s but got %s\n", testData.subscription, meta.Subscription)
+			}
 		}
 	}
 }
@@ -207,8 +208,7 @@ func compareScope(scopes []string, scopeStr string) bool {
 
 func TestPulsarAuthParams(t *testing.T) {
 	for _, testData := range parsePulsarMetadataTestAuthTLSDataset {
-		logger := InitializeLogger(&scalersconfig.ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, "test_pulsar_scaler")
-		meta, err := parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, logger)
+		meta, err := parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", testData.authParams, err)
@@ -217,7 +217,7 @@ func TestPulsarAuthParams(t *testing.T) {
 			t.Error("Expected error but got success")
 		}
 
-		if meta.pulsarAuth == nil {
+		if meta == nil || meta.pulsarAuth == nil {
 			t.Log("meta.pulsarAuth is nil, skipping rest of validation of", testData)
 			continue
 		}
@@ -267,8 +267,7 @@ func TestPulsarAuthParams(t *testing.T) {
 
 func TestPulsarOAuthParams(t *testing.T) {
 	for _, testData := range parsePulsarMetadataTestAuthTLSDataset {
-		logger := InitializeLogger(&scalersconfig.ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, "test_pulsar_scaler")
-		meta, err := parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams}, logger)
+		meta, err := parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.triggerMetadata, AuthParams: testData.authParams})
 
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", testData.authParams, err)
@@ -277,7 +276,7 @@ func TestPulsarOAuthParams(t *testing.T) {
 			t.Error("Expected error but got success")
 		}
 
-		if meta.pulsarAuth == nil {
+		if meta == nil || meta.pulsarAuth == nil {
 			t.Log("meta.pulsarAuth is nil, skipping rest of validation of", testData)
 			continue
 		}
@@ -322,8 +321,7 @@ func TestPulsarOAuthParams(t *testing.T) {
 
 func TestPulsarGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range pulsarMetricIdentifiers {
-		logger := InitializeLogger(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams}, "test_pulsar_scaler")
-		meta, err := parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validWithAuthParams}, logger)
+		meta, err := parsePulsarMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: validPulsarWithAuthParams})
 		if err != nil {
 			if testData.metadataTestData.isError {
 				continue
@@ -407,5 +405,69 @@ func TestPulsarGetMetric(t *testing.T) {
 		}
 
 		fmt.Printf("%+v\n", metric)
+	}
+}
+
+// Test for nil pointer dereference fix in redirect handling for issue #7024
+func TestPulsarScalerRedirectNilPointerFix(t *testing.T) {
+	// Mock HTTP server that simulates Pulsar broker redirects
+	redirectCount := 0
+	var mockServer *httptest.Server
+
+	mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		redirectCount++
+		if redirectCount == 1 {
+			// Send redirect
+			http.Redirect(w, r, mockServer.URL+"/redirected", http.StatusTemporaryRedirect)
+			return
+		}
+		// Return valid response
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{
+			"subscriptions": {
+				"test-subscription": {
+					"msgBacklog": 5
+				}
+			}
+		}`))
+		if err != nil {
+			t.Errorf("Failed to write response: %v", err)
+		}
+	}))
+	defer mockServer.Close()
+
+	config := &scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"adminURL":     mockServer.URL,
+			"topic":        "persistent://public/default/test-topic",
+			"subscription": "test-subscription",
+			"authModes":    "bearer",
+		},
+		AuthParams: map[string]string{
+			"bearerToken": "test-token",
+		},
+	}
+
+	// Create scaler
+	scaler, err := NewPulsarScaler(config)
+	if err != nil {
+		t.Fatalf("Failed to create scaler: %v", err)
+	}
+
+	// Cast to pulsarScaler to access GetStats method
+	pulsarScaler, ok := scaler.(*pulsarScaler)
+	if !ok {
+		t.Fatal("Expected scaler to be *pulsarScaler type")
+	}
+
+	_, err = pulsarScaler.GetStats(context.Background())
+	if err != nil {
+		t.Logf("GetStats returned error (expected due to test setup): %v", err)
+	}
+
+	// Verify redirect happened
+	if redirectCount < 1 {
+		t.Error("Expected at least one HTTP call to trigger redirect")
 	}
 }

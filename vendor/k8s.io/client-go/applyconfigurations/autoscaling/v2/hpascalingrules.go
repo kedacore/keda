@@ -19,15 +19,17 @@ limitations under the License.
 package v2
 
 import (
-	v2 "k8s.io/api/autoscaling/v2"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	resource "k8s.io/apimachinery/pkg/api/resource"
 )
 
 // HPAScalingRulesApplyConfiguration represents a declarative configuration of the HPAScalingRules type for use
 // with apply.
 type HPAScalingRulesApplyConfiguration struct {
 	StabilizationWindowSeconds *int32                               `json:"stabilizationWindowSeconds,omitempty"`
-	SelectPolicy               *v2.ScalingPolicySelect              `json:"selectPolicy,omitempty"`
+	SelectPolicy               *autoscalingv2.ScalingPolicySelect   `json:"selectPolicy,omitempty"`
 	Policies                   []HPAScalingPolicyApplyConfiguration `json:"policies,omitempty"`
+	Tolerance                  *resource.Quantity                   `json:"tolerance,omitempty"`
 }
 
 // HPAScalingRulesApplyConfiguration constructs a declarative configuration of the HPAScalingRules type for use with
@@ -47,7 +49,7 @@ func (b *HPAScalingRulesApplyConfiguration) WithStabilizationWindowSeconds(value
 // WithSelectPolicy sets the SelectPolicy field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the SelectPolicy field is set to the value of the last call.
-func (b *HPAScalingRulesApplyConfiguration) WithSelectPolicy(value v2.ScalingPolicySelect) *HPAScalingRulesApplyConfiguration {
+func (b *HPAScalingRulesApplyConfiguration) WithSelectPolicy(value autoscalingv2.ScalingPolicySelect) *HPAScalingRulesApplyConfiguration {
 	b.SelectPolicy = &value
 	return b
 }
@@ -62,5 +64,13 @@ func (b *HPAScalingRulesApplyConfiguration) WithPolicies(values ...*HPAScalingPo
 		}
 		b.Policies = append(b.Policies, *values[i])
 	}
+	return b
+}
+
+// WithTolerance sets the Tolerance field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Tolerance field is set to the value of the last call.
+func (b *HPAScalingRulesApplyConfiguration) WithTolerance(value resource.Quantity) *HPAScalingRulesApplyConfiguration {
+	b.Tolerance = &value
 	return b
 }

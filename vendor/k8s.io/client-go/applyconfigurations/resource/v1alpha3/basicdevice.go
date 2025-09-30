@@ -19,15 +19,21 @@ limitations under the License.
 package v1alpha3
 
 import (
-	v1alpha3 "k8s.io/api/resource/v1alpha3"
+	resourcev1alpha3 "k8s.io/api/resource/v1alpha3"
 	resource "k8s.io/apimachinery/pkg/api/resource"
+	v1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
 // BasicDeviceApplyConfiguration represents a declarative configuration of the BasicDevice type for use
 // with apply.
 type BasicDeviceApplyConfiguration struct {
-	Attributes map[v1alpha3.QualifiedName]DeviceAttributeApplyConfiguration `json:"attributes,omitempty"`
-	Capacity   map[v1alpha3.QualifiedName]resource.Quantity                 `json:"capacity,omitempty"`
+	Attributes       map[resourcev1alpha3.QualifiedName]DeviceAttributeApplyConfiguration `json:"attributes,omitempty"`
+	Capacity         map[resourcev1alpha3.QualifiedName]resource.Quantity                 `json:"capacity,omitempty"`
+	ConsumesCounters []DeviceCounterConsumptionApplyConfiguration                         `json:"consumesCounters,omitempty"`
+	NodeName         *string                                                              `json:"nodeName,omitempty"`
+	NodeSelector     *v1.NodeSelectorApplyConfiguration                                   `json:"nodeSelector,omitempty"`
+	AllNodes         *bool                                                                `json:"allNodes,omitempty"`
+	Taints           []DeviceTaintApplyConfiguration                                      `json:"taints,omitempty"`
 }
 
 // BasicDeviceApplyConfiguration constructs a declarative configuration of the BasicDevice type for use with
@@ -40,9 +46,9 @@ func BasicDevice() *BasicDeviceApplyConfiguration {
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, the entries provided by each call will be put on the Attributes field,
 // overwriting an existing map entries in Attributes field with the same key.
-func (b *BasicDeviceApplyConfiguration) WithAttributes(entries map[v1alpha3.QualifiedName]DeviceAttributeApplyConfiguration) *BasicDeviceApplyConfiguration {
+func (b *BasicDeviceApplyConfiguration) WithAttributes(entries map[resourcev1alpha3.QualifiedName]DeviceAttributeApplyConfiguration) *BasicDeviceApplyConfiguration {
 	if b.Attributes == nil && len(entries) > 0 {
-		b.Attributes = make(map[v1alpha3.QualifiedName]DeviceAttributeApplyConfiguration, len(entries))
+		b.Attributes = make(map[resourcev1alpha3.QualifiedName]DeviceAttributeApplyConfiguration, len(entries))
 	}
 	for k, v := range entries {
 		b.Attributes[k] = v
@@ -54,12 +60,62 @@ func (b *BasicDeviceApplyConfiguration) WithAttributes(entries map[v1alpha3.Qual
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, the entries provided by each call will be put on the Capacity field,
 // overwriting an existing map entries in Capacity field with the same key.
-func (b *BasicDeviceApplyConfiguration) WithCapacity(entries map[v1alpha3.QualifiedName]resource.Quantity) *BasicDeviceApplyConfiguration {
+func (b *BasicDeviceApplyConfiguration) WithCapacity(entries map[resourcev1alpha3.QualifiedName]resource.Quantity) *BasicDeviceApplyConfiguration {
 	if b.Capacity == nil && len(entries) > 0 {
-		b.Capacity = make(map[v1alpha3.QualifiedName]resource.Quantity, len(entries))
+		b.Capacity = make(map[resourcev1alpha3.QualifiedName]resource.Quantity, len(entries))
 	}
 	for k, v := range entries {
 		b.Capacity[k] = v
+	}
+	return b
+}
+
+// WithConsumesCounters adds the given value to the ConsumesCounters field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the ConsumesCounters field.
+func (b *BasicDeviceApplyConfiguration) WithConsumesCounters(values ...*DeviceCounterConsumptionApplyConfiguration) *BasicDeviceApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithConsumesCounters")
+		}
+		b.ConsumesCounters = append(b.ConsumesCounters, *values[i])
+	}
+	return b
+}
+
+// WithNodeName sets the NodeName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the NodeName field is set to the value of the last call.
+func (b *BasicDeviceApplyConfiguration) WithNodeName(value string) *BasicDeviceApplyConfiguration {
+	b.NodeName = &value
+	return b
+}
+
+// WithNodeSelector sets the NodeSelector field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the NodeSelector field is set to the value of the last call.
+func (b *BasicDeviceApplyConfiguration) WithNodeSelector(value *v1.NodeSelectorApplyConfiguration) *BasicDeviceApplyConfiguration {
+	b.NodeSelector = value
+	return b
+}
+
+// WithAllNodes sets the AllNodes field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the AllNodes field is set to the value of the last call.
+func (b *BasicDeviceApplyConfiguration) WithAllNodes(value bool) *BasicDeviceApplyConfiguration {
+	b.AllNodes = &value
+	return b
+}
+
+// WithTaints adds the given value to the Taints field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Taints field.
+func (b *BasicDeviceApplyConfiguration) WithTaints(values ...*DeviceTaintApplyConfiguration) *BasicDeviceApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithTaints")
+		}
+		b.Taints = append(b.Taints, *values[i])
 	}
 	return b
 }

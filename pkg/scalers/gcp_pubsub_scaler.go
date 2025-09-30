@@ -2,11 +2,10 @@ package scalers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -24,8 +23,8 @@ const (
 	resourceTypePubSubSubscription = "subscription"
 	resourceTypePubSubTopic        = "topic"
 
-	pubSubModeSubscriptionSize = "SubscriptionSize"
-	pubSubDefaultValue         = 10
+	pubSubDefaultModeSubscriptionSize = "SubscriptionSize"
+	pubSubDefaultValue                = 10
 )
 
 var regexpCompositeSubscriptionIDPrefix = regexp.MustCompile(compositeSubscriptionIDPrefix)
@@ -38,18 +37,20 @@ type pubsubScaler struct {
 }
 
 type pubsubMetadata struct {
-	mode            string
-	value           float64
-	activationValue float64
-
+	SubscriptionSize int           `keda:"name=subscriptionSize, order=triggerMetadata, optional, deprecatedAnnounce=The 'subscriptionSize' setting is DEPRECATED and will be removed in v2.20 - Use 'mode' and 'value' instead"`
+	Mode             string        `keda:"name=mode, order=triggerMetadata, default=SubscriptionSize"`
+	Value            float64       `keda:"name=value, order=triggerMetadata, default=10, deprecatedAnnounce=This scaler is deprecated. More info -> 'https://keda.sh/blog/2025-09-15-gcp-deprecations'"`
+	ActivationValue  float64       `keda:"name=activationValue, order=triggerMetadata, default=0"`
+	Aggregation      string        `keda:"name=aggregation, order=triggerMetadata, optional"`
+	TimeHorizon      time.Duration `keda:"name=timeHorizon, order=triggerMetadata, optional"`
+	ValueIfNull      *float64      `keda:"name=valueIfNull, order=triggerMetadata, optional"`
+	SubscriptionName string        `keda:"name=subscriptionName, order=triggerMetadata;resolvedEnv, optional"`
+	TopicName        string        `keda:"name=topicName, order=triggerMetadata;resolvedEnv, optional"`
 	// a resource is one of subscription or topic
 	resourceType     string
 	resourceName     string
 	gcpAuthorization *gcp.AuthorizationMetadata
 	triggerIndex     int
-	aggregation      string
-	timeHorizon      string
-	valueIfNull      *float64
 }
 
 // NewPubSubScaler creates a new pubsubScaler
@@ -59,9 +60,7 @@ func NewPubSubScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
 	}
 
-	logger := InitializeLogger(config, "gcp_pub_sub_scaler")
-
-	meta, err := parsePubSubMetadata(config, logger)
+	meta, err := parsePubSubMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing PubSub metadata: %w", err)
 	}
@@ -69,141 +68,27 @@ func NewPubSubScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	return &pubsubScaler{
 		metricType: metricType,
 		metadata:   meta,
-		logger:     logger,
 	}, nil
 }
 
-func parsePubSubResourceConfig(config *scalersconfig.ScalerConfig, meta *pubsubMetadata) error {
-	sub, subPresent := config.TriggerMetadata["subscriptionName"]
-	subFromEnv, subFromEnvPresent := config.TriggerMetadata["subscriptionNameFromEnv"]
-	if subPresent && subFromEnvPresent {
-		return fmt.Errorf("exactly one of subscriptionName or subscriptionNameFromEnv is allowed")
-	}
-	hasSub := subPresent || subFromEnvPresent
+func parsePubSubMetadata(config *scalersconfig.ScalerConfig) (*pubsubMetadata, error) {
+	meta := &pubsubMetadata{}
 
-	topic, topicPresent := config.TriggerMetadata["topicName"]
-	topicFromEnv, topicFromEnvPresent := config.TriggerMetadata["topicNameFromEnv"]
-	if topicPresent && topicFromEnvPresent {
-		return fmt.Errorf("exactly one of topicName or topicNameFromEnv is allowed")
-	}
-	hasTopic := topicPresent || topicFromEnvPresent
-
-	if (!hasSub && !hasTopic) || (hasSub && hasTopic) {
-		return fmt.Errorf("exactly one of subscription or topic name must be given")
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing gcp pubsub metadata: %w", err)
 	}
 
-	if hasSub {
-		if subPresent {
-			if sub == "" {
-				return fmt.Errorf("no subscription name given")
-			}
+	if meta.SubscriptionSize != 0 {
+		meta.Mode = pubSubDefaultModeSubscriptionSize
+		meta.Value = float64(meta.SubscriptionSize)
+	}
 
-			meta.resourceName = sub
-		} else {
-			if subFromEnv == "" {
-				return fmt.Errorf("no environment variable name given for resolving subscription name")
-			}
-
-			resolvedSub, ok := config.ResolvedEnv[subFromEnv]
-			if !ok {
-				return fmt.Errorf("resolved environment doesn't contain name '%s'", subFromEnv)
-			}
-
-			if resolvedSub == "" {
-				return fmt.Errorf("resolved environment subscription name is empty")
-			}
-
-			meta.resourceName = config.ResolvedEnv[subFromEnv]
-		}
-
+	if meta.SubscriptionName != "" {
+		meta.resourceName = meta.SubscriptionName
 		meta.resourceType = resourceTypePubSubSubscription
 	} else {
-		if topicPresent {
-			if topic == "" {
-				return fmt.Errorf("no topic name given")
-			}
-
-			meta.resourceName = topic
-		} else {
-			if topicFromEnv == "" {
-				return fmt.Errorf("no environment variable name given for resolving topic name")
-			}
-
-			resolvedTopic, ok := config.ResolvedEnv[topicFromEnv]
-			if !ok {
-				return fmt.Errorf("resolved environment doesn't contain name '%s'", topicFromEnv)
-			}
-
-			if resolvedTopic == "" {
-				return fmt.Errorf("resolved environment topic name is empty")
-			}
-
-			meta.resourceName = config.ResolvedEnv[topicFromEnv]
-		}
-
+		meta.resourceName = meta.TopicName
 		meta.resourceType = resourceTypePubSubTopic
-	}
-
-	return nil
-}
-
-func parsePubSubMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*pubsubMetadata, error) {
-	meta := pubsubMetadata{mode: pubSubModeSubscriptionSize, value: pubSubDefaultValue}
-
-	mode, modePresent := config.TriggerMetadata["mode"]
-	value, valuePresent := config.TriggerMetadata["value"]
-
-	if subSize, subSizePresent := config.TriggerMetadata["subscriptionSize"]; subSizePresent {
-		if modePresent || valuePresent {
-			return nil, errors.New("you can use either mode and value fields or subscriptionSize field")
-		}
-		if _, topicPresent := config.TriggerMetadata["topicName"]; topicPresent {
-			return nil, errors.New("you cannot use subscriptionSize field together with topicName field. Use subscriptionName field instead")
-		}
-		logger.Info("subscriptionSize field is deprecated. Use mode and value fields instead")
-		subSizeValue, err := strconv.ParseFloat(subSize, 64)
-		if err != nil {
-			return nil, fmt.Errorf("value parsing error %w", err)
-		}
-		meta.value = subSizeValue
-	} else {
-		if modePresent {
-			meta.mode = mode
-		}
-
-		if valuePresent {
-			triggerValue, err := strconv.ParseFloat(value, 64)
-			if err != nil {
-				return nil, fmt.Errorf("value parsing error %w", err)
-			}
-			meta.value = triggerValue
-		}
-	}
-
-	if val, ok := config.TriggerMetadata["valueIfNull"]; ok && val != "" {
-		valueIfNull, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("valueIfNull parsing error %w", err)
-		}
-		meta.valueIfNull = &valueIfNull
-	}
-
-	meta.aggregation = config.TriggerMetadata["aggregation"]
-
-	meta.timeHorizon = config.TriggerMetadata["timeHorizon"]
-
-	err := parsePubSubResourceConfig(config, &meta)
-	if err != nil {
-		return nil, err
-	}
-
-	meta.activationValue = 0
-	if val, ok := config.TriggerMetadata["activationValue"]; ok {
-		activationValue, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("activationValue parsing error %w", err)
-		}
-		meta.activationValue = activationValue
 	}
 
 	auth, err := gcp.GetGCPAuthorization(config)
@@ -212,7 +97,8 @@ func parsePubSubMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger)
 	}
 	meta.gcpAuthorization = auth
 	meta.triggerIndex = config.TriggerIndex
-	return &meta, nil
+
+	return meta, nil
 }
 
 func (s *pubsubScaler) Close(context.Context) error {
@@ -226,13 +112,29 @@ func (s *pubsubScaler) Close(context.Context) error {
 	return nil
 }
 
+func (meta *pubsubMetadata) Validate() error {
+	if meta.SubscriptionSize != 0 {
+		if meta.TopicName != "" {
+			return fmt.Errorf("you cannot use subscriptionSize field together with topicName field. Use subscriptionName field instead")
+		}
+	}
+
+	hasSub := meta.SubscriptionName != ""
+	hasTopic := meta.TopicName != ""
+	if (!hasSub && !hasTopic) || (hasSub && hasTopic) {
+		return fmt.Errorf("exactly one of subscription or topic name must be given")
+	}
+
+	return nil
+}
+
 // GetMetricSpecForScaling returns the metric spec for the HPA
 func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, kedautil.NormalizeString(fmt.Sprintf("gcp-ps-%s", s.metadata.resourceName))),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.value),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.Value),
 	}
 
 	// Create the metric spec for the HPA
@@ -246,11 +148,11 @@ func (s *pubsubScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec 
 
 // GetMetricsAndActivity connects to Stack Driver and finds the size of the pub sub subscription
 func (s *pubsubScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	mode := s.metadata.mode
+	mode := s.metadata.Mode
 
 	// SubscriptionSize is actually NumUndeliveredMessages in GCP PubSub.
 	// Considering backward compatibility, fallback "SubscriptionSize" to "NumUndeliveredMessages"
-	if mode == pubSubModeSubscriptionSize {
+	if mode == pubSubDefaultModeSubscriptionSize {
 		mode = "NumUndeliveredMessages"
 	}
 
@@ -264,7 +166,7 @@ func (s *pubsubScaler) GetMetricsAndActivity(ctx context.Context, metricName str
 
 	metric := GenerateMetricInMili(metricName, value)
 
-	return []external_metrics.ExternalMetricValue{metric}, value > s.metadata.activationValue, nil
+	return []external_metrics.ExternalMetricValue{metric}, value > s.metadata.ActivationValue, nil
 }
 
 func (s *pubsubScaler) setStackdriverClient(ctx context.Context) error {
@@ -292,7 +194,7 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float
 	}
 	resourceID, projectID := getResourceData(s)
 	query, err := s.client.BuildMQLQuery(
-		projectID, s.metadata.resourceType, metricType, resourceID, s.metadata.aggregation, s.metadata.timeHorizon,
+		projectID, s.metadata.resourceType, metricType, resourceID, s.metadata.Aggregation, s.metadata.TimeHorizon,
 	)
 	if err != nil {
 		return -1, err
@@ -300,7 +202,7 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float
 
 	// Pubsub metrics are collected every 60 seconds so no need to aggregate them.
 	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-pubsub
-	return s.client.QueryMetrics(ctx, projectID, query, s.metadata.valueIfNull)
+	return s.client.QueryMetrics(ctx, projectID, query, s.metadata.ValueIfNull)
 }
 
 func getResourceData(s *pubsubScaler) (string, string) {

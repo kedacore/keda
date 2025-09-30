@@ -289,7 +289,7 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	timeout := config.GlobalHTTPTimeout
 	if s.metadata.Timeout != 0 {
-		timeout = s.metadata.Timeout * time.Millisecond
+		timeout = s.metadata.Timeout
 	}
 
 	s.httpClient = kedautil.CreateHTTPClient(timeout, meta.UnsafeSsl)
@@ -485,7 +485,7 @@ func getVhostAndPathFromURL(rawPath, vhostName string) (resolvedVhostPath, resol
 	if vhostName != "" {
 		resolvedVhostPath = "/" + url.QueryEscape(vhostName)
 	}
-	if resolvedVhostPath == "" || resolvedVhostPath == "/" || resolvedVhostPath == "//" {
+	if resolvedVhostPath == "" || resolvedVhostPath == "/" {
 		resolvedVhostPath = rabbitRootVhostPath
 	}
 
@@ -499,7 +499,12 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP(ctx context.Context) (*queueInfo, e
 		return nil, err
 	}
 
-	vhost, subpaths := getVhostAndPathFromURL(parsedURL.Path, s.metadata.VhostName)
+	path := parsedURL.RawPath
+	if path == "" {
+		path = parsedURL.Path
+	}
+
+	vhost, subpaths := getVhostAndPathFromURL(path, s.metadata.VhostName)
 	parsedURL.Path = subpaths
 
 	if s.metadata.Username != "" && s.metadata.Password != "" {
