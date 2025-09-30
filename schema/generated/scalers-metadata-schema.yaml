@@ -1348,16 +1348,42 @@ scalers:
       parameters:
         - name: authToken
           type: string
+          optional: true
+          deprecatedAnnounce: The 'authToken' setting from triggerMetadata is DEPRECATED and will be removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead
           metadataVariableReadable: true
+        - name: authToken
+          type: string
+          optional: true
           envVariableReadable: true
           triggerAuthenticationVariableReadable: true
         - name: organizationName
           type: string
+          optional: true
           metadataVariableReadable: true
           envVariableReadable: true
           triggerAuthenticationVariableReadable: true
         - name: query
           type: string
+          metadataVariableReadable: true
+        - name: influxVersion
+          type: string
+          default: "2"
+          allowedValue:
+            - "2"
+            - "3"
+          metadataVariableReadable: true
+        - name: queryType
+          type: string
+          default: InfluxQL
+          metadataVariableReadable: true
+        - name: database
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: metricKey
+          type: string
+          optional: true
           metadataVariableReadable: true
         - name: serverURL
           type: string
