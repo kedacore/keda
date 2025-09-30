@@ -66,9 +66,14 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Add error and event for mismatching input property ([#6721](https://github.com/kedacore/keda/issues/6721))
 - **General**: Add fallback support for triggers of `Value` metric type ([#6655](https://github.com/kedacore/keda/pull/6655))
 - **General**: Add support for pause scale in annotation ([#6902](https://github.com/kedacore/keda/issues/6902))
+- **General**: Add support for pause scale out annotation ([#7022](https://github.com/kedacore/keda/issues/7022))
 - **General**: Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
+- **General**: Implement Force Activation annotation ([#6903](https://github.com/kedacore/keda/issues/6903))
+- **General**: Introduce new Forgejo Scaler ([#6488](https://github.com/kedacore/keda/issues/6488))
 - **General**: Introduce new Solace Direct Messaging scaler ([#6545](https://github.com/kedacore/keda/issues/6545))
 - **General**: Introduce new Sumo Logic Scaler ([#6734](https://github.com/kedacore/keda/issues/6734))
+- **General**: Support for declarative e2e test setup and filtering ([#6989](https://github.com/kedacore/keda/issues/6989))
+- **General**: Trigger Schema Generated Tool ([#6345](https://github.com/kedacore/keda/issues/6345))
 - **General**: Vault authentication via cross-namespace service accounts ([#6153](https://github.com/kedacore/keda/issues/6153))
 
 #### Experimental
@@ -84,7 +89,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Datadog Scaler**: Add a specific timeout configuration parameter for the Datadog trigger ([#6999](https://github.com/kedacore/keda/pull/6999))
 - **Datadog Scaler**: Fix bug with datadogNamespace config ([#6828](https://github.com/kedacore/keda/pull/6828))
 - **Datadog Scaler**: Improve Datadog scaler error messages ([#6999](https://github.com/kedacore/keda/pull/6999))
-- **Metrics API**: Support multiple auth methods simultaneously in Metrics API scaler ([#6642](https://github.com/kedacore/keda/issues/6642))
+- **Github Scaler**: Add support to control unlabeled job/runner matching ([#6900](https://github.com/kedacore/keda/issues/6900))
+- **Metrics API Scaler**: Support AuthParams for authMode ([#6939](https://github.com/kedacore/keda/issues/6939))
+- **Metrics API Scaler**: Support multiple auth methods simultaneously ([#6642](https://github.com/kedacore/keda/issues/6642))
 - **Temporal Scaler**: Always set `temporal-namespace` header on requests([#7079](https://github.com/kedacore/keda/issues/7079))
 - **Temporal Scaler**: Support custom tlsServerName ([#6820](https://github.com/kedacore/keda/pull/6820))
 
@@ -95,13 +102,16 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Fix parse timeout config as milliseconds instead of seconds ([#6997](https://github.com/kedacore/keda/pull/6997))
 - **General**: Fix prefixes on envFrom elements in a deployment spec aren't being interpreted and Environment variables are not prefixed with the prefix ([#6728](https://github.com/kedacore/keda/issues/6728))
 - **General**: Fix SIGSEGV when doing fallback of non-static behavior on any ScaleTargetRef that is neither a Deployment nor a StatefulSet ([#6992](https://github.com/kedacore/keda/pull/6992))
+- **General**: New Scaled{Object,Job} has paused condition in their status as False instead of Unknown ([#7011](https://github.com/kedacore/keda/issues/7011))
 - **General**: Remove klogr dependency and replace with zap ([#5732](https://github.com/kedacore/keda/issues/5732))
 - **General**: Resolve race condition when removing paused-replicas annotation from ScaledObject ([#6982](https://github.com/kedacore/keda/issues/6982))
 - **General**: Sets hpaName in Status when ScaledObject adopts/finds an existing HPA ([#6336](https://github.com/kedacore/keda/issues/6336))
 - **Cron Scaler**: Fix cron scaler to return zero metric value by default([#6886](https://github.com/kedacore/keda/issues/6886))
 - **Hashicorp Vault**: Fix Vault PKI param using camel case param when making API call to Vault PKI endpoint ([#6864](https://github.com/kedacore/keda/issues/6864))
+- **Kafka Scaler**: Fix throwing error when using sasl=none ([#7061](https://github.com/kedacore/keda/issues/7061))
 - **Pulsar Scaler**: Resolve nil pointer dereference in Pulsar scaler redirect handling ([#7024](https://github.com/kedacore/keda/issues/7024))
 - **RabbitMQ Scaler**: Fix incorrect URL encoding in RabbitMQ vhosts containing %2f ([#6963](https://github.com/kedacore/keda/issues/6963))
+- **Temporal Scaler**: Allow setting 0 for targetQueueSize ([#7113](https://github.com/kedacore/keda/pull/7113))
 
 ### Deprecations
 
@@ -120,6 +130,8 @@ New deprecation(s):
 
 ### Other
 
+- **General**: Add gRPC service that allows subscribing to a raw metric values ([#7094](https://github.com/kedacore/keda/issues/7094))
+- **General**: Bump Controller Runtime version to v0.20.4 ([#7081](https://github.com/kedacore/keda/pull/7081))
 - **General**: Fix several typos ([#6909](https://github.com/kedacore/keda/pull/6909))
 - **General**: Replace deprecated webhook.Validator with webhook.CustomValidator ([#6660](https://github.com/kedacore/keda/issues/6660))
 - **MSSQL Scaler**: Refactor MS SQL e2e test ([#3401](https://github.com/kedacore/keda/issues/3401))

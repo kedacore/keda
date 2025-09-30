@@ -58,7 +58,7 @@ type temporalMetadata struct {
 }
 
 func (a *temporalMetadata) Validate() error {
-	if a.TargetQueueSize <= 0 {
+	if a.TargetQueueSize < 0 {
 		return fmt.Errorf("targetQueueSize must be a positive number")
 	}
 	if a.ActivationTargetQueueSize < 0 {
