@@ -34,6 +34,7 @@ var (
 	otCrdTotalsCounterDeprecated     api.Int64UpDownCounter
 	otTriggerRegisteredTotalsCounter api.Int64UpDownCounter
 	otCrdRegisteredTotalsCounter     api.Int64UpDownCounter
+	otEmptyUpstreamResponses         api.Int64Counter
 
 	otelScalerMetricVals                  []OtelMetricFloat64Val
 	otelScalerMetricsLatencyVals          []OtelMetricFloat64Val
@@ -131,6 +132,11 @@ func initMeters() {
 	}
 
 	otCrdRegisteredTotalsCounter, err = meter.Int64UpDownCounter("keda.resource.registered.count", api.WithDescription("Total number of KEDA custom resources per namespace for each custom resource type (CRD) registered"))
+	if err != nil {
+		otLog.Error(err, msg)
+	}
+
+	otEmptyUpstreamResponses, err = meter.Int64Counter("keda.empty.upstream.responses", api.WithDescription("Number of times a query returns an empty result"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
@@ -505,4 +511,9 @@ func (o *OtelMetrics) RecordCloudEventQueueStatus(namespace string, value int) {
 	otCloudEventQueueStatus.val = float64(value)
 	otCloudEventQueueStatus.measurementOption = opt
 	otCloudEventQueueStatusVals = append(otCloudEventQueueStatusVals, otCloudEventQueueStatus)
+}
+
+// RecordEmptyUpstreamResponse counts the number of times a query returns an empty result
+func (o *OtelMetrics) RecordEmptyUpstreamResponse() {
+	otEmptyUpstreamResponses.Add(context.Background(), 1, nil)
 }
