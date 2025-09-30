@@ -110,6 +110,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Kafka Scaler**: Fix throwing error when using sasl=none ([#7061](https://github.com/kedacore/keda/issues/7061))
 - **Pulsar Scaler**: Resolve nil pointer dereference in Pulsar scaler redirect handling ([#7024](https://github.com/kedacore/keda/issues/7024))
 - **RabbitMQ Scaler**: Fix incorrect URL encoding in RabbitMQ vhosts containing %2f ([#6963](https://github.com/kedacore/keda/issues/6963))
+- **Temporal Scaler**: Allow setting 0 for targetQueueSize ([#7113](https://github.com/kedacore/keda/pull/7113))
 
 ### Deprecations
 
