@@ -102,7 +102,7 @@ require (
 	go.uber.org/mock v0.5.0
 	golang.org/x/crypto v0.41.0
 	golang.org/x/oauth2 v0.30.0
-	golang.org/x/sync v0.16.0
+	golang.org/x/sync v0.17.0
 	google.golang.org/api v0.230.0
 	google.golang.org/grpc v1.74.2
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1
