@@ -260,6 +260,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewSolaceDMScaler(config)
 	case "solace-event-queue":
 		return scalers.NewSolaceScaler(config)
+	case "solarwinds":
+		return scalers.NewSolarWindsScaler(config)
 	case "solr":
 		return scalers.NewSolrScaler(config)
 	case "splunk":

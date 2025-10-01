@@ -663,6 +663,11 @@ github.com/envoyproxy/go-control-plane/envoy/type/v3
 # github.com/envoyproxy/protoc-gen-validate v1.2.1
 ## explicit; go 1.21.1
 github.com/envoyproxy/protoc-gen-validate/validate
+# github.com/ericlagergren/decimal v0.0.0-20221120152707-495c53812d05
+## explicit; go 1.16
+github.com/ericlagergren/decimal
+github.com/ericlagergren/decimal/internal/arith
+github.com/ericlagergren/decimal/internal/c
 # github.com/evanphx/json-patch/v5 v5.9.11
 ## explicit; go 1.18
 github.com/evanphx/json-patch/v5
@@ -1508,6 +1513,17 @@ github.com/shopspring/decimal
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
+# github.com/solarwinds/swo-sdk-go/swov1 v0.3.0
+## explicit; go 1.22
+github.com/solarwinds/swo-sdk-go/swov1
+github.com/solarwinds/swo-sdk-go/swov1/internal/config
+github.com/solarwinds/swo-sdk-go/swov1/internal/hooks
+github.com/solarwinds/swo-sdk-go/swov1/internal/utils
+github.com/solarwinds/swo-sdk-go/swov1/models/apierrors
+github.com/solarwinds/swo-sdk-go/swov1/models/components
+github.com/solarwinds/swo-sdk-go/swov1/models/operations
+github.com/solarwinds/swo-sdk-go/swov1/retry
+github.com/solarwinds/swo-sdk-go/swov1/types
 # github.com/spf13/afero v1.11.0
 ## explicit; go 1.19
 github.com/spf13/afero
@@ -1532,6 +1548,10 @@ github.com/spiffe/go-spiffe/v2/internal/jwtutil
 github.com/spiffe/go-spiffe/v2/internal/pemutil
 github.com/spiffe/go-spiffe/v2/internal/x509util
 github.com/spiffe/go-spiffe/v2/spiffeid
+# github.com/spyzhov/ajson v0.8.0
+## explicit; go 1.12
+github.com/spyzhov/ajson
+github.com/spyzhov/ajson/internal
 # github.com/stoewer/go-strcase v1.3.1
 ## explicit; go 1.11
 github.com/stoewer/go-strcase
