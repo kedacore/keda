@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"runtime/debug"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -17,8 +18,6 @@ import (
 	"gotest.tools/gotestsum/internal/log"
 	"gotest.tools/gotestsum/testjson"
 )
-
-var version = "dev"
 
 func Run(name string, args []string) error {
 	flags, opts := setupFlags(name)
@@ -34,7 +33,11 @@ func Run(name string, args []string) error {
 
 	switch {
 	case opts.version:
-		fmt.Fprintf(os.Stdout, "gotestsum version %s\n", version)
+		info, ok := debug.ReadBuildInfo()
+		if !ok {
+			return fmt.Errorf("failed to read version info")
+		}
+		fmt.Fprintf(os.Stdout, "gotestsum version %s\n", info.Main.Version)
 		return nil
 	case opts.watch:
 		return runWatcher(opts)
@@ -90,6 +93,8 @@ func setupFlags(name string) (*pflag.FlagSet, *options) {
 		"command to run after the tests have completed")
 	flags.BoolVar(&opts.watch, "watch", false,
 		"watch go files, and run tests when a file is modified")
+	flags.BoolVar(&opts.watchClear, "watch-clear", false,
+		"in watch mode clear screen when rerun tests")
 	flags.BoolVar(&opts.watchChdir, "watch-chdir", false,
 		"in watch mode change the working directory to the directory with the modified file before running tests")
 	flags.IntVar(&opts.maxFails, "max-fails", 0,
@@ -108,9 +113,14 @@ func setupFlags(name string) (*pflag.FlagSet, *options) {
 	flags.BoolVar(&opts.junitHideEmptyPackages, "junitfile-hide-empty-pkg",
 		truthyFlag(lookEnvWithDefault("GOTESTSUM_JUNIT_HIDE_EMPTY_PKG", "")),
 		"omit packages with no tests from the junit.xml file")
+	flags.BoolVar(&opts.junitHideSkippedTests, "junitfile-hide-skipped-tests",
+		truthyFlag(lookEnvWithDefault("GOTESTSUM_JUNIT_HIDE_SKIPPED_TESTS", "")),
+		"omit skipped tests from the junit.xml file")
 
 	flags.IntVar(&opts.rerunFailsMaxAttempts, "rerun-fails", 0,
 		"rerun failed tests until they all pass, or attempts exceeds maximum. Defaults to max 2 reruns when enabled")
+	flags.BoolVar(&opts.rerunFailsAbortOnDataRace, "rerun-fails-abort-on-data-race", false,
+		"do not rerun tests if a data race is detected")
 	flags.Lookup("rerun-fails").NoOptDefVal = "2"
 	flags.IntVar(&opts.rerunFailsMaxInitialFailures, "rerun-fails-max-failures", 10,
 		"do not rerun any tests if the initial run has more than this number of failures")
@@ -187,12 +197,15 @@ type options struct {
 	junitTestCaseClassnameFormat *junitFieldFormatValue
 	junitProjectName             string
 	junitHideEmptyPackages       bool
+	junitHideSkippedTests        bool
 	rerunFailsMaxAttempts        int
 	rerunFailsMaxInitialFailures int
 	rerunFailsReportFile         string
 	rerunFailsRunRootCases       bool
+	rerunFailsAbortOnDataRace    bool
 	packages                     []string
 	watch                        bool
+	watchClear                   bool
 	watchChdir                   bool
 	maxFails                     int
 	version                      bool
@@ -296,7 +309,7 @@ func run(opts *options) error {
 	if exitErr == nil || opts.rerunFailsMaxAttempts == 0 {
 		return finishRun(opts, exec, exitErr)
 	}
-	if err := hasErrors(exitErr, exec); err != nil {
+	if err := hasErrors(exitErr, exec, opts); err != nil {
 		return finishRun(opts, exec, err)
 	}
 
