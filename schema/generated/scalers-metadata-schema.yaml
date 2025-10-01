@@ -2883,6 +2883,29 @@ scalers:
           type: string
           metadataVariableReadable: true
           triggerAuthenticationVariableReadable: true
+    - type: splunk-observability
+      parameters:
+        - name: accessToken
+          type: string
+          triggerAuthenticationVariableReadable: true
+        - name: realm
+          type: string
+          triggerAuthenticationVariableReadable: true
+        - name: query
+          type: string
+          metadataVariableReadable: true
+        - name: duration
+          type: string
+          metadataVariableReadable: true
+        - name: targetValue
+          type: string
+          metadataVariableReadable: true
+        - name: queryAggregator
+          type: string
+          metadataVariableReadable: true
+        - name: activationTargetValue
+          type: string
+          metadataVariableReadable: true
     - type: splunk
       parameters:
         - name: apiToken
