@@ -215,7 +215,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "memory":
 		return scalers.NewCPUMemoryScaler(corev1.ResourceMemory, config)
 	case "metrics-api":
-		return scalers.NewMetricsAPIScaler(config)
+		return scalers.NewMetricsAPIScaler(config, client)
 	case "mongodb":
 		return scalers.NewMongoDBScaler(ctx, config)
 	case "mssql":

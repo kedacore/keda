@@ -60,7 +60,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
-
 ### New
 
 - **General**: Add error and event for mismatching input property ([#6721](https://github.com/kedacore/keda/issues/6721))
@@ -92,6 +91,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Datadog Scaler**: Improve Datadog scaler error messages ([#6999](https://github.com/kedacore/keda/pull/6999))
 - **Github Scaler**: Add support to control unlabeled job/runner matching ([#6900](https://github.com/kedacore/keda/issues/6900))
 - **InfluxDB Scaler**: Add support for InfluxDB v3 ([#6981](https://github.com/kedacore/keda/issues/6981))
+- **Metrics API scaler**: Introduce new `aggregateFromKubeServiceEndpoints` and `aggregationType` metadata fields to `metrics-api` so it is able to fetch metrics from all endpoints behind a kubernetes service and aggregate them ([#6565](https://github.com/kedacore/keda/pull/6565))
 - **Metrics API Scaler**: Support AuthParams for authMode ([#6939](https://github.com/kedacore/keda/issues/6939))
 - **Metrics API Scaler**: Support multiple auth methods simultaneously ([#6642](https://github.com/kedacore/keda/issues/6642))
 - **Temporal Scaler**: Always set `temporal-namespace` header on requests([#7079](https://github.com/kedacore/keda/issues/7079))
