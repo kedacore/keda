@@ -85,6 +85,7 @@ require (
 	github.com/segmentio/kafka-go v0.4.47
 	github.com/segmentio/kafka-go/sasl/aws_msk_iam_v2 v0.1.0
 	github.com/signalfx/signalflow-client-go/v2 v2.3.0
+	github.com/solarwinds/swo-sdk-go/swov1 v0.3.0
 	github.com/spf13/cast v1.7.1
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.11.1
@@ -210,6 +211,7 @@ require (
 	github.com/emicklei/go-restful/v3 v3.12.2 // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
+	github.com/ericlagergren/decimal v0.0.0-20221120152707-495c53812d05 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/fatih/color v1.18.0 // indirect
@@ -319,6 +321,7 @@ require (
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.5.0 // indirect
+	github.com/spyzhov/ajson v0.8.0 // indirect
 	github.com/stoewer/go-strcase v1.3.1 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
