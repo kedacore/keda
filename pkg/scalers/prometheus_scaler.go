@@ -82,7 +82,7 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	// handle HTTP client timeout
 	httpClientTimeout := config.GlobalHTTPTimeout
 	if meta.Timeout > 0 {
-		httpClientTimeout = meta.Timeout * time.Millisecond
+		httpClientTimeout = meta.Timeout
 	}
 
 	httpClient := kedautil.CreateHTTPClient(httpClientTimeout, meta.UnsafeSSL)

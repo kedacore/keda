@@ -32,6 +32,7 @@ var levelStrings = map[string]zapcore.Level{
 	"debug": zap.DebugLevel,
 	"info":  zap.InfoLevel,
 	"error": zap.ErrorLevel,
+	"panic": zap.PanicLevel,
 }
 
 var stackLevelStrings = map[string]zapcore.Level{

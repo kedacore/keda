@@ -49,8 +49,8 @@ func NewMetricNotFoundForError(resource schema.GroupResource, metricName string,
 	}}
 }
 
-// NewMetricNotFoundForError returns a StatusError indicating the given metric could not be found for
-// the given named object. It is similar to NewNotFound, but more specialized
+// NewMetricNotFoundForSelectorError returns a StatusError indicating the given metric could not be found for
+// the given named object and selector. It is similar to NewNotFound, but more specialized
 func NewMetricNotFoundForSelectorError(resource schema.GroupResource, metricName string, resourceName string, selector labels.Selector) *apierr.StatusError {
 	return &apierr.StatusError{ErrStatus: metav1.Status{
 		Status:  metav1.StatusFailure,

@@ -108,14 +108,9 @@ func setupFlags(name string) (*pflag.FlagSet, *options) {
 	flags.BoolVar(&opts.junitHideEmptyPackages, "junitfile-hide-empty-pkg",
 		truthyFlag(lookEnvWithDefault("GOTESTSUM_JUNIT_HIDE_EMPTY_PKG", "")),
 		"omit packages with no tests from the junit.xml file")
-	flags.BoolVar(&opts.junitHideSkippedTests, "junitfile-hide-skipped-tests",
-		truthyFlag(lookEnvWithDefault("GOTESTSUM_JUNIT_HIDE_SKIPPED_TESTS", "")),
-		"omit skipped tests from the junit.xml file")
 
 	flags.IntVar(&opts.rerunFailsMaxAttempts, "rerun-fails", 0,
 		"rerun failed tests until they all pass, or attempts exceeds maximum. Defaults to max 2 reruns when enabled")
-	flags.BoolVar(&opts.rerunFailsAbortOnDataRace, "rerun-fails-abort-on-data-race", false,
-		"do not rerun tests if a data race is detected")
 	flags.Lookup("rerun-fails").NoOptDefVal = "2"
 	flags.IntVar(&opts.rerunFailsMaxInitialFailures, "rerun-fails-max-failures", 10,
 		"do not rerun any tests if the initial run has more than this number of failures")
@@ -192,12 +187,10 @@ type options struct {
 	junitTestCaseClassnameFormat *junitFieldFormatValue
 	junitProjectName             string
 	junitHideEmptyPackages       bool
-	junitHideSkippedTests        bool
 	rerunFailsMaxAttempts        int
 	rerunFailsMaxInitialFailures int
 	rerunFailsReportFile         string
 	rerunFailsRunRootCases       bool
-	rerunFailsAbortOnDataRace    bool
 	packages                     []string
 	watch                        bool
 	watchChdir                   bool
@@ -303,7 +296,7 @@ func run(opts *options) error {
 	if exitErr == nil || opts.rerunFailsMaxAttempts == 0 {
 		return finishRun(opts, exec, exitErr)
 	}
-	if err := hasErrors(exitErr, exec, opts); err != nil {
+	if err := hasErrors(exitErr, exec); err != nil {
 		return finishRun(opts, exec, err)
 	}
 

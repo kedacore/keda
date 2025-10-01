@@ -77,9 +77,6 @@ type Package struct {
 	Skipped []TestCase
 	Passed  []TestCase
 
-	// Start is the earliest timestamp reported by any event for this package.
-	Start time.Time
-
 	// elapsed time reported by the pass or fail event for the package.
 	elapsed time.Duration
 
@@ -105,9 +102,6 @@ type Package struct {
 	// github.com/golang/go/issues/45508. This field may be removed in the future
 	// if the issue is fixed in Go.
 	panicked bool
-	// hasDataRace is true if the package, or one of the tests in the package,
-	// contained output that looked like a data race.
-	hasDataRace bool
 	// shuffleSeed is the seed used to shuffle the tests. The value is set when
 	// tests are run with -shuffle
 	shuffleSeed string
@@ -200,9 +194,6 @@ func (p *Package) OutputLines(tc TestCase) []string {
 func (p *Package) addOutput(id int, output string) {
 	if strings.HasPrefix(output, "panic: ") {
 		p.panicked = true
-	}
-	if strings.HasPrefix(output, "WARNING: DATA RACE") {
-		p.hasDataRace = true
 	}
 	p.output[id] = append(p.output[id], output)
 }
@@ -355,9 +346,7 @@ func newPackage() *Package {
 
 // Execution of one or more test packages
 type Execution struct {
-	procStart  time.Time
-	testStart  time.Time
-	testEnd    time.Time
+	started    time.Time
 	packages   map[string]*Package
 	errorsLock sync.RWMutex
 	errors     []string
@@ -371,24 +360,10 @@ func (e *Execution) add(event TestEvent) {
 		pkg = newPackage()
 		e.packages[event.Package] = pkg
 	}
-
-	if !event.Time.IsZero() {
-		if e.testStart.IsZero() || event.Time.Before(e.testStart) {
-			e.testStart = event.Time
-		}
-		if event.Time.After(e.testEnd) {
-			e.testEnd = event.Time
-		}
-		if pkg.Start.IsZero() || event.Time.Before(pkg.Start) {
-			pkg.Start = event.Time
-		}
-	}
-
 	if event.Action == ActionBuild {
 		e.addError(event.Output)
 		return
 	}
-
 	if event.PackageEvent() {
 		pkg.addEvent(event)
 		return
@@ -552,10 +527,7 @@ var timeNow = time.Now
 
 // Elapsed returns the time elapsed since the execution started.
 func (e *Execution) Elapsed() time.Duration {
-	if !e.testEnd.IsZero() {
-		return e.testEnd.Sub(e.Started())
-	}
-	return timeNow().Sub(e.Started())
+	return timeNow().Sub(e.started)
 }
 
 // Failed returns a list of all the failed test cases.
@@ -672,15 +644,6 @@ func (e *Execution) HasPanic() bool {
 	return false
 }
 
-func (e *Execution) HasDataRace() bool {
-	for _, pkg := range e.packages {
-		if pkg.hasDataRace {
-			return true
-		}
-	}
-	return false
-}
-
 func (e *Execution) end() []TestEvent {
 	e.done = true
 	var result []TestEvent
@@ -691,18 +654,15 @@ func (e *Execution) end() []TestEvent {
 }
 
 func (e *Execution) Started() time.Time {
-	if e.testStart.IsZero() {
-		return e.procStart
-	}
-	return e.testStart
+	return e.started
 }
 
 // newExecution returns a new Execution and records the current time as the
 // time the test execution started.
 func newExecution() *Execution {
 	return &Execution{
-		procStart: time.Now(),
-		packages:  make(map[string]*Package),
+		started:  timeNow(),
+		packages: make(map[string]*Package),
 	}
 }
 

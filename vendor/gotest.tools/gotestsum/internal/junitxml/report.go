@@ -75,7 +75,6 @@ type Config struct {
 	FormatTestSuiteName     FormatFunc
 	FormatTestCaseClassname FormatFunc
 	HideEmptyPackages       bool
-	HideSkippedTests        bool
 	// This is used for tests to have a consistent timestamp
 	customTimestamp string
 	customElapsed   string
@@ -95,35 +94,22 @@ func Write(out io.Writer, exec *testjson.Execution, cfg Config) error {
 func generate(exec *testjson.Execution, cfg Config) JUnitTestSuites {
 	cfg = configWithDefaults(cfg)
 	version := goVersion()
-
-	total := exec.Total()
-	if cfg.HideSkippedTests && len(exec.Skipped()) > 0 {
-		total -= len(exec.Skipped())
-	}
-
 	suites := JUnitTestSuites{
 		Name:     cfg.ProjectName,
-		Tests:    total,
+		Tests:    exec.Total(),
 		Failures: len(exec.Failed()),
 		Errors:   len(exec.Errors()),
-		Time:     formatDurationAsSeconds(exec.Elapsed()),
+		Time:     formatDurationAsSeconds(time.Since(exec.Started())),
 	}
 
 	if cfg.customElapsed != "" {
 		suites.Time = cfg.customElapsed
 	}
-
 	for _, pkgname := range exec.Packages() {
 		pkg := exec.Package(pkgname)
 		if cfg.HideEmptyPackages && pkg.IsEmpty() {
 			continue
 		}
-
-		if cfg.HideSkippedTests && len(pkg.Skipped) > 0 {
-			pkg.Total -= len(pkg.Skipped)
-			pkg.Skipped = nil
-		}
-
 		junitpkg := JUnitTestSuite{
 			Name:       cfg.FormatTestSuiteName(pkgname),
 			Tests:      pkg.Total,
@@ -135,7 +121,7 @@ func generate(exec *testjson.Execution, cfg Config) JUnitTestSuites {
 			Timestamp:  cfg.customTimestamp,
 		}
 		if cfg.customTimestamp == "" {
-			junitpkg.Timestamp = pkg.Start.Format(time.RFC3339)
+			junitpkg.Timestamp = exec.Started().Format(time.RFC3339)
 		}
 		suites.Suites = append(suites.Suites, junitpkg)
 	}
