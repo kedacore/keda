@@ -6,114 +6,71 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Disables enhanced monitoring.
-//
-// When invoking this API, you must use either the StreamARN or the StreamName
-// parameter, or both. It is recommended that you use the StreamARN input
-// parameter when you invoke this API.
-func (c *Client) DisableEnhancedMonitoring(ctx context.Context, params *DisableEnhancedMonitoringInput, optFns ...func(*Options)) (*DisableEnhancedMonitoringOutput, error) {
+// Removes tags from the specified Kinesis resource. Removed tags are deleted and
+// can't be recovered after this operation completes successfully.
+func (c *Client) UntagResource(ctx context.Context, params *UntagResourceInput, optFns ...func(*Options)) (*UntagResourceOutput, error) {
 	if params == nil {
-		params = &DisableEnhancedMonitoringInput{}
+		params = &UntagResourceInput{}
 	}
 
-	result, metadata, err := c.invokeOperation(ctx, "DisableEnhancedMonitoring", params, optFns, c.addOperationDisableEnhancedMonitoringMiddlewares)
+	result, metadata, err := c.invokeOperation(ctx, "UntagResource", params, optFns, c.addOperationUntagResourceMiddlewares)
 	if err != nil {
 		return nil, err
 	}
 
-	out := result.(*DisableEnhancedMonitoringOutput)
+	out := result.(*UntagResourceOutput)
 	out.ResultMetadata = metadata
 	return out, nil
 }
 
-// Represents the input for DisableEnhancedMonitoring.
-type DisableEnhancedMonitoringInput struct {
+type UntagResourceInput struct {
 
-	// List of shard-level metrics to disable.
-	//
-	// The following are the valid shard-level metrics. The value " ALL " disables
-	// every metric.
-	//
-	//   - IncomingBytes
-	//
-	//   - IncomingRecords
-	//
-	//   - OutgoingBytes
-	//
-	//   - OutgoingRecords
-	//
-	//   - WriteProvisionedThroughputExceeded
-	//
-	//   - ReadProvisionedThroughputExceeded
-	//
-	//   - IteratorAgeMilliseconds
-	//
-	//   - ALL
-	//
-	// For more information, see [Monitoring the Amazon Kinesis Data Streams Service with Amazon CloudWatch] in the Amazon Kinesis Data Streams Developer Guide.
-	//
-	// [Monitoring the Amazon Kinesis Data Streams Service with Amazon CloudWatch]: https://docs.aws.amazon.com/kinesis/latest/dev/monitoring-with-cloudwatch.html
+	// The Amazon Resource Name (ARN) of the Kinesis resource from which to remove
+	// tags.
 	//
 	// This member is required.
-	ShardLevelMetrics []types.MetricsName
+	ResourceARN *string
 
-	// The ARN of the stream.
-	StreamARN *string
-
-	// The name of the Kinesis data stream for which to disable enhanced monitoring.
-	StreamName *string
+	// A list of tag key-value pairs. Existing tags of the resource whose keys are
+	// members of this list will be removed from the Kinesis resource.
+	//
+	// This member is required.
+	TagKeys []string
 
 	noSmithyDocumentSerde
 }
 
-func (in *DisableEnhancedMonitoringInput) bindEndpointParams(p *EndpointParameters) {
+func (in *UntagResourceInput) bindEndpointParams(p *EndpointParameters) {
 
-	p.StreamARN = in.StreamARN
+	p.ResourceARN = in.ResourceARN
 	p.OperationType = ptr.String("control")
 }
 
-// Represents the output for EnableEnhancedMonitoring and DisableEnhancedMonitoring.
-type DisableEnhancedMonitoringOutput struct {
-
-	// Represents the current state of the metrics that are in the enhanced state
-	// before the operation.
-	CurrentShardLevelMetrics []types.MetricsName
-
-	// Represents the list of all the metrics that would be in the enhanced state
-	// after the operation.
-	DesiredShardLevelMetrics []types.MetricsName
-
-	// The ARN of the stream.
-	StreamARN *string
-
-	// The name of the Kinesis data stream.
-	StreamName *string
-
+type UntagResourceOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
 
 	noSmithyDocumentSerde
 }
 
-func (c *Client) addOperationDisableEnhancedMonitoringMiddlewares(stack *middleware.Stack, options Options) (err error) {
+func (c *Client) addOperationUntagResourceMiddlewares(stack *middleware.Stack, options Options) (err error) {
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDisableEnhancedMonitoring{}, middleware.After)
+	err = stack.Serialize.Add(&awsAwsjson11_serializeOpUntagResource{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDisableEnhancedMonitoring{}, middleware.After)
+	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpUntagResource{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "DisableEnhancedMonitoring"); err != nil {
+	if err := addProtocolFinalizerMiddlewares(stack, options, "UntagResource"); err != nil {
 		return fmt.Errorf("add protocol finalizers: %v", err)
 	}
 
@@ -168,10 +125,10 @@ func (c *Client) addOperationDisableEnhancedMonitoringMiddlewares(stack *middlew
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
-	if err = addOpDisableEnhancedMonitoringValidationMiddleware(stack); err != nil {
+	if err = addOpUntagResourceValidationMiddleware(stack); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDisableEnhancedMonitoring(options.Region), middleware.Before); err != nil {
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUntagResource(options.Region), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRecursionDetection(stack); err != nil {
@@ -234,10 +191,10 @@ func (c *Client) addOperationDisableEnhancedMonitoringMiddlewares(stack *middlew
 	return nil
 }
 
-func newServiceMetadataMiddleware_opDisableEnhancedMonitoring(region string) *awsmiddleware.RegisterServiceMetadata {
+func newServiceMetadataMiddleware_opUntagResource(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		OperationName: "DisableEnhancedMonitoring",
+		OperationName: "UntagResource",
 	}
 }

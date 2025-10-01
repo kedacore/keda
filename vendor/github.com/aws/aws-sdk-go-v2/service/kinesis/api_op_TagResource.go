@@ -6,114 +6,75 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Disables enhanced monitoring.
-//
-// When invoking this API, you must use either the StreamARN or the StreamName
-// parameter, or both. It is recommended that you use the StreamARN input
-// parameter when you invoke this API.
-func (c *Client) DisableEnhancedMonitoring(ctx context.Context, params *DisableEnhancedMonitoringInput, optFns ...func(*Options)) (*DisableEnhancedMonitoringOutput, error) {
+// Adds or updates tags for the specified Kinesis resource. Each tag is a label
+// consisting of a user-defined key and value. Tags can help you manage, identify,
+// organize, search for, and filter resources. You can assign up to 50 tags to a
+// Kinesis resource.
+func (c *Client) TagResource(ctx context.Context, params *TagResourceInput, optFns ...func(*Options)) (*TagResourceOutput, error) {
 	if params == nil {
-		params = &DisableEnhancedMonitoringInput{}
+		params = &TagResourceInput{}
 	}
 
-	result, metadata, err := c.invokeOperation(ctx, "DisableEnhancedMonitoring", params, optFns, c.addOperationDisableEnhancedMonitoringMiddlewares)
+	result, metadata, err := c.invokeOperation(ctx, "TagResource", params, optFns, c.addOperationTagResourceMiddlewares)
 	if err != nil {
 		return nil, err
 	}
 
-	out := result.(*DisableEnhancedMonitoringOutput)
+	out := result.(*TagResourceOutput)
 	out.ResultMetadata = metadata
 	return out, nil
 }
 
-// Represents the input for DisableEnhancedMonitoring.
-type DisableEnhancedMonitoringInput struct {
+type TagResourceInput struct {
 
-	// List of shard-level metrics to disable.
-	//
-	// The following are the valid shard-level metrics. The value " ALL " disables
-	// every metric.
-	//
-	//   - IncomingBytes
-	//
-	//   - IncomingRecords
-	//
-	//   - OutgoingBytes
-	//
-	//   - OutgoingRecords
-	//
-	//   - WriteProvisionedThroughputExceeded
-	//
-	//   - ReadProvisionedThroughputExceeded
-	//
-	//   - IteratorAgeMilliseconds
-	//
-	//   - ALL
-	//
-	// For more information, see [Monitoring the Amazon Kinesis Data Streams Service with Amazon CloudWatch] in the Amazon Kinesis Data Streams Developer Guide.
-	//
-	// [Monitoring the Amazon Kinesis Data Streams Service with Amazon CloudWatch]: https://docs.aws.amazon.com/kinesis/latest/dev/monitoring-with-cloudwatch.html
+	// The Amazon Resource Name (ARN) of the Kinesis resource to which to add tags.
 	//
 	// This member is required.
-	ShardLevelMetrics []types.MetricsName
+	ResourceARN *string
 
-	// The ARN of the stream.
-	StreamARN *string
-
-	// The name of the Kinesis data stream for which to disable enhanced monitoring.
-	StreamName *string
+	// An array of tags to be added to the Kinesis resource. A tag consists of a
+	// required key and an optional value. You can add up to 50 tags per resource.
+	//
+	// Tags may only contain Unicode letters, digits, white space, or these symbols: _
+	// . : / = + - @.
+	//
+	// This member is required.
+	Tags map[string]string
 
 	noSmithyDocumentSerde
 }
 
-func (in *DisableEnhancedMonitoringInput) bindEndpointParams(p *EndpointParameters) {
+func (in *TagResourceInput) bindEndpointParams(p *EndpointParameters) {
 
-	p.StreamARN = in.StreamARN
+	p.ResourceARN = in.ResourceARN
 	p.OperationType = ptr.String("control")
 }
 
-// Represents the output for EnableEnhancedMonitoring and DisableEnhancedMonitoring.
-type DisableEnhancedMonitoringOutput struct {
-
-	// Represents the current state of the metrics that are in the enhanced state
-	// before the operation.
-	CurrentShardLevelMetrics []types.MetricsName
-
-	// Represents the list of all the metrics that would be in the enhanced state
-	// after the operation.
-	DesiredShardLevelMetrics []types.MetricsName
-
-	// The ARN of the stream.
-	StreamARN *string
-
-	// The name of the Kinesis data stream.
-	StreamName *string
-
+type TagResourceOutput struct {
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
 
 	noSmithyDocumentSerde
 }
 
-func (c *Client) addOperationDisableEnhancedMonitoringMiddlewares(stack *middleware.Stack, options Options) (err error) {
+func (c *Client) addOperationTagResourceMiddlewares(stack *middleware.Stack, options Options) (err error) {
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDisableEnhancedMonitoring{}, middleware.After)
+	err = stack.Serialize.Add(&awsAwsjson11_serializeOpTagResource{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpDisableEnhancedMonitoring{}, middleware.After)
+	err = stack.Deserialize.Add(&awsAwsjson11_deserializeOpTagResource{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "DisableEnhancedMonitoring"); err != nil {
+	if err := addProtocolFinalizerMiddlewares(stack, options, "TagResource"); err != nil {
 		return fmt.Errorf("add protocol finalizers: %v", err)
 	}
 
@@ -168,10 +129,10 @@ func (c *Client) addOperationDisableEnhancedMonitoringMiddlewares(stack *middlew
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
-	if err = addOpDisableEnhancedMonitoringValidationMiddleware(stack); err != nil {
+	if err = addOpTagResourceValidationMiddleware(stack); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDisableEnhancedMonitoring(options.Region), middleware.Before); err != nil {
+	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opTagResource(options.Region), middleware.Before); err != nil {
 		return err
 	}
 	if err = addRecursionDetection(stack); err != nil {
@@ -234,10 +195,10 @@ func (c *Client) addOperationDisableEnhancedMonitoringMiddlewares(stack *middlew
 	return nil
 }
 
-func newServiceMetadataMiddleware_opDisableEnhancedMonitoring(region string) *awsmiddleware.RegisterServiceMetadata {
+func newServiceMetadataMiddleware_opTagResource(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		OperationName: "DisableEnhancedMonitoring",
+		OperationName: "TagResource",
 	}
 }
