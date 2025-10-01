@@ -17,7 +17,6 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -220,26 +219,18 @@ func TestSplunkObservabilityScaler(t *testing.T) {
 		"replica count should be greater than %d after 2 minutes", minReplicaCount)
 
 	// test scaling
-	testScaleOut(ctx, t, kc, testNamespace)
-	testScaleIn(ctx, t, kc)
+	testScaleOut(t, kc)
+	testScaleIn(t, kc)
 }
 
-func getPodCount(ctx context.Context, kc *kubernetes.Clientset, namespace string) int {
-	pods, err := kc.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		panic(err.Error())
-	}
-	return len(pods.Items)
-}
-
-func testScaleOut(ctx context.Context, t *testing.T, kc *kubernetes.Clientset, namespace string) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
 	t.Log("waiting for 3 minutes")
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 10, 3, 60), "replica count should be 10 after 3 minutes")
 }
 
-func testScaleIn(ctx context.Context, t *testing.T, kc *kubernetes.Clientset) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
 	t.Log("waiting for 10 minutes")
 
