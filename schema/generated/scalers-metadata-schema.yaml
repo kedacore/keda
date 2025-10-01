@@ -2856,6 +2856,41 @@ scalers:
           type: string
           default: "0"
           metadataVariableReadable: true
+    - type: solarwinds
+      parameters:
+        - name: apiToken
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: host
+          type: string
+          metadataVariableReadable: true
+        - name: targetValue
+          type: string
+          metadataVariableReadable: true
+        - name: activationValue
+          type: string
+          metadataVariableReadable: true
+        - name: metricName
+          type: string
+          metadataVariableReadable: true
+        - name: aggregation
+          type: string
+          allowedValue:
+            - COUNT
+            - MIN
+            - MAX
+            - AVG
+            - SUM
+            - LAST
+          metadataVariableReadable: true
+        - name: intervalS
+          type: string
+          metadataVariableReadable: true
+        - name: filter
+          type: string
+          optional: true
+          metadataVariableReadable: true
     - type: solr
       parameters:
         - name: host
