@@ -1686,6 +1686,51 @@
             ]
         },
         {
+            "type": "forgejo-runner",
+            "parameters": [
+                {
+                    "name": "token",
+                    "type": "string",
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "address",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "labels",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "global",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "owner",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "org",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "repo",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "gcp-cloudtasks",
             "parameters": [
                 {
@@ -1716,6 +1761,7 @@
                 {
                     "name": "projectID",
                     "type": "string",
+                    "deprecatedAnnounce": "This scaler is deprecated. More info -\u003e 'https://keda.sh/blog/2025-09-15-gcp-deprecations'",
                     "metadataVariableReadable": true
                 }
             ]
@@ -1766,7 +1812,7 @@
                 {
                     "name": "githubApiURL",
                     "type": "string",
-                    "default": "https",
+                    "default": "https://api.github.com",
                     "metadataVariableReadable": true,
                     "envVariableReadable": true
                 },
@@ -2024,13 +2070,21 @@
                 {
                     "name": "authToken",
                     "type": "string",
-                    "metadataVariableReadable": true,
+                    "optional": true,
+                    "deprecatedAnnounce": "The 'authToken' setting from triggerMetadata is DEPRECATED and will be removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "authToken",
+                    "type": "string",
+                    "optional": true,
                     "envVariableReadable": true,
                     "triggerAuthenticationVariableReadable": true
                 },
                 {
                     "name": "organizationName",
                     "type": "string",
+                    "optional": true,
                     "metadataVariableReadable": true,
                     "envVariableReadable": true,
                     "triggerAuthenticationVariableReadable": true
@@ -2038,6 +2092,35 @@
                 {
                     "name": "query",
                     "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "influxVersion",
+                    "type": "string",
+                    "default": "2",
+                    "allowedValue": [
+                        "2",
+                        "3"
+                    ],
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "queryType",
+                    "type": "string",
+                    "default": "InfluxQL",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "database",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "metricKey",
+                    "type": "string",
+                    "optional": true,
                     "metadataVariableReadable": true
                 },
                 {
@@ -2825,6 +2908,7 @@
                     "name": "value",
                     "type": "string",
                     "default": "10",
+                    "deprecatedAnnounce": "This scaler is deprecated. More info -\u003e 'https://keda.sh/blog/2025-09-15-gcp-deprecations'",
                     "metadataVariableReadable": true
                 },
                 {
@@ -4278,6 +4362,61 @@
             ]
         },
         {
+            "type": "solarwinds",
+            "parameters": [
+                {
+                    "name": "apiToken",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "host",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "targetValue",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationValue",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "metricName",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "aggregation",
+                    "type": "string",
+                    "allowedValue": [
+                        "COUNT",
+                        "MIN",
+                        "MAX",
+                        "AVG",
+                        "SUM",
+                        "LAST"
+                    ],
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "intervalS",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "filter",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "solr",
             "parameters": [
                 {
@@ -4385,6 +4524,7 @@
                 {
                     "name": "filter",
                     "type": "string",
+                    "deprecatedAnnounce": "This scaler is deprecated. More info -\u003e 'https://keda.sh/blog/2025-09-15-gcp-deprecations'",
                     "metadataVariableReadable": true
                 },
                 {
