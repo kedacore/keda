@@ -5,4 +5,4 @@
 
 # Any datadog file in pkg or tests folder
 "+(pkg|tests)/**/datadog*.go":
-  - arapulido
+  - team: keda-core-datadog-notification

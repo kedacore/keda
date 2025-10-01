@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ScaledObjectLister helps list ScaledObjects.
@@ -30,7 +30,7 @@ import (
 type ScaledObjectLister interface {
 	// List lists all ScaledObjects in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.ScaledObject, err error)
+	List(selector labels.Selector) (ret []*kedav1alpha1.ScaledObject, err error)
 	// ScaledObjects returns an object that can list and get ScaledObjects.
 	ScaledObjects(namespace string) ScaledObjectNamespaceLister
 	ScaledObjectListerExpansion
@@ -38,17 +38,17 @@ type ScaledObjectLister interface {
 
 // scaledObjectLister implements the ScaledObjectLister interface.
 type scaledObjectLister struct {
-	listers.ResourceIndexer[*v1alpha1.ScaledObject]
+	listers.ResourceIndexer[*kedav1alpha1.ScaledObject]
 }
 
 // NewScaledObjectLister returns a new ScaledObjectLister.
 func NewScaledObjectLister(indexer cache.Indexer) ScaledObjectLister {
-	return &scaledObjectLister{listers.New[*v1alpha1.ScaledObject](indexer, v1alpha1.Resource("scaledobject"))}
+	return &scaledObjectLister{listers.New[*kedav1alpha1.ScaledObject](indexer, kedav1alpha1.Resource("scaledobject"))}
 }
 
 // ScaledObjects returns an object that can list and get ScaledObjects.
 func (s *scaledObjectLister) ScaledObjects(namespace string) ScaledObjectNamespaceLister {
-	return scaledObjectNamespaceLister{listers.NewNamespaced[*v1alpha1.ScaledObject](s.ResourceIndexer, namespace)}
+	return scaledObjectNamespaceLister{listers.NewNamespaced[*kedav1alpha1.ScaledObject](s.ResourceIndexer, namespace)}
 }
 
 // ScaledObjectNamespaceLister helps list and get ScaledObjects.
@@ -56,15 +56,15 @@ func (s *scaledObjectLister) ScaledObjects(namespace string) ScaledObjectNamespa
 type ScaledObjectNamespaceLister interface {
 	// List lists all ScaledObjects in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.ScaledObject, err error)
+	List(selector labels.Selector) (ret []*kedav1alpha1.ScaledObject, err error)
 	// Get retrieves the ScaledObject from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.ScaledObject, error)
+	Get(name string) (*kedav1alpha1.ScaledObject, error)
 	ScaledObjectNamespaceListerExpansion
 }
 
 // scaledObjectNamespaceLister implements the ScaledObjectNamespaceLister
 // interface.
 type scaledObjectNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha1.ScaledObject]
+	listers.ResourceIndexer[*kedav1alpha1.ScaledObject]
 }

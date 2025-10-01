@@ -38,6 +38,12 @@ func isSpace(ch rune) bool {
 	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
 }
 
+// isDigit checks if a character is a digit. More precisely it evaluates if it is
+// in the range of ASCII characters '0' to '9'.
+func isDigit(ch rune) bool {
+	return ch >= '0' && ch <= '9'
+}
+
 // isDelimiter checks if a character is some kind of whitespace or '_' or '-'.
 func isDelimiter(ch rune) bool {
 	return ch == '-' || ch == '_' || isSpace(ch)

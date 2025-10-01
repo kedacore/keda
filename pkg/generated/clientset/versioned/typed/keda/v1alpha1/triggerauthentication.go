@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	scheme "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,33 +37,34 @@ type TriggerAuthenticationsGetter interface {
 
 // TriggerAuthenticationInterface has methods to work with TriggerAuthentication resources.
 type TriggerAuthenticationInterface interface {
-	Create(ctx context.Context, triggerAuthentication *v1alpha1.TriggerAuthentication, opts v1.CreateOptions) (*v1alpha1.TriggerAuthentication, error)
-	Update(ctx context.Context, triggerAuthentication *v1alpha1.TriggerAuthentication, opts v1.UpdateOptions) (*v1alpha1.TriggerAuthentication, error)
+	Create(ctx context.Context, triggerAuthentication *kedav1alpha1.TriggerAuthentication, opts v1.CreateOptions) (*kedav1alpha1.TriggerAuthentication, error)
+	Update(ctx context.Context, triggerAuthentication *kedav1alpha1.TriggerAuthentication, opts v1.UpdateOptions) (*kedav1alpha1.TriggerAuthentication, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, triggerAuthentication *v1alpha1.TriggerAuthentication, opts v1.UpdateOptions) (*v1alpha1.TriggerAuthentication, error)
+	UpdateStatus(ctx context.Context, triggerAuthentication *kedav1alpha1.TriggerAuthentication, opts v1.UpdateOptions) (*kedav1alpha1.TriggerAuthentication, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.TriggerAuthentication, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.TriggerAuthenticationList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*kedav1alpha1.TriggerAuthentication, error)
+	List(ctx context.Context, opts v1.ListOptions) (*kedav1alpha1.TriggerAuthenticationList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TriggerAuthentication, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *kedav1alpha1.TriggerAuthentication, err error)
 	TriggerAuthenticationExpansion
 }
 
 // triggerAuthentications implements TriggerAuthenticationInterface
 type triggerAuthentications struct {
-	*gentype.ClientWithList[*v1alpha1.TriggerAuthentication, *v1alpha1.TriggerAuthenticationList]
+	*gentype.ClientWithList[*kedav1alpha1.TriggerAuthentication, *kedav1alpha1.TriggerAuthenticationList]
 }
 
 // newTriggerAuthentications returns a TriggerAuthentications
 func newTriggerAuthentications(c *KedaV1alpha1Client, namespace string) *triggerAuthentications {
 	return &triggerAuthentications{
-		gentype.NewClientWithList[*v1alpha1.TriggerAuthentication, *v1alpha1.TriggerAuthenticationList](
+		gentype.NewClientWithList[*kedav1alpha1.TriggerAuthentication, *kedav1alpha1.TriggerAuthenticationList](
 			"triggerauthentications",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.TriggerAuthentication { return &v1alpha1.TriggerAuthentication{} },
-			func() *v1alpha1.TriggerAuthenticationList { return &v1alpha1.TriggerAuthenticationList{} }),
+			func() *kedav1alpha1.TriggerAuthentication { return &kedav1alpha1.TriggerAuthentication{} },
+			func() *kedav1alpha1.TriggerAuthenticationList { return &kedav1alpha1.TriggerAuthenticationList{} },
+		),
 	}
 }
