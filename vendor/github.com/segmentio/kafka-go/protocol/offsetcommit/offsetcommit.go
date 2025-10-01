@@ -28,7 +28,7 @@ type RequestPartition struct {
 	PartitionIndex       int32  `kafka:"min=v0,max=v7"`
 	CommittedOffset      int64  `kafka:"min=v0,max=v7"`
 	CommitTimestamp      int64  `kafka:"min=v1,max=v1"`
-	CommittedLeaderEpoch int32  `kafka:"min=v5,max=v7"`
+	CommittedLeaderEpoch int32  `kafka:"min=v6,max=v7"`
 	CommittedMetadata    string `kafka:"min=v0,max=v7,nullable"`
 }
 

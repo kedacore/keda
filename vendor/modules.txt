@@ -1448,8 +1448,8 @@ github.com/ryanuber/go-glob
 # github.com/samber/lo v1.39.0
 ## explicit; go 1.18
 github.com/samber/lo
-# github.com/segmentio/kafka-go v0.4.47
-## explicit; go 1.15
+# github.com/segmentio/kafka-go v0.4.49
+## explicit; go 1.23
 github.com/segmentio/kafka-go
 github.com/segmentio/kafka-go/compress
 github.com/segmentio/kafka-go/compress/gzip
