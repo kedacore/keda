@@ -39,7 +39,7 @@ jobs:
 
       - name: Add label to skip e2e test
         if: ${{ startsWith(github.event.comment.body,'/skip-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
         with:
           github-token: ${{ secrets.GH_AUTOMATION_PAT }}
           script: |
