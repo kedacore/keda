@@ -878,6 +878,10 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 				isError = true
 				continue
 			}
+			if sendRawMetrics {
+				// send the raw metric to all subscribed clients in a non-blocking fashion
+				go h.sendWhenSubscribed(scaledJob.Name, scaledJob.Namespace, scalerName, metrics)
+			}
 			if isTriggerActive {
 				isActive = true
 			}

@@ -47,13 +47,16 @@ type RawMetricSubscriptions struct {
 const (
 	// KEDA will keep this many measurements on the channel (each collected in 15s interval), then sendTimeout will start ticking
 	// if client isn't able to consume the message within that period, it will be automatically unsubscribed
-	rawMetricsChannelCapacity = 16
+	rawMetricsChannelCapacity = 4
 
 	// timeout after which all the metrics for the subscriber will be unsubscribed (if these are not being consumed by client)
 	unsubscribeTimeout = 1 * time.Minute
 )
 
 func (h *scaleHandler) UnsubscribeMetric(_ context.Context, subscriber string, sor *api.ScaledObjectRef) bool {
+	if sor == nil || len(sor.MetricName) == 0 || len(sor.Namespace) == 0 || len(sor.Name) == 0 {
+		return false
+	}
 	toDel := toMetricMeta(sor)
 	log.Info("Unsubscribing metric", "subscriber", subscriber, "metric", toDel)
 	h.subsLock.Lock()
@@ -82,12 +85,11 @@ func (h *scaleHandler) UnsubscribeMetric(_ context.Context, subscriber string, s
 
 	// (3). subscriber has no other metrics -> close the channels
 	if len(remainingMetricsOfSub) == 0 {
-		close(h.rawMetricsSubscriptions[subscriber].rawMetrics)
 		select {
 		case h.rawMetricsSubscriptions[subscriber].done <- true:
+			close(h.rawMetricsSubscriptions[subscriber].done)
 		default:
 		}
-		close(h.rawMetricsSubscriptions[subscriber].done)
 		delete(h.rawMetricsSubscriptions, subscriber)
 	} else {
 		h.rawMetricsSubscriptions[subscriber].subscriptions = remainingMetricsOfSub
@@ -97,6 +99,9 @@ func (h *scaleHandler) UnsubscribeMetric(_ context.Context, subscriber string, s
 }
 
 func (h *scaleHandler) SubscribeMetric(_ context.Context, subscriber string, sor *api.ScaledObjectRef) bool {
+	if sor == nil || len(sor.MetricName) == 0 || len(sor.Namespace) == 0 || len(sor.Name) == 0 {
+		return false
+	}
 	toAdd := toMetricMeta(sor)
 	log.Info("Subscribing metric", "subscriber", subscriber, "metric", toAdd)
 	h.subsLock.Lock()
@@ -159,11 +164,13 @@ func (h *scaleHandler) sendWhenSubscribed(soName, ns, triggerName string, metric
 
 		for _, t := range targets {
 			select {
-			case <-t.done:
-				// subscriber closed
-				return
 			case t.rawMetrics <- msg:
 				// sent ok
+			case val := <-t.done:
+				// subscriber closed
+				if val {
+					close(t.rawMetrics)
+				}
 			case <-time.After(unsubscribeTimeout):
 				// timed out -> drop & unsubscribe
 				log.V(10).Info("Raw metric channel has reached its capacity and timeout has passed."+
@@ -209,6 +216,6 @@ func makeEmptySubscriptions(id string) *RawMetricSubscriptions {
 		id:            id,
 		subscriptions: []metricMeta{},
 		rawMetrics:    make(chan RawMetrics, rawMetricsChannelCapacity),
-		done:          make(chan bool),
+		done:          make(chan bool, 1),
 	}
 }
