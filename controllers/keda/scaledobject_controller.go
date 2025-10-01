@@ -132,6 +132,7 @@ func (r *ScaledObjectReconciler) SetupWithManager(mgr ctrl.Manager, options cont
 				kedacontrollerutil.PausedPredicate{},
 				kedacontrollerutil.PausedReplicasPredicate{},
 				kedacontrollerutil.PausedScaleInPredicate{},
+				kedacontrollerutil.PausedScaleOutPredicate{},
 				kedacontrollerutil.ScaleObjectReadyConditionPredicate{},
 				kedacontrollerutil.ForceActivationPredicate{},
 				predicate.GenerationChangedPredicate{},
@@ -234,6 +235,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 	// and if so, stop the scale loop and delete the HPA on the scaledObject.
 	// Additionally, if the following annotations are present:
 	// - "autoscaling.keda.sh/paused-scale-in"
+	// - "autoscaling.keda.sh/paused-scale-out"
 	// we also set the status to paused but we allow the scale loop to continue and do not delete the HPA because these are unidirectional pauses.
 	needsToPause := scaledObject.NeedToBePausedByAnnotation()
 	switch {
@@ -259,7 +261,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 			conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, msg)
 			return msg, nil
 		}
-	case scaledObject.NeedToPauseScaleIn():
+	case scaledObject.NeedToPauseScaleIn() || scaledObject.NeedToPauseScaleOut():
 		conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, kedav1alpha1.ScaledObjectConditionPausedMessage)
 	case conditions.GetPausedCondition().Status == metav1.ConditionTrue:
 		conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectUnpaused", "pause annotation removed for ScaledObject")

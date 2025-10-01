@@ -135,3 +135,185 @@ var MetricsService_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "metrics.proto",
 }
+
+const (
+	RawMetricsService_GetRawMetricsStream_FullMethodName = "/api.RawMetricsService/GetRawMetricsStream"
+	RawMetricsService_SubscribeMetric_FullMethodName     = "/api.RawMetricsService/SubscribeMetric"
+	RawMetricsService_UnsubscribeMetric_FullMethodName   = "/api.RawMetricsService/UnsubscribeMetric"
+)
+
+// RawMetricsServiceClient is the client API for RawMetricsService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type RawMetricsServiceClient interface {
+	GetRawMetricsStream(ctx context.Context, in *RawMetricsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[RawMetricsResponse], error)
+	SubscribeMetric(ctx context.Context, in *SubscriptionRequest, opts ...grpc.CallOption) (*SubscriptionAck, error)
+	UnsubscribeMetric(ctx context.Context, in *SubscriptionRequest, opts ...grpc.CallOption) (*SubscriptionAck, error)
+}
+
+type rawMetricsServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewRawMetricsServiceClient(cc grpc.ClientConnInterface) RawMetricsServiceClient {
+	return &rawMetricsServiceClient{cc}
+}
+
+func (c *rawMetricsServiceClient) GetRawMetricsStream(ctx context.Context, in *RawMetricsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[RawMetricsResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &RawMetricsService_ServiceDesc.Streams[0], RawMetricsService_GetRawMetricsStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[RawMetricsRequest, RawMetricsResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RawMetricsService_GetRawMetricsStreamClient = grpc.ServerStreamingClient[RawMetricsResponse]
+
+func (c *rawMetricsServiceClient) SubscribeMetric(ctx context.Context, in *SubscriptionRequest, opts ...grpc.CallOption) (*SubscriptionAck, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SubscriptionAck)
+	err := c.cc.Invoke(ctx, RawMetricsService_SubscribeMetric_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rawMetricsServiceClient) UnsubscribeMetric(ctx context.Context, in *SubscriptionRequest, opts ...grpc.CallOption) (*SubscriptionAck, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SubscriptionAck)
+	err := c.cc.Invoke(ctx, RawMetricsService_UnsubscribeMetric_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// RawMetricsServiceServer is the server API for RawMetricsService service.
+// All implementations must embed UnimplementedRawMetricsServiceServer
+// for forward compatibility.
+type RawMetricsServiceServer interface {
+	GetRawMetricsStream(*RawMetricsRequest, grpc.ServerStreamingServer[RawMetricsResponse]) error
+	SubscribeMetric(context.Context, *SubscriptionRequest) (*SubscriptionAck, error)
+	UnsubscribeMetric(context.Context, *SubscriptionRequest) (*SubscriptionAck, error)
+	mustEmbedUnimplementedRawMetricsServiceServer()
+}
+
+// UnimplementedRawMetricsServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedRawMetricsServiceServer struct{}
+
+func (UnimplementedRawMetricsServiceServer) GetRawMetricsStream(*RawMetricsRequest, grpc.ServerStreamingServer[RawMetricsResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method GetRawMetricsStream not implemented")
+}
+func (UnimplementedRawMetricsServiceServer) SubscribeMetric(context.Context, *SubscriptionRequest) (*SubscriptionAck, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SubscribeMetric not implemented")
+}
+func (UnimplementedRawMetricsServiceServer) UnsubscribeMetric(context.Context, *SubscriptionRequest) (*SubscriptionAck, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsubscribeMetric not implemented")
+}
+func (UnimplementedRawMetricsServiceServer) mustEmbedUnimplementedRawMetricsServiceServer() {}
+func (UnimplementedRawMetricsServiceServer) testEmbeddedByValue()                           {}
+
+// UnsafeRawMetricsServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to RawMetricsServiceServer will
+// result in compilation errors.
+type UnsafeRawMetricsServiceServer interface {
+	mustEmbedUnimplementedRawMetricsServiceServer()
+}
+
+func RegisterRawMetricsServiceServer(s grpc.ServiceRegistrar, srv RawMetricsServiceServer) {
+	// If the following call pancis, it indicates UnimplementedRawMetricsServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&RawMetricsService_ServiceDesc, srv)
+}
+
+func _RawMetricsService_GetRawMetricsStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(RawMetricsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(RawMetricsServiceServer).GetRawMetricsStream(m, &grpc.GenericServerStream[RawMetricsRequest, RawMetricsResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RawMetricsService_GetRawMetricsStreamServer = grpc.ServerStreamingServer[RawMetricsResponse]
+
+func _RawMetricsService_SubscribeMetric_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubscriptionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RawMetricsServiceServer).SubscribeMetric(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RawMetricsService_SubscribeMetric_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RawMetricsServiceServer).SubscribeMetric(ctx, req.(*SubscriptionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RawMetricsService_UnsubscribeMetric_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubscriptionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RawMetricsServiceServer).UnsubscribeMetric(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RawMetricsService_UnsubscribeMetric_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RawMetricsServiceServer).UnsubscribeMetric(ctx, req.(*SubscriptionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// RawMetricsService_ServiceDesc is the grpc.ServiceDesc for RawMetricsService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var RawMetricsService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "api.RawMetricsService",
+	HandlerType: (*RawMetricsServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "SubscribeMetric",
+			Handler:    _RawMetricsService_SubscribeMetric_Handler,
+		},
+		{
+			MethodName: "UnsubscribeMetric",
+			Handler:    _RawMetricsService_UnsubscribeMetric_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "GetRawMetricsStream",
+			Handler:       _RawMetricsService_GetRawMetricsStream_Handler,
+			ServerStreams: true,
+		},
+	},
+	Metadata: "metrics.proto",
+}
