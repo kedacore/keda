@@ -10,7 +10,11 @@ jobs:
   validate:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.23.8
+    container:
+      image: ghcr.io/kedacore/keda-tools:1.23.8
+      volumes:
+        - /usr:/host/usr
+        - /opt:/host/opt
     strategy:
       matrix:
         include:
@@ -24,12 +28,15 @@ jobs:
 
       - name: Maximize disk space
         if: ${{ matrix.name == 'amd64' }}
-        uses: easimon/maximize-build-space@master
-        with:
-          overprovision-lvm: 'true'
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
+        run: |
+          # inspired by easimon/maximize-build-space action but it can't be easily used because this runs in a container
+          # https://github.com/easimon/maximize-build-space/blob/c28619d8999a147d5e09c1199f84ff6af6ad5794/action.yml#L41-L60
+          # remove android sdk => ~11GB
+          rm -rf /host/usr/local/lib/android
+          # remove .NET => ~17GB
+          rm -rf /host/usr/share/dotnet
+          # remove haskell => ~2.7GB
+          rm -rf /host/opt/ghc
 
       - name: Check out code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
