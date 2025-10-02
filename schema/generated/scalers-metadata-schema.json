@@ -139,6 +139,12 @@
                     "metadataVariableReadable": true
                 },
                 {
+                    "name": "ensureEvenDistributionOfPartitions",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
                     "name": "sasl",
                     "type": "string",
                     "default": "none",
