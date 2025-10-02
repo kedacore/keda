@@ -36,7 +36,6 @@ type templateData struct {
 	SecretName                     string
 	AwsAccessKeyID                 string
 	AwsSecretAccessKey             string
-	AwsSessionToken                string
 	AwsRegion                      string
 	CloudWatchMetricName           string
 	CloudWatchMetricNamespace      string
@@ -45,14 +44,29 @@ type templateData struct {
 }
 
 const (
+	secretTemplate = `apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.SecretName}}
+  namespace: {{.TestNamespace}}
+data:
+  AWS_ACCESS_KEY_ID: {{.AwsAccessKeyID}}
+  AWS_SECRET_ACCESS_KEY: {{.AwsSecretAccessKey}}
+`
+
 	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
   name: keda-trigger-auth-aws-credentials
   namespace: {{.TestNamespace}}
 spec:
-  podIdentity:
-    provider: aws-eks
+  secretTargetRef:
+  - parameter: awsAccessKeyID     # Required.
+    name: {{.SecretName}}         # Required.
+    key: AWS_ACCESS_KEY_ID        # Required.
+  - parameter: awsSecretAccessKey # Required.
+    name: {{.SecretName}}         # Required.
+    key: AWS_SECRET_ACCESS_KEY    # Required.
 `
 
 	deploymentTemplate = `
@@ -121,7 +135,6 @@ var (
 	cloudwatchMetricName           = fmt.Sprintf("cw-%d", GetRandomNumber())
 	awsAccessKeyID                 = os.Getenv("TF_AWS_ACCESS_KEY")
 	awsSecretAccessKey             = os.Getenv("TF_AWS_SECRET_KEY")
-	awsSessionToken                = os.Getenv("TF_AWS_SESSION_TOKEN")
 	awsRegion                      = os.Getenv("TF_AWS_REGION")
 	cloudwatchMetricNamespace      = "KEDA"
 	cloudwatchMetricDimensionName  = "dimensionName"
@@ -202,7 +215,7 @@ func createCloudWatchClient() *cloudwatch.Client {
 	configOptions := make([]func(*config.LoadOptions) error, 0)
 	configOptions = append(configOptions, config.WithRegion(awsRegion))
 	cfg, _ := config.LoadDefaultConfig(context.TODO(), configOptions...)
-	cfg.Credentials = credentials.NewStaticCredentialsProvider(awsAccessKeyID, awsSecretAccessKey, awsSessionToken)
+	cfg.Credentials = credentials.NewStaticCredentialsProvider(awsAccessKeyID, awsSecretAccessKey, "")
 	return cloudwatch.NewFromConfig(cfg)
 }
 
@@ -214,13 +227,13 @@ func getTemplateData() (templateData, []Template) {
 			SecretName:                     secretName,
 			AwsAccessKeyID:                 base64.StdEncoding.EncodeToString([]byte(awsAccessKeyID)),
 			AwsSecretAccessKey:             base64.StdEncoding.EncodeToString([]byte(awsSecretAccessKey)),
-			AwsSessionToken:                base64.StdEncoding.EncodeToString([]byte(awsSessionToken)),
 			AwsRegion:                      awsRegion,
 			CloudWatchMetricName:           cloudwatchMetricName,
 			CloudWatchMetricNamespace:      cloudwatchMetricNamespace,
 			CloudWatchMetricDimensionName:  cloudwatchMetricDimensionName,
 			CloudWatchMetricDimensionValue: cloudwatchMetricDimensionValue,
 		}, []Template{
+			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
