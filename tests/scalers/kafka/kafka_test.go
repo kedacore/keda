@@ -24,46 +24,50 @@ const (
 )
 
 var (
-	testNamespace                  = fmt.Sprintf("%s-ns", testName)
-	deploymentName                 = fmt.Sprintf("%s-deployment", testName)
-	kafkaName                      = fmt.Sprintf("%s-kafka", testName)
-	kafkaClientName                = fmt.Sprintf("%s-client", testName)
-	scaledObjectName               = fmt.Sprintf("%s-so", testName)
-	bootstrapServer                = fmt.Sprintf("%s-kafka-bootstrap.%s:9092", kafkaName, testNamespace)
-	topic1                         = "kafka-topic"
-	topic2                         = "kafka-topic2"
-	zeroInvalidOffsetTopic         = "kafka-topic-zero-invalid-offset"
-	zeroInvalidOffsetEarliestGroup = "invalidOffsetZeroEarliest"
-	zeroInvalidOffsetLatestGroup   = "invalidOffsetZeroLatest"
-	oneInvalidOffsetTopic          = "kafka-topic-one-invalid-offset"
-	oneInvalidOffsetEarliestGroup  = "invalidOffsetOneEarliest"
-	oneInvalidOffsetLatestGroup    = "invalidOffsetOneLatest"
-	persistentLagTopic             = "kafka-topic-persistent-lag"
-	persistentLagGroup             = "persistentLag"
-	persistentLagDeploymentGroup   = "persistentLagDeploymentGroup"
-	limitToPartitionsWithLagTopic  = "limit-to-partitions-with-lag"
-	limitToPartitionsWithLagGroup  = "limitToPartitionsWithLag"
-	topicPartitions                = 3
+	testNamespace                                     = fmt.Sprintf("%s-ns", testName)
+	deploymentName                                    = fmt.Sprintf("%s-deployment", testName)
+	kafkaName                                         = fmt.Sprintf("%s-kafka", testName)
+	kafkaClientName                                   = fmt.Sprintf("%s-client", testName)
+	scaledObjectName                                  = fmt.Sprintf("%s-so", testName)
+	bootstrapServer                                   = fmt.Sprintf("%s-kafka-bootstrap.%s:9092", kafkaName, testNamespace)
+	topic1                                            = "kafka-topic"
+	topic2                                            = "kafka-topic2"
+	zeroInvalidOffsetTopic                            = "kafka-topic-zero-invalid-offset"
+	zeroInvalidOffsetEarliestGroup                    = "invalidOffsetZeroEarliest"
+	zeroInvalidOffsetLatestGroup                      = "invalidOffsetZeroLatest"
+	oneInvalidOffsetTopic                             = "kafka-topic-one-invalid-offset"
+	oneInvalidOffsetEarliestGroup                     = "invalidOffsetOneEarliest"
+	oneInvalidOffsetLatestGroup                       = "invalidOffsetOneLatest"
+	persistentLagTopic                                = "kafka-topic-persistent-lag"
+	persistentLagGroup                                = "persistentLag"
+	persistentLagDeploymentGroup                      = "persistentLagDeploymentGroup"
+	limitToPartitionsWithLagTopic                     = "limit-to-partitions-with-lag"
+	limitToPartitionsWithLagGroup                     = "limitToPartitionsWithLag"
+	ensureEvenDistributionOfPartitionsTopic           = "ensure-even-distribution-of-partitions"
+	ensureEvenDistributionOfPartitionsGroup           = "ensureEvenDistributionOfPartitions"
+	ensureEvenDistributionOfPartitionsTopicPartitions = 10
+	topicPartitions                                   = 3
 )
 
 type templateData struct {
-	TestNamespace            string
-	DeploymentName           string
-	ScaledObjectName         string
-	KafkaName                string
-	KafkaTopicName           string
-	KafkaTopicPartitions     int
-	KafkaClientName          string
-	TopicName                string
-	Topic1Name               string
-	Topic2Name               string
-	BootstrapServer          string
-	ResetPolicy              string
-	Params                   string
-	Commit                   string
-	ScaleToZeroOnInvalid     string
-	ExcludePersistentLag     string
-	LimitToPartitionsWithLag string
+	TestNamespace                      string
+	DeploymentName                     string
+	ScaledObjectName                   string
+	KafkaName                          string
+	KafkaTopicName                     string
+	KafkaTopicPartitions               int
+	KafkaClientName                    string
+	TopicName                          string
+	Topic1Name                         string
+	Topic2Name                         string
+	BootstrapServer                    string
+	ResetPolicy                        string
+	Params                             string
+	Commit                             string
+	ScaleToZeroOnInvalid               string
+	ExcludePersistentLag               string
+	LimitToPartitionsWithLag           string
+	EnsureEvenDistributionOfPartitions string
 }
 
 const (
@@ -360,6 +364,45 @@ spec:
       activationLagThreshold: '1'
       limitToPartitionsWithLag: '{{.LimitToPartitionsWithLag}}'`
 
+	ensureEvenDistributionOfPartitionsObjectTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  pollingInterval: 5
+  cooldownPeriod: 0
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+  triggers:
+  - type: kafka
+    metadata:
+      topic: {{.TopicName}}
+      bootstrapServers: {{.BootstrapServer}}
+      consumerGroup:  {{.ResetPolicy}}
+      offsetResetPolicy: 'earliest'
+      lagThreshold: '1'
+      activationLagThreshold: '1'
+      ensureEvenDistributionOfPartitions: '{{.EnsureEvenDistributionOfPartitions}}'`
+
 	kafkaClusterTemplate = `apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
@@ -465,6 +508,7 @@ func TestScaler(t *testing.T) {
 	addTopic(t, data, oneInvalidOffsetTopic, 1)
 	addTopic(t, data, persistentLagTopic, topicPartitions)
 	addTopic(t, data, limitToPartitionsWithLagTopic, topicPartitions)
+	addTopic(t, data, ensureEvenDistributionOfPartitionsTopic, ensureEvenDistributionOfPartitionsTopicPartitions)
 
 	// test scaling
 	testEarliestPolicy(t, kc, data)
@@ -476,6 +520,7 @@ func TestScaler(t *testing.T) {
 	testOneOnInvalidOffsetWithEarliestOffsetResetPolicy(t, kc, data)
 	testPersistentLag(t, kc, data)
 	testScalingOnlyPartitionsWithLag(t, kc, data)
+	testScalingEnsureEvenDistributionOfPartitions(t, kc, data)
 }
 
 func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
@@ -767,6 +812,53 @@ func testScalingOnlyPartitionsWithLag(t *testing.T, kc *kubernetes.Clientset, da
 	// Partition lag should not scale pod above 2 replicas after 2 reconciliation cycles
 	// because we only have lag on 2 partitions
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 2, 60)
+}
+
+func testScalingEnsureEvenDistributionOfPartitions(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing  ensureEvenDistributionOfPartitions: no scale out ---")
+
+	// Simulate Consumption from topic by consumer group
+	// To avoid edge case where scaling could be effectively disabled (Consumer never makes a commit)
+	commitPartition(t, ensureEvenDistributionOfPartitionsTopic, "latest")
+
+	data.Params = fmt.Sprintf("--topic %s --group %s", ensureEvenDistributionOfPartitionsTopic, ensureEvenDistributionOfPartitionsGroup)
+	data.Commit = StringFalse
+	data.TopicName = ensureEvenDistributionOfPartitionsTopic
+	data.EnsureEvenDistributionOfPartitions = StringTrue
+	data.ResetPolicy = "latest"
+
+	KubectlApplyWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "singleDeploymentTemplate", singleDeploymentTemplate)
+	KubectlApplyWithTemplate(t, data, "ensureEvenDistributionOfPartitionsObjectTemplate", ensureEvenDistributionOfPartitionsObjectTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "ensureEvenDistributionOfPartitionsObjectTemplate", ensureEvenDistributionOfPartitionsObjectTemplate)
+
+	// Shouldn't scale pods applying latest policy
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
+
+	// Shouldn't scale pods with only 1 message due to activation value
+	publishMessage(t, ensureEvenDistributionOfPartitionsTopic)
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
+
+	// Publish 4 messages to increase the lag to 5
+	messages := 4
+	for i := 0; i < messages; i++ {
+		publishMessage(t, ensureEvenDistributionOfPartitionsTopic)
+	}
+
+	// Total lag is 5, we have 10 paritions we should scale to 5 pods
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 5, 60, 2),
+		"replica count should be %d after 2 minute", 5)
+
+	// Publish 3 messages to increase the lag to 8
+	messages = 3
+	for i := 0; i < messages; i++ {
+		publishMessage(t, ensureEvenDistributionOfPartitionsTopic)
+	}
+
+	// Total lag is 8, we have 10 paritions we should scale to 8 pods but since ensureEvenDistributionOfPartitions is true
+	// we should scale to 10 pods
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 10, 60, 2),
+		"replica count should be %d after 2 minute", 10)
 }
 
 func addTopic(t *testing.T, data templateData, name string, partitions int) {

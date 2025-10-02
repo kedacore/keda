@@ -60,7 +60,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
-
 ### New
 
 - **General**: Add error and event for mismatching input property ([#6721](https://github.com/kedacore/keda/issues/6721))
@@ -87,14 +86,18 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Allow excluding labels from being propagated from ScaledObject and ScaledJob to generated HPA and Job objects ([#6849](https://github.com/kedacore/keda/issues/6849))
 - **General**: chore: only add webhook DNS names when webhook patching is enabled ([#7002](https://github.com/kedacore/keda/issues/7002))
 - **General**: Improve Events emitted from ScaledObject controller ([#6802](https://github.com/kedacore/keda/issues/6802))
+- **Apache Kafka Scaler**: Add support for even distribution of partitions to consumers ([#2581](https://github.com/kedacore/keda/issues/2581))
 - **Azure Pipelines Scaler**: Add new `fetchUnfinishedJobsOnly` property to fetch only unfinished pipeline jobs for a pool ([#6819](https://github.com/kedacore/keda/issues/6819))
 - **Datadog Scaler**: Add a specific timeout configuration parameter for the Datadog trigger ([#6999](https://github.com/kedacore/keda/pull/6999))
 - **Datadog Scaler**: Fix bug with datadogNamespace config ([#6828](https://github.com/kedacore/keda/pull/6828))
 - **Datadog Scaler**: Improve Datadog scaler error messages ([#6999](https://github.com/kedacore/keda/pull/6999))
 - **Github Scaler**: Add support to control unlabeled job/runner matching ([#6900](https://github.com/kedacore/keda/issues/6900))
 - **InfluxDB Scaler**: Add support for InfluxDB v3 ([#6981](https://github.com/kedacore/keda/issues/6981))
+- **Kafka Scaler**: Add support for even distribution of partitions to consumers ([#2581](https://github.com/kedacore/keda/issues/2581))
 - **Metrics API Scaler**: Support AuthParams for authMode ([#6939](https://github.com/kedacore/keda/issues/6939))
 - **Metrics API Scaler**: Support multiple auth methods simultaneously ([#6642](https://github.com/kedacore/keda/issues/6642))
+- **RabbitMQ Scaler**: add `DeliverGetRate`, `PublishedToDeliveredRatio` and `ExpectedQueueConsumptionTime` trigger modes to RabbitMQ scaler ([#7071](https://github.com/kedacore/keda/issues/7071))
+- **Solace Scaler**: Add hostlist support for Solace brokers ([#7090](https://github.com/kedacore/keda/issues/7090))
 - **Temporal Scaler**: Always set `temporal-namespace` header on requests([#7079](https://github.com/kedacore/keda/issues/7079))
 - **Temporal Scaler**: Support custom tlsServerName ([#6820](https://github.com/kedacore/keda/pull/6820))
 
