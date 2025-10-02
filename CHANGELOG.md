@@ -60,7 +60,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## Unreleased
 
-
 ### New
 
 - **General**: Add error and event for mismatching input property ([#6721](https://github.com/kedacore/keda/issues/6721))
@@ -94,6 +93,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **InfluxDB Scaler**: Add support for InfluxDB v3 ([#6981](https://github.com/kedacore/keda/issues/6981))
 - **Metrics API Scaler**: Support AuthParams for authMode ([#6939](https://github.com/kedacore/keda/issues/6939))
 - **Metrics API Scaler**: Support multiple auth methods simultaneously ([#6642](https://github.com/kedacore/keda/issues/6642))
+- **RabbitMQ Scaler**: add `DeliverGetRate`, `PublishedToDeliveredRatio` and `ExpectedQueueConsumptionTime` trigger modes to RabbitMQ scaler ([#7071](https://github.com/kedacore/keda/issues/7071))
 - **Solace Scaler**: Add hostlist support for Solace brokers ([#7090](https://github.com/kedacore/keda/issues/7090))
 - **Temporal Scaler**: Always set `temporal-namespace` header on requests([#7079](https://github.com/kedacore/keda/issues/7079))
 - **Temporal Scaler**: Support custom tlsServerName ([#6820](https://github.com/kedacore/keda/pull/6820))
