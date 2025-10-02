@@ -23,7 +23,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -68,8 +70,9 @@ type kafkaMetadata struct {
 
 	// If an invalid offset is found, whether to scale to 1 (false - the default) so consumption can
 	// occur or scale to 0 (true). See discussion in https://github.com/kedacore/keda/issues/2612
-	scaleToZeroOnInvalidOffset bool
-	limitToPartitionsWithLag   bool
+	scaleToZeroOnInvalidOffset         bool
+	limitToPartitionsWithLag           bool
+	ensureEvenDistributionOfPartitions bool
 
 	// SASL
 	saslType kafkaSaslType
@@ -222,10 +225,9 @@ func parseKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadat
 		saslAuthType = val
 	}
 
-	if saslAuthType != "" {
-		saslAuthType = strings.TrimSpace(saslAuthType)
-		mode := kafkaSaslType(saslAuthType)
-
+	saslAuthType = strings.TrimSpace(saslAuthType)
+	mode := kafkaSaslType(saslAuthType)
+	if saslAuthType != "" && mode != KafkaSASLTypeNone {
 		switch {
 		case mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512:
 			err := parseSaslParams(config, meta, mode)
@@ -592,6 +594,22 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		}
 		if len(meta.topic) == 0 && meta.limitToPartitionsWithLag {
 			return meta, fmt.Errorf("topic must be specified when using limitToPartitionsWithLag")
+		}
+	}
+
+	meta.ensureEvenDistributionOfPartitions = false
+	if val, ok := config.TriggerMetadata["ensureEvenDistributionOfPartitions"]; ok {
+		t, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("error parsing ensureEvenDistributionOfPartitions: %w", err)
+		}
+		meta.ensureEvenDistributionOfPartitions = t
+
+		if meta.limitToPartitionsWithLag && meta.ensureEvenDistributionOfPartitions {
+			return meta, fmt.Errorf("limitToPartitionsWithLag and ensureEvenDistributionOfPartitions cannot be set simultaneously")
+		}
+		if len(meta.topic) == 0 && meta.ensureEvenDistributionOfPartitions {
+			return meta, fmt.Errorf("topic must be specified when using ensureEvenDistributionOfPartitions")
 		}
 	}
 
@@ -973,9 +991,15 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 	}
 	s.logger.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics based on totalLag %v, topicPartitions %v, threshold %v", totalLag, len(topicPartitions), s.metadata.lagThreshold))
 
-	if !s.metadata.allowIdleConsumers || s.metadata.limitToPartitionsWithLag {
+	if !s.metadata.allowIdleConsumers || s.metadata.limitToPartitionsWithLag || s.metadata.ensureEvenDistributionOfPartitions {
 		// don't scale out beyond the number of topicPartitions or partitionsWithLag depending on settings
 		upperBound := totalTopicPartitions
+		// Ensure that the number of partitions is evenly distributed across the number of consumers
+		if s.metadata.ensureEvenDistributionOfPartitions {
+			nextFactor := getNextFactorThatBalancesConsumersToTopicPartitions(totalLag, totalTopicPartitions, s.metadata.lagThreshold)
+			s.logger.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics to ensure even distribution of partitions on totalLag %v, topicPartitions %v, evenPartitions %v", totalLag, totalTopicPartitions, nextFactor))
+			totalLag = nextFactor * s.metadata.lagThreshold
+		}
 		if s.metadata.limitToPartitionsWithLag {
 			upperBound = partitionsWithLag
 		}
@@ -985,6 +1009,16 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 		}
 	}
 	return totalLag, totalLagWithPersistent, nil
+}
+
+func getNextFactorThatBalancesConsumersToTopicPartitions(totalLag int64, totalTopicPartitions int64, lagThreshold int64) int64 {
+	factors := FindFactors(totalTopicPartitions)
+	for _, factor := range factors {
+		if factor*lagThreshold >= totalLag {
+			return factor
+		}
+	}
+	return totalTopicPartitions
 }
 
 type brokerOffsetResult struct {
@@ -1051,4 +1085,29 @@ func (s *kafkaScaler) getProducerOffsets(topicPartitions map[string][]int32) (ma
 	}
 
 	return topicPartitionsOffsets, nil
+}
+
+// FindFactors returns all factors of a given number
+func FindFactors(n int64) []int64 {
+	if n < 1 {
+		return nil
+	}
+
+	var factors []int64
+	sqrtN := int64(math.Sqrt(float64(n)))
+
+	for i := int64(1); i <= sqrtN; i++ {
+		if n%i == 0 {
+			factors = append(factors, i)
+			if i != n/i {
+				factors = append(factors, n/i)
+			}
+		}
+	}
+
+	sort.Slice(factors, func(i, j int) bool {
+		return factors[i] < factors[j]
+	})
+
+	return factors
 }
