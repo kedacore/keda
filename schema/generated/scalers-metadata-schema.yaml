@@ -559,6 +559,11 @@ scalers:
           optional: true
           default: "false"
           metadataVariableReadable: true
+        - name: caseInsensitiveDemandsProcessing
+          type: string
+          optional: true
+          default: "false"
+          metadataVariableReadable: true
     - type: azure-queue
       parameters:
         - name: activationQueueLength
