@@ -21,7 +21,11 @@ We aim to release this release in the week of <week range, example March 27-31>.
 ## Progress
 
 - [ ] Prepare changelog
-- [ ] [Welcome message supported versions](https://github.com/kedacore/keda/blob/main/pkg/util/welcome.go#L29-L30) are up-to-date
+- [ ] Update Kubernetes compatibility (usually 3 versions, bump +1 from previous KEDA version)
+   - [ ] [Welcome message supported versions](https://github.com/kedacore/keda/blob/main/pkg/util/welcome.go#L29-L30) are up-to-date
+   - [ ] Update KEDA docs, example: [#1633](https://github.com/kedacore/keda-docs/pull/1633)
+   - [ ] Update Charts runners, example [#782](https://github.com/kedacore/charts/pull/782)
+- [ ] Add new KEDA version to [GitHub Bug report](https://github.com/kedacore/keda/blob/main/.github/
 - [ ] Add the new version to [GitHub Bug report](https://github.com/kedacore/keda/blob/main/.github/ISSUE_TEMPLATE/3_bug_report.yml) template
 - [ ] Best effort version bump for dependencies, example: [#5400](https://github.com/kedacore/keda/pull/5400)
   - [ ] Update k8s go modules and pin to the 2nd most recent minor version
