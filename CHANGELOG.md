@@ -99,7 +99,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **RabbitMQ Scaler**: add `DeliverGetRate`, `PublishedToDeliveredRatio` and `ExpectedQueueConsumptionTime` trigger modes to RabbitMQ scaler ([#7071](https://github.com/kedacore/keda/issues/7071))
 - **Solace Scaler**: Add hostlist support for Solace brokers ([#7090](https://github.com/kedacore/keda/issues/7090))
 - **Temporal Scaler**: Always set `temporal-namespace` header on requests([#7079](https://github.com/kedacore/keda/issues/7079))
-- **Temporal Scaler**: Fix E2E tests([#7163](https://github.com/kedacore/keda/pull/7163))
 - **Temporal Scaler**: Support custom tlsServerName ([#6820](https://github.com/kedacore/keda/pull/6820))
 
 ### Fixes
@@ -120,6 +119,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Pulsar Scaler**: Resolve nil pointer dereference in Pulsar scaler redirect handling ([#7024](https://github.com/kedacore/keda/issues/7024))
 - **RabbitMQ Scaler**: Fix incorrect URL encoding in RabbitMQ vhosts containing %2f ([#6963](https://github.com/kedacore/keda/issues/6963))
 - **Temporal Scaler**: Allow setting 0 for targetQueueSize ([#7113](https://github.com/kedacore/keda/pull/7113))
+- **Temporal Scaler**: Fix E2E tests([#7163](https://github.com/kedacore/keda/pull/7163))
 
 ### Deprecations
 
