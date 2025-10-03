@@ -33,7 +33,7 @@ We aim to release this release in the week of <week range, example March 27-31>.
   - [ ] Update k8s go modules and pin to the 2nd most recent minor version
   - [ ] Check if new Go has been released and if KEDA can be safely built by it
   - [ ] Update linters and build pipelines if Go has been bumped, example: [#5399](https://github.com/kedacore/keda/pull/5399)
-  - [ ] Update evntest version in the [Makefile](https://github.com/kedacore/keda/blob/595a7be5cf194dbc96c490d58994077f59c15f6d/Makefile#L48) to match k8s version in go.mod
+  - [ ] Update envtest version in the [Makefile](https://github.com/kedacore/keda/blob/595a7be5cf194dbc96c490d58994077f59c15f6d/Makefile#L48) to match k8s version in go.mod
 - [ ] Create KEDA release
 - [ ] Publish new documentation version
 - [ ] Setup continuous container scanning with Snyk
