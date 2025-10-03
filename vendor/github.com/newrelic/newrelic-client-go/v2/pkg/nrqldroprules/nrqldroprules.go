@@ -1,4 +1,9 @@
-// Package nrqldroprules provides a programmatic API for interacting configuring New Relc NRQL Drop Rules.
+// Package nrqldroprules provides a programmatic API for interacting configuring New Relic NRQL Drop Rules.
+//
+// Deprecated: This package is deprecated, as NRQL Drop Rules shall reach their end-of-life on January 7, 2026.
+// It will be removed in a future major version. Switch to the new `pipelinecontrol` package to use Pipeline Cloud Rules, the new alternative to Drop Rules.
+// See the README.md of this package for more details.
+
 package nrqldroprules
 
 import (

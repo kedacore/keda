@@ -74,7 +74,7 @@ func (w *Writer) SetFlightDescriptor(descr *FlightDescriptor) {
 }
 
 // Write writes a recordbatch payload and returns any error, implementing the arrio.Writer interface
-func (w *Writer) Write(rec arrow.Record) error {
+func (w *Writer) Write(rec arrow.RecordBatch) error {
 	if w.pw.fd.FlightDescriptor != nil {
 		defer func() {
 			w.pw.fd.FlightDescriptor = nil
@@ -83,9 +83,9 @@ func (w *Writer) Write(rec arrow.Record) error {
 	return w.Writer.Write(rec)
 }
 
-// WriteWithAppMetadata will write this record with the supplied application
+// WriteWithAppMetadata will write this record batch with the supplied application
 // metadata attached in the flightData message.
-func (w *Writer) WriteWithAppMetadata(rec arrow.Record, appMeta []byte) error {
+func (w *Writer) WriteWithAppMetadata(rec arrow.RecordBatch, appMeta []byte) error {
 	w.pw.fd.AppMetadata = appMeta
 	defer func() {
 		w.pw.fd.AppMetadata = nil

@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/internal/endpoints"
 	"github.com/aws/aws-sdk-go-v2/internal/endpoints/awsrulesfn"
 	internalendpoints "github.com/aws/aws-sdk-go-v2/service/dynamodbstreams/internal/endpoints"
-	smithy "github.com/aws/smithy-go"
 	smithyauth "github.com/aws/smithy-go/auth"
 	smithyendpoints "github.com/aws/smithy-go/endpoints"
 	"github.com/aws/smithy-go/middleware"
@@ -228,14 +227,6 @@ func bindRegion(region string) *string {
 // EndpointParameters provides the parameters that influence how endpoints are
 // resolved.
 type EndpointParameters struct {
-	// The AWS region used to dispatch the request.
-	//
-	// Parameter is
-	// required.
-	//
-	// AWS::Region
-	Region *string
-
 	// When true, use the dual-stack endpoint. If the configured endpoint does not
 	// support dual-stack, dispatching the request MAY return an error.
 	//
@@ -262,6 +253,14 @@ type EndpointParameters struct {
 	//
 	// SDK::Endpoint
 	Endpoint *string
+
+	// The AWS region used to dispatch the request.
+	//
+	// Parameter is
+	// required.
+	//
+	// AWS::Region
+	Region *string
 }
 
 // ValidateRequired validates required parameters are set.
@@ -329,7 +328,9 @@ func (r *resolver) ResolveEndpoint(
 		return endpoint, fmt.Errorf("endpoint parameters are not valid, %w", err)
 	}
 	_UseDualStack := *params.UseDualStack
+	_ = _UseDualStack
 	_UseFIPS := *params.UseFIPS
+	_ = _UseFIPS
 
 	if exprVal := params.Endpoint; exprVal != nil {
 		_Endpoint := *exprVal
@@ -358,6 +359,174 @@ func (r *resolver) ResolveEndpoint(
 		if exprVal := awsrulesfn.GetPartition(_Region); exprVal != nil {
 			_PartitionResult := *exprVal
 			_ = _PartitionResult
+			if _PartitionResult.Name == "aws" {
+				if _UseFIPS == false {
+					if _UseDualStack == true {
+						uriString := func() string {
+							var out strings.Builder
+							out.WriteString("https://streams-dynamodb.")
+							out.WriteString(_Region)
+							out.WriteString(".")
+							out.WriteString(_PartitionResult.DualStackDnsSuffix)
+							return out.String()
+						}()
+
+						uri, err := url.Parse(uriString)
+						if err != nil {
+							return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+						}
+
+						return smithyendpoints.Endpoint{
+							URI:     *uri,
+							Headers: http.Header{},
+						}, nil
+					}
+				}
+			}
+			if _PartitionResult.Name == "aws" {
+				if _UseFIPS == true {
+					if _UseDualStack == true {
+						uriString := func() string {
+							var out strings.Builder
+							out.WriteString("https://streams-dynamodb-fips.")
+							out.WriteString(_Region)
+							out.WriteString(".")
+							out.WriteString(_PartitionResult.DualStackDnsSuffix)
+							return out.String()
+						}()
+
+						uri, err := url.Parse(uriString)
+						if err != nil {
+							return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+						}
+
+						return smithyendpoints.Endpoint{
+							URI:     *uri,
+							Headers: http.Header{},
+						}, nil
+					}
+				}
+			}
+			if _PartitionResult.Name == "aws-cn" {
+				if _UseFIPS == false {
+					if _UseDualStack == true {
+						uriString := func() string {
+							var out strings.Builder
+							out.WriteString("https://streams-dynamodb.")
+							out.WriteString(_Region)
+							out.WriteString(".")
+							out.WriteString(_PartitionResult.DualStackDnsSuffix)
+							return out.String()
+						}()
+
+						uri, err := url.Parse(uriString)
+						if err != nil {
+							return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+						}
+
+						return smithyendpoints.Endpoint{
+							URI:     *uri,
+							Headers: http.Header{},
+						}, nil
+					}
+				}
+			}
+			if _PartitionResult.Name == "aws-cn" {
+				if _UseFIPS == true {
+					if _UseDualStack == true {
+						uriString := func() string {
+							var out strings.Builder
+							out.WriteString("https://streams-dynamodb-fips.")
+							out.WriteString(_Region)
+							out.WriteString(".")
+							out.WriteString(_PartitionResult.DualStackDnsSuffix)
+							return out.String()
+						}()
+
+						uri, err := url.Parse(uriString)
+						if err != nil {
+							return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+						}
+
+						return smithyendpoints.Endpoint{
+							URI:     *uri,
+							Headers: http.Header{},
+						}, nil
+					}
+				}
+			}
+			if _PartitionResult.Name == "aws-us-gov" {
+				if _UseFIPS == false {
+					if _UseDualStack == true {
+						uriString := func() string {
+							var out strings.Builder
+							out.WriteString("https://streams-dynamodb.")
+							out.WriteString(_Region)
+							out.WriteString(".")
+							out.WriteString(_PartitionResult.DualStackDnsSuffix)
+							return out.String()
+						}()
+
+						uri, err := url.Parse(uriString)
+						if err != nil {
+							return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+						}
+
+						return smithyendpoints.Endpoint{
+							URI:     *uri,
+							Headers: http.Header{},
+						}, nil
+					}
+				}
+			}
+			if _PartitionResult.Name == "aws-us-gov" {
+				if _UseFIPS == true {
+					if _UseDualStack == true {
+						uriString := func() string {
+							var out strings.Builder
+							out.WriteString("https://streams-dynamodb-fips.")
+							out.WriteString(_Region)
+							out.WriteString(".")
+							out.WriteString(_PartitionResult.DualStackDnsSuffix)
+							return out.String()
+						}()
+
+						uri, err := url.Parse(uriString)
+						if err != nil {
+							return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+						}
+
+						return smithyendpoints.Endpoint{
+							URI:     *uri,
+							Headers: http.Header{},
+						}, nil
+					}
+				}
+			}
+			if _PartitionResult.Name == "aws-us-gov" {
+				if _UseFIPS == true {
+					if _UseDualStack == false {
+						uriString := func() string {
+							var out strings.Builder
+							out.WriteString("https://streams.dynamodb.")
+							out.WriteString(_Region)
+							out.WriteString(".")
+							out.WriteString(_PartitionResult.DnsSuffix)
+							return out.String()
+						}()
+
+						uri, err := url.Parse(uriString)
+						if err != nil {
+							return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+						}
+
+						return smithyendpoints.Endpoint{
+							URI:     *uri,
+							Headers: http.Header{},
+						}, nil
+					}
+				}
+			}
 			if _UseFIPS == true {
 				if _UseDualStack == true {
 					if true == _PartitionResult.SupportsFIPS {
@@ -386,13 +555,14 @@ func (r *resolver) ResolveEndpoint(
 				}
 			}
 			if _UseFIPS == true {
-				if true == _PartitionResult.SupportsFIPS {
-					if "aws-us-gov" == _PartitionResult.Name {
+				if _UseDualStack == false {
+					if _PartitionResult.SupportsFIPS == true {
 						uriString := func() string {
 							var out strings.Builder
-							out.WriteString("https://streams.dynamodb.")
+							out.WriteString("https://streams.dynamodb-fips.")
 							out.WriteString(_Region)
-							out.WriteString(".amazonaws.com")
+							out.WriteString(".")
+							out.WriteString(_PartitionResult.DnsSuffix)
 							return out.String()
 						}()
 
@@ -406,174 +576,33 @@ func (r *resolver) ResolveEndpoint(
 							Headers: http.Header{},
 						}, nil
 					}
-					uriString := func() string {
-						var out strings.Builder
-						out.WriteString("https://streams.dynamodb-fips.")
-						out.WriteString(_Region)
-						out.WriteString(".")
-						out.WriteString(_PartitionResult.DnsSuffix)
-						return out.String()
-					}()
+					return endpoint, fmt.Errorf("endpoint rule error, %s", "FIPS is enabled but this partition does not support FIPS")
+				}
+			}
+			if _UseFIPS == false {
+				if _UseDualStack == true {
+					if true == _PartitionResult.SupportsDualStack {
+						uriString := func() string {
+							var out strings.Builder
+							out.WriteString("https://streams.dynamodb.")
+							out.WriteString(_Region)
+							out.WriteString(".")
+							out.WriteString(_PartitionResult.DualStackDnsSuffix)
+							return out.String()
+						}()
 
-					uri, err := url.Parse(uriString)
-					if err != nil {
-						return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+						uri, err := url.Parse(uriString)
+						if err != nil {
+							return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
+						}
+
+						return smithyendpoints.Endpoint{
+							URI:     *uri,
+							Headers: http.Header{},
+						}, nil
 					}
-
-					return smithyendpoints.Endpoint{
-						URI:     *uri,
-						Headers: http.Header{},
-					}, nil
+					return endpoint, fmt.Errorf("endpoint rule error, %s", "DualStack is enabled but this partition does not support DualStack")
 				}
-				return endpoint, fmt.Errorf("endpoint rule error, %s", "FIPS is enabled but this partition does not support FIPS")
-			}
-			if _UseDualStack == true {
-				if true == _PartitionResult.SupportsDualStack {
-					uriString := func() string {
-						var out strings.Builder
-						out.WriteString("https://streams.dynamodb.")
-						out.WriteString(_Region)
-						out.WriteString(".")
-						out.WriteString(_PartitionResult.DualStackDnsSuffix)
-						return out.String()
-					}()
-
-					uri, err := url.Parse(uriString)
-					if err != nil {
-						return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
-					}
-
-					return smithyendpoints.Endpoint{
-						URI:     *uri,
-						Headers: http.Header{},
-					}, nil
-				}
-				return endpoint, fmt.Errorf("endpoint rule error, %s", "DualStack is enabled but this partition does not support DualStack")
-			}
-			if _Region == "local" {
-				uriString := "http://localhost:8000"
-
-				uri, err := url.Parse(uriString)
-				if err != nil {
-					return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
-				}
-
-				return smithyendpoints.Endpoint{
-					URI:     *uri,
-					Headers: http.Header{},
-					Properties: func() smithy.Properties {
-						var out smithy.Properties
-						smithyauth.SetAuthOptions(&out, []*smithyauth.Option{
-							{
-								SchemeID: "aws.auth#sigv4",
-								SignerProperties: func() smithy.Properties {
-									var sp smithy.Properties
-									smithyhttp.SetSigV4SigningName(&sp, "dynamodb")
-									smithyhttp.SetSigV4ASigningName(&sp, "dynamodb")
-
-									smithyhttp.SetSigV4SigningRegion(&sp, "us-east-1")
-									return sp
-								}(),
-							},
-						})
-						return out
-					}(),
-				}, nil
-			}
-			if "aws" == _PartitionResult.Name {
-				uriString := func() string {
-					var out strings.Builder
-					out.WriteString("https://streams.dynamodb.")
-					out.WriteString(_Region)
-					out.WriteString(".amazonaws.com")
-					return out.String()
-				}()
-
-				uri, err := url.Parse(uriString)
-				if err != nil {
-					return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
-				}
-
-				return smithyendpoints.Endpoint{
-					URI:     *uri,
-					Headers: http.Header{},
-				}, nil
-			}
-			if "aws-cn" == _PartitionResult.Name {
-				uriString := func() string {
-					var out strings.Builder
-					out.WriteString("https://streams.dynamodb.")
-					out.WriteString(_Region)
-					out.WriteString(".amazonaws.com.cn")
-					return out.String()
-				}()
-
-				uri, err := url.Parse(uriString)
-				if err != nil {
-					return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
-				}
-
-				return smithyendpoints.Endpoint{
-					URI:     *uri,
-					Headers: http.Header{},
-				}, nil
-			}
-			if "aws-us-gov" == _PartitionResult.Name {
-				uriString := func() string {
-					var out strings.Builder
-					out.WriteString("https://streams.dynamodb.")
-					out.WriteString(_Region)
-					out.WriteString(".amazonaws.com")
-					return out.String()
-				}()
-
-				uri, err := url.Parse(uriString)
-				if err != nil {
-					return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
-				}
-
-				return smithyendpoints.Endpoint{
-					URI:     *uri,
-					Headers: http.Header{},
-				}, nil
-			}
-			if "aws-iso" == _PartitionResult.Name {
-				uriString := func() string {
-					var out strings.Builder
-					out.WriteString("https://streams.dynamodb.")
-					out.WriteString(_Region)
-					out.WriteString(".c2s.ic.gov")
-					return out.String()
-				}()
-
-				uri, err := url.Parse(uriString)
-				if err != nil {
-					return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
-				}
-
-				return smithyendpoints.Endpoint{
-					URI:     *uri,
-					Headers: http.Header{},
-				}, nil
-			}
-			if "aws-iso-b" == _PartitionResult.Name {
-				uriString := func() string {
-					var out strings.Builder
-					out.WriteString("https://streams.dynamodb.")
-					out.WriteString(_Region)
-					out.WriteString(".sc2s.sgov.gov")
-					return out.String()
-				}()
-
-				uri, err := url.Parse(uriString)
-				if err != nil {
-					return endpoint, fmt.Errorf("Failed to parse uri: %s", uriString)
-				}
-
-				return smithyendpoints.Endpoint{
-					URI:     *uri,
-					Headers: http.Header{},
-				}, nil
 			}
 			uriString := func() string {
 				var out strings.Builder
@@ -606,10 +635,10 @@ type endpointParamsBinder interface {
 func bindEndpointParams(ctx context.Context, input interface{}, options Options) *EndpointParameters {
 	params := &EndpointParameters{}
 
-	params.Region = bindRegion(options.Region)
 	params.UseDualStack = aws.Bool(options.EndpointOptions.UseDualStackEndpoint == aws.DualStackEndpointStateEnabled)
 	params.UseFIPS = aws.Bool(options.EndpointOptions.UseFIPSEndpoint == aws.FIPSEndpointStateEnabled)
 	params.Endpoint = options.BaseEndpoint
+	params.Region = bindRegion(options.Region)
 
 	if b, ok := input.(endpointParamsBinder); ok {
 		b.bindEndpointParams(params)

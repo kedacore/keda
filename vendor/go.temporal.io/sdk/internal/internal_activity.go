@@ -1,27 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2020 Temporal Technologies Inc.  All rights reserved.
-//
-// Copyright (c) 2020 Uber Technologies, Inc.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 // All code in this file is private to the package.
@@ -74,6 +50,7 @@ type (
 		DisableEagerExecution  bool
 		VersioningIntent       VersioningIntent
 		Summary                string
+		Priority               *commonpb.Priority
 	}
 
 	// ExecuteLocalActivityOptions options for executing a local activity
@@ -81,6 +58,7 @@ type (
 		ScheduleToCloseTimeout time.Duration
 		StartToCloseTimeout    time.Duration
 		RetryPolicy            *RetryPolicy
+		Summary                string
 	}
 
 	// ExecuteActivityParams parameters for executing an activity
@@ -126,27 +104,30 @@ type (
 	}
 
 	activityEnvironment struct {
-		taskToken          []byte
-		workflowExecution  WorkflowExecution
-		activityID         string
-		activityType       ActivityType
-		serviceInvoker     ServiceInvoker
-		logger             log.Logger
-		metricsHandler     metrics.Handler
-		isLocalActivity    bool
-		heartbeatTimeout   time.Duration
-		deadline           time.Time
-		scheduledTime      time.Time
-		startedTime        time.Time
-		taskQueue          string
-		dataConverter      converter.DataConverter
-		attempt            int32 // starts from 1.
-		heartbeatDetails   *commonpb.Payloads
-		workflowType       *WorkflowType
-		workflowNamespace  string
-		workerStopChannel  <-chan struct{}
-		contextPropagators []ContextPropagator
-		client             *WorkflowClient
+		taskToken              []byte
+		workflowExecution      WorkflowExecution
+		activityID             string
+		activityType           ActivityType
+		serviceInvoker         ServiceInvoker
+		logger                 log.Logger
+		metricsHandler         metrics.Handler
+		isLocalActivity        bool
+		heartbeatTimeout       time.Duration
+		scheduleToCloseTimeout time.Duration
+		startToCloseTimeout    time.Duration
+		deadline               time.Time
+		scheduledTime          time.Time
+		startedTime            time.Time
+		taskQueue              string
+		dataConverter          converter.DataConverter
+		attempt                int32 // starts from 1.
+		heartbeatDetails       *commonpb.Payloads
+		workflowType           *WorkflowType
+		workflowNamespace      string
+		workerStopChannel      <-chan struct{}
+		contextPropagators     []ContextPropagator
+		client                 *WorkflowClient
+		priority               *commonpb.Priority
 	}
 
 	// context.WithValue need this type instead of basic type string to avoid lint error
@@ -370,19 +351,22 @@ func (a *activityEnvironmentInterceptor) ExecuteActivity(
 
 func (a *activityEnvironmentInterceptor) GetInfo(ctx context.Context) ActivityInfo {
 	return ActivityInfo{
-		ActivityID:        a.env.activityID,
-		ActivityType:      a.env.activityType,
-		TaskToken:         a.env.taskToken,
-		WorkflowExecution: a.env.workflowExecution,
-		HeartbeatTimeout:  a.env.heartbeatTimeout,
-		Deadline:          a.env.deadline,
-		ScheduledTime:     a.env.scheduledTime,
-		StartedTime:       a.env.startedTime,
-		TaskQueue:         a.env.taskQueue,
-		Attempt:           a.env.attempt,
-		WorkflowType:      a.env.workflowType,
-		WorkflowNamespace: a.env.workflowNamespace,
-		IsLocalActivity:   a.env.isLocalActivity,
+		ActivityID:             a.env.activityID,
+		ActivityType:           a.env.activityType,
+		TaskToken:              a.env.taskToken,
+		WorkflowExecution:      a.env.workflowExecution,
+		HeartbeatTimeout:       a.env.heartbeatTimeout,
+		ScheduleToCloseTimeout: a.env.scheduleToCloseTimeout,
+		StartToCloseTimeout:    a.env.startToCloseTimeout,
+		Deadline:               a.env.deadline,
+		ScheduledTime:          a.env.scheduledTime,
+		StartedTime:            a.env.startedTime,
+		TaskQueue:              a.env.taskQueue,
+		Attempt:                a.env.attempt,
+		WorkflowType:           a.env.workflowType,
+		WorkflowNamespace:      a.env.workflowNamespace,
+		IsLocalActivity:        a.env.isLocalActivity,
+		Priority:               convertFromPBPriority(a.env.priority),
 	}
 }
 

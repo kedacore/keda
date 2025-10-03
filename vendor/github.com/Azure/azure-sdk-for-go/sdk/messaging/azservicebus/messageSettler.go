@@ -281,6 +281,12 @@ func newAnnotations(propertiesToModify map[string]any) amqp.Annotations {
 // shouldSettleOnReceiver determines if a message can be settled on an AMQP
 // link or should only be settled on the management link.
 func shouldSettleOnReceiver(message *ReceivedMessage) bool {
+	if message.RawAMQPMessage == nil || message.RawAMQPMessage.inner == nil {
+		// messages that have been deserialized, or partially copied (for instance, for rehydration of links)
+		// won't have a raw message with an .inner field. We don't need that for settlement.
+		return false
+	}
+
 	// deferred messages always go through the management link
 	return !message.settleOnMgmtLink
 }
@@ -291,6 +297,11 @@ func shouldSettleOnReceiver(message *ReceivedMessage) bool {
 func shouldSettleOnMgmtLink(settlementErr error, message *ReceivedMessage) bool {
 	if message.settleOnMgmtLink {
 		// deferred messages always go through the management link
+		return true
+	}
+
+	if message.RawAMQPMessage == nil || message.RawAMQPMessage.inner == nil {
+		// this is a message they constructed _just_ to settle with.
 		return true
 	}
 

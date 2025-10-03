@@ -85,7 +85,7 @@ func (c *client) SynchronizeEndpoints2(ctx context.Context, dbname string) error
 	cep, err := c.clusterEndpoints(ctx, dbname)
 	if err != nil {
 		// ignore Forbidden: automatic failover is not enabled errors
-		if !IsArangoErrorWithErrorNum(err, ErrHttpForbidden, ErrHttpInternal, 0, ErrNotImplemented, ErrForbidden) {
+		if !IsArangoErrorWithErrorNum(err, ErrHttpForbidden, ErrHttpNotImplemented, 0, ErrNotImplemented, ErrForbidden) {
 			// 3.2 returns no error code, thus check for 0
 			// 501 with ErrorNum 9 is in there since 3.7, earlier versions returned 403 and ErrorNum 11.
 			return WithStack(err)

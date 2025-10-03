@@ -1,5 +1,5 @@
 # Build the adapter binary
-FROM --platform=$BUILDPLATFORM ghcr.io/kedacore/keda-tools:1.23.8 AS builder
+FROM --platform=$BUILDPLATFORM ghcr.io/kedacore/keda-tools:1.24.7 AS builder
 
 ARG BUILD_VERSION=main
 ARG GIT_COMMIT=HEAD

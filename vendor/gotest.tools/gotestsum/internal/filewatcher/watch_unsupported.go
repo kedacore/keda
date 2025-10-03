@@ -4,6 +4,7 @@
 package filewatcher
 
 import (
+	"context"
 	"fmt"
 	"runtime"
 )
@@ -13,6 +14,6 @@ type Event struct {
 	Debug   bool
 }
 
-func Watch(dirs []string, run func(Event) error) error {
+func Watch(ctx context.Context, dirs []string, clearScreen bool, run func(Event) error) error {
 	return fmt.Errorf("file watching is not supported on %v/%v", runtime.GOOS, runtime.GOARCH)
 }

@@ -18,12 +18,12 @@ package flight
 
 import (
 	"context"
+	"maps"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
-	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/metadata"
 )
 

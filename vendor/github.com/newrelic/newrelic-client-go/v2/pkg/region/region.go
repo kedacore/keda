@@ -26,6 +26,7 @@ type Region struct {
 	restBaseURL           string
 	syntheticsBaseURL     string
 	insightsKeysBaseURL   string
+	metricsBaseURL        string
 }
 
 // String returns a human readable value for the specified Region Name
@@ -233,4 +234,25 @@ func (r *Region) LogsURL() string {
 	}
 
 	return r.logsBaseURL
+}
+
+//
+// Metrics
+//
+
+// SetMetricsBaseURL Allows overriding the Metrics Base URL
+func (r *Region) SetMetricsBaseURL(url string) {
+	if r != nil && url != "" {
+		r.metricsBaseURL = url
+	}
+}
+
+// MetricsURL returns the Full URL for the Metrics API
+func (r *Region) MetricsURL() string {
+	if r == nil {
+		log.Errorf("call to nil region.MetricsURL")
+		return ""
+	}
+
+	return r.metricsBaseURL
 }

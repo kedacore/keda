@@ -88,12 +88,12 @@ var NrqlConditionAggregationMethodTypes = struct {
 
 // AlertsFillOption - The available fill options.
 // nolint:revive
-type AlertsFillOption string // nolint:golint
+type AlertsFillOption string
 
 // nolint:revive
 var AlertsFillOptionTypes = struct {
 	// Fill using the last known value.
-	LAST_VALUE AlertsFillOption // nolint:golint
+	LAST_VALUE AlertsFillOption
 	// Do not fill data.
 	NONE AlertsFillOption
 	// Fill using a static value.
@@ -203,6 +203,25 @@ var (
 	}
 )
 
+type NrqlSignalSeasonality string
+
+var (
+	// NrqlSignalSeasonalities enumerates the possible signal seasonality values for a baseline NRQL alert condition.
+	NrqlSignalSeasonalities = struct {
+		NewRelicCalculation NrqlSignalSeasonality
+		Hourly              NrqlSignalSeasonality
+		Daily               NrqlSignalSeasonality
+		Weekly              NrqlSignalSeasonality
+		None                NrqlSignalSeasonality
+	}{
+		NewRelicCalculation: "NEW_RELIC_CALCULATION",
+		Hourly:              "HOURLY",
+		Daily:               "DAILY",
+		Weekly:              "WEEKLY",
+		None:                "NONE",
+	}
+)
+
 type NrqlConditionThresholdPrediction struct {
 	PredictBy                 int  `json:"predictBy,omitempty"`
 	PreferPredictionViolation bool `json:"preferPredictionViolation"`
@@ -210,12 +229,13 @@ type NrqlConditionThresholdPrediction struct {
 
 // NrqlConditionTerm represents the a single term of a New Relic alert condition.
 type NrqlConditionTerm struct {
-	Operator             AlertsNRQLConditionTermsOperator  `json:"operator,omitempty"`
-	Priority             NrqlConditionPriority             `json:"priority,omitempty"`
-	Threshold            *float64                          `json:"threshold"`
-	ThresholdDuration    int                               `json:"thresholdDuration,omitempty"`
-	ThresholdOccurrences ThresholdOccurrence               `json:"thresholdOccurrences,omitempty"`
-	Prediction           *NrqlConditionThresholdPrediction `json:"prediction,omitempty"`
+	Operator                     AlertsNRQLConditionTermsOperator  `json:"operator,omitempty"`
+	Priority                     NrqlConditionPriority             `json:"priority,omitempty"`
+	Threshold                    *float64                          `json:"threshold"`
+	ThresholdDuration            int                               `json:"thresholdDuration,omitempty"`
+	ThresholdOccurrences         ThresholdOccurrence               `json:"thresholdOccurrences,omitempty"`
+	Prediction                   *NrqlConditionThresholdPrediction `json:"prediction,omitempty"`
+	DisableHealthStatusReporting *bool                             `json:"disableHealthStatusReporting,omitempty"`
 }
 
 // NrqlConditionQuery represents the NRQL query object returned in a NerdGraph response object.
@@ -294,6 +314,8 @@ type NrqlConditionCreateInput struct {
 
 	// BaselineDirection ONLY applies to NRQL conditions of type BASELINE.
 	BaselineDirection *NrqlBaselineDirection `json:"baselineDirection,omitempty"`
+	// SignalSeasonality ONLY applies to NRQL conditions of type BASELINE.
+	SignalSeasonality *NrqlSignalSeasonality `json:"signalSeasonality,omitempty"`
 }
 
 // NrqlConditionUpdateInput represents the input options for updating a Nrql Condition.
@@ -302,6 +324,8 @@ type NrqlConditionUpdateInput struct {
 
 	// BaselineDirection ONLY applies to NRQL conditions of type BASELINE.
 	BaselineDirection *NrqlBaselineDirection `json:"baselineDirection,omitempty"`
+	// SignalSeasonality ONLY applies to NRQL conditions of type BASELINE.
+	SignalSeasonality *NrqlSignalSeasonality `json:"signalSeasonality,omitempty"`
 }
 
 type NrqlConditionsSearchCriteria struct {
@@ -316,12 +340,13 @@ type NrqlConditionsSearchCriteria struct {
 // NrqlAlertCondition could be a baseline condition or static condition.
 type NrqlAlertCondition struct {
 	NrqlConditionBase
-
 	ID       string `json:"id,omitempty"`
 	PolicyID string `json:"policyId,omitempty"`
 
 	// BaselineDirection exists ONLY for NRQL conditions of type BASELINE.
 	BaselineDirection *NrqlBaselineDirection `json:"baselineDirection,omitempty"`
+	// SignalSeasonality exists ONLY for NRQL conditions of type BASELINE.
+	SignalSeasonality *NrqlSignalSeasonality `json:"signalSeasonality,omitempty"`
 }
 
 // NrqlCondition represents a New Relic NRQL Alert condition.
@@ -739,6 +764,7 @@ const (
       threshold
       thresholdDuration
       thresholdOccurrences
+      disableHealthStatusReporting
     }
     type
     violationTimeLimit
@@ -765,6 +791,7 @@ const (
 	graphqlFragmentNrqlBaselineConditionFields = `
 		... on AlertsNrqlBaselineCondition {
 			baselineDirection
+			signalSeasonality
 		}
 	`
 
@@ -807,17 +834,17 @@ const (
 	// Baseline
 	createNrqlConditionBaselineMutation = `
 		mutation($accountId: Int!, $policyId: ID!, $condition: AlertsNrqlConditionBaselineInput!) {
-			alertsNrqlConditionBaselineCreate(accountId: $accountId, policyId: $policyId, condition: $condition) {
-				baselineDirection` +
+			alertsNrqlConditionBaselineCreate(accountId: $accountId, policyId: $policyId, condition: $condition) {` +
 		graphqlNrqlConditionStructFields +
+		graphqlFragmentNrqlBaselineConditionFields +
 		` } }`
 
 	// Baseline
 	updateNrqlConditionBaselineMutation = `
 		mutation($accountId: Int!, $id: ID!, $condition: AlertsNrqlConditionUpdateBaselineInput!) {
-			alertsNrqlConditionBaselineUpdate(accountId: $accountId, id: $id, condition: $condition) {
-				baselineDirection` +
+			alertsNrqlConditionBaselineUpdate(accountId: $accountId, id: $id, condition: $condition) { ` +
 		graphqlNrqlConditionStructFields +
+		graphqlFragmentNrqlBaselineConditionFields +
 		` } }`
 
 	// Static

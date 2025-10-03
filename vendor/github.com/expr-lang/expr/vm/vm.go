@@ -67,15 +67,16 @@ func (vm *VM) Run(program *Program, env any) (_ any, err error) {
 	if vm.Stack == nil {
 		vm.Stack = make([]any, 0, 2)
 	} else {
+		clearSlice(vm.Stack)
 		vm.Stack = vm.Stack[0:0]
 	}
 	if vm.Scopes != nil {
+		clearSlice(vm.Scopes)
 		vm.Scopes = vm.Scopes[0:0]
 	}
 	if len(vm.Variables) < program.variables {
 		vm.Variables = make([]any, program.variables)
 	}
-
 	if vm.MemoryBudget == 0 {
 		vm.MemoryBudget = conf.DefaultMemoryBudget
 	}
@@ -614,4 +615,11 @@ func (vm *VM) Step() {
 
 func (vm *VM) Position() chan int {
 	return vm.curr
+}
+
+func clearSlice[S ~[]E, E any](s S) {
+	var zero E
+	for i := range s {
+		s[i] = zero // clear mem, optimized by the compiler, in Go 1.21 the "clear" builtin can be used
+	}
 }

@@ -236,6 +236,12 @@ const CloudConfigureIntegrationMutation = `mutation(
 			inventoryPollingInterval
 			metricsPollingInterval
 		}
+			... on CloudAwsAutoDiscoveryIntegration {
+				__typename
+				awsRegions
+				inventoryPollingInterval
+				metricsPollingInterval
+			}
 		... on CloudAzureApimanagementIntegration {
 			__typename
 			inventoryPollingInterval
@@ -729,6 +735,20 @@ const CloudConfigureIntegrationMutation = `mutation(
 			metricsPollingInterval
 			tagKey
 			tagValue
+		}
+		... on CloudOciLogsIntegration {
+			__typename
+			instrumentationType
+			loggingStacks
+			metricStacks
+			metricsPollingInterval
+		}
+		... on CloudOciMetadataAndTagsIntegration {
+			__typename
+			instrumentationType
+			loggingStacks
+			metricStacks
+			metricsPollingInterval
 		}
 		... on CloudRdsIntegration {
 			__typename
@@ -1027,6 +1047,12 @@ const CloudDisableIntegrationMutation = `mutation(
 			inventoryPollingInterval
 			metricsPollingInterval
 		}
+			... on CloudAwsAutoDiscoveryIntegration {
+				__typename
+				awsRegions
+				inventoryPollingInterval
+				metricsPollingInterval
+			}
 		... on CloudAzureApimanagementIntegration {
 			__typename
 			inventoryPollingInterval
@@ -1520,6 +1546,20 @@ const CloudDisableIntegrationMutation = `mutation(
 			metricsPollingInterval
 			tagKey
 			tagValue
+		}
+		... on CloudOciLogsIntegration {
+			__typename
+			instrumentationType
+			loggingStacks
+			metricStacks
+			metricsPollingInterval
+		}
+		... on CloudOciMetadataAndTagsIntegration {
+			__typename
+			instrumentationType
+			loggingStacks
+			metricStacks
+			metricsPollingInterval
 		}
 		... on CloudRdsIntegration {
 			__typename
@@ -2100,6 +2140,12 @@ const getLinkedAccountQuery = `query(
 			inventoryPollingInterval
 			metricsPollingInterval
 		}
+			... on CloudAwsAutoDiscoveryIntegration {
+				__typename
+				awsRegions
+				inventoryPollingInterval
+				metricsPollingInterval
+			}
 		... on CloudAzureApimanagementIntegration {
 			__typename
 			inventoryPollingInterval
@@ -2593,6 +2639,20 @@ const getLinkedAccountQuery = `query(
 			metricsPollingInterval
 			tagKey
 			tagValue
+		}
+		... on CloudOciLogsIntegration {
+			__typename
+			instrumentationType
+			loggingStacks
+			metricStacks
+			metricsPollingInterval
+		}
+		... on CloudOciMetadataAndTagsIntegration {
+			__typename
+			instrumentationType
+			loggingStacks
+			metricStacks
+			metricsPollingInterval
 		}
 		... on CloudRdsIntegration {
 			__typename
@@ -2949,6 +3009,12 @@ const getLinkedAccountsQuery = `query(
 			inventoryPollingInterval
 			metricsPollingInterval
 		}
+			... on CloudAwsAutoDiscoveryIntegration {
+				__typename
+				awsRegions
+				inventoryPollingInterval
+				metricsPollingInterval
+			}
 		... on CloudAzureApimanagementIntegration {
 			__typename
 			inventoryPollingInterval
@@ -3442,6 +3508,20 @@ const getLinkedAccountsQuery = `query(
 			metricsPollingInterval
 			tagKey
 			tagValue
+		}
+		... on CloudOciLogsIntegration {
+			__typename
+			instrumentationType
+			loggingStacks
+			metricStacks
+			metricsPollingInterval
+		}
+		... on CloudOciMetadataAndTagsIntegration {
+			__typename
+			instrumentationType
+			loggingStacks
+			metricStacks
+			metricsPollingInterval
 		}
 		... on CloudRdsIntegration {
 			__typename
