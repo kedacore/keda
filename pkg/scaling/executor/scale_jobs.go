@@ -163,13 +163,13 @@ func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1
 
 	excludedLabels := map[string]struct{}{}
 
-	if labels, ok := scaledJob.ObjectMeta.Annotations[kedav1alpha1.ScaledJobExcludedLabelsAnnotation]; ok {
+	if labels, ok := scaledJob.Annotations[kedav1alpha1.ScaledJobExcludedLabelsAnnotation]; ok {
 		for _, excludedLabel := range strings.Split(labels, ",") {
 			excludedLabels[excludedLabel] = struct{}{}
 		}
 	}
 
-	for key, value := range scaledJob.ObjectMeta.Labels {
+	for key, value := range scaledJob.Labels {
 		if _, ok := excludedLabels[key]; ok {
 			continue
 		}
@@ -180,7 +180,7 @@ func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1
 	annotations := map[string]string{
 		"scaledjob.keda.sh/generation": strconv.FormatInt(scaledJob.Generation, 10),
 	}
-	for key, value := range scaledJob.ObjectMeta.Annotations {
+	for key, value := range scaledJob.Annotations {
 		annotations[key] = value
 	}
 
@@ -402,7 +402,7 @@ func (e *scaleExecutor) deleteJobsWithHistoryLimit(ctx context.Context, logger l
 		if err != nil {
 			return err
 		}
-		logger.Info("Remove a job by reaching the historyLimit", "job.Name", j.ObjectMeta.Name, "historyLimit", historyLimit)
+		logger.Info("Remove a job by reaching the historyLimit", "job.Name", j.Name, "historyLimit", historyLimit)
 	}
 	return nil
 }

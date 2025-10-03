@@ -59,9 +59,10 @@ func (c *Client) waitForLogSearchJobCompletion(jobID string) (*LogSearchJobStatu
 
 		c.logger.Debug("log search job state", zap.String("state", status.State), zap.Int("recordCount", status.RecordCount))
 
-		if status.State == stateDone {
+		switch status.State {
+		case stateDone:
 			return &status, nil
-		} else if status.State == stateCancelled || status.State == statePaused {
+		case stateCancelled, statePaused:
 			return nil, fmt.Errorf("search job failed, state: %s", status.State)
 		}
 

@@ -1764,7 +1764,7 @@ var _ = Describe("ScaledObjectController", func() {
 		}).ShouldNot(HaveOccurred())
 
 		// Add a new label to the hpa and update
-		hpa.ObjectMeta.Labels = map[string]string{"new-label": "new-label-value"}
+		hpa.Labels = map[string]string{"new-label": "new-label-value"}
 		err = k8sClient.Update(context.Background(), hpa)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -1827,7 +1827,7 @@ var _ = Describe("ScaledObjectController", func() {
 		}).ShouldNot(HaveOccurred())
 
 		// Add a new annotation to the hpa and update
-		hpa.ObjectMeta.Annotations = map[string]string{"new-annotation": "new-annotation-value"}
+		hpa.Annotations = map[string]string{"new-annotation": "new-annotation-value"}
 		err = k8sClient.Update(context.Background(), hpa)
 		Expect(err).ToNot(HaveOccurred())
 

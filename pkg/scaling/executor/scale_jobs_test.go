@@ -460,8 +460,8 @@ func TestGenerateJobs(t *testing.T) {
 
 	assert.Equal(t, 2, len(jobs))
 	for _, j := range jobs {
-		assert.Equal(t, expectedAnnotations, j.ObjectMeta.Annotations)
-		assert.Equal(t, expectedLabels, j.ObjectMeta.Labels)
+		assert.Equal(t, expectedAnnotations, j.Annotations)
+		assert.Equal(t, expectedLabels, j.Labels)
 		assert.Equal(t, v1.RestartPolicyOnFailure, j.Spec.Template.Spec.RestartPolicy)
 	}
 }
@@ -501,7 +501,7 @@ func getMockScaledJob(successfulJobHistoryLimit, failedJobHistoryLimit int) *ked
 			FailedJobsHistoryLimit:     &failedJobHistoryLimit32,
 		},
 	}
-	scaledJob.ObjectMeta.Name = "azure-storage-queue-consumer"
+	scaledJob.Name = "azure-storage-queue-consumer"
 	return scaledJob
 }
 
@@ -509,7 +509,7 @@ func getMockScaledJobWithDefault() *kedav1alpha1.ScaledJob {
 	scaledJob := &kedav1alpha1.ScaledJob{
 		Spec: kedav1alpha1.ScaledJobSpec{},
 	}
-	scaledJob.ObjectMeta.Name = "azure-storage-queue-consumer"
+	scaledJob.Name = "azure-storage-queue-consumer"
 	return scaledJob
 }
 
@@ -534,7 +534,7 @@ func getMockScaledJobWithStrategy(name, scalingStrategy string, customScalingQue
 			},
 		},
 	}
-	scaledJob.ObjectMeta.Name = name
+	scaledJob.Name = name
 	return scaledJob
 }
 
@@ -546,7 +546,7 @@ func getMockScaledJobWithCustomStrategyWithNilParameter(name, scalingStrategy st
 			},
 		},
 	}
-	scaledJob.ObjectMeta.Name = name
+	scaledJob.Name = name
 	return scaledJob
 }
 
@@ -556,15 +556,15 @@ func getMockScaledJobWithDefaultStrategy(name string) *kedav1alpha1.ScaledJob {
 			JobTargetRef: &batchv1.JobSpec{},
 		},
 	}
-	scaledJob.ObjectMeta.Name = name
+	scaledJob.Name = name
 	return scaledJob
 }
 
 func getMockScaledJobWithDefaultStrategyAndMeta(name string) *kedav1alpha1.ScaledJob {
 	sc := getMockScaledJobWithDefaultStrategy(name)
-	sc.ObjectMeta.Namespace = "test"
-	sc.ObjectMeta.Labels = map[string]string{"test": "test"}
-	sc.ObjectMeta.Annotations = map[string]string{"test": "test"}
+	sc.Namespace = "test"
+	sc.Labels = map[string]string{"test": "test"}
+	sc.Annotations = map[string]string{"test": "test"}
 	return sc
 }
 

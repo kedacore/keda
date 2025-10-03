@@ -1225,7 +1225,7 @@ func StartEventWatch(
 
 					t.Logf("Watch goroutine received event: %s/%s - %s %s (ts: %s): %s",
 						event.InvolvedObject.Kind, event.InvolvedObject.Name, event.Type, event.Reason,
-						event.LastTimestamp.Time.Format(time.RFC3339), event.Message)
+						event.LastTimestamp.Format(time.RFC3339), event.Message)
 
 					messageMatched := false
 					for _, expectedMsg := range expectedMessages {
@@ -1299,7 +1299,7 @@ func WatchForEventAfterTrigger(
 
 	// Use the resource version from the initial list to start the watch
 	// This ensures we only get events that occur after the initial list
-	initialResourceVersion := eventsList.ListMeta.ResourceVersion
+	initialResourceVersion := eventsList.ResourceVersion
 
 	t.Logf("Waiting up to %s for Kubernetes event '%s' via watch...", watchTimeout, expectedReason)
 

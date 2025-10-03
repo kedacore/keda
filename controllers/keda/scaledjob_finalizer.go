@@ -47,7 +47,7 @@ func (r *ScaledJobReconciler) finalizeScaledJob(ctx context.Context, logger logr
 		// Remove scaledJobFinalizer. Once all finalizers have been
 		// removed, the object will be deleted.
 		scaledJob.SetFinalizers(util.Remove(scaledJob.GetFinalizers(), scaledJobFinalizer))
-		if err := r.Client.Update(ctx, scaledJob); err != nil {
+		if err := r.Update(ctx, scaledJob); err != nil {
 			logger.Error(err, "Failed to update ScaledJob after removing a finalizer", "finalizer", scaledJobFinalizer)
 			return err
 		}
@@ -70,7 +70,7 @@ func (r *ScaledJobReconciler) ensureFinalizer(ctx context.Context, logger logr.L
 		scaledJob.SetFinalizers(append(scaledJob.GetFinalizers(), scaledJobFinalizer))
 
 		// Update CR
-		err := r.Client.Update(ctx, scaledJob)
+		err := r.Update(ctx, scaledJob)
 		if err != nil {
 			logger.Error(err, "Failed to update ScaledJob with a finalizer", "finalizer", scaledJobFinalizer)
 			return err
