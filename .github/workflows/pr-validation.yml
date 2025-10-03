@@ -11,7 +11,7 @@ jobs:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     container:
-      image: ghcr.io/kedacore/keda-tools:1.23.8
+      image: ghcr.io/kedacore/keda-tools:1.24.7
       volumes:
         - /usr:/host/usr
         - /opt:/host/opt
@@ -73,7 +73,7 @@ jobs:
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
 
       - name: Go modules sync
-        run: go mod tidy -compat=1.23
+        run: go mod tidy -compat=1.24
 
       - name: Verify generated Clientset is up to date
         run: make clientset-verify
@@ -107,7 +107,7 @@ jobs:
       pull-requests: read  # for dorny/paths-filter to read pull requests
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.23.8
+    container: ghcr.io/kedacore/keda-tools:1.24.7
     strategy:
       matrix:
         include:
@@ -143,7 +143,7 @@ jobs:
       pull-requests: read  # for dorny/paths-filter to read pull requests
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.23.8
+    container: ghcr.io/kedacore/keda-tools:1.24.7
     strategy:
       matrix:
         include:
@@ -180,7 +180,7 @@ jobs:
           python-version: 3.x
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
       - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
 
   trivy-scan:
