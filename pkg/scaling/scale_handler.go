@@ -224,7 +224,7 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 		return
 	}
 
-	for _, ps := range cache.GetPushScalers() {
+	for i, ps := range cache.GetPushScalers() {
 		go func(s scalers.PushScaler) {
 			activeCh := make(chan bool)
 			go s.Run(ctx, activeCh)
@@ -232,7 +232,16 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 				select {
 				case <-ctx.Done():
 					return
-				case active := <-activeCh:
+				case active, channelOpen := <-activeCh:
+					if !channelOpen {
+						logger.V(1).Info("Push scaler channel closed", "scalableObject", scalableObject, "pushScalerIndex", i)
+						return
+					}
+					if !active {
+						// inactivation events are ignored and inactivation happens through the standard metric scaling logic
+						logger.V(4).Info("Push scaler inactivation event received", "scalableObject", scalableObject, "pushScalerIndex", i)
+						continue
+					}
 					scalingMutex.Lock()
 					switch obj := scalableObject.(type) {
 					case *kedav1alpha1.ScaledObject:
