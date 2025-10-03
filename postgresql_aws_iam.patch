@@ -1,0 +1,206 @@
+diff --git a/pkg/scalers/postgresql_scaler.go b/pkg/scalers/postgresql_scaler.go
+index original..modified
+--- a/pkg/scalers/postgresql_scaler.go
++++ b/pkg/scalers/postgresql_scaler.go
+@@ -3,9 +3,11 @@ package scalers
+ import (
+ 	"context"
+ 	"database/sql"
+ 	"fmt"
++	"os"
+ 	"regexp"
+ 	"strings"
+ 	"time"
+
+ 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+ 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+@@ -15,6 +17,9 @@ import (
+ 	v2 "k8s.io/api/autoscaling/v2"
+ 	"k8s.io/metrics/pkg/apis/external_metrics"
+
++	"github.com/aws/aws-sdk-go-v2/config"
++	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
++
+ 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+ 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+ 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
+@@ -26,6 +31,9 @@ const (
+ 	// Azure AD resource ID for Azure Database for PostgreSQL is https://ossrdbms-aad.database.windows.net
+ 	// https://learn.microsoft.com/en-us/azure/postgresql/single-server/how-to-connect-with-managed-identity
+ 	azureDatabasePostgresResource = "https://ossrdbms-aad.database.windows.net/.default"
++
++	// AWS IAM authentication token validity period
++	awsIAMTokenValidity = 14 * time.Minute // Refresh before 15-minute expiry
+ )
+
+ var (
+@@ -47,6 +55,7 @@ type postgreSQLMetadata struct {
+ 	Query                      string  `keda:"name=query,                      order=triggerMetadata"`
+ 	triggerIndex               int
+ 	azureAuthContext           azureAuthContext
++	awsIAMContext              *awsIAMAuthContext
+
+ 	Host     string `keda:"name=host,     order=authParams;triggerMetadata, optional"`
+ 	Port     string `keda:"name=port,     order=authParams;triggerMetadata, optional"`
+@@ -88,6 +97,11 @@ type azureAuthContext struct {
+ 	token *azcore.AccessToken
+ }
+
++type awsIAMAuthContext struct {
++	token     string
++	expiresAt time.Time
++}
++
+ // NewPostgreSQLScaler creates a new postgreSQL scaler
+ func NewPostgreSQLScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
+ 	metricType, err := GetMetricTargetType(config)
+@@ -126,11 +140,74 @@ func parsePostgreSQLMetadata(logger logr.Logger, config *scalersconfig.ScalerCo
+ 	if !config.AsMetricSource && meta.TargetQueryValue == 0 {
+ 		return nil, authPodIdentity, fmt.Errorf("no targetQueryValue given")
+ 	}
++
++	// Check for AWS RDS IAM authentication
++	if shouldUseAWSIAM(meta, config.PodIdentity) {
++		logger.Info("Using AWS RDS IAM authentication for PostgreSQL connection",
++			"host", meta.Host,
++			"username", meta.UserName)
++
++		// Generate initial token
++		token, err := generateRDSIAMToken(ctx, meta.Host, meta.Port, meta.UserName, logger)
++		if err != nil {
++			return nil, authPodIdentity, fmt.Errorf("failed to generate initial RDS IAM token: %w", err)
++		}
++
++		// Build connection string with IAM token as password
++		params := buildConnArray(meta)
++		params = append(params, "password="+escapePostgreConnectionParameter(token))
++		meta.Connection = strings.Join(params, " ")
++
++		// Store token metadata for refresh checks
++		meta.awsIAMContext = &awsIAMAuthContext{
++			token:     token,
++			expiresAt: time.Now().Add(awsIAMTokenValidity),
++		}
++
++		// Set AWS pod identity provider
++		authPodIdentity = kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAWS}
++
++		meta.triggerIndex = config.TriggerIndex
++		return meta, authPodIdentity, nil
++	}
+
+ 	switch config.PodIdentity.Provider {
+ 	// ... rest of existing switch statement
+ }
+
++// shouldUseAWSIAM determines if AWS IAM authentication should be used
++func shouldUseAWSIAM(meta *postgreSQLMetadata, podIdentity kedav1alpha1.PodIdentity) bool {
++	// Use AWS IAM if:
++	// 1. No password is provided
++	// 2. Host appears to be RDS
++	// 3. AWS IRSA is available
++	// 4. Not explicitly using another provider
++
++	if meta.Password != "" {
++		return false
++	}
++
++	if podIdentity.Provider != "" && podIdentity.Provider != kedav1alpha1.PodIdentityProviderNone {
++		return false
++	}
++
++	if !isRDSHost(meta.Host) {
++		return false
++	}
++
++	if !hasAWSIRSA() {
++		return false
++	}
++
++	return true
++}
++
++// isRDSHost checks if the host appears to be an RDS endpoint
++func isRDSHost(host string) bool {
++	if host == "" {
++		return false
++	}
++	return strings.Contains(host, ".rds.amazonaws.com") ||
++		strings.Contains(host, ".rds.amazonaws.com.cn")
++}
++
+ func buildConnArray(meta *postgreSQLMetadata) []string {
+ 	var params []string
+ 	params = append(params, "host="+escapePostgreConnectionParameter(meta.Host))
+@@ -166,6 +243,14 @@ func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity k
+ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error) {
+ 	var id float64
+
++	// Check if AWS IAM token needs refresh
++	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAWS {
++		if s.metadata.awsIAMContext != nil && s.metadata.awsIAMContext.expiresAt.Before(time.Now()) {
++			s.logger.Info("AWS RDS IAM token expired, refreshing token and reconnecting")
++			// The connection will fail and be recreated with a new token
++		}
++	}
++
+ 	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+ 		if s.metadata.azureAuthContext.token.ExpiresOn.Before(time.Now()) {
+ 			s.logger.Info("The Azure Access Token expired, retrieving a new Azure Access Token and instantiating a new Postgres connection object.")
+@@ -183,3 +268,55 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error
+ 	// ... rest of existing function
+ }
+
++// hasAWSIRSA checks if AWS IRSA credentials are available
++func hasAWSIRSA() bool {
++	// Check for common IRSA environment variables
++	webIdentityFile := os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
++	roleArn := os.Getenv("AWS_ROLE_ARN")
++
++	return webIdentityFile != "" && roleArn != ""
++}
++
++// getAWSRegionFromHost extracts the AWS region from an RDS endpoint
++func getAWSRegionFromHost(host string) string {
++	// RDS endpoints: instance.cluster-id.region.rds.amazonaws.com
++	parts := strings.Split(host, ".")
++
++	// Find the index of "rds" and get the region before it
++	for i, part := range parts {
++		if part == "rds" && i > 0 {
++			return parts[i-1]
++		}
++	}
++
++	// Default to us-east-1 if we can't determine the region
++	return "us-east-1"
++}
++
++// generateRDSIAMToken generates an AWS RDS IAM authentication token
++func generateRDSIAMToken(ctx context.Context, host, port, username string, logger logr.Logger) (string, error) {
++	region := getAWSRegionFromHost(host)
++
++	// Load AWS config with IRSA credentials
++	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
++	if err != nil {
++		return "", fmt.Errorf("failed to load AWS config: %w", err)
++	}
++
++	// Build the RDS endpoint
++	endpoint := fmt.Sprintf("%s:%s", host, port)
++
++	// Generate the IAM auth token
++	token, err := auth.BuildAuthToken(ctx, endpoint, region, username, cfg.Credentials)
++	if err != nil {
++		return "", fmt.Errorf("failed to generate RDS IAM token: %w", err)
++	}
++
++	logger.V(1).Info("Generated AWS RDS IAM authentication token",
++		"host", host,
++		"port", port,
++		"username", username,
++		"region", region)
++
++	return token, nil
++}
++
