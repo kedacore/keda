@@ -8,14 +8,18 @@ You can find our roadmap [here](https://github.com/orgs/kedacore/projects/2).
 
 ## Upcoming Release Cycles
 
-As part of our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md), we are planning to release a new KEDA version every 3 months and ship on Thursdays.
+As part of our [release governance](https://github.com/kedacore/governance/blob/main/RELEASES.md), we are planning to release a new KEDA version every 4 months following a predictable schedule that avoids slow seasons (summer holidays, Christmas). Releases are scheduled for January, May, and September, with our plan being to release during the 2nd week of the month (though this is an estimate that could change).
+
+For more details about this new release schedule, see [this issue](https://github.com/kedacore/governance/issues/122).
 
 Here is an overview of our current release estimations:
 
 | Version | Estimated Release Date                               |
 |:--------|:-----------------------------------------------------|
-| v2.18   | TBD          (need to resolve https://github.com/kedacore/governance/issues/122)                             |
-| v2.19   | TBD          (need to resolve https://github.com/kedacore/governance/issues/122)                             |
+| v2.18   | 2nd week of October 2025                            |
+| v2.19   | 2nd week of January 2026                            |
+| v2.20   | 2nd week of May 2026                                |
+| v2.21   | 2nd week of September 2026                          |
 
 Here is an overview of our previous releases:
 
