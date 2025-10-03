@@ -136,7 +136,7 @@ func initMeters() {
 		otLog.Error(err, msg)
 	}
 
-	otEmptyUpstreamResponses, err = meter.Int64Counter("keda.empty.upstream.responses", api.WithDescription("Number of times a query returns an empty result"))
+	otEmptyUpstreamResponses, err = meter.Int64Counter("keda.scaler.empty.upstream.responses", api.WithDescription("Number of times a query returns an empty result"))
 	if err != nil {
 		otLog.Error(err, msg)
 	}
