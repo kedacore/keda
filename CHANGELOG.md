@@ -71,7 +71,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Introduce new Forgejo Scaler ([#6488](https://github.com/kedacore/keda/issues/6488))
 - **General**: Introduce new Solace Direct Messaging scaler ([#6545](https://github.com/kedacore/keda/issues/6545))
 - **General**: Introduce new SolarWinds Scaler ([#6576](https://github.com/kedacore/keda/issues/6576))
-- **General**: Introduce new Splunk Observability Cloud Scaler ([#6534](https://github.com/kedacore/keda/pull/6534))
+- **General**: Introduce new Splunk Observability Cloud Scaler ([#7152](https://github.com/kedacore/keda/issues/7152))
 - **General**: Introduce new Sumo Logic Scaler ([#6734](https://github.com/kedacore/keda/issues/6734))
 - **General**: Support for declarative e2e test setup and filtering ([#6989](https://github.com/kedacore/keda/issues/6989))
 - **General**: Trigger Schema Generated Tool ([#6345](https://github.com/kedacore/keda/issues/6345))
