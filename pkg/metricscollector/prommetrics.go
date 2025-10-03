@@ -107,7 +107,7 @@ var (
 	emptyUpstreamResponse = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: DefaultPromMetricsNamespace,
-			Subsystem: "prometheus",
+			Subsystem: "scaler",
 			Name:      "empty_upstream_responses_total",
 			Help:      "Number of times a query returns an empty result",
 		},
