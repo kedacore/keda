@@ -57,6 +57,7 @@ body:
     label: KEDA Version
     description: What version of KEDA that are you running?
     options:
+    - "2.18.0"
     - "2.17.2"
     - "2.17.1"
     - "2.17.0"
@@ -73,6 +74,8 @@ body:
     label: Kubernetes Version
     description: What version of Kubernetes that are you running?
     options:
+    - "1.34"
+    - "1.33"
     - "1.32"
     - "1.31"
     - "1.30"
