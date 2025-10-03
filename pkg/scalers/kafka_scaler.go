@@ -228,18 +228,18 @@ func parseKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadat
 	saslAuthType = strings.TrimSpace(saslAuthType)
 	mode := kafkaSaslType(saslAuthType)
 	if saslAuthType != "" && mode != KafkaSASLTypeNone {
-		switch {
-		case mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512:
+		switch mode {
+		case KafkaSASLTypePlaintext, KafkaSASLTypeSCRAMSHA256, KafkaSASLTypeSCRAMSHA512:
 			err := parseSaslParams(config, meta, mode)
 			if err != nil {
 				return err
 			}
-		case mode == KafkaSASLTypeOAuthbearer:
+		case KafkaSASLTypeOAuthbearer:
 			err := parseSaslOAuthParams(config, meta, mode)
 			if err != nil {
 				return err
 			}
-		case mode == KafkaSASLTypeGSSAPI:
+		case KafkaSASLTypeGSSAPI:
 			err := parseKerberosParams(config, meta, mode)
 			if err != nil {
 				return err

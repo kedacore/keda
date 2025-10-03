@@ -66,7 +66,7 @@ func TestNewClient(t *testing.T) {
 				t.Error("Expected error, got nil")
 			}
 
-			if test.config.UnsafeSsl && client.Client.Transport == nil {
+			if test.config.UnsafeSsl && client.Transport == nil {
 				t.Error("Expected SSL client config to be set, but was nil")
 			}
 		})

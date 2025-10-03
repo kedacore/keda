@@ -1132,9 +1132,10 @@ func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamil
 		labels := metric.GetLabel()
 		var namespace, crType string
 		for _, label := range labels {
-			if *label.Name == labelType {
+			switch *label.Name {
+			case labelType:
 				crType = *label.Value
-			} else if *label.Name == namespaceString {
+			case namespaceString:
 				namespace = *label.Value
 			}
 		}
@@ -1157,9 +1158,10 @@ func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamil
 		labels := metric.GetLabel()
 		var namespace, crType string
 		for _, label := range labels {
-			if *label.Name == labelType {
+			switch *label.Name {
+			case labelType:
 				crType = *label.Value
-			} else if *label.Name == namespaceString {
+			case namespaceString:
 				namespace = *label.Value
 			}
 		}

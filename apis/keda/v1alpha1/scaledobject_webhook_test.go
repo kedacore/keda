@@ -315,7 +315,7 @@ var _ = It("shouldn't validate the so creation when hpa has shared-ownership una
 	namespaceName := "hpa-ownership"
 	namespace := createNamespace(namespaceName)
 	hpa := createHpa(hpaName, namespaceName, workloadName, "apps/v1", "Deployment", nil)
-	hpa.ObjectMeta.Annotations = map[string]string{ValidationsHpaOwnershipAnnotation: "false"}
+	hpa.Annotations = map[string]string{ValidationsHpaOwnershipAnnotation: "false"}
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{ScaledObjectTransferHpaOwnershipAnnotation: "false"}, hpaName)
 
 	err := k8sClient.Create(context.Background(), namespace)
@@ -691,7 +691,7 @@ var _ = It("should validate the so update if it's removing the finalizer even if
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
-	so.ObjectMeta.Finalizers = append(so.ObjectMeta.Finalizers, "finalizer")
+	so.Finalizers = append(so.Finalizers, "finalizer")
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -707,7 +707,7 @@ var _ = It("should validate the so update if it's removing the finalizer even if
 	err = k8sClient.Update(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	so.ObjectMeta.Finalizers = []string{}
+	so.Finalizers = []string{}
 	Eventually(func() error {
 		return k8sClient.Update(context.Background(), so)
 	}).ShouldNot(HaveOccurred())

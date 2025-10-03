@@ -364,14 +364,15 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 }
 
 func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.AuthenticationRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, string, error) {
-	if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
+	switch triggerAuthRef.Kind {
+	case "", "TriggerAuthentication":
 		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
 		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
 		if err != nil {
 			return nil, "", err
 		}
 		return &triggerAuth.Spec, namespace, nil
-	} else if triggerAuthRef.Kind == "ClusterTriggerAuthentication" {
+	case "ClusterTriggerAuthentication":
 		clusterNamespace, err := util.GetClusterObjectNamespace()
 		if err != nil {
 			return nil, "", err
@@ -382,8 +383,9 @@ func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRe
 			return nil, "", err
 		}
 		return &triggerAuth.Spec, clusterNamespace, nil
+	default:
+		return nil, "", fmt.Errorf("unknown trigger auth kind %s", triggerAuthRef.Kind)
 	}
-	return nil, "", fmt.Errorf("unknown trigger auth kind %s", triggerAuthRef.Kind)
 }
 
 func resolveEnv(ctx context.Context, client client.Client, logger logr.Logger, container *corev1.Container, namespace string, secretsLister corev1listers.SecretLister) (map[string]string, error) {

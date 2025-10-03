@@ -260,7 +260,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) ([]string, 
 	if !exists && (params.Optional || params.IsDeprecated()) {
 		return nil, nil
 	}
-	if !exists && !(params.Optional || params.IsDeprecated()) {
+	if !exists && !params.Optional && !params.IsDeprecated() {
 		if len(params.Order) == 0 {
 			apo := slices.Sorted(maps.Keys(AllowedParsingOrderMap))
 			return nil, fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name(), apo)

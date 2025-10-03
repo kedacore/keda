@@ -2,7 +2,11 @@
 Copyright 2021 The KEDA Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
+you may not use this file except in complian	err := fmt.E	conditions.SetActiveCondition(metav1.ConditionUnknown, "UnknownState", "ScaledJob check failed")
+	r.EventEmitter.Emit(scaledJob, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobCheckFailed, msg)orf("%s", errMsg)
+	reqLogger.Error(err, errMsg)
+	r.EventEmitter.Emit(scaledJob, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobCheckFailed, errMsg)
+	return ctrl.Result{}, errith the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
@@ -103,7 +107,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Fetch the ScaledJob instance
 	scaledJob := &kedav1alpha1.ScaledJob{}
-	err := r.Client.Get(ctx, req.NamespacedName, scaledJob)
+	err := r.Get(ctx, req.NamespacedName, scaledJob)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -121,9 +125,9 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// Check if the ScaledJob instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
 	if scaledJob.GetDeletionTimestamp() != nil {
-		return ctrl.Result{}, r.finalizeScaledJob(ctx, reqLogger, scaledJob, req.NamespacedName.String())
+		return ctrl.Result{}, r.finalizeScaledJob(ctx, reqLogger, scaledJob, req.String())
 	}
-	r.updatePromMetrics(scaledJob, req.NamespacedName.String())
+	r.updatePromMetrics(scaledJob, req.String())
 
 	// ensure finalizer is set on this CR
 	if err := r.ensureFinalizer(ctx, reqLogger, scaledJob); err != nil {
@@ -134,7 +138,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if !scaledJob.Status.Conditions.AreInitialized() {
 		conditions := kedav1alpha1.GetInitializedConditions()
 		if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, conditions); err != nil {
-			r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobUpdateFailed, err.Error())
+			r.EventEmitter.Emit(scaledJob, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobUpdateFailed, err.Error())
 			return ctrl.Result{}, err
 		}
 	}
@@ -144,7 +148,7 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		errMsg := "ScaledJob.spec.jobTargetRef not found"
 		err := fmt.Errorf("%s", errMsg)
 		reqLogger.Error(err, errMsg)
-		r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobCheckFailed, errMsg)
+		r.EventEmitter.Emit(scaledJob, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobCheckFailed, errMsg)
 		return ctrl.Result{}, err
 	}
 	conditions := scaledJob.Status.Conditions.DeepCopy()
@@ -153,18 +157,18 @@ func (r *ScaledJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		reqLogger.Error(err, msg)
 		conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledJobCheckFailed", msg)
 		conditions.SetActiveCondition(metav1.ConditionUnknown, "UnknownState", "ScaledJob check failed")
-		r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobCheckFailed, msg)
+		r.EventEmitter.Emit(scaledJob, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobCheckFailed, msg)
 	} else {
 		wasReady := conditions.GetReadyCondition()
 		if wasReady.IsFalse() || wasReady.IsUnknown() {
-			r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectReadyType, eventreason.ScaledJobReady, message.ScaledJobReadyMsg)
+			r.EventEmitter.Emit(scaledJob, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectReadyType, eventreason.ScaledJobReady, message.ScaledJobReadyMsg)
 		}
 		reqLogger.V(1).Info(msg)
 		conditions.SetReadyCondition(metav1.ConditionTrue, "ScaledJobReady", msg)
 	}
 
 	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledJob, &conditions); err != nil {
-		r.EventEmitter.Emit(scaledJob, req.NamespacedName.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobUpdateFailed, err.Error())
+		r.EventEmitter.Emit(scaledJob, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobUpdateFailed, err.Error())
 		return ctrl.Result{}, err
 	}
 
@@ -280,7 +284,7 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 			client.MatchingLabels(map[string]string{"scaledjob.keda.sh/name": scaledJob.GetName()}),
 		}
 		jobs := &batchv1.JobList{}
-		err := r.Client.List(ctx, jobs, opts...)
+		err := r.List(ctx, jobs, opts...)
 		if err != nil {
 			return "Cannot get list of Jobs owned by this scaledJob", err
 		}
@@ -308,7 +312,7 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 				if scaledJob.Spec.Rollout.PropagationPolicy == "foreground" {
 					propagationPolicy = metav1.DeletePropagationForeground
 				}
-				err = r.Client.Delete(ctx, &job, client.PropagationPolicy(propagationPolicy))
+				err = r.Delete(ctx, &job, client.PropagationPolicy(propagationPolicy))
 				if err != nil {
 					return "Not able to delete job: " + job.Name, err
 				}
