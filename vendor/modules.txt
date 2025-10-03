@@ -1510,6 +1510,13 @@ github.com/sergi/go-diff/diffmatchpatch
 # github.com/shopspring/decimal v1.3.1
 ## explicit; go 1.13
 github.com/shopspring/decimal
+# github.com/signalfx/signalflow-client-go/v2 v2.3.0
+## explicit; go 1.21
+github.com/signalfx/signalflow-client-go/v2/signalflow
+github.com/signalfx/signalflow-client-go/v2/signalflow/messages
+# github.com/signalfx/signalfx-go v1.34.0
+## explicit; go 1.17
+github.com/signalfx/signalfx-go/idtool
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
