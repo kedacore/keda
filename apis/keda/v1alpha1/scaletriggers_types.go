@@ -46,6 +46,10 @@ type AuthenticationRef struct {
 	// Kind of the resource being referred to. Defaults to TriggerAuthentication.
 	// +optional
 	Kind string `json:"kind,omitempty"`
+	// FilePath specifies a file containing auth parameters as JSON map[string]string.
+	// When set, auth params are read directly from this file instead of fetching TriggerAuthentication.
+	// +optional
+	FilePath string `json:"filePath,omitempty"`
 }
 
 // ValidateTriggers checks that general trigger metadata are valid, it checks:
