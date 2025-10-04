@@ -92,22 +92,24 @@ func getTriggerAuth(ctx context.Context, client runtimeclient.Client, triggerAut
 		return nil, nil, fmt.Errorf("triggerAuthRef is nil")
 	}
 
-	if triggerAuthRef.Kind == "" || triggerAuthRef.Kind == "TriggerAuthentication" {
+	switch triggerAuthRef.Kind {
+	case "", "TriggerAuthentication":
 		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
 		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
 		if err != nil {
 			return nil, nil, err
 		}
 		return triggerAuth, &triggerAuth.Status, nil
-	} else if triggerAuthRef.Kind == "ClusterTriggerAuthentication" {
+	case "ClusterTriggerAuthentication":
 		clusterTriggerAuth := &kedav1alpha1.ClusterTriggerAuthentication{}
 		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, clusterTriggerAuth)
 		if err != nil {
 			return nil, nil, err
 		}
 		return clusterTriggerAuth, &clusterTriggerAuth.Status, nil
+	default:
+		return nil, nil, fmt.Errorf("unknown trigger auth kind %s", triggerAuthRef.Kind)
 	}
-	return nil, nil, fmt.Errorf("unknown trigger auth kind %s", triggerAuthRef.Kind)
 }
 
 // updateTriggerAuthenticationStatus patches TriggerAuthentication/ClusterTriggerAuthentication from AuthenticationRef with the status that updated by statushanler function or returns an error.

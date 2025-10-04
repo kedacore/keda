@@ -90,9 +90,10 @@ func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.A
 	// TODO, remove all the logic below and just keep the logic for
 	// parsing awsAccessKeyID, awsSecretAccessKey and awsSessionToken
 	// when aws-eks are removed
-	if triggerMetadata["identityOwner"] == "operator" {
+	switch triggerMetadata["identityOwner"] {
+	case "operator":
 		meta.PodIdentityOwner = false
-	} else if triggerMetadata["identityOwner"] == "" || triggerMetadata["identityOwner"] == "pod" {
+	case "", "pod":
 		meta.PodIdentityOwner = true
 		switch {
 		case authParams["awsRoleArn"] != "":

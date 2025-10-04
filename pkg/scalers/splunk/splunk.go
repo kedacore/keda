@@ -82,7 +82,7 @@ func (c *Client) SavedSearch(name string) (*SearchResponse, error) {
 		"output_mode": {"json"},
 	}.Encode()
 
-	resp, err := c.Client.Do(req)
+	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
 	}

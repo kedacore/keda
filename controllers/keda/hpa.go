@@ -145,13 +145,13 @@ func (r *ScaledObjectReconciler) newHPAForScaledObject(ctx context.Context, logg
 
 	excludedLabels := map[string]struct{}{}
 
-	if labels, ok := scaledObject.ObjectMeta.Annotations[kedav1alpha1.ScaledObjectExcludedLabelsAnnotation]; ok {
+	if labels, ok := scaledObject.Annotations[kedav1alpha1.ScaledObjectExcludedLabelsAnnotation]; ok {
 		for _, excludedLabel := range strings.Split(labels, ",") {
 			excludedLabels[excludedLabel] = struct{}{}
 		}
 	}
 
-	for key, value := range scaledObject.ObjectMeta.Labels {
+	for key, value := range scaledObject.Labels {
 		if _, ok := excludedLabels[key]; ok {
 			continue
 		}
@@ -225,21 +225,21 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger l
 		logger.Info("Updated HPA according to ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 	}
 
-	if !equality.Semantic.DeepDerivative(hpa.ObjectMeta.Labels, foundHpa.ObjectMeta.Labels) {
-		logger.V(1).Info("Found difference in the HPA labels accordint to ScaledObject", "currentHPA", foundHpa.ObjectMeta.Labels, "newHPA", hpa.ObjectMeta.Labels)
+	if !equality.Semantic.DeepDerivative(hpa.Labels, foundHpa.Labels) {
+		logger.V(1).Info("Found difference in the HPA labels accordint to ScaledObject", "currentHPA", foundHpa.Labels, "newHPA", hpa.Labels)
 		if err = r.Client.Update(ctx, hpa); err != nil {
-			foundHpa.ObjectMeta.Labels = hpa.ObjectMeta.Labels
+			foundHpa.Labels = hpa.Labels
 			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 			return err
 		}
 		logger.Info("Updated HPA according to ScaledObject", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 	}
 
-	if (hpa.ObjectMeta.Annotations == nil && foundHpa.ObjectMeta.Annotations != nil) ||
-		!equality.Semantic.DeepDerivative(hpa.ObjectMeta.Annotations, foundHpa.ObjectMeta.Annotations) {
-		logger.V(1).Info("Found difference in the HPA annotations according to ScaledObject", "currentHPA", foundHpa.ObjectMeta.Annotations, "newHPA", hpa.ObjectMeta.Annotations)
+	if (hpa.Annotations == nil && foundHpa.Annotations != nil) ||
+		!equality.Semantic.DeepDerivative(hpa.Annotations, foundHpa.Annotations) {
+		logger.V(1).Info("Found difference in the HPA annotations according to ScaledObject", "currentHPA", foundHpa.Annotations, "newHPA", hpa.Annotations)
 		if err = r.Client.Update(ctx, hpa); err != nil {
-			foundHpa.ObjectMeta.Annotations = hpa.ObjectMeta.Annotations
+			foundHpa.Annotations = hpa.Annotations
 			logger.Error(err, "Failed to update HPA", "HPA.Namespace", foundHpa.Namespace, "HPA.Name", foundHpa.Name)
 			return err
 		}
@@ -341,9 +341,10 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 			correctHpaTarget := autoscalingv2.MetricTarget{
 				Type: metricType,
 			}
-			if metricType == autoscalingv2.AverageValueMetricType {
+			switch metricType {
+			case autoscalingv2.AverageValueMetricType:
 				correctHpaTarget.AverageValue = quan
-			} else if metricType == autoscalingv2.ValueMetricType {
+			case autoscalingv2.ValueMetricType:
 				correctHpaTarget.Value = quan
 			}
 			compMetricName := kedav1alpha1.CompositeMetricName
