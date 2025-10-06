@@ -123,7 +123,7 @@ spec:
     spec:
       containers:
       - name: curl-client
-        image: curlimages/curl
+        image: docker.io/curlimages/curl
         imagePullPolicy: Always
         command: ["curl", "-u", "{{.Username}}:{{.Password}}", "-X", "PUT", "http://{{.HostName}}/api/vhosts/{{.VHostName}}"]
       restartPolicy: Never
@@ -173,7 +173,7 @@ spec:
       namespace: {{.Namespace}}
     spec:
       containers:
-      - image: rabbitmq:3.12-management
+      - image: docker.io/library/rabbitmq:3.12-management
         name: rabbitmq
         volumeMounts:
           - mountPath: /etc/rabbitmq
