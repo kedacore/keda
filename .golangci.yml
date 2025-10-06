@@ -72,6 +72,10 @@ linters:
         text: 'var-naming: avoid meaningless package names'
         path: controllers/keda/util/finalizer.go
       - linters:
+          - revive
+        text: 'var-naming: avoid meaningless package names'
+        path: pkg/util/parse_string.go
+      - linters:
           - gocyclo
         path: scalers_builder.go
       - linters:
