@@ -430,11 +430,11 @@ func TestAzurePipelinesDemandsComparisonDefaultCaseSensitive(t *testing.T) {
 	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
 
 	if err != nil {
-		t.Fail()
+		t.Fatalf("unexpected error: %v", err)
 	}
 
 	if queuelen > 0 {
-		t.Fail()
+		t.Fatalf("expected queue length to be 0, got %d", queuelen)
 	}
 }
 
@@ -457,11 +457,11 @@ func TestAzurePipelinesDemandsComparisonCaseInsensitive(t *testing.T) {
 	queuelen, err := mockAzurePipelinesScaler.GetAzurePipelinesQueueLength(context.Background())
 
 	if err != nil {
-		t.Fail()
+		t.Fatalf("unexpected error: %v", err)
 	}
 
 	if queuelen < 1 {
-		t.Fail()
+		t.Fatalf("expected queue length to be >= 1, got %d", queuelen)
 	}
 }
 
