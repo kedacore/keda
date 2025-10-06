@@ -2,11 +2,7 @@
 Copyright 2021 The KEDA Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in complian	err := fmt.E	conditions.SetActiveCondition(metav1.ConditionUnknown, "UnknownState", "ScaledJob check failed")
-	r.EventEmitter.Emit(scaledJob, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobCheckFailed, msg)orf("%s", errMsg)
-	reqLogger.Error(err, errMsg)
-	r.EventEmitter.Emit(scaledJob, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobCheckFailed, errMsg)
-	return ctrl.Result{}, errith the License.
+you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
