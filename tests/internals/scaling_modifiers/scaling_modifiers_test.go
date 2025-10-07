@@ -252,7 +252,7 @@ spec:
     spec:
       containers:
       - name: job-curl
-        image: curlimages/curl
+        image: docker.io/curlimages/curl
         imagePullPolicy: Always
         command: ["curl", "-X", "POST", "{{.MetricsServerEndpoint}}/{{.MetricValue}}"]
       restartPolicy: OnFailure

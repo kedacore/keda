@@ -59,7 +59,7 @@ spec:
       spec:
         containers:
           - name: sleeper
-            image: busybox
+            image: docker.io/library/busybox
             command:
             - sleep
             - "300"
