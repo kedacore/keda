@@ -534,7 +534,8 @@ func TestKafkaOAuthbearerAuthParams(t *testing.T) {
 			t.Fatal("Expected error but got success")
 		}
 
-		if testData.authParams["saslTokenProvider"] == "" || testData.authParams["saslTokenProvider"] == "bearer" {
+		switch testData.authParams["saslTokenProvider"] {
+		case "", "bearer":
 			if !testData.isError && meta.tokenProvider != KafkaSASLOAuthTokenProviderBearer {
 				t.Errorf("Expected tokenProvider to be set to %v but got %v\n", KafkaSASLOAuthTokenProviderBearer, meta.tokenProvider)
 			}
@@ -550,7 +551,7 @@ func TestKafkaOAuthbearerAuthParams(t *testing.T) {
 					t.Errorf("Expected number of extensions to be set to %v but got %v\n", strings.Count(testData.authParams["oauthExtensions"], ",")+1, len(meta.oauthExtensions))
 				}
 			}
-		} else if testData.authParams["saslTokenProvider"] == "aws_msk_iam" {
+		case "aws_msk_iam":
 			if !testData.isError && meta.tokenProvider != KafkaSASLOAuthTokenProviderAWSMSKIAM {
 				t.Errorf("Expected tokenProvider to be set to %v but got %v\n", KafkaSASLOAuthTokenProviderAWSMSKIAM, meta.tokenProvider)
 			}

@@ -65,7 +65,7 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 	reqLogger := log.FromContext(ctx)
 
 	triggerAuthentication := &kedav1alpha1.TriggerAuthentication{}
-	err := r.Client.Get(ctx, req.NamespacedName, triggerAuthentication)
+	err := r.Get(ctx, req.NamespacedName, triggerAuthentication)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -75,19 +75,19 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	if triggerAuthentication.GetDeletionTimestamp() != nil {
-		return ctrl.Result{}, r.finalizeTriggerAuthentication(ctx, reqLogger, triggerAuthentication, req.NamespacedName.String())
+		return ctrl.Result{}, r.finalizeTriggerAuthentication(ctx, reqLogger, triggerAuthentication, req.String())
 	}
 
 	if err := r.ensureFinalizer(ctx, reqLogger, triggerAuthentication); err != nil {
 		return ctrl.Result{}, err
 	}
-	r.updatePromMetrics(triggerAuthentication, req.NamespacedName.String())
+	r.updatePromMetrics(triggerAuthentication, req.String())
 
-	if triggerAuthentication.ObjectMeta.Generation == 1 {
-		r.Emit(triggerAuthentication, req.NamespacedName.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationCreatedType, eventreason.TriggerAuthenticationAdded, message.TriggerAuthenticationCreatedMsg)
+	if triggerAuthentication.Generation == 1 {
+		r.Emit(triggerAuthentication, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationCreatedType, eventreason.TriggerAuthenticationAdded, message.TriggerAuthenticationCreatedMsg)
 	} else {
 		msg := fmt.Sprintf(message.TriggerAuthenticationUpdatedMsg, triggerAuthentication.Name)
-		r.Emit(triggerAuthentication, req.NamespacedName.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationUpdatedType, eventreason.TriggerAuthenticationUpdated, msg)
+		r.Emit(triggerAuthentication, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationUpdatedType, eventreason.TriggerAuthenticationUpdated, msg)
 	}
 
 	return ctrl.Result{}, nil

@@ -360,7 +360,7 @@ func getAzurePipelineRequest(ctx context.Context, logger logr.Logger, urlString 
 	}
 	r.Body.Close()
 
-	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
+	if r.StatusCode < 200 || r.StatusCode > 299 {
 		return []byte{}, fmt.Errorf("the Azure DevOps REST API returned error. urlString: %s status: %d response: %s", urlString, r.StatusCode, string(b))
 	}
 

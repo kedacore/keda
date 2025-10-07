@@ -64,7 +64,7 @@ func (r *ClusterTriggerAuthenticationReconciler) Reconcile(ctx context.Context, 
 	reqLogger := log.FromContext(ctx)
 
 	clusterTriggerAuthentication := &kedav1alpha1.ClusterTriggerAuthentication{}
-	err := r.Client.Get(ctx, req.NamespacedName, clusterTriggerAuthentication)
+	err := r.Get(ctx, req.NamespacedName, clusterTriggerAuthentication)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -74,19 +74,19 @@ func (r *ClusterTriggerAuthenticationReconciler) Reconcile(ctx context.Context, 
 	}
 
 	if clusterTriggerAuthentication.GetDeletionTimestamp() != nil {
-		return ctrl.Result{}, r.finalizeClusterTriggerAuthentication(ctx, reqLogger, clusterTriggerAuthentication, req.NamespacedName.String())
+		return ctrl.Result{}, r.finalizeClusterTriggerAuthentication(ctx, reqLogger, clusterTriggerAuthentication, req.String())
 	}
 
 	if err := r.ensureFinalizer(ctx, reqLogger, clusterTriggerAuthentication); err != nil {
 		return ctrl.Result{}, err
 	}
-	r.updatePromMetrics(clusterTriggerAuthentication, req.NamespacedName.String())
+	r.updatePromMetrics(clusterTriggerAuthentication, req.String())
 
-	if clusterTriggerAuthentication.ObjectMeta.Generation == 1 {
-		r.Emit(clusterTriggerAuthentication, req.NamespacedName.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationCreatedType, eventreason.ClusterTriggerAuthenticationAdded, message.ClusterTriggerAuthenticationCreatedMsg)
+	if clusterTriggerAuthentication.Generation == 1 {
+		r.Emit(clusterTriggerAuthentication, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationCreatedType, eventreason.ClusterTriggerAuthenticationAdded, message.ClusterTriggerAuthenticationCreatedMsg)
 	} else {
 		msg := fmt.Sprintf(message.ClusterTriggerAuthenticationUpdatedMsg, clusterTriggerAuthentication.Name)
-		r.Emit(clusterTriggerAuthentication, req.NamespacedName.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationUpdatedType, eventreason.ClusterTriggerAuthenticationUpdated, msg)
+		r.Emit(clusterTriggerAuthentication, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationUpdatedType, eventreason.ClusterTriggerAuthenticationUpdated, msg)
 	}
 
 	return ctrl.Result{}, nil

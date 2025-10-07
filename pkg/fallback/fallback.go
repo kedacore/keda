@@ -203,9 +203,10 @@ func doFallback(ctx context.Context, client runtimeclient.Client, scaleClient sc
 
 	var normalisationValue float64
 	if !scaledObject.IsUsingModifiers() {
-		if metricSpec.External.Target.Type == v2.AverageValueMetricType {
+		switch metricSpec.External.Target.Type {
+		case v2.AverageValueMetricType:
 			normalisationValue = metricSpec.External.Target.AverageValue.AsApproximateFloat64()
-		} else if metricSpec.External.Target.Type == v2.ValueMetricType {
+		case v2.ValueMetricType:
 			normalisationValue = metricSpec.External.Target.Value.AsApproximateFloat64()
 		}
 	} else {
