@@ -148,6 +148,7 @@ type azurePipelinesMetadata struct {
 	triggerIndex                         int
 	RequireAllDemands                    bool `keda:"name=requireAllDemands,          order=triggerMetadata, default=false, optional"`
 	RequireAllDemandsAndIgnoreOthers     bool `keda:"name=requireAllDemandsAndIgnoreOthers,          order=triggerMetadata, default=false, optional"`
+	CaseInsensitiveDemandsProcessing     bool `keda:"name=caseInsensitiveDemandsProcessing,          order=triggerMetadata, default=false, optional"`
 }
 
 type authContext struct {
@@ -464,7 +465,13 @@ func getCanAgentDemandFulfilJob(jr JobRequest, metadata *azurePipelinesMetadata)
 
 	for _, demandInJob := range demandsInJob {
 		for _, demandInScaler := range demandsInScaler {
-			if demandInJob == demandInScaler {
+			var isMatch bool
+			if metadata.CaseInsensitiveDemandsProcessing {
+				isMatch = strings.EqualFold(demandInJob, demandInScaler)
+			} else {
+				isMatch = demandInJob == demandInScaler
+			}
+			if isMatch {
 				countDemands++
 			}
 		}

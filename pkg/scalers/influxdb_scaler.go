@@ -3,7 +3,9 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/InfluxCommunity/influxdb3-go/v2/influxdb3"
 	"github.com/go-logr/logr"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	api "github.com/influxdata/influxdb-client-go/v2/api"
@@ -21,16 +23,65 @@ type influxDBScaler struct {
 	logger     logr.Logger
 }
 
+type influxDBScalerV3 struct {
+	client     *influxdb3.Client
+	metricType v2.MetricTargetType
+	metadata   *influxDBMetadata
+	logger     logr.Logger
+}
+
 type influxDBMetadata struct {
-	AuthToken                string  `keda:"name=authToken, order=triggerMetadata;resolvedEnv;authParams"`
-	OrganizationName         string  `keda:"name=organizationName, order=triggerMetadata;resolvedEnv;authParams"`
-	Query                    string  `keda:"name=query, order=triggerMetadata"`
-	ServerURL                string  `keda:"name=serverURL, order=triggerMetadata;authParams"`
-	UnsafeSsl                bool    `keda:"name=unsafeSsl, order=triggerMetadata, optional"`
-	ThresholdValue           float64 `keda:"name=thresholdValue, order=triggerMetadata, optional"`
-	ActivationThresholdValue float64 `keda:"name=activationThresholdValue, order=triggerMetadata, optional"`
+	AuthTokenOld             string  `keda:"name=authToken,                order=triggerMetadata,                        optional,        deprecatedAnnounce=The 'authToken' setting from triggerMetadata is DEPRECATED and will be removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead"`
+	AuthToken                string  `keda:"name=authToken,                order=resolvedEnv;authParams,                 optional"`
+	OrganizationName         string  `keda:"name=organizationName,         order=triggerMetadata;resolvedEnv;authParams, optional"`
+	Query                    string  `keda:"name=query,                    order=triggerMetadata"`
+	InfluxVersion            string  `keda:"name=influxVersion,            order=triggerMetadata,                        default=2,       enum=2;3"`
+	QueryType                string  `keda:"name=queryType,                order=triggerMetadata,                        default=InfluxQL"`
+	Database                 string  `keda:"name=database,                 order=triggerMetadata;authParams,             optional"`
+	MetricKey                string  `keda:"name=metricKey,                order=triggerMetadata,                        optional"`
+	ServerURL                string  `keda:"name=serverURL,                order=triggerMetadata;authParams"`
+	UnsafeSsl                bool    `keda:"name=unsafeSsl,                order=triggerMetadata,                        optional"`
+	ThresholdValue           float64 `keda:"name=thresholdValue,           order=triggerMetadata,                        optional"`
+	ActivationThresholdValue float64 `keda:"name=activationThresholdValue, order=triggerMetadata,                        optional"`
 
 	triggerIndex int
+}
+
+func (i *influxDBMetadata) Validate() error {
+	if i.AuthTokenOld != "" && i.AuthToken != "" {
+		return fmt.Errorf("authToken cannot be specified in both triggerMetadata and resolvedEnv/authParams")
+	}
+
+	if i.AuthTokenOld != "" {
+		i.AuthToken = i.AuthTokenOld
+	}
+
+	if i.AuthToken == "" {
+		return fmt.Errorf("authToken is required")
+	}
+
+	if i.InfluxVersion == "3" {
+		if i.Database == "" {
+			return fmt.Errorf("database is required if influxVersion is 3")
+		}
+
+		if i.MetricKey == "" {
+			return fmt.Errorf("metricKey is required if influxVersion is 3")
+		}
+
+		queryTypeLower := strings.ToLower(i.QueryType)
+		if queryTypeLower != "influxql" && queryTypeLower != "flightsql" {
+			return fmt.Errorf("query type must be 'influxql' or 'flightsql'")
+		}
+	}
+
+	if i.InfluxVersion == "2" {
+		if i.OrganizationName == "" {
+			return fmt.Errorf("organizationName is required if influxVersion is 2")
+		}
+	}
+
+	return nil
 }
 
 // NewInfluxDBScaler creates a new influx db scaler
@@ -47,7 +98,30 @@ func NewInfluxDBScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing influxdb metadata: %w", err)
 	}
 
-	logger.Info("starting up influxdb client")
+	if meta.InfluxVersion == "3" {
+		logger.Info("starting up influxdb v3 client")
+
+		clientv3, err := influxdb3.New(influxdb3.ClientConfig{
+			Host:         meta.ServerURL,
+			Token:        meta.AuthToken,
+			Database:     meta.Database,
+			Organization: meta.OrganizationName,
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("error creating influxdb v3 client: %w", err)
+		}
+
+		return &influxDBScalerV3{
+			client:     clientv3,
+			metricType: metricType,
+			metadata:   meta,
+			logger:     logger,
+		}, nil
+	}
+
+	logger.Info("starting up influxdb v2 client")
+
 	client := influxdb2.NewClientWithOptions(
 		meta.ServerURL,
 		meta.AuthToken,
@@ -82,7 +156,15 @@ func (s *influxDBScaler) Close(context.Context) error {
 	return nil
 }
 
-// queryInfluxDB runs the query against the associated influxdb database
+// Close closes the connection of the client to the server
+func (s *influxDBScalerV3) Close(context.Context) error {
+	if s.client != nil {
+		s.client.Close()
+	}
+	return nil
+}
+
+// queryInfluxDB runs the query against the associated influxdb v2 database
 // there is an implicit assumption here that the first value returned from the iterator
 // will be the value of interest
 func queryInfluxDB(ctx context.Context, queryAPI api.QueryAPI, query string) (float64, error) {
@@ -106,6 +188,46 @@ func queryInfluxDB(ctx context.Context, queryAPI api.QueryAPI, query string) (fl
 	}
 }
 
+// queryInfluxDBV3 runs the query against the associated influxdb v3 database
+// there is an implicit assumption here that the first value returned from the iterator
+// will be the value of interest
+func queryInfluxDBV3(ctx context.Context, client *influxdb3.Client, metadata influxDBMetadata) (float64, error) {
+	var queryType influxdb3.QueryType
+	switch strings.ToLower(metadata.QueryType) {
+	case "influxql":
+		queryType = influxdb3.InfluxQL
+	case "flightsql":
+		queryType = influxdb3.SQL
+	default:
+		return 0, fmt.Errorf("query type must be 'influxql' or 'flightsql'")
+	}
+
+	result, err := client.Query(
+		ctx, metadata.Query,
+		influxdb3.WithQueryType(queryType),
+	)
+
+	if err != nil {
+		return 0, err
+	}
+
+	var parsedVal float64
+
+	for result.Next() {
+		value := result.Value()
+
+		switch valRaw := value[metadata.MetricKey].(type) {
+		case float64:
+			parsedVal = valRaw
+		case int64:
+			parsedVal = float64(valRaw)
+		default:
+			return 0, fmt.Errorf("value of type %T could not be converted into a float", valRaw)
+		}
+	}
+	return parsedVal, nil
+}
+
 // GetMetricsAndActivity connects to influxdb via the client and returns a value based on the query
 func (s *influxDBScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	// Grab QueryAPI to make queries to influxdb instance
@@ -121,11 +243,38 @@ func (s *influxDBScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 	return []external_metrics.ExternalMetricValue{metric}, value > s.metadata.ActivationThresholdValue, nil
 }
 
+// GetMetricsAndActivity connects to influxdb via the client and returns a value based on the query
+func (s *influxDBScalerV3) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
+	value, err := queryInfluxDBV3(ctx, s.client, *s.metadata)
+
+	if err != nil {
+		return []external_metrics.ExternalMetricValue{}, false, err
+	}
+
+	metric := GenerateMetricInMili(metricName, value)
+
+	return []external_metrics.ExternalMetricValue{metric}, value > s.metadata.ActivationThresholdValue, nil
+}
+
 // GetMetricSpecForScaling returns the metric spec for the Horizontal Pod Autoscaler
 func (s *influxDBScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, util.NormalizeString(fmt.Sprintf("influxdb-%s", s.metadata.OrganizationName))),
+		},
+		Target: GetMetricTargetMili(s.metricType, s.metadata.ThresholdValue),
+	}
+	metricSpec := v2.MetricSpec{
+		External: externalMetric, Type: externalMetricType,
+	}
+	return []v2.MetricSpec{metricSpec}
+}
+
+// GetMetricSpecForScaling returns the metric spec for the Horizontal Pod Autoscaler
+func (s *influxDBScalerV3) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
+	externalMetric := &v2.ExternalMetricSource{
+		Metric: v2.MetricIdentifier{
+			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, util.NormalizeString(fmt.Sprintf("influxdb-%s", s.metadata.Database))),
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.ThresholdValue),
 	}

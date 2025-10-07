@@ -31,6 +31,7 @@ var Regions = map[Name]*Region{
 		nerdGraphBaseURL:      "https://api.newrelic.com/graphql",
 		restBaseURL:           "https://api.newrelic.com/v2",
 		syntheticsBaseURL:     "https://synthetics.newrelic.com/synthetics/api",
+		metricsBaseURL:        "https://metric-api.newrelic.com/metric/v1",
 	},
 	EU: {
 		name:                  "EU",
@@ -41,6 +42,7 @@ var Regions = map[Name]*Region{
 		nerdGraphBaseURL:      "https://api.eu.newrelic.com/graphql",
 		restBaseURL:           "https://api.eu.newrelic.com/v2",
 		syntheticsBaseURL:     "https://synthetics.eu.newrelic.com/synthetics/api",
+		metricsBaseURL:        "https://metric-api.eu.newrelic.com/metric/v1",
 	},
 	Staging: {
 		name:                  "Staging",
@@ -51,6 +53,7 @@ var Regions = map[Name]*Region{
 		nerdGraphBaseURL:      "https://staging-api.newrelic.com/graphql",
 		restBaseURL:           "https://staging-api.newrelic.com/v2",
 		syntheticsBaseURL:     "https://staging-synthetics.newrelic.com/synthetics/api",
+		metricsBaseURL:        "https://staging-metric-api.newrelic.com/metric/v1",
 	},
 	Local: {
 		name:                  "Local",
@@ -61,6 +64,7 @@ var Regions = map[Name]*Region{
 		nerdGraphBaseURL:      "http://localhost:3000/graphql",
 		restBaseURL:           "http://localhost:3000/v2",
 		syntheticsBaseURL:     "http://localhost:3000/synthetics/api",
+		metricsBaseURL:        "http://localhost:3000/metric/v1",
 	},
 }
 
@@ -106,6 +110,9 @@ func Get(r Name) (*Region, error) {
 		}
 		if val := os.Getenv("NEW_RELIC_SYNTHETICS_BASE_URL"); val != "" {
 			ret.syntheticsBaseURL = val
+		}
+		if val := os.Getenv("NEW_RELIC_METRICS_BASE_URL"); val != "" {
+			ret.metricsBaseURL = val
 		}
 		return &ret, nil
 	}

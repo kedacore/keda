@@ -13,6 +13,7 @@
         "api_op_DeleteDashboards.go",
         "api_op_DeleteInsightRules.go",
         "api_op_DeleteMetricStream.go",
+        "api_op_DescribeAlarmContributors.go",
         "api_op_DescribeAlarmHistory.go",
         "api_op_DescribeAlarms.go",
         "api_op_DescribeAlarmsForMetric.go",

@@ -10,7 +10,11 @@ jobs:
   validate:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.23.8
+    container:
+      image: ghcr.io/kedacore/keda-tools:1.24.7
+      volumes:
+        - /usr:/host/usr
+        - /opt:/host/opt
     strategy:
       matrix:
         include:
@@ -21,6 +25,18 @@ jobs:
           - runner: s390x
             name: s390x
     steps:
+      - name: Maximize disk space
+        if: ${{ matrix.name == 'amd64' }}
+        run: |
+          # inspired by easimon/maximize-build-space action but it can't be easily used because this runs in a container
+          # https://github.com/easimon/maximize-build-space/blob/c28619d8999a147d5e09c1199f84ff6af6ad5794/action.yml#L41-L60
+          # remove android sdk => ~11GB
+          rm -rf /host/usr/local/lib/android
+          # remove .NET => ~17GB
+          rm -rf /host/usr/share/dotnet
+          # remove haskell => ~2.7GB
+          rm -rf /host/opt/ghc
+
       - name: Check out code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
@@ -56,7 +72,7 @@ jobs:
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
 
       - name: Go modules sync
-        run: go mod tidy -compat=1.23
+        run: go mod tidy -compat=1.24
 
       - name: Verify generated Clientset is up to date
         run: make clientset-verify
@@ -86,11 +102,11 @@ jobs:
 
   validate-dockerfiles:
     permissions:
-      contents: read  # for dorny/paths-filter to fetch a list of changed files
-      pull-requests: read  # for dorny/paths-filter to read pull requests
+      contents: read # for dorny/paths-filter to fetch a list of changed files
+      pull-requests: read # for dorny/paths-filter to read pull requests
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.23.8
+    container: ghcr.io/kedacore/keda-tools:1.24.7
     strategy:
       matrix:
         include:
@@ -122,11 +138,11 @@ jobs:
 
   validate-dev-container:
     permissions:
-      contents: read  # for dorny/paths-filter to fetch a list of changed files
-      pull-requests: read  # for dorny/paths-filter to read pull requests
+      contents: read # for dorny/paths-filter to fetch a list of changed files
+      pull-requests: read # for dorny/paths-filter to read pull requests
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.23.8
+    container: ghcr.io/kedacore/keda-tools:1.24.7
     strategy:
       matrix:
         include:
@@ -163,7 +179,7 @@ jobs:
           python-version: 3.x
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
       - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
 
   trivy-scan:

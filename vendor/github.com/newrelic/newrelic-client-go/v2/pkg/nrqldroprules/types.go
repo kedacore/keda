@@ -173,6 +173,10 @@ type NRQLDropRulesDropRule struct {
 	ID string `json:"id"`
 	// The NRQL used to match data that will receive the `action`.
 	NRQL string `json:"nrql"`
+	// The name of the pipeline cloud rule.
+	Name string `json:"name,omitempty"`
+	// The entityId associated with the pipeline cloud rule.
+	PipelineCloudRuleEntityId string `json:"pipelineCloudRuleEntityId,omitempty"`
 	// Who or what registered this rule.
 	Source string `json:"source,omitempty"`
 }

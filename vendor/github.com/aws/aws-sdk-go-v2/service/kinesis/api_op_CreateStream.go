@@ -54,10 +54,12 @@ import (
 // CreateStreamhas a limit of five transactions per second per account.
 //
 // You can add tags to the stream when making a CreateStream request by setting
-// the Tags parameter. If you pass Tags parameter, in addition to having
-// kinesis:createStream permission, you must also have kinesis:addTagsToStream
-// permission for the stream that will be created. Tags will take effect from the
-// CREATING status of the stream.
+// the Tags parameter. If you pass the Tags parameter, in addition to having the
+// kinesis:CreateStream permission, you must also have the kinesis:AddTagsToStream
+// permission for the stream that will be created. The kinesis:TagResource
+// permission won’t work to tag streams on creation. Tags will take effect from the
+// CREATING status of the stream, but you can't make any updates to the tags until
+// the stream is in ACTIVE state.
 //
 // [contact Amazon Web Services Support]: https://docs.aws.amazon.com/general/latest/gr/aws_service_limits.html
 // [Amazon Kinesis Data Streams Limits]: https://docs.aws.amazon.com/kinesis/latest/dev/service-sizes-and-limits.html
@@ -99,7 +101,8 @@ type CreateStreamInput struct {
 	// capacity mode for your data streams.
 	StreamModeDetails *types.StreamModeDetails
 
-	// A set of up to 10 key-value pairs to use to create the tags.
+	// A set of up to 50 key-value pairs to use to create the tags. A tag consists of
+	// a required key and an optional value.
 	Tags map[string]string
 
 	noSmithyDocumentSerde
@@ -198,6 +201,36 @@ func (c *Client) addOperationCreateStreamMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
 		return err
 	}
 	if err = addSpanInitializeStart(stack); err != nil {

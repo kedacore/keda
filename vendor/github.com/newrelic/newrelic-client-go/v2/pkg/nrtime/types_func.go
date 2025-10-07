@@ -39,6 +39,11 @@ func (t EpochMilliseconds) String() string {
 }
 
 func (t *Seconds) UnmarshalJSON(s []byte) error {
+	// Handle null values
+	if string(s) == "null" {
+		return nil
+	}
+
 	*t = Seconds(string(s))
 
 	return nil

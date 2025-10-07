@@ -1,5 +1,18 @@
 # Release History
 
+## 1.4.0 (2025-06-10)
+
+### Other Changes
+
+This package has been deprecated, use `github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2` instead. The major release
+changes a single field (Offset) from an integer, and should be a non-breaking change for most users.
+
+## 1.3.2 (2025-04-08)
+
+### Bugs Fixed
+
+- Processor now only lists checkpoints when it needs to start a new partition client, avoiding wasted calls to the checkpoint store. (PR#24383)
+
 ## 1.3.1 (2025-03-11)
 
 ### Bugs Fixed

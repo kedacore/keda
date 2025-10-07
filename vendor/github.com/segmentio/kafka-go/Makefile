@@ -4,4 +4,4 @@ test:
 	go test -race -cover ./...
 
 docker:
-	docker-compose up -d
+	docker compose up -d

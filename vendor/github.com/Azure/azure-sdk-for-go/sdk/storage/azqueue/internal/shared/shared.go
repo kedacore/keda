@@ -78,22 +78,6 @@ func ParseConnectionString(connectionString string) (ParsedConnectionString, err
 		connStrMap[parts[0]] = parts[1]
 	}
 
-	accountName, ok := connStrMap["AccountName"]
-	if !ok {
-		return ParsedConnectionString{}, errors.New("connection string missing AccountName")
-	}
-
-	accountKey, ok := connStrMap["AccountKey"]
-	if !ok {
-		sharedAccessSignature, ok := connStrMap["SharedAccessSignature"]
-		if !ok {
-			return ParsedConnectionString{}, errors.New("connection string missing AccountKey and SharedAccessSignature")
-		}
-		return ParsedConnectionString{
-			ServiceURL: fmt.Sprintf("%v://%v.queue.%v/?%v", defaultScheme, accountName, defaultSuffix, sharedAccessSignature),
-		}, nil
-	}
-
 	protocol, ok := connStrMap["DefaultEndpointsProtocol"]
 	if !ok {
 		protocol = defaultScheme
@@ -104,19 +88,39 @@ func ParseConnectionString(connectionString string) (ParsedConnectionString, err
 		suffix = defaultSuffix
 	}
 
-	if queueEndpoint, ok := connStrMap["QueueEndpoint"]; ok {
+	queueEndpoint, has_queueEndpoint := connStrMap["QueueEndpoint"]
+	accountName, has_accountName := connStrMap["AccountName"]
+
+	var serviceURL string
+	if has_queueEndpoint {
+		serviceURL = queueEndpoint
+	} else if has_accountName {
+		serviceURL = fmt.Sprintf("%v://%v.queue.%v", protocol, accountName, suffix)
+	} else {
+		return ParsedConnectionString{}, errors.New("connection string needs either AccountName or QueueEndpoint")
+	}
+
+	if !strings.HasSuffix(serviceURL, "/") {
+		// add a trailing slash to be consistent with the portal
+		serviceURL += "/"
+	}
+
+	accountKey, has_accountKey := connStrMap["AccountKey"]
+	sharedAccessSignature, has_sharedAccessSignature := connStrMap["SharedAccessSignature"]
+
+	if has_accountName && has_accountKey {
 		return ParsedConnectionString{
-			ServiceURL:  queueEndpoint,
+			ServiceURL:  serviceURL,
 			AccountName: accountName,
 			AccountKey:  accountKey,
 		}, nil
+	} else if has_sharedAccessSignature {
+		return ParsedConnectionString{
+			ServiceURL: fmt.Sprintf("%v?%v", serviceURL, sharedAccessSignature),
+		}, nil
+	} else {
+		return ParsedConnectionString{}, errors.New("connection string needs either AccountKey or SharedAccessSignature")
 	}
-
-	return ParsedConnectionString{
-		ServiceURL:  fmt.Sprintf("%v://%v.queue.%v", protocol, accountName, suffix),
-		AccountName: accountName,
-		AccountKey:  accountKey,
-	}, nil
 }
 
 func GetClientOptions[T any](o *T) *T {

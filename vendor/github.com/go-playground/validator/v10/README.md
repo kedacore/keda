@@ -1,6 +1,6 @@
 Package validator
 =================
-<img align="right" src="logo.png">![Project status](https://img.shields.io/badge/version-10.25.0-green.svg)
+<img align="right" src="logo.png">[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/go-playground/validator)](https://github.com/go-playground/validator/releases)
 [![Build Status](https://github.com/go-playground/validator/actions/workflows/workflow.yml/badge.svg)](https://github.com/go-playground/validator/actions)
 [![Coverage Status](https://coveralls.io/repos/go-playground/validator/badge.svg?branch=master&service=github)](https://coveralls.io/github/go-playground/validator?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/go-playground/validator)](https://goreportcard.com/report/github.com/go-playground/validator)
@@ -262,6 +262,8 @@ validate := validator.New(validator.WithRequiredStructEnabled())
 | excluded_without | Excluded Without |
 | excluded_without_all | Excluded Without All |
 | unique | Unique |
+| validateFn | Verify if the method `Validate() error` does not return an error (or any specified method) |
+
 
 #### Aliases:
 | Tag | Description |
