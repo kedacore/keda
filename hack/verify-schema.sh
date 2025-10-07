@@ -38,7 +38,7 @@ find "$SCHEMAROOT" -name "*.json" | while read file; do
       break
   fi
 
-   err_line_content=$(grep -vE '"kedaVersion":.+|"schemaVersion":.+|"scalers": \[|"metadata": \[|"optional":.+|"default":.+|"canReadFromEnv":.+|"canReadFromAuth":.+|"type":.+|"name":.+|"rangeSeparator":.+|"separator":.+|"allowedValue": \[|"deprecatedAnnounce":.+|^[^:]*$' "$file")
+   err_line_content=$(grep -vE '"kedaVersion":.+|"schemaVersion":.+|"scalers": \[|"metadata": \[|"parameters": \[|"optional":.+|"default":.+|"canReadFromEnv":.+|"canReadFromAuth":.+|"metadataVariableReadable":.+|"envVariableReadable":.+|"triggerAuthenticationVariableReadable":.+|"type":.+|"name":.+|"rangeSeparator":.+|"separator":.+|"allowedValue": \[|"deprecatedAnnounce":.+|"deprecated":.+|^[^:]*$' "$file")
 
     if [ ! -z "$err_line_content" ]; then
         echo "ERROR: error schema format found: $err_line_content in $file"
@@ -49,7 +49,7 @@ echo "Schema json files are in correct format"
 
 # Make sure schema yaml file has correct format
 find $SCHEMAROOT -name "*.yaml" | while read file; do
-   err_line_content=$(grep -vE "kedaVersion:.+|schemaVersion:.+|scalers:|metadata:|optional:.+|default:.+|canReadFromEnv:.+|canReadFromAuth:.+|type:.+|name:.+|rangeSeparator:.+|separator:.+|allowedValue:|deprecatedAnnounce:.+|^[^:]*$" "$file")
+   err_line_content=$(grep -vE "kedaVersion:.+|schemaVersion:.+|scalers:|metadata:|parameters:|optional:.+|default:.+|canReadFromEnv:.+|canReadFromAuth:.+|metadataVariableReadable:.+|envVariableReadable:.+|triggerAuthenticationVariableReadable:.+|type:.+|name:.+|rangeSeparator:.+|separator:.+|allowedValue:|deprecatedAnnounce:.+|deprecated:.+|^[^:]*$" "$file")
     if [ ! -z "$err_line_content" ]; then
         echo "ERROR: error schema format found: $err_line_content in $file"
         exit 1
