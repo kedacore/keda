@@ -229,7 +229,7 @@ func TestActiveMQDefaultCorsHeader(t *testing.T) {
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if !(meta.CorsHeader == "http://localhost:8161") {
+	if meta.CorsHeader != "http://localhost:8161" {
 		t.Errorf("Expected http://localhost:8161 but got %s", meta.CorsHeader)
 	}
 }
@@ -241,7 +241,7 @@ func TestActiveMQCorsHeader(t *testing.T) {
 	if err != nil {
 		t.Error("Expected success but got error", err)
 	}
-	if !(meta.CorsHeader == "test") {
+	if meta.CorsHeader != "test" {
 		t.Errorf("Expected test but got %s", meta.CorsHeader)
 	}
 }

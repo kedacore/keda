@@ -798,20 +798,20 @@ func newScalerTestData(
 	metricName string,
 	maxReplicaCount int,
 	multipleScalersCalculation string,
-	scaler1QueueLength, //nolint:golint,unparam
-	scaler1AverageValue int, //nolint:golint,unparam
-	scaler1IsActive bool, //nolint:golint,unparam
-	scaler2QueueLength, //nolint:golint,unparam
-	scaler2AverageValue int, //nolint:golint,unparam
-	scaler2IsActive bool, //nolint:golint,unparam
-	scaler3QueueLength, //nolint:golint,unparam
-	scaler3AverageValue int, //nolint:golint,unparam
-	scaler3IsActive bool, //nolint:golint,unparam
-	scaler4QueueLength, //nolint:golint,unparam
-	scaler4AverageValue int, //nolint:golint,unparam
-	scaler4IsActive bool, //nolint:golint,unparam
-	resultIsActive bool, //nolint:golint,unparam
-	resultIsError bool, //nolint:golint,unparam
+	scaler1QueueLength, //nolint:unparam
+	scaler1AverageValue int, //nolint:unparam
+	scaler1IsActive bool, //nolint:unparam
+	scaler2QueueLength, //nolint:unparam
+	scaler2AverageValue int, //nolint:unparam
+	scaler2IsActive bool, //nolint:unparam
+	scaler3QueueLength, //nolint:unparam
+	scaler3AverageValue int, //nolint:unparam
+	scaler3IsActive bool, //nolint:unparam
+	scaler4QueueLength, //nolint:unparam
+	scaler4AverageValue int, //nolint:unparam
+	scaler4IsActive bool, //nolint:unparam
+	resultIsActive bool, //nolint:unparam
+	resultIsError bool, //nolint:unparam
 	resultQueueLength,
 	resultMaxLength int) scalerTestData {
 	return scalerTestData{
