@@ -64,6 +64,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Add error and event for mismatching input property ([#6721](https://github.com/kedacore/keda/issues/6721))
 - **General**: Add fallback support for triggers of `Value` metric type ([#6655](https://github.com/kedacore/keda/pull/6655))
+- **General**: Add file-based authentication support for ClusterTriggerAuthentication ([#7083](https://github.com/kedacore/keda/issues/7083))
 - **General**: Add support for pause scale in annotation ([#6902](https://github.com/kedacore/keda/issues/6902))
 - **General**: Add support for pause scale out annotation ([#7022](https://github.com/kedacore/keda/issues/7022))
 - **General**: Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
