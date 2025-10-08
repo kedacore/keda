@@ -341,7 +341,7 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 		for _, eps := range endpointSlice.Endpoints {
 			// as suggested in https://github.com/kedacore/keda/pull/6565#discussion_r2395073047, make sure we take endpoint into account
 			// only when it's ready
-			if eps.Conditions.Ready == nil || !*eps.Conditions.Ready {
+			if eps.Conditions.Ready != nil && !*eps.Conditions.Ready {
 				continue
 			}
 			for _, address := range eps.Addresses {
