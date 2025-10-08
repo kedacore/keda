@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	neturl "net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -335,22 +336,34 @@ func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, s
 	if err != nil {
 		return nil, err
 	}
+	var uniqueAddresses []string
 	for _, endpointSlice := range serviceEndpointsSlices.Items {
 		for _, eps := range endpointSlice.Endpoints {
-			foundPort := ""
-			for _, port := range endpointSlice.Ports {
-				if port.Port != nil && strconv.Itoa(int(*port.Port)) == podPort {
-					foundPort = fmt.Sprintf(":%d", *port.Port)
-					break
-				}
-			}
-			if foundPort == "" {
-				s.logger.V(1).Info(fmt.Sprintf("Warning : could not find port %s in endpoint slice for service %s.%s definition. Will infer port from %s scheme", podPort, serviceName, namespace, url.Scheme))
+			// as suggested in https://github.com/kedacore/keda/pull/6565#discussion_r2395073047, make sure we take endpoint into account
+			// only when it's ready
+			if eps.Conditions.Ready == nil || !*eps.Conditions.Ready {
+				continue
 			}
 			for _, address := range eps.Addresses {
-				if eps.NodeName != nil {
-					endpointUrls = append(endpointUrls, fmt.Sprintf("%s://%s%s%s", url.Scheme, address, foundPort, url.Path))
+				// deduplicate addresses as suggested in https://github.com/kedacore/keda/pull/6565#discussion_r2395073047
+				// because it's not guaranteed by Kubernetes that an endpoint IP address will have a unique representation
+				// see https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/#duplicate-endpoints
+				if slices.Contains(uniqueAddresses, address) {
+					continue
 				}
+				uniqueAddresses = append(uniqueAddresses, address)
+
+				foundPort := ""
+				for _, port := range endpointSlice.Ports {
+					if port.Port != nil && strconv.Itoa(int(*port.Port)) == podPort {
+						foundPort = fmt.Sprintf(":%d", *port.Port)
+						break
+					}
+				}
+				if foundPort == "" {
+					s.logger.V(1).Info(fmt.Sprintf("Warning : could not find port %s in endpoint slice for service %s.%s definition. Will infer port from %s scheme", podPort, serviceName, namespace, url.Scheme))
+				}
+				endpointUrls = append(endpointUrls, fmt.Sprintf("%s://%s%s%s", url.Scheme, address, foundPort, url.Path))
 			}
 		}
 	}
