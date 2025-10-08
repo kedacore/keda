@@ -59,6 +59,10 @@ mauSvQwA0SRKECr46F8dSeFE1uIbN4ZNgrisBTVkoPYZuF7pAsSsjqGM0phUKiI8
 -----END CERTIFICATE-----
 `
 
+var clientCaPath = "/etc/tls/ca.crt"
+var clientCertPath = "/etc/tls/tls.crt"
+var clientKeyPath = "/etc/tls/tls.key"
+
 type parseExternalScalerMetadataTestData struct {
 	metadata   map[string]string
 	isError    bool
@@ -67,8 +71,10 @@ type parseExternalScalerMetadataTestData struct {
 
 var testExternalScalerMetadata = []parseExternalScalerMetadataTestData{
 	{map[string]string{}, true, map[string]string{}},
-	// all properly formed
+	// all properly formed 1
 	{map[string]string{"scalerAddress": "myservice", "test1": "7", "test2": "SAMPLE_CREDS", "enableTLS": "true", "insecureSkipVerify": "true"}, false, map[string]string{"caCert": serverRootCA, "tlsClientCert": clientCert}},
+	// all properly formed 2
+	{map[string]string{"scalerAddress": "myservice", "enableTLS": "true", "insecureSkipVerify": "true"}, false, map[string]string{"caCertFile": clientCaPath, "tlsClientCertFile": clientCertPath, "tlsClientKeyFile": clientKeyPath}},
 	// missing scalerAddress
 	{map[string]string{"test1": "1", "test2": "SAMPLE_CREDS"}, true, map[string]string{}},
 }
