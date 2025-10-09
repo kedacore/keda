@@ -698,8 +698,10 @@ func TestUnexpectedOptional(t *testing.T) {
 
 	// Verify that the event was recorded
 	Expect(mockRecorder.EventCalled).To(BeTrue())
-	Expect(mockRecorder.Messages[0]).To(Equal("Unmatched input property notexistVal in scaler test"))
-	Expect(mockRecorder.Messages[1]).To(Equal("Unmatched input property notValFromEnv in scaler test"))
+	Expect(mockRecorder.Messages).To(HaveLen(2))
+	// Check that both expected messages are present (order doesn't matter)
+	Expect(mockRecorder.Messages).To(ContainElement("Unmatched input property notexistVal in scaler test"))
+	Expect(mockRecorder.Messages).To(ContainElement("Unmatched input property notValFromEnv in scaler test"))
 }
 
 // MockEventRecorder is a mock implementation of record.EventRecorder
