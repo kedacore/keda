@@ -42,6 +42,7 @@ type pulsarMetadata struct {
 	ActivationMsgBacklogThreshold int64  `keda:"name=activationMsgBacklogThreshold, order=triggerMetadata, default=0"`
 	IsPartitionedTopic            bool   `keda:"name=isPartitionedTopic,            order=triggerMetadata, default=false"`
 	TLS                           string `keda:"name=tls,                           order=triggerMetadata, optional"`
+	AuthModes                     string `keda:"name=authModes,                     order=triggerMetadata, optional"`
 
 	// OAuth fields
 	OauthTokenURI  string `keda:"name=oauthTokenURI,  order=triggerMetadata, optional"`

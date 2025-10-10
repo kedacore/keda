@@ -37,6 +37,8 @@ type datadogScaler struct {
 
 // TODO: Need to check whether we can deprecate vType and how should we proceed with it
 type datadogMetadata struct {
+	UseClusterAgentProxy bool `keda:"name=useClusterAgentProxy, order=triggerMetadata, default=false"`
+
 	// AuthParams Cluster Agent Proxy
 	DatadogNamespace          string `keda:"name=datadogNamespace,          order=authParams, optional"`
 	DatadogMetricsService     string `keda:"name=datadogMetricsService,     order=authParams, optional"`
@@ -93,11 +95,11 @@ func NewDatadogScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 	logger := InitializeLogger(config, "datadog_scaler")
 
-	var useClusterAgentProxy bool
 	var meta *datadogMetadata
 	var apiClient *datadog.APIClient
 	var httpClient *http.Client
 
+	var useClusterAgentProxy bool
 	if val, ok := config.TriggerMetadata["useClusterAgentProxy"]; ok {
 		useClusterAgentProxy, err = strconv.ParseBool(val)
 		if err != nil {
@@ -125,7 +127,7 @@ func NewDatadogScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		apiClient:            apiClient,
 		httpClient:           httpClient,
 		logger:               logger,
-		useClusterAgentProxy: useClusterAgentProxy,
+		useClusterAgentProxy: meta.UseClusterAgentProxy,
 	}, nil
 }
 

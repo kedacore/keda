@@ -314,7 +314,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) ([]string, 
 	if err := setConfigValueHelper(params, valFromConfig, field); err != nil {
 		return nil, fmt.Errorf("unable to set param %q value %q: %w", params.Name(), valFromConfig, err)
 	}
-	return []string{params.Name()}, nil
+	return params.Names, nil
 }
 
 // setConfigValueURLParams is a function that sets the value of the url.Values field

@@ -75,7 +75,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Fix incorrect 'unmatched input property' notification ([#7174](https://github.com/kedacore/keda/issues/7174))
 
 ### Deprecations
 
@@ -116,8 +116,8 @@ New deprecation(s):
 
 - **General**: Add error and event for mismatching input property ([#6721](https://github.com/kedacore/keda/issues/6721))
 - **General**: Allow excluding labels from being propagated from ScaledObject and ScaledJob to generated HPA and Job objects ([#6849](https://github.com/kedacore/keda/issues/6849))
-- **General**: Only add webhook DNS names when webhook patching is enabled ([#7002](https://github.com/kedacore/keda/issues/7002))
 - **General**: Improve Events emitted from ScaledObject controller ([#6802](https://github.com/kedacore/keda/issues/6802))
+- **General**: Only add webhook DNS names when webhook patching is enabled ([#7002](https://github.com/kedacore/keda/issues/7002))
 - **Apache Kafka Scaler**: Add support for even distribution of partitions to consumers ([#2581](https://github.com/kedacore/keda/issues/2581))
 - **Artemis Scaler**: Add TLS support with client certificates for secure HTTPS connections ([#6448](https://github.com/kedacore/keda/issues/6448))
 - **AWS CloudWatch Scaler**: Add support for CloudWatch extended statistics (e.g P99 / TM90 and etc) ([#7109](https://github.com/kedacore/keda/issues/7109))
