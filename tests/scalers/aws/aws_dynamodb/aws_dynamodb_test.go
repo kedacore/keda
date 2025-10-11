@@ -28,7 +28,8 @@ import (
 var _ = godotenv.Load("../../../.env")
 
 const (
-	testName = "aws-dynamodb-test"
+	testName  = "aws-dynamodb-test"
+	activeMsg = "active"
 )
 
 type templateData struct {
@@ -43,6 +44,7 @@ type templateData struct {
 	ExpressionAttributeNames  string
 	KeyConditionExpression    string
 	ExpressionAttributeValues string
+	FilterExpression          string
 }
 
 const (
@@ -123,22 +125,53 @@ spec:
         targetValue: '1'
         activationTargetValue: '4'
 `
+
+	scaledObjectTemplateWithFilter = `
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{.ScaledObjectName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  scaleTargetRef:
+    name: {{.DeploymentName}}
+  maxReplicaCount: 2
+  minReplicaCount: 0
+  cooldownPeriod: 1
+  triggers:
+    - type: aws-dynamodb
+      authenticationRef:
+        name: keda-trigger-auth-aws-credentials
+      metadata:
+        awsRegion: {{.AwsRegion}}
+        tableName: {{.DynamoDBTableName}}
+        expressionAttributeNames: '{{.ExpressionAttributeNames}}'
+        keyConditionExpression: '{{.KeyConditionExpression}}'
+        expressionAttributeValues: '{{.ExpressionAttributeValues}}'
+        filterExpression: '{{.FilterExpression}}'
+        targetValue: '1'
+        activationTargetValue: '4'
+`
 )
 
 var (
-	testNamespace             = fmt.Sprintf("%s-ns", testName)
-	deploymentName            = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName          = fmt.Sprintf("%s-so", testName)
-	secretName                = fmt.Sprintf("%s-secret", testName)
-	dynamoDBTableName         = fmt.Sprintf("table-%d", GetRandomNumber())
-	awsAccessKeyID            = os.Getenv("TF_AWS_ACCESS_KEY")
-	awsSecretAccessKey        = os.Getenv("TF_AWS_SECRET_KEY")
-	awsRegion                 = os.Getenv("TF_AWS_REGION")
-	expressionAttributeNames  = "{ \"#k\" : \"event_type\"}"
-	keyConditionExpression    = "#k = :key"
-	expressionAttributeValues = "{ \":key\" : {\"S\":\"scaling_event\"}}"
-	maxReplicaCount           = 2
-	minReplicaCount           = 0
+	testNamespace                                 = fmt.Sprintf("%s-ns", testName)
+	deploymentName                                = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName                              = fmt.Sprintf("%s-so", testName)
+	secretName                                    = fmt.Sprintf("%s-secret", testName)
+	dynamoDBTableName                             = fmt.Sprintf("table-%d", GetRandomNumber())
+	awsAccessKeyID                                = os.Getenv("TF_AWS_ACCESS_KEY")
+	awsSecretAccessKey                            = os.Getenv("TF_AWS_SECRET_KEY")
+	awsRegion                                     = os.Getenv("TF_AWS_REGION")
+	expressionAttributeNames                      = "{ \"#k\" : \"event_type\"}"
+	keyConditionExpression                        = "#k = :key"
+	expressionAttributeValuesWithFilterExpression = fmt.Sprintf("{ \":key\" : {\"S\":\"scaling_event\"}, \":msg\" : {\"S\":\"%s\"}}", activeMsg)
+	expressionAttributeValues                     = "{ \":key\" : {\"S\":\"scaling_event\"}}"
+	filterExpression                              = "msg = :msg"
+	maxReplicaCount                               = 2
+	minReplicaCount                               = 0
 )
 
 func TestDynamoDBScaler(t *testing.T) {
@@ -148,39 +181,62 @@ func TestDynamoDBScaler(t *testing.T) {
 
 	// Create kubernetes resources
 	kc := GetKubernetesClient(t)
-	data, templates := getTemplateData()
+	data, templates := getTemplateData(expressionAttributeValues, "", scaledObjectTemplate)
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
 		"replica count should be %d after 1 minute", minReplicaCount)
 
 	// test scaling
-	testActivation(t, kc, dynamodbClient)
-	testScaleOut(t, kc, dynamodbClient)
-	testScaleIn(t, kc, dynamodbClient)
+	testActivation(t, kc, dynamodbClient, 3)
+	testScaleOut(t, kc, dynamodbClient, 6)
+	testScaleIn(t, kc, dynamodbClient, 6)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 	cleanupTable(t, dynamodbClient)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.Client) {
+func TestDynamoDBScalerWithFilter(t *testing.T) {
+	// setup dynamodb
+	dynamodbClient := createDynamoDBClient()
+	createDynamoDBTable(t, dynamodbClient)
+
+	// Create kubernetes resources
+	kc := GetKubernetesClient(t)
+	data, templates := getTemplateData(expressionAttributeValuesWithFilterExpression, filterExpression, scaledObjectTemplateWithFilter)
+	CreateKubernetesResources(t, kc, testNamespace, data, templates)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 1),
+		"replica count should be %d after 1 minute", minReplicaCount)
+
+	// test scaling
+	testActivation(t, kc, dynamodbClient, 3)
+	testScaleOut(t, kc, dynamodbClient, 6)
+	testScaleIn(t, kc, dynamodbClient, 6)
+
+	// cleanup
+	DeleteKubernetesResources(t, testNamespace, data, templates)
+	cleanupTable(t, dynamodbClient)
+}
+
+func testActivation(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.Client, messages int) {
 	t.Log("--- testing activation ---")
-	addMessages(t, dynamodbClient, 3)
+	addMessages(t, dynamodbClient, messages)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 }
 
-func testScaleOut(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.Client) {
+func testScaleOut(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.Client, messages int) {
 	t.Log("--- testing scale out ---")
-	addMessages(t, dynamodbClient, 6)
+	addMessages(t, dynamodbClient, messages)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, 3),
 		"replica count should be %d after 3 minutes", maxReplicaCount)
 }
 
-func testScaleIn(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.Client) {
+func testScaleIn(t *testing.T, kc *kubernetes.Clientset, dynamodbClient *dynamodb.Client, messages int) {
 	t.Log("--- testing scale in ---")
 
-	for i := 0; i < 6; i++ {
+	for i := 0; i < messages; i++ {
 		_, err := dynamodbClient.DeleteItem(context.Background(), &dynamodb.DeleteItemInput{
 			TableName: aws.String(dynamoDBTableName),
 			Key: map[string]types.AttributeValue{
@@ -209,6 +265,9 @@ func addMessages(t *testing.T, dynamodbClient *dynamodb.Client, messages int) {
 				},
 				"event_id": &types.AttributeValueMemberS{
 					Value: strconv.Itoa(i),
+				},
+				"msg": &types.AttributeValueMemberS{
+					Value: activeMsg,
 				},
 			},
 		})
@@ -270,7 +329,7 @@ func createDynamoDBClient() *dynamodb.Client {
 	return dynamodb.NewFromConfig(cfg)
 }
 
-func getTemplateData() (templateData, []Template) {
+func getTemplateData(expressionAttributeValues, filterExpression, scaledObjectTemplate string) (templateData, []Template) {
 	return templateData{
 			TestNamespace:             testNamespace,
 			DeploymentName:            deploymentName,
@@ -283,6 +342,7 @@ func getTemplateData() (templateData, []Template) {
 			ExpressionAttributeNames:  expressionAttributeNames,
 			KeyConditionExpression:    keyConditionExpression,
 			ExpressionAttributeValues: expressionAttributeValues,
+			FilterExpression:          filterExpression,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
