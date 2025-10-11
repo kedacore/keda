@@ -331,6 +331,10 @@ scalers:
           type: string
           default: "0"
           metadataVariableReadable: true
+        - name: filterExpression
+          type: string
+          optional: true
+          metadataVariableReadable: true
     - type: aws-dynamodb-streams
       parameters:
         - name: shardCount
