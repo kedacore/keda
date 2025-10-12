@@ -3,7 +3,7 @@ package azure
 import (
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -236,7 +236,7 @@ func retrieveMetadataEnvironment(endpoint string) (environment environmentMetada
 		return environment, err
 	}
 	defer response.Body.Close()
-	jsonResponse, err := io.ReadAll(response.Body)
+	jsonResponse, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return environment, err
 	}

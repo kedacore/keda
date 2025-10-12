@@ -152,6 +152,9 @@ github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azeventgrid/internal
 # github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.2.0
 ## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery
+# github.com/Azure/azure-sdk-for-go/sdk/monitor/query/azmetrics v1.3.0
+## explicit; go 1.23.0
+github.com/Azure/azure-sdk-for-go/sdk/monitor/query/azmetrics
 # github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.3.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub
@@ -198,7 +201,7 @@ github.com/Azure/go-amqp/internal/shared
 # github.com/Azure/go-autorest v14.2.0+incompatible
 ## explicit
 github.com/Azure/go-autorest
-# github.com/Azure/go-autorest/autorest v0.11.30
+# github.com/Azure/go-autorest/autorest v0.11.29
 ## explicit; go 1.15
 github.com/Azure/go-autorest/autorest
 github.com/Azure/go-autorest/autorest/azure

@@ -64,6 +64,8 @@ github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azeventgrid v1.0.0 h1:
 github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azeventgrid v1.0.0/go.mod h1:1IRNP46kxovPgEKGS0W3NrGasGj8JomLgvEnR48Sxko=
 github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.2.0 h1:s0SaQtHigowP0n3Kx4ieV94pNZAHlHhS+xjZyLCSVCQ=
 github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.2.0/go.mod h1:oI5SPI1vpNJYfP9MPWXthq7jDfh9xTAuQVBKPOu7DPo=
+github.com/Azure/azure-sdk-for-go/sdk/monitor/query/azmetrics v1.3.0 h1:blbWEpcsg2EFqXe64sRPdWPKnLWm0fPY4iHyo4MoHVM=
+github.com/Azure/azure-sdk-for-go/sdk/monitor/query/azmetrics v1.3.0/go.mod h1:jWOswzu+YEJ01Csz2ZUir7KecMjHJNYwxufLqAYi+ls=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.3.0 h1:4hGvxD72TluuFIXVr8f4XkKZfqAa7Pj61t0jmQ7+kes=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.3.0/go.mod h1:TSH7DcFItwAufy0Lz+Ft2cyopExCpxbOxI5SkH4dRNo=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/internal/v3 v3.1.0 h1:2qsIIvxVT+uE6yrNldntJKlLRgxGbZ85kgtz5SNBhMw=
@@ -87,8 +89,8 @@ github.com/Azure/go-amqp v1.4.0/go.mod h1:vZAogwdrkbyK3Mla8m/CxSc/aKdnTZ4IbPxl51
 github.com/Azure/go-autorest v14.2.0+incompatible h1:V5VMDjClD3GiElqLWO7mz2MxNAK/vTfRHdAubSIPRgs=
 github.com/Azure/go-autorest v14.2.0+incompatible/go.mod h1:r+4oMnoxhatjLLJ6zxSWATqVooLgysK6ZNox3g/xq24=
 github.com/Azure/go-autorest/autorest v0.11.28/go.mod h1:MrkzG3Y3AH668QyF9KRk5neJnGgmhQ6krbhR8Q5eMvA=
-github.com/Azure/go-autorest/autorest v0.11.30 h1:iaZ1RGz/ALZtN5eq4Nr1SOFSlf2E4pDI3Tcsl+dZPVE=
-github.com/Azure/go-autorest/autorest v0.11.30/go.mod h1:t1kpPIOpIVX7annvothKvb0stsrXa37i7b+xpmBW8Fs=
+github.com/Azure/go-autorest/autorest v0.11.29 h1:I4+HL/JDvErx2LjyzaVxllw2lRDB5/BT2Bm4g20iqYw=
+github.com/Azure/go-autorest/autorest v0.11.29/go.mod h1:ZtEzC4Jy2JDrZLxvWs8LrBWEBycl1hbT1eknI8MtfAs=
 github.com/Azure/go-autorest/autorest/adal v0.9.18/go.mod h1:XVVeme+LZwABT8K5Lc3hA4nAe8LDBVle26gTrguhhPQ=
 github.com/Azure/go-autorest/autorest/adal v0.9.22/go.mod h1:XuAbAEUv2Tta//+voMI038TrJBqjKam0me7qR+L8Cmk=
 github.com/Azure/go-autorest/autorest/adal v0.9.23 h1:Yepx8CvFxwNKpH6ja7RZ+sKX+DWYNldbLiALMC3BTz8=

@@ -190,7 +190,7 @@ func buildCanonicalizedResource(accountName, uri string, keyType SharedKeyType) 
 		}
 	}
 
-	return cr.String(), nil
+	return string(cr.Bytes()), nil
 }
 
 func getCanonicalizedAccountName(accountName string) string {
@@ -289,7 +289,7 @@ func buildCanonicalizedHeader(headers http.Header) string {
 		ch.WriteRune('\n')
 	}
 
-	return strings.TrimSuffix(ch.String(), "\n")
+	return strings.TrimSuffix(string(ch.Bytes()), "\n")
 }
 
 func createAuthorizationHeader(accountName string, accountKey []byte, canonicalizedString string, keyType SharedKeyType) string {

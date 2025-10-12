@@ -42,7 +42,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.4.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.3
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue v1.0.1
-	github.com/Azure/go-autorest/autorest v0.11.30
+	github.com/Azure/go-autorest/autorest v0.11.29
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.13
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0
 	github.com/DataDog/datadog-api-client-go v1.16.0
@@ -150,6 +150,8 @@ require (
 	sigs.k8s.io/custom-metrics-apiserver v1.33.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.8.0
 )
+
+require github.com/Azure/azure-sdk-for-go/sdk/monitor/query/azmetrics v1.3.0
 
 require (
 	cel.dev/expr v0.24.0 // indirect
