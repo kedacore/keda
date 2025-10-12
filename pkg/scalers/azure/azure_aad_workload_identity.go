@@ -28,6 +28,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 )
 

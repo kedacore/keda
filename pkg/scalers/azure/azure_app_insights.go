@@ -7,11 +7,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery"
+	"github.com/Azure/azure-sdk-for-go/sdk/monitor/query/azmetrics"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -111,6 +114,15 @@ func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interfac
 
 // GetAzureAppInsightsMetricValue returns the value of an Azure App Insights metric, rounded to the nearest int
 func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity, ignoreNullValues bool) (float64, error) {
+
+	creds, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		//TODO: handle error
+	}
+
+	metricsClient, _ := azmetrics.NewClient(info.ApplicationInsightsID, creds, nil)
+	metricsClient.QueryResources(ctx, info.TenantID, &azmetrics.ClientQueryResourcesOptions{})
+
 	config := getAuthConfig(ctx, info, podIdentity)
 	authorizer, err := config.Authorizer()
 	if err != nil {
@@ -122,14 +134,25 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, p
 		return -1, err
 	}
 
-	req, err := autorest.Prepare(&http.Request{},
-		autorest.WithBaseURL(info.AppInsightsResourceURL),
-		autorest.WithPath("v1/apps"),
-		autorest.WithPath(info.ApplicationInsightsID),
-		autorest.WithPath("metrics"),
-		autorest.WithPath(info.MetricID),
-		autorest.WithQueryParameters(queryParams),
-		authorizer.WithAuthorization())
+	req, err := http.NewRequest(http.MethodGet, info.AppInsightsResourceURL, nil)
+	if err != nil {
+		return -1, err
+	}
+
+	req.URL.Path = fmt.Sprintf("v1/apps/%s/metrics/%s", info.ApplicationInsightsID, info.MetricID)
+
+	q := req.URL.Query()
+	for key, value := range queryParams {
+		q.Add(key, fmt.Sprintf("%v", value))
+	}
+
+	bearerToken, err := creds.GetToken(ctx, policy.TokenRequestOptions{})
+	if err != nil {
+		return -1, err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", bearerToken))
+
 	if err != nil {
 		return -1, err
 	}

@@ -107,7 +107,7 @@ github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime
 github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming
 github.com/Azure/azure-sdk-for-go/sdk/azcore/to
 github.com/Azure/azure-sdk-for-go/sdk/azcore/tracing
-# github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.12.0
+# github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.0
 ## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/azidentity
 github.com/Azure/azure-sdk-for-go/sdk/azidentity/internal
@@ -152,6 +152,9 @@ github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils
 # github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.2.0
 ## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery
+# github.com/Azure/azure-sdk-for-go/sdk/monitor/query/azmetrics v1.3.0
+## explicit; go 1.23.0
+github.com/Azure/azure-sdk-for-go/sdk/monitor/query/azmetrics
 # github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub v1.3.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/eventhub/armeventhub
@@ -198,7 +201,7 @@ github.com/Azure/go-amqp/internal/shared
 # github.com/Azure/go-autorest v14.2.0+incompatible
 ## explicit
 github.com/Azure/go-autorest
-# github.com/Azure/go-autorest/autorest v0.11.30
+# github.com/Azure/go-autorest/autorest v0.11.29
 ## explicit; go 1.15
 github.com/Azure/go-autorest/autorest
 github.com/Azure/go-autorest/autorest/azure
@@ -1897,7 +1900,7 @@ go.yaml.in/yaml/v2
 # go.yaml.in/yaml/v3 v3.0.4
 ## explicit; go 1.16
 go.yaml.in/yaml/v3
-# golang.org/x/crypto v0.42.0
+# golang.org/x/crypto v0.43.0
 ## explicit; go 1.24.0
 golang.org/x/crypto/argon2
 golang.org/x/crypto/blake2b
@@ -1929,7 +1932,7 @@ golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.44.0
+# golang.org/x/net v0.46.0
 ## explicit; go 1.24.0
 golang.org/x/net/context
 golang.org/x/net/html
@@ -1965,7 +1968,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.36.0
+# golang.org/x/sys v0.37.0
 ## explicit; go 1.24.0
 golang.org/x/sys/cpu
 golang.org/x/sys/plan9
@@ -1978,10 +1981,10 @@ golang.org/x/telemetry/counter
 golang.org/x/telemetry/internal/counter
 golang.org/x/telemetry/internal/mmap
 golang.org/x/telemetry/internal/telemetry
-# golang.org/x/term v0.35.0
+# golang.org/x/term v0.36.0
 ## explicit; go 1.24.0
 golang.org/x/term
-# golang.org/x/text v0.29.0
+# golang.org/x/text v0.30.0
 ## explicit; go 1.24.0
 golang.org/x/text/cases
 golang.org/x/text/encoding

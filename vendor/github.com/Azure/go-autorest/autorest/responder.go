@@ -20,6 +20,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"strings"
 )
@@ -110,7 +111,7 @@ func ByDiscardingBody() RespondDecorator {
 		return ResponderFunc(func(resp *http.Response) error {
 			err := r.Respond(resp)
 			if err == nil && resp != nil && resp.Body != nil {
-				if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+				if _, err := io.Copy(ioutil.Discard, resp.Body); err != nil {
 					return fmt.Errorf("Error discarding the response body: %v", err)
 				}
 			}
@@ -159,7 +160,7 @@ func ByUnmarshallingBytes(v *[]byte) RespondDecorator {
 		return ResponderFunc(func(resp *http.Response) error {
 			err := r.Respond(resp)
 			if err == nil {
-				bytes, errInner := io.ReadAll(resp.Body)
+				bytes, errInner := ioutil.ReadAll(resp.Body)
 				if errInner != nil {
 					err = fmt.Errorf("Error occurred reading http.Response#Body - Error = '%v'", errInner)
 				} else {
@@ -178,7 +179,7 @@ func ByUnmarshallingJSON(v interface{}) RespondDecorator {
 		return ResponderFunc(func(resp *http.Response) error {
 			err := r.Respond(resp)
 			if err == nil {
-				b, errInner := io.ReadAll(resp.Body)
+				b, errInner := ioutil.ReadAll(resp.Body)
 				// Some responses might include a BOM, remove for successful unmarshalling
 				b = bytes.TrimPrefix(b, []byte("\xef\xbb\xbf"))
 				if errInner != nil {
@@ -202,7 +203,7 @@ func ByUnmarshallingXML(v interface{}) RespondDecorator {
 		return ResponderFunc(func(resp *http.Response) error {
 			err := r.Respond(resp)
 			if err == nil {
-				b, errInner := io.ReadAll(resp.Body)
+				b, errInner := ioutil.ReadAll(resp.Body)
 				if errInner != nil {
 					err = fmt.Errorf("Error occurred reading http.Response#Body - Error = '%v'", errInner)
 				} else {
@@ -231,9 +232,9 @@ func WithErrorUnlessStatusCode(codes ...int) RespondDecorator {
 					resp.Status)
 				if resp.Body != nil {
 					defer resp.Body.Close()
-					b, _ := io.ReadAll(resp.Body)
+					b, _ := ioutil.ReadAll(resp.Body)
 					derr.ServiceError = b
-					resp.Body = io.NopCloser(bytes.NewReader(b))
+					resp.Body = ioutil.NopCloser(bytes.NewReader(b))
 				}
 				err = derr
 			}

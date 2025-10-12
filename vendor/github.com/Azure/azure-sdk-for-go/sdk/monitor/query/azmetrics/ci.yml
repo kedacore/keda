@@ -1,0 +1,30 @@
+# NOTE: Please refer to https://aka.ms/azsdk/engsys/ci-yaml before editing this file.
+trigger:
+  branches:
+    include:
+    - main
+    - feature/*
+    - hotfix/*
+    - release/*
+  paths:
+    include:
+    - sdk/monitor/query/azmetrics
+
+pr:
+  branches:
+    include:
+    - main
+    - feature/*
+    - hotfix/*
+    - release/*
+  paths:
+    include:
+    - sdk/monitor/query/azmetrics
+
+
+extends:
+  template: /eng/pipelines/templates/jobs/archetype-sdk-client.yml
+  parameters:
+    ServiceDirectory: 'monitor/query/azmetrics'
+    RunLiveTests: true
+    UsePipelineProxy: false
