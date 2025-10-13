@@ -39,6 +39,7 @@ type awsDynamoDBMetadata struct {
 	IndexName                 string `keda:"name=indexName, order=triggerMetadata, optional"`
 	TargetValue               int64  `keda:"name=targetValue, order=triggerMetadata, optional, default=-1"`
 	ActivationTargetValue     int64  `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
+	FilterExpression          string `keda:"name=filterExpression, order=triggerMetadata, optional"`
 }
 
 func NewAwsDynamoDBScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
@@ -176,11 +177,16 @@ func (s *awsDynamoDBScaler) GetQueryMetrics(ctx context.Context) (float64, error
 		ExpressionAttributeValues: s.metadata.expressionAttributeValues,
 	}
 
+	if len(s.metadata.FilterExpression) > 0 {
+		dimensions.FilterExpression = aws.String(s.metadata.FilterExpression)
+	}
+
 	if s.metadata.IndexName != "" {
 		dimensions.IndexName = aws.String(s.metadata.IndexName)
 	}
 
 	res, err := s.dbClient.Query(ctx, &dimensions)
+
 	if err != nil {
 		s.logger.Error(err, "Failed to get output")
 		return 0, err
