@@ -195,9 +195,43 @@ var testDatadogAPIMetadata = []datadogAuthMetadataTestData{
 	{"", map[string]string{"query": "sum:trace.redis.command.hits.as_count()", "queryValue": "7"}, map[string]string{}, true},
 }
 
+// Helper function to create metadata and validate
+func createAndValidateMetadata(t *testing.T, testData *datadogAuthMetadataTestData, useClusterAgent bool) (*datadogMetadata, error) {
+	config := &scalersconfig.ScalerConfig{
+		TriggerMetadata: testData.metadata,
+		AuthParams:      testData.authParams,
+		MetricType:      testData.metricType,
+	}
+
+	// Parse metadata once
+	meta := &datadogMetadata{}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing metadata: %w", err)
+	}
+
+	// Set timeout default
+	if meta.Timeout == 0 {
+		meta.Timeout = config.GlobalHTTPTimeout
+	}
+
+	// Validate based on mode
+	var err error
+	if useClusterAgent {
+		err = validateClusterAgentMetadata(meta, config, logr.Discard())
+	} else {
+		err = validateAPIMetadata(meta, config, logr.Discard())
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return meta, nil
+}
+
 func TestDatadogScalerAPIAuthParams(t *testing.T) {
 	for idx, testData := range testDatadogAPIMetadata {
-		_, err := parseDatadogAPIMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
+		_, err := createAndValidateMetadata(t, &testData, false)
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error: %s for test case %d", err, idx)
@@ -210,7 +244,7 @@ func TestDatadogScalerAPIAuthParams(t *testing.T) {
 
 func TestDatadogScalerClusterAgentAuthParams(t *testing.T) {
 	for idx, testData := range testDatadogClusterAgentMetadata {
-		meta, err := parseDatadogClusterAgentMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
+		meta, err := createAndValidateMetadata(t, &testData, true)
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error: %s for test case %d", err, idx)
@@ -255,18 +289,21 @@ var datadogMetricIdentifiers = []datadogMetricIdentifier{
 
 // TODO: Need to check whether we need to rewrite this test case because vType is long deprecated
 func TestDatadogGetMetricSpecForScaling(t *testing.T) {
-	var err error
-	var meta *datadogMetadata
-
 	for idx, testData := range datadogMetricIdentifiers {
-		if testData.typeOfScaler == apiType {
-			meta, err = parseDatadogAPIMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
-		} else {
-			meta, err = parseDatadogClusterAgentMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
+		config := &scalersconfig.ScalerConfig{
+			TriggerMetadata: testData.metadataTestData.metadata,
+			AuthParams:      testData.metadataTestData.authParams,
+			TriggerIndex:    testData.triggerIndex,
+			MetricType:      testData.metadataTestData.metricType,
 		}
+
+		useClusterAgent := testData.typeOfScaler == clusterAgentType
+		meta, err := createAndValidateMetadata(t, testData.metadataTestData, useClusterAgent)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
+
+		meta.TriggerIndex = testData.triggerIndex
 
 		mockDatadogScaler := datadogScaler{
 			metadata:   meta,
