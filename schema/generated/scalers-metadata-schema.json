@@ -1397,6 +1397,12 @@
                     "metadataVariableReadable": true
                 },
                 {
+                    "name": "useClusterAgentProxy",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
                     "name": "hpaMetricName",
                     "type": "string",
                     "optional": true,
@@ -3035,6 +3041,12 @@
                 },
                 {
                     "name": "tls",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "authModes",
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true

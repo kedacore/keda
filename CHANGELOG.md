@@ -75,7 +75,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Fix incorrect 'unmatched input property' notification ([#7174](https://github.com/kedacore/keda/issues/7174))
 
 ### Deprecations
 
