@@ -290,13 +290,6 @@ var datadogMetricIdentifiers = []datadogMetricIdentifier{
 // TODO: Need to check whether we need to rewrite this test case because vType is long deprecated
 func TestDatadogGetMetricSpecForScaling(t *testing.T) {
 	for idx, testData := range datadogMetricIdentifiers {
-		config := &scalersconfig.ScalerConfig{
-			TriggerMetadata: testData.metadataTestData.metadata,
-			AuthParams:      testData.metadataTestData.authParams,
-			TriggerIndex:    testData.triggerIndex,
-			MetricType:      testData.metadataTestData.metricType,
-		}
-
 		useClusterAgent := testData.typeOfScaler == clusterAgentType
 		meta, err := createAndValidateMetadata(t, testData.metadataTestData, useClusterAgent)
 		if err != nil {
