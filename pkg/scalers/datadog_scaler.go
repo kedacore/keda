@@ -99,14 +99,6 @@ func NewDatadogScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	var apiClient *datadog.APIClient
 	var httpClient *http.Client
 
-	var useClusterAgentProxy bool
-	if val, ok := config.TriggerMetadata["useClusterAgentProxy"]; ok {
-		useClusterAgentProxy, err = strconv.ParseBool(val)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing useClusterAgentProxy: %w", err)
-		}
-	}
-
 	if useClusterAgentProxy {
 		meta, err = parseDatadogClusterAgentMetadata(config, logger)
 		if err != nil {
