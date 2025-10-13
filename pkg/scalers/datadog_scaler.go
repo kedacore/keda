@@ -67,7 +67,7 @@ type datadogMetadata struct {
 	LastAvailablePointOffset int     `keda:"name=lastAvailablePointOffset,order=triggerMetadata, default=0"`
 
 	// TriggerMetadata Common
-	UseClusterAgentProxy bool `keda:"name=useClusterAgentProxy, order=triggerMetadata, default=false"`
+	UseClusterAgentProxy bool    `keda:"name=useClusterAgentProxy, order=triggerMetadata, default=false"`
 	HpaMetricName        string  `keda:"name=hpaMetricName,          order=triggerMetadata, optional"`
 	FillValue            float64 `keda:"name=metricUnavailableValue, order=triggerMetadata, default=0"`
 	UseFiller            bool
