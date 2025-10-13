@@ -36,8 +36,6 @@ type datadogScaler struct {
 
 // TODO: Need to check whether we can deprecate vType and how should we proceed with it
 type datadogMetadata struct {
-	UseClusterAgentProxy bool `keda:"name=useClusterAgentProxy, order=triggerMetadata, default=false"`
-
 	// AuthParams Cluster Agent Proxy
 	DatadogNamespace          string `keda:"name=datadogNamespace,          order=authParams, optional"`
 	DatadogMetricsService     string `keda:"name=datadogMetricsService,     order=authParams, optional"`
@@ -69,13 +67,14 @@ type datadogMetadata struct {
 	LastAvailablePointOffset int     `keda:"name=lastAvailablePointOffset,order=triggerMetadata, default=0"`
 
 	// TriggerMetadata Common
-	HpaMetricName string  `keda:"name=hpaMetricName,          order=triggerMetadata, optional"`
-	FillValue     float64 `keda:"name=metricUnavailableValue, order=triggerMetadata, default=0"`
-	UseFiller     bool
-	TargetValue   float64       `keda:"name=targetValue;queryValue, order=triggerMetadata, default=-1"`
-	Timeout       time.Duration `keda:"name=timeout,             	order=triggerMetadata, optional"`
-	TriggerIndex  int
-	vType         v2.MetricTargetType
+	UseClusterAgentProxy bool `keda:"name=useClusterAgentProxy, order=triggerMetadata, default=false"`
+	HpaMetricName        string  `keda:"name=hpaMetricName,          order=triggerMetadata, optional"`
+	FillValue            float64 `keda:"name=metricUnavailableValue, order=triggerMetadata, default=0"`
+	UseFiller            bool
+	TargetValue          float64       `keda:"name=targetValue;queryValue, order=triggerMetadata, default=-1"`
+	Timeout              time.Duration `keda:"name=timeout,             	order=triggerMetadata, optional"`
+	TriggerIndex         int
+	vType                v2.MetricTargetType
 }
 
 const avgString = "average"
@@ -94,20 +93,27 @@ func NewDatadogScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 	logger := InitializeLogger(config, "datadog_scaler")
 
-	var meta *datadogMetadata
 	var apiClient *datadog.APIClient
 	var httpClient *http.Client
 
+	meta := &datadogMetadata{}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
+	}
+	meta.TriggerIndex = config.TriggerIndex
+
+	if meta.Timeout == 0 {
+		meta.Timeout = config.GlobalHTTPTimeout
+	}
+
 	if meta.UseClusterAgentProxy {
-		meta, err = parseDatadogClusterAgentMetadata(config, logger)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
+		if err := validateClusterAgentMetadata(meta, config, logger); err != nil {
+			return nil, err
 		}
 		httpClient = kedautil.CreateHTTPClient(meta.Timeout, meta.UnsafeSsl)
 	} else {
-		meta, err = parseDatadogAPIMetadata(config, logger)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
+		if err := validateAPIMetadata(meta, config, logger); err != nil {
+			return nil, err
 		}
 		apiClient = newDatadogAPIClient(meta)
 	}
@@ -142,38 +148,28 @@ func buildMetricURL(datadogClusterAgentURL, datadogMetricNamespace, datadogMetri
 	return fmt.Sprintf("%s/namespaces/%s/%s", datadogClusterAgentURL, datadogMetricNamespace, datadogMetricName)
 }
 
-func parseDatadogAPIMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*datadogMetadata, error) {
-	meta := &datadogMetadata{}
-	if err := config.TypedConfig(meta); err != nil {
-		return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
-	}
-	meta.TriggerIndex = config.TriggerIndex
-
+func validateAPIMetadata(meta *datadogMetadata, config *scalersconfig.ScalerConfig, logger logr.Logger) error {
 	if meta.Age < 60 {
 		logger.Info("selecting a window smaller than 60 seconds can cause Datadog not finding a metric value for the query")
 	}
 	if meta.AppKey == "" {
-		return nil, fmt.Errorf("error parsing Datadog metadata: missing AppKey")
+		return fmt.Errorf("error parsing Datadog metadata: missing AppKey")
 	}
 	if meta.APIKey == "" {
-		return nil, fmt.Errorf("error parsing Datadog metadata: missing APIKey")
+		return fmt.Errorf("error parsing Datadog metadata: missing APIKey")
 	}
 	if meta.TargetValue == -1 {
 		if config.AsMetricSource {
 			meta.TargetValue = 0
 		} else {
-			return nil, fmt.Errorf("no targetValue or queryValue given")
+			return fmt.Errorf("no targetValue or queryValue given")
 		}
-	}
-
-	if meta.Timeout == 0 {
-		meta.Timeout = config.GlobalHTTPTimeout
 	}
 
 	if val, ok := config.TriggerMetadata["type"]; ok {
 		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
 		if config.MetricType != "" {
-			return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
+			return fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
 		}
 		val = strings.ToLower(val)
 		switch val {
@@ -182,64 +178,51 @@ func parseDatadogAPIMetadata(config *scalersconfig.ScalerConfig, logger logr.Log
 		case "global":
 			meta.vType = v2.ValueMetricType
 		default:
-			return nil, fmt.Errorf("type has to be global or average")
+			return fmt.Errorf("type has to be global or average")
 		}
 	} else {
 		metricType, err := GetMetricTargetType(config)
 		if err != nil {
-			return nil, fmt.Errorf("error getting scaler metric type: %w", err)
+			return fmt.Errorf("error getting scaler metric type: %w", err)
 		}
 		meta.vType = metricType
 	}
+
 	if meta.Query == "" {
-		return nil, fmt.Errorf("error parsing Datadog metadata: missing Query")
+		return fmt.Errorf("error parsing Datadog metadata: missing Query")
 	}
 
-	if meta.Query != "" {
-		meta.HpaMetricName = meta.Query[0:strings.Index(meta.Query, "{")]
-		meta.HpaMetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", meta.HpaMetricName)))
-	} else {
-		meta.HpaMetricName = "datadogmetric@" + meta.DatadogMetricNamespace + ":" + meta.DatadogMetricName
-	}
+	meta.HpaMetricName = meta.Query[0:strings.Index(meta.Query, "{")]
+	meta.HpaMetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", meta.HpaMetricName)))
 
-	return meta, nil
+	return nil
 }
 
-func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*datadogMetadata, error) {
-	meta := &datadogMetadata{}
-	if err := config.TypedConfig(meta); err != nil {
-		return nil, fmt.Errorf("error parsing Datadog metadata: %w", err)
-	}
-	meta.TriggerIndex = config.TriggerIndex
+func validateClusterAgentMetadata(meta *datadogMetadata, config *scalersconfig.ScalerConfig, logger logr.Logger) error {
 	if meta.DatadogMetricsService == "" {
-		return nil, fmt.Errorf("datadog metrics service is required")
+		return fmt.Errorf("datadog metrics service is required")
 	}
-
 	if meta.DatadogMetricName == "" {
-		return nil, fmt.Errorf("datadog metric name is required")
+		return fmt.Errorf("datadog metric name is required")
 	}
 	if meta.DatadogNamespace == "" {
-		return nil, fmt.Errorf("datadog namespace is required")
+		return fmt.Errorf("datadog namespace is required")
 	}
 	if meta.DatadogMetricNamespace == "" {
-		return nil, fmt.Errorf("datadog metric namespace is required")
+		return fmt.Errorf("datadog metric namespace is required")
 	}
 	if meta.TargetValue == -1 {
 		if config.AsMetricSource {
 			meta.TargetValue = 0
 		} else {
-			return nil, fmt.Errorf("no targetValue or queryValue given")
+			return fmt.Errorf("no targetValue or queryValue given")
 		}
-	}
-
-	if meta.Timeout == 0 {
-		meta.Timeout = config.GlobalHTTPTimeout
 	}
 
 	if val, ok := config.TriggerMetadata["type"]; ok {
 		logger.V(0).Info("trigger.metadata.type is deprecated in favor of trigger.metricType")
 		if config.MetricType != "" {
-			return nil, fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
+			return fmt.Errorf("only one of trigger.metadata.type or trigger.metricType should be defined")
 		}
 		val = strings.ToLower(val)
 		switch val {
@@ -248,20 +231,20 @@ func parseDatadogClusterAgentMetadata(config *scalersconfig.ScalerConfig, logger
 		case "global":
 			meta.vType = v2.ValueMetricType
 		default:
-			return nil, fmt.Errorf("type has to be global or average")
+			return fmt.Errorf("type has to be global or average")
 		}
 	} else {
 		metricType, err := GetMetricTargetType(config)
 		if err != nil {
-			return nil, fmt.Errorf("error getting scaler metric type: %w", err)
+			return fmt.Errorf("error getting scaler metric type: %w", err)
 		}
 		meta.vType = metricType
 	}
-	meta.HpaMetricName = "datadogmetric@" + meta.DatadogMetricNamespace + ":" + meta.DatadogMetricName
 
+	meta.HpaMetricName = "datadogmetric@" + meta.DatadogMetricNamespace + ":" + meta.DatadogMetricName
 	meta.DatadogMetricServiceURL = buildClusterAgentURL(meta.DatadogMetricsService, meta.DatadogNamespace, meta.DatadogMetricsServicePort)
 
-	return meta, nil
+	return nil
 }
 
 func newDatadogAPIClient(s *datadogMetadata) *datadog.APIClient {
