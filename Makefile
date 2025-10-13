@@ -63,6 +63,7 @@ SCALERS_SCHEMA_OUTPUT_FILE_NAME ?= scalers-metadata-schema
 
 ifneq '${VERSION}' 'main'
   OUTPUT_FILE_NAME :="${OUTPUT_FILE_NAME}-${VERSION}"
+  SCALERS_SCHEMA_OUTPUT_FILE_NAME:="${SCALERS_SCHEMA_OUTPUT_FILE_NAME}-${VERSION}"
 endif
 
 ##################################################
