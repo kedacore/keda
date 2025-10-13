@@ -192,7 +192,11 @@ func validateAPIMetadata(meta *datadogMetadata, config *scalersconfig.ScalerConf
 		return fmt.Errorf("error parsing Datadog metadata: missing Query")
 	}
 
-	meta.HpaMetricName = meta.Query[0:strings.Index(meta.Query, "{")]
+	idx := strings.Index(meta.Query, "{")
+	if idx == -1 {
+		return fmt.Errorf("error parsing Datadog metadata: Query must contain '{' character")
+	}
+	meta.HpaMetricName = meta.Query[0:idx]
 	meta.HpaMetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", meta.HpaMetricName)))
 
 	return nil
