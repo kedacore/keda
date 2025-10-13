@@ -92,7 +92,7 @@ In order to generate a list of new contributors, use the `Auto-generate release 
 ## 4. Publish documentation for new version
 
 Publish documentation for new version on https://keda.sh.
-For details, see [Publishing a new version](https://github.com/kedacore/keda-docs#publishing-a-new-version).
+For details, see [Publishing a new version](https://github.com/kedacore/keda-docs?tab=contributing-ov-file#publishing-a-new-version).
 
 > Note: During hotfix releases, this step isn't required as we don't introduce new features
 
