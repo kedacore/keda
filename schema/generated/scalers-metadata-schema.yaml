@@ -835,10 +835,6 @@ scalers:
           metadataVariableReadable: true
     - type: datadog
       parameters:
-        - name: useClusterAgentProxy
-          type: string
-          default: "false"
-          metadataVariableReadable: true
         - name: datadogNamespace
           type: string
           optional: true
@@ -913,6 +909,10 @@ scalers:
         - name: lastAvailablePointOffset
           type: string
           default: "0"
+          metadataVariableReadable: true
+        - name: useClusterAgentProxy
+          type: string
+          default: "false"
           metadataVariableReadable: true
         - name: hpaMetricName
           type: string

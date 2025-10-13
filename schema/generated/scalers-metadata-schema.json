@@ -1285,12 +1285,6 @@
             "type": "datadog",
             "parameters": [
                 {
-                    "name": "useClusterAgentProxy",
-                    "type": "string",
-                    "default": "false",
-                    "metadataVariableReadable": true
-                },
-                {
                     "name": "datadogNamespace",
                     "type": "string",
                     "optional": true,
@@ -1400,6 +1394,12 @@
                     "name": "lastAvailablePointOffset",
                     "type": "string",
                     "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "useClusterAgentProxy",
+                    "type": "string",
+                    "default": "false",
                     "metadataVariableReadable": true
                 },
                 {
