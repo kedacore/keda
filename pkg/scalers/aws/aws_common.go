@@ -85,12 +85,20 @@ func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.A
 
 	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAws {
 		meta.UsingPodIdentity = true
-		if val, ok := authParams["awsRoleArn"]; ok && val != "" {
-			meta.AwsRoleArn = val
+		if podIdentity.RoleArn != nil && *podIdentity.RoleArn != "" {
+			meta.AwsRoleArn = *podIdentity.RoleArn
+			if podIdentity.AwsExternalID != nil && *podIdentity.AwsExternalID != "" {
+				meta.AwsExternalID = *podIdentity.AwsExternalID
+			}
+		} else {
+			if val, ok := authParams["awsRoleArn"]; ok && val != "" {
+				meta.AwsRoleArn = val
+			}
+			// if val, ok := authParams["awsExternalID"]; ok && val != "" {
+			// 	meta.AwsExternalID = val
+			// }
 		}
-		if val, ok := authParams["awsExternalID"]; ok && val != "" {
-			meta.AwsExternalID = val
-		}
+
 		return meta, nil
 	}
 
@@ -104,9 +112,6 @@ func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.A
 		switch {
 		case authParams["awsRoleArn"] != "":
 			meta.AwsRoleArn = authParams["awsRoleArn"]
-			if val, ok := authParams["awsExternalID"]; ok && val != "" {
-				meta.AwsExternalID = val
-			}
 		case (authParams["awsAccessKeyID"] != "" || authParams["awsAccessKeyId"] != "") && authParams["awsSecretAccessKey"] != "":
 			meta.AwsAccessKeyID = authParams["awsAccessKeyID"]
 			if meta.AwsAccessKeyID == "" {

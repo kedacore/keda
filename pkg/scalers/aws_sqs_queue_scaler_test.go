@@ -11,6 +11,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
@@ -45,10 +46,16 @@ var testAWSSQSAuthentication = map[string]string{
 	"awsSecretAccessKey": testAWSSQSSecretAccessKey,
 }
 
+var (
+	testAWSSQSRoleArnPtr    = testAWSSQSRoleArn
+	testAWSSQSExternalIDPtr = testAWSSQSExternalID
+)
+
 type parseAWSSQSMetadataTestData struct {
 	metadata    map[string]string
 	authParams  map[string]string
 	resolvedEnv map[string]string
+	podIdentity kedav1alpha1.AuthPodIdentity
 	isError     bool
 	comment     string
 }
@@ -88,6 +95,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 	{map[string]string{},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		true,
 		"metadata empty"},
 	{map[string]string{
@@ -96,6 +104,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"properly formed queue and region"},
 	{map[string]string{
@@ -105,6 +114,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsEndpoint": "http://localhost:4566"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"properly formed queue and region with custom endpoint"},
 	{map[string]string{
@@ -113,6 +123,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		true,
 		"improperly formed queue, missing queueName"},
 	{map[string]string{
@@ -121,6 +132,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		true,
 		"improperly formed queue, missing path"},
 	{map[string]string{
@@ -129,6 +141,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsRegion":   ""},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		true,
 		"properly formed queue, empty region"},
 	{map[string]string{
@@ -137,6 +150,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"properly formed queue, integer queueLength"},
 	{map[string]string{
@@ -145,6 +159,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		true,
 		"invalid integer value for queueLength"},
 	{map[string]string{
@@ -154,6 +169,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsRegion":             "eu-west-1"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"properly formed queue, integer activationQueueLength"},
 	{map[string]string{
@@ -163,6 +179,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsRegion":             "eu-west-1"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		true,
 		"invalid integer value for activationQueueLength"},
 	{map[string]string{
@@ -174,6 +191,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsSecretAccessKey": testAWSSQSSecretAccessKey,
 		},
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"with AWS static credentials from TriggerAuthentication"},
 	{map[string]string{
@@ -186,6 +204,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsSessionToken":    testAWSSQSSessionToken,
 		},
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"with AWS temporary credentials from TriggerAuthentication"},
 	{map[string]string{
@@ -197,6 +216,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsSecretAccessKey": testAWSSQSSecretAccessKey,
 		},
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		true,
 		"with AWS static credentials from TriggerAuthentication, missing Access Key Id"},
 	{map[string]string{
@@ -208,6 +228,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsSecretAccessKey": "",
 		},
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		true,
 		"with AWS temporary credentials from TriggerAuthentication, missing Secret Access Key"},
 	{map[string]string{
@@ -220,6 +241,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsSessionToken":    testAWSSQSSessionToken,
 		},
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		true,
 		"with AWS temporary credentials from TriggerAuthentication, missing Access Key Id"},
 	{map[string]string{
@@ -232,29 +254,34 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsSessionToken":    testAWSSQSSessionToken,
 		},
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		true,
 		"with AWS static credentials from TriggerAuthentication, missing Secret Access Key"},
 	{map[string]string{
 		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
-		map[string]string{
-			"awsRoleArn": testAWSSQSRoleArn,
-		},
+		map[string]string{},
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{
+			Provider: kedav1alpha1.PodIdentityProviderAws,
+			RoleArn:  &testAWSSQSRoleArnPtr,
+		},
 		false,
-		"with AWS Role from TriggerAuthentication"},
+		"with AWS Role from Pod Identity"},
 	{map[string]string{
 		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
-		map[string]string{
-			"awsRoleArn":    testAWSSQSRoleArn,
-			"awsExternalID": testAWSSQSExternalID,
-		},
+		map[string]string{},
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{
+			Provider:      kedav1alpha1.PodIdentityProviderAws,
+			RoleArn:       &testAWSSQSRoleArnPtr,
+			AwsExternalID: &testAWSSQSExternalIDPtr,
+		},
 		false,
-		"with AWS Role and External ID from TriggerAuthentication"},
+		"with AWS Role and External ID from Pod Identity"},
 	{map[string]string{
 		"queueURL":      testAWSSQSProperQueueURL,
 		"queueLength":   "1",
@@ -265,6 +292,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 			"awsSecretAccessKey": "",
 		},
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"with AWS Role assigned on KEDA operator itself"},
 	{map[string]string{
@@ -274,19 +302,20 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"identityOwner": "operator"},
 		map[string]string{
 			"awsRoleArn":         testAWSSQSRoleArn,
-			"awsExternalID":      testAWSSQSExternalID,
 			"awsAccessKeyId":     "",
 			"awsSecretAccessKey": "",
 		},
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
-		"with AWS Role and External ID assigned on KEDA operator itself"},
+		"with AWS Role assigned on KEDA operator itself (deprecated path)"},
 	{map[string]string{
 		"queueURL":    testAWSSimpleQueueURL,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"properly formed queue and region"},
 	{map[string]string{
@@ -296,6 +325,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"scaleOnInFlight": "false"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"properly formed queue and region"},
 	{map[string]string{
@@ -305,6 +335,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"scaleOnInFlight": "true"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"properly formed queue and region"},
 	{map[string]string{
@@ -313,6 +344,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsRegion":       "eu-west-1"},
 		testAWSSQSAuthentication,
 		testAWSSQSResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"properly formed queue loaded from env"},
 	{map[string]string{
@@ -320,6 +352,7 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		"awsRegion":   "eu-west-1"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		true,
 		"missing queue url from both queueURL and queueURLFromEnv"},
 	{map[string]string{
@@ -330,18 +363,21 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		map[string]string{
 			"QUEUE_URL": "",
 		},
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		true,
 		"empty QUEUE_URL env value"},
 	{map[string]string{
 		"queueURL":    testAWSSQSProperQueueURL,
 		"queueLength": "1",
 		"awsRegion":   "eu-west-1"},
-		map[string]string{
-			"awsExternalID": testAWSSQSExternalID,
-		},
+		map[string]string{},
 		testAWSSQSEmptyResolvedEnv,
-		true,
-		"with External ID but missing Role ARN"},
+		kedav1alpha1.AuthPodIdentity{
+			Provider:      kedav1alpha1.PodIdentityProviderAws,
+			AwsExternalID: &testAWSSQSExternalIDPtr,
+		},
+		false,
+		"with External ID but missing Role ARN (still valid, just won't use external ID)"},
 }
 
 var awsSQSMetricIdentifiers = []awsSQSMetricIdentifier{
@@ -357,6 +393,7 @@ var awsSQSGetMetricTestData = []*parseAWSSQSMetadataTestData{
 		"scaleOnInFlight": "false"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"not error with scaleOnInFlight disabled"},
 	{map[string]string{
@@ -366,6 +403,7 @@ var awsSQSGetMetricTestData = []*parseAWSSQSMetadataTestData{
 		"scaleOnInFlight": "true"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"not error with scaleOnInFlight enabled"},
 	{map[string]string{
@@ -375,6 +413,7 @@ var awsSQSGetMetricTestData = []*parseAWSSQSMetadataTestData{
 		"scaleOnDelayed": "false"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"not error with scaleOnDelayed disabled"},
 	{map[string]string{
@@ -384,6 +423,7 @@ var awsSQSGetMetricTestData = []*parseAWSSQSMetadataTestData{
 		"scaleOnDelayed": "true"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"not error with scaleOnDelayed enabled"},
 	{map[string]string{
@@ -394,6 +434,7 @@ var awsSQSGetMetricTestData = []*parseAWSSQSMetadataTestData{
 		"scaleOnDelayed":  "false"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"not error with scaledOnInFlight and scaleOnDelayed disabled"},
 	{map[string]string{
@@ -404,6 +445,7 @@ var awsSQSGetMetricTestData = []*parseAWSSQSMetadataTestData{
 		"scaleOnDelayed":  "true"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"not error with scaledOnInFlight and scaleOnDelayed enabled"},
 	{map[string]string{
@@ -413,6 +455,7 @@ var awsSQSGetMetricTestData = []*parseAWSSQSMetadataTestData{
 		"scaleOnInFlight": "false"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"error queue"},
 	{map[string]string{
@@ -422,13 +465,14 @@ var awsSQSGetMetricTestData = []*parseAWSSQSMetadataTestData{
 		"scaleOnInFlight": "true"},
 		testAWSSQSAuthentication,
 		testAWSSQSEmptyResolvedEnv,
+		kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 		false,
 		"bad data"},
 }
 
 func TestSQSParseMetadata(t *testing.T) {
 	for _, testData := range testAWSSQSMetadata {
-		_, err := parseAwsSqsQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams})
+		_, err := parseAwsSqsQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams, PodIdentity: testData.podIdentity})
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success because %s got error, %s", testData.comment, err)
 		}
@@ -441,7 +485,7 @@ func TestSQSParseMetadata(t *testing.T) {
 func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range awsSQSMetricIdentifiers {
 		ctx := context.Background()
-		meta, err := parseAwsSqsQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex})
+		meta, err := parseAwsSqsQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, ResolvedEnv: testData.metadataTestData.resolvedEnv, AuthParams: testData.metadataTestData.authParams, PodIdentity: testData.metadataTestData.podIdentity, TriggerIndex: testData.triggerIndex})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -457,7 +501,7 @@ func TestAWSSQSGetMetricSpecForScaling(t *testing.T) {
 
 func TestAWSSQSScalerGetMetrics(t *testing.T) {
 	for index, testData := range awsSQSGetMetricTestData {
-		meta, err := parseAwsSqsQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams, TriggerIndex: index})
+		meta, err := parseAwsSqsQueueMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, ResolvedEnv: testData.resolvedEnv, AuthParams: testData.authParams, PodIdentity: testData.podIdentity, TriggerIndex: index})
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -632,6 +676,7 @@ func TestQueueURLFromEnvResolution(t *testing.T) {
 				TriggerMetadata: tc.metadata,
 				ResolvedEnv:     tc.resolvedEnv,
 				AuthParams:      testAWSSQSAuthentication,
+				PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
 			})
 
 			if tc.expectError {
