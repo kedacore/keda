@@ -173,7 +173,7 @@ var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "passwordFromEnv": rabbitMQPassword}, v1alpha1.AuthPodIdentity{}, map[string]string{}, true, rmqTLSDisable, false},
 	// success, WorkloadIdentity
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "http"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, false, rmqTLSDisable, true},
-	// failure, WoekloadIdentity not supported for amqp
+	// failure, WorkloadIdentity not supported for amqp
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "amqp"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, true, rmqTLSDisable, false},
 }
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{

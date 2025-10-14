@@ -36,6 +36,7 @@ var validSumologicMetadata = map[string]string{
 	"activationThreshold": "5",
 	"threshold":           "1",
 	"queryAggregator":     "Avg",
+	"logsPollingInterval": "5s",
 }
 
 var validSumologicMetricsMetadata = map[string]string{

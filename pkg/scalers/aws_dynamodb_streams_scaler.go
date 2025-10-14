@@ -175,7 +175,7 @@ func (s *awsDynamoDBStreamsScaler) getDynamoDBStreamShardCount(ctx context.Conte
 	}
 	for {
 		if lastShardID != nil {
-			// The upper limit of shard num to retrun is 100.
+			// The upper limit of shard num to return is 100.
 			// ExclusiveStartShardId is the shard ID of the first item that the operation will evaluate.
 			input = dynamodbstreams.DescribeStreamInput{
 				StreamArn:             s.streamArn,

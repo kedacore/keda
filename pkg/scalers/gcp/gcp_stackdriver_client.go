@@ -26,17 +26,17 @@ const (
 	// keep that value to not break the behaviour
 	// We need to revisit this in KEDA v3
 	// https://github.com/kedacore/keda/issues/5429
-	defaultTimeHorizon = "2m"
+	defaultTimeHorizon = 2 * time.Minute
 
 	// Visualization of aggregation window:
 	// aggregationTimeHorizon: [- - - - -]
 	// alignmentPeriod:         [- - -][- - -] (may shift slightly left or right arbitrarily)
 
 	// For aggregations, a shorter time horizon may not return any data
-	aggregationTimeHorizon = "5m"
+	aggregationTimeHorizon = 5 * time.Minute
 	// To prevent the aggregation window from being too big,
 	// which may result in the data being stale for too long
-	alignmentPeriod = "3m"
+	alignmentPeriod = 3 * time.Minute
 
 	// Not all aggregations are meaningful for distribution metrics,
 	// so we only support a subset of them
@@ -347,9 +347,9 @@ func getActualProjectID(s *StackDriverClient, projectID string) string {
 // | align delta(3m)
 // | every 3m
 // | group_by [], count(value)
-func (s StackDriverClient) BuildMQLQuery(projectID, resourceType, metric, resourceName, aggregation, timeHorizon string) (string, error) {
+func (s StackDriverClient) BuildMQLQuery(projectID, resourceType, metric, resourceName, aggregation string, timeHorizon time.Duration) (string, error) {
 	th := timeHorizon
-	if th == "" {
+	if time.Duration(0) >= timeHorizon {
 		th = defaultTimeHorizon
 		if aggregation != "" {
 			th = aggregationTimeHorizon

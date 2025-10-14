@@ -17,7 +17,7 @@ type parseLiiklusMetadataTestData struct {
 	name             string
 	metadata         map[string]string
 	ExpectedErr      error
-	ExpectedMetatada *liiklusMetadata
+	ExpectedMetadata *liiklusMetadata
 }
 
 type liiklusMetricIdentifier struct {
@@ -34,7 +34,7 @@ var parseLiiklusMetadataTestDataset = []parseLiiklusMetadataTestData{
 			"missing required parameter \"address\" in [triggerMetadata]\n" +
 			"missing required parameter \"topic\" in [triggerMetadata]\n" +
 			"missing required parameter \"group\" in [triggerMetadata]"),
-		ExpectedMetatada: nil,
+		ExpectedMetadata: nil,
 	},
 	{
 		name:     "Empty address",
@@ -42,20 +42,20 @@ var parseLiiklusMetadataTestDataset = []parseLiiklusMetadataTestData{
 		ExpectedErr: fmt.Errorf("error parsing liiklus metadata: " +
 			"missing required parameter \"address\" in [triggerMetadata]\n" +
 			"missing required parameter \"group\" in [triggerMetadata]"),
-		ExpectedMetatada: nil,
+		ExpectedMetadata: nil,
 	},
 	{
 		name:     "Empty group",
 		metadata: map[string]string{"topic": "foo", "address": "using-mock"},
 		ExpectedErr: fmt.Errorf("error parsing liiklus metadata: " +
 			"missing required parameter \"group\" in [triggerMetadata]"),
-		ExpectedMetatada: nil,
+		ExpectedMetadata: nil,
 	},
 	{
 		name:        "Valid",
 		metadata:    map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup"},
 		ExpectedErr: nil,
-		ExpectedMetatada: &liiklusMetadata{
+		ExpectedMetadata: &liiklusMetadata{
 			LagThreshold:           10,
 			ActivationLagThreshold: 0,
 			Address:                "using-mock",
@@ -69,13 +69,13 @@ var parseLiiklusMetadataTestDataset = []parseLiiklusMetadataTestData{
 		name:             "Invalid activationLagThreshold",
 		metadata:         map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup", "activationLagThreshold": "invalid"},
 		ExpectedErr:      fmt.Errorf("error parsing liiklus metadata: unable to set param \"activationLagThreshold\" value \"invalid\": unable to unmarshal to field type int64: invalid character 'i' looking for beginning of value"),
-		ExpectedMetatada: nil,
+		ExpectedMetadata: nil,
 	},
 	{
 		name:        "Custom lagThreshold",
 		metadata:    map[string]string{"topic": "foo", "address": "using-mock", "group": "mygroup", "lagThreshold": "20"},
 		ExpectedErr: nil,
-		ExpectedMetatada: &liiklusMetadata{
+		ExpectedMetadata: &liiklusMetadata{
 			LagThreshold:           20,
 			ActivationLagThreshold: 0,
 			Address:                "using-mock",
@@ -111,24 +111,24 @@ func TestLiiklusParseMetadata(t *testing.T) {
 			if err != nil {
 				t.Errorf("Expected success but got error %v", err)
 			}
-			if testData.ExpectedMetatada != nil {
-				if testData.ExpectedMetatada.Address != meta.Address {
-					t.Errorf("Expected address %q but got %q", testData.ExpectedMetatada.Address, meta.Address)
+			if testData.ExpectedMetadata != nil {
+				if testData.ExpectedMetadata.Address != meta.Address {
+					t.Errorf("Expected address %q but got %q", testData.ExpectedMetadata.Address, meta.Address)
 				}
-				if meta.Group != testData.ExpectedMetatada.Group {
-					t.Errorf("Expected group %q but got %q", testData.ExpectedMetatada.Group, meta.Group)
+				if meta.Group != testData.ExpectedMetadata.Group {
+					t.Errorf("Expected group %q but got %q", testData.ExpectedMetadata.Group, meta.Group)
 				}
-				if meta.Topic != testData.ExpectedMetatada.Topic {
-					t.Errorf("Expected topic %q but got %q", testData.ExpectedMetatada.Topic, meta.Topic)
+				if meta.Topic != testData.ExpectedMetadata.Topic {
+					t.Errorf("Expected topic %q but got %q", testData.ExpectedMetadata.Topic, meta.Topic)
 				}
-				if meta.LagThreshold != testData.ExpectedMetatada.LagThreshold {
-					t.Errorf("Expected threshold %d but got %d", testData.ExpectedMetatada.LagThreshold, meta.LagThreshold)
+				if meta.LagThreshold != testData.ExpectedMetadata.LagThreshold {
+					t.Errorf("Expected threshold %d but got %d", testData.ExpectedMetadata.LagThreshold, meta.LagThreshold)
 				}
-				if meta.ActivationLagThreshold != testData.ExpectedMetatada.ActivationLagThreshold {
-					t.Errorf("Expected activation threshold %d but got %d", testData.ExpectedMetatada.ActivationLagThreshold, meta.ActivationLagThreshold)
+				if meta.ActivationLagThreshold != testData.ExpectedMetadata.ActivationLagThreshold {
+					t.Errorf("Expected activation threshold %d but got %d", testData.ExpectedMetadata.ActivationLagThreshold, meta.ActivationLagThreshold)
 				}
-				if meta.GroupVersion != testData.ExpectedMetatada.GroupVersion {
-					t.Errorf("Expected group version %d but got %d", testData.ExpectedMetatada.GroupVersion, meta.GroupVersion)
+				if meta.GroupVersion != testData.ExpectedMetadata.GroupVersion {
+					t.Errorf("Expected group version %d but got %d", testData.ExpectedMetadata.GroupVersion, meta.GroupVersion)
 				}
 			}
 		})

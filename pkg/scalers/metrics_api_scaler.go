@@ -44,7 +44,7 @@ type metricsAPIScalerMetadata struct {
 	enableAPIKeyAuth bool
 	method           string // way of providing auth key, either "header" (default) or "query"
 	// keyParamName  is either header key or query param used for passing apikey
-	// default header is "X-API-KEY", defaul query param is "api_key"
+	// default header is "X-API-KEY", default query param is "api_key"
 	keyParamName string
 	apiKey       string
 

@@ -77,6 +77,6 @@ type ScalerConfig struct {
 	// For events
 	Recorder record.EventRecorder
 
-	// ScaledObjct
+	// ScaledObject
 	ScaledObject runtime.Object
 }

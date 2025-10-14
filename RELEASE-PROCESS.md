@@ -96,7 +96,7 @@ For details, see [Publishing a new version](https://github.com/kedacore/keda-doc
 
 > Note: During hotfix releases, this step isn't required as we don't introduce new features
 
-## 5. Setup continous container scanning with Snyk
+## 5. Setup continuous container scanning with Snyk
 
 In order to continuously scan our new container image, they must be imported in our [Snyk project](https://app.snyk.io/org/keda/projects) for all newly introduced tags.
 

@@ -79,7 +79,7 @@ func getDataExplorerAuthConfig(metadata *DataExplorerMetadata) (*kusto.Connectio
 			return nil, fmt.Errorf("missing credentials. please ensure that TenantID is provided")
 		}
 		kcsb.WithAadAppKey(metadata.ClientID, metadata.ClientSecret, metadata.TenantID)
-		// This should be here because internaly the SDK resets the configuration
+		// This should be here because internally the SDK resets the configuration
 		// after calling `WithAadAppKey`
 		clientOptions := &policy.ClientOptions{
 			Cloud: cloud.Configuration{

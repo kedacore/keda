@@ -31,7 +31,7 @@ type gcpCloudTasksMetricIdentifier struct {
 
 var testGcpCloudTasksMetadata = []parseGcpCloudTasksMetadataTestData{
 
-	{map[string]string{}, map[string]string{}, true, nil, "erro case"},
+	{map[string]string{}, map[string]string{}, true, nil, "error case"},
 
 	{nil, map[string]string{"queueName": "myQueue", "value": "7", "credentialsFromEnv": "SAMPLE_CREDS", "projectID": "myproject", "activationValue": "5"}, false, &gcpCloudTaskMetadata{
 		Value:           7,

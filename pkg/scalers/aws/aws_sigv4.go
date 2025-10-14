@@ -70,7 +70,7 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	return transport.RoundTrip(req)
 }
 
-// parseAwsAMPMetadata parses the data to get the AWS sepcific auth info and metadata
+// parseAwsAMPMetadata parses the data to get the AWS specific auth info and metadata
 func parseAwsAMPMetadata(config *scalersconfig.ScalerConfig, awsRegion string) (*AuthorizationMetadata, error) {
 	auth, err := GetAwsAuthorization(config.TriggerUniqueKey, awsRegion, config.PodIdentity, config.TriggerMetadata, config.AuthParams, config.ResolvedEnv)
 	if err != nil {

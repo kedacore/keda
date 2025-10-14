@@ -94,7 +94,7 @@ spec:
     name: {{.DeploymentName}}
   minReplicaCount: {{.MinReplicaCount}}
   maxReplicaCount: {{.MaxReplicaCount}}
-  pollingInterval: 3
+  pollingInterval: 5
   cooldownPeriod: 1
   fallback:
     failureThreshold: 3
@@ -112,6 +112,7 @@ spec:
         queryAggregator: "{{.QueryAggregator}}"
         threshold: "{{.TargetValue}}"
         activationValue: "{{.ActivationValue}}"
+        maxRetries: "3"
       authenticationRef:
         name: keda-trigger-auth-sumologic
 `
