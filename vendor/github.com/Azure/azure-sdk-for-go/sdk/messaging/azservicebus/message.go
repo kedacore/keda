@@ -311,10 +311,16 @@ func (m *Message) toAMQPMessage() *amqp.Message {
 // NOTE: this converter assumes that the Body of this message will be the first
 // serialized byte array in the Data section of the messsage.
 func newReceivedMessage(amqpMsg *amqp.Message, receiver amqpwrap.AMQPReceiver) *ReceivedMessage {
+	linkName := ""
+
+	if receiver != nil { // nil when we're converting messages from [Receiver.Prefetched] after the Receiver has been closed.
+		linkName = receiver.LinkName()
+	}
+
 	msg := &ReceivedMessage{
 		RawAMQPMessage: newAMQPAnnotatedMessage(amqpMsg),
 		State:          MessageStateActive,
-		linkName:       receiver.LinkName(),
+		linkName:       linkName,
 	}
 
 	if len(msg.RawAMQPMessage.Body.Data) == 1 {
@@ -366,7 +372,7 @@ func newReceivedMessage(amqpMsg *amqp.Message, receiver amqpwrap.AMQPReceiver) *
 			msg.SequenceNumber = to.Ptr(sequenceNumber.(int64))
 		}
 
-		if partitionKey, ok := amqpMsg.Annotations[partitionKeyAnnotation]; ok {
+		if partitionKey, ok := amqpMsg.Annotations[partitionKeyAnnotation]; ok && partitionKey != nil {
 			msg.PartitionKey = to.Ptr(partitionKey.(string))
 		}
 
@@ -375,7 +381,7 @@ func newReceivedMessage(amqpMsg *amqp.Message, receiver amqpwrap.AMQPReceiver) *
 			msg.EnqueuedTime = &t
 		}
 
-		if deadLetterSource, ok := amqpMsg.Annotations[deadLetterSourceAnnotation]; ok {
+		if deadLetterSource, ok := amqpMsg.Annotations[deadLetterSourceAnnotation]; ok && deadLetterSource != nil {
 			msg.DeadLetterSource = to.Ptr(deadLetterSource.(string))
 		}
 

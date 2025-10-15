@@ -38,7 +38,7 @@ type Event struct {
 // Watch dirs for filesystem events, and run tests when .go files are saved.
 //
 //nolint:gocyclo
-func Watch(ctx context.Context, dirs []string, run func(Event) error) error {
+func Watch(ctx context.Context, dirs []string, clearScreen bool, run func(Event) error) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return fmt.Errorf("failed to create file watcher: %w", err)
@@ -56,7 +56,11 @@ func Watch(ctx context.Context, dirs []string, run func(Event) error) error {
 	defer term.Reset()
 	go term.Monitor(ctx)
 
-	h := &fsEventHandler{last: time.Now(), fn: run}
+	h := &fsEventHandler{
+		last:        time.Now(),
+		clearScreen: clearScreen,
+		fn:          run,
+	}
 	for {
 		select {
 		case <-ctx.Done():
@@ -229,9 +233,10 @@ func handleDirCreated(watcher *fsnotify.Watcher, event fsnotify.Event) (handled 
 }
 
 type fsEventHandler struct {
-	last     time.Time
-	lastPath string
-	fn       func(opts Event) error
+	last        time.Time
+	lastPath    string
+	clearScreen bool
+	fn          func(opts Event) error
 }
 
 var floodThreshold = 250 * time.Millisecond
@@ -256,6 +261,11 @@ func (h *fsEventHandler) runTests(opts Event) error {
 	if opts.useLastPath {
 		opts.PkgPath = h.lastPath
 	}
+
+	if h.clearScreen {
+		fmt.Println("\033[H\033[2J")
+	}
+
 	fmt.Printf("\nRunning tests in %v\n", opts.PkgPath)
 
 	if err := h.fn(opts); err != nil {

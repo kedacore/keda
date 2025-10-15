@@ -19,16 +19,16 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	apiadmissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	internalinterfaces "k8s.io/client-go/informers/internalinterfaces"
 	kubernetes "k8s.io/client-go/kubernetes"
-	v1 "k8s.io/client-go/listers/admissionregistration/v1"
+	admissionregistrationv1 "k8s.io/client-go/listers/admissionregistration/v1"
 	cache "k8s.io/client-go/tools/cache"
 )
 
@@ -36,7 +36,7 @@ import (
 // MutatingWebhookConfigurations.
 type MutatingWebhookConfigurationInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.MutatingWebhookConfigurationLister
+	Lister() admissionregistrationv1.MutatingWebhookConfigurationLister
 }
 
 type mutatingWebhookConfigurationInformer struct {
@@ -61,16 +61,28 @@ func NewFilteredMutatingWebhookConfigurationInformer(client kubernetes.Interface
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AdmissionregistrationV1().MutatingWebhookConfigurations().List(context.TODO(), options)
+				return client.AdmissionregistrationV1().MutatingWebhookConfigurations().List(context.Background(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AdmissionregistrationV1().MutatingWebhookConfigurations().Watch(context.TODO(), options)
+				return client.AdmissionregistrationV1().MutatingWebhookConfigurations().Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.AdmissionregistrationV1().MutatingWebhookConfigurations().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.AdmissionregistrationV1().MutatingWebhookConfigurations().Watch(ctx, options)
 			},
 		},
-		&admissionregistrationv1.MutatingWebhookConfiguration{},
+		&apiadmissionregistrationv1.MutatingWebhookConfiguration{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,9 +93,9 @@ func (f *mutatingWebhookConfigurationInformer) defaultInformer(client kubernetes
 }
 
 func (f *mutatingWebhookConfigurationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&admissionregistrationv1.MutatingWebhookConfiguration{}, f.defaultInformer)
+	return f.factory.InformerFor(&apiadmissionregistrationv1.MutatingWebhookConfiguration{}, f.defaultInformer)
 }
 
-func (f *mutatingWebhookConfigurationInformer) Lister() v1.MutatingWebhookConfigurationLister {
-	return v1.NewMutatingWebhookConfigurationLister(f.Informer().GetIndexer())
+func (f *mutatingWebhookConfigurationInformer) Lister() admissionregistrationv1.MutatingWebhookConfigurationLister {
+	return admissionregistrationv1.NewMutatingWebhookConfigurationLister(f.Informer().GetIndexer())
 }

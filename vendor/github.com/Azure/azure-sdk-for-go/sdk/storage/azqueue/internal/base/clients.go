@@ -7,10 +7,23 @@
 package base
 
 import (
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/internal/exported"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/internal/generated"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/internal/shared"
+	"strings"
 )
+
+// ClientOptions contains the optional parameters when creating a Client.
+type ClientOptions struct {
+	azcore.ClientOptions
+
+	// Audience to use when requesting tokens for Azure Active Directory authentication.
+	// Only has an effect when credential is of type TokenCredential. The value could be
+	// https://storage.azure.com/ (default) or https://<account>.queue.core.windows.net.
+	Audience string
+}
 
 type Client[T any] struct {
 	inner     *T
@@ -29,6 +42,13 @@ func NewClient[T any](inner *T) *Client[T] {
 	return &Client[T]{inner: inner}
 }
 
+func GetAudience(clOpts *ClientOptions) string {
+	if clOpts == nil || len(strings.TrimSpace(clOpts.Audience)) == 0 {
+		return shared.TokenScope
+	} else {
+		return strings.TrimRight(clOpts.Audience, "/") + "/.default"
+	}
+}
 func NewServiceClient(queueURL string, pipeline runtime.Pipeline, sharedKey *exported.SharedKeyCredential) *Client[generated.ServiceClient] {
 	return &Client[generated.ServiceClient]{
 		inner:     generated.NewServiceClient(queueURL, pipeline),

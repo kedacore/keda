@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 param baseName string
 param sku string = 'pergb2018'
 param appSku string = 'standard'
@@ -42,6 +45,9 @@ resource app_config 'Microsoft.AppConfiguration/configurationStores@2022-05-01' 
   location: location
   sku: {
     name: appSku
+  }
+  properties: {
+    disableLocalAuth: true 
   }
 }
 

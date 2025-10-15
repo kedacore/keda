@@ -19,15 +19,24 @@ import (
 )
 
 // ReceiveMode represents the lock style to use for a receiver - either
-// `PeekLock` or `ReceiveAndDelete`
+// [ReceiveModePeekLock] or [ReceiveModeReceiveAndDelete]
 type ReceiveMode = exported.ReceiveMode
 
 const (
-	// ReceiveModePeekLock will lock messages as they are received and can be settled
-	// using the Receiver's (Complete|Abandon|DeadLetter|Defer)Message
-	// functions.
+	// ReceiveModePeekLock will lock messages as they are received and can be settled using one of
+	// the following methods:
+	// - [Receiver.CompleteMessage]
+	// - [Receiver.AbandonMessage]
+	// - [Receiver.DeadLetterMessage]
+	// - [Receiver.DeferMessage]
 	ReceiveModePeekLock ReceiveMode = exported.PeekLock
+
 	// ReceiveModeReceiveAndDelete will delete messages as they are received.
+	//
+	// NOTE: when the Receiver is in [ReceiveModeReceiveAndDelete] mode, you can call [Receiver.ReceiveMessages] even
+	// after the Receiver has been closed. This allows you to continue reading from the Receiver's internal cache, until
+	// it is empty. When you've completely read all cached messages, ReceiveMessages returns an [*Error]
+	// with `.Code` == azservicebus.CodeClosed.
 	ReceiveModeReceiveAndDelete ReceiveMode = exported.ReceiveAndDelete
 )
 
@@ -56,6 +65,8 @@ type Receiver struct {
 	retryOptions             RetryOptions
 	settler                  *messageSettler
 	defaultReleaserTimeout   time.Duration // defaults to 1min, settable for unit tests.
+
+	cachedMessages atomic.Pointer[[]*amqp.Message] // messages that were extracted from a ReceiveAndDelete receiver, after it was closed.
 }
 
 // ReceiverOptions contains options for the `Client.NewReceiverForQueue` or `Client.NewReceiverForSubscription`
@@ -63,12 +74,12 @@ type Receiver struct {
 type ReceiverOptions struct {
 	// ReceiveMode controls when a message is deleted from Service Bus.
 	//
-	// ReceiveModePeekLock is the default. The message is locked, preventing multiple
+	// [ReceiveModePeekLock] is the default. The message is locked, preventing multiple
 	// receivers from processing the message at once. You control the lock state of the message
-	// using one of the message settlement functions like Receiver.CompleteMessage(), which removes
-	// it from Service Bus, or Receiver.AbandonMessage(), which makes it available again.
+	// using one of the message settlement functions like [Receiver.CompleteMessage], which removes
+	// it from Service Bus, or [Receiver.AbandonMessage], which makes it available again.
 	//
-	// ReceiveModeReceiveAndDelete causes Service Bus to remove the message as soon
+	// [ReceiveModeReceiveAndDelete] causes Service Bus to remove the message as soon
 	// as it's received.
 	//
 	// More information about receive modes:
@@ -149,12 +160,20 @@ func newReceiver(args newReceiverArgs, options *ReceiverOptions) (*Receiver, err
 		newLinkFn = args.newLinkFn
 	}
 
-	receiver.amqpLinks = internal.NewAMQPLinks(internal.NewAMQPLinksArgs{
+	amqpLinksArgs := internal.NewAMQPLinksArgs{
 		NS:                  args.ns,
 		EntityPath:          receiver.entityPath,
 		CreateLinkFunc:      newLinkFn,
 		GetRecoveryKindFunc: args.getRecoveryKindFunc,
-	})
+	}
+
+	if receiver.receiveMode == ReceiveModeReceiveAndDelete {
+		amqpLinksArgs.PrefetchedMessagesAfterClose = func(messages []*amqp.Message) {
+			receiver.cachedMessages.Store(&messages)
+		}
+	}
+
+	receiver.amqpLinks = internal.NewAMQPLinks(amqpLinksArgs)
 
 	// 'nil' settler handles returning an error message for receiveAndDelete links.
 	if receiver.receiveMode == ReceiveModePeekLock {
@@ -185,7 +204,15 @@ type ReceiveMessagesOptions struct {
 
 // ReceiveMessages receives a fixed number of messages, up to numMessages.
 // This function will block until at least one message is received or until the ctx is cancelled.
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+//
+// NOTE: when the Receiver is in [ReceiveModeReceiveAndDelete] mode, you can call [Receiver.ReceiveMessages] even
+// after the Receiver has been closed. This allows you to continue reading from the Receiver's internal cache, until
+// it is empty. When you've completely read all cached messages, ReceiveMessages returns an [*Error]
+// with `.Code` == azservicebus.CodeClosed.
+//
+// This is NOT necessary when using [ReceiveModePeekLock] (the default).
+//
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 func (r *Receiver) ReceiveMessages(ctx context.Context, maxMessages int, options *ReceiveMessagesOptions) ([]*ReceivedMessage, error) {
 	r.mu.Lock()
 	isReceiving := r.receiving
@@ -215,7 +242,7 @@ type ReceiveDeferredMessagesOptions struct {
 }
 
 // ReceiveDeferredMessages receives messages that were deferred using `Receiver.DeferMessage`.
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 func (r *Receiver) ReceiveDeferredMessages(ctx context.Context, sequenceNumbers []int64, options *ReceiveDeferredMessagesOptions) ([]*ReceivedMessage, error) {
 	var receivedMessages []*ReceivedMessage
 
@@ -255,7 +282,7 @@ type PeekMessagesOptions struct {
 // Messages that are peeked are not locked, so settlement methods like [Receiver.CompleteMessage],
 // [Receiver.AbandonMessage], [Receiver.DeferMessage] or [Receiver.DeadLetterMessage] will not work with them.
 //
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 //
 // For more information about peeking/message-browsing see https://aka.ms/azsdk/servicebus/message-browsing
 func (r *Receiver) PeekMessages(ctx context.Context, maxMessageCount int, options *PeekMessagesOptions) ([]*ReceivedMessage, error) {
@@ -299,7 +326,7 @@ type RenewMessageLockOptions struct {
 }
 
 // RenewMessageLock renews the lock on a message, updating the `LockedUntil` field on `msg`.
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 func (r *Receiver) RenewMessageLock(ctx context.Context, msg *ReceivedMessage, options *RenewMessageLockOptions) error {
 	err := r.amqpLinks.Retry(ctx, EventReceiver, "renewMessageLock", func(ctx context.Context, linksWithVersion *internal.LinksWithID, args *utils.RetryFnArgs) error {
 		newExpirationTime, err := internal.RenewLocks(ctx, linksWithVersion.RPC, msg.linkName, []amqp.UUID{
@@ -324,12 +351,13 @@ func (r *Receiver) Close(ctx context.Context) error {
 	r.amqpLinks.Writef(EventReceiver, "Stopped message releaser with ID '%s'", releaserID)
 
 	r.cleanupOnClose()
+
 	return r.amqpLinks.Close(ctx, true)
 }
 
 // CompleteMessage completes a message, deleting it from the queue or subscription.
 // This function can only be used when the Receiver has been opened with ReceiveModePeekLock.
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 func (r *Receiver) CompleteMessage(ctx context.Context, message *ReceivedMessage, options *CompleteMessageOptions) error {
 	return r.settler.CompleteMessage(ctx, message, options)
 }
@@ -338,7 +366,7 @@ func (r *Receiver) CompleteMessage(ctx context.Context, message *ReceivedMessage
 // This will increment its delivery count, and potentially cause it to be dead-lettered
 // depending on your queue or subscription's configuration.
 // This function can only be used when the Receiver has been opened with `ReceiveModePeekLock`.
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 func (r *Receiver) AbandonMessage(ctx context.Context, message *ReceivedMessage, options *AbandonMessageOptions) error {
 	return r.settler.AbandonMessage(ctx, message, options)
 }
@@ -346,7 +374,7 @@ func (r *Receiver) AbandonMessage(ctx context.Context, message *ReceivedMessage,
 // DeferMessage will cause a message to be deferred. Deferred messages can be received using
 // `Receiver.ReceiveDeferredMessages`.
 // This function can only be used when the Receiver has been opened with `ReceiveModePeekLock`.
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 func (r *Receiver) DeferMessage(ctx context.Context, message *ReceivedMessage, options *DeferMessageOptions) error {
 	return r.settler.DeferMessage(ctx, message, options)
 }
@@ -355,7 +383,7 @@ func (r *Receiver) DeferMessage(ctx context.Context, message *ReceivedMessage, o
 // queue or subscription. To receive these messages create a receiver with `Client.NewReceiverForQueue()`
 // or `Client.NewReceiverForSubscription()` using the `ReceiverOptions.SubQueue` option.
 // This function can only be used when the Receiver has been opened with `ReceiveModePeekLock`.
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 func (r *Receiver) DeadLetterMessage(ctx context.Context, message *ReceivedMessage, options *DeadLetterOptions) error {
 	return r.settler.DeadLetterMessage(ctx, message, options)
 }
@@ -370,6 +398,10 @@ func (r *Receiver) receiveMessagesImpl(ctx context.Context, maxMessages int, opt
 
 	if maxMessages > int(r.maxAllowedCredits) {
 		return nil, internal.NewErrNonRetriable(fmt.Sprintf("maxMessages cannot exceed %d", r.maxAllowedCredits))
+	}
+
+	if msgs := r.receiveFromCache(maxMessages); len(msgs) > 0 {
+		return msgs, nil
 	}
 
 	var linksWithID *internal.LinksWithID
@@ -451,6 +483,26 @@ func (r *Receiver) receiveMessagesImpl(ctx context.Context, maxMessages int, opt
 	}
 
 	return receivedMessages, nil
+}
+
+// receiveFromCache gets any messages that were retrieved after the Receiver was closed
+// It returns an empty slice when the cache has been exhausted.
+func (r *Receiver) receiveFromCache(maxMessages int) []*ReceivedMessage {
+	cachedMessages := r.cachedMessages.Load()
+	if cachedMessages == nil || len(*cachedMessages) == 0 {
+		return nil
+	}
+
+	n := min(len(*cachedMessages), maxMessages)
+
+	receivedMessages := make([]*ReceivedMessage, n)
+
+	for i := range n {
+		receivedMessages[i] = newReceivedMessage((*cachedMessages)[i], nil)
+	}
+
+	(*cachedMessages) = (*cachedMessages)[n:]
+	return receivedMessages
 }
 
 type entity struct {

@@ -110,7 +110,7 @@ func getTemplateData() (templateData, []Template) {
 
 func testScaling(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
-	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messageCount)
+	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messageCount, 0)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 60, 3),
 		"replica count should be 4 after 3 minute")
 
@@ -122,7 +122,7 @@ func testScaling(t *testing.T, kc *kubernetes.Clientset) {
 func testActivationValue(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing activation value ---")
 	messagesToQueue := 3
-	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messagesToQueue)
+	RMQPublishMessages(t, rmqNamespace, connectionString, queueName, messagesToQueue, 0)
 
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 60)
 }

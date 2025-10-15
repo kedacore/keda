@@ -29,7 +29,7 @@ func GetSafeTimestampWithMilliseconds(inputTimestamp nrtime.EpochMilliseconds) n
 	timestamp := time.Time(inputTimestamp)
 
 	// since time.Time in Go does not have a milliseconds field, which is why the implementation
-	// of unmarshaling time.Time into a Unix timestamp in the serialization package relies on
+	// of unmarshalling time.Time into a Unix timestamp in the serialization package relies on
 	// nanoseconds to produce a value of milliseconds, we try employing a similar logic below
 
 	if timestamp.Nanosecond() < 100000000 {

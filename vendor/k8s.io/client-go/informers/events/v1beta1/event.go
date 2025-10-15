@@ -19,16 +19,16 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	eventsv1beta1 "k8s.io/api/events/v1beta1"
+	apieventsv1beta1 "k8s.io/api/events/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	internalinterfaces "k8s.io/client-go/informers/internalinterfaces"
 	kubernetes "k8s.io/client-go/kubernetes"
-	v1beta1 "k8s.io/client-go/listers/events/v1beta1"
+	eventsv1beta1 "k8s.io/client-go/listers/events/v1beta1"
 	cache "k8s.io/client-go/tools/cache"
 )
 
@@ -36,7 +36,7 @@ import (
 // Events.
 type EventInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1beta1.EventLister
+	Lister() eventsv1beta1.EventLister
 }
 
 type eventInformer struct {
@@ -62,16 +62,28 @@ func NewFilteredEventInformer(client kubernetes.Interface, namespace string, res
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.EventsV1beta1().Events(namespace).List(context.TODO(), options)
+				return client.EventsV1beta1().Events(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.EventsV1beta1().Events(namespace).Watch(context.TODO(), options)
+				return client.EventsV1beta1().Events(namespace).Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.EventsV1beta1().Events(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.EventsV1beta1().Events(namespace).Watch(ctx, options)
 			},
 		},
-		&eventsv1beta1.Event{},
+		&apieventsv1beta1.Event{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +94,9 @@ func (f *eventInformer) defaultInformer(client kubernetes.Interface, resyncPerio
 }
 
 func (f *eventInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&eventsv1beta1.Event{}, f.defaultInformer)
+	return f.factory.InformerFor(&apieventsv1beta1.Event{}, f.defaultInformer)
 }
 
-func (f *eventInformer) Lister() v1beta1.EventLister {
-	return v1beta1.NewEventLister(f.Informer().GetIndexer())
+func (f *eventInformer) Lister() eventsv1beta1.EventLister {
+	return eventsv1beta1.NewEventLister(f.Informer().GetIndexer())
 }

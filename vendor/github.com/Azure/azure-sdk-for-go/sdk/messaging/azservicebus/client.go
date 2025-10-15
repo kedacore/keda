@@ -239,7 +239,7 @@ func (client *Client) NewSender(queueOrTopic string, options *NewSenderOptions) 
 
 // AcceptSessionForQueue accepts a session from a queue with a specific session ID.
 // NOTE: this receiver is initialized immediately, not lazily.
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 func (client *Client) AcceptSessionForQueue(ctx context.Context, queueName string, sessionID string, options *SessionReceiverOptions) (*SessionReceiver, error) {
 	id, cleanupOnClose := client.getCleanupForCloseable()
 	sessionReceiver, err := newSessionReceiver(
@@ -266,7 +266,7 @@ func (client *Client) AcceptSessionForQueue(ctx context.Context, queueName strin
 
 // AcceptSessionForSubscription accepts a session from a subscription with a specific session ID.
 // NOTE: this receiver is initialized immediately, not lazily.
-// If the operation fails it can return an [*azservicebus.Error] type if the failure is actionable.
+// If the operation fails it can return an [*Error] type if the failure is actionable.
 func (client *Client) AcceptSessionForSubscription(ctx context.Context, topicName string, subscriptionName string, sessionID string, options *SessionReceiverOptions) (*SessionReceiver, error) {
 	id, cleanupOnClose := client.getCleanupForCloseable()
 	sessionReceiver, err := newSessionReceiver(

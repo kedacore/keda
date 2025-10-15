@@ -64,6 +64,27 @@ type AmpConfiguration struct {
 	noSmithyDocumentSerde
 }
 
+// Configuration details for logging to CloudWatch Logs.
+type CloudWatchLogDestination struct {
+
+	// The ARN of the CloudWatch log group to which the vended log data will be
+	// published. This log group must exist prior to calling this operation.
+	//
+	// This member is required.
+	LogGroupArn *string
+
+	noSmithyDocumentSerde
+}
+
+// Configuration settings for a scraper component.
+type ComponentConfig struct {
+
+	// Configuration options for the scraper component.
+	Options map[string]string
+
+	noSmithyDocumentSerde
+}
+
 // Where to send the metrics from a scraper.
 //
 // The following types satisfy this interface:
@@ -102,7 +123,51 @@ type EksConfiguration struct {
 	noSmithyDocumentSerde
 }
 
-// Contains information about the logging configuration for the workspace.
+// This structure defines one label set used to enforce active time series limits
+// for the workspace, and defines the limit for that label set.
+//
+// A label set is a unique combination of label-value pairs. Use them to control
+// time series limits and to monitor usage by specific label groups. Example label
+// sets might be team:finance or env:prod
+type LimitsPerLabelSet struct {
+
+	// This defines one label set that will have an enforced active time series limit.
+	//
+	// Label values accept ASCII characters and must contain at least one character
+	// that isn't whitespace. ASCII control characters are not accepted. If the label
+	// name is metric name label __name__ , then the metric part of the name must
+	// conform to the following pattern: [a-zA-Z_:][a-zA-Z0-9_:]*
+	//
+	// This member is required.
+	LabelSet map[string]string
+
+	// This structure contains the information about the limits that apply to time
+	// series that match this label set.
+	//
+	// This member is required.
+	Limits *LimitsPerLabelSetEntry
+
+	noSmithyDocumentSerde
+}
+
+// This structure contains the information about the limits that apply to time
+// series that match one label set.
+type LimitsPerLabelSetEntry struct {
+
+	// The maximum number of active series that can be ingested that match this label
+	// set.
+	//
+	// Setting this to 0 causes no label set limit to be enforced, but it does cause
+	// Amazon Managed Service for Prometheus to vend label set metrics to CloudWatch
+	MaxSeries *int64
+
+	noSmithyDocumentSerde
+}
+
+// Contains information about the current rules and alerting logging configuration
+// for the workspace.
+//
+// These logging configurations are only for rules and alerting logs.
 type LoggingConfigurationMetadata struct {
 
 	// The date and time that the logging configuration was created.
@@ -137,7 +202,9 @@ type LoggingConfigurationMetadata struct {
 // The status of the logging configuration.
 type LoggingConfigurationStatus struct {
 
-	// The current status of the logging configuration.
+	// The current status of the current rules and alerting logging configuration.
+	//
+	// These logging configurations are only for rules and alerting logs.
 	//
 	// This member is required.
 	StatusCode LoggingConfigurationStatusCode
@@ -148,14 +215,93 @@ type LoggingConfigurationStatus struct {
 	noSmithyDocumentSerde
 }
 
-// To configure roles that allows users to write to an Amazon Managed Service for
-// Prometheus workspace in a different account.
+// Defines a destination and its associated filtering criteria for query logging.
+type LoggingDestination struct {
+
+	// Configuration details for logging to CloudWatch Logs.
+	//
+	// This member is required.
+	CloudWatchLogs *CloudWatchLogDestination
+
+	// Filtering criteria that determine which queries are logged.
+	//
+	// This member is required.
+	Filters *LoggingFilter
+
+	noSmithyDocumentSerde
+}
+
+// Filtering criteria that determine which queries are logged.
+type LoggingFilter struct {
+
+	// The Query Samples Processed (QSP) threshold above which queries will be logged.
+	// Queries processing more samples than this threshold will be captured in logs.
+	//
+	// This member is required.
+	QspThreshold *int64
+
+	noSmithyDocumentSerde
+}
+
+// The metadata for a query logging configuration.
+type QueryLoggingConfigurationMetadata struct {
+
+	// The date and time when the query logging configuration was created.
+	//
+	// This member is required.
+	CreatedAt *time.Time
+
+	// The configured destinations for the query logging configuration.
+	//
+	// This member is required.
+	Destinations []LoggingDestination
+
+	// The date and time when the query logging configuration was last modified.
+	//
+	// This member is required.
+	ModifiedAt *time.Time
+
+	// The current status of the query logging configuration.
+	//
+	// This member is required.
+	Status *QueryLoggingConfigurationStatus
+
+	// The ID of the workspace associated with this query logging configuration.
+	//
+	// This member is required.
+	Workspace *string
+
+	noSmithyDocumentSerde
+}
+
+// The status information for a query logging configuration.
+type QueryLoggingConfigurationStatus struct {
+
+	// The current status of the query logging configuration.
+	//
+	// This member is required.
+	StatusCode QueryLoggingConfigurationStatusCode
+
+	// If there is a failure, the reason for the failure.
+	StatusReason *string
+
+	noSmithyDocumentSerde
+}
+
+// Use this structure to enable cross-account access, so that you can use a target
+// account to access Prometheus metrics from source accounts.
 type RoleConfiguration struct {
 
-	// A ARN identifying the source role configuration.
+	// The Amazon Resource Name (ARN) of the role used in the source account to enable
+	// cross-account scraping. For information about the contents of this policy, see [Cross-account setup].
+	//
+	// [Cross-account setup]: https://docs.aws.amazon.com/prometheus/latest/userguide/AMP-collector-how-to.html#cross-account-remote-write
 	SourceRoleArn *string
 
-	// A ARN identifying the target role configuration.
+	// The Amazon Resource Name (ARN) of the role used in the target account to enable
+	// cross-account scraping. For information about the contents of this policy, see [Cross-account setup].
+	//
+	// [Cross-account setup]: https://docs.aws.amazon.com/prometheus/latest/userguide/AMP-collector-how-to.html#cross-account-remote-write
 	TargetRoleArn *string
 
 	noSmithyDocumentSerde
@@ -278,6 +424,21 @@ type ScrapeConfigurationMemberConfigurationBlob struct {
 
 func (*ScrapeConfigurationMemberConfigurationBlob) isScrapeConfiguration() {}
 
+// A component of a Amazon Managed Service for Prometheus scraper that can be
+// configured for logging.
+type ScraperComponent struct {
+
+	// The type of the scraper component.
+	//
+	// This member is required.
+	Type ScraperComponentType
+
+	// The configuration settings for the scraper component.
+	Config *ComponentConfig
+
+	noSmithyDocumentSerde
+}
+
 // The ScraperDescription structure contains the full details about one scraper in
 // your account.
 type ScraperDescription struct {
@@ -337,8 +498,8 @@ type ScraperDescription struct {
 	// (Optional) A name associated with the scraper.
 	Alias *string
 
-	// To configure roles that allows users to write to an Amazon Managed Service for
-	// Prometheus workspace in a different account.
+	// This structure displays information about the IAM roles used for cross-account
+	// scraping configuration.
 	RoleConfiguration *RoleConfiguration
 
 	// If there is a failure, the reason for the failure.
@@ -349,6 +510,38 @@ type ScraperDescription struct {
 
 	noSmithyDocumentSerde
 }
+
+// The status of a scraper logging configuration.
+type ScraperLoggingConfigurationStatus struct {
+
+	// The status code of the scraper logging configuration.
+	//
+	// This member is required.
+	StatusCode ScraperLoggingConfigurationStatusCode
+
+	// The reason for the current status of the scraper logging configuration.
+	StatusReason *string
+
+	noSmithyDocumentSerde
+}
+
+// The destination where scraper logs are sent.
+//
+// The following types satisfy this interface:
+//
+//	ScraperLoggingDestinationMemberCloudWatchLogs
+type ScraperLoggingDestination interface {
+	isScraperLoggingDestination()
+}
+
+// The CloudWatch Logs configuration for the scraper logging destination.
+type ScraperLoggingDestinationMemberCloudWatchLogs struct {
+	Value CloudWatchLogDestination
+
+	noSmithyDocumentSerde
+}
+
+func (*ScraperLoggingDestinationMemberCloudWatchLogs) isScraperLoggingDestination() {}
 
 // The ScraperStatus structure contains status information about the scraper.
 type ScraperStatus struct {
@@ -410,8 +603,8 @@ type ScraperSummary struct {
 	// (Optional) A name associated with the scraper.
 	Alias *string
 
-	// To configure roles that allows users to write to an Amazon Managed Service for
-	// Prometheus workspace in a different account.
+	// This structure displays information about the IAM roles used for cross-account
+	// scraping configuration.
 	RoleConfiguration *RoleConfiguration
 
 	// If there is a failure, the reason for the failure.
@@ -453,6 +646,40 @@ type ValidationExceptionField struct {
 	//
 	// This member is required.
 	Name *string
+
+	noSmithyDocumentSerde
+}
+
+// This structure contains the description of the workspace configuration.
+type WorkspaceConfigurationDescription struct {
+
+	// This structure displays the current status of the workspace configuration, and
+	// might also contain a reason for that status.
+	//
+	// This member is required.
+	Status *WorkspaceConfigurationStatus
+
+	// This is an array of structures, where each structure displays one label sets
+	// for the workspace and the limits for that label set.
+	LimitsPerLabelSet []LimitsPerLabelSet
+
+	// This field displays how many days that metrics are retained in the workspace.
+	RetentionPeriodInDays *int32
+
+	noSmithyDocumentSerde
+}
+
+// This structure displays the current status of the workspace configuration, and
+// might also contain a reason for that status.
+type WorkspaceConfigurationStatus struct {
+
+	// The current status of the workspace configuration.
+	//
+	// This member is required.
+	StatusCode WorkspaceConfigurationStatusCode
+
+	// The reason for the current status, if a reason is available.
+	StatusReason *string
 
 	noSmithyDocumentSerde
 }
@@ -563,6 +790,7 @@ type UnknownUnionMember struct {
 	noSmithyDocumentSerde
 }
 
-func (*UnknownUnionMember) isDestination()         {}
-func (*UnknownUnionMember) isScrapeConfiguration() {}
-func (*UnknownUnionMember) isSource()              {}
+func (*UnknownUnionMember) isDestination()               {}
+func (*UnknownUnionMember) isScrapeConfiguration()       {}
+func (*UnknownUnionMember) isScraperLoggingDestination() {}
+func (*UnknownUnionMember) isSource()                    {}

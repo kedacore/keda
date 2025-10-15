@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	scheme "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,33 +37,36 @@ type ClusterTriggerAuthenticationsGetter interface {
 
 // ClusterTriggerAuthenticationInterface has methods to work with ClusterTriggerAuthentication resources.
 type ClusterTriggerAuthenticationInterface interface {
-	Create(ctx context.Context, clusterTriggerAuthentication *v1alpha1.ClusterTriggerAuthentication, opts v1.CreateOptions) (*v1alpha1.ClusterTriggerAuthentication, error)
-	Update(ctx context.Context, clusterTriggerAuthentication *v1alpha1.ClusterTriggerAuthentication, opts v1.UpdateOptions) (*v1alpha1.ClusterTriggerAuthentication, error)
+	Create(ctx context.Context, clusterTriggerAuthentication *kedav1alpha1.ClusterTriggerAuthentication, opts v1.CreateOptions) (*kedav1alpha1.ClusterTriggerAuthentication, error)
+	Update(ctx context.Context, clusterTriggerAuthentication *kedav1alpha1.ClusterTriggerAuthentication, opts v1.UpdateOptions) (*kedav1alpha1.ClusterTriggerAuthentication, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, clusterTriggerAuthentication *v1alpha1.ClusterTriggerAuthentication, opts v1.UpdateOptions) (*v1alpha1.ClusterTriggerAuthentication, error)
+	UpdateStatus(ctx context.Context, clusterTriggerAuthentication *kedav1alpha1.ClusterTriggerAuthentication, opts v1.UpdateOptions) (*kedav1alpha1.ClusterTriggerAuthentication, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ClusterTriggerAuthentication, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ClusterTriggerAuthenticationList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*kedav1alpha1.ClusterTriggerAuthentication, error)
+	List(ctx context.Context, opts v1.ListOptions) (*kedav1alpha1.ClusterTriggerAuthenticationList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ClusterTriggerAuthentication, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *kedav1alpha1.ClusterTriggerAuthentication, err error)
 	ClusterTriggerAuthenticationExpansion
 }
 
 // clusterTriggerAuthentications implements ClusterTriggerAuthenticationInterface
 type clusterTriggerAuthentications struct {
-	*gentype.ClientWithList[*v1alpha1.ClusterTriggerAuthentication, *v1alpha1.ClusterTriggerAuthenticationList]
+	*gentype.ClientWithList[*kedav1alpha1.ClusterTriggerAuthentication, *kedav1alpha1.ClusterTriggerAuthenticationList]
 }
 
 // newClusterTriggerAuthentications returns a ClusterTriggerAuthentications
 func newClusterTriggerAuthentications(c *KedaV1alpha1Client) *clusterTriggerAuthentications {
 	return &clusterTriggerAuthentications{
-		gentype.NewClientWithList[*v1alpha1.ClusterTriggerAuthentication, *v1alpha1.ClusterTriggerAuthenticationList](
+		gentype.NewClientWithList[*kedav1alpha1.ClusterTriggerAuthentication, *kedav1alpha1.ClusterTriggerAuthenticationList](
 			"clustertriggerauthentications",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			"",
-			func() *v1alpha1.ClusterTriggerAuthentication { return &v1alpha1.ClusterTriggerAuthentication{} },
-			func() *v1alpha1.ClusterTriggerAuthenticationList { return &v1alpha1.ClusterTriggerAuthenticationList{} }),
+			func() *kedav1alpha1.ClusterTriggerAuthentication { return &kedav1alpha1.ClusterTriggerAuthentication{} },
+			func() *kedav1alpha1.ClusterTriggerAuthenticationList {
+				return &kedav1alpha1.ClusterTriggerAuthenticationList{}
+			},
+		),
 	}
 }

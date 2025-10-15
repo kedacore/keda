@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// MapStringInterface is used for custom unmarshaling of
+// MapStringInterface is used for custom unmarshalling of
 // fields that have potentially dynamic types.
 // E.g. when a field can be a string or an object/map
 type MapStringInterface map[string]interface{}

@@ -1,5 +1,15 @@
 # Release History
 
+## 1.2.0 (2025-06-12)
+
+### Other Changes
+* Upgrade dependencies
+
+## 1.2.0-beta.1 (2025-03-11)
+
+### Features Added
+* Added fakes support
+
 ## 1.1.1 (2025-02-13)
 
 ### Bugs Fixed

@@ -1,25 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2022 Temporal Technologies Inc.  All rights reserved.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 import (
@@ -31,7 +9,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/pborman/uuid"
+	"github.com/google/uuid"
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 	schedulepb "go.temporal.io/api/schedule/v1"
@@ -131,7 +109,7 @@ func (w *workflowClientInterceptor) CreateSchedule(ctx context.Context, in *Sche
 	startRequest := &workflowservice.CreateScheduleRequest{
 		Namespace:  w.client.namespace,
 		ScheduleId: ID,
-		RequestId:  uuid.New(),
+		RequestId:  uuid.NewString(),
 		Schedule: &schedulepb.Schedule{
 			Spec:   convertToPBScheduleSpec(&in.Options.Spec),
 			Action: action,
@@ -256,7 +234,7 @@ func (scheduleHandle *scheduleHandleImpl) Backfill(ctx context.Context, options 
 			BackfillRequest: convertToPBBackfillList(options.Backfill),
 		},
 		Identity:  scheduleHandle.client.identity,
-		RequestId: uuid.New(),
+		RequestId: uuid.NewString(),
 	}
 	grpcCtx, cancel := newGRPCContext(ctx, defaultGrpcRetryParameters(ctx))
 	defer cancel()
@@ -311,7 +289,7 @@ func (scheduleHandle *scheduleHandleImpl) Update(ctx context.Context, options Sc
 		Schedule:         newSchedulePB,
 		ConflictToken:    nil,
 		Identity:         scheduleHandle.client.identity,
-		RequestId:        uuid.New(),
+		RequestId:        uuid.NewString(),
 		SearchAttributes: newSA,
 	})
 	return err
@@ -342,7 +320,7 @@ func (scheduleHandle *scheduleHandleImpl) Trigger(ctx context.Context, options S
 			},
 		},
 		Identity:  scheduleHandle.client.identity,
-		RequestId: uuid.New(),
+		RequestId: uuid.NewString(),
 	}
 	grpcCtx, cancel := newGRPCContext(ctx, defaultGrpcRetryParameters(ctx))
 	defer cancel()
@@ -362,7 +340,7 @@ func (scheduleHandle *scheduleHandleImpl) Pause(ctx context.Context, options Sch
 			Pause: pauseNote,
 		},
 		Identity:  scheduleHandle.client.identity,
-		RequestId: uuid.New(),
+		RequestId: uuid.NewString(),
 	}
 	grpcCtx, cancel := newGRPCContext(ctx, defaultGrpcRetryParameters(ctx))
 	defer cancel()
@@ -382,7 +360,7 @@ func (scheduleHandle *scheduleHandleImpl) Unpause(ctx context.Context, options S
 			Unpause: unpauseNote,
 		},
 		Identity:  scheduleHandle.client.identity,
-		RequestId: uuid.New(),
+		RequestId: uuid.NewString(),
 	}
 	grpcCtx, cancel := newGRPCContext(ctx, defaultGrpcRetryParameters(ctx))
 	defer cancel()
@@ -544,12 +522,19 @@ func convertToPBSchedule(ctx context.Context, client *WorkflowClient, schedule *
 	if err != nil {
 		return nil, err
 	}
+
+	var catchupWindow *durationpb.Duration
+	if schedule.Policy.CatchupWindow != 0 {
+		// Only convert non-zero CatchWindow so server treats 0 as nil and uses the default catchup window.
+		catchupWindow = durationpb.New(schedule.Policy.CatchupWindow)
+	}
+
 	return &schedulepb.Schedule{
 		Spec:   convertToPBScheduleSpec(schedule.Spec),
 		Action: action,
 		Policies: &schedulepb.SchedulePolicies{
 			OverlapPolicy:  schedule.Policy.Overlap,
-			CatchupWindow:  durationpb.New(schedule.Policy.CatchupWindow),
+			CatchupWindow:  catchupWindow,
 			PauseOnFailure: schedule.Policy.PauseOnFailure,
 		},
 		State: &schedulepb.ScheduleState{
@@ -598,7 +583,7 @@ func convertToPBScheduleAction(
 
 		// Default workflow ID
 		if action.ID == "" {
-			action.ID = uuid.New()
+			action.ID = uuid.NewString()
 		}
 
 		// Validate function and get name
@@ -661,6 +646,7 @@ func convertToPBScheduleAction(
 					Header:                   header,
 					UserMetadata:             userMetadata,
 					VersioningOverride:       versioningOverrideToProto(action.VersioningOverride),
+					Priority:                 convertToPBPriority(action.Priority),
 				},
 			},
 		}, nil
@@ -704,15 +690,21 @@ func convertFromPBScheduleAction(
 			}
 		}
 
-		var convertedSummary *string = new(string)
-		err := dc.FromPayload(workflow.GetUserMetadata().GetSummary(), convertedSummary)
-		if err != nil {
-			return nil, fmt.Errorf("could not decode user metadata summary: %w", err)
-		}
-		var convertedDetails *string = new(string)
-		err = dc.FromPayload(workflow.GetUserMetadata().GetDetails(), convertedDetails)
-		if err != nil {
-			return nil, fmt.Errorf("could not decode user metadata details: %w", err)
+		var convertedSummary = new(string)
+		var convertedDetails = new(string)
+		if workflow.GetUserMetadata() != nil {
+			if workflow.GetUserMetadata().GetSummary() != nil {
+				err := dc.FromPayload(workflow.GetUserMetadata().GetSummary(), convertedSummary)
+				if err != nil {
+					return nil, fmt.Errorf("could not decode user metadata summary: %w", err)
+				}
+			}
+			if workflow.GetUserMetadata().GetDetails() != nil {
+				err := dc.FromPayload(workflow.GetUserMetadata().GetDetails(), convertedDetails)
+				if err != nil {
+					return nil, fmt.Errorf("could not decode user metadata details: %w", err)
+				}
+			}
 		}
 
 		return &ScheduleWorkflowAction{

@@ -3,7 +3,6 @@ package file
 import (
 	"fmt"
 	"strings"
-	"unicode/utf8"
 )
 
 type Error struct {
@@ -19,43 +18,47 @@ func (e *Error) Error() string {
 	return e.format()
 }
 
+var tabReplacer = strings.NewReplacer("\t", " ")
+
 func (e *Error) Bind(source Source) *Error {
+	src := source.String()
+
+	var runeCount, lineStart int
 	e.Line = 1
-	for i, r := range source {
-		if i == e.From {
+	e.Column = 0
+	for i, r := range src {
+		if runeCount == e.From {
 			break
 		}
 		if r == '\n' {
+			lineStart = i
 			e.Line++
 			e.Column = 0
-		} else {
-			e.Column++
 		}
+		runeCount++
+		e.Column++
 	}
-	if snippet, found := source.Snippet(e.Line); found {
-		snippet := strings.Replace(snippet, "\t", " ", -1)
-		srcLine := "\n | " + snippet
-		var bytes = []byte(snippet)
-		var indLine = "\n | "
-		for i := 0; i < e.Column && len(bytes) > 0; i++ {
-			_, sz := utf8.DecodeRune(bytes)
-			bytes = bytes[sz:]
-			if sz > 1 {
-				goto noind
-			} else {
-				indLine += "."
-			}
-		}
-		if _, sz := utf8.DecodeRune(bytes); sz > 1 {
-			goto noind
-		} else {
-			indLine += "^"
-		}
-		srcLine += indLine
 
-	noind:
-		e.Snippet = srcLine
+	lineEnd := lineStart + strings.IndexByte(src[lineStart:], '\n')
+	if lineEnd < lineStart {
+		lineEnd = len(src)
 	}
+	if lineStart == lineEnd {
+		return e
+	}
+
+	const prefix = "\n | "
+	line := src[lineStart:lineEnd]
+	snippet := new(strings.Builder)
+	snippet.Grow(2*len(prefix) + len(line) + e.Column + 1)
+	snippet.WriteString(prefix)
+	tabReplacer.WriteString(snippet, line)
+	snippet.WriteString(prefix)
+	for i := 0; i < e.Column; i++ {
+		snippet.WriteByte('.')
+	}
+	snippet.WriteByte('^')
+	e.Snippet = snippet.String()
 	return e
 }
 

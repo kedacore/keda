@@ -283,6 +283,22 @@ type Shard struct {
 	noSmithyDocumentSerde
 }
 
+// This optional field contains the filter definition for the DescribeStream API.
+type ShardFilter struct {
+
+	// Contains the shardId of the parent shard for which you are requesting child
+	// shards.
+	//
+	// Sample request:
+	ShardId *string
+
+	// Contains the type of filter to be applied on the DescribeStream API. Currently,
+	// the only value this parameter accepts is CHILD_SHARDS .
+	Type ShardFilterType
+
+	noSmithyDocumentSerde
+}
+
 // Represents all of the data describing a particular stream.
 type Stream struct {
 
@@ -386,10 +402,10 @@ type StreamDescription struct {
 // DynamoDB table.
 type StreamRecord struct {
 
-	// The approximate date and time when the stream record was created, in [UNIX epoch time] format
+	// The approximate date and time when the stream record was created, in [ISO 8601] format
 	// and rounded down to the closest second.
 	//
-	// [UNIX epoch time]: http://www.epochconverter.com/
+	// [ISO 8601]: https://www.iso.org/iso-8601-date-and-time-format.html
 	ApproximateCreationDateTime *time.Time
 
 	// The primary key attribute(s) for the DynamoDB item that was modified.

@@ -19,16 +19,16 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	storagemigrationv1alpha1 "k8s.io/api/storagemigration/v1alpha1"
+	apistoragemigrationv1alpha1 "k8s.io/api/storagemigration/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	internalinterfaces "k8s.io/client-go/informers/internalinterfaces"
 	kubernetes "k8s.io/client-go/kubernetes"
-	v1alpha1 "k8s.io/client-go/listers/storagemigration/v1alpha1"
+	storagemigrationv1alpha1 "k8s.io/client-go/listers/storagemigration/v1alpha1"
 	cache "k8s.io/client-go/tools/cache"
 )
 
@@ -36,7 +36,7 @@ import (
 // StorageVersionMigrations.
 type StorageVersionMigrationInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.StorageVersionMigrationLister
+	Lister() storagemigrationv1alpha1.StorageVersionMigrationLister
 }
 
 type storageVersionMigrationInformer struct {
@@ -61,16 +61,28 @@ func NewFilteredStorageVersionMigrationInformer(client kubernetes.Interface, res
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StoragemigrationV1alpha1().StorageVersionMigrations().List(context.TODO(), options)
+				return client.StoragemigrationV1alpha1().StorageVersionMigrations().List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StoragemigrationV1alpha1().StorageVersionMigrations().Watch(context.TODO(), options)
+				return client.StoragemigrationV1alpha1().StorageVersionMigrations().Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.StoragemigrationV1alpha1().StorageVersionMigrations().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.StoragemigrationV1alpha1().StorageVersionMigrations().Watch(ctx, options)
 			},
 		},
-		&storagemigrationv1alpha1.StorageVersionMigration{},
+		&apistoragemigrationv1alpha1.StorageVersionMigration{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,9 +93,9 @@ func (f *storageVersionMigrationInformer) defaultInformer(client kubernetes.Inte
 }
 
 func (f *storageVersionMigrationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&storagemigrationv1alpha1.StorageVersionMigration{}, f.defaultInformer)
+	return f.factory.InformerFor(&apistoragemigrationv1alpha1.StorageVersionMigration{}, f.defaultInformer)
 }
 
-func (f *storageVersionMigrationInformer) Lister() v1alpha1.StorageVersionMigrationLister {
-	return v1alpha1.NewStorageVersionMigrationLister(f.Informer().GetIndexer())
+func (f *storageVersionMigrationInformer) Lister() storagemigrationv1alpha1.StorageVersionMigrationLister {
+	return storagemigrationv1alpha1.NewStorageVersionMigrationLister(f.Informer().GetIndexer())
 }

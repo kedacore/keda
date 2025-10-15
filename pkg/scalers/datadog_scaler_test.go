@@ -126,6 +126,17 @@ var testDatadogClusterAgentMetadata = []datadogAuthMetadataTestData{
 	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "test-metric", "datadogMetricNamespace": "application-metrics", "targetValue": "10"}, map[string]string{"token": "test-token", "datadogNamespace": "datadog-system", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "datadogMetricsServicePort": "8443", "authMode": "bearer"}, false},
 	// Test case with custom service name and port to verify URL building
 	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "custom-metric", "datadogMetricNamespace": "prod-metrics", "targetValue": "5"}, map[string]string{"token": "test-token", "datadogNamespace": "monitoring", "datadogMetricsService": "custom-datadog-service", "datadogMetricsServicePort": "9443", "authMode": "bearer"}, false},
+	// valid timeout values for cluster agent
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "timeout": "30s"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "authMode": "bearer"}, false},
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "timeout": "1m"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "authMode": "bearer"}, false},
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "timeout": "2m30s"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "authMode": "bearer"}, false},
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "timeout": "500ms"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "authMode": "bearer"}, false},
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "timeout": "0s"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "authMode": "bearer"}, false},
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "timeout": "30"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "authMode": "bearer"}, false},
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "timeout": ""}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "authMode": "bearer"}, false},
+	// invalid timeout values for cluster agent
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "timeout": "invalid"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "authMode": "bearer"}, true},
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "timeout": "-10s"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "authMode": "bearer"}, true},
 }
 
 var testDatadogAPIMetadata = []datadogAuthMetadataTestData{
@@ -133,6 +144,17 @@ var testDatadogAPIMetadata = []datadogAuthMetadataTestData{
 
 	// all properly formed
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricUnavailableValue": "1.5", "type": "average", "age": "60", "timeWindowOffset": "30", "lastAvailablePointOffset": "1"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
+	// valid timeout values
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "timeout": "30s"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "timeout": "1m"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "timeout": "2m30s"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "timeout": "500ms"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "timeout": "0s"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "timeout": "30"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "timeout": ""}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
+	// invalid timeout values
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "timeout": "invalid"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "timeout": "-5s"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, true},
 	// Multi-query all properly formed
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count(),sum:trace.redis.command.hits{env:none,service:redis}.as_count()/2", "queryValue": "7", "queryAggregator": "average", "metricUnavailableValue": "1.5", "type": "average", "age": "60"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
 	// default age
@@ -173,9 +195,43 @@ var testDatadogAPIMetadata = []datadogAuthMetadataTestData{
 	{"", map[string]string{"query": "sum:trace.redis.command.hits.as_count()", "queryValue": "7"}, map[string]string{}, true},
 }
 
+// Helper function to create metadata and validate
+func createAndValidateMetadata(testData *datadogAuthMetadataTestData, useClusterAgent bool, triggerIndex int) (*datadogMetadata, error) {
+	config := &scalersconfig.ScalerConfig{
+		TriggerMetadata: testData.metadata,
+		AuthParams:      testData.authParams,
+		MetricType:      testData.metricType,
+		TriggerIndex:    triggerIndex,
+	}
+
+	meta := &datadogMetadata{}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing metadata: %w", err)
+	}
+
+	meta.TriggerIndex = config.TriggerIndex
+
+	if meta.Timeout == 0 {
+		meta.Timeout = config.GlobalHTTPTimeout
+	}
+
+	var err error
+	if useClusterAgent {
+		err = validateClusterAgentMetadata(meta, config, logr.Discard())
+	} else {
+		err = validateAPIMetadata(meta, config, logr.Discard())
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return meta, nil
+}
+
 func TestDatadogScalerAPIAuthParams(t *testing.T) {
 	for idx, testData := range testDatadogAPIMetadata {
-		_, err := parseDatadogAPIMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
+		_, err := createAndValidateMetadata(&testData, false, 0)
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error: %s for test case %d", err, idx)
@@ -188,7 +244,7 @@ func TestDatadogScalerAPIAuthParams(t *testing.T) {
 
 func TestDatadogScalerClusterAgentAuthParams(t *testing.T) {
 	for idx, testData := range testDatadogClusterAgentMetadata {
-		meta, err := parseDatadogClusterAgentMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadata, AuthParams: testData.authParams, MetricType: testData.metricType}, logr.Discard())
+		meta, err := createAndValidateMetadata(&testData, true, 0)
 
 		if err != nil && !testData.isError {
 			t.Errorf("Expected success but got error: %s for test case %d", err, idx)
@@ -233,15 +289,9 @@ var datadogMetricIdentifiers = []datadogMetricIdentifier{
 
 // TODO: Need to check whether we need to rewrite this test case because vType is long deprecated
 func TestDatadogGetMetricSpecForScaling(t *testing.T) {
-	var err error
-	var meta *datadogMetadata
-
 	for idx, testData := range datadogMetricIdentifiers {
-		if testData.typeOfScaler == apiType {
-			meta, err = parseDatadogAPIMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
-		} else {
-			meta, err = parseDatadogClusterAgentMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.metadataTestData.authParams, TriggerIndex: testData.triggerIndex, MetricType: testData.metadataTestData.metricType}, logr.Discard())
-		}
+		useClusterAgent := testData.typeOfScaler == clusterAgentType
+		meta, err := createAndValidateMetadata(testData.metadataTestData, useClusterAgent, testData.triggerIndex)
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
@@ -255,7 +305,7 @@ func TestDatadogGetMetricSpecForScaling(t *testing.T) {
 		metricSpec := mockDatadogScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
 		if metricName != testData.name {
-			t.Errorf("Wrong External metric source name:%s for test case %d", metricName, idx)
+			t.Errorf("Wrong External metric source name:%s for test case %d, expected: %s", metricName, idx, testData.name)
 		}
 	}
 }

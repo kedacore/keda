@@ -1,27 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2020 Temporal Technologies Inc.  All rights reserved.
-//
-// Copyright (c) 2020 Uber Technologies, Inc.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 // All code in this file is private to the package.
@@ -30,18 +6,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	commonpb "go.temporal.io/api/common/v1"
 	"go.temporal.io/api/serviceerror"
 	"golang.org/x/time/rate"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"go.temporal.io/sdk/internal/common/retry"
 
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/internal/common/backoff"
 	"go.temporal.io/sdk/internal/common/metrics"
+	internallog "go.temporal.io/sdk/internal/log"
 	"go.temporal.io/sdk/log"
 )
 
@@ -51,16 +32,20 @@ const (
 	retryPollResourceExhaustedInitialInterval = time.Second
 	retryPollResourceExhaustedMaxInterval     = 10 * time.Second
 	// How long the same poll task error can remain suppressed
-	lastPollTaskErrSuppressTime = 1 * time.Minute
+	lastPollTaskErrSuppressTime     = 1 * time.Minute
+	pollerAutoscalingReportInterval = 100 * time.Millisecond
 )
 
 var (
 	pollOperationRetryPolicy         = createPollRetryPolicy()
 	pollResourceExhaustedRetryPolicy = createPollResourceExhaustedRetryPolicy()
 	retryLongPollGracePeriod         = 2 * time.Minute
+	errStop                          = errors.New("worker stopping")
+	// ErrWorkerStopped is returned when the worker is stopped
+	//
+	// Exposed as: [go.temporal.io/sdk/worker.ErrWorkerShutdown]
+	ErrWorkerShutdown = errors.New("worker is now shutdown")
 )
-
-var errStop = errors.New("worker stopping")
 
 type (
 	// ResultHandler that returns result
@@ -74,6 +59,10 @@ type (
 		Result  *commonpb.Payloads
 		Attempt int32
 		Backoff time.Duration
+	}
+
+	LocalActivityMarkerParams struct {
+		Summary string
 	}
 
 	executeNexusOperationParams struct {
@@ -171,23 +160,34 @@ type (
 		Close()
 	}
 
+	scalableTaskPoller struct {
+		taskPollerType string
+		// pollerCount is the number of pollers tasks to start. There may be less than this
+		// due to limited slots, rate limiting, or poller autoscaling.
+		pollerCount                  int
+		taskPoller                   taskPoller
+		pollerAutoscalerReportHandle *pollScalerReportHandle
+		pollerSemaphore              *pollerSemaphore
+	}
+
 	// baseWorkerOptions options to configure base worker.
 	baseWorkerOptions struct {
-		pollerCount         int
-		pollerRate          int
-		slotSupplier        SlotSupplier
-		maxTaskPerSecond    float64
-		taskWorker          taskPoller
-		workerType          string
-		identity            string
-		buildId             string
-		logger              log.Logger
-		stopTimeout         time.Duration
-		fatalErrCb          func(error)
-		userContextCancel   context.CancelFunc
-		metricsHandler      metrics.Handler
-		sessionTokenBucket  *sessionTokenBucket
-		slotReservationData slotReservationData
+		pollerRate              int
+		slotSupplier            SlotSupplier
+		maxTaskPerSecond        float64
+		taskPollers             []scalableTaskPoller
+		taskProcessor           taskProcessor
+		workerType              string
+		identity                string
+		buildId                 string
+		logger                  log.Logger
+		stopTimeout             time.Duration
+		fatalErrCb              func(error)
+		backgroundContextCancel context.CancelCauseFunc
+		metricsHandler          metrics.Handler
+		sessionTokenBucket      *sessionTokenBucket
+		slotReservationData     slotReservationData
+		isInternalWorker        bool
 	}
 
 	// baseWorker that wraps worker activities.
@@ -209,6 +209,7 @@ type (
 		eagerTaskQueueCh   chan eagerTask
 		fatalErrCb         func(error)
 		sessionTokenBucket *sessionTokenBucket
+		pollerBalancer     *pollerBalancer
 
 		lastPollTaskErrMessage string
 		lastPollTaskErrStarted time.Time
@@ -229,6 +230,43 @@ type (
 		// task to process.
 		task   taskForWorker
 		permit *SlotPermit
+	}
+
+	pollScalerReportHandleOptions struct {
+		initialPollerCount int
+		maxPollerCount     int
+		minPollerCount     int
+		logger             log.Logger
+		scaleCallback      func(int)
+	}
+
+	pollScalerReportHandle struct {
+		minPollerCount         int
+		maxPollerCount         int
+		logger                 log.Logger
+		target                 atomic.Int64
+		scaleCallback          func(int)
+		everSawScalingDecision atomic.Bool
+		ingestedThisPeriod     atomic.Int64
+		ingestedLastPeriod     atomic.Int64
+		scaleUpAllowed         atomic.Bool
+	}
+
+	barrier chan struct{}
+
+	// pollerSemaphore is a semaphore that limits the number of concurrent pollers.
+	// it is effectively a resizable semaphore.
+	pollerSemaphore struct {
+		maxPermits int
+		permits    int
+		bs         chan barrier
+	}
+
+	// pollerBalancer is used to balance the number of poll requests from different poller types
+	pollerBalancer struct {
+		pollerCount   map[string]int
+		pollerBarrier map[string]barrier
+		mu            sync.Mutex
 	}
 )
 
@@ -320,6 +358,13 @@ func newBaseWorker(
 	if options.pollerRate > 0 {
 		bw.pollLimiter = rate.NewLimiter(rate.Limit(options.pollerRate), 1)
 	}
+	// If we have multiple task workers, we need to balance the pollers
+	if len(options.taskPollers) > 1 {
+		bw.pollerBalancer = &pollerBalancer{
+			pollerCount:   make(map[string]int),
+			pollerBarrier: make(map[string]barrier),
+		}
+	}
 
 	return bw
 }
@@ -332,9 +377,23 @@ func (bw *baseWorker) Start() {
 
 	bw.metricsHandler.Counter(metrics.WorkerStartCounter).Inc(1)
 
-	for i := 0; i < bw.options.pollerCount; i++ {
-		bw.stopWG.Add(1)
-		go bw.runPoller()
+	for _, taskWorker := range bw.options.taskPollers {
+		if bw.pollerBalancer != nil {
+			bw.pollerBalancer.registerPollerType(taskWorker.taskPollerType)
+		}
+
+		for i := 0; i < taskWorker.pollerCount; i++ {
+			bw.stopWG.Add(1)
+			go bw.runPoller(taskWorker)
+		}
+
+		if taskWorker.pollerAutoscalerReportHandle != nil {
+			bw.stopWG.Add(1)
+			go func() {
+				defer bw.stopWG.Done()
+				taskWorker.pollerAutoscalerReportHandle.run(bw.stopCh)
+			}()
+		}
 	}
 
 	bw.stopWG.Add(1)
@@ -346,7 +405,6 @@ func (bw *baseWorker) Start() {
 	bw.isWorkerStarted = true
 	traceLog(func() {
 		bw.logger.Info("Started Worker",
-			"PollerCount", bw.options.pollerCount,
 			"MaxTaskPerSecond", bw.options.maxTaskPerSecond,
 		)
 	})
@@ -361,8 +419,9 @@ func (bw *baseWorker) isStop() bool {
 	}
 }
 
-func (bw *baseWorker) runPoller() {
+func (bw *baseWorker) runPoller(taskWorker scalableTaskPoller) {
 	defer bw.stopWG.Done()
+	// Note: With poller autoscaling, this metric doesn't make a lot of sense since the number of pollers can go up and down.
 	bw.metricsHandler.Counter(metrics.PollerStartCounter).Inc(1)
 
 	ctx, cancelfn := context.WithCancel(context.Background())
@@ -370,43 +429,67 @@ func (bw *baseWorker) runPoller() {
 	reserveChan := make(chan *SlotPermit)
 
 	for {
-		bw.stopWG.Add(1)
-		go func() {
-			defer bw.stopWG.Done()
-			s, err := bw.slotSupplier.ReserveSlot(ctx, &bw.options.slotReservationData)
-			if err != nil {
-				if !errors.Is(err, context.Canceled) {
-					bw.logger.Error(fmt.Sprintf("Error while trying to reserve slot: %v", err))
-					select {
-					case reserveChan <- nil:
-					case <-ctx.Done():
-						return
-					}
+		if func() bool {
+			if taskWorker.pollerSemaphore != nil {
+				if taskWorker.pollerSemaphore.acquire(bw.limiterContext) != nil {
+					return true
 				}
-				return
+				defer taskWorker.pollerSemaphore.release()
 			}
-			select {
-			case reserveChan <- s:
-			case <-ctx.Done():
-				bw.releaseSlot(s, SlotReleaseReasonUnused)
+			// Call the balancer to make sure one poller type doesn't starve the others of slots.
+			if bw.pollerBalancer != nil {
+				if bw.pollerBalancer.balance(bw.limiterContext, taskWorker.taskPollerType) != nil {
+					return true
+				}
 			}
-		}()
 
-		select {
-		case <-bw.stopCh:
-			return
-		case permit := <-reserveChan:
-			if permit == nil { // There was an error reserving a slot
-				// Avoid spamming reserve hard in the event it's constantly failing
-				if ctx.Err() == nil {
-					time.Sleep(time.Second)
+			bw.stopWG.Add(1)
+			go func() {
+				defer bw.stopWG.Done()
+				s, err := bw.slotSupplier.ReserveSlot(ctx, &bw.options.slotReservationData)
+				if err != nil {
+					if !errors.Is(err, context.Canceled) {
+						bw.logger.Error("Error while trying to reserve slot", "error", err)
+						select {
+						case reserveChan <- nil:
+						case <-ctx.Done():
+							return
+						}
+					}
+					return
 				}
-				continue
+				select {
+				case reserveChan <- s:
+				case <-ctx.Done():
+					bw.releaseSlot(s, SlotReleaseReasonUnused)
+				}
+			}()
+
+			select {
+			case <-bw.stopCh:
+				return true
+			case permit := <-reserveChan:
+				if permit == nil { // There was an error reserving a slot
+					// Avoid spamming reserve hard in the event it's constantly failing
+					if ctx.Err() == nil {
+						time.Sleep(time.Second)
+					}
+					return false
+				}
+				if bw.sessionTokenBucket != nil {
+					bw.sessionTokenBucket.waitForAvailableToken()
+				}
+				if bw.pollerBalancer != nil {
+					bw.pollerBalancer.incrementPoller(taskWorker.taskPollerType)
+				}
+				bw.pollTask(taskWorker, permit)
+				if bw.pollerBalancer != nil {
+					bw.pollerBalancer.decrementPoller(taskWorker.taskPollerType)
+				}
 			}
-			if bw.sessionTokenBucket != nil {
-				bw.sessionTokenBucket.waitForAvailableToken()
-			}
-			bw.pollTask(permit)
+			return false
+		}() {
+			return
 		}
 	}
 }
@@ -450,7 +533,7 @@ func (bw *baseWorker) processTaskAsync(eagerOrPolled eagerOrPolledTask) {
 					"PanicStack", st)
 			}
 		}()
-		err := bw.options.taskWorker.ProcessTask(task)
+		err := bw.options.taskProcessor.ProcessTask(task)
 		if err != nil {
 			if isClientSideError(err) {
 				bw.logger.Info("Task processing failed with client side error", tagError, err)
@@ -502,7 +585,7 @@ func (bw *baseWorker) runEagerTaskDispatcher() {
 	}
 }
 
-func (bw *baseWorker) pollTask(slotPermit *SlotPermit) {
+func (bw *baseWorker) pollTask(taskWorker scalableTaskPoller, slotPermit *SlotPermit) {
 	var err error
 	var task taskForWorker
 	didSendTask := false
@@ -514,7 +597,7 @@ func (bw *baseWorker) pollTask(slotPermit *SlotPermit) {
 
 	bw.retrier.Throttle(bw.stopCh)
 	if bw.pollLimiter == nil || bw.pollLimiter.Wait(bw.limiterContext) == nil {
-		task, err = bw.options.taskWorker.PollTask()
+		task, err = taskWorker.taskPoller.PollTask()
 		bw.logPollTaskError(err)
 		if err != nil {
 			// We retry "non retriable" errors while long polling for a while, because some proxies return
@@ -526,6 +609,9 @@ func (bw *baseWorker) pollTask(slotPermit *SlotPermit) {
 				}
 				return
 			}
+			if taskWorker.pollerAutoscalerReportHandle != nil {
+				taskWorker.pollerAutoscalerReportHandle.handleError(err)
+			}
 			// We use the secondary retrier on resource exhausted
 			_, resourceExhausted := err.(*serviceerror.ResourceExhausted)
 			bw.retrier.Failed(resourceExhausted)
@@ -535,6 +621,10 @@ func (bw *baseWorker) pollTask(slotPermit *SlotPermit) {
 	}
 
 	if task != nil {
+		if taskWorker.pollerAutoscalerReportHandle != nil {
+			taskWorker.pollerAutoscalerReportHandle.handleTask(task)
+		}
+
 		select {
 		case bw.taskQueueCh <- &polledTask{task: task, permit: slotPermit}:
 			didSendTask = true
@@ -559,6 +649,16 @@ func (bw *baseWorker) logPollTaskError(err error) {
 		bw.lastPollTaskErrStarted = time.Now()
 		return
 	}
+
+	// Ignore connection loss on server shutdown. This helps with quiescing spurious error messages
+	// upon server shutdown (where server is using the SDK).
+	if bw.options.isInternalWorker {
+		st, ok := status.FromError(err)
+		if ok && st.Code() == codes.Unavailable && strings.Contains(st.Message(), "graceful_stop") {
+			return
+		}
+	}
+
 	// Log the error as warn if it doesn't match the last error seen or its over
 	// the time since
 	if err.Error() != bw.lastPollTaskErrMessage || time.Since(bw.lastPollTaskErrStarted) > lastPollTaskErrSuppressTime {
@@ -589,9 +689,11 @@ func (bw *baseWorker) Stop() {
 	close(bw.stopCh)
 	bw.limiterContextCancel()
 
-	err := bw.options.taskWorker.Cleanup()
-	if err != nil {
-		bw.logger.Error("Couldn't cleanup task worker", tagError, err)
+	for _, taskWorker := range bw.options.taskPollers {
+		err := taskWorker.taskPoller.Cleanup()
+		if err != nil {
+			bw.logger.Error("Couldn't cleanup task worker", tagError, err)
+		}
 	}
 
 	if success := awaitWaitGroup(&bw.stopWG, bw.options.stopTimeout); !success {
@@ -601,9 +703,263 @@ func (bw *baseWorker) Stop() {
 	}
 
 	// Close context
-	if bw.options.userContextCancel != nil {
-		bw.options.userContextCancel()
+	if bw.options.backgroundContextCancel != nil {
+		bw.options.backgroundContextCancel(ErrWorkerShutdown)
 	}
 
 	bw.isWorkerStarted = false
+}
+
+func newPollScalerReportHandle(options pollScalerReportHandleOptions) *pollScalerReportHandle {
+	logger := options.logger
+	if logger == nil {
+		logger = internallog.NewNopLogger()
+	}
+	psr := &pollScalerReportHandle{
+		maxPollerCount: options.maxPollerCount,
+		minPollerCount: options.minPollerCount,
+		logger:         logger,
+		scaleCallback:  options.scaleCallback,
+	}
+	psr.target.Store(int64(options.initialPollerCount))
+	return psr
+}
+
+func (prh *pollScalerReportHandle) handleTask(task taskForWorker) {
+	if !task.isEmpty() {
+		prh.ingestedThisPeriod.Add(1)
+	}
+
+	if sd, ok := task.scaleDecision(); ok {
+		prh.everSawScalingDecision.Store(true)
+		ds := sd.pollRequestDeltaSuggestion
+		if ds > 0 {
+			if prh.scaleUpAllowed.Load() {
+				prh.updateTarget(func(target int64) int64 {
+					return target + int64(ds)
+				})
+			}
+		} else if ds < 0 {
+			prh.updateTarget(func(target int64) int64 {
+				return target + int64(ds)
+			})
+		}
+	} else if task.isEmpty() && prh.everSawScalingDecision.Load() {
+		// We want to avoid scaling down on empty polls if the server has never made any
+		// scaling decisions - otherwise we might never scale up again.
+		prh.updateTarget(func(target int64) int64 {
+			return target - 1
+		})
+	}
+}
+
+func (prh *pollScalerReportHandle) updateTarget(f func(int64) int64) {
+	target := prh.target.Load()
+	newTarget := f(target)
+	if newTarget < int64(prh.minPollerCount) {
+		newTarget = int64(prh.minPollerCount)
+	} else if newTarget > int64(prh.maxPollerCount) {
+		newTarget = int64(prh.maxPollerCount)
+	}
+	for !prh.target.CompareAndSwap(target, newTarget) {
+		target = prh.target.Load()
+		newTarget = f(target)
+		if newTarget < int64(prh.minPollerCount) {
+			newTarget = int64(prh.minPollerCount)
+		} else if newTarget > int64(prh.maxPollerCount) {
+			newTarget = int64(prh.maxPollerCount)
+		}
+	}
+	permits := int(newTarget)
+	if prh.scaleCallback != nil {
+		traceLog(func() {
+			prh.logger.Debug("Updating number of permits", "permits", permits)
+		})
+		prh.scaleCallback(permits)
+	}
+}
+
+func (prh *pollScalerReportHandle) handleError(err error) {
+	// If we have never seen a scaling decision, we don't want to scale down
+	// on errors, because we might never scale up again.
+	if prh.everSawScalingDecision.Load() {
+		_, resourceExhausted := err.(*serviceerror.ResourceExhausted)
+		if resourceExhausted {
+			prh.updateTarget(func(target int64) int64 {
+				return target / 2
+			})
+		} else {
+			prh.updateTarget(func(target int64) int64 {
+				return target - 1
+			})
+		}
+	}
+}
+
+func (prh *pollScalerReportHandle) run(stopCh <-chan struct{}) {
+	ticker := time.NewTicker(pollerAutoscalingReportInterval)
+	// Here we periodically check if we should permit increasing the
+	// poller count further. We do this by comparing the number of ingested items in the
+	// current period with the number of ingested items in the previous period. If we
+	// are successfully ingesting more items, then it makes sense to allow scaling up.
+	// If we aren't, then we're probably limited by how fast we can process the tasks
+	// and it's not worth increasing the poller count further.
+	for {
+		select {
+		case <-ticker.C:
+			prh.newPeriod()
+		case <-stopCh:
+			return
+		}
+	}
+}
+
+func (prh *pollScalerReportHandle) newPeriod() {
+	ingestedThisPeriod := prh.ingestedThisPeriod.Swap(0)
+	ingestedLastPeriod := prh.ingestedLastPeriod.Swap(ingestedThisPeriod)
+	prh.scaleUpAllowed.Store(float64(ingestedThisPeriod) >= float64(ingestedLastPeriod)*1.1)
+}
+
+func newPollerSemaphore(maxPermits int) *pollerSemaphore {
+	ps := &pollerSemaphore{
+		maxPermits: maxPermits,
+		permits:    0,
+		bs:         make(chan barrier, 1),
+	}
+	ps.bs <- make(barrier)
+	return ps
+}
+
+func (ps *pollerSemaphore) acquire(ctx context.Context) error {
+	for {
+		// Acquire barrier.
+		b := <-ps.bs
+		if ps.permits < ps.maxPermits {
+			ps.permits++
+			// Release barrier.
+			ps.bs <- b
+			return nil
+		}
+		// Release barrier.
+		ps.bs <- b
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-b:
+			continue
+		}
+	}
+}
+
+func (ps *pollerSemaphore) release() {
+	// Acquire barrier.
+	b := <-ps.bs
+	ps.permits--
+	// Release one waiter if there are any waiting.
+	select {
+	case b <- struct{}{}:
+	default:
+	}
+	// Release barrier.
+	ps.bs <- b
+}
+
+func (ps *pollerSemaphore) updatePermits(maxPermits int) {
+	// Acquire barrier.
+	b := <-ps.bs
+	ps.maxPermits = maxPermits
+	// Release barrier.
+	ps.bs <- b
+}
+
+func newScalableTaskPoller(
+	poller taskPoller, logger log.Logger, pollerBehavior PollerBehavior) scalableTaskPoller {
+	tw := scalableTaskPoller{
+		taskPoller: poller,
+	}
+	switch p := pollerBehavior.(type) {
+	case *pollerBehaviorAutoscaling:
+		tw.pollerCount = p.initialNumberOfPollers
+		tw.pollerSemaphore = newPollerSemaphore(p.initialNumberOfPollers)
+		tw.pollerAutoscalerReportHandle = newPollScalerReportHandle(pollScalerReportHandleOptions{
+			initialPollerCount: p.initialNumberOfPollers,
+			maxPollerCount:     p.maximumNumberOfPollers,
+			minPollerCount:     p.minimumNumberOfPollers,
+			logger:             logger,
+			scaleCallback: func(newTarget int) {
+				tw.pollerSemaphore.updatePermits(newTarget)
+			},
+		})
+	case *pollerBehaviorSimpleMaximum:
+		tw.pollerCount = p.maximumNumberOfPollers
+	}
+	return tw
+}
+
+// balance checks if the poller type is balanced with other poller types. The goal is to ensure that
+// at least one poller of each type is running before allowing any poller of the given type to increase.
+func (pb *pollerBalancer) balance(ctx context.Context, pollerType string) error {
+	pb.mu.Lock()
+	// If there are no pollers of this type, we can skip balancing.
+	if pb.pollerCount[pollerType] <= 0 {
+		pb.mu.Unlock()
+		return nil
+	}
+	for {
+		var b barrier
+		// Check if all other poller types have at least one poller running.
+		for pt, count := range pb.pollerCount {
+			if pt == pollerType {
+				if count <= 0 {
+					pb.mu.Unlock()
+					return nil
+				}
+				continue
+			}
+			if count == 0 {
+				b = pb.pollerBarrier[pt]
+				break
+			}
+		}
+		pb.mu.Unlock()
+		// If all other poller types have at least one poller running, we are balanced
+		if b == nil {
+			return nil
+		}
+		// If we have a barrier that means that at least one other poller type has no pollers running.
+		// We need to wait for that poller type to start a poller before we can continue.
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-b:
+			pb.mu.Lock()
+			continue
+		}
+	}
+}
+
+func (pb *pollerBalancer) registerPollerType(pollerType string) {
+	pb.mu.Lock()
+	defer pb.mu.Unlock()
+	if _, ok := pb.pollerCount[pollerType]; !ok {
+		pb.pollerCount[pollerType] = 0
+		pb.pollerBarrier[pollerType] = make(barrier)
+	}
+}
+
+func (pb *pollerBalancer) incrementPoller(pollerType string) {
+	pb.mu.Lock()
+	defer pb.mu.Unlock()
+	if pb.pollerCount[pollerType] == 0 {
+		close(pb.pollerBarrier[pollerType])
+		pb.pollerBarrier[pollerType] = make(barrier)
+	}
+	pb.pollerCount[pollerType]++
+}
+
+func (pb *pollerBalancer) decrementPoller(pollerType string) {
+	pb.mu.Lock()
+	defer pb.mu.Unlock()
+	pb.pollerCount[pollerType]--
 }

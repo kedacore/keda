@@ -233,7 +233,7 @@ type AgentApplicationBrowserSettingsInput struct {
 	// Configure cookies. The default is enabled: true.
 	CookiesEnabled *bool `json:"cookiesEnabled,omitempty"`
 	// Configure distributed tracing in browser apps. The default is enabled: true.
-	DistributedTracingEnabled bool `json:"distributedTracingEnabled,omitempty"`
+	DistributedTracingEnabled *bool `json:"distributedTracingEnabled,omitempty"`
 	// Determines which browser loader is configured. The default is "SPA".
 	LoaderType AgentApplicationBrowserLoader `json:"loaderType,omitempty"`
 }

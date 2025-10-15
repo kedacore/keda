@@ -70,7 +70,7 @@ func (client *MessageIDClient) deleteCreateRequest(ctx context.Context, popRecei
 		reqQP.Set("timeout", strconv.FormatInt(int64(*options.Timeout), 10))
 	}
 	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header["x-ms-version"] = []string{"2018-03-28"}
+	req.Raw().Header["x-ms-version"] = []string{"2024-08-04"}
 	if options != nil && options.RequestID != nil {
 		req.Raw().Header["x-ms-client-request-id"] = []string{*options.RequestID}
 	}
@@ -138,7 +138,7 @@ func (client *MessageIDClient) updateCreateRequest(ctx context.Context, popRecei
 		reqQP.Set("timeout", strconv.FormatInt(int64(*options.Timeout), 10))
 	}
 	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header["x-ms-version"] = []string{"2018-03-28"}
+	req.Raw().Header["x-ms-version"] = []string{"2024-08-04"}
 	if options != nil && options.RequestID != nil {
 		req.Raw().Header["x-ms-client-request-id"] = []string{*options.RequestID}
 	}

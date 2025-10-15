@@ -1,25 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2024 Temporal Technologies Inc.  All rights reserved.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 import (
@@ -75,6 +53,7 @@ const (
 // WorkerVersioningMode specifies whether the workflows processed by this
 // worker use the worker's Version. The Temporal Server will use this worker's
 // choice when dispatching tasks to it.
+//
 // NOTE: Experimental
 //
 // Exposed as: [go.temporal.io/sdk/client.WorkerVersioningMode]
@@ -82,6 +61,7 @@ type WorkerVersioningMode int
 
 const (
 	// WorkerVersioningModeUnspecified - Versioning mode not reported.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerVersioningModeUnspecified]
@@ -90,17 +70,20 @@ const (
 	// WorkerVersioningModeUnversioned - Workers with this mode are not
 	// distinguished from each other for task routing, even if they
 	// have different versions.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerVersioningModeUnversioned]
 	WorkerVersioningModeUnversioned
 
 	// WorkerVersioningModeVersioned - Workers with this mode are part of a
-	// Worker Deployment Version which is identified as
-	// "<deployment_name>.<build_id>".
+	// Worker Deployment Version which is a combination of a deployment name
+	// and a build id.
+	//
 	// Each Deployment Version is distinguished from other Versions for task
 	// routing, and users can configure the Temporal Server to send tasks to a
 	// particular Version.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/client.WorkerVersioningModeVersioned]
@@ -156,6 +139,7 @@ type (
 	// WorkerDeploymentPollerOptions are Worker initialization settings
 	// related to Worker Deployment Versioning, which are propagated to the
 	// Temporal Server during polling.
+	//
 	// NOTE: Experimental
 	WorkerDeploymentPollerOptions struct {
 		// DeploymentName - The name of the Worker Deployment.
@@ -258,34 +242,36 @@ type (
 	// TaskQueueVersioningInfo provides worker deployment configuration for this
 	// task queue.
 	// It is part of [TaskQueueDescription].
+	//
 	// NOTE: Experimental
 	TaskQueueVersioningInfo struct {
 		// CurrentVersion - Specifies which Deployment Version should receive new workflow
-		// executions, and tasks of existing non-pinned workflows.
-		// Can be one of the following:
-		// - A Deployment Version identifier in the form "<deployment_name>.<build_id>".
-		// - Or, the "__unversioned__" special value to represent all the unversioned workers
+		// executions, and tasks of existing non-pinned workflows. If nil, all unversioned workers
+		// are the target.
+		//
 		// NOTE: Experimental
-		CurrentVersion string
+		CurrentVersion *WorkerDeploymentVersion
 
 		// RampingVersion - When present, it means the traffic is being shifted from the Current
-		// Version to the Ramping Version.
-		// Can be one of the following:
-		// - A Deployment Version identifier in the form "<deployment_name>.<build_id>".
-		// - Or, the "__unversioned__" special value, to represent all the unversioned workers
+		// Version to the Ramping Version. If nil, all unversioned workers are the target, if the
+		// percentage is nonzero.
+		//
 		// Note that it is possible to ramp from one Version to another Version, or from unversioned
 		// workers to a particular Version, or from a particular Version to unversioned workers.
+		//
 		// NOTE: Experimental
-		RampingVersion string
+		RampingVersion *WorkerDeploymentVersion
 
 		// RampingVersionPercentage - Percentage of tasks that are routed to the Ramping Version instead
 		// of the Current Version.
 		// Valid range: [0, 100]. A 100% value means the Ramping Version is receiving full traffic but
 		// not yet "promoted" to be the Current Version, likely due to pending validations.
+		//
 		// NOTE: Experimental
 		RampingVersionPercentage float32
 
 		// UpdateTime - The last time versioning information of this Task Queue changed.
+		//
 		// NOTE: Experimental
 		UpdateTime time.Time
 	}
@@ -425,7 +411,9 @@ func taskQueueVersionInfoFromResponse(response *taskqueuepb.TaskQueueVersionInfo
 
 func detectTaskQueueEnhancedNotSupported(response *workflowservice.DescribeTaskQueueResponse) error {
 	// A server before 1.24 returns a non-enhanced proto, which only fills `pollers` and `taskQueueStatus` fields
+	//lint:ignore SA1019 ignore deprecated old versioning APIs
 	if len(response.GetVersionsInfo()) == 0 &&
+		//lint:ignore SA1019 ignore deprecated old versioning APIs
 		(len(response.GetPollers()) > 0 || response.GetTaskQueueStatus() != nil) {
 		return errors.New("server does not support `DescribeTaskQueueEnhanced`")
 	}
@@ -436,10 +424,29 @@ func taskQueueVersioningInfoFromResponse(info *taskqueuepb.TaskQueueVersioningIn
 	if info == nil {
 		return nil
 	}
+	var currentVersion *WorkerDeploymentVersion
+	if info.GetCurrentDeploymentVersion() != nil {
+		p := workerDeploymentVersionFromProto(info.GetCurrentDeploymentVersion())
+		currentVersion = &p
+	}
+	if currentVersion == nil {
+		//lint:ignore SA1019 ignore deprecated versioning APIs
+		currentVersion = workerDeploymentVersionFromString(info.CurrentVersion)
+	}
+
+	var rampingVersion *WorkerDeploymentVersion
+	if info.GetRampingDeploymentVersion() != nil {
+		p := workerDeploymentVersionFromProto(info.GetRampingDeploymentVersion())
+		rampingVersion = &p
+	}
+	if rampingVersion == nil {
+		//lint:ignore SA1019 ignore deprecated versioning APIs
+		rampingVersion = workerDeploymentVersionFromString(info.RampingVersion)
+	}
 
 	return &TaskQueueVersioningInfo{
-		CurrentVersion:           info.CurrentVersion,
-		RampingVersion:           info.RampingVersion,
+		CurrentVersion:           currentVersion,
+		RampingVersion:           rampingVersion,
 		RampingVersionPercentage: info.RampingVersionPercentage,
 		UpdateTime:               info.UpdateTime.AsTime(),
 	}
@@ -450,7 +457,9 @@ func taskQueueDescriptionFromResponse(response *workflowservice.DescribeTaskQueu
 		return TaskQueueDescription{}
 	}
 
+	//lint:ignore SA1019 ignore deprecated old versioning APIs
 	versionsInfo := make(map[string]TaskQueueVersionInfo, len(response.GetVersionsInfo()))
+	//lint:ignore SA1019 ignore deprecated old versioning APIs
 	for buildID, vInfo := range response.GetVersionsInfo() {
 		versionsInfo[buildID] = taskQueueVersionInfoFromResponse(vInfo)
 	}

@@ -56,9 +56,9 @@ func Reconcile(ctx context.Context, reqLogger logr.Logger, r cloudEventSourceRec
 	reqLogger.Info("Reconciling CloudEventSource")
 
 	if !cloudEventSource.GetDeletionTimestamp().IsZero() {
-		return ctrl.Result{}, FinalizeCloudEventSourceResource(ctx, reqLogger, r, cloudEventSource, req.NamespacedName.String())
+		return ctrl.Result{}, FinalizeCloudEventSourceResource(ctx, reqLogger, r, cloudEventSource, req.String())
 	}
-	r.UpdatePromMetrics(cloudEventSource, req.NamespacedName.String())
+	r.UpdatePromMetrics(cloudEventSource, req.String())
 
 	// ensure finalizer is set on this CR
 	if err := EnsureCloudEventSourceResourceFinalizer(ctx, reqLogger, r, cloudEventSource); err != nil {

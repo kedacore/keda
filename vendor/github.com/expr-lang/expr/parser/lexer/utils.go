@@ -36,7 +36,8 @@ func unescape(value string) (string, error) {
 	if size >= math.MaxInt {
 		return "", fmt.Errorf("too large string")
 	}
-	buf := make([]byte, 0, size)
+	buf := new(strings.Builder)
+	buf.Grow(int(size))
 	for len(value) > 0 {
 		c, multibyte, rest, err := unescapeChar(value)
 		if err != nil {
@@ -44,13 +45,13 @@ func unescape(value string) (string, error) {
 		}
 		value = rest
 		if c < utf8.RuneSelf || !multibyte {
-			buf = append(buf, byte(c))
+			buf.WriteByte(byte(c))
 		} else {
 			n := utf8.EncodeRune(runeTmp[:], c)
-			buf = append(buf, runeTmp[:n]...)
+			buf.Write(runeTmp[:n])
 		}
 	}
-	return string(buf), nil
+	return buf.String(), nil
 }
 
 // unescapeChar takes a string input and returns the following info:

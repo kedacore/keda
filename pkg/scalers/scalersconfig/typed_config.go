@@ -29,7 +29,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
@@ -49,8 +51,8 @@ const (
 	AuthParams      ParsingOrder = "authParams"
 )
 
-// allowedParsingOrderMap is a map with set of valid parsing orders
-var allowedParsingOrderMap = map[ParsingOrder]bool{
+// AllowedParsingOrderMap is a map with set of valid parsing orders
+var AllowedParsingOrderMap = map[ParsingOrder]bool{
 	TriggerMetadata: true,
 	ResolvedEnv:     true,
 	AuthParams:      true,
@@ -59,28 +61,28 @@ var allowedParsingOrderMap = map[ParsingOrder]bool{
 // separators for field tag structure
 // e.g. name=stringVal,order=triggerMetadata;resolvedEnv;authParams,optional
 const (
-	tagSeparator      = ","
-	tagKeySeparator   = "="
-	tagValueSeparator = ";"
+	TagSeparator      = ","
+	TagKeySeparator   = "="
+	TagValueSeparator = ";"
 )
 
 // separators for map and slice elements
 const (
-	elemKeyValSeparator = "="
+	ElemKeyValSeparator = "="
 )
 
 // field tag parameters
 const (
-	optionalTag           = "optional"
-	deprecatedTag         = "deprecated"
-	deprecatedAnnounceTag = "deprecatedAnnounce"
-	defaultTag            = "default"
-	orderTag              = "order"
-	nameTag               = "name"
-	enumTag               = "enum"
-	exclusiveSetTag       = "exclusiveSet"
-	rangeTag              = "range"
-	separatorTag          = "separator"
+	OptionalTag           = "optional"
+	DeprecatedTag         = "deprecated"
+	DeprecatedAnnounceTag = "deprecatedAnnounce"
+	DefaultTag            = "default"
+	OrderTag              = "order"
+	NameTag               = "name"
+	EnumTag               = "enum"
+	ExclusiveSetTag       = "exclusiveSet"
+	RangeTag              = "range"
+	SeparatorTag          = "separator"
 )
 
 // Params is a struct that represents the parameter list that can be used in the keda tag
@@ -150,24 +152,68 @@ func (sc *ScalerConfig) TypedConfig(typedConfig any) (err error) {
 			err = fmt.Errorf("failed to parse typed config %T resulted in panic\n%v", r, string(debug.Stack()))
 		}
 	}()
-	err = sc.parseTypedConfig(typedConfig, false)
+
+	logger := logf.Log.WithName("typed_config").WithValues("type", sc.ScalableObjectType, "namespace", sc.ScalableObjectNamespace, "name", sc.ScalableObjectName)
+
+	// Validate that typedConfig has required triggerIndex field
+	if err := sc.validateTriggerIndex(typedConfig); err != nil {
+		return err
+	}
+
+	parsedParamNames, err := sc.parseTypedConfig(typedConfig, false)
+
+	if err == nil {
+		sc.checkUnexpectedParameterExist(parsedParamNames, logger)
+	}
+
 	return
 }
 
-// parseTypedConfig is a function that is used to unmarshal the TriggerMetadata, ResolvedEnv and AuthParams
-// this can be called recursively to parse nested structures
-func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) error {
+// validateTriggerIndex validates that the typedConfig has a required triggerIndex field
+func (sc *ScalerConfig) validateTriggerIndex(typedConfig any) error {
 	t := reflect.TypeOf(typedConfig)
 	if t.Kind() != reflect.Pointer {
 		return fmt.Errorf("typedConfig must be a pointer")
 	}
 	t = t.Elem()
+
+	if t.Kind() != reflect.Struct {
+		return fmt.Errorf("typedConfig must be a struct")
+	}
+
+	hasTriggerIndex := false
+	for i := 0; i < t.NumField(); i++ {
+		fieldName := t.Field(i).Name
+		if fieldName == "triggerIndex" || fieldName == "TriggerIndex" {
+			hasTriggerIndex = true
+			break
+		}
+	}
+
+	if !hasTriggerIndex {
+		return fmt.Errorf("metadata struct of scaler must have a field named 'triggerIndex' or 'TriggerIndex'")
+	}
+
+	return nil
+}
+
+// parseTypedConfig is a function that is used to unmarshal the TriggerMetadata, ResolvedEnv and AuthParams
+// this can be called recursively to parse nested structures
+func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) ([]string, error) {
+	t := reflect.TypeOf(typedConfig)
+	if t.Kind() != reflect.Pointer {
+		return nil, fmt.Errorf("typedConfig must be a pointer")
+	}
+	t = t.Elem()
 	v := reflect.ValueOf(typedConfig).Elem()
 
 	errs := []error{}
+	parsedParamNames := []string{}
+
 	for i := 0; i < t.NumField(); i++ {
 		fieldType := t.Field(i)
 		fieldValue := v.Field(i)
+
 		tag, exists := fieldType.Tag.Lookup("keda")
 		if !exists {
 			continue
@@ -178,23 +224,27 @@ func (sc *ScalerConfig) parseTypedConfig(typedConfig any, parentOptional bool) e
 			continue
 		}
 		tagParams.Optional = tagParams.Optional || parentOptional
-		if err := sc.setValue(fieldValue, tagParams); err != nil {
+		parsed, err := sc.setValue(fieldValue, tagParams)
+		if err != nil {
 			errs = append(errs, err)
+		} else {
+			parsedParamNames = append(parsedParamNames, parsed...)
 		}
 	}
+
 	if validator, ok := typedConfig.(CustomValidator); ok {
 		if err := validator.Validate(); err != nil {
 			errs = append(errs, err)
 		}
 	}
-	return errors.Join(errs...)
+	return parsedParamNames, errors.Join(errs...)
 }
 
-// setValue is a function that sets the value of the field based on the provided params
-func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
+// setValue is a function that sets the value of the field based on the provided params, will return error and param names that set value
+func (sc *ScalerConfig) setValue(field reflect.Value, params Params) ([]string, error) {
 	valFromConfig, exists := sc.configParamValue(params)
 	if exists && params.IsDeprecated() {
-		return fmt.Errorf("scaler %s info: %s", sc.TriggerType, params.Deprecated)
+		return nil, fmt.Errorf("scaler %s info: %s", sc.TriggerType, params.Deprecated)
 	}
 	if exists && params.DeprecatedAnnounce != "" {
 		if sc.Recorder != nil {
@@ -208,14 +258,14 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 		valFromConfig = params.Default
 	}
 	if !exists && (params.Optional || params.IsDeprecated()) {
-		return nil
+		return nil, nil
 	}
-	if !exists && !(params.Optional || params.IsDeprecated()) {
+	if !exists && !params.Optional && !params.IsDeprecated() {
 		if len(params.Order) == 0 {
-			apo := slices.Sorted(maps.Keys(allowedParsingOrderMap))
-			return fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name(), apo)
+			apo := slices.Sorted(maps.Keys(AllowedParsingOrderMap))
+			return nil, fmt.Errorf("missing required parameter %q, no 'order' tag, provide any from %v", params.Name(), apo)
 		}
-		return fmt.Errorf("missing required parameter %q in %v", params.Name(), params.Order)
+		return nil, fmt.Errorf("missing required parameter %q in %v", params.Name(), params.Order)
 	}
 	if params.Enum != nil {
 		enumMap := make(map[string]bool)
@@ -231,7 +281,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 			}
 		}
 		if len(missingMap) > 0 {
-			return fmt.Errorf("parameter %q value %q must be one of %v", params.Name(), valFromConfig, params.Enum)
+			return nil, fmt.Errorf("parameter %q value %q must be one of %v", params.Name(), valFromConfig, params.Enum)
 		}
 	}
 	if params.ExclusiveSet != nil {
@@ -248,7 +298,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 			}
 		}
 		if exclusiveCount > 1 {
-			return fmt.Errorf("parameter %q value %q must contain only one of %v", params.Name(), valFromConfig, params.ExclusiveSet)
+			return nil, fmt.Errorf("parameter %q value %q must contain only one of %v", params.Name(), valFromConfig, params.ExclusiveSet)
 		}
 	}
 	if params.IsNested() {
@@ -257,14 +307,14 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) error {
 			field = field.Elem()
 		}
 		if field.Kind() != reflect.Struct {
-			return fmt.Errorf("nested parameter %q must be a struct, has kind %q", params.FieldName, field.Kind())
+			return nil, fmt.Errorf("nested parameter %q must be a struct, has kind %q", params.FieldName, field.Kind())
 		}
 		return sc.parseTypedConfig(field.Addr().Interface(), params.Optional)
 	}
 	if err := setConfigValueHelper(params, valFromConfig, field); err != nil {
-		return fmt.Errorf("unable to set param %q value %q: %w", params.Name(), valFromConfig, err)
+		return nil, fmt.Errorf("unable to set param %q value %q: %w", params.Name(), valFromConfig, err)
 	}
-	return nil
+	return params.Names, nil
 }
 
 // setConfigValueURLParams is a function that sets the value of the url.Values field
@@ -294,9 +344,9 @@ func setConfigValueMap(params Params, valFromConfig string, field reflect.Value)
 	split := splitWithSeparator(valFromConfig, params.Separator)
 	for _, s := range split {
 		s := strings.TrimSpace(s)
-		kv := strings.Split(s, elemKeyValSeparator)
+		kv := strings.Split(s, ElemKeyValSeparator)
 		if len(kv) != 2 {
-			return fmt.Errorf("expected format key%vvalue, got %q", elemKeyValSeparator, s)
+			return fmt.Errorf("expected format key%vvalue, got %q", ElemKeyValSeparator, s)
 		}
 		key := strings.TrimSpace(kv[0])
 		val := strings.TrimSpace(kv[1])
@@ -404,15 +454,15 @@ func setConfigValueHelper(params Params, valFromConfig string, field reflect.Val
 			field.Set(reflect.ValueOf(duration))
 			return nil
 		}
-		// If that fails, interpret as number of seconds
-		seconds, err := strconv.ParseInt(valFromConfig, 10, 64)
+		// If that fails, interpret as number of milliseconds
+		milliseconds, err := strconv.ParseInt(valFromConfig, 10, 64)
 		if err != nil {
-			return fmt.Errorf("unable to parse duration value %q: must be either a duration string (e.g. '30s', '5m') or a number of seconds", valFromConfig)
+			return fmt.Errorf("unable to parse duration value %q: must be either a duration string (e.g. '30s', '5m') or a number of milliseconds", valFromConfig)
 		}
-		if seconds < 0 {
-			return fmt.Errorf("duration cannot be negative: %d seconds", seconds)
+		if milliseconds < 0 {
+			return fmt.Errorf("duration cannot be negative: %d milliseconds", milliseconds)
 		}
-		field.Set(reflect.ValueOf(time.Duration(seconds) * time.Second))
+		field.Set(reflect.ValueOf(time.Duration(milliseconds) * time.Millisecond))
 		return nil
 	}
 	if field.Type() == reflect.TypeOf(url.Values{}) {
@@ -470,69 +520,92 @@ func (sc *ScalerConfig) configParamValue(params Params) (string, bool) {
 	return "", params.IsNested()
 }
 
+// checkUnexpectedParameterExist is a function that checks if there are any unexpected parameters in the TriggerMetadata
+func (sc *ScalerConfig) checkUnexpectedParameterExist(parsedParamNames []string, logger logr.Logger) {
+	for k := range sc.TriggerMetadata {
+		suffix := "FromEnv"
+		if !strings.HasSuffix(k, "FromEnv") {
+			suffix = ""
+		}
+		key := strings.TrimSuffix(k, suffix)
+		if !slices.Contains(parsedParamNames, key) {
+			if sc.Recorder != nil {
+				scalerIdentifier := sc.TriggerType
+				if sc.TriggerName != "" {
+					scalerIdentifier = fmt.Sprintf("%s (%s)", sc.TriggerType, sc.TriggerName)
+				}
+				message := fmt.Sprintf("Unmatched input property %s in scaler %s", key+suffix, scalerIdentifier)
+				// Just logging as it's optional property checking and should not block the scaling
+				logger.Error(nil, message)
+				sc.Recorder.Event(sc.ScaledObject, corev1.EventTypeWarning, eventreason.KEDAScalersInfo, message)
+			}
+		}
+	}
+}
+
 // paramsFromTag is a function that returns the Params struct based on the field tag
 func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 	params := Params{FieldName: field.Name}
-	tagSplit := strings.Split(tag, tagSeparator)
+	tagSplit := strings.Split(tag, TagSeparator)
 	for _, ts := range tagSplit {
-		tsplit := strings.Split(ts, tagKeySeparator)
+		tsplit := strings.Split(ts, TagKeySeparator)
 		tsplit[0] = strings.TrimSpace(tsplit[0])
 		switch tsplit[0] {
-		case optionalTag:
+		case OptionalTag:
 			if len(tsplit) == 1 {
 				params.Optional = true
 			}
 			if len(tsplit) > 1 {
 				params.Optional, _ = strconv.ParseBool(strings.TrimSpace(tsplit[1]))
 			}
-		case orderTag:
+		case OrderTag:
 			if len(tsplit) > 1 {
-				order := strings.Split(tsplit[1], tagValueSeparator)
+				order := strings.Split(tsplit[1], TagValueSeparator)
 				for _, po := range order {
 					poTyped := ParsingOrder(strings.TrimSpace(po))
-					if !allowedParsingOrderMap[poTyped] {
-						apo := slices.Sorted(maps.Keys(allowedParsingOrderMap))
+					if !AllowedParsingOrderMap[poTyped] {
+						apo := slices.Sorted(maps.Keys(AllowedParsingOrderMap))
 						return params, fmt.Errorf("unknown parsing order value %s, has to be one of %s", po, apo)
 					}
 					params.Order = append(params.Order, poTyped)
 				}
 			}
-		case nameTag:
+		case NameTag:
 			if len(tsplit) > 1 {
-				params.Names = strings.Split(strings.TrimSpace(tsplit[1]), tagValueSeparator)
+				params.Names = strings.Split(strings.TrimSpace(tsplit[1]), TagValueSeparator)
 			}
-		case deprecatedTag:
+		case DeprecatedTag:
 			if len(tsplit) == 1 {
-				params.Deprecated = deprecatedTag
+				params.Deprecated = DeprecatedTag
 			} else {
 				params.Deprecated = strings.TrimSpace(tsplit[1])
 			}
-		case deprecatedAnnounceTag:
+		case DeprecatedAnnounceTag:
 			if len(tsplit) == 1 {
-				params.DeprecatedAnnounce = deprecatedAnnounceTag
+				params.DeprecatedAnnounce = DeprecatedAnnounceTag
 			} else {
 				params.DeprecatedAnnounce = strings.TrimSpace(tsplit[1])
 			}
-		case defaultTag:
+		case DefaultTag:
 			if len(tsplit) > 1 {
 				params.Default = strings.TrimSpace(tsplit[1])
 			}
-		case enumTag:
+		case EnumTag:
 			if len(tsplit) > 1 {
-				params.Enum = strings.Split(tsplit[1], tagValueSeparator)
+				params.Enum = strings.Split(tsplit[1], TagValueSeparator)
 			}
-		case exclusiveSetTag:
+		case ExclusiveSetTag:
 			if len(tsplit) > 1 {
-				params.ExclusiveSet = strings.Split(tsplit[1], tagValueSeparator)
+				params.ExclusiveSet = strings.Split(tsplit[1], TagValueSeparator)
 			}
-		case rangeTag:
+		case RangeTag:
 			if len(tsplit) == 1 {
 				params.RangeSeparator = "-"
 			}
 			if len(tsplit) == 2 {
 				params.RangeSeparator = strings.TrimSpace(tsplit[1])
 			}
-		case separatorTag:
+		case SeparatorTag:
 			if len(tsplit) > 1 {
 				params.Separator = strings.TrimSpace(tsplit[1])
 			}

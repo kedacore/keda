@@ -1,27 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2020 Temporal Technologies Inc.  All rights reserved.
-//
-// Copyright (c) 2020 Uber Technologies, Inc.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 // All code in this file is private to the package.
@@ -220,6 +196,7 @@ type (
 		OnConflictOptions        *OnConflictOptions
 		DataConverter            converter.DataConverter
 		RetryPolicy              *commonpb.RetryPolicy
+		Priority                 *commonpb.Priority
 		CronSchedule             string
 		ContextPropagators       []ContextPropagator
 		Memo                     map[string]interface{}
@@ -623,7 +600,13 @@ func (d *syncWorkflowDefinition) Execute(env WorkflowEnvironment, header *common
 				if result, err := getWorkflowMetadata(rootCtx); err != nil {
 					return nil, err
 				} else {
-					return encodeArg(getDataConverterFromWorkflowContext(rootCtx), result)
+					// Use raw value built from default converter because we don't want to use
+					// user-conversion
+					resultPayload, err := converter.GetDefaultDataConverter().ToPayload(result)
+					if err != nil {
+						return nil, err
+					}
+					return encodeArg(getDataConverterFromWorkflowContext(rootCtx), converter.NewRawValue(resultPayload))
 				}
 			}
 
@@ -1922,6 +1905,14 @@ func (wg *waitGroupImpl) Wait(ctx Context) {
 		panic(err)
 	}
 	wg.future, wg.settable = NewFuture(ctx)
+}
+
+func (wg *waitGroupImpl) Go(ctx Context, f func(Context)) {
+	wg.Add(1)
+	Go(ctx, func(ctx Context) {
+		defer wg.Done()
+		f(ctx)
+	})
 }
 
 // Spawn starts a new coroutine with Dispatcher.NewCoroutine

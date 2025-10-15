@@ -8,5 +8,5 @@ package exported
 
 const (
 	ModuleName    = "azqueue"
-	ModuleVersion = "v1.0.0"
+	ModuleVersion = "v1.0.1"
 )

@@ -57,6 +57,7 @@ metadata:
 data:
   AUTH_PASSWORD: U0VDUkVUCg==
   AUTH_USERNAME: VVNFUgo=
+  AUTH_MODE: YmFzaWM=
 `
 
 	triggerAuthenticationTemplate = `apiVersion: keda.sh/v1alpha1
@@ -72,6 +73,9 @@ spec:
     - parameter: password
       name: {{.SecretName}}
       key: AUTH_PASSWORD
+    - parameter: authMode
+      name: {{.SecretName}}
+      key: AUTH_MODE
 `
 
 	metricsServerdeploymentTemplate = `
@@ -163,8 +167,6 @@ spec:
       activationTargetValue: "20"
       url: "{{.MetricsServerEndpoint}}"
       valueLocation: 'value'
-      authMode: "basic"
-      method: "query"
     authenticationRef:
       name: {{.TriggerAuthName}}
 `
@@ -179,7 +181,7 @@ spec:
     spec:
       containers:
       - name: curl-client
-        image: curlimages/curl
+        image: docker.io/curlimages/curl
         imagePullPolicy: Always
         command: ["curl", "-X", "POST", "{{.MetricsServerEndpoint}}/{{.MetricValue}}"]
       restartPolicy: Never`
@@ -194,7 +196,7 @@ func TestScaler(t *testing.T) {
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+		"replica count should be %d after 9 minutes", minReplicaCount)
 
 	// test scaling
 	testActivation(t, kc, data)

@@ -57,9 +57,9 @@ type MetricTimesliceValues struct {
 	Values map[string]float64 `json:"-"`
 }
 
-// UnmarshalJSON is a custom unmarshaling function that unmarshals the JSON into a `MetricTimesliceValues` and into the `Values` field.
+// UnmarshalJSON is a custom unmarshalling function that unmarshals the JSON into a `MetricTimesliceValues` and into the `Values` field.
 func (m *MetricTimesliceValues) UnmarshalJSON(b []byte) error {
-	// Create a type alias for unmarshaling MetricTimesliceValues to avoid an infinite loop,
+	// Create a type alias for unmarshalling MetricTimesliceValues to avoid an infinite loop,
 	// but still take advantage of the standard json.Unmarshal functionality
 	type timeSliceValues MetricTimesliceValues
 	metricValues := timeSliceValues{

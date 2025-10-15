@@ -84,8 +84,8 @@ type VolumeAttachmentSpec struct {
 }
 
 // VolumeAttachmentSource represents a volume that should be attached.
-// Right now only PersistenVolumes can be attached via external attacher,
-// in future we may allow also inline volumes in pods.
+// Right now only PersistentVolumes can be attached via external attacher,
+// in the future we may allow also inline volumes in pods.
 // Exactly one member can be set.
 type VolumeAttachmentSource struct {
 	// persistentVolumeName represents the name of the persistent volume to attach.
@@ -141,6 +141,14 @@ type VolumeError struct {
 	// information.
 	// +optional
 	Message string `json:"message,omitempty" protobuf:"bytes,2,opt,name=message"`
+
+	// errorCode is a numeric gRPC code representing the error encountered during Attach or Detach operations.
+	//
+	// This is an optional, alpha field that requires the MutableCSINodeAllocatableCount feature gate being enabled to be set.
+	//
+	// +featureGate=MutableCSINodeAllocatableCount
+	// +optional
+	ErrorCode *int32 `json:"errorCode,omitempty" protobuf:"varint,3,opt,name=errorCode"`
 }
 
 // +genclient

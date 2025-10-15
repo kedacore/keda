@@ -16,7 +16,7 @@ jobs:
       id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
 
     # keda-tools is built from github.com/test-tools/tools/Dockerfile
-    container: ghcr.io/kedacore/keda-tools:1.23.8
+    container: ghcr.io/kedacore/keda-tools:1.24.7
     steps:
       - name: Check out code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -44,14 +44,14 @@ jobs:
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
 
       - name: Go modules sync
-        run: go mod tidy -compat=1.23
+        run: go mod tidy -compat=1.24
 
       - name: Test
         run: make test
 
       # https://github.com/sigstore/cosign-installer
       - name: Install Cosign
-        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # v3.8.2
+        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
 
       - name: Check Cosign install!
         run: cosign version

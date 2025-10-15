@@ -65,10 +65,14 @@ func Fetch(from, i any) any {
 		fieldName := i.(string)
 		value := v.FieldByNameFunc(func(name string) bool {
 			field, _ := v.Type().FieldByName(name)
-			if field.Tag.Get("expr") == fieldName {
+			switch field.Tag.Get("expr") {
+			case "-":
+				return false
+			case fieldName:
 				return true
+			default:
+				return name == fieldName
 			}
-			return name == fieldName
 		})
 		if value.IsValid() {
 			return value.Interface()
@@ -162,6 +166,11 @@ func Slice(array, from, to any) any {
 		if a > b {
 			a = b
 		}
+		if v.Kind() == reflect.Array && !v.CanAddr() {
+			newValue := reflect.New(v.Type()).Elem()
+			newValue.Set(v)
+			v = newValue
+		}
 		value := v.Slice(a, b)
 		if value.IsValid() {
 			return value.Interface()
@@ -213,7 +222,11 @@ func In(needle any, array any) bool {
 		if !n.IsValid() || n.Kind() != reflect.String {
 			panic(fmt.Sprintf("cannot use %T as field name of %T", needle, array))
 		}
-		value := v.FieldByName(n.String())
+		field, ok := v.Type().FieldByName(n.String())
+		if !ok || !field.IsExported() || field.Tag.Get("expr") == "-" {
+			return false
+		}
+		value := v.FieldByIndex(field.Index)
 		if value.IsValid() {
 			return true
 		}

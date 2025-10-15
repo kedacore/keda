@@ -28,14 +28,15 @@ const (
 /* expected structure declarations */
 
 type openstackMetricMetadata struct {
-	metricsURL          string
-	metricID            string
-	aggregationMethod   string
-	granularity         int
-	threshold           float64
-	activationThreshold float64
-	timeout             int
-	triggerIndex        int
+	MetricsURL          string  `keda:"name=metricsURL,          order=triggerMetadata"`
+	MetricID            string  `keda:"name=metricID,            order=triggerMetadata"`
+	AggregationMethod   string  `keda:"name=aggregationMethod,   order=triggerMetadata"`
+	Granularity         int     `keda:"name=granularity,         order=triggerMetadata"`
+	Threshold           float64 `keda:"name=threshold,           order=triggerMetadata, optional"`
+	ActivationThreshold float64 `keda:"name=activationThreshold, order=triggerMetadata, optional"`
+	Timeout             int     `keda:"name=timeout,             order=triggerMetadata, default=30"`
+
+	triggerIndex int
 }
 
 type openstackMetricAuthenticationMetadata struct {
@@ -59,7 +60,7 @@ type measureResult struct {
 
 /*  end of declarations */
 
-// NewOpenstackMetricScaler creates new openstack metrics scaler instance
+// NewOpenstackMetricScaler creates a new openstack metrics scaler instance
 func NewOpenstackMetricScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
 	var keystoneAuth *openstack.KeystoneAuthRequest
 	var metricsClient openstack.Client
@@ -71,7 +72,7 @@ func NewOpenstackMetricScaler(ctx context.Context, config *scalersconfig.ScalerC
 
 	logger := InitializeLogger(config, "openstack_metric_scaler")
 
-	openstackMetricMetadata, err := parseOpenstackMetricMetadata(config, logger)
+	openstackMetricMetadata, err := parseOpenstackMetricMetadata(config)
 
 	if err != nil {
 		return nil, fmt.Errorf("error parsing openstack Metric metadata: %w", err)
@@ -83,17 +84,15 @@ func NewOpenstackMetricScaler(ctx context.Context, config *scalersconfig.ScalerC
 		return nil, fmt.Errorf("error parsing openstack metric authentication metadata: %w", err)
 	}
 
-	// User choose the "application_credentials" authentication method
 	if authMetadata.appCredentialSecretID != "" {
-		keystoneAuth, err = openstack.NewAppCredentialsAuth(authMetadata.authURL, authMetadata.appCredentialSecretID, authMetadata.appCredentialSecret, openstackMetricMetadata.timeout)
+		keystoneAuth, err = openstack.NewAppCredentialsAuth(authMetadata.authURL, authMetadata.appCredentialSecretID, authMetadata.appCredentialSecret, openstackMetricMetadata.Timeout)
 
 		if err != nil {
 			return nil, fmt.Errorf("error getting openstack credentials for application credentials method: %w", err)
 		}
 	} else {
-		// User choose the "password" authentication method
 		if authMetadata.userID != "" {
-			keystoneAuth, err = openstack.NewPasswordAuth(authMetadata.authURL, authMetadata.userID, authMetadata.password, "", openstackMetricMetadata.timeout)
+			keystoneAuth, err = openstack.NewPasswordAuth(authMetadata.authURL, authMetadata.userID, authMetadata.password, "", openstackMetricMetadata.Timeout)
 
 			if err != nil {
 				return nil, fmt.Errorf("error getting openstack credentials for password method: %w", err)
@@ -117,75 +116,13 @@ func NewOpenstackMetricScaler(ctx context.Context, config *scalersconfig.ScalerC
 	}, nil
 }
 
-func parseOpenstackMetricMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*openstackMetricMetadata, error) {
-	meta := openstackMetricMetadata{}
-	triggerMetadata := config.TriggerMetadata
-
-	if val, ok := triggerMetadata["metricsURL"]; ok && val != "" {
-		meta.metricsURL = val
-	} else {
-		logger.Error(fmt.Errorf("no metrics url could be read"), "Error reading metricsURL")
-		return nil, fmt.Errorf("no metrics url was declared")
+func parseOpenstackMetricMetadata(config *scalersconfig.ScalerConfig) (*openstackMetricMetadata, error) {
+	meta := &openstackMetricMetadata{triggerIndex: config.TriggerIndex}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing openstack metric metadata: %w", err)
 	}
 
-	if val, ok := triggerMetadata["metricID"]; ok && val != "" {
-		meta.metricID = val
-	} else {
-		logger.Error(fmt.Errorf("no metric id could be read"), "Error reading metricID")
-		return nil, fmt.Errorf("no metric id was declared")
-	}
-
-	if val, ok := triggerMetadata["aggregationMethod"]; ok && val != "" {
-		meta.aggregationMethod = val
-	} else {
-		logger.Error(fmt.Errorf("no aggregation method could be read"), "Error reading aggregation method")
-		return nil, fmt.Errorf("no aggregation method could be read")
-	}
-
-	if val, ok := triggerMetadata["granularity"]; ok && val != "" {
-		granularity, err := strconv.Atoi(val)
-		if err != nil {
-			logger.Error(err, "Error converting granularity information %s", err.Error)
-			return nil, err
-		}
-		meta.granularity = granularity
-	} else {
-		return nil, fmt.Errorf("no granularity found")
-	}
-
-	if val, ok := triggerMetadata["threshold"]; ok && val != "" {
-		// converts the string to float64 but its value is convertible to float32 without changing
-		_threshold, err := strconv.ParseFloat(val, 32)
-		if err != nil {
-			logger.Error(err, "error parsing openstack metric metadata", "threshold", "threshold")
-			return nil, fmt.Errorf("error parsing openstack metric metadata : %w", err)
-		}
-
-		meta.threshold = _threshold
-	}
-
-	if val, ok := triggerMetadata["activationThreshold"]; ok && val != "" {
-		// converts the string to float64 but its value is convertible to float32 without changing
-		activationThreshold, err := strconv.ParseFloat(val, 32)
-		if err != nil {
-			logger.Error(err, "error parsing openstack metric metadata", "activationThreshold", "activationThreshold")
-			return nil, fmt.Errorf("error parsing openstack metric metadata : %w", err)
-		}
-
-		meta.activationThreshold = activationThreshold
-	}
-
-	if val, ok := triggerMetadata["timeout"]; ok && val != "" {
-		httpClientTimeout, err := strconv.Atoi(val)
-		if err != nil {
-			return nil, fmt.Errorf("httpClientTimeout parsing error: %w", err)
-		}
-		meta.timeout = httpClientTimeout
-	} else {
-		meta.timeout = metricDefaultHTTPClientTimeout
-	}
-	meta.triggerIndex = config.TriggerIndex
-	return &meta, nil
+	return meta, nil
 }
 
 func parseOpenstackMetricAuthenticationMetadata(config *scalersconfig.ScalerConfig) (openstackMetricAuthenticationMetadata, error) {
@@ -216,13 +153,13 @@ func parseOpenstackMetricAuthenticationMetadata(config *scalersconfig.ScalerConf
 }
 
 func (s *openstackMetricScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString(fmt.Sprintf("openstack-metric-%s", s.metadata.metricID))
+	metricName := kedautil.NormalizeString(fmt.Sprintf("openstack-metric-%s", s.metadata.MetricID))
 
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.Threshold),
 	}
 
 	metricSpec := v2.MetricSpec{
@@ -243,7 +180,7 @@ func (s *openstackMetricScaler) GetMetricsAndActivity(ctx context.Context, metri
 
 	metric := GenerateMetricInMili(metricName, val)
 
-	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationThreshold, nil
+	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.ActivationThreshold, nil
 }
 
 func (s *openstackMetricScaler) Close(context.Context) error {
@@ -253,7 +190,7 @@ func (s *openstackMetricScaler) Close(context.Context) error {
 
 // Gets measurement from API as float64, converts it to int and return the value.
 func (s *openstackMetricScaler) readOpenstackMetrics(ctx context.Context) (float64, error) {
-	var metricURL = s.metadata.metricsURL
+	var metricURL = s.metadata.MetricsURL
 
 	isValid, validationError := s.metricClient.IsTokenValid(ctx)
 
@@ -279,21 +216,21 @@ func (s *openstackMetricScaler) readOpenstackMetrics(ctx context.Context) (float
 		return defaultValueWhenError, fmt.Errorf("metric url is invalid: %w", err)
 	}
 
-	openstackMetricsURL.Path = path.Join(openstackMetricsURL.Path, s.metadata.metricID+"/measures")
+	openstackMetricsURL.Path = path.Join(openstackMetricsURL.Path, s.metadata.MetricID+"/measures")
 	queryParameter := openstackMetricsURL.Query()
 	granularity := 0 // We start with granularity with value 2 cause gnocchi APIm which is used by openstack, consider a time window, and we want to get the last value
 
-	if s.metadata.granularity <= 0 {
+	if s.metadata.Granularity <= 0 {
 		s.logger.Error(fmt.Errorf("granularity value is less than 1"), "Minimum acceptable value expected for granularity is 1.")
 		return defaultValueWhenError, fmt.Errorf("granularity value is less than 1")
 	}
 
-	if (s.metadata.granularity / 60) > 0 {
-		granularity = (s.metadata.granularity / 60) - 1
+	if (s.metadata.Granularity / 60) > 0 {
+		granularity = (s.metadata.Granularity / 60) - 1
 	}
 
-	queryParameter.Set("granularity", strconv.Itoa(s.metadata.granularity))
-	queryParameter.Set("aggregation", s.metadata.aggregationMethod)
+	queryParameter.Set("granularity", strconv.Itoa(s.metadata.Granularity))
+	queryParameter.Set("aggregation", s.metadata.AggregationMethod)
 
 	var currTimeWithWindow string
 
@@ -316,7 +253,7 @@ func (s *openstackMetricScaler) readOpenstackMetrics(ctx context.Context) (float
 	resp, requestError := s.metricClient.HTTPClient.Do(openstackMetricRequest)
 
 	if requestError != nil {
-		s.logger.Error(requestError, "Unable to request Metrics from URL: %s.", s.metadata.metricsURL)
+		s.logger.Error(requestError, "Unable to request Metrics from URL: %s.", s.metadata.MetricsURL)
 		return defaultValueWhenError, requestError
 	}
 
@@ -325,7 +262,7 @@ func (s *openstackMetricScaler) readOpenstackMetrics(ctx context.Context) (float
 		bodyError, readError := io.ReadAll(resp.Body)
 
 		if readError != nil {
-			s.logger.Error(readError, "Request failed with code: %s for URL: %s", resp.StatusCode, s.metadata.metricsURL)
+			s.logger.Error(readError, "Request failed with code: %s for URL: %s", resp.StatusCode, s.metadata.MetricsURL)
 			return defaultValueWhenError, readError
 		}
 

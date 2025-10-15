@@ -13,6 +13,8 @@ param location string = resourceGroup().location
 
 param tenantIsTME bool = false
 
+param partitions int = 4
+
 var apiVersion = '2017-04-01'
 var namespaceName = baseName
 var storageAccountName = 'storage${baseName}'
@@ -71,8 +73,8 @@ resource authorizedSendOnly 'Microsoft.EventHub/namespaces/AuthorizationRules@20
 resource eventHub 'Microsoft.EventHub/namespaces/eventhubs@2017-04-01' = {
   name: 'eventhub'
   properties: {
-    messageRetentionInDays: 1
-    partitionCount: 4
+    messageRetentionInDays: 7
+    partitionCount: partitions
   }
   parent: namespace
 }
@@ -80,7 +82,7 @@ resource eventHub 'Microsoft.EventHub/namespaces/eventhubs@2017-04-01' = {
 resource linksonly 'Microsoft.EventHub/namespaces/eventhubs@2017-04-01' = {
   name: 'linksonly'
   properties: {
-    messageRetentionInDays: 1
+    messageRetentionInDays: 7
     partitionCount: 1
   }
   parent: namespace

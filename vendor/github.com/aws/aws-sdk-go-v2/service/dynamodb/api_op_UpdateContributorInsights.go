@@ -46,6 +46,10 @@ type UpdateContributorInsightsInput struct {
 	// This member is required.
 	TableName *string
 
+	// Specifies whether to track all access and throttled events or throttled events
+	// only for the DynamoDB table or index.
+	ContributorInsightsMode types.ContributorInsightsMode
+
 	// The global secondary index name, if applicable.
 	IndexName *string
 
@@ -59,6 +63,11 @@ func (in *UpdateContributorInsightsInput) bindEndpointParams(p *EndpointParamete
 }
 
 type UpdateContributorInsightsOutput struct {
+
+	// The updated mode of CloudWatch Contributor Insights that determines whether to
+	// monitor all access and throttled events or to track throttled events
+	// exclusively.
+	ContributorInsightsMode types.ContributorInsightsMode
 
 	// The status of contributor insights
 	ContributorInsightsStatus types.ContributorInsightsStatus
@@ -170,6 +179,36 @@ func (c *Client) addOperationUpdateContributorInsightsMiddlewares(stack *middlew
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
 		return err
 	}
 	if err = addSpanInitializeStart(stack); err != nil {

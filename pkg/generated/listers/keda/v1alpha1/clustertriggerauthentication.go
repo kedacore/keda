@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ClusterTriggerAuthenticationLister helps list ClusterTriggerAuthentications.
@@ -30,19 +30,19 @@ import (
 type ClusterTriggerAuthenticationLister interface {
 	// List lists all ClusterTriggerAuthentications in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.ClusterTriggerAuthentication, err error)
+	List(selector labels.Selector) (ret []*kedav1alpha1.ClusterTriggerAuthentication, err error)
 	// Get retrieves the ClusterTriggerAuthentication from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.ClusterTriggerAuthentication, error)
+	Get(name string) (*kedav1alpha1.ClusterTriggerAuthentication, error)
 	ClusterTriggerAuthenticationListerExpansion
 }
 
 // clusterTriggerAuthenticationLister implements the ClusterTriggerAuthenticationLister interface.
 type clusterTriggerAuthenticationLister struct {
-	listers.ResourceIndexer[*v1alpha1.ClusterTriggerAuthentication]
+	listers.ResourceIndexer[*kedav1alpha1.ClusterTriggerAuthentication]
 }
 
 // NewClusterTriggerAuthenticationLister returns a new ClusterTriggerAuthenticationLister.
 func NewClusterTriggerAuthenticationLister(indexer cache.Indexer) ClusterTriggerAuthenticationLister {
-	return &clusterTriggerAuthenticationLister{listers.New[*v1alpha1.ClusterTriggerAuthentication](indexer, v1alpha1.Resource("clustertriggerauthentication"))}
+	return &clusterTriggerAuthenticationLister{listers.New[*kedav1alpha1.ClusterTriggerAuthentication](indexer, kedav1alpha1.Resource("clustertriggerauthentication"))}
 }

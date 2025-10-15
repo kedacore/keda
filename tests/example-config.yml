@@ -1,0 +1,15 @@
+# This is an example test config file to be used with the run-all.go file.
+dryRun: false # set to true to see what tests would run without executing them
+keda:
+  skipSetup: false # set to true to skip the setup entirely (including e.g., setup keda, helm, workload identity, etc.)
+  skipCleanup: false # set to true to skip the cleanup entirely (cleaning up everything in setup)
+  imageRegistry: "" # use KEDA images from registry
+  imageRepo: "" # use KEDA images from repo
+# The e2e launcher will only run the cpu scaler test.
+testCategories:
+  internals:
+    mode: exclude
+  scalers:
+    mode: include
+    tests:
+      - cpu

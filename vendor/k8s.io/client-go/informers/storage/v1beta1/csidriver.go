@@ -19,16 +19,16 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	storagev1beta1 "k8s.io/api/storage/v1beta1"
+	apistoragev1beta1 "k8s.io/api/storage/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	internalinterfaces "k8s.io/client-go/informers/internalinterfaces"
 	kubernetes "k8s.io/client-go/kubernetes"
-	v1beta1 "k8s.io/client-go/listers/storage/v1beta1"
+	storagev1beta1 "k8s.io/client-go/listers/storage/v1beta1"
 	cache "k8s.io/client-go/tools/cache"
 )
 
@@ -36,7 +36,7 @@ import (
 // CSIDrivers.
 type CSIDriverInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1beta1.CSIDriverLister
+	Lister() storagev1beta1.CSIDriverLister
 }
 
 type cSIDriverInformer struct {
@@ -61,16 +61,28 @@ func NewFilteredCSIDriverInformer(client kubernetes.Interface, resyncPeriod time
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StorageV1beta1().CSIDrivers().List(context.TODO(), options)
+				return client.StorageV1beta1().CSIDrivers().List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StorageV1beta1().CSIDrivers().Watch(context.TODO(), options)
+				return client.StorageV1beta1().CSIDrivers().Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.StorageV1beta1().CSIDrivers().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.StorageV1beta1().CSIDrivers().Watch(ctx, options)
 			},
 		},
-		&storagev1beta1.CSIDriver{},
+		&apistoragev1beta1.CSIDriver{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,9 +93,9 @@ func (f *cSIDriverInformer) defaultInformer(client kubernetes.Interface, resyncP
 }
 
 func (f *cSIDriverInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&storagev1beta1.CSIDriver{}, f.defaultInformer)
+	return f.factory.InformerFor(&apistoragev1beta1.CSIDriver{}, f.defaultInformer)
 }
 
-func (f *cSIDriverInformer) Lister() v1beta1.CSIDriverLister {
-	return v1beta1.NewCSIDriverLister(f.Informer().GetIndexer())
+func (f *cSIDriverInformer) Lister() storagev1beta1.CSIDriverLister {
+	return storagev1beta1.NewCSIDriverLister(f.Informer().GetIndexer())
 }

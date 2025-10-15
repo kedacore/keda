@@ -82,7 +82,7 @@ func TestCheckFallbackValid(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name: "Value metricType - invalid",
+			name: "Value metricType - valid",
 			scaledObject: &ScaledObject{
 				Spec: ScaledObjectSpec{
 					Fallback: &Fallback{
@@ -97,8 +97,7 @@ func TestCheckFallbackValid(t *testing.T) {
 					},
 				},
 			},
-			expectedError: true,
-			errorContains: "type for the fallback to be enabled",
+			expectedError: false,
 		},
 		{
 			name: "Multiple triggers with one valid AverageValue - valid",
@@ -244,7 +243,7 @@ func TestCheckFallbackValid(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name: "Using ScalingModifiers with Value MetricType - invalid",
+			name: "Using ScalingModifiers with Value MetricType - valid",
 			scaledObject: &ScaledObject{
 				Spec: ScaledObjectSpec{
 					Fallback: &Fallback{
@@ -264,8 +263,7 @@ func TestCheckFallbackValid(t *testing.T) {
 					},
 				},
 			},
-			expectedError: true,
-			errorContains: "ScaledObject.Spec.Advanced.ScalingModifiers.MetricType must be AverageValue",
+			expectedError: false,
 		},
 	}
 
@@ -285,44 +283,6 @@ func TestCheckFallbackValid(t *testing.T) {
 				if !contains(err.Error(), test.errorContains) {
 					t.Errorf("Error message does not contain expected text.\nExpected to contain: %s\nActual: %s", test.errorContains, err.Error())
 				}
-			}
-		})
-	}
-}
-
-func TestHasPausedReplicaAnnotation(t *testing.T) {
-	tests := []struct {
-		name         string
-		annotations  map[string]string
-		expectResult bool
-	}{
-		{
-			name:         "No annotations",
-			annotations:  nil,
-			expectResult: false,
-		},
-		{
-			name:         "Has PausedReplicasAnnotation",
-			annotations:  map[string]string{PausedReplicasAnnotation: "5"},
-			expectResult: true,
-		},
-		{
-			name:         "Has other annotations but not PausedReplicasAnnotation",
-			annotations:  map[string]string{"some-other-annotation": "value"},
-			expectResult: false,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			so := &ScaledObject{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: test.annotations,
-				},
-			}
-			result := so.HasPausedReplicaAnnotation()
-			if result != test.expectResult {
-				t.Errorf("Expected HasPausedReplicaAnnotation to return %v, got %v", test.expectResult, result)
 			}
 		})
 	}
@@ -419,13 +379,19 @@ func TestNeedToBePausedByAnnotation(t *testing.T) {
 			name:               "PausedReplicasAnnotation with value but no status set",
 			annotations:        map[string]string{PausedReplicasAnnotation: "5"},
 			pausedReplicaCount: nil,
-			expectResult:       false,
+			expectResult:       true,
 		},
 		{
 			name:               "Both annotations set",
 			annotations:        map[string]string{PausedAnnotation: "true", PausedReplicasAnnotation: "5"},
 			pausedReplicaCount: &pausedReplicaCount,
 			expectResult:       true, // PausedReplicasAnnotation has precedence
+		},
+		{
+			name:               "Both annotations set, PausedAnnotation false",
+			annotations:        map[string]string{PausedAnnotation: "false", PausedReplicasAnnotation: "5"},
+			pausedReplicaCount: &pausedReplicaCount,
+			expectResult:       true,
 		},
 	}
 

@@ -1,7 +1,9 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"math"
 	"strconv"
 	"strings"
@@ -10,6 +12,7 @@ import (
 	"github.com/expr-lang/expr/builtin"
 	"github.com/expr-lang/expr/conf"
 	"github.com/expr-lang/expr/file"
+	"github.com/expr-lang/expr/parser/lexer"
 	. "github.com/expr-lang/expr/parser/lexer"
 	"github.com/expr-lang/expr/parser/operator"
 	"github.com/expr-lang/expr/parser/utils"
@@ -44,17 +47,50 @@ var predicates = map[string]struct {
 	"reduce":        {[]arg{expr, predicate, expr | optional}},
 }
 
-type parser struct {
-	tokens    []Token
-	current   Token
-	pos       int
-	err       *file.Error
-	config    *conf.Config
-	depth     int  // predicate call depth
-	nodeCount uint // tracks number of AST nodes created
+// Parser is a reusable parser. The zero value is ready for use.
+type Parser struct {
+	lexer            *lexer.Lexer
+	current, stashed Token
+	hasStash         bool
+	err              *file.Error
+	config           *conf.Config
+	depth            int  // predicate call depth
+	nodeCount        uint // tracks number of AST nodes created
 }
 
-func (p *parser) checkNodeLimit() error {
+func (p *Parser) Parse(input string, config *conf.Config) (*Tree, error) {
+	if p.lexer == nil {
+		p.lexer = lexer.New()
+	}
+	p.config = config
+	source := file.NewSource(input)
+	p.lexer.Reset(source)
+	p.next()
+	node := p.parseSequenceExpression()
+
+	if !p.current.Is(EOF) {
+		p.error("unexpected token %v", p.current)
+	}
+
+	tree := &Tree{
+		Node:   node,
+		Source: source,
+	}
+	err := p.err
+
+	// cleanup non-reusable pointer values and reset state
+	p.err = nil
+	p.config = nil
+	p.lexer.Reset(file.Source{})
+
+	if err != nil {
+		return tree, err.Bind(source)
+	}
+
+	return tree, nil
+}
+
+func (p *Parser) checkNodeLimit() error {
 	p.nodeCount++
 	if p.config == nil {
 		if p.nodeCount > conf.DefaultMaxNodes {
@@ -70,7 +106,7 @@ func (p *parser) checkNodeLimit() error {
 	return nil
 }
 
-func (p *parser) createNode(n Node, loc file.Location) Node {
+func (p *Parser) createNode(n Node, loc file.Location) Node {
 	if err := p.checkNodeLimit(); err != nil {
 		return nil
 	}
@@ -81,7 +117,7 @@ func (p *parser) createNode(n Node, loc file.Location) Node {
 	return n
 }
 
-func (p *parser) createMemberNode(n *MemberNode, loc file.Location) *MemberNode {
+func (p *Parser) createMemberNode(n *MemberNode, loc file.Location) *MemberNode {
 	if err := p.checkNodeLimit(); err != nil {
 		return nil
 	}
@@ -102,42 +138,14 @@ func Parse(input string) (*Tree, error) {
 }
 
 func ParseWithConfig(input string, config *conf.Config) (*Tree, error) {
-	source := file.NewSource(input)
-
-	tokens, err := Lex(source)
-	if err != nil {
-		return nil, err
-	}
-
-	p := &parser{
-		tokens:  tokens,
-		current: tokens[0],
-		config:  config,
-	}
-
-	node := p.parseSequenceExpression()
-
-	if !p.current.Is(EOF) {
-		p.error("unexpected token %v", p.current)
-	}
-
-	tree := &Tree{
-		Node:   node,
-		Source: source,
-	}
-
-	if p.err != nil {
-		return tree, p.err.Bind(source)
-	}
-
-	return tree, nil
+	return new(Parser).Parse(input, config)
 }
 
-func (p *parser) error(format string, args ...any) {
+func (p *Parser) error(format string, args ...any) {
 	p.errorAt(p.current, format, args...)
 }
 
-func (p *parser) errorAt(token Token, format string, args ...any) {
+func (p *Parser) errorAt(token Token, format string, args ...any) {
 	if p.err == nil { // show first error
 		p.err = &file.Error{
 			Location: token.Location,
@@ -146,16 +154,32 @@ func (p *parser) errorAt(token Token, format string, args ...any) {
 	}
 }
 
-func (p *parser) next() {
-	p.pos++
-	if p.pos >= len(p.tokens) {
-		p.error("unexpected end of expression")
+func (p *Parser) next() {
+	if p.hasStash {
+		p.current = p.stashed
+		p.hasStash = false
 		return
 	}
-	p.current = p.tokens[p.pos]
+
+	token, err := p.lexer.Next()
+	var e *file.Error
+	switch {
+	case err == nil:
+		p.current = token
+	case errors.Is(err, io.EOF):
+		p.error("unexpected end of expression")
+	case errors.As(err, &e):
+		p.err = e
+	default:
+		p.err = &file.Error{
+			Location: p.current.Location,
+			Message:  "unknown lexing error",
+			Prev:     err,
+		}
+	}
 }
 
-func (p *parser) expect(kind Kind, values ...string) {
+func (p *Parser) expect(kind Kind, values ...string) {
 	if p.current.Is(kind, values...) {
 		p.next()
 		return
@@ -165,7 +189,7 @@ func (p *parser) expect(kind Kind, values ...string) {
 
 // parse functions
 
-func (p *parser) parseSequenceExpression() Node {
+func (p *Parser) parseSequenceExpression() Node {
 	nodes := []Node{p.parseExpression(0)}
 
 	for p.current.Is(Operator, ";") && p.err == nil {
@@ -186,7 +210,7 @@ func (p *parser) parseSequenceExpression() Node {
 	}, nodes[0].Location())
 }
 
-func (p *parser) parseExpression(precedence int) Node {
+func (p *Parser) parseExpression(precedence int) Node {
 	if p.err != nil {
 		return nil
 	}
@@ -209,15 +233,16 @@ func (p *parser) parseExpression(precedence int) Node {
 
 		// Handle "not *" operator, like "not in" or "not contains".
 		if negate {
-			currentPos := p.pos
+			tokenBackup := p.current
 			p.next()
 			if operator.AllowedNegateSuffix(p.current.Value) {
 				if op, ok := operator.Binary[p.current.Value]; ok && op.Precedence >= precedence {
 					notToken = p.current
 					opToken = p.current
 				} else {
-					p.pos = currentPos
-					p.current = opToken
+					p.hasStash = true
+					p.stashed = p.current
+					p.current = tokenBackup
 					break
 				}
 			} else {
@@ -288,7 +313,7 @@ func (p *parser) parseExpression(precedence int) Node {
 	return nodeLeft
 }
 
-func (p *parser) parseVariableDeclaration() Node {
+func (p *Parser) parseVariableDeclaration() Node {
 	p.expect(Operator, "let")
 	variableName := p.current
 	p.expect(Identifier)
@@ -303,7 +328,7 @@ func (p *parser) parseVariableDeclaration() Node {
 	}, variableName.Location)
 }
 
-func (p *parser) parseConditionalIf() Node {
+func (p *Parser) parseConditionalIf() Node {
 	p.next()
 	nodeCondition := p.parseExpression(0)
 	p.expect(Bracket, "{")
@@ -322,7 +347,7 @@ func (p *parser) parseConditionalIf() Node {
 
 }
 
-func (p *parser) parseConditional(node Node) Node {
+func (p *Parser) parseConditional(node Node) Node {
 	var expr1, expr2 Node
 	for p.current.Is(Operator, "?") && p.err == nil {
 		p.next()
@@ -349,7 +374,7 @@ func (p *parser) parseConditional(node Node) Node {
 	return node
 }
 
-func (p *parser) parsePrimary() Node {
+func (p *Parser) parsePrimary() Node {
 	token := p.current
 
 	if token.Is(Operator) {
@@ -402,7 +427,7 @@ func (p *parser) parsePrimary() Node {
 	return p.parseSecondary()
 }
 
-func (p *parser) parseSecondary() Node {
+func (p *Parser) parseSecondary() Node {
 	var node Node
 	token := p.current
 
@@ -501,7 +526,7 @@ func (p *parser) parseSecondary() Node {
 	return p.parsePostfixExpression(node)
 }
 
-func (p *parser) toIntegerNode(number int64) Node {
+func (p *Parser) toIntegerNode(number int64) Node {
 	if number > math.MaxInt {
 		p.error("integer literal is too large")
 		return nil
@@ -509,7 +534,7 @@ func (p *parser) toIntegerNode(number int64) Node {
 	return p.createNode(&IntegerNode{Value: int(number)}, p.current.Location)
 }
 
-func (p *parser) toFloatNode(number float64) Node {
+func (p *Parser) toFloatNode(number float64) Node {
 	if number > math.MaxFloat64 {
 		p.error("float literal is too large")
 		return nil
@@ -517,7 +542,7 @@ func (p *parser) toFloatNode(number float64) Node {
 	return p.createNode(&FloatNode{Value: number}, p.current.Location)
 }
 
-func (p *parser) parseCall(token Token, arguments []Node, checkOverrides bool) Node {
+func (p *Parser) parseCall(token Token, arguments []Node, checkOverrides bool) Node {
 	var node Node
 
 	isOverridden := false
@@ -595,7 +620,7 @@ func (p *parser) parseCall(token Token, arguments []Node, checkOverrides bool) N
 	return node
 }
 
-func (p *parser) parseArguments(arguments []Node) []Node {
+func (p *Parser) parseArguments(arguments []Node) []Node {
 	// If pipe operator is used, the first argument is the left-hand side
 	// of the operator, so we do not parse it as an argument inside brackets.
 	offset := len(arguments)
@@ -616,7 +641,7 @@ func (p *parser) parseArguments(arguments []Node) []Node {
 	return arguments
 }
 
-func (p *parser) parsePredicate() Node {
+func (p *Parser) parsePredicate() Node {
 	startToken := p.current
 	withBrackets := false
 	if p.current.Is(Bracket, "{") {
@@ -648,7 +673,7 @@ func (p *parser) parsePredicate() Node {
 	return predicateNode
 }
 
-func (p *parser) parseArrayExpression(token Token) Node {
+func (p *Parser) parseArrayExpression(token Token) Node {
 	nodes := make([]Node, 0)
 
 	p.expect(Bracket, "[")
@@ -672,7 +697,7 @@ end:
 	return node
 }
 
-func (p *parser) parseMapExpression(token Token) Node {
+func (p *Parser) parseMapExpression(token Token) Node {
 	p.expect(Bracket, "{")
 
 	nodes := make([]Node, 0)
@@ -725,7 +750,7 @@ end:
 	return node
 }
 
-func (p *parser) parsePostfixExpression(node Node) Node {
+func (p *Parser) parsePostfixExpression(node Node) Node {
 	postfixToken := p.current
 	for (postfixToken.Is(Operator) || postfixToken.Is(Bracket)) && p.err == nil {
 		optional := postfixToken.Value == "?."
@@ -855,7 +880,7 @@ func (p *parser) parsePostfixExpression(node Node) Node {
 	}
 	return node
 }
-func (p *parser) parseComparison(left Node, token Token, precedence int) Node {
+func (p *Parser) parseComparison(left Node, token Token, precedence int) Node {
 	var rootNode Node
 	for {
 		comparator := p.parseExpression(precedence + 1)

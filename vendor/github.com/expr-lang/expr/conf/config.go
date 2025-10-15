@@ -10,43 +10,41 @@ import (
 	"github.com/expr-lang/expr/vm/runtime"
 )
 
-const (
-	// DefaultMemoryBudget represents an upper limit of memory usage
+var (
+	// DefaultMemoryBudget represents default maximum allowed memory usage by the vm.VM.
 	DefaultMemoryBudget uint = 1e6
 
-	// DefaultMaxNodes represents an upper limit of AST nodes
-	DefaultMaxNodes uint = 10000
+	// DefaultMaxNodes represents default maximum allowed AST nodes by the compiler.
+	DefaultMaxNodes uint = 1e4
 )
 
 type FunctionsTable map[string]*builtin.Function
 
 type Config struct {
-	EnvObject    any
-	Env          nature.Nature
-	Expect       reflect.Kind
-	ExpectAny    bool
-	Optimize     bool
-	Strict       bool
-	Profile      bool
-	MaxNodes     uint
-	MemoryBudget uint
-	ConstFns     map[string]reflect.Value
-	Visitors     []ast.Visitor
-	Functions    FunctionsTable
-	Builtins     FunctionsTable
-	Disabled     map[string]bool // disabled builtins
+	EnvObject any
+	Env       nature.Nature
+	Expect    reflect.Kind
+	ExpectAny bool
+	Optimize  bool
+	Strict    bool
+	Profile   bool
+	MaxNodes  uint
+	ConstFns  map[string]reflect.Value
+	Visitors  []ast.Visitor
+	Functions FunctionsTable
+	Builtins  FunctionsTable
+	Disabled  map[string]bool // disabled builtins
 }
 
 // CreateNew creates new config with default values.
 func CreateNew() *Config {
 	c := &Config{
-		Optimize:     true,
-		MaxNodes:     DefaultMaxNodes,
-		MemoryBudget: DefaultMemoryBudget,
-		ConstFns:     make(map[string]reflect.Value),
-		Functions:    make(map[string]*builtin.Function),
-		Builtins:     make(map[string]*builtin.Function),
-		Disabled:     make(map[string]bool),
+		Optimize:  true,
+		MaxNodes:  DefaultMaxNodes,
+		ConstFns:  make(map[string]reflect.Value),
+		Functions: make(map[string]*builtin.Function),
+		Builtins:  make(map[string]*builtin.Function),
+		Disabled:  make(map[string]bool),
 	}
 	for _, f := range builtin.Builtins {
 		c.Builtins[f.Name] = f

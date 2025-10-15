@@ -27,7 +27,88 @@ spec:
       - name: rabbitmq-client
         image: ghcr.io/kedacore/tests-rabbitmq
         imagePullPolicy: Always
-        command: ["send",  "{{.Connection}}", "{{.MessageCount}}", "{{.QueueName}}"]
+        command:
+          - send
+        args:
+          - '{{.Connection}}'
+          - '{{.MessageCount}}'
+          - '{{.QueueName}}'
+          - '{{.Interval}}'
+      restartPolicy: Never
+`
+
+	consumeTemplateJobCount = 4
+	consumeTemplate         = `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rabbitmq-consume-0-{{.QueueName}}
+  namespace: {{.Namespace}}
+spec:
+  template:
+    spec:
+      containers:
+      - name: rabbitmq-client
+        image: ghcr.io/kedacore/tests-rabbitmq
+        imagePullPolicy: Always
+        command:
+          - receive
+        args:
+          - '{{.Connection}}'
+      restartPolicy: Never
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rabbitmq-consume-1-{{.QueueName}}
+  namespace: {{.Namespace}}
+spec:
+  template:
+    spec:
+      containers:
+      - name: rabbitmq-client
+        image: ghcr.io/kedacore/tests-rabbitmq
+        imagePullPolicy: Always
+        command:
+          - receive
+        args:
+          - '{{.Connection}}'
+      restartPolicy: Never
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rabbitmq-consume-2-{{.QueueName}}
+  namespace: {{.Namespace}}
+spec:
+  template:
+    spec:
+      containers:
+      - name: rabbitmq-client
+        image: ghcr.io/kedacore/tests-rabbitmq
+        imagePullPolicy: Always
+        command:
+          - receive
+        args:
+          - '{{.Connection}}'
+      restartPolicy: Never
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rabbitmq-consume-3-{{.QueueName}}
+  namespace: {{.Namespace}}
+spec:
+  template:
+    spec:
+      containers:
+      - name: rabbitmq-client
+        image: ghcr.io/kedacore/tests-rabbitmq
+        imagePullPolicy: Always
+        command:
+          - receive
+        args:
+          - '{{.Connection}}'
       restartPolicy: Never
 `
 
@@ -42,7 +123,7 @@ spec:
     spec:
       containers:
       - name: curl-client
-        image: curlimages/curl
+        image: docker.io/curlimages/curl
         imagePullPolicy: Always
         command: ["curl", "-u", "{{.Username}}:{{.Password}}", "-X", "PUT", "http://{{.HostName}}/api/vhosts/{{.VHostName}}"]
       restartPolicy: Never
@@ -92,7 +173,7 @@ spec:
       namespace: {{.Namespace}}
     spec:
       containers:
-      - image: rabbitmq:3.12-management
+      - image: docker.io/library/rabbitmq:3.12-management
         name: rabbitmq
         volumeMounts:
           - mountPath: /etc/rabbitmq
@@ -162,6 +243,48 @@ spec:
           - receive
         args:
           - '{{.Connection}}'
+        envFrom:
+        - secretRef:
+            name: {{.SecretName}}
+`
+
+	RMQPublisherTargetDeploymentTemplate = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.SecretName}}
+  namespace: {{.TestNamespace}}
+data:
+  RabbitApiHost: {{.Base64Connection}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.DeploymentName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.DeploymentName}}
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: {{.DeploymentName}}
+  template:
+    metadata:
+      labels:
+        app: {{.DeploymentName}}
+    spec:
+      containers:
+      - name: rabbitmq-publisher
+        image: ghcr.io/kedacore/tests-rabbitmq
+        imagePullPolicy: Always
+        command:
+          - send
+        args:
+          - '{{.Connection}}'
+          - '4'
+          - '{{.QueueName}}'
+          - '1'
         envFrom:
         - secretRef:
             name: {{.SecretName}}
@@ -240,6 +363,7 @@ type templateData struct {
 	HostName, VHostName string
 	Username, Password  string
 	MessageCount        int
+	Interval            int
 	EnableOAuth         bool
 	OAuthClientID       string
 	OAuthScopesKey      string
@@ -280,18 +404,42 @@ func RMQUninstall(t *testing.T, namespace, user, password, vhost string, oauth R
 	helper.DeleteNamespace(t, namespace)
 }
 
-func RMQPublishMessages(t *testing.T, namespace, connectionString, queueName string, messageCount int) {
+func RMQPublishMessages(t *testing.T, namespace, connectionString, queueName string, messageCount, interval int) {
 	data := templateData{
 		Namespace:    namespace,
 		Connection:   connectionString,
 		QueueName:    queueName,
 		MessageCount: messageCount,
+		Interval:     interval,
 	}
 
-	// Before push messages remove previous jobs if any
-	_, _ = helper.ExecuteCommand(fmt.Sprintf("kubectl delete jobs/rabbitmq-publish-%s --namespace %s", queueName, namespace))
+	// Before pushing new messages, remove all previous publishing jobs, if any.
+	RMQStopPublishingMessages(namespace, queueName)
 
 	helper.KubectlApplyWithTemplate(t, data, "rmqPublishTemplate", publishTemplate)
+}
+
+func RMQStopPublishingMessages(namespace, queueName string) {
+	_, _ = helper.ExecuteCommand(fmt.Sprintf("kubectl delete jobs/rabbitmq-publish-%s --namespace %s", queueName, namespace))
+}
+
+func RMQConsumeMessages(t *testing.T, namespace, connectionString, queueName string) {
+	data := templateData{
+		Namespace:  namespace,
+		Connection: connectionString,
+		QueueName:  queueName,
+	}
+
+	// Before consuming messages, remove all previous consumer jobs, if any.
+	RMQStopConsumingMessages(namespace, queueName)
+
+	helper.KubectlApplyWithTemplate(t, data, "rmqConsumerTemplate", consumeTemplate)
+}
+
+func RMQStopConsumingMessages(namespace, queueName string) {
+	for i := 0; i < consumeTemplateJobCount; i++ {
+		_, _ = helper.ExecuteCommand(fmt.Sprintf("kubectl delete jobs/rabbitmq-consume-%d-%s --namespace %s", i, queueName, namespace))
+	}
 }
 
 func RMQCreateVHost(t *testing.T, namespace, host, user, password, vhost string) {

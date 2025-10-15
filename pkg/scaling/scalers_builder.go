@@ -95,10 +95,14 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 			logger.Error(err, "error resolving auth params", "triggerIndex", triggerIndex)
 			if scaler != nil {
-				scaler.Close(ctx)
+				if closeErr := scaler.Close(ctx); closeErr != nil {
+					logger.Error(closeErr, "failed to close scaler")
+				}
 			}
 			for _, builder := range result {
-				builder.Scaler.Close(ctx)
+				if closeErr := builder.Scaler.Close(ctx); closeErr != nil {
+					logger.Error(closeErr, "failed to close scaler")
+				}
 			}
 			return nil, err
 		}
@@ -166,7 +170,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "cron":
 		return scalers.NewCronScaler(config)
 	case "datadog":
-		return scalers.NewDatadogScaler(ctx, config)
+		return scalers.NewDatadogScaler(config)
 	case "dynatrace":
 		return scalers.NewDynatraceScaler(config)
 	case "elasticsearch":
@@ -180,6 +184,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewExternalMockScaler(config)
 	case "external-push":
 		return scalers.NewExternalPushScaler(config)
+	case "forgejo-runner":
+		return scalers.NewForgejoRunnerScaler(config)
 	case "gcp-cloudtasks":
 		return scalers.NewGcpCloudTasksScaler(config)
 	case "gcp-pubsub":
@@ -254,10 +260,14 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewSolaceDMScaler(config)
 	case "solace-event-queue":
 		return scalers.NewSolaceScaler(config)
+	case "solarwinds":
+		return scalers.NewSolarWindsScaler(config)
 	case "solr":
 		return scalers.NewSolrScaler(config)
 	case "splunk":
 		return scalers.NewSplunkScaler(config)
+	case "splunk-observability":
+		return scalers.NewSplunkObservabilityScaler(config)
 	case "stan":
 		return scalers.NewStanScaler(config)
 	case "sumologic":

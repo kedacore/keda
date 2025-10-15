@@ -376,7 +376,7 @@ spec:
       serviceAccountName: {{.PrometheusServerName}}
       containers:
         - name: prometheus-server-configmap-reload
-          image: "jimmidyson/configmap-reload:v0.3.0"
+          image: "docker.io/jimmidyson/configmap-reload:v0.3.0"
           imagePullPolicy: "IfNotPresent"
           args:
             - --volume-dir=/etc/config
@@ -388,7 +388,7 @@ spec:
               readOnly: true
 
         - name: prometheus-server
-          image: "prom/prometheus:v2.47.1"
+          image: "docker.io/prom/prometheus:v2.47.1"
           imagePullPolicy: "IfNotPresent"
           args:
             - --storage.tsdb.retention.time=15d

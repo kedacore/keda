@@ -15,7 +15,7 @@ If you used the pre-release `azure-service-bus-go` module, see the [Migration gu
 ## Getting started
 
 ### Prerequisites
-- Go, version 1.18 or higher - [Install Go](https://go.dev/doc/install)
+- [Supported](https://aka.ms/azsdk/go/supported-versions) version of Go - [Install Go](https://go.dev/doc/install)
 - Azure subscription - [Create a free account](https://azure.microsoft.com/free/)
 - Service Bus namespace - [Create a namespace](https://learn.microsoft.com/azure/service-bus-messaging/service-bus-create-namespace-portal)
 - A Service Bus queue, topic, or subscription - See the Azure Service Bus documentation to create an entity in your Service Bus namespace. For example, create a Service Bus queue using the [Azure portal](https://learn.microsoft.com/azure/service-bus-messaging/service-bus-quickstart-portal), the [Azure CLI](https://learn.microsoft.com/azure/service-bus-messaging/service-bus-quickstart-cli), or other tools.
@@ -269,6 +269,8 @@ To see some example code for receiving messages using the `Receiver`, see the [R
 
 ## Troubleshooting
 
+For detailed troubleshooting information, refer to the [Service Bus Troubleshooting Guide][servicebus_troubleshooting].
+
 ### Logging
 
 This module uses the classification-based logging implementation in `azcore`. To enable console logging for all SDK modules, set the environment variable `AZURE_SDK_GO_LOGGING` to `all`. 
@@ -331,3 +333,4 @@ If you'd like to contribute to this library, please read the [contributing guide
 [godoc_newsender]: https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/#Client.NewSender
 [godoc_newreceiver_queue]: https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/#Client.NewReceiverForQueue
 [godoc_newreceiver_subscription]: https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/#Client.NewReceiverForSubscription
+[servicebus_troubleshooting]: https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/messaging/azservicebus/TROUBLESHOOTING.md

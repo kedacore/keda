@@ -569,12 +569,12 @@ func CreatePartitionFile(ctx context.Context, urlPathToPartition string, partiti
 	}
 
 	if partitionID == "0" {
-		_, err = f.WriteString(fmt.Sprintf(checkpointFormat, partitionInfo.LastEnqueuedSequenceNumber-1, partitionID))
+		_, err = fmt.Fprintf(f, checkpointFormat, partitionInfo.LastEnqueuedSequenceNumber-1, partitionID)
 		if err != nil {
 			return fmt.Errorf("unable to write to file: %w", err)
 		}
 	} else {
-		_, err = f.WriteString(fmt.Sprintf(checkpointFormat, partitionInfo.LastEnqueuedSequenceNumber, partitionID))
+		_, err = fmt.Fprintf(f, checkpointFormat, partitionInfo.LastEnqueuedSequenceNumber, partitionID)
 		if err != nil {
 			return fmt.Errorf("unable to write to file: %w", err)
 		}

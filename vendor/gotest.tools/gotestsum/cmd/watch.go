@@ -16,7 +16,7 @@ func runWatcher(opts *options) error {
 	defer cancel()
 
 	w := &watchRuns{opts: *opts}
-	return filewatcher.Watch(ctx, opts.packages, w.run)
+	return filewatcher.Watch(ctx, opts.packages, opts.watchClear, w.run)
 }
 
 type watchRuns struct {

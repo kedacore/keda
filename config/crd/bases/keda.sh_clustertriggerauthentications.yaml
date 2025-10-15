@@ -466,6 +466,8 @@ spec:
                     properties:
                       serviceAccount:
                         type: string
+                      serviceAccountName:
+                        type: string
                       token:
                         type: string
                     type: object

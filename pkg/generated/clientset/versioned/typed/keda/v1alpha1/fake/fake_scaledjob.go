@@ -19,129 +19,32 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	kedav1alpha1 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeScaledJobs implements ScaledJobInterface
-type FakeScaledJobs struct {
+// fakeScaledJobs implements ScaledJobInterface
+type fakeScaledJobs struct {
+	*gentype.FakeClientWithList[*v1alpha1.ScaledJob, *v1alpha1.ScaledJobList]
 	Fake *FakeKedaV1alpha1
-	ns   string
 }
 
-var scaledjobsResource = v1alpha1.SchemeGroupVersion.WithResource("scaledjobs")
-
-var scaledjobsKind = v1alpha1.SchemeGroupVersion.WithKind("ScaledJob")
-
-// Get takes name of the scaledJob, and returns the corresponding scaledJob object, and an error if there is any.
-func (c *FakeScaledJobs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ScaledJob, err error) {
-	emptyResult := &v1alpha1.ScaledJob{}
-	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithOptions(scaledjobsResource, c.ns, name, options), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
+func newFakeScaledJobs(fake *FakeKedaV1alpha1, namespace string) kedav1alpha1.ScaledJobInterface {
+	return &fakeScaledJobs{
+		gentype.NewFakeClientWithList[*v1alpha1.ScaledJob, *v1alpha1.ScaledJobList](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("scaledjobs"),
+			v1alpha1.SchemeGroupVersion.WithKind("ScaledJob"),
+			func() *v1alpha1.ScaledJob { return &v1alpha1.ScaledJob{} },
+			func() *v1alpha1.ScaledJobList { return &v1alpha1.ScaledJobList{} },
+			func(dst, src *v1alpha1.ScaledJobList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.ScaledJobList) []*v1alpha1.ScaledJob { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1alpha1.ScaledJobList, items []*v1alpha1.ScaledJob) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.ScaledJob), err
-}
-
-// List takes label and field selectors, and returns the list of ScaledJobs that match those selectors.
-func (c *FakeScaledJobs) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ScaledJobList, err error) {
-	emptyResult := &v1alpha1.ScaledJobList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewListActionWithOptions(scaledjobsResource, scaledjobsKind, c.ns, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.ScaledJobList{ListMeta: obj.(*v1alpha1.ScaledJobList).ListMeta}
-	for _, item := range obj.(*v1alpha1.ScaledJobList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested scaledJobs.
-func (c *FakeScaledJobs) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchActionWithOptions(scaledjobsResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a scaledJob and creates it.  Returns the server's representation of the scaledJob, and an error, if there is any.
-func (c *FakeScaledJobs) Create(ctx context.Context, scaledJob *v1alpha1.ScaledJob, opts v1.CreateOptions) (result *v1alpha1.ScaledJob, err error) {
-	emptyResult := &v1alpha1.ScaledJob{}
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithOptions(scaledjobsResource, c.ns, scaledJob, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ScaledJob), err
-}
-
-// Update takes the representation of a scaledJob and updates it. Returns the server's representation of the scaledJob, and an error, if there is any.
-func (c *FakeScaledJobs) Update(ctx context.Context, scaledJob *v1alpha1.ScaledJob, opts v1.UpdateOptions) (result *v1alpha1.ScaledJob, err error) {
-	emptyResult := &v1alpha1.ScaledJob{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithOptions(scaledjobsResource, c.ns, scaledJob, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ScaledJob), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeScaledJobs) UpdateStatus(ctx context.Context, scaledJob *v1alpha1.ScaledJob, opts v1.UpdateOptions) (result *v1alpha1.ScaledJob, err error) {
-	emptyResult := &v1alpha1.ScaledJob{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithOptions(scaledjobsResource, "status", c.ns, scaledJob, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ScaledJob), err
-}
-
-// Delete takes name of the scaledJob and deletes it. Returns an error if one occurs.
-func (c *FakeScaledJobs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(scaledjobsResource, c.ns, name, opts), &v1alpha1.ScaledJob{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeScaledJobs) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionActionWithOptions(scaledjobsResource, c.ns, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.ScaledJobList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched scaledJob.
-func (c *FakeScaledJobs) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ScaledJob, err error) {
-	emptyResult := &v1alpha1.ScaledJob{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(scaledjobsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.ScaledJob), err
 }

@@ -19,6 +19,7 @@ package scaling
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,6 +41,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 	"github.com/kedacore/keda/v2/pkg/fallback"
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	"github.com/kedacore/keda/v2/pkg/metricsservice/api"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -51,7 +53,12 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scaling/scaledjob"
 )
 
-var log = logf.Log.WithName("scale_handler")
+var (
+	log = logf.Log.WithName("scale_handler")
+
+	// sendRawMetrics is a feature flag that enables sending the raw metric values to all subscribed parties
+	sendRawMetrics = os.Getenv("RAW_METRICS_GRPC_PROTOCOL") == "enabled"
+)
 
 // ScaleHandler encapsulates the logic of calling the right scalers for
 // each ScaledObject and making the final scale decision and operation
@@ -62,6 +69,9 @@ type ScaleHandler interface {
 	ClearScalersCache(ctx context.Context, scalableObject interface{}) error
 
 	GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error)
+	SubscribeMetric(ctx context.Context, subscriber string, metricMetadata *api.ScaledObjectRef) bool
+	UnsubscribeMetric(ctx context.Context, subscriber string, metadata *api.ScaledObjectRef) bool
+	GetRawMetricsChan(subscriber string) (rawMetrics chan RawMetrics, done chan bool)
 }
 
 type scaleHandler struct {
@@ -75,12 +85,17 @@ type scaleHandler struct {
 	scalerCachesLock         *sync.RWMutex
 	scaledObjectsMetricCache metricscache.MetricsCache
 	authClientSet            *authentication.AuthClientSet
+	rawMetricsSubscriptions  map[string]*RawMetricSubscriptions
+	// redundant, but it will speed up the lookups
+	metricToSubscriptions map[metricMeta][]*RawMetricSubscriptions
+	subsLock              *sync.RWMutex
 }
 
 // NewScaleHandler creates a ScaleHandler object
 func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder record.EventRecorder, authClientSet *authentication.AuthClientSet) ScaleHandler {
 	return &scaleHandler{
 		client:                   client,
+		scaleClient:              scaleClient,
 		scaleLoopContexts:        &sync.Map{},
 		scaleExecutor:            executor.NewScaleExecutor(client, scaleClient, reconcilerScheme, recorder),
 		globalHTTPTimeout:        globalHTTPTimeout,
@@ -89,6 +104,9 @@ func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, recon
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
 		authClientSet:            authClientSet,
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
 	}
 }
 
@@ -206,7 +224,7 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 		return
 	}
 
-	for _, ps := range cache.GetPushScalers() {
+	for i, ps := range cache.GetPushScalers() {
 		go func(s scalers.PushScaler) {
 			activeCh := make(chan bool)
 			go s.Run(ctx, activeCh)
@@ -214,7 +232,16 @@ func (h *scaleHandler) startPushScalers(ctx context.Context, withTriggers *kedav
 				select {
 				case <-ctx.Done():
 					return
-				case active := <-activeCh:
+				case active, channelOpen := <-activeCh:
+					if !channelOpen {
+						logger.V(1).Info("Push scaler channel closed", "scalableObject", scalableObject, "pushScalerIndex", i)
+						return
+					}
+					if !active {
+						// inactivation events are ignored and inactivation happens through the standard metric scaling logic
+						logger.V(4).Info("Push scaler inactivation event received", "scalableObject", scalableObject, "pushScalerIndex", i)
+						continue
+					}
 					scalingMutex.Lock()
 					switch obj := scalableObject.(type) {
 					case *kedav1alpha1.ScaledObject:
@@ -557,6 +584,10 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 				metricValue := metric.Value.AsApproximateFloat64()
 				metricscollector.RecordScalerMetric(scaledObjectNamespace, scaledObjectName, result.triggerName, result.triggerIndex, metric.MetricName, true, metricValue)
 			}
+			if sendRawMetrics {
+				// send the raw metric to all subscribed clients in a non-blocking fashion
+				go h.sendWhenSubscribed(scaledObjectName, scaledObjectNamespace, result.triggerName, metrics)
+			}
 		}
 		if fallbackActive {
 			isFallbackActive = true
@@ -855,6 +886,10 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 				cache.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
 				isError = true
 				continue
+			}
+			if sendRawMetrics {
+				// send the raw metric to all subscribed clients in a non-blocking fashion
+				go h.sendWhenSubscribed(scaledJob.Name, scaledJob.Namespace, scalerName, metrics)
 			}
 			if isTriggerActive {
 				isActive = true

@@ -4,10 +4,11 @@ SCRIPTDIR := $(shell pwd)
 CURR=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ROOTDIR:=$(CURR)
 
-GOVERSION ?= 1.22.11
+GOVERSION ?= 1.23.12
+GOTOOLCHAIN ?= auto
 GOIMAGE ?= golang:$(GOVERSION)
 GOV2IMAGE ?= $(GOIMAGE)
-ALPINE_IMAGE ?= alpine:3.17
+ALPINE_IMAGE ?= alpine:3.21
 TMPDIR := ${SCRIPTDIR}/.tmp
 
 DOCKER_CMD:=docker run
@@ -138,14 +139,18 @@ endif
 
 ifeq ("$(DEBUG)", "true")
 	GOIMAGE := go-driver-tests:debug
-	DOCKER_DEBUG_ARGS := --security-opt=seccomp:unconfined
+	DOCKER_DEBUG_ARGS := --security-opt=seccomp:unconfined -e GOTOOLCHAIN=$(GOTOOLCHAIN)
 	DEBUG_PORT := 2345
 
-	DOCKER_RUN_CMD := $(DOCKER_DEBUG_ARGS) $(GOIMAGE) /go/bin/dlv --listen=:$(DEBUG_PORT) --headless=true --api-version=2 exec /test_debug.test -- $(TESTOPTIONS)
+	DOCKER_RUN_CMD := $(DOCKER_DEBUG_ARGS) $(GOIMAGE) /go/bin/dlv --listen=:$(DEBUG_PORT) --headless=true --api-version=2 --accept-multiclient exec /test_debug.test -- $(TESTOPTIONS)
 	DOCKER_V2_RUN_CMD := $(DOCKER_RUN_CMD)
 else
     DOCKER_RUN_CMD := $(GOIMAGE) go test -timeout 120m $(GOBUILDTAGSOPT) $(TESTOPTIONS) $(TESTVERBOSEOPTIONS) $(TESTS)
     DOCKER_V2_RUN_CMD := $(GOV2IMAGE) go test -timeout 120m $(GOBUILDTAGSOPT) $(TESTOPTIONS) $(TESTVERBOSEOPTIONS) -parallel $(TESTV2PARALLEL) ./tests
+endif
+
+ifeq ("$(ADD_TIMESTAMP)", "true")
+	ADD_TIMESTAMP :=| go run ./test/timestamp_output/timestamp_output.go 
 endif
 
 .PHONY: all build clean linter run-tests vulncheck
@@ -182,6 +187,7 @@ run-unit-tests: run-v2-unit-tests
 		--rm \
 		-v "${ROOTDIR}":/usr/code \
 		-e CGO_ENABLED=$(CGO_ENABLED) \
+		-e GOTOOLCHAIN=$(GOTOOLCHAIN) \
 		-w /usr/code/ \
 		$(GOIMAGE) \
 		go test $(TESTOPTIONS) $(REPOPATH) $(REPOPATH)/http $(REPOPATH)/agency $(REPOPATH)/vst/protocol
@@ -191,6 +197,7 @@ run-v2-unit-tests:
 		--rm \
 		-v "${ROOTDIR}"/v2:/usr/code \
 		-e CGO_ENABLED=$(CGO_ENABLED) \
+		-e GOTOOLCHAIN=$(GOTOOLCHAIN) \
 		-w /usr/code/ \
 		$(GOIMAGE) \
 		go test $(TESTOPTIONS) $(REPOPATH)/v2/connection $(REPOPATH)/v2/arangodb/...
@@ -416,7 +423,8 @@ COMMON_DOCKER_CMD_PARAMS = \
 	-e TEST_ENABLE_SHUTDOWN=$(TEST_ENABLE_SHUTDOWN) \
 	-e ENABLE_DATABASE_EXTRA_FEATURES=$(ENABLE_DATABASE_EXTRA_FEATURES) \
 	-e GODEBUG=tls13=1 \
-	-e CGO_ENABLED=$(CGO_ENABLED)
+	-e CGO_ENABLED=$(CGO_ENABLED) \
+	-e GOTOOLCHAIN=$(GOTOOLCHAIN)
 
 
 # Internal test tasks
@@ -435,8 +443,7 @@ DOCKER_V1_CMD_PARAMS=\
 	-w /usr/code/
 
 __test_go_test:
-	$(DOCKER_CMD) $(DOCKER_V1_CMD_PARAMS) $(DOCKER_RUN_CMD) \
-	&& echo "success!" \
+	($(DOCKER_CMD) $(DOCKER_V1_CMD_PARAMS) $(DOCKER_RUN_CMD) $(ADD_TIMESTAMP)) && echo "success!" \
 	|| ( $(ON_FAILURE_PARAMS) MAJOR_VERSION=1 . ./test/on_failure.sh)
 
 			
@@ -449,18 +456,17 @@ DOCKER_CMD_V2_PARAMS=\
 	-w /usr/code/v2/
 
 __test_v2_go_test:
-	$(DOCKER_CMD) $(DOCKER_CMD_V2_PARAMS) $(DOCKER_V2_RUN_CMD) \
-	&& echo "success!" \
+	($(DOCKER_CMD) $(DOCKER_CMD_V2_PARAMS) $(DOCKER_V2_RUN_CMD) $(ADD_TIMESTAMP)) && echo "success!" \
 	|| ($(ON_FAILURE_PARAMS) MAJOR_VERSION=2 . ./test/on_failure.sh)
 
 __test_debug__:
 ifeq ("$(DEBUG)", "true")
-	@docker build -f Dockerfile.debug --build-arg GOVERSION=$(GOVERSION) --build-arg "TESTS_DIRECTORY=./test" -t $(GOIMAGE) .
+	@docker build -f Dockerfile.debug --build-arg GOVERSION=$(GOVERSION) --build-arg GOTOOLCHAIN=$(GOTOOLCHAIN) --build-arg "TESTS_DIRECTORY=./test" -t $(GOIMAGE) .
 endif
 
 __test_v2_debug__:
 ifeq ("$(DEBUG)", "true")
-	@docker build -f Dockerfile.debug --build-arg GOVERSION=$(GOVERSION) --build-arg "TESTS_DIRECTORY=./tests" --build-arg "TESTS_ROOT_PATH=v2" -t $(GOIMAGE) .
+	@docker build -f Dockerfile.debug --build-arg GOVERSION=$(GOVERSION) --build-arg GOTOOLCHAIN=$(GOTOOLCHAIN) --build-arg "TESTS_DIRECTORY=./tests" --build-arg "TESTS_ROOT_PATH=v2" -t $(GOIMAGE) .
 endif
 
 __dir_setup:
@@ -509,7 +515,7 @@ tools: __dir_setup
 	@echo ">> Fetching golangci-lint linter"
 	@GOBIN=$(TMPDIR)/bin go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.52.2
 	@echo ">> Fetching goimports"
-	@GOBIN=$(TMPDIR)/bin go install golang.org/x/tools/cmd/goimports@v0.1.12
+	@GOBIN=$(TMPDIR)/bin go install golang.org/x/tools/cmd/goimports@v0.32.0
 	@echo ">> Fetching license check"
 	@GOBIN=$(TMPDIR)/bin go install github.com/google/addlicense@v1.0.0
 	@echo ">> Fetching govulncheck"

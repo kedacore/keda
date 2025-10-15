@@ -41,22 +41,19 @@ type Rows interface {
 	// when there was an error executing the query.
 	FieldDescriptions() []pgconn.FieldDescription
 
-	// Next prepares the next row for reading. It returns true if there is another
-	// row and false if no more rows are available or a fatal error has occurred.
-	// It automatically closes rows when all rows are read.
+	// Next prepares the next row for reading. It returns true if there is another row and false if no more rows are
+	// available or a fatal error has occurred. It automatically closes rows upon returning false (whether due to all rows
+	// having been read or due to an error).
 	//
-	// Callers should check rows.Err() after rows.Next() returns false to detect
-	// whether result-set reading ended prematurely due to an error. See
-	// Conn.Query for details.
+	// Callers should check rows.Err() after rows.Next() returns false to detect whether result-set reading ended
+	// prematurely due to an error. See Conn.Query for details.
 	//
-	// For simpler error handling, consider using the higher-level pgx v5
-	// CollectRows() and ForEachRow() helpers instead.
+	// For simpler error handling, consider using the higher-level pgx v5 CollectRows() and ForEachRow() helpers instead.
 	Next() bool
 
-	// Scan reads the values from the current row into dest values positionally.
-	// dest can include pointers to core types, values implementing the Scanner
-	// interface, and nil. nil will skip the value entirely. It is an error to
-	// call Scan without first calling Next() and checking that it returned true.
+	// Scan reads the values from the current row into dest values positionally. dest can include pointers to core types,
+	// values implementing the Scanner interface, and nil. nil will skip the value entirely. It is an error to call Scan
+	// without first calling Next() and checking that it returned true. Rows is automatically closed upon error.
 	Scan(dest ...any) error
 
 	// Values returns the decoded row values. As with Scan(), it is an error to
@@ -188,6 +185,17 @@ func (rows *baseRows) Close() {
 	} else if rows.queryTracer != nil {
 		rows.queryTracer.TraceQueryEnd(rows.ctx, rows.conn, TraceQueryEndData{rows.commandTag, rows.err})
 	}
+
+	// Zero references to other memory allocations. This allows them to be GC'd even when the Rows still referenced. In
+	// particular, when using pgxpool GC could be delayed as pgxpool.poolRows are allocated in large slices.
+	//
+	// https://github.com/jackc/pgx/pull/2269
+	rows.values = nil
+	rows.scanPlans = nil
+	rows.scanTypes = nil
+	rows.ctx = nil
+	rows.sql = ""
+	rows.args = nil
 }
 
 func (rows *baseRows) CommandTag() pgconn.CommandTag {
@@ -552,7 +560,7 @@ func (rs *mapRowScanner) ScanRow(rows Rows) error {
 	return nil
 }
 
-// RowToStructByPos returns a T scanned from row. T must be a struct. T must have the same number a public fields as row
+// RowToStructByPos returns a T scanned from row. T must be a struct. T must have the same number of public fields as row
 // has fields. The row and T fields will be matched by position. If the "db" struct tag is "-" then the field will be
 // ignored.
 func RowToStructByPos[T any](row CollectableRow) (T, error) {

@@ -1,0 +1,73 @@
+run:
+  timeout: 6m
+
+linters-settings:
+  govet:
+    settings:
+      shadow:
+        strict: true
+    enable-all: true
+  goconst:
+    min-len: 2
+    min-occurrences: 4
+  revive:
+    enable-all-rules: false
+    rules:
+    - name: var-naming
+      disabled: true
+  gosec:
+    excludes:
+      - G115 # Too many false positives.
+
+linters:
+  enable-all: true
+  disable:
+    - dupl
+    - lll
+    - gochecknoglobals
+    - gochecknoinits
+    - funlen
+    - godox
+    - err113
+    - wsl
+    - nlreturn
+    - gomnd
+    - mnd
+    - paralleltest
+    - wrapcheck
+    - testpackage
+    - gocognit
+    - nestif
+    - exhaustive
+    - forcetypeassert
+    - gocyclo
+    - cyclop
+    - varnamelen
+    - maintidx
+    - ireturn
+    - exhaustruct
+    - dupword
+    # Just causes noise
+    - depguard
+    # Deprecated
+    - execinquery
+    # Not needed in go 1.22+
+    - exportloopref
+
+issues:
+  exclude-use-default: false
+  max-same-issues: 0
+  exclude:
+    - Deferring unsafe method "Close" on type "io\.ReadCloser"
+  exclude-dirs:
+    - terst
+  exclude-files:
+    - dbg/dbg.go
+    - token/token_const.go
+  exclude-rules:
+    # Field alignment in tests isn't a performance issue.
+    - text: fieldalignment
+      path: _test\.go
+    - text: Error return value of `fmt\.Fprint.*` is not checked
+      path: tools/tester/main.go
+

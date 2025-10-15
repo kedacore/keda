@@ -36,6 +36,114 @@ go test -v -tags e2e ./scalers/azure/azure_queue/azure_queue_test.go # Assumes t
 
 Refer to [this](https://pkg.go.dev/testing) for more information about testing in `Go`.
 
+### Running e2e tests with a custom config file
+
+The `E2E_TEST_CONFIG` environment variable can be used to run a subset of tests with a custom config file.
+It can also be used to configure test setup. For example, to run tests without deploying KEDA, or to deploy KEDA using custom images.
+
+```bash
+E2E_TEST_CONFIG=tests/example-config.yaml go test -v -tags e2e ./tests/run-all.go
+```
+
+Supplying environment variables directly will override any relevant config file field.
+
+Examples:
+
+- `E2E_TEST_REGEX` will override the `testCategories` field in the config file.
+- `E2E_INSTALL_KEDA=false` will run the tests without deploying KEDA, even if the config file has `keda.install: true`.
+
+#### Filtering tests
+
+The config file is a YAML file which can be used to configure the test setup and the test categories and the test suites to run.
+You can include or exclude suites in a category, or exclude an entire category.
+The current categories that exist are defined in the `tests/` subdirectory:
+
+- `internals`
+- `scalers`
+- `secret-providers`
+- `sequential`
+
+Here is an example config that will run all tests in the `scalers` category, but `exclude` the tests in the `cpu` suite.
+It will also `exclude` all tests in the `internals` category.
+Omitting an existing category in the config file will run all tests in that category.
+
+```yaml
+testCategories:
+  # This will run all tests in the scalers category, but exclude the cpu test.
+  scalers:
+    mode: exclude
+    tests:
+      - cpu
+  # Using mode: exclude and omitting the tests list will exclude all tests in the category.
+  internals:
+    mode: exclude
+  secret-providers:
+    mode: exclude
+  sequential:
+    mode: exclude
+```
+
+You can also do the opposite, and `include` tests, but `exclude` the rest:
+
+```yaml
+testCategories:
+  # This will only run the aws_cloudwatch, cpu, and kafka scaler tests, and exclude the rest.
+  scalers:
+    mode: include
+    tests:
+      - aws/aws_cloudwatch # you can also specify a deeper nested test by it's "directory path"
+      - cpu
+      - kafka
+  # Since the other categories are not specified, all tests in those categories will not be run.
+```
+
+A valid config file must have the `testCategories` field, and all defined categories must have a `mode` field which is either `include` or `exclude`.
+
+This is an example of a valid config file with the `testCategories` field set to an empty map. This will run all tests in all categories.
+
+```yaml
+# This will run all tests in all categories.
+testCategories: {}
+```
+
+This example is invalid, and will fail and emit an error message:
+
+```yaml
+testCategories:
+# Error loading test config: testCategories is a required field. Did you mean to set this to an empty map?
+```
+
+You can specify a custom go regex directly through the `E2E_TEST_REGEX` environment variable. This will override the config file environment variable.
+
+Not specifying either `E2E_TEST_CONFIG` or `E2E_TEST_REGEX` will run all tests in all categories.
+
+You can also check what tests would be executed and other configurations without actually running them by setting the `dryRun` field to `true`.
+
+e.g.,
+
+```yaml
+dryRun: true
+keda:
+  # ...omitted
+testCategories:
+  # ...omitted
+```
+
+#### Customizing test setup
+
+The config file can also be used to customize the test setup. For example, to deploy KEDA using custom images.
+
+```yaml
+keda:
+  # These are the default values.
+  skipSetup: false # If true, the test script will skip the setup phase.
+  skipCleanup: false # If true, the test script will skip the cleanup phase.
+  imageRegistry: ""
+  imageRepo: ""
+```
+
+Note that if `imageRegistry` and `imageRepo` are empty, the test script will use the default KEDA repository and registry defined in the `Makefile`.
+
 ## E2E Test Setup
 
 The test script will run in 3 phases:
@@ -192,6 +300,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
     ...
     ...
     // Sleep / poll for replica count using helper method.
+    // Duration should be iterations * intervalSeconds
     require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 10, 60, 1),
 		"replica count should be 10 after 1 minute")
 }

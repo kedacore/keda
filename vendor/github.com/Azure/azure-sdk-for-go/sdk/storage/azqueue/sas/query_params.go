@@ -267,7 +267,7 @@ func (p *QueryParameters) ContentLanguage() string {
 	return p.contentLanguage
 }
 
-// ContentType returns sontentType
+// ContentType returns contentType
 func (p *QueryParameters) ContentType() string {
 	return p.contentType
 }

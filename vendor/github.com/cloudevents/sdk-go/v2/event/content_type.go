@@ -14,6 +14,18 @@ const (
 	ApplicationCloudEventsBatchJSON = "application/cloudevents-batch+json"
 )
 
+// isJSON returns true if the content type is a JSON type.
+func isJSON(contentType string) bool {
+	switch contentType {
+	case ApplicationJSON, TextJSON, ApplicationCloudEventsJSON, ApplicationCloudEventsBatchJSON:
+		return true
+	case "":
+		return true // Empty content type assumes json
+	default:
+		return false
+	}
+}
+
 // StringOfApplicationJSON returns a string pointer to "application/json"
 func StringOfApplicationJSON() *string {
 	a := ApplicationJSON

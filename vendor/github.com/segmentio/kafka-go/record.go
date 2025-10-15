@@ -35,7 +35,7 @@ type Record = protocol.Record
 // RecordReader values are not safe to use concurrently from multiple goroutines.
 type RecordReader = protocol.RecordReader
 
-// NewRecordReade reconstructs a RecordSet which exposes the sequence of records
+// NewRecordReader reconstructs a RecordSet which exposes the sequence of records
 // passed as arguments.
 func NewRecordReader(records ...Record) RecordReader {
 	return protocol.NewRecordReader(records...)

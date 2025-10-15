@@ -241,7 +241,7 @@ func (t joinGroupRequestGroupProtocolV1) writeTo(wb *writeBuffer) {
 	wb.writeBytes(t.ProtocolMetadata)
 }
 
-type joinGroupRequestV1 struct {
+type joinGroupRequest struct {
 	// GroupID holds the unique group identifier
 	GroupID string
 
@@ -264,7 +264,7 @@ type joinGroupRequestV1 struct {
 	GroupProtocols []joinGroupRequestGroupProtocolV1
 }
 
-func (t joinGroupRequestV1) size() int32 {
+func (t joinGroupRequest) size() int32 {
 	return sizeofString(t.GroupID) +
 		sizeofInt32(t.SessionTimeout) +
 		sizeofInt32(t.RebalanceTimeout) +
@@ -273,7 +273,7 @@ func (t joinGroupRequestV1) size() int32 {
 		sizeofArray(len(t.GroupProtocols), func(i int) int32 { return t.GroupProtocols[i].size() })
 }
 
-func (t joinGroupRequestV1) writeTo(wb *writeBuffer) {
+func (t joinGroupRequest) writeTo(wb *writeBuffer) {
 	wb.writeString(t.GroupID)
 	wb.writeInt32(t.SessionTimeout)
 	wb.writeInt32(t.RebalanceTimeout)
@@ -282,23 +282,23 @@ func (t joinGroupRequestV1) writeTo(wb *writeBuffer) {
 	wb.writeArray(len(t.GroupProtocols), func(i int) { t.GroupProtocols[i].writeTo(wb) })
 }
 
-type joinGroupResponseMemberV1 struct {
+type joinGroupResponseMember struct {
 	// MemberID assigned by the group coordinator
 	MemberID       string
 	MemberMetadata []byte
 }
 
-func (t joinGroupResponseMemberV1) size() int32 {
+func (t joinGroupResponseMember) size() int32 {
 	return sizeofString(t.MemberID) +
 		sizeofBytes(t.MemberMetadata)
 }
 
-func (t joinGroupResponseMemberV1) writeTo(wb *writeBuffer) {
+func (t joinGroupResponseMember) writeTo(wb *writeBuffer) {
 	wb.writeString(t.MemberID)
 	wb.writeBytes(t.MemberMetadata)
 }
 
-func (t *joinGroupResponseMemberV1) readFrom(r *bufio.Reader, size int) (remain int, err error) {
+func (t *joinGroupResponseMember) readFrom(r *bufio.Reader, size int) (remain int, err error) {
 	if remain, err = readString(r, size, &t.MemberID); err != nil {
 		return
 	}
@@ -308,7 +308,11 @@ func (t *joinGroupResponseMemberV1) readFrom(r *bufio.Reader, size int) (remain 
 	return
 }
 
-type joinGroupResponseV1 struct {
+type joinGroupResponse struct {
+	v apiVersion // v1, v2
+
+	ThrottleTime int32
+
 	// ErrorCode holds response error code
 	ErrorCode int16
 
@@ -323,19 +327,26 @@ type joinGroupResponseV1 struct {
 
 	// MemberID assigned by the group coordinator
 	MemberID string
-	Members  []joinGroupResponseMemberV1
+	Members  []joinGroupResponseMember
 }
 
-func (t joinGroupResponseV1) size() int32 {
-	return sizeofInt16(t.ErrorCode) +
+func (t joinGroupResponse) size() int32 {
+	sz := sizeofInt16(t.ErrorCode) +
 		sizeofInt32(t.GenerationID) +
 		sizeofString(t.GroupProtocol) +
 		sizeofString(t.LeaderID) +
 		sizeofString(t.MemberID) +
 		sizeofArray(len(t.MemberID), func(i int) int32 { return t.Members[i].size() })
+	if t.v >= v2 {
+		sz += sizeofInt32(t.ThrottleTime)
+	}
+	return sz
 }
 
-func (t joinGroupResponseV1) writeTo(wb *writeBuffer) {
+func (t joinGroupResponse) writeTo(wb *writeBuffer) {
+	if t.v >= v2 {
+		wb.writeInt32(t.ThrottleTime)
+	}
 	wb.writeInt16(t.ErrorCode)
 	wb.writeInt32(t.GenerationID)
 	wb.writeString(t.GroupProtocol)
@@ -344,8 +355,14 @@ func (t joinGroupResponseV1) writeTo(wb *writeBuffer) {
 	wb.writeArray(len(t.Members), func(i int) { t.Members[i].writeTo(wb) })
 }
 
-func (t *joinGroupResponseV1) readFrom(r *bufio.Reader, size int) (remain int, err error) {
-	if remain, err = readInt16(r, size, &t.ErrorCode); err != nil {
+func (t *joinGroupResponse) readFrom(r *bufio.Reader, size int) (remain int, err error) {
+	remain = size
+	if t.v >= v2 {
+		if remain, err = readInt32(r, remain, &t.ThrottleTime); err != nil {
+			return
+		}
+	}
+	if remain, err = readInt16(r, remain, &t.ErrorCode); err != nil {
 		return
 	}
 	if remain, err = readInt32(r, remain, &t.GenerationID); err != nil {
@@ -362,7 +379,7 @@ func (t *joinGroupResponseV1) readFrom(r *bufio.Reader, size int) (remain int, e
 	}
 
 	fn := func(r *bufio.Reader, size int) (fnRemain int, fnErr error) {
-		var item joinGroupResponseMemberV1
+		var item joinGroupResponseMember
 		if fnRemain, fnErr = (&item).readFrom(r, size); fnErr != nil {
 			return
 		}

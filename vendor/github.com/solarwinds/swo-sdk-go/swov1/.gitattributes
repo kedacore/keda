@@ -1,0 +1,2 @@
+# This allows generated code to be indexed correctly
+*.go linguist-generated=false

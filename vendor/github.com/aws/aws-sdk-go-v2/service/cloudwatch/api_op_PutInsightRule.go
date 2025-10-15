@@ -49,6 +49,22 @@ type PutInsightRuleInput struct {
 	// This member is required.
 	RuleName *string
 
+	// Specify true to have this rule evaluate log events after they have been
+	// transformed by [Log transformation]. If you specify true , then the log events in log groups that
+	// have transformers will be evaluated by Contributor Insights after being
+	// transformed. Log groups that don't have transformers will still have their
+	// original log events evaluated by Contributor Insights.
+	//
+	// The default is false
+	//
+	// If a log group has a transformer, and transformation fails for some log events,
+	// those log events won't be evaluated by Contributor Insights. For information
+	// about investigating log transformation failures, see [Transformation metrics and errors].
+	//
+	// [Transformation metrics and errors]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/Transformation-Errors-Metrics.html
+	// [Log transformation]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatch-Logs-Transformation.html
+	ApplyOnTransformedLogs *bool
+
 	// The state of the rule. Valid values are ENABLED and DISABLED.
 	RuleState *string
 
@@ -166,6 +182,36 @@ func (c *Client) addOperationPutInsightRuleMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
 		return err
 	}
 	if err = addSpanInitializeStart(stack); err != nil {

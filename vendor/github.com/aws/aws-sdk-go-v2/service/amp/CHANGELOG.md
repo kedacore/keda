@@ -1,3 +1,97 @@
+# v1.40.3 (2025-09-26)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.2 (2025-09-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.1 (2025-09-16)
+
+* No change notes available for this release.
+
+# v1.40.0 (2025-09-11)
+
+* **Feature**: Add Vended Logs APIs for Amazon Prometheus Managed Collector
+
+# v1.39.4 (2025-09-10)
+
+* No change notes available for this release.
+
+# v1.39.3 (2025-09-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.2 (2025-08-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.1 (2025-08-27)
+
+* **Dependency Update**: Update to smithy-go v1.23.0.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.0 (2025-08-21)
+
+* **Feature**: Remove incorrect endpoint tests
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.38.1 (2025-08-20)
+
+* **Bug Fix**: Remove unused deserialization code.
+
+# v1.38.0 (2025-08-15)
+
+* **Feature**: Add Resource-based Policy APIs for Amazon Prometheus
+
+# v1.37.0 (2025-08-11)
+
+* **Feature**: Add support for configuring per-service Options via callback on global config.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.36.0 (2025-08-04)
+
+* **Feature**: Support configurable auth scheme preferences in service clients via AWS_AUTH_SCHEME_PREFERENCE in the environment, auth_scheme_preference in the config file, and through in-code settings on LoadDefaultConfig and client constructor methods.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.35.1 (2025-07-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.35.0 (2025-07-28)
+
+* **Feature**: Add support for HTTP interceptors.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.34.4 (2025-07-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.34.3 (2025-06-17)
+
+* **Dependency Update**: Update to smithy-go v1.22.4.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.34.2 (2025-06-10)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.34.1 (2025-06-05)
+
+* No change notes available for this release.
+
+# v1.34.0 (2025-05-22)
+
+* **Feature**: Add QueryLoggingConfiguration APIs for Amazon Managed Prometheus
+
+# v1.33.1 (2025-05-01)
+
+* No change notes available for this release.
+
+# v1.33.0 (2025-04-17)
+
+* **Feature**: Add Workspace Configuration APIs for Amazon Prometheus
+
 # v1.32.3 (2025-04-03)
 
 * No change notes available for this release.

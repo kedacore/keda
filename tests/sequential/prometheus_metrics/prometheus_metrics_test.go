@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
-	"time"
 
 	prommodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
@@ -278,7 +277,7 @@ metadata:
 spec:
   containers:
   - name: {{.ClientName}}
-    image: curlimages/curl
+    image: docker.io/curlimages/curl
     command:
       - sh
       - -c
@@ -486,7 +485,7 @@ func getTemplateData() (templateData, []Template) {
 }
 
 func fetchAndParsePrometheusMetrics(t *testing.T, cmd string) map[string]*prommodel.MetricFamily {
-	out, _, err := ExecCommandOnSpecificPod(t, clientName, testNamespace, cmd)
+	out, _, err := ExecCommandOnSpecificPodWithoutTTY(t, clientName, testNamespace, cmd)
 	assert.NoErrorf(t, err, "cannot execute command - %s", err)
 
 	parser := expfmt.TextParser{}
@@ -496,6 +495,33 @@ func fetchAndParsePrometheusMetrics(t *testing.T, cmd string) map[string]*prommo
 	assert.NoErrorf(t, err, "cannot parse metrics - %s", err)
 
 	return families
+}
+
+// WaitForPrometheusMetric waits for a specific metric to appear in the Prometheus metrics endpoint
+// and validates that the MetricFamily it has certain conditions using the provided familyValidator function.
+// Returns the parsed MetricFamily.
+func WaitForPrometheusMetric(t *testing.T, metricToWaitFor string, familyValidator func(family *prommodel.MetricFamily) bool) map[string]*prommodel.MetricFamily {
+	contextWithTimeout, cancel := context.WithTimeout(context.Background(), WaitShort)
+	defer cancel()
+	var family map[string]*prommodel.MetricFamily
+	err := KedaEventually(contextWithTimeout, func(ctx context.Context) (bool, error) {
+		t.Logf("Waiting for metric %s", metricToWaitFor)
+		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+
+		if _, ok := family[metricToWaitFor]; ok {
+			if familyValidator(family[metricToWaitFor]) {
+				return true, nil
+			}
+			return false, nil
+		}
+		return false, nil
+	}, IntervalShort)
+
+	if err != nil {
+		t.Errorf("error waiting for metric %s: %v", metricToWaitFor, err)
+	}
+
+	return family
 }
 
 func testScalerMetricValue(t *testing.T) {
@@ -528,33 +554,24 @@ func testScaledObjectErrors(t *testing.T, data templateData) {
 	t.Log("--- testing scaled object errors ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
 
-	// wait for 2 seconds as pollinginterval is 2
-	time.Sleep(20 * time.Second)
+	WaitForPrometheusMetric(t, "keda_scaled_object_errors_total", func(family *prommodel.MetricFamily) bool {
+		errCounterVal1 := getErrorMetricsValue(family)
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-	val, ok := family["keda_scaled_object_errors_total"]
-	assert.True(t, ok, "keda_scaled_object_errors_total not available")
-	if ok {
-		errCounterVal1 := getErrorMetricsValue(val)
+		// in the nested wait, we are just waiting for errCounterVal2 to eventually be greater that the first errCounterVal1
+		metrics2 := WaitForPrometheusMetric(t, "keda_scaled_object_errors_total", func(family *prommodel.MetricFamily) bool {
+			errCounterVal2 := getErrorMetricsValue(family)
+			return errCounterVal2 > errCounterVal1 && errCounterVal2 > 0
+		})
 
-		// wait for 2 seconds as pollinginterval is 2
-		time.Sleep(2 * time.Second)
+		errCounterVal2 := getErrorMetricsValue(metrics2["keda_scaled_object_errors_total"])
 
-		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-		val, ok := family["keda_scaled_object_errors_total"]
-		assert.True(t, ok, "keda_scaled_object_errors_total not available")
-		if ok {
-			errCounterVal2 := getErrorMetricsValue(val)
-			assert.NotEqual(t, errCounterVal2, float64(0))
-			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
-		}
-	}
+		// we don't have to check again, but extra validation is fine
+		return errCounterVal2 > errCounterVal1 && errCounterVal2 > 0
+	})
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
@@ -562,37 +579,24 @@ func testScaledJobErrors(t *testing.T, data templateData) {
 	t.Log("--- testing scaled job errors ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
 
-	// wait for 2 seconds as pollinginterval is 2
-	time.Sleep(20 * time.Second)
+	WaitForPrometheusMetric(t, "keda_scaled_job_errors_total", func(family *prommodel.MetricFamily) bool {
+		errCounterVal1 := getErrorMetricsValue(family)
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-	val, ok := family["keda_scaled_job_errors_total"]
-	assert.True(t, ok, "keda_scaled_job_errors_total not available")
-	if ok {
-		errCounterVal1 := getErrorMetricsValue(val)
+		// in the nested wait, we are just waiting for errCounterVal2 to eventually be greater that the first errCounterVal1
+		metrics2 := WaitForPrometheusMetric(t, "keda_scaled_job_errors_total", func(family *prommodel.MetricFamily) bool {
+			errCounterVal2 := getErrorMetricsValue(family)
+			return errCounterVal2 > errCounterVal1 && errCounterVal2 > 0
+		})
 
-		// wait for 2 seconds as pollinginterval is 2
-		time.Sleep(2 * time.Second)
+		errCounterVal2 := getErrorMetricsValue(metrics2["keda_scaled_job_errors_total"])
 
-		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-		val, ok := family["keda_scaled_job_errors_total"]
-		assert.True(t, ok, "keda_scaled_job_errors_total not available")
-		if ok {
-			errCounterVal2 := getErrorMetricsValue(val)
-			assert.NotEqual(t, errCounterVal2, float64(0))
-			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
-		} else {
-			t.Errorf("metric keda_scaled_job_errors_total not available")
-		}
-	} else {
-		t.Errorf("metric keda_scaled_job_errors_total not available")
-	}
+		// we don't have to check again, but extra validation is fine
+		return errCounterVal2 > errCounterVal1 && errCounterVal2 > 0
+	})
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 }
 
@@ -600,38 +604,28 @@ func testScalerErrors(t *testing.T, data templateData) {
 	t.Log("--- testing scaler errors ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
-
 	KubectlDeleteWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-	val, ok := family["keda_scaler_detail_errors_total"]
-	assert.True(t, ok, "keda_scaler_detail_errors_total not available")
-	if ok {
-		errCounterVal1 := getErrorMetricsValue(val)
+	WaitForPrometheusMetric(t, "keda_scaler_detail_errors_total", func(family *prommodel.MetricFamily) bool {
+		errCounterVal1 := getErrorMetricsValue(family)
 
-		// wait for 20 seconds to correctly fetch metrics.
-		time.Sleep(20 * time.Second)
+		// in the nested wait, we are just waiting for errCounterVal2 to eventually be greater that the first errCounterVal1
+		metrics2 := WaitForPrometheusMetric(t, "keda_scaler_detail_errors_total", func(family *prommodel.MetricFamily) bool {
+			errCounterVal2 := getErrorMetricsValue(family)
+			return errCounterVal2 > errCounterVal1 && errCounterVal2 > 0
+		})
 
-		family = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
-		val, ok := family["keda_scaler_detail_errors_total"]
-		assert.True(t, ok, "keda_scaler_detail_errors_total not available")
-		if ok {
-			errCounterVal2 := getErrorMetricsValue(val)
-			assert.NotEqual(t, errCounterVal2, float64(0))
-			assert.GreaterOrEqual(t, errCounterVal2, errCounterVal1)
-		}
-	}
+		errCounterVal2 := getErrorMetricsValue(metrics2["keda_scaler_detail_errors_total"])
+
+		// we don't have to check again, but extra validation is fine
+		return errCounterVal2 > errCounterVal1 && errCounterVal2 > 0
+	})
 
 	KubectlDeleteWithTemplate(t, data, "wrongScaledJobTemplate", wrongScaledJobTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
-
 	KubectlDeleteWithTemplate(t, data, "wrongScaledObjectTemplate", wrongScaledObjectTemplate)
-	time.Sleep(2 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }
 
@@ -827,18 +821,41 @@ func testScaledObjectPausedMetric(t *testing.T, data templateData) {
 
 	// Pause the ScaledObject
 	KubectlApplyWithTemplate(t, data, "scaledObjectPausedTemplate", scaledObjectPausedTemplate)
-	time.Sleep(20 * time.Second)
 
 	// Check that the paused metric is now true
-	families := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	families := WaitForPrometheusMetric(t, "keda_scaled_object_paused", func(family *prommodel.MetricFamily) bool {
+		metricValue := 0.0
+		metrics := family.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
+					metricValue = *metric.Gauge.Value
+				}
+			}
+		}
+
+		return metricValue == float64(1)
+	})
 	assertScaledObjectPausedMetric(t, families, scaledObjectName, true)
 
 	// Unpause the ScaledObject
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	time.Sleep(20 * time.Second)
 
 	// Check that the paused metric is back to false
-	families = fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	families = WaitForPrometheusMetric(t, "keda_scaled_object_paused", func(family *prommodel.MetricFamily) bool {
+		metricValue := 0.0
+		metrics := family.GetMetric()
+		for _, metric := range metrics {
+			labels := metric.GetLabel()
+			for _, label := range labels {
+				if *label.Name == labelScaledObject && *label.Value == scaledObjectName {
+					metricValue = *metric.Gauge.Value
+				}
+			}
+		}
+		return metricValue == float64(0)
+	})
 	assertScaledObjectPausedMetric(t, families, scaledObjectName, false)
 }
 
@@ -1050,9 +1067,10 @@ func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamil
 		labels := metric.GetLabel()
 		var namespace, crType string
 		for _, label := range labels {
-			if *label.Name == labelType {
+			switch *label.Name {
+			case labelType:
 				crType = *label.Value
-			} else if *label.Name == namespaceString {
+			case namespaceString:
 				namespace = *label.Value
 			}
 		}
@@ -1075,9 +1093,10 @@ func checkCRTotalValues(t *testing.T, families map[string]*prommodel.MetricFamil
 		labels := metric.GetLabel()
 		var namespace, crType string
 		for _, label := range labels {
-			if *label.Name == labelType {
+			switch *label.Name {
+			case labelType:
 				crType = *label.Value
-			} else if *label.Name == namespaceString {
+			case namespaceString:
 				namespace = *label.Value
 			}
 		}
@@ -1350,62 +1369,64 @@ func testCloudEventEmitted(t *testing.T, data templateData) {
 	t.Log("--- testing cloudevent emitted ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
 	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	defer KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
 
-	if val, ok := family["keda_cloudeventsource_events_emitted_total"]; ok {
-		var found bool
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
+	familyValidator := func(family *prommodel.MetricFamily) bool {
+		labels := family.GetMetric()
+		found := false
+		for _, metric := range labels {
 			labels := metric.GetLabel()
 			if len(labels) >= 4 &&
 				ExtractPrometheusLabelValue("cloudeventsource", labels) == "prometheus-metrics-test-ce" &&
 				ExtractPrometheusLabelValue("eventsink", labels) == "http" &&
 				ExtractPrometheusLabelValue("namespace", labels) == "prometheus-metrics-test-ns" &&
-				ExtractPrometheusLabelValue("state", labels) == "emitted" {
-				assert.GreaterOrEqual(t, *metric.Counter.Value, float64(1))
+				ExtractPrometheusLabelValue("state", labels) == "emitted" &&
+				metric.GetCounter().GetValue() >= 1 {
 				found = true
 			}
 		}
-		assert.Equal(t, true, found)
-	} else {
-		t.Errorf("metric not available")
+		return found
 	}
+
+	families := WaitForPrometheusMetric(t, "keda_cloudeventsource_events_emitted_total", familyValidator)
+	metric := families["keda_cloudeventsource_events_emitted_total"]
+
+	assert.True(t, familyValidator(metric))
 }
 
 func testCloudEventEmittedError(t *testing.T, data templateData) {
 	t.Log("--- testing cloudevent emitted error ---")
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	KubectlDeleteWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
+
 	KubectlApplyWithTemplate(t, data, "wrongCloudEventSourceTemplate", wrongCloudEventSourceTemplate)
-	time.Sleep(1 * time.Second)
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	time.Sleep(5 * time.Second)
 
-	family := fetchAndParsePrometheusMetrics(t, fmt.Sprintf("curl --insecure %s", kedaOperatorPrometheusURL))
+	defer KubectlDeleteWithTemplate(t, data, "wrongCloudEventSourceTemplate", wrongCloudEventSourceTemplate)
 
-	if val, ok := family["keda_cloudeventsource_events_emitted_total"]; ok {
-		var found bool
-		metrics := val.GetMetric()
-		for _, metric := range metrics {
+	familyValidator := func(family *prommodel.MetricFamily) bool {
+		labels := family.GetMetric()
+		found := false
+		for _, metric := range labels {
 			labels := metric.GetLabel()
 			if len(labels) >= 4 &&
 				ExtractPrometheusLabelValue("cloudeventsource", labels) == "prometheus-metrics-test-ce-w" &&
 				ExtractPrometheusLabelValue("eventsink", labels) == "http" &&
 				ExtractPrometheusLabelValue("namespace", labels) == "prometheus-metrics-test-ns" &&
-				ExtractPrometheusLabelValue("state", labels) == "failed" {
-				assert.GreaterOrEqual(t, *metric.Counter.Value, float64(5))
+				ExtractPrometheusLabelValue("state", labels) == "failed" &&
+				metric.GetCounter().GetValue() >= 5 {
 				found = true
 			}
 		}
-		assert.Equal(t, true, found)
-	} else {
-		t.Errorf("metric not available")
+		return found
 	}
 
-	KubectlDeleteWithTemplate(t, data, "wrongCloudEventSourceTemplate", wrongCloudEventSourceTemplate)
-	KubectlApplyWithTemplate(t, data, "cloudEventSourceTemplate", cloudEventSourceTemplate)
+	families := WaitForPrometheusMetric(t, "keda_cloudeventsource_events_emitted_total", familyValidator)
+	metric := families["keda_cloudeventsource_events_emitted_total"]
+
+	assert.True(t, familyValidator(metric))
 }

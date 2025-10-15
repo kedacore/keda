@@ -83,7 +83,10 @@ func TestLokiScalerAuthParams(t *testing.T) {
 		}
 
 		if err == nil {
-			if meta.Auth.EnableBasicAuth && !strings.Contains(testData.metadata["authModes"], "basic") {
+			if meta.EnabledBasicAuth() && !strings.Contains(testData.metadata["authModes"], "basic") {
+				t.Error("wrong auth mode detected")
+			}
+			if meta.EnabledBearerAuth() && !strings.Contains(testData.metadata["authModes"], "bearer") {
 				t.Error("wrong auth mode detected")
 			}
 		}

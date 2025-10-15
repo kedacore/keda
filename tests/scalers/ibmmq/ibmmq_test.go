@@ -89,7 +89,7 @@ spec:
     spec:
       containers:
         - name: check-qmgr-running-status
-          image: curlimages/curl
+          image: docker.io/curlimages/curl
           command:
             - sh
             - -c

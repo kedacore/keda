@@ -1,48 +1,36 @@
 package file
 
-import (
-	"strings"
-	"unicode/utf8"
-)
+import "strings"
 
-type Source []rune
+type Source struct {
+	raw string
+}
 
 func NewSource(contents string) Source {
-	return []rune(contents)
+	return Source{
+		raw: contents,
+	}
 }
 
 func (s Source) String() string {
-	return string(s)
+	return s.raw
 }
 
 func (s Source) Snippet(line int) (string, bool) {
-	if s == nil {
+	if s.raw == "" {
 		return "", false
 	}
-	lines := strings.Split(string(s), "\n")
-	lineOffsets := make([]int, len(lines))
-	var offset int
-	for i, line := range lines {
-		offset = offset + utf8.RuneCountInString(line) + 1
-		lineOffsets[i] = offset
+	var start int
+	for i := 1; i < line; i++ {
+		pos := strings.IndexByte(s.raw[start:], '\n')
+		if pos < 0 {
+			return "", false
+		}
+		start += pos + 1
 	}
-	charStart, found := getLineOffset(lineOffsets, line)
-	if !found || len(s) == 0 {
-		return "", false
+	end := start + strings.IndexByte(s.raw[start:], '\n')
+	if end < start {
+		end = len(s.raw)
 	}
-	charEnd, found := getLineOffset(lineOffsets, line+1)
-	if found {
-		return string(s[charStart : charEnd-1]), true
-	}
-	return string(s[charStart:]), true
-}
-
-func getLineOffset(lineOffsets []int, line int) (int, bool) {
-	if line == 1 {
-		return 0, true
-	} else if line > 1 && line <= len(lineOffsets) {
-		offset := lineOffsets[line-2]
-		return offset, true
-	}
-	return -1, false
+	return s.raw[start:end], true
 }

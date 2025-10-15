@@ -176,7 +176,7 @@ spec:
     spec:
       containers:
       - name: job-curl
-        image: curlimages/curl
+        image: docker.io/curlimages/curl
         imagePullPolicy: Always
         command: ["curl", "-X", "POST", "{{.MetricsServerEndpoint}}/{{.MetricValue}}"]
       restartPolicy: OnFailure
@@ -269,7 +269,7 @@ func testPollingIntervalDown(t *testing.T, kc *kubernetes.Clientset, data templa
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, maxReplicas, 60)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 12, 10),
-		"replica count should be %d after 1 minutes", maxReplicas)
+		"replica count should be %d after 2 minutes", maxReplicas)
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }

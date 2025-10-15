@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodbstreams/types"
 	smithy "github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/encoding/httpbinding"
 	smithyjson "github.com/aws/smithy-go/encoding/json"
@@ -258,6 +259,23 @@ func (m *awsAwsjson10_serializeOpListStreams) HandleSerialize(ctx context.Contex
 	span.End()
 	return next.HandleSerialize(ctx, in)
 }
+func awsAwsjson10_serializeDocumentShardFilter(v *types.ShardFilter, value smithyjson.Value) error {
+	object := value.Object()
+	defer object.Close()
+
+	if v.ShardId != nil {
+		ok := object.Key("ShardId")
+		ok.String(*v.ShardId)
+	}
+
+	if len(v.Type) > 0 {
+		ok := object.Key("Type")
+		ok.String(string(v.Type))
+	}
+
+	return nil
+}
+
 func awsAwsjson10_serializeOpDocumentDescribeStreamInput(v *DescribeStreamInput, value smithyjson.Value) error {
 	object := value.Object()
 	defer object.Close()
@@ -270,6 +288,13 @@ func awsAwsjson10_serializeOpDocumentDescribeStreamInput(v *DescribeStreamInput,
 	if v.Limit != nil {
 		ok := object.Key("Limit")
 		ok.Integer(*v.Limit)
+	}
+
+	if v.ShardFilter != nil {
+		ok := object.Key("ShardFilter")
+		if err := awsAwsjson10_serializeDocumentShardFilter(v.ShardFilter, ok); err != nil {
+			return err
+		}
 	}
 
 	if v.StreamArn != nil {

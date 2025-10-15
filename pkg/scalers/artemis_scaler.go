@@ -37,6 +37,11 @@ type artemisMetadata struct {
 	QueueLength           int64  `keda:"name=queueLength,           order=triggerMetadata, default=10"`
 	ActivationQueueLength int64  `keda:"name=activationQueueLength, order=triggerMetadata, default=10"`
 	CorsHeader            string `keda:"name=corsHeader,            order=triggerMetadata, optional"`
+	UnsafeSsl             bool   `keda:"name=unsafeSsl,             order=triggerMetadata, default=false"`
+	Ca                    string `keda:"name=ca,                    order=authParams, optional"`
+	Cert                  string `keda:"name=cert,                  order=authParams, optional"`
+	Key                   string `keda:"name=key,                   order=authParams, optional"`
+	KeyPassword           string `keda:"name=keyPassword,           order=authParams, optional"`
 }
 
 //revive:enable:var-naming
@@ -77,16 +82,16 @@ func (a *artemisMetadata) Validate() error {
 	if a.CorsHeader == "" {
 		a.CorsHeader = fmt.Sprintf(defaultCorsHeader, a.ManagementEndpoint)
 	}
+	certGiven := a.Cert != ""
+	keyGiven := a.Key != ""
+	if certGiven != keyGiven {
+		return fmt.Errorf("both cert and key must be provided")
+	}
 	return nil
 }
 
 // NewArtemisQueueScaler creates a new artemis queue Scaler
 func NewArtemisQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
-	// do we need to guarantee this timeout for a specific
-	// reason? if not, we can have buildScaler pass in
-	// the global client
-	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
-
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -95,6 +100,16 @@ func NewArtemisQueueScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	artemisMetadata, err := parseArtemisMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing artemis metadata: %w", err)
+	}
+
+	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, artemisMetadata.UnsafeSsl)
+
+	if artemisMetadata.Cert != "" && artemisMetadata.Key != "" {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(artemisMetadata.Cert, artemisMetadata.Key, artemisMetadata.KeyPassword, artemisMetadata.Ca, artemisMetadata.UnsafeSsl)
+		if err != nil {
+			return nil, fmt.Errorf("error creating TLS config: %w", err)
+		}
+		httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
 	}
 
 	return &artemisScaler{

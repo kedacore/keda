@@ -112,7 +112,7 @@ spec:
   - type: temporal
     metadata:
       namespace: default
-      taskQueue: "workflow_with_single_noop_activity:test"
+      taskQueue: "omes-test"
       targetQueueSize: "2"
       activationTargetQueueSize: "3"
       endpoint: {{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233
@@ -167,7 +167,7 @@ spec:
     spec:
       containers:
       - name: workflow
-        image: "temporaliotest/omes:go-ci-latest"
+        image: "temporaliotest/omes:cli-latest"
         imagePullPolicy: Always
         command: ["/app/temporal-omes"]
         args:
@@ -204,7 +204,7 @@ spec:
        - "task-queue"
        - "versioning"
        - "commit-build-id"
-       - "--task-queue=workflow_with_single_noop_activity:test"
+       - "--task-queue=omes-test"
        - "--build-id={{.BuildID}}"
        - "--yes"
        - "--force"

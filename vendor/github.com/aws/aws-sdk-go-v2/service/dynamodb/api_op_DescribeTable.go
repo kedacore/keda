@@ -19,9 +19,6 @@ import (
 // Returns information about the table, including the current status of the table,
 // when it was created, the primary key schema, and any indexes on the table.
 //
-// For global tables, this operation only applies to global tables using Version
-// 2019.11.21 (Current version).
-//
 // If you issue a DescribeTable request immediately after a CreateTable request,
 // DynamoDB might return a ResourceNotFoundException . This is because
 // DescribeTable uses an eventually consistent query, and the metadata for your
@@ -170,6 +167,36 @@ func (c *Client) addOperationDescribeTableMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
 		return err
 	}
 	if err = addSpanInitializeStart(stack); err != nil {

@@ -18,7 +18,10 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-var validCapacityString = regexp.MustCompile("^[\t ]*([0-9]+)[\t ]?([kmgtKMGT][iI]?[bB])?[\t ]*$")
+var (
+	validCapacityString               = regexp.MustCompile("^[\t ]*([0-9]+)[\t ]?([kmgtKMGT][iI]?[bB])?[\t ]*$")
+	ErrDurationMultiplicationOverflow = errors.New("multiplication of durations resulted in overflow, one operand may be too large")
+)
 
 // ParseCapacityString parses a capacity string and returns the number of bytes it represents.
 // Capacity strings are things like 5gib or 10MB. Supported prefixes are kb, kib, mb, mib, gb,
@@ -105,6 +108,7 @@ func ParseDurationSecond(in interface{}) (time.Duration, error) {
 	if ok {
 		in = jsonIn.String()
 	}
+	var err error
 	switch inp := in.(type) {
 	case nil:
 		// return default of zero
@@ -114,7 +118,7 @@ func ParseDurationSecond(in interface{}) (time.Duration, error) {
 		}
 
 		if v, err := strconv.ParseInt(inp, 10, 64); err == nil {
-			return time.Duration(v) * time.Second, nil
+			return overflowMul(time.Duration(v), time.Second)
 		}
 
 		if strings.HasSuffix(inp, "d") {
@@ -122,7 +126,7 @@ func ParseDurationSecond(in interface{}) (time.Duration, error) {
 			if err != nil {
 				return dur, err
 			}
-			return time.Duration(v) * 24 * time.Hour, nil
+			return overflowMul(time.Duration(v), 24*time.Hour)
 		}
 
 		var err error
@@ -130,28 +134,39 @@ func ParseDurationSecond(in interface{}) (time.Duration, error) {
 			return dur, err
 		}
 	case int:
-		dur = time.Duration(inp) * time.Second
+		dur, err = overflowMul(time.Duration(inp), time.Second)
 	case int32:
-		dur = time.Duration(inp) * time.Second
+		dur, err = overflowMul(time.Duration(inp), time.Second)
 	case int64:
-		dur = time.Duration(inp) * time.Second
+		dur, err = overflowMul(time.Duration(inp), time.Second)
 	case uint:
-		dur = time.Duration(inp) * time.Second
+		dur, err = overflowMul(time.Duration(inp), time.Second)
 	case uint32:
-		dur = time.Duration(inp) * time.Second
+		dur, err = overflowMul(time.Duration(inp), time.Second)
 	case uint64:
-		dur = time.Duration(inp) * time.Second
+		dur, err = overflowMul(time.Duration(inp), time.Second)
 	case float32:
-		dur = time.Duration(inp) * time.Second
+		dur, err = overflowMul(time.Duration(inp), time.Second)
 	case float64:
-		dur = time.Duration(inp) * time.Second
+		dur, err = overflowMul(time.Duration(inp), time.Second)
 	case time.Duration:
 		dur = inp
 	default:
 		return 0, errors.New("could not parse duration from input")
 	}
+	if err != nil {
+		dur = time.Duration(0)
+	}
+	return dur, err
+}
 
-	return dur, nil
+// Multiplication of durations could overflow, this performs multiplication while erroring out if an overflow occurs
+func overflowMul(a time.Duration, b time.Duration) (time.Duration, error) {
+	x := a * b
+	if a != 0 && x/a != b {
+		return time.Duration(0), ErrDurationMultiplicationOverflow
+	}
+	return x, nil
 }
 
 // Parse an absolute timestamp from the provided arbitrary value (string or

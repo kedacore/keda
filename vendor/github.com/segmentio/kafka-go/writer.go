@@ -635,7 +635,7 @@ func (w *Writer) WriteMessages(ctx context.Context, msgs ...Message) error {
 		}
 	}
 
-	// We use int32 here to half the memory footprint (compared to using int
+	// We use int32 here to halve the memory footprint (compared to using int
 	// on 64 bits architectures). We map lists of the message indexes instead
 	// of the message values for the same reason, int32 is 4 bytes, vs a full
 	// Message value which is 100+ bytes and contains pointers and contributes
