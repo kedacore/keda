@@ -138,6 +138,11 @@ spec:
                       AuthPodIdentity allows users to select the platform native identity
                       mechanism
                     properties:
+                      awsExternalID:
+                        description: AwsExternalID sets the AWS External ID to be
+                          used when assuming a role. This is only applicable when
+                          using AWS pod identity with a RoleArn
+                        type: string
                       identityAuthorityHost:
                         description: Set identityAuthorityHost to override the default
                           Azure authority host. If this is set, then the IdentityTenantID
@@ -248,6 +253,11 @@ spec:
                       AuthPodIdentity allows users to select the platform native identity
                       mechanism
                     properties:
+                      awsExternalID:
+                        description: AwsExternalID sets the AWS External ID to be
+                          used when assuming a role. This is only applicable when
+                          using AWS pod identity with a RoleArn
+                        type: string
                       identityAuthorityHost:
                         description: Set identityAuthorityHost to override the default
                           Azure authority host. If this is set, then the IdentityTenantID
@@ -382,6 +392,11 @@ spec:
                       AuthPodIdentity allows users to select the platform native identity
                       mechanism
                     properties:
+                      awsExternalID:
+                        description: AwsExternalID sets the AWS External ID to be
+                          used when assuming a role. This is only applicable when
+                          using AWS pod identity with a RoleArn
+                        type: string
                       identityAuthorityHost:
                         description: Set identityAuthorityHost to override the default
                           Azure authority host. If this is set, then the IdentityTenantID
@@ -507,6 +522,11 @@ spec:
                   AuthPodIdentity allows users to select the platform native identity
                   mechanism
                 properties:
+                  awsExternalID:
+                    description: AwsExternalID sets the AWS External ID to be used
+                      when assuming a role. This is only applicable when using AWS
+                      pod identity with a RoleArn
+                    type: string
                   identityAuthorityHost:
                     description: Set identityAuthorityHost to override the default
                       Azure authority host. If this is set, then the IdentityTenantID
