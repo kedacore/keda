@@ -122,7 +122,6 @@ spec:
       activationValue: "{{.ActivationValue}}"
       aggregation: "AVG"
       intervalS: "60"
-      filter: ""
     authenticationRef:
       name: {{.TriggerAuthName}}
 `

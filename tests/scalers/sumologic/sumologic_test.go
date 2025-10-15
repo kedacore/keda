@@ -66,7 +66,7 @@ type templateData struct {
 	MinReplicaCount       string
 	MaxReplicaCount       string
 	TargetValue           string
-	ActivationValue       string
+	ActivationThreshold   string
 }
 
 const (
@@ -111,7 +111,7 @@ spec:
         timezone: "{{.TimeZone}}"
         queryAggregator: "{{.QueryAggregator}}"
         threshold: "{{.TargetValue}}"
-        activationValue: "{{.ActivationValue}}"
+        activationThreshold: "{{.ActivationThreshold}}"
         maxRetries: "3"
       authenticationRef:
         name: keda-trigger-auth-sumologic
@@ -271,7 +271,7 @@ func getTemplateData() (templateData, []Template) {
 			MinReplicaCount:       fmt.Sprintf("%v", minReplicaCount),
 			MaxReplicaCount:       fmt.Sprintf("%v", maxReplicaCount),
 			TargetValue:           scaleInTargetValue,
-			ActivationValue:       scaleInActivationValue,
+			ActivationThreshold:   scaleInActivationValue,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
@@ -280,21 +280,21 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func getScaledObjectTemplateData(targetValue, activationValue string) templateData {
+func getScaledObjectTemplateData(targetValue, activationThreshold string) templateData {
 	return templateData{
-		TestNamespace:    testNamespace,
-		DeploymentName:   deploymentName,
-		ScaledObjectName: scaledObjectName,
-		Host:             host,
-		Query:            query,
-		QueryType:        queryType,
-		ResultField:      resultField,
-		TimeRange:        timeRange,
-		TimeZone:         timeZone,
-		QueryAggregator:  queryAggregator,
-		MinReplicaCount:  fmt.Sprintf("%v", minReplicaCount),
-		MaxReplicaCount:  fmt.Sprintf("%v", maxReplicaCount),
-		TargetValue:      targetValue,
-		ActivationValue:  activationValue,
+		TestNamespace:       testNamespace,
+		DeploymentName:      deploymentName,
+		ScaledObjectName:    scaledObjectName,
+		Host:                host,
+		Query:               query,
+		QueryType:           queryType,
+		ResultField:         resultField,
+		TimeRange:           timeRange,
+		TimeZone:            timeZone,
+		QueryAggregator:     queryAggregator,
+		MinReplicaCount:     fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:     fmt.Sprintf("%v", maxReplicaCount),
+		TargetValue:         targetValue,
+		ActivationThreshold: activationThreshold,
 	}
 }

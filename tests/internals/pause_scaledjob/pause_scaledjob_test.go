@@ -114,7 +114,6 @@ spec:
       metadata:
         scalerAddress: {{.ServiceName}}.{{.TestNamespace}}:6000
         metricThreshold: "{{.MetricThreshold}}"
-        metricValue: "{{.MetricValue}}"
 `
 )
 
