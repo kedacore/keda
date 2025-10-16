@@ -76,6 +76,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Fixes
 
 - **General**: Fix incorrect 'unmatched input property' notification ([#7174](https://github.com/kedacore/keda/issues/7174))
+- **Kafka Scaler**: Fix missing error returns in error handling ([#7182](https://github.com/kedacore/keda/pull/7182))
 
 ### Deprecations
 
