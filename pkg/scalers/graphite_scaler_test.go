@@ -34,9 +34,9 @@ var testGrapMetadata = []parseGraphiteMetadataTestData{
 	// malformed activationThreshold
 	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "activationThreshold": "one", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds"}, true},
 	// missing query
-	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "query": "", "queryTime": "-30Seconds", "disableScaleToZero": "true"}, true},
+	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "query": "", "queryTime": "-30Seconds"}, true},
 	// missing queryTime
-	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": ""}, true},
+	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": ""}, true},
 }
 
 var graphiteMetricIdentifiers = []graphiteMetricIdentifier{
@@ -52,11 +52,11 @@ type graphiteAuthMetadataTestData struct {
 
 var testGraphiteAuthMetadata = []graphiteAuthMetadataTestData{
 	// success basicAuth
-	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "authMode": "basic"}, map[string]string{"username": "user", "password": "pass"}, false},
+	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "authMode": "basic"}, map[string]string{"username": "user", "password": "pass"}, false},
 	// fail basicAuth with no username
-	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "authMode": "basic"}, map[string]string{}, true},
+	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "authMode": "basic"}, map[string]string{}, true},
 	// fail if using non-basicAuth authMode
-	{map[string]string{"serverAddress": "http://localhost:81", "metricName": "request-count", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "authMode": "tls"}, map[string]string{"username": "user"}, true},
+	{map[string]string{"serverAddress": "http://localhost:81", "threshold": "100", "query": "stats.counters.http.hello-world.request.count.count", "queryTime": "-30Seconds", "authMode": "tls"}, map[string]string{"username": "user"}, true},
 }
 
 type grapQueryResultTestData struct {
@@ -175,7 +175,7 @@ func TestGrapScalerExecuteGrapQuery(t *testing.T) {
 
 			scaler := graphiteScaler{
 				metadata: &graphiteMetadata{
-					serverAddress: server.URL,
+					ServerAddress: server.URL,
 				},
 				httpClient: http.DefaultClient,
 			}

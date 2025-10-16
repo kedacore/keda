@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	url_pkg "net/url"
-	"strconv"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -15,16 +14,6 @@ import (
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
-)
-
-const (
-	graphiteServerAddress              = "serverAddress"
-	graphiteQuery                      = "query"
-	graphiteThreshold                  = "threshold"
-	graphiteActivationThreshold        = "activationThreshold"
-	graphiteQueryTime                  = "queryTime"
-	defaultGraphiteThreshold           = 100
-	defaultGraphiteActivationThreshold = 0
 )
 
 type graphiteScaler struct {
@@ -35,17 +24,31 @@ type graphiteScaler struct {
 }
 
 type graphiteMetadata struct {
-	serverAddress       string
-	query               string
-	threshold           float64
-	activationThreshold float64
-	from                string
+	ServerAddress       string  `keda:"name=serverAddress,       order=triggerMetadata"`
+	Query               string  `keda:"name=query,               order=triggerMetadata"`
+	Threshold           float64 `keda:"name=threshold,           order=triggerMetadata, default=100"`
+	ActivationThreshold float64 `keda:"name=activationThreshold, order=triggerMetadata, default=0"`
+	QueryTime           string  `keda:"name=queryTime,           order=triggerMetadata"`
 
 	// basic auth
+	AuthMode string `keda:"name=authMode,        order=triggerMetadata, optional"`
+	Username string `keda:"name=username,        order=authParams,      optional"`
+	Password string `keda:"name=password,        order=authParams,      optional"`
+
+	metricName      string
 	enableBasicAuth bool
-	username        string
-	password        string // +optional
 	triggerIndex    int
+}
+
+func (g *graphiteMetadata) Validate() error {
+	if g.AuthMode != "" && g.AuthMode != "basic" {
+		return fmt.Errorf("authMode must be 'basic'")
+	}
+	if g.AuthMode == "basic" && g.Username == "" {
+		return fmt.Errorf("username is required when authMode is 'basic'")
+	}
+
+	return nil
 }
 
 type grapQueryResult []struct {
@@ -77,68 +80,14 @@ func NewGraphiteScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 }
 
 func parseGraphiteMetadata(config *scalersconfig.ScalerConfig) (*graphiteMetadata, error) {
-	meta := graphiteMetadata{}
-
-	if val, ok := config.TriggerMetadata[graphiteServerAddress]; ok && val != "" {
-		meta.serverAddress = val
-	} else {
-		return nil, fmt.Errorf("no %s given", graphiteServerAddress)
+	meta := &graphiteMetadata{triggerIndex: config.TriggerIndex}
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing graphite metadata: %w", err)
 	}
 
-	if val, ok := config.TriggerMetadata[graphiteQuery]; ok && val != "" {
-		meta.query = val
-	} else {
-		return nil, fmt.Errorf("no %s given", graphiteQuery)
-	}
-
-	if val, ok := config.TriggerMetadata[graphiteQueryTime]; ok && val != "" {
-		meta.from = val
-	} else {
-		return nil, fmt.Errorf("no %s given", graphiteQueryTime)
-	}
-
-	meta.threshold = defaultGraphiteThreshold
-	if val, ok := config.TriggerMetadata[graphiteThreshold]; ok && val != "" {
-		t, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %w", graphiteThreshold, err)
-		}
-
-		meta.threshold = t
-	}
-
-	meta.activationThreshold = defaultGraphiteActivationThreshold
-	if val, ok := config.TriggerMetadata[graphiteActivationThreshold]; ok {
-		t, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, fmt.Errorf("activationTargetValue parsing error %w", err)
-		}
-
-		meta.activationThreshold = t
-	}
-
-	meta.triggerIndex = config.TriggerIndex
-
-	val, ok := config.TriggerMetadata["authMode"]
-	// no authMode specified
-	if !ok {
-		return &meta, nil
-	}
-	if val != "basic" {
-		return nil, fmt.Errorf("authMode must be 'basic'")
-	}
-
-	if len(config.AuthParams["username"]) == 0 {
-		return nil, fmt.Errorf("no username given")
-	}
-
-	meta.username = config.AuthParams["username"]
-	// password is optional. For convenience, many application implement basic auth with
-	// username as apikey and password as empty
-	meta.password = config.AuthParams["password"]
 	meta.enableBasicAuth = true
 
-	return &meta, nil
+	return meta, nil
 }
 
 func (s *graphiteScaler) Close(context.Context) error {
@@ -153,7 +102,7 @@ func (s *graphiteScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 		Metric: v2.MetricIdentifier{
 			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, "graphite"),
 		},
-		Target: GetMetricTargetMili(s.metricType, s.metadata.threshold),
+		Target: GetMetricTargetMili(s.metricType, s.metadata.Threshold),
 	}
 	metricSpec := v2.MetricSpec{
 		External: externalMetric, Type: externalMetricType,
@@ -162,14 +111,14 @@ func (s *graphiteScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpe
 }
 
 func (s *graphiteScaler) executeGrapQuery(ctx context.Context) (float64, error) {
-	queryEscaped := url_pkg.QueryEscape(s.metadata.query)
-	url := fmt.Sprintf("%s/render?from=%s&target=%s&format=json", s.metadata.serverAddress, s.metadata.from, queryEscaped)
+	queryEscaped := url_pkg.QueryEscape(s.metadata.Query)
+	url := fmt.Sprintf("%s/render?from=%s&target=%s&format=json", s.metadata.ServerAddress, s.metadata.QueryTime, queryEscaped)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return -1, err
 	}
 	if s.metadata.enableBasicAuth {
-		req.SetBasicAuth(s.metadata.username, s.metadata.password)
+		req.SetBasicAuth(s.metadata.Username, s.metadata.Password)
 	}
 	r, err := s.httpClient.Do(req)
 	if err != nil {
@@ -191,7 +140,7 @@ func (s *graphiteScaler) executeGrapQuery(ctx context.Context) (float64, error) 
 	if len(result) == 0 {
 		return 0, nil
 	} else if len(result) > 1 {
-		return -1, fmt.Errorf("graphite query %s returned multiple series", s.metadata.query)
+		return -1, fmt.Errorf("graphite query %s returned multiple series", s.metadata.Query)
 	}
 
 	// https://graphite-api.readthedocs.io/en/latest/api.html#json
@@ -206,7 +155,7 @@ func (s *graphiteScaler) executeGrapQuery(ctx context.Context) (float64, error) 
 		}
 	}
 
-	return -1, fmt.Errorf("no valid non-null response in query %s, try increasing your queryTime or check your query", s.metadata.query)
+	return -1, fmt.Errorf("no valid non-null response in query %s, try increasing your queryTime or check your query", s.metadata.Query)
 }
 
 func (s *graphiteScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
@@ -218,5 +167,5 @@ func (s *graphiteScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 
 	metric := GenerateMetricInMili(metricName, val)
 
-	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.activationThreshold, nil
+	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.ActivationThreshold, nil
 }
