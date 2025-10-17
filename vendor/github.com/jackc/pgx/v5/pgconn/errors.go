@@ -27,7 +27,7 @@ func Timeout(err error) bool {
 }
 
 // PgError represents an error reported by the PostgreSQL server. See
-// http://www.postgresql.org/docs/11/static/protocol-error-fields.html for
+// http://www.postgresql.org/docs/current/static/protocol-error-fields.html for
 // detailed field description.
 type PgError struct {
 	Severity            string
@@ -110,6 +110,14 @@ type ParseConfigError struct {
 	ConnString string // The connection string that could not be parsed.
 	msg        string
 	err        error
+}
+
+func NewParseConfigError(conn, msg string, err error) error {
+	return &ParseConfigError{
+		ConnString: conn,
+		msg:        msg,
+		err:        err,
+	}
 }
 
 func (e *ParseConfigError) Error() string {

@@ -1,3 +1,92 @@
+# v1.51.1 (2025-09-26)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.51.0 (2025-09-24)
+
+* **Feature**: Fix default dualstack FIPS endpoints in AWS GovCloud(US) regions
+
+# v1.50.2 (2025-09-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.50.1 (2025-09-10)
+
+* No change notes available for this release.
+
+# v1.50.0 (2025-09-09)
+
+* **Feature**: Added a new API - DescribeAlarmContributors API, to retrieve alarm contributors in ALARM state. Added support in DescribeAlarmHistory API to query alarm contributor history
+
+# v1.49.3 (2025-09-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.49.2 (2025-08-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.49.1 (2025-08-27)
+
+* **Dependency Update**: Update to smithy-go v1.23.0.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.49.0 (2025-08-26)
+
+* **Feature**: Remove incorrect endpoint tests
+
+# v1.48.2 (2025-08-21)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.48.1 (2025-08-20)
+
+* **Bug Fix**: Remove unused deserialization code.
+
+# v1.48.0 (2025-08-11)
+
+* **Feature**: Add support for configuring per-service Options via callback on global config.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.47.0 (2025-08-04)
+
+* **Feature**: Support configurable auth scheme preferences in service clients via AWS_AUTH_SCHEME_PREFERENCE in the environment, auth_scheme_preference in the config file, and through in-code settings on LoadDefaultConfig and client constructor methods.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.46.1 (2025-07-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.46.0 (2025-07-28)
+
+* **Feature**: Add support for HTTP interceptors.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.45.4 (2025-07-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.45.3 (2025-06-17)
+
+* **Dependency Update**: Update to smithy-go v1.22.4.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.45.2 (2025-06-10)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.45.1 (2025-06-06)
+
+* No change notes available for this release.
+
+# v1.45.0 (2025-05-21)
+
+* **Feature**: Adds support for setting up Contributor Insight rules on logs transformed via Logs Transformation feature.
+
+# v1.44.3 (2025-04-10)
+
+* No change notes available for this release.
+
 # v1.44.2 (2025-04-03)
 
 * No change notes available for this release.

@@ -307,17 +307,19 @@ type RawConfiguration struct {
 	// Used by viz.markdown
 	Text string `json:"text,omitempty"`
 
-	Thresholds     interface{}                    `json:"thresholds,omitempty"`
-	Legend         *DashboardWidgetLegend         `json:"legend,omitempty"`
-	YAxisLeft      *DashboardWidgetYAxisLeft      `json:"yAxisLeft,omitempty"`
-	YAxisRight     *DashboardWidgetYAxisRight     `json:"yAxisRight,omitempty"`
-	NullValues     *DashboardWidgetNullValues     `json:"nullValues,omitempty"`
-	Units          *DashboardWidgetUnits          `json:"units,omitempty"`
-	Colors         *DashboardWidgetColors         `json:"colors,omitempty"`
-	Facet          *DashboardWidgetFacet          `json:"facet,omitempty"`
-	RefreshRate    *DashboardWidgetRefreshRate    `json:"refreshRate,omitempty"`
-	InitialSorting *DashboardWidgetInitialSorting `json:"initialSorting,omitempty"`
-	DataFormat     []*DashboardWidgetDataFormat   `json:"dataFormatters,omitempty"`
+	Thresholds        interface{}                       `json:"thresholds,omitempty"`
+	Legend            *DashboardWidgetLegend            `json:"legend,omitempty"`
+	YAxisLeft         *DashboardWidgetYAxisLeft         `json:"yAxisLeft,omitempty"`
+	YAxisRight        *DashboardWidgetYAxisRight        `json:"yAxisRight,omitempty"`
+	NullValues        *DashboardWidgetNullValues        `json:"nullValues,omitempty"`
+	Units             *DashboardWidgetUnits             `json:"units,omitempty"`
+	Colors            *DashboardWidgetColors            `json:"colors,omitempty"`
+	Facet             *DashboardWidgetFacet             `json:"facet,omitempty"`
+	RefreshRate       *DashboardWidgetRefreshRate       `json:"refreshRate,omitempty"`
+	InitialSorting    *DashboardWidgetInitialSorting    `json:"initialSorting,omitempty"`
+	DataFormat        []*DashboardWidgetDataFormat      `json:"dataFormatters,omitempty"`
+	Tooltip           *DashboardWidgetTooltip           `json:"tooltip,omitempty"`
+	BillboardSettings *DashboardWidgetBillboardSettings `json:"billboardSettings,omitempty"`
 }
 
 // RawConfigurationPlatformOptions represents platform widget options
@@ -394,4 +396,76 @@ type DashboardWidgetColorOverrides struct {
 }
 type DashboardWidgetFacet struct {
 	ShowOtherSeries bool `json:"showOtherSeries,omitempty"`
+}
+
+type DashboardWidgetTooltip struct {
+	Mode string `json:"mode,omitempty"`
+}
+
+// DashboardWidgetBillboardSettings represents the billboard settings configuration
+type DashboardWidgetBillboardSettings struct {
+	Link        *DashboardWidgetBillboardLink        `json:"link,omitempty"`
+	Visual      *DashboardWidgetBillboardVisual      `json:"visual,omitempty"`
+	GridOptions *DashboardWidgetBillboardGridOptions `json:"gridOptions,omitempty"`
+}
+
+// DashboardWidgetBillboardLink represents the link configuration for billboard widgets
+type DashboardWidgetBillboardLink struct {
+	Title  string `json:"title,omitempty"`
+	URL    string `json:"url,omitempty"`
+	NewTab bool   `json:"newTab,omitempty"`
+}
+
+// DashboardWidgetBillboardVisual represents the visual configuration for billboard widgets
+type DashboardWidgetBillboardVisual struct {
+	Alignment DashboardBillboardAlignmentType `json:"alignment,omitempty"`
+	Display   DashboardBillboardDisplayType   `json:"display,omitempty"`
+}
+
+// DashboardBillboardAlignmentType represents an option for the billboard alignment field.
+type DashboardBillboardAlignmentType string
+
+var DashboardBillboardAlignmentTypes = struct {
+	STACKED DashboardBillboardAlignmentType
+	INLINE  DashboardBillboardAlignmentType
+}{
+	STACKED: "stacked",
+	INLINE:  "inline",
+}
+
+// DashboardBillboardDisplayType represents an option for the billboard display field.
+type DashboardBillboardDisplayType string
+
+var DashboardBillboardDisplayTypes = struct {
+	AUTO  DashboardBillboardDisplayType
+	ALL   DashboardBillboardDisplayType
+	NONE  DashboardBillboardDisplayType
+	LABEL DashboardBillboardDisplayType
+	VALUE DashboardBillboardDisplayType
+}{
+	AUTO:  "auto",
+	ALL:   "all",
+	NONE:  "none",
+	LABEL: "label",
+	VALUE: "value",
+}
+
+// DashboardWidgetBillboardGridOptions represents the grid options for billboard widgets
+type DashboardWidgetBillboardGridOptions struct {
+	Value   int `json:"value,omitempty"`
+	Label   int `json:"label,omitempty"`
+	Columns int `json:"columns,omitempty"`
+}
+
+// DashboardTooltipType represents an option for the dashboard tooltip's mode field.
+type DashboardTooltipType string
+
+var DashboardTooltipTypes = struct {
+	ALL    DashboardTooltipType
+	SINGLE DashboardTooltipType
+	HIDDEN DashboardTooltipType
+}{
+	ALL:    "all",
+	SINGLE: "single",
+	HIDDEN: "hidden",
 }

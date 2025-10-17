@@ -110,6 +110,26 @@ func (m *validateOpDeleteMetricStream) HandleInitialize(ctx context.Context, in 
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpDescribeAlarmContributors struct {
+}
+
+func (*validateOpDescribeAlarmContributors) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpDescribeAlarmContributors) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*DescribeAlarmContributorsInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpDescribeAlarmContributorsInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpDescribeAlarmsForMetric struct {
 }
 
@@ -688,6 +708,10 @@ func addOpDeleteInsightRulesValidationMiddleware(stack *middleware.Stack) error 
 
 func addOpDeleteMetricStreamValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDeleteMetricStream{}, middleware.After)
+}
+
+func addOpDescribeAlarmContributorsValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpDescribeAlarmContributors{}, middleware.After)
 }
 
 func addOpDescribeAlarmsForMetricValidationMiddleware(stack *middleware.Stack) error {
@@ -1362,6 +1386,21 @@ func validateOpDeleteMetricStreamInput(v *DeleteMetricStreamInput) error {
 	invalidParams := smithy.InvalidParamsError{Context: "DeleteMetricStreamInput"}
 	if v.Name == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("Name"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpDescribeAlarmContributorsInput(v *DescribeAlarmContributorsInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DescribeAlarmContributorsInput"}
+	if v.AlarmName == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("AlarmName"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams

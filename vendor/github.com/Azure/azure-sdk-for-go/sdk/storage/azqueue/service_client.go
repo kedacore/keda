@@ -8,6 +8,11 @@ package azqueue
 
 import (
 	"context"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
@@ -17,16 +22,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/internal/shared"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/queueerror"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue/sas"
-	"net/http"
-	"net/url"
-	"strings"
-	"time"
 )
-
-// ClientOptions contains the optional parameters when creating a ServiceClient or QueueClient.
-type ClientOptions struct {
-	azcore.ClientOptions
-}
 
 // ServiceClient represents a URL to the Azure Queue Storage service allowing you to manipulate queues.
 type ServiceClient base.Client[generated.ServiceClient]
@@ -36,8 +32,10 @@ type ServiceClient base.Client[generated.ServiceClient]
 //   - cred - an Azure AD credential, typically obtained via the azidentity module
 //   - options - client options; pass nil to accept the default values
 func NewServiceClient(serviceURL string, cred azcore.TokenCredential, options *ClientOptions) (*ServiceClient, error) {
-	authPolicy := runtime.NewBearerTokenPolicy(cred, []string{shared.TokenScope}, nil)
 	conOptions := shared.GetClientOptions(options)
+	authPolicy := runtime.NewBearerTokenPolicy(cred, []string{shared.TokenScope}, &policy.BearerTokenOptions{
+		InsecureAllowCredentialWithHTTP: conOptions.InsecureAllowCredentialWithHTTP,
+	})
 	conOptions.PerRetryPolicies = append(conOptions.PerRetryPolicies, authPolicy)
 	pl := runtime.NewPipeline(exported.ModuleName, exported.ModuleVersion, runtime.PipelineOptions{}, &conOptions.ClientOptions)
 

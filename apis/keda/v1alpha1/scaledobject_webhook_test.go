@@ -199,7 +199,7 @@ var _ = It("shouldn't validate the so creation when the fallback is configured a
 	}).Should(HaveOccurred())
 })
 
-var _ = It("should validate the so creation when the fallback is configured, and at least one trigger (besides cpu/memory) has metricType == AverageValue.", func() {
+var _ = It("should validate the so creation when the fallback is configured, and at least one trigger (besides cpu/memory) is configured.", func() {
 	namespaceName := "right-fallback-at-least-one-averagevalue"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
@@ -244,8 +244,8 @@ var _ = It("should validate the so creation when the fallback is configured, and
 	}).ShouldNot(HaveOccurred())
 })
 
-var _ = It("shouldn't validate the so creation when the fallback is configured, and NO trigger (besides cpu/memory) has metricType == AverageValue.", func() {
-	namespaceName := "wrong-fallback-none-averagevalue"
+var _ = It("should validate the so creation when the fallback is configured, and so uses ScalingModifiers.", func() {
+	namespaceName := "right-fallback-scalingmodifier"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
 	// Create ScaledObject with cpu and memory triggers.
@@ -277,6 +277,7 @@ var _ = It("shouldn't validate the so creation when the fallback is configured, 
 		FailureThreshold: 3,
 		Replicas:         6,
 	}
+	so.Spec.Advanced.ScalingModifiers = ScalingModifiers{Target: "2", Formula: "workload_trig_1 + workload_trig_2", MetricType: v2.ValueMetricType}
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -287,92 +288,6 @@ var _ = It("shouldn't validate the so creation when the fallback is configured, 
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), so)
 	}).Should(HaveOccurred())
-})
-
-var _ = It("shouldn't validate the so creation when the fallback is configured, and the so uses ScalingModifiers with its metricType != AverageValue.", func() {
-	namespaceName := "wrong-fallback-scalingmodifier"
-	namespace := createNamespace(namespaceName)
-	workload := createDeployment(namespaceName, true, true)
-
-	triggers := []ScaleTriggers{
-		{
-			Type: "cron",
-			Name: "cron_trig",
-			Metadata: map[string]string{
-				"timezone":        "UTC",
-				"start":           "0 * * * *",
-				"end":             "1 * * * *",
-				"desiredReplicas": "1",
-			},
-		},
-		{
-			Type: "kubernetes-workload",
-			Name: "workload_trig",
-			Metadata: map[string]string{
-				"podSelector": "pod=workload-test",
-				"value":       "1",
-			},
-		},
-	}
-	sm := ScalingModifiers{Target: "2", Formula: "workload_trig + cron_trig", MetricType: v2.ValueMetricType}
-	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
-	so.Spec.Fallback = &Fallback{
-		FailureThreshold: 3,
-		Replicas:         6,
-	}
-
-	err := k8sClient.Create(context.Background(), namespace)
-	Expect(err).ToNot(HaveOccurred())
-
-	err = k8sClient.Create(context.Background(), workload)
-	Expect(err).ToNot(HaveOccurred())
-
-	Eventually(func() error {
-		return k8sClient.Create(context.Background(), so)
-	}).Should(HaveOccurred())
-})
-
-var _ = It("should validate the so creation when the fallback is configured, and the so uses ScalingModifiers with its metricType == AverageValue.", func() {
-	namespaceName := "right-fallback-scalingmodifier"
-	namespace := createNamespace(namespaceName)
-	workload := createDeployment(namespaceName, true, true)
-
-	triggers := []ScaleTriggers{
-		{
-			Type: "cron",
-			Name: "cron_trig",
-			Metadata: map[string]string{
-				"timezone":        "UTC",
-				"start":           "0 * * * *",
-				"end":             "1 * * * *",
-				"desiredReplicas": "1",
-			},
-		},
-		{
-			Type: "kubernetes-workload",
-			Name: "workload_trig",
-			Metadata: map[string]string{
-				"podSelector": "pod=workload-test",
-				"value":       "1",
-			},
-		},
-	}
-	sm := ScalingModifiers{Target: "2", Formula: "workload_trig + cron_trig", MetricType: v2.AverageValueMetricType}
-	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
-	so.Spec.Fallback = &Fallback{
-		FailureThreshold: 3,
-		Replicas:         6,
-	}
-
-	err := k8sClient.Create(context.Background(), namespace)
-	Expect(err).ToNot(HaveOccurred())
-
-	err = k8sClient.Create(context.Background(), workload)
-	Expect(err).ToNot(HaveOccurred())
-
-	Eventually(func() error {
-		return k8sClient.Create(context.Background(), so)
-	}).ShouldNot(HaveOccurred())
 })
 
 var _ = It("shouldn't validate the so creation when there is another unmanaged hpa and so has transfer-hpa-ownership activated", func() {
@@ -400,7 +315,7 @@ var _ = It("shouldn't validate the so creation when hpa has shared-ownership una
 	namespaceName := "hpa-ownership"
 	namespace := createNamespace(namespaceName)
 	hpa := createHpa(hpaName, namespaceName, workloadName, "apps/v1", "Deployment", nil)
-	hpa.ObjectMeta.Annotations = map[string]string{ValidationsHpaOwnershipAnnotation: "false"}
+	hpa.Annotations = map[string]string{ValidationsHpaOwnershipAnnotation: "false"}
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{ScaledObjectTransferHpaOwnershipAnnotation: "false"}, hpaName)
 
 	err := k8sClient.Create(context.Background(), namespace)
@@ -776,7 +691,7 @@ var _ = It("should validate the so update if it's removing the finalizer even if
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
-	so.ObjectMeta.Finalizers = append(so.ObjectMeta.Finalizers, "finalizer")
+	so.Finalizers = append(so.Finalizers, "finalizer")
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
@@ -792,7 +707,7 @@ var _ = It("should validate the so update if it's removing the finalizer even if
 	err = k8sClient.Update(context.Background(), workload)
 	Expect(err).ToNot(HaveOccurred())
 
-	so.ObjectMeta.Finalizers = []string{}
+	so.Finalizers = []string{}
 	Eventually(func() error {
 		return k8sClient.Update(context.Background(), so)
 	}).ShouldNot(HaveOccurred())

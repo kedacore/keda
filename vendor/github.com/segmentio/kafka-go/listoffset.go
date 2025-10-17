@@ -17,7 +17,7 @@ type OffsetRequest struct {
 }
 
 // FirstOffsetOf constructs an OffsetRequest which asks for the first offset of
-// the parition given as argument.
+// the partition given as argument.
 func FirstOffsetOf(partition int) OffsetRequest {
 	return OffsetRequest{Partition: partition, Timestamp: FirstOffset}
 }

@@ -152,7 +152,7 @@ func isRemovingFinalizer(so *ScaledObject, old runtime.Object) bool {
 	soSpecString := string(soSpec)
 	oldSoSpecString := string(oldSoSpec)
 
-	return len(so.ObjectMeta.Finalizers) < len(oldSo.ObjectMeta.Finalizers) && soSpecString == oldSoSpecString
+	return len(so.Finalizers) < len(oldSo.Finalizers) && soSpecString == oldSoSpecString
 }
 
 func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.Warnings, error) {
@@ -252,7 +252,7 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 	}
 
 	for _, hpa := range hpaList.Items {
-		if hpa.ObjectMeta.Annotations[ValidationsHpaOwnershipAnnotation] == "false" {
+		if hpa.Annotations[ValidationsHpaOwnershipAnnotation] == "false" {
 			continue
 		}
 		val, _ := json.MarshalIndent(hpa, "", "  ")
@@ -277,7 +277,7 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 			}
 
 			if !owned {
-				if incomingSo.ObjectMeta.Annotations[ScaledObjectTransferHpaOwnershipAnnotation] == "true" &&
+				if incomingSo.Annotations[ScaledObjectTransferHpaOwnershipAnnotation] == "true" &&
 					incomingSo.Spec.Advanced.HorizontalPodAutoscalerConfig.Name == hpa.Name {
 					scaledobjectlog.Info(fmt.Sprintf("%s hpa ownership being transferred to %s", hpa.Name, incomingSo.Name))
 				} else {

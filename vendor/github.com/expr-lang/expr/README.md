@@ -150,6 +150,7 @@ func main() {
 * [ByteDance](https://bytedance.com) incorporates Expr into its internal business rule engine.
 * [Aviasales](https://aviasales.ru) utilizes Expr as a business rule engine for its flight search engine.
 * [Wish.com](https://www.wish.com) employs Expr in its decision-making rule engine for the Wish Assistant.
+* [Naoma.AI](https://www.naoma.ai) uses Expr as a part of its call scoring engine.
 * [Argo](https://argoproj.github.io) integrates Expr into Argo Rollouts and Argo Workflows for Kubernetes.
 * [OpenTelemetry](https://opentelemetry.io) integrates Expr into the OpenTelemetry Collector.
 * [Philips Labs](https://github.com/philips-labs/tabia) employs Expr in Tabia, a tool designed to collect insights on their code bases.

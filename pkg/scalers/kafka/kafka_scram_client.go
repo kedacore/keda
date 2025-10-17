@@ -38,12 +38,12 @@ type XDGSCRAMClient struct {
 
 // Begin starts SCRAM conversation
 func (x *XDGSCRAMClient) Begin(userName, password, authzID string) (err error) {
-	client, err := x.HashGeneratorFcn.NewClient(userName, password, authzID)
+	client, err := x.NewClient(userName, password, authzID)
 	if err != nil {
 		return err
 	}
 	x.Client = client
-	x.ClientConversation = x.Client.NewConversation()
+	x.ClientConversation = x.NewConversation()
 	return nil
 }
 

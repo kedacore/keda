@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ScaledJobLister helps list ScaledJobs.
@@ -30,7 +30,7 @@ import (
 type ScaledJobLister interface {
 	// List lists all ScaledJobs in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.ScaledJob, err error)
+	List(selector labels.Selector) (ret []*kedav1alpha1.ScaledJob, err error)
 	// ScaledJobs returns an object that can list and get ScaledJobs.
 	ScaledJobs(namespace string) ScaledJobNamespaceLister
 	ScaledJobListerExpansion
@@ -38,17 +38,17 @@ type ScaledJobLister interface {
 
 // scaledJobLister implements the ScaledJobLister interface.
 type scaledJobLister struct {
-	listers.ResourceIndexer[*v1alpha1.ScaledJob]
+	listers.ResourceIndexer[*kedav1alpha1.ScaledJob]
 }
 
 // NewScaledJobLister returns a new ScaledJobLister.
 func NewScaledJobLister(indexer cache.Indexer) ScaledJobLister {
-	return &scaledJobLister{listers.New[*v1alpha1.ScaledJob](indexer, v1alpha1.Resource("scaledjob"))}
+	return &scaledJobLister{listers.New[*kedav1alpha1.ScaledJob](indexer, kedav1alpha1.Resource("scaledjob"))}
 }
 
 // ScaledJobs returns an object that can list and get ScaledJobs.
 func (s *scaledJobLister) ScaledJobs(namespace string) ScaledJobNamespaceLister {
-	return scaledJobNamespaceLister{listers.NewNamespaced[*v1alpha1.ScaledJob](s.ResourceIndexer, namespace)}
+	return scaledJobNamespaceLister{listers.NewNamespaced[*kedav1alpha1.ScaledJob](s.ResourceIndexer, namespace)}
 }
 
 // ScaledJobNamespaceLister helps list and get ScaledJobs.
@@ -56,15 +56,15 @@ func (s *scaledJobLister) ScaledJobs(namespace string) ScaledJobNamespaceLister 
 type ScaledJobNamespaceLister interface {
 	// List lists all ScaledJobs in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.ScaledJob, err error)
+	List(selector labels.Selector) (ret []*kedav1alpha1.ScaledJob, err error)
 	// Get retrieves the ScaledJob from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.ScaledJob, error)
+	Get(name string) (*kedav1alpha1.ScaledJob, error)
 	ScaledJobNamespaceListerExpansion
 }
 
 // scaledJobNamespaceLister implements the ScaledJobNamespaceLister
 // interface.
 type scaledJobNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha1.ScaledJob]
+	listers.ResourceIndexer[*kedav1alpha1.ScaledJob]
 }

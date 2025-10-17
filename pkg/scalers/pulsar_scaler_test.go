@@ -3,6 +3,8 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strconv"
 	"strings"
@@ -403,5 +405,69 @@ func TestPulsarGetMetric(t *testing.T) {
 		}
 
 		fmt.Printf("%+v\n", metric)
+	}
+}
+
+// Test for nil pointer dereference fix in redirect handling for issue #7024
+func TestPulsarScalerRedirectNilPointerFix(t *testing.T) {
+	// Mock HTTP server that simulates Pulsar broker redirects
+	redirectCount := 0
+	var mockServer *httptest.Server
+
+	mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		redirectCount++
+		if redirectCount == 1 {
+			// Send redirect
+			http.Redirect(w, r, mockServer.URL+"/redirected", http.StatusTemporaryRedirect)
+			return
+		}
+		// Return valid response
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{
+			"subscriptions": {
+				"test-subscription": {
+					"msgBacklog": 5
+				}
+			}
+		}`))
+		if err != nil {
+			t.Errorf("Failed to write response: %v", err)
+		}
+	}))
+	defer mockServer.Close()
+
+	config := &scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"adminURL":     mockServer.URL,
+			"topic":        "persistent://public/default/test-topic",
+			"subscription": "test-subscription",
+			"authModes":    "bearer",
+		},
+		AuthParams: map[string]string{
+			"bearerToken": "test-token",
+		},
+	}
+
+	// Create scaler
+	scaler, err := NewPulsarScaler(config)
+	if err != nil {
+		t.Fatalf("Failed to create scaler: %v", err)
+	}
+
+	// Cast to pulsarScaler to access GetStats method
+	pulsarScaler, ok := scaler.(*pulsarScaler)
+	if !ok {
+		t.Fatal("Expected scaler to be *pulsarScaler type")
+	}
+
+	_, err = pulsarScaler.GetStats(context.Background())
+	if err != nil {
+		t.Logf("GetStats returned error (expected due to test setup): %v", err)
+	}
+
+	// Verify redirect happened
+	if redirectCount < 1 {
+		t.Error("Expected at least one HTTP call to trigger redirect")
 	}
 }

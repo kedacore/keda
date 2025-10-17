@@ -159,7 +159,7 @@ pager := client.NewListQueuesPager(nil)
 // continue fetching pages until no more remain
 for pager.More() {
    resp, err := pager.NextPage(context.Background())
-   _require.Nil(err)
+   _require.NoError(err)
    // print queue name
    for _, queue := range resp.Queues {
 		fmt.Println(*queue.Name)
@@ -216,17 +216,17 @@ This project has adopted the [Microsoft Open Source Code of Conduct][coc]. For m
 <!-- LINKS -->
 [source]: https://github.com/Azure/azure-sdk-for-go/tree/main/sdk/storage/azqueue
 [docs]: https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue
-[rest_docs]: https://docs.microsoft.com/rest/api/storageservices/queue-service-rest-api
+[rest_docs]: https://learn.microsoft.com/rest/api/storageservices/queue-service-rest-api
 [godevdl]: https://go.dev/dl/
 [goget]: https://pkg.go.dev/cmd/go#hdr-Add_dependencies_to_current_module_and_install_them
-[storage_account_docs]: https://docs.microsoft.com/azure/storage/common/storage-account-overview
-[storage_account_create_ps]: https://docs.microsoft.com/azure/storage/common/storage-quickstart-create-account?tabs=azure-powershell
-[storage_account_create_cli]: https://docs.microsoft.com/azure/storage/common/storage-quickstart-create-account?tabs=azure-cli
-[storage_account_create_portal]: https://docs.microsoft.com/azure/storage/common/storage-quickstart-create-account?tabs=azure-portal
-[azure_cli]: https://docs.microsoft.com/cli/azure
+[storage_account_docs]: https://learn.microsoft.com/azure/storage/common/storage-account-overview
+[storage_account_create_ps]: https://learn.microsoft.com/azure/storage/common/storage-quickstart-create-account?tabs=azure-powershell
+[storage_account_create_cli]: https://learn.microsoft.com/azure/storage/common/storage-quickstart-create-account?tabs=azure-cli
+[storage_account_create_portal]: https://learn.microsoft.com/azure/storage/common/storage-quickstart-create-account?tabs=azure-portal
+[azure_cli]: https://learn.microsoft.com/cli/azure
 [azure_sub]: https://azure.microsoft.com/free/
 [azidentity]: https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity
-[storage_ad]: https://docs.microsoft.com/azure/storage/common/storage-auth-aad
+[storage_ad]: https://learn.microsoft.com/azure/storage/common/storage-auth-aad
 [azcore_response_error]: https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azcore#ResponseError
 [samples]: https://github.com/Azure/azure-sdk-for-go/tree/main/sdk/storage/azqueue/samples_test.go
 [queue_error]: https://github.com/Azure/azure-sdk-for-go/tree/main/sdk/storage/azqueue/queueerror/error_codes.go

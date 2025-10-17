@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/amqpwrap"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/exported"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils"
+	"github.com/Azure/go-amqp"
 )
 
 type LinksWithID struct {
@@ -114,6 +115,10 @@ type AMQPLinksImpl struct {
 
 	ns NamespaceForAMQPLinks
 
+	// prefetchedMessagesAfterClose is called after a Receiver is closed. We pass all messages
+	// we received using the Receiver.Prefetched() function.
+	prefetchedMessagesAfterClose func(messages []*amqp.Message)
+
 	utils.Logger
 }
 
@@ -126,20 +131,25 @@ type NewAMQPLinksArgs struct {
 	EntityPath          string
 	CreateLinkFunc      CreateLinkFunc
 	GetRecoveryKindFunc func(err error) RecoveryKind
+
+	// PrefetchedMessagesAfterClose is called after a Receiver (in ReceiveAndDelete mode) is closed. It gets passed all
+	// the messages we could read from [amqp.Receiver.Prefetched].
+	PrefetchedMessagesAfterClose func(messages []*amqp.Message)
 }
 
 // NewAMQPLinks creates a session, starts the claim refresher and creates an associated
 // management link for a specific entity path.
 func NewAMQPLinks(args NewAMQPLinksArgs) AMQPLinks {
 	l := &AMQPLinksImpl{
-		entityPath:          args.EntityPath,
-		managementPath:      fmt.Sprintf("%s/$management", args.EntityPath),
-		audience:            args.NS.GetEntityAudience(args.EntityPath),
-		createLink:          args.CreateLinkFunc,
-		closedPermanently:   false,
-		getRecoveryKindFunc: args.GetRecoveryKindFunc,
-		ns:                  args.NS,
-		Logger:              utils.NewLogger(),
+		entityPath:                   args.EntityPath,
+		managementPath:               fmt.Sprintf("%s/$management", args.EntityPath),
+		audience:                     args.NS.GetEntityAudience(args.EntityPath),
+		createLink:                   args.CreateLinkFunc,
+		closedPermanently:            false,
+		getRecoveryKindFunc:          args.GetRecoveryKindFunc,
+		ns:                           args.NS,
+		Logger:                       utils.NewLogger(),
+		prefetchedMessagesAfterClose: args.PrefetchedMessagesAfterClose,
 	}
 
 	return l
@@ -149,6 +159,9 @@ func NewAMQPLinks(args NewAMQPLinksArgs) AMQPLinks {
 func (links *AMQPLinksImpl) ManagementPath() string {
 	return links.managementPath
 }
+
+// errClosed is used when you try to use a closed link.
+var errClosed = NewErrNonRetriable("link was closed by user")
 
 // recoverLink will recycle all associated links (mgmt, receiver, sender and session)
 // and recreate them using the link.linkCreator function.
@@ -161,7 +174,7 @@ func (links *AMQPLinksImpl) recoverLink(ctx context.Context, theirLinkRevision L
 	links.mu.RUnlock()
 
 	if closedPermanently {
-		return NewErrNonRetriable("link was closed by user")
+		return errClosed
 	}
 
 	// cheap check before we do the lock
@@ -288,7 +301,7 @@ func (l *AMQPLinksImpl) Get(ctx context.Context) (*LinksWithID, error) {
 	l.mu.RUnlock()
 
 	if closedPermanently {
-		return nil, NewErrNonRetriable("link was closed by user")
+		return nil, errClosed
 	}
 
 	if sender != nil || receiver != nil {
@@ -570,6 +583,8 @@ func (links *AMQPLinksImpl) closeWithoutLocking(ctx context.Context, permanent b
 		}
 	}
 
+	pushPrefetchedMessagesWithoutLocking(links, permanent)
+
 	links.Sender, links.Receiver, links.session, links.RPCLink = nil, nil, nil, nil
 
 	if wasCancelled {
@@ -581,4 +596,36 @@ func (links *AMQPLinksImpl) closeWithoutLocking(ctx context.Context, permanent b
 	}
 
 	return nil
+}
+
+// pushPrefetchedMessagesWithoutLocking clears the prefetched messages from the link. This function assumes
+// the caller has taken care of proper locking and has already closed the Receiver link, if it exists.
+func pushPrefetchedMessagesWithoutLocking(links *AMQPLinksImpl, permanent bool) {
+	if !permanent { // only activate this when the Receiver is shut down. This avoids any possible concurrency issues.
+		return
+	}
+
+	if links.Receiver == nil || links.prefetchedMessagesAfterClose == nil {
+		return
+	}
+
+	var prefetched []*amqp.Message
+
+	for {
+		m := links.Receiver.Prefetched()
+
+		if m == nil {
+			break
+		}
+
+		prefetched = append(prefetched, m)
+	}
+
+	if len(prefetched) == 0 {
+		links.Writef(exported.EventConn, "No messages on receiver after closing.")
+		return
+	}
+
+	links.Writef(exported.EventConn, "Got %d messages on receiver after closing. These can be received using ReceiveMessages().", len(prefetched))
+	links.prefetchedMessagesAfterClose(prefetched)
 }

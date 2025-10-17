@@ -272,7 +272,7 @@ func TestDatadogScalerAPI(t *testing.T) {
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+		"replica count should be %d after 9 minutes", minReplicaCount)
 
 	// test scaling
 	testActivation(t, kc, data)

@@ -19,16 +19,16 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	storagev1 "k8s.io/api/storage/v1"
+	apistoragev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	internalinterfaces "k8s.io/client-go/informers/internalinterfaces"
 	kubernetes "k8s.io/client-go/kubernetes"
-	v1 "k8s.io/client-go/listers/storage/v1"
+	storagev1 "k8s.io/client-go/listers/storage/v1"
 	cache "k8s.io/client-go/tools/cache"
 )
 
@@ -36,7 +36,7 @@ import (
 // CSIStorageCapacities.
 type CSIStorageCapacityInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.CSIStorageCapacityLister
+	Lister() storagev1.CSIStorageCapacityLister
 }
 
 type cSIStorageCapacityInformer struct {
@@ -62,16 +62,28 @@ func NewFilteredCSIStorageCapacityInformer(client kubernetes.Interface, namespac
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StorageV1().CSIStorageCapacities(namespace).List(context.TODO(), options)
+				return client.StorageV1().CSIStorageCapacities(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StorageV1().CSIStorageCapacities(namespace).Watch(context.TODO(), options)
+				return client.StorageV1().CSIStorageCapacities(namespace).Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.StorageV1().CSIStorageCapacities(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.StorageV1().CSIStorageCapacities(namespace).Watch(ctx, options)
 			},
 		},
-		&storagev1.CSIStorageCapacity{},
+		&apistoragev1.CSIStorageCapacity{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +94,9 @@ func (f *cSIStorageCapacityInformer) defaultInformer(client kubernetes.Interface
 }
 
 func (f *cSIStorageCapacityInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&storagev1.CSIStorageCapacity{}, f.defaultInformer)
+	return f.factory.InformerFor(&apistoragev1.CSIStorageCapacity{}, f.defaultInformer)
 }
 
-func (f *cSIStorageCapacityInformer) Lister() v1.CSIStorageCapacityLister {
-	return v1.NewCSIStorageCapacityLister(f.Informer().GetIndexer())
+func (f *cSIStorageCapacityInformer) Lister() storagev1.CSIStorageCapacityLister {
+	return storagev1.NewCSIStorageCapacityLister(f.Informer().GetIndexer())
 }
