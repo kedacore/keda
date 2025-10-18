@@ -155,7 +155,7 @@ func TestGraphiteScalerAuthParams(t *testing.T) {
 		}
 
 		if err == nil {
-			if meta.enableBasicAuth && !strings.Contains(testData.metadata["authMode"], "basic") {
+			if meta.AuthMode == "basic" && !strings.Contains(testData.metadata["authMode"], "basic") {
 				t.Error("wrong auth mode detected")
 			}
 		}

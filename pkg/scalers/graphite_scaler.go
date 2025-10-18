@@ -31,19 +31,14 @@ type graphiteMetadata struct {
 	QueryTime           string  `keda:"name=queryTime,           order=triggerMetadata"`
 
 	// basic auth
-	AuthMode string `keda:"name=authMode,        order=triggerMetadata, optional"`
-	Username string `keda:"name=username,        order=authParams,      optional"`
-	Password string `keda:"name=password,        order=authParams,      optional"`
+	AuthMode string `keda:"name=authMode, order=triggerMetadata, enum=basic, optional"`
+	Username string `keda:"name=username, order=authParams, optional"`
+	Password string `keda:"name=password, order=authParams, optional"`
 
-	metricName      string
-	enableBasicAuth bool
-	triggerIndex    int
+	triggerIndex int
 }
 
 func (g *graphiteMetadata) Validate() error {
-	if g.AuthMode != "" && g.AuthMode != "basic" {
-		return fmt.Errorf("authMode must be 'basic'")
-	}
 	if g.AuthMode == "basic" && g.Username == "" {
 		return fmt.Errorf("username is required when authMode is 'basic'")
 	}
@@ -85,8 +80,6 @@ func parseGraphiteMetadata(config *scalersconfig.ScalerConfig) (*graphiteMetadat
 		return nil, fmt.Errorf("error parsing graphite metadata: %w", err)
 	}
 
-	meta.enableBasicAuth = true
-
 	return meta, nil
 }
 
@@ -117,9 +110,7 @@ func (s *graphiteScaler) executeGrapQuery(ctx context.Context) (float64, error) 
 	if err != nil {
 		return -1, err
 	}
-	if s.metadata.enableBasicAuth {
-		req.SetBasicAuth(s.metadata.Username, s.metadata.Password)
-	}
+	req.SetBasicAuth(s.metadata.Username, s.metadata.Password)
 	r, err := s.httpClient.Do(req)
 	if err != nil {
 		return -1, err
