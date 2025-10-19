@@ -864,6 +864,12 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "cloudConfig",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
                 }
             ]
         },
