@@ -565,10 +565,6 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
-        - name: cloudConfig
-          type: string
-          optional: true
-          metadataVariableReadable: true
     - type: azure-pipelines
       parameters:
         - name: organizationURL
@@ -1557,6 +1553,10 @@ scalers:
         - name: unsafeSsl
           type: string
           default: "false"
+          metadataVariableReadable: true
+        - name: authModes
+          type: string
+          optional: true
           metadataVariableReadable: true
     - type: mssql
       parameters:

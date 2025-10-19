@@ -59,7 +59,7 @@ type azureMonitorMetadata struct {
 	ClientPassword               string                  `keda:"name=activeDirectoryClientPassword, order=triggerMetadata;resolvedEnv;authParams, optional"`
 	CloudName                    string                  `keda:"name=cloud, order=triggerMetadata, optional"`
 	AzureResourceManagerEndpoint string                  `keda:"name=azureResourceManagerEndpoint, order=triggerMetadata, optional"`
-	Cloud                        azcloud.Configuration   `keda:"name=cloudConfig, order=triggerMetadata, optional"`
+	Cloud                        azcloud.Configuration
 }
 
 func (m *azureMonitorMetadata) Validate() error {
@@ -224,11 +224,8 @@ func parseAzureMonitorMetadata(config *scalersconfig.ScalerConfig) (*azureMonito
 		return nil, fmt.Errorf("no targetValue given")
 	}
 
-	if err := meta.checkAzurePodIdentityParams(config); err != nil {
-		return nil, err
-	}
-
-	if err := meta.Validate(); err != nil {
+	err := meta.checkAzurePodIdentityParams(config)
+	if err != nil {
 		return nil, err
 	}
 

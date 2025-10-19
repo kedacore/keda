@@ -864,12 +864,6 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
-                },
-                {
-                    "name": "cloudConfig",
-                    "type": "string",
-                    "optional": true,
-                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -2391,6 +2385,12 @@
                     "name": "unsafeSsl",
                     "type": "string",
                     "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "authModes",
+                    "type": "string",
+                    "optional": true,
                     "metadataVariableReadable": true
                 }
             ]
