@@ -665,6 +665,7 @@ func TestDurationParsing(t *testing.T) {
 // TestUnexpectedOptional tests the unexpected optional input
 func TestUnexpectedOptional(t *testing.T) {
 	RegisterTestingT(t)
+	checkUnexpectedParamEnabled = true
 
 	// Create a mock recorder to capture the event
 	mockRecorder := &MockEventRecorder{Messages: make([]string, 0)}
