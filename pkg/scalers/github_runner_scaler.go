@@ -371,13 +371,27 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	previousWfrs := make(map[string]map[string]*WorkflowRuns)
 	rateLimit := RateLimit{}
 	previousQueueLength := int64(0)
+
 	previousQueueLengthTime := time.Time{}
+
+	logger := InitializeLogger(config, "github_runner_scaler")
+	logger.V(1).Info("Creating new GitHub Runner Scaler instance",
+		"scaledJobName", config.ScalableObjectName,
+		"namespace", config.ScalableObjectNamespace,
+		"owner", meta.Owner,
+		"runnerScope", meta.RunnerScope,
+		"enableBackoff", meta.EnableBackoff,
+		"enableEtags", meta.EnableEtags,
+		"previousQueueLengthTime", previousQueueLengthTime,
+		"rateLimitRemaining", rateLimit.Remaining,
+		"rateLimitResetTime", rateLimit.ResetTime,
+		"rateLimitRetryAfterTime", rateLimit.RetryAfterTime)
 
 	return &githubRunnerScaler{
 		metricType:              metricType,
 		metadata:                meta,
 		httpClient:              httpClient,
-		logger:                  InitializeLogger(config, "github_runner_scaler"),
+		logger:                  logger,
 		etags:                   etags,
 		previousRepos:           previousRepos,
 		previousJobs:            previousJobs,
@@ -668,23 +682,39 @@ func (s *githubRunnerScaler) canRunnerMatchLabels(jobLabels []string, runnerLabe
 	return true
 }
 
+// shouldUseBackoffCache checks if rate limiting is active and returns cached value if appropriate.
+func (s *githubRunnerScaler) shouldUseBackoffCache() (int64, bool, error) {
+	if !s.metadata.EnableBackoff {
+		return 0, false, nil
+	}
+
+	var backoffUntilTime time.Time
+	if s.rateLimit.Remaining == 0 && !s.rateLimit.ResetTime.IsZero() && time.Now().Before(s.rateLimit.ResetTime) {
+		backoffUntilTime = s.rateLimit.ResetTime
+	} else if !s.rateLimit.RetryAfterTime.IsZero() && time.Now().Before(s.rateLimit.RetryAfterTime) {
+		backoffUntilTime = s.rateLimit.RetryAfterTime
+	}
+
+	if !backoffUntilTime.IsZero() {
+		if !s.previousQueueLengthTime.IsZero() {
+			s.logger.V(1).Info("Rate limit backoff active, returning cached queue length",
+				"queueLength", s.previousQueueLength,
+				"cachedAt", s.previousQueueLengthTime,
+				"backoffUntil", backoffUntilTime)
+			return s.previousQueueLength, true, nil
+		}
+
+		// No cache available return error
+		return 0, false, fmt.Errorf("GitHub API rate limit active but no cached queue length available (likely pod restart during rate limit period), backoff until %s", backoffUntilTime)
+	}
+
+	return 0, false, nil
+}
+
 // GetWorkflowQueueLength returns the number of workflow jobs in the queue
 func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64, error) {
-	if s.metadata.EnableBackoff {
-		var backoffUntilTime time.Time
-		if s.rateLimit.Remaining == 0 && !s.rateLimit.ResetTime.IsZero() && time.Now().Before(s.rateLimit.ResetTime) {
-			backoffUntilTime = s.rateLimit.ResetTime
-		} else if !s.rateLimit.RetryAfterTime.IsZero() && time.Now().Before(s.rateLimit.RetryAfterTime) {
-			backoffUntilTime = s.rateLimit.RetryAfterTime
-		}
-		if !backoffUntilTime.IsZero() {
-			if !s.previousQueueLengthTime.IsZero() {
-				s.logger.V(1).Info(fmt.Sprintf("Github API rate limit exceeded, returning previous queue length %d, last successful queue length check %s, backing off until %s", s.previousQueueLength, s.previousQueueLengthTime, backoffUntilTime))
-				return s.previousQueueLength, nil
-			}
-
-			return -1, fmt.Errorf("github API rate limit exceeded, no valid previous queue length available, API available at %s", backoffUntilTime)
-		}
+	if queueLength, shouldUseCache, _ := s.shouldUseBackoffCache(); shouldUseCache {
+		return queueLength, nil
 	}
 
 	var repos []string
@@ -692,6 +722,12 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 
 	repos, err = s.getRepositories(ctx)
 	if err != nil {
+		if queueLength, shouldUseCache, _ := s.shouldUseBackoffCache(); shouldUseCache {
+			s.logger.V(1).Info("Rate limited during getRepositories, returning cached queue length",
+				"error", err.Error(),
+				"queueLength", queueLength)
+			return queueLength, nil
+		}
 		return -1, err
 	}
 
@@ -700,6 +736,12 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	for _, repo := range repos {
 		wfrsQueued, err := s.getWorkflowRuns(ctx, repo, "queued")
 		if err != nil {
+			if queueLength, shouldUseCache, _ := s.shouldUseBackoffCache(); shouldUseCache {
+				s.logger.V(1).Info("Rate limited during getWorkflowRuns, returning cached queue length",
+					"error", err.Error(),
+					"queueLength", queueLength)
+				return queueLength, nil
+			}
 			return -1, err
 		}
 		if wfrsQueued != nil {
@@ -707,6 +749,12 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 		}
 		wfrsInProgress, err := s.getWorkflowRuns(ctx, repo, "in_progress")
 		if err != nil {
+			if queueLength, shouldUseCache, _ := s.shouldUseBackoffCache(); shouldUseCache {
+				s.logger.V(1).Info("Rate limited during getWorkflowRuns, returning cached queue length",
+					"error", err.Error(),
+					"queueLength", queueLength)
+				return queueLength, nil
+			}
 			return -1, err
 		}
 		if wfrsInProgress != nil {
@@ -720,6 +768,12 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	for _, wfr := range wfrs {
 		jobs, err := s.getWorkflowRunJobs(ctx, wfr.ID, wfr.Repository.Name)
 		if err != nil {
+			if queueLength, shouldUseCache, _ := s.shouldUseBackoffCache(); shouldUseCache {
+				s.logger.V(1).Info("Rate limited during getWorkflowRunJobs, returning cached queue length",
+					"error", err.Error(),
+					"queueLength", queueLength)
+				return queueLength, nil
+			}
 			return -1, err
 		}
 		for _, job := range jobs {
@@ -732,6 +786,7 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	if s.metadata.EnableBackoff {
 		s.previousQueueLength = queueCount
 		s.previousQueueLengthTime = time.Now()
+		s.logger.V(1).Info(fmt.Sprintf("Previous Queue Length %d, Previous Queue Length Time %s", s.previousQueueLength, s.previousQueueLengthTime))
 	}
 
 	return queueCount, nil
