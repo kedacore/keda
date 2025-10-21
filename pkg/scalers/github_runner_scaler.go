@@ -371,7 +371,6 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	previousWfrs := make(map[string]map[string]*WorkflowRuns)
 	rateLimit := RateLimit{}
 	previousQueueLength := int64(0)
-
 	previousQueueLengthTime := time.Time{}
 
 	return &githubRunnerScaler{
@@ -797,7 +796,7 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 		s.previousQueueLength = queueCount
 		s.previousQueueLengthTime = time.Now()
 		s.logger.V(1).Info(fmt.Sprintf(
-			"Successful workflow queue count. Caching previous queue Length %d, previous queue length time %s",
+			"Successful workflow queue count. Caching previous queue length %d, previous queue length time %s",
 			s.previousQueueLength,
 			s.previousQueueLengthTime,
 		))
