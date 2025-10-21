@@ -497,14 +497,29 @@ func (s *githubRunnerScaler) getRepositories(ctx context.Context) ([]string, err
 }
 
 func (s *githubRunnerScaler) getRateLimit(header http.Header) RateLimit {
+	var err error
 	var retryAfterTime time.Time
+	var remaining = -1
+	var reset int64 = 0
 
-	remaining, _ := strconv.Atoi(header.Get("X-RateLimit-Remaining"))
-	reset, _ := strconv.ParseInt(header.Get("X-RateLimit-Reset"), 10, 64)
+	remainingStr := header.Get("X-RateLimit-Remaining")
+	remaining, err = strconv.Atoi(remainingStr)
+	if err != nil {
+		s.logger.V(1).Info("Failed to parse X-RateLimit-Remaining header", "value", remainingStr, "error", err.Error())
+	}
+
+	resetStr := header.Get("X-RateLimit-Reset")
+	reset, err = strconv.ParseInt(resetStr, 10, 64)
+	if err != nil {
+		s.logger.V(1).Info("Failed to parse X-RateLimit-Reset header", "value", resetStr, "error", err.Error())
+	}
 	resetTime := time.Unix(reset, 0)
 
 	if retryAfterStr := header.Get("Retry-After"); retryAfterStr != "" {
-		if retrySeconds, err := strconv.Atoi(retryAfterStr); err == nil {
+		retrySeconds, err := strconv.Atoi(retryAfterStr)
+		if err != nil {
+			s.logger.V(1).Info("Failed to parse Retry-After header", "value", retryAfterStr, "error", err.Error())
+		} else {
 			retryAfterTime = time.Now().Add(time.Duration(retrySeconds) * time.Second)
 		}
 	}
