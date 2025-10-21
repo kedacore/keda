@@ -374,24 +374,11 @@ func NewGitHubRunnerScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	previousQueueLengthTime := time.Time{}
 
-	logger := InitializeLogger(config, "github_runner_scaler")
-	logger.V(1).Info("Creating new GitHub Runner Scaler instance",
-		"scaledJobName", config.ScalableObjectName,
-		"namespace", config.ScalableObjectNamespace,
-		"owner", meta.Owner,
-		"runnerScope", meta.RunnerScope,
-		"enableBackoff", meta.EnableBackoff,
-		"enableEtags", meta.EnableEtags,
-		"previousQueueLengthTime", previousQueueLengthTime,
-		"rateLimitRemaining", rateLimit.Remaining,
-		"rateLimitResetTime", rateLimit.ResetTime,
-		"rateLimitRetryAfterTime", rateLimit.RetryAfterTime)
-
 	return &githubRunnerScaler{
 		metricType:              metricType,
 		metadata:                meta,
 		httpClient:              httpClient,
-		logger:                  logger,
+		logger:                  InitializeLogger(config, "github_runner_scaler"),
 		etags:                   etags,
 		previousRepos:           previousRepos,
 		previousJobs:            previousJobs,
