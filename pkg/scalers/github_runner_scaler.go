@@ -555,8 +555,9 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 		rateLimit, err := s.getRateLimit(r.Header)
 		if err != nil {
 			s.logger.Error(err, "error getting rate limit")
+		} else {
+			s.rateLimit = rateLimit
 		}
-		s.rateLimit = rateLimit
 	}
 
 	if r.StatusCode != 200 {
@@ -685,7 +686,7 @@ func (s *githubRunnerScaler) canRunnerMatchLabels(jobLabels []string, runnerLabe
 	return true
 }
 
-// getBackoffUntilTime checks both the standard rate limit ResetTime and the RetryAfterTime,
+// getBackoffUntilTime returns a time to backoff until sending further calls to the Github API
 func (s *githubRunnerScaler) getBackoffUntilTime() time.Time {
 	now := time.Now()
 	backoffUntilTime := time.Time{}
@@ -713,14 +714,14 @@ func (s *githubRunnerScaler) useBackoffCache() bool {
 
 	backoffUntilTime := s.getBackoffUntilTime()
 
-	return backoffUntilTime.IsZero()
+	return !backoffUntilTime.IsZero()
 }
 
+// getCachedQueuedLength returns the cached previous queue length
 func (s *githubRunnerScaler) getCachedQueuedLength() (int64, error) {
-	// Github API is rate-limited attempt to use the cache
 	if !s.previousQueueLengthTime.IsZero() {
 		s.logger.V(1).Info(fmt.Sprintf(
-			"Github API rate limit exceeded. Backoff enabled, using cached queue length: %d, last checked at %s",
+			"Github API rate limit exceeded. Cached queue length: %d, last checked at %s",
 			s.previousQueueLength,
 			s.previousQueueLengthTime,
 		))
@@ -728,8 +729,7 @@ func (s *githubRunnerScaler) getCachedQueuedLength() (int64, error) {
 		return s.previousQueueLength, nil
 	}
 
-	// Backoff is active, but no cache available
-	return -1, fmt.Errorf("GitHub API rate limit exceeded. Backoff enabled, no cached queue length available")
+	return -1, fmt.Errorf("GitHub API rate limit exceeded. No cached queue length available")
 }
 
 // GetWorkflowQueueLength returns the number of workflow jobs in the queue
@@ -739,8 +739,8 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 		return s.getCachedQueuedLength()
 	}
 
-	var err error
 	var repos []string
+	var err error
 
 	repos, err = s.getRepositories(ctx)
 	if err != nil {
@@ -797,7 +797,7 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 		s.previousQueueLength = queueCount
 		s.previousQueueLengthTime = time.Now()
 		s.logger.V(1).Info(fmt.Sprintf(
-			"Previous Queue Length %d, Previous Queue Length Time %s",
+			"Successful workflow queue count. Caching previous queue Length %d, previous queue length time %s",
 			s.previousQueueLength,
 			s.previousQueueLengthTime,
 		))
@@ -808,9 +808,9 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 
 func (s *githubRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	queueLen, err := s.GetWorkflowQueueLength(ctx)
+
 	if err != nil {
 		s.logger.Error(err, "error getting workflow queue length")
-
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
