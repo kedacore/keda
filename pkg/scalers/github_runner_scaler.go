@@ -700,46 +700,49 @@ func (s *githubRunnerScaler) getBackoffUntilTime() time.Time {
 }
 
 // useBackoffCache determines whether to use the cached previousQueueLength to backoff further calls to the Github API
-func (s *githubRunnerScaler) useBackoffCache() (bool, error) {
+func (s *githubRunnerScaler) useBackoffCache() bool {
 	if !s.metadata.EnableBackoff {
-		return false, nil
+		return false
 	}
 
 	backoffUntilTime := s.getBackoffUntilTime()
 
 	// Github API is not rate-limited
-	if backoffUntilTime.IsZero() {
-		return false, nil
+	if !backoffUntilTime.IsZero() {
+		return true
 	}
 
-	// Github API is rate-limited attempt to use the cache
-	if !s.previousQueueLengthTime.IsZero() {
-		return true, nil
-	}
-
-	// Backoff is active, but no cache available
-	return false, fmt.Errorf("GitHub API rate limit exceeded. Backoff enabled, no cached queue length available. API available at: %s", backoffUntilTime)
+	return false
 }
 
-// GetWorkflowQueueLength returns the number of workflow jobs in the queue
-func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64, error) {
-	var err error
-
-	useCache, err := s.useBackoffCache()
-	if err != nil {
-		return -1, err
-	}
-	if useCache {
+func (s *githubRunnerScaler) getCachedQueuedLength() (int64, error) {
+	// Github API is rate-limited attempt to use the cache
+	if !s.previousQueueLengthTime.IsZero() {
 		s.logger.V(1).Info("GitHub API rate limit exceeded. Backoff enabled, using cached queue length",
 			"queueLength", s.previousQueueLength,
 			"cachedAt", s.previousQueueLengthTime)
 		return s.previousQueueLength, nil
 	}
 
+	// Backoff is active, but no cache available
+	return -1, fmt.Errorf("GitHub API rate limit exceeded. Backoff enabled, no cached queue length available")
+}
+
+// GetWorkflowQueueLength returns the number of workflow jobs in the queue
+func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64, error) {
+
+	if useCache := s.useBackoffCache(); useCache {
+		return s.getCachedQueuedLength()
+	}
+
+	var err error
 	var repos []string
 
 	repos, err = s.getRepositories(ctx)
 	if err != nil {
+		if useCache := s.useBackoffCache(); useCache {
+			return s.getCachedQueuedLength()
+		}
 		return -1, err
 	}
 
@@ -748,6 +751,9 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	for _, repo := range repos {
 		wfrsQueued, err := s.getWorkflowRuns(ctx, repo, "queued")
 		if err != nil {
+			if useCache := s.useBackoffCache(); useCache {
+				return s.getCachedQueuedLength()
+			}
 			return -1, err
 		}
 		if wfrsQueued != nil {
@@ -755,6 +761,9 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 		}
 		wfrsInProgress, err := s.getWorkflowRuns(ctx, repo, "in_progress")
 		if err != nil {
+			if useCache := s.useBackoffCache(); useCache {
+				return s.getCachedQueuedLength()
+			}
 			return -1, err
 		}
 		if wfrsInProgress != nil {
@@ -768,6 +777,9 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	for _, wfr := range wfrs {
 		jobs, err := s.getWorkflowRunJobs(ctx, wfr.ID, wfr.Repository.Name)
 		if err != nil {
+			if useCache := s.useBackoffCache(); useCache {
+				return s.getCachedQueuedLength()
+			}
 			return -1, err
 		}
 		for _, job := range jobs {
@@ -789,20 +801,8 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 func (s *githubRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	queueLen, err := s.GetWorkflowQueueLength(ctx)
 	if err != nil {
-		useCache, backoffErr := s.useBackoffCache()
-		if backoffErr != nil {
-			s.logger.Error(backoffErr, "GitHub API rate limit exceeded but no cached queue length available")
-		}
-		if useCache {
-			s.logger.V(1).Info("GitHub API rate limit exceeded getting workflow queue length. Backoff enabled, using cached queue length",
-				"queueLength", s.previousQueueLength,
-				"cachedAt", s.previousQueueLengthTime,
-				"originalError", err.Error())
-			metric := GenerateMetricInMili(metricName, float64(s.previousQueueLength))
-			return []external_metrics.ExternalMetricValue{metric}, s.previousQueueLength >= s.metadata.TargetWorkflowQueueLength, nil
-		}
-
 		s.logger.Error(err, "error getting workflow queue length")
+
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
