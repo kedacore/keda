@@ -682,52 +682,62 @@ func (s *githubRunnerScaler) canRunnerMatchLabels(jobLabels []string, runnerLabe
 	return true
 }
 
-// shouldUseBackoffCache checks if rate limiting is active and returns cached value if appropriate.
-func (s *githubRunnerScaler) shouldUseBackoffCache() (int64, bool, error) {
+// getBackoffUntilTime checks both the standard rate limit ResetTime and the RetryAfterTime,
+func (s *githubRunnerScaler) getBackoffUntilTime() time.Time {
+	now := time.Now()
+
+	if s.rateLimit.Remaining == 0 && !s.rateLimit.ResetTime.IsZero() && now.Before(s.rateLimit.ResetTime) {
+		return s.rateLimit.ResetTime
+	}
+
+	if !s.rateLimit.RetryAfterTime.IsZero() && now.Before(s.rateLimit.RetryAfterTime) {
+		return s.rateLimit.RetryAfterTime
+	}
+
+	return time.Time{}
+}
+
+// useBackoffCache determines whether to use the cached previousQueueLength to backoff further calls to the Github API
+func (s *githubRunnerScaler) useBackoffCache() (bool, error) {
 	if !s.metadata.EnableBackoff {
-		return 0, false, nil
+		return false, nil
 	}
 
-	var backoffUntilTime time.Time
-	if s.rateLimit.Remaining == 0 && !s.rateLimit.ResetTime.IsZero() && time.Now().Before(s.rateLimit.ResetTime) {
-		backoffUntilTime = s.rateLimit.ResetTime
-	} else if !s.rateLimit.RetryAfterTime.IsZero() && time.Now().Before(s.rateLimit.RetryAfterTime) {
-		backoffUntilTime = s.rateLimit.RetryAfterTime
+	backoffUntilTime := s.getBackoffUntilTime()
+
+	// Github API is not rate-limited
+	if backoffUntilTime.IsZero() {
+		return false, nil
 	}
 
-	if !backoffUntilTime.IsZero() {
-		if !s.previousQueueLengthTime.IsZero() {
-			s.logger.V(1).Info("Rate limit backoff active, returning cached queue length",
-				"queueLength", s.previousQueueLength,
-				"cachedAt", s.previousQueueLengthTime,
-				"backoffUntil", backoffUntilTime)
-			return s.previousQueueLength, true, nil
-		}
-
-		// No cache available return error
-		return 0, false, fmt.Errorf("GitHub API rate limit active but no cached queue length available (likely pod restart during rate limit period), backoff until %s", backoffUntilTime)
+	// Github API is rate-limited attempt to use the cache
+	if !s.previousQueueLengthTime.IsZero() {
+		return true, nil
 	}
 
-	return 0, false, nil
+	// Backoff is active, but no cache available
+	return false, fmt.Errorf("GitHub API rate limit exceeded. Backoff enabled, no cached queue length available. API available at: %s", backoffUntilTime)
 }
 
 // GetWorkflowQueueLength returns the number of workflow jobs in the queue
 func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64, error) {
-	if queueLength, shouldUseCache, _ := s.shouldUseBackoffCache(); shouldUseCache {
-		return queueLength, nil
+	var err error
+
+	useCache, err := s.useBackoffCache()
+	if err != nil {
+		return -1, err
+	}
+	if useCache {
+		s.logger.V(1).Info("GitHub API rate limit exceeded. Backoff enabled, using cached queue length",
+			"queueLength", s.previousQueueLength,
+			"cachedAt", s.previousQueueLengthTime)
+		return s.previousQueueLength, nil
 	}
 
 	var repos []string
-	var err error
 
 	repos, err = s.getRepositories(ctx)
 	if err != nil {
-		if queueLength, shouldUseCache, _ := s.shouldUseBackoffCache(); shouldUseCache {
-			s.logger.V(1).Info("Rate limited during getRepositories, returning cached queue length",
-				"error", err.Error(),
-				"queueLength", queueLength)
-			return queueLength, nil
-		}
 		return -1, err
 	}
 
@@ -736,12 +746,6 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	for _, repo := range repos {
 		wfrsQueued, err := s.getWorkflowRuns(ctx, repo, "queued")
 		if err != nil {
-			if queueLength, shouldUseCache, _ := s.shouldUseBackoffCache(); shouldUseCache {
-				s.logger.V(1).Info("Rate limited during getWorkflowRuns, returning cached queue length",
-					"error", err.Error(),
-					"queueLength", queueLength)
-				return queueLength, nil
-			}
 			return -1, err
 		}
 		if wfrsQueued != nil {
@@ -749,12 +753,6 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 		}
 		wfrsInProgress, err := s.getWorkflowRuns(ctx, repo, "in_progress")
 		if err != nil {
-			if queueLength, shouldUseCache, _ := s.shouldUseBackoffCache(); shouldUseCache {
-				s.logger.V(1).Info("Rate limited during getWorkflowRuns, returning cached queue length",
-					"error", err.Error(),
-					"queueLength", queueLength)
-				return queueLength, nil
-			}
 			return -1, err
 		}
 		if wfrsInProgress != nil {
@@ -768,12 +766,6 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 	for _, wfr := range wfrs {
 		jobs, err := s.getWorkflowRunJobs(ctx, wfr.ID, wfr.Repository.Name)
 		if err != nil {
-			if queueLength, shouldUseCache, _ := s.shouldUseBackoffCache(); shouldUseCache {
-				s.logger.V(1).Info("Rate limited during getWorkflowRunJobs, returning cached queue length",
-					"error", err.Error(),
-					"queueLength", queueLength)
-				return queueLength, nil
-			}
 			return -1, err
 		}
 		for _, job := range jobs {
@@ -795,6 +787,19 @@ func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64,
 func (s *githubRunnerScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	queueLen, err := s.GetWorkflowQueueLength(ctx)
 	if err != nil {
+		useCache, backoffErr := s.useBackoffCache()
+		if backoffErr != nil {
+			s.logger.Error(backoffErr, "GitHub API rate limit exceeded but no cached queue length available")
+		}
+		if useCache {
+			s.logger.V(1).Info("GitHub API rate limit exceeded getting workflow queue length. Backoff enabled, using cached queue length",
+				"queueLength", s.previousQueueLength,
+				"cachedAt", s.previousQueueLengthTime,
+				"originalError", err.Error())
+			metric := GenerateMetricInMili(metricName, float64(s.previousQueueLength))
+			return []external_metrics.ExternalMetricValue{metric}, s.previousQueueLength >= s.metadata.TargetWorkflowQueueLength, nil
+		}
+
 		s.logger.Error(err, "error getting workflow queue length")
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
