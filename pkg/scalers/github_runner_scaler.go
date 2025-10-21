@@ -502,9 +502,8 @@ func (s *githubRunnerScaler) getRateLimit(header http.Header) (RateLimit, error)
 		retrySeconds, err := strconv.Atoi(retryAfterStr)
 		if err != nil {
 			return RateLimit{}, fmt.Errorf("failed to parse Retry-After header. Returned error: %s", err.Error())
-		} else {
-			retryAfterTime = time.Now().Add(time.Duration(retrySeconds) * time.Second)
 		}
+		retryAfterTime = time.Now().Add(time.Duration(retrySeconds) * time.Second)
 	}
 
 	if retryAfterTime.IsZero() {
@@ -733,7 +732,6 @@ func (s *githubRunnerScaler) getCachedQueuedLength() (int64, error) {
 
 // GetWorkflowQueueLength returns the number of workflow jobs in the queue
 func (s *githubRunnerScaler) GetWorkflowQueueLength(ctx context.Context) (int64, error) {
-
 	if useCache := s.useBackoffCache(); useCache {
 		return s.getCachedQueuedLength()
 	}
