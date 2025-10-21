@@ -488,20 +488,20 @@ func (s *githubRunnerScaler) getRateLimit(header http.Header) (RateLimit, error)
 	remainingStr := header.Get("X-RateLimit-Remaining")
 	remaining, err := strconv.Atoi(remainingStr)
 	if err != nil {
-		return RateLimit{}, fmt.Errorf("failed to parse X-RateLimit-Remaining header. Returned error: %s", err.Error())
+		return RateLimit{}, fmt.Errorf("failed to parse X-RateLimit-Remaining header: %w", err)
 	}
 
 	resetStr := header.Get("X-RateLimit-Reset")
 	reset, err := strconv.ParseInt(resetStr, 10, 64)
 	if err != nil {
-		return RateLimit{}, fmt.Errorf("failed to parse X-RateLimit-Reset header. Returned error: %s", err.Error())
+		return RateLimit{}, fmt.Errorf("failed to parse X-RateLimit-Reset header: %w", err)
 	}
 	resetTime := time.Unix(reset, 0)
 
 	if retryAfterStr := header.Get("Retry-After"); retryAfterStr != "" {
 		retrySeconds, err := strconv.Atoi(retryAfterStr)
 		if err != nil {
-			return RateLimit{}, fmt.Errorf("failed to parse Retry-After header. Returned error: %s", err.Error())
+			return RateLimit{}, fmt.Errorf("failed to parse Retry-After header: %w", err)
 		}
 		retryAfterTime = time.Now().Add(time.Duration(retrySeconds) * time.Second)
 	}
