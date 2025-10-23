@@ -19,7 +19,9 @@ package resolver
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -240,6 +242,19 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 	result := make(map[string]string)
 	podIdentity := kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}
 	var err error
+
+	if triggerAuthRef != nil && triggerAuthRef.FilePath != "" {
+		if triggerAuthRef.Kind != "ClusterTriggerAuthentication" {
+			return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone},
+				fmt.Errorf("filePath is only supported for ClusterTriggerAuthentication, got kind: %s", triggerAuthRef.Kind)
+		}
+		authParams, err := readAuthParamsFromFile(triggerAuthRef.FilePath)
+		if err != nil {
+			logger.Error(err, "error reading auth params from file", "filePath", triggerAuthRef.FilePath)
+			return nil, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, err
+		}
+		return authParams, kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}, nil
+	}
 
 	if namespace != "" && triggerAuthRef != nil && triggerAuthRef.Name != "" {
 		triggerAuthSpec, triggerNamespace, err := getTriggerAuthSpec(ctx, client, triggerAuthRef, namespace)
@@ -614,6 +629,18 @@ func resolveAuthSecret(ctx context.Context, client client.Client, logger logr.Lo
 	}
 
 	return string(result)
+}
+
+func readAuthParamsFromFile(filePath string) (map[string]string, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read auth file %s: %w", filePath, err)
+	}
+	var params map[string]string
+	if err := json.Unmarshal(data, &params); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal auth params from %s: %w", filePath, err)
+	}
+	return params, nil
 }
 
 func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, logger logr.Logger, namespace string, bsat *kedav1alpha1.BoundServiceAccountToken, acs *authentication.AuthClientSet) string {
