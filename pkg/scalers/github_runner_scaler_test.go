@@ -819,6 +819,41 @@ func TestNewGitHubRunnerScaler_QueueLength_MultiRepo_PulledRepos_NoRate(t *testi
 	}
 }
 
+func TestNewGitHubRunnerScaler_QueueLength_SingleRepo_WithRateLimitBackoff(t *testing.T) {
+	// First call will set previous queue length
+	apiStub := apiStubHandler(true, false)
+	meta := getGitHubTestMetaData(apiStub.URL)
+	meta.EnableBackoff = true
+
+	scaler := githubRunnerScaler{
+		metadata:   meta,
+		httpClient: http.DefaultClient,
+	}
+	scaler.metadata.Repos = []string{"test"}
+	scaler.metadata.Labels = []string{"foo", "bar"}
+
+	if queueLen, err := scaler.GetWorkflowQueueLength(context.Background()); err != nil {
+		fmt.Println(err)
+		t.Fail()
+	} else if queueLen != 1 {
+		fmt.Printf("Expected queue length of 1 got %d\n", queueLen)
+		t.Fail()
+	}
+
+	// Second call simulating that there is a rate limit
+	// should return previous queue length
+	scaler.rateLimit.Remaining = 0
+	scaler.rateLimit.ResetTime = time.Now().Add(5 * time.Minute)
+
+	if queueLen, err := scaler.GetWorkflowQueueLength(context.Background()); err != nil {
+		fmt.Println(err)
+		t.Fail()
+	} else if queueLen != 1 {
+		fmt.Printf("Expected queue length of 1 after rate limit backoff got %d\n", queueLen)
+		t.Fail()
+	}
+}
+
 type githubRunnerMetricIdentifier struct {
 	metadataTestData *map[string]string
 	triggerIndex     int
