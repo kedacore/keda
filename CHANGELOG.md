@@ -92,7 +92,7 @@ New deprecation(s):
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Raw metrics stream - send also metrics during ScaledObject's interval ([#7197](https://github.com/kedacore/keda/issues/7197))
 
 ## v2.18.0
 

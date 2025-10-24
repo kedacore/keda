@@ -18,13 +18,86 @@ package scaling
 
 import (
 	"context"
+	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kedacore/keda/v2/pkg/metricsservice/api"
 )
+
+var (
+	rawMetricsLog = logf.Log.WithName("raw_metrics")
+
+	// sendRawMetrics is a feature flag that enables sending the raw metric values to all subscribed parties
+	sendRawMetrics = os.Getenv("RAW_METRICS_GRPC_PROTOCOL") == "enabled"
+	// sendRawMetricsMode defines the mode of sending raw metrics
+	sendRawMetricsMode = parseRawMetricsMode()
+)
+
+// RawMetricsMode defines the different modes for sending raw metrics
+type RawMetricsMode int
+
+const (
+	// RawMetricsDisabled - no raw metrics are sent
+	RawMetricsDisabled RawMetricsMode = iota
+	// RawMetricsAll - send all raw metrics (both HPA and polling) - default behavior
+	RawMetricsAll
+	// RawMetricsHPAOnly - only send raw metrics from HPA requests
+	RawMetricsHPAOnly
+	// RawMetricsPollingInterval - only send raw metrics from polling interval
+	RawMetricsPollingInterval
+)
+
+// parseRawMetricsMode parses the RAW_METRICS_MODE environment variable
+// Valid values:
+//   - "all" or "" (empty): Send all raw metrics (both HPA and polling) - default behavior
+//   - "hpa": Send raw metrics only from HPA requests
+//   - "pollinginterval": Send raw metrics only from polling interval
+//
+// Any other value defaults to all
+func parseRawMetricsMode() RawMetricsMode {
+	if !sendRawMetrics {
+		return RawMetricsDisabled
+	}
+
+	mode := strings.ToLower(os.Getenv("RAW_METRICS_MODE"))
+	switch mode {
+	// Default to "all" if not set
+	case "all", "":
+		return RawMetricsAll
+	case "pollinginterval":
+		return RawMetricsPollingInterval
+	case "hpa":
+		return RawMetricsHPAOnly
+	default:
+		rawMetricsLog.Info("Unknown RAW_METRICS_MODE value, defaulting to all", "mode", mode)
+		return RawMetricsAll
+	}
+}
+
+// shouldSendRawMetrics determines if raw metrics should be sent based on the context
+func shouldSendRawMetrics(isFromHPA bool) bool {
+	if !sendRawMetrics {
+		return false
+	}
+
+	switch sendRawMetricsMode {
+	case RawMetricsDisabled:
+		return false
+	case RawMetricsHPAOnly:
+		return isFromHPA
+	case RawMetricsPollingInterval:
+		return !isFromHPA
+	case RawMetricsAll:
+		return true
+	default:
+		return false // Default to false
+	}
+}
 
 type metricMeta struct {
 	TriggerName      string
