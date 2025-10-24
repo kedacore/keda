@@ -1276,6 +1276,39 @@ scalers:
           type: string
           optional: true
           triggerAuthenticationVariableReadable: true
+    - type: graphite
+      parameters:
+        - name: serverAddress
+          type: string
+          metadataVariableReadable: true
+        - name: query
+          type: string
+          metadataVariableReadable: true
+        - name: threshold
+          type: string
+          default: "100"
+          metadataVariableReadable: true
+        - name: activationThreshold
+          type: string
+          default: "0"
+          metadataVariableReadable: true
+        - name: queryTime
+          type: string
+          metadataVariableReadable: true
+        - name: authMode
+          type: string
+          optional: true
+          allowedValue:
+            - basic
+          metadataVariableReadable: true
+        - name: username
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: password
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
     - type: huawei-cloudeye
       parameters:
         - name: namespace
