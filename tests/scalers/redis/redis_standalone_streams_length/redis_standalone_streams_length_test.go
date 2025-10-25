@@ -33,7 +33,7 @@ var (
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	redisPassword             = "admin"
 	redisStreamName           = "stream"
-	redisAddress              = fmt.Sprintf("redis.%s.svc.cluster.local:6379", redisNamespace)
+	redisAddress              = fmt.Sprintf("%s.%s.svc.cluster.local", testName, redisNamespace)
 	minReplicaCount           = 1
 	maxReplicaCount           = 4
 )
@@ -177,8 +177,8 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 	t.Cleanup(func() {
-		redis.RemoveStandalone(t, testName, redisNamespace)
 		DeleteKubernetesResources(t, testNamespace, data, templates)
+		redis.RemoveStandalone(t, testName, redisNamespace)
 	})
 
 	// Create Redis Standalone
