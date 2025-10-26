@@ -33,7 +33,7 @@ var (
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	redisPassword             = "admin"
 	redisStreamName           = "stream"
-	redisAddress              = fmt.Sprintf("%s.%s.svc.cluster.local", testName, redisNamespace)
+	redisAddress              = fmt.Sprintf("%s.%s.svc.cluster.local:6379", testName, redisNamespace)
 	minReplicaCount           = 1
 	maxReplicaCount           = 4
 )
