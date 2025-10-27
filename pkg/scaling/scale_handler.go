@@ -581,7 +581,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 				metricscollector.RecordScalerMetric(scaledObjectNamespace, scaledObjectName, result.triggerName, result.triggerIndex, metric.MetricName, true, metricValue)
 			}
 			// this is for raw metrics subscription for HPA requests
-			if shouldSendRawMetrics(true) {
+			if shouldSendRawMetrics(RawMetricsHPA) {
 				// send the raw metric to all subscribed clients in a non-blocking fashion
 				go h.sendWhenSubscribed(scaledObjectName, scaledObjectNamespace, result.triggerName, metrics)
 			}
@@ -684,7 +684,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		metricscollector.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, result.Err)
 
 		// this is for raw metrics subscription for polling interval
-		if shouldSendRawMetrics(false) {
+		if shouldSendRawMetrics(RawMetricsPollingInterval) {
 			// send the raw metric to all subscribed clients in a non-blocking fashion
 			go h.sendWhenSubscribed(scaledObject.Name, scaledObject.Namespace, result.TriggerName, result.Metrics)
 		}
@@ -890,7 +890,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 				isError = true
 				continue
 			}
-			if shouldSendRawMetrics(false) {
+			if shouldSendRawMetrics(RawMetricsPollingInterval) {
 				// send the raw metric to all subscribed clients in a non-blocking fashion
 				go h.sendWhenSubscribed(scaledJob.Name, scaledJob.Namespace, scalerName, metrics)
 			}

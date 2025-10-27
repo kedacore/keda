@@ -46,8 +46,8 @@ const (
 	RawMetricsDisabled RawMetricsMode = iota
 	// RawMetricsAll - send all raw metrics (both HPA and polling) - default behavior
 	RawMetricsAll
-	// RawMetricsHPAOnly - only send raw metrics from HPA requests
-	RawMetricsHPAOnly
+	// RawMetricsHPA - only send raw metrics from HPA requests
+	RawMetricsHPA
 	// RawMetricsPollingInterval - only send raw metrics from polling interval
 	RawMetricsPollingInterval
 )
@@ -72,31 +72,23 @@ func parseRawMetricsMode() RawMetricsMode {
 	case "pollinginterval":
 		return RawMetricsPollingInterval
 	case "hpa":
-		return RawMetricsHPAOnly
+		return RawMetricsHPA
 	default:
 		rawMetricsLog.Info("Unknown RAW_METRICS_MODE value, defaulting to all", "mode", mode)
 		return RawMetricsAll
 	}
 }
 
-// shouldSendRawMetrics determines if raw metrics should be sent based on the context
-func shouldSendRawMetrics(isFromHPA bool) bool {
+// shouldSendRawMetrics determines if raw metrics should be sent based on the mode
+func shouldSendRawMetrics(mode RawMetricsMode) bool {
 	if !sendRawMetrics {
 		return false
 	}
 
-	switch sendRawMetricsMode {
-	case RawMetricsDisabled:
-		return false
-	case RawMetricsHPAOnly:
-		return isFromHPA
-	case RawMetricsPollingInterval:
-		return !isFromHPA
-	case RawMetricsAll:
+	if sendRawMetricsMode == RawMetricsAll {
 		return true
-	default:
-		return false // Default to false
 	}
+	return sendRawMetricsMode == mode
 }
 
 type metricMeta struct {
