@@ -92,6 +92,7 @@ type predictKubeMetadata struct {
 	APIKey              string                 `keda:"name=apiKey, order=authParams"`
 	Threshold           float64                `keda:"name=threshold, order=triggerMetadata, optional"`
 	ActivationThreshold float64                `keda:"name=activationThreshold, order=triggerMetadata, optional"`
+	AuthModes           string                 `keda:"name=authModes, order=triggerMetadata, optional"`
 
 	predictHorizon    time.Duration
 	historyTimeWindow time.Duration
