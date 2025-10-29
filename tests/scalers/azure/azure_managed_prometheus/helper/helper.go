@@ -152,7 +152,6 @@ spec:
   - type: prometheus
     metadata:
       serverAddress: {{.PrometheusQueryEndpoint}}
-      metricName: http_requests_total
       threshold: '20'
       activationThreshold: '20'
       query: sum(rate(http_requests_total{app="{{.MonitoredAppName}}"}[2m]))
