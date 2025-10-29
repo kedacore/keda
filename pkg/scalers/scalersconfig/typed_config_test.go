@@ -665,6 +665,7 @@ func TestDurationParsing(t *testing.T) {
 // TestUnexpectedOptional tests the unexpected optional input
 func TestUnexpectedOptional(t *testing.T) {
 	RegisterTestingT(t)
+	checkUnexpectedParamEnabled = true
 
 	// Create a mock recorder to capture the event
 	mockRecorder := &MockEventRecorder{Messages: make([]string, 0)}
@@ -679,8 +680,8 @@ func TestUnexpectedOptional(t *testing.T) {
 		ResolvedEnv: map[string]string{
 			"bbb": "1.1",
 		},
-		Recorder:           mockRecorder,
-		ScalableObjectType: "test",
+		Recorder:    mockRecorder,
+		TriggerType: "testScaler",
 	}
 	type nestStruct struct {
 		Nest string `keda:"name=nestVal, order=triggerMetadata"`
@@ -698,8 +699,10 @@ func TestUnexpectedOptional(t *testing.T) {
 
 	// Verify that the event was recorded
 	Expect(mockRecorder.EventCalled).To(BeTrue())
-	Expect(mockRecorder.Messages[0]).To(Equal("Unmatched input property notexistVal in scaler test"))
-	Expect(mockRecorder.Messages[1]).To(Equal("Unmatched input property notValFromEnv in scaler test"))
+	Expect(mockRecorder.Messages).To(HaveLen(2))
+	// Check that both expected messages are present (order doesn't matter)
+	Expect(mockRecorder.Messages).To(ContainElement("Unmatched input property notexistVal in scaler testScaler"))
+	Expect(mockRecorder.Messages).To(ContainElement("Unmatched input property notValFromEnv in scaler testScaler"))
 }
 
 // MockEventRecorder is a mock implementation of record.EventRecorder

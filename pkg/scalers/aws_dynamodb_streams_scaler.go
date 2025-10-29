@@ -37,6 +37,8 @@ type awsDynamoDBStreamsMetadata struct {
 	AwsEndpoint                string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
 	awsAuthorization           awsutils.AuthorizationMetadata
 	triggerIndex               int
+
+	IdentityOwner string `keda:"name=identityOwner, order=triggerMetadata, optional"`
 }
 
 // NewAwsDynamoDBStreamsScaler creates a new awsDynamoDBStreamsScaler

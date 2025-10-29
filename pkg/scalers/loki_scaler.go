@@ -38,8 +38,10 @@ type lokiMetadata struct {
 	TenantName          string  `keda:"name=tenantName,order=triggerMetadata,optional"`
 	IgnoreNullValues    bool    `keda:"name=ignoreNullValues,order=triggerMetadata,default=true"`
 	UnsafeSsl           bool    `keda:"name=unsafeSsl,order=triggerMetadata,default=false"`
+	AuthModes           string  `keda:"name=authModes, order=triggerMetadata, optional"`
 	TriggerIndex        int
-	Auth                *authentication.AuthMeta
+
+	authentication.Config `keda:"optional"`
 }
 
 type lokiQueryResult struct {
@@ -85,11 +87,10 @@ func parseLokiMetadata(config *scalersconfig.ScalerConfig) (lokiMetadata, error)
 		meta.Threshold = 0
 	}
 
-	auth, err := authentication.GetAuthConfigs(config.TriggerMetadata, config.AuthParams)
-	if err != nil {
-		return meta, err
+	if err := meta.Validate(); err != nil {
+		return meta, fmt.Errorf("error validating authentication config: %w", err)
 	}
-	meta.Auth = auth
+
 	meta.TriggerIndex = config.TriggerIndex
 
 	return meta, nil
@@ -126,11 +127,14 @@ func (s *lokiScaler) ExecuteLokiQuery(ctx context.Context) (float64, error) {
 		return -1, err
 	}
 
-	if s.metadata.Auth != nil {
-		if s.metadata.Auth.EnableBearerAuth {
-			req.Header.Add("Authorization", authentication.GetBearerToken(s.metadata.Auth))
-		} else if s.metadata.Auth.EnableBasicAuth {
-			req.SetBasicAuth(s.metadata.Auth.Username, s.metadata.Auth.Password)
+	if !s.metadata.Disabled() {
+		switch {
+		case s.metadata.EnabledBearerAuth():
+			req.Header.Add("Authorization", s.metadata.GetBearerToken())
+		case s.metadata.EnabledBasicAuth():
+			req.SetBasicAuth(s.metadata.Username, s.metadata.Password)
+		case s.metadata.EnabledCustomAuth():
+			req.Header.Add(s.metadata.CustomAuthHeader, s.metadata.CustomAuthValue)
 		}
 	}
 

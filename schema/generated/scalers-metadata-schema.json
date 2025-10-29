@@ -224,6 +224,12 @@
                     "triggerAuthenticationVariableReadable": true
                 },
                 {
+                    "name": "dbName",
+                    "type": "string",
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
                     "name": "collection",
                     "type": "string",
                     "metadataVariableReadable": true
@@ -253,6 +259,12 @@
                 },
                 {
                     "name": "connectionLimit",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "authModes",
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
@@ -454,6 +466,12 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "identityOwner",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -500,6 +518,28 @@
                     "type": "string",
                     "default": "0",
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "filterExpression",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "identityOwner",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "expressionAttributeNames",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "expressionAttributeValues",
+                    "type": "string",
+                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -534,6 +574,12 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "identityOwner",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -565,6 +611,12 @@
                 },
                 {
                     "name": "awsEndpoint",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "identityOwner",
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
@@ -614,6 +666,12 @@
                     "name": "scaleOnDelayed",
                     "type": "string",
                     "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "identityOwner",
+                    "type": "string",
+                    "optional": true,
                     "metadataVariableReadable": true
                 }
             ]
@@ -815,6 +873,14 @@
                 {
                     "name": "organizationURL",
                     "type": "string",
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "personalAccessToken",
+                    "type": "string",
+                    "optional": true,
                     "envVariableReadable": true,
                     "triggerAuthenticationVariableReadable": true
                 },
@@ -845,49 +911,42 @@
                 {
                     "name": "targetPipelinesQueueLength",
                     "type": "string",
-                    "optional": true,
                     "default": "1",
                     "metadataVariableReadable": true
                 },
                 {
                     "name": "activationTargetPipelinesQueueLength",
                     "type": "string",
-                    "optional": true,
                     "default": "0",
                     "metadataVariableReadable": true
                 },
                 {
                     "name": "jobsToFetch",
                     "type": "string",
-                    "optional": true,
                     "default": "250",
                     "metadataVariableReadable": true
                 },
                 {
                     "name": "fetchUnfinishedJobsOnly",
                     "type": "string",
-                    "optional": true,
                     "default": "false",
                     "metadataVariableReadable": true
                 },
                 {
                     "name": "requireAllDemands",
                     "type": "string",
-                    "optional": true,
                     "default": "false",
                     "metadataVariableReadable": true
                 },
                 {
                     "name": "requireAllDemandsAndIgnoreOthers",
                     "type": "string",
-                    "optional": true,
                     "default": "false",
                     "metadataVariableReadable": true
                 },
                 {
                     "name": "caseInsensitiveDemandsProcessing",
                     "type": "string",
-                    "optional": true,
                     "default": "false",
                     "metadataVariableReadable": true
                 }
@@ -1397,6 +1456,12 @@
                     "metadataVariableReadable": true
                 },
                 {
+                    "name": "useClusterAgentProxy",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
                     "name": "hpaMetricName",
                     "type": "string",
                     "optional": true,
@@ -1806,6 +1871,20 @@
                     "type": "string",
                     "deprecatedAnnounce": "This scaler is deprecated. More info -\u003e 'https://keda.sh/blog/2025-09-15-gcp-deprecations'",
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "credentials",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "credentialsFromEnvFile",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
                 }
             ]
         },
@@ -1846,6 +1925,20 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "credentials",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "credentialsFromEnvFile",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
                 }
             ]
         },
@@ -2292,6 +2385,12 @@
                     "name": "unsafeSsl",
                     "type": "string",
                     "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "authModes",
+                    "type": "string",
+                    "optional": true,
                     "metadataVariableReadable": true
                 }
             ]
@@ -2859,6 +2958,12 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "authModes",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -2928,6 +3033,18 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "identityOwner",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "authModes",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
                 }
             ]
         },
@@ -2991,6 +3108,20 @@
                     "optional": true,
                     "metadataVariableReadable": true,
                     "envVariableReadable": true
+                },
+                {
+                    "name": "credentials",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "credentialsFromEnvFile",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
                 }
             ]
         },
@@ -3035,6 +3166,12 @@
                 },
                 {
                     "name": "tls",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "authModes",
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
@@ -4426,6 +4563,7 @@
                 {
                     "name": "activationValue",
                     "type": "string",
+                    "default": "0",
                     "metadataVariableReadable": true
                 },
                 {
@@ -4633,6 +4771,38 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "alignmentPeriodSeconds",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "alignmentAligner",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "alignmentReducer",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "credentials",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
+                },
+                {
+                    "name": "credentialsFromEnvFile",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true
                 }
             ]
         },
