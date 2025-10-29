@@ -15,7 +15,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## History
 
-- [Unreleased](#unreleased)
+- [v2.18.1](#v2180)
 - [v2.18.0](#v2180)
 - [v2.17.2](#v2172)
 - [v2.17.1](#v2171)
@@ -59,37 +59,13 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
 
-## Unreleased
-
-### New
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-#### Experimental
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Improvements
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+## v2.18.0
 
 ### Fixes
 
 - **General**: Add feature flag `KEDA_CHECK_UNEXPECTED_SCALERS_PARAMS` for checking unexpected scaler parameters ([#6721](https://github.com/kedacore/keda/issues/6721))
 - **General**: Fix incorrect 'unmatched input property' notification ([#7174](https://github.com/kedacore/keda/issues/7174))
 - **Kafka Scaler**: Fix missing error returns in error handling ([#7182](https://github.com/kedacore/keda/pull/7182))
-
-### Deprecations
-
-You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
-
-New deprecation(s):
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Breaking Changes
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Other
 
