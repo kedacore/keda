@@ -59,7 +59,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
 
-## v2.18.0
+## v2.18.1
 
 ### Fixes
 
