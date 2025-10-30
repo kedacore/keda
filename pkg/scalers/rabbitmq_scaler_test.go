@@ -155,6 +155,14 @@ var testRabbitMQMetadata = []parseRabbitMQMetadataTestData{
 	{map[string]string{"queueName": "sample", "host": "https://", "unsafeSsl": "true"}, false, map[string]string{}},
 	// unsafeSsl wrong input
 	{map[string]string{"queueName": "sample", "host": "https://", "unsafeSsl": "random"}, true, map[string]string{}},
+	// passwordless with username (amqp)
+	{map[string]string{"queueName": "sample", "host": "amqps://"}, false, map[string]string{"usePasswordless": "true", "username": "user"}},
+	// passwordless with username (http)
+	{map[string]string{"queueName": "sample", "host": "https://"}, false, map[string]string{"usePasswordless": "true", "username": "user"}},
+	// passwordless without username (should fail)
+	{map[string]string{"queueName": "sample", "host": "amqps://"}, true, map[string]string{"usePasswordless": "true"}},
+	// passwordless with TLS
+	{map[string]string{"queueName": "sample", "host": "amqps://"}, false, map[string]string{"usePasswordless": "true", "username": "user", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}},
 }
 
 var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
@@ -191,6 +199,14 @@ var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "http"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, false, rmqTLSDisable, true},
 	// failure, WorkloadIdentity not supported for amqp
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "amqp"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, true, rmqTLSDisable, false},
+	// success, passwordless with username and TLS
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"usePasswordless": "true", "username": "user", "tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, rmqTLSEnable, false},
+	// success, passwordless with username only
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"usePasswordless": "true", "username": "user"}, false, rmqTLSDisable, false},
+	// failure, passwordless without username
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"usePasswordless": "true"}, true, rmqTLSDisable, false},
+	// failure, passwordless with password (should use regular auth instead)
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"usePasswordless": "true", "username": "user", "password": "pass"}, false, rmqTLSDisable, false},
 }
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
 	{&testRabbitMQMetadata[1], 0, "s0-rabbitmq-sample"},
