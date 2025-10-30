@@ -106,12 +106,13 @@ type rabbitMQMetadata struct {
 	Password string `keda:"name=password, order=authParams;resolvedEnv, optional"`
 
 	// TLS
-	Ca          string `keda:"name=ca,          order=authParams, optional"`
-	Cert        string `keda:"name=cert,        order=authParams, optional"`
-	Key         string `keda:"name=key,         order=authParams, optional"`
-	KeyPassword string `keda:"name=keyPassword, order=authParams, optional"`
-	EnableTLS   string `keda:"name=tls,         order=authParams, default=disable"`
-	UnsafeSsl   bool   `keda:"name=unsafeSsl,   order=triggerMetadata, optional"`
+	Ca              string `keda:"name=ca,          	order=authParams, optional"`
+	Cert            string `keda:"name=cert,        	order=authParams, optional"`
+	Key             string `keda:"name=key,         	order=authParams, optional"`
+	KeyPassword     string `keda:"name=keyPassword, 	order=authParams, optional"`
+	EnableTLS       string `keda:"name=tls,         	order=authParams, default=disable"`
+	UnsafeSsl       bool   `keda:"name=unsafeSsl,   	order=triggerMetadata, optional"`
+	UsePasswordless bool   `keda:"name=usePasswordless, order=authParams, optional"`
 
 	// token provider for azure AD
 	WorkloadIdentityResource      string `keda:"name=workloadIdentityResource, order=authParams, optional"`
@@ -140,7 +141,11 @@ func (r *rabbitMQMetadata) Validate() error {
 		return fmt.Errorf("pageSize should be 1 or greater")
 	}
 
-	if (r.Username != "" || r.Password != "") && (r.Username == "" || r.Password == "") {
+	if (r.UsePasswordless) && (r.Username == "") {
+		return fmt.Errorf("username must be given when using passwordless authentication")
+	}
+
+	if !r.UsePasswordless && (r.Username != "" || r.Password != "") && (r.Username == "" || r.Password == "") {
 		return fmt.Errorf("username and password must be given together")
 	}
 
@@ -304,7 +309,7 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	if meta.Protocol == amqpProtocol {
 		// Override vhost if requested.
 		host := meta.Host
-		if meta.VhostName != "" || (meta.Username != "" && meta.Password != "") {
+		if meta.VhostName != "" || (meta.Username != "" && meta.Password != "") || (meta.UsePasswordless && meta.Username != "") {
 			hostURI, err := amqp.ParseURI(host)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing RabbitMQ connection string: %w", err)
@@ -316,6 +321,9 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			if meta.Username != "" && meta.Password != "" {
 				hostURI.Username = meta.Username
 				hostURI.Password = meta.Password
+			} else if meta.UsePasswordless && meta.Username != "" {
+				hostURI.Username = meta.Username
+				hostURI.Password = ""
 			}
 
 			host = hostURI.String()
@@ -509,6 +517,8 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP(ctx context.Context) (*queueInfo, e
 
 	if s.metadata.Username != "" && s.metadata.Password != "" {
 		parsedURL.User = url.UserPassword(s.metadata.Username, s.metadata.Password)
+	} else if s.metadata.UsePasswordless && s.metadata.Username != "" {
+		parsedURL.User = url.User(s.metadata.Username)
 	}
 
 	var getQueueInfoManagementURI string
