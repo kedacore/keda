@@ -94,6 +94,44 @@ func TestParseMySQLMetadata(t *testing.T) {
 	}
 }
 
+func TestParseMySQLMetadataTLSValidation(t *testing.T) {
+	// invalid tls value
+	_, err := parseMySQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: map[string]string{"query": "q", "queryValue": "1", "host": "h", "port": "3306", "username": "u", "passwordFromEnv": "MYSQL_PASSWORD", "dbName": "d", "tls": "invalid"}})
+	if err == nil {
+		t.Error("expected error for invalid tls value")
+	}
+
+	// tls disable (or empty) is ok
+	_, err = parseMySQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: map[string]string{"query": "q", "queryValue": "1", "host": "h", "port": "3306", "username": "u", "passwordFromEnv": "MYSQL_PASSWORD", "dbName": "d", "tls": "disable"}})
+	if err != nil {
+		t.Errorf("unexpected error for tls=disable: %v", err)
+	}
+
+	// tls enable is ok
+	_, err = parseMySQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: map[string]string{"query": "q", "queryValue": "1", "host": "h", "port": "3306", "username": "u", "passwordFromEnv": "MYSQL_PASSWORD", "dbName": "d", "tls": "enable"}})
+	if err != nil {
+		t.Errorf("unexpected error for tls=enable: %v", err)
+	}
+}
+
+func TestMetadataToConnectionStrWithTLS(t *testing.T) {
+	// Build new ConnStr with tls=enable
+	testMeta := map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "passwordFromEnv": "MYSQL_PASSWORD", "dbName": "test_dbname", "tls": "enable"}
+	meta, _ := parseMySQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testMeta, AuthParams: map[string]string{}, TriggerIndex: 0})
+	connStr := metadataToConnectionStr(meta)
+	if connStr != "test_username:pass@tcp(test_host:test_port)/test_dbname?tls=true" {
+		t.Errorf("unexpected connStr with tls enable: %s", connStr)
+	}
+
+	// Build new ConnStr with tls=enable and ca provided
+	testMeta = map[string]string{"query": "query", "queryValue": "12", "host": "test_host", "port": "test_port", "username": "test_username", "passwordFromEnv": "MYSQL_PASSWORD", "dbName": "test_dbname", "tls": "enable", "ca": "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----"}
+	meta, _ = parseMySQLMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testMySQLResolvedEnv, TriggerMetadata: testMeta, AuthParams: map[string]string{}, TriggerIndex: 1})
+	connStr = metadataToConnectionStr(meta)
+	if connStr != "test_username:pass@tcp(test_host:test_port)/test_dbname?tls=keda-mysql-1" {
+		t.Errorf("unexpected connStr with tls enable and ca: %s", connStr)
+	}
+}
+
 func TestMetadataToConnectionStrUseConnStr(t *testing.T) {
 	// Use existing ConnStr
 	testMeta := map[string]string{"query": "query", "queryValue": "12", "connectionStringFromEnv": "MYSQL_CONN_STR"}
