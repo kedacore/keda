@@ -2339,6 +2339,69 @@
             ]
         },
         {
+            "type": "kubernetes-resource",
+            "parameters": [
+                {
+                    "name": "resourceKind",
+                    "type": "string",
+                    "allowedValue": [
+                        "ConfigMap",
+                        "Secret"
+                    ],
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "resourceName",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "format",
+                    "type": "string",
+                    "default": "number",
+                    "allowedValue": [
+                        "number",
+                        "json",
+                        "yaml"
+                    ],
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "valueLocation",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "valueType",
+                    "type": "string",
+                    "default": "float64",
+                    "allowedValue": [
+                        "float64",
+                        "int64",
+                        "quantity"
+                    ],
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "targetValue",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationTargetValue",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "kubernetes-workload",
             "parameters": [
                 {
