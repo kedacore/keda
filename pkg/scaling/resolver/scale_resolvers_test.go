@@ -18,10 +18,12 @@ package resolver
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -328,7 +330,8 @@ func TestResolveAuthRef(t *testing.T) {
 						Namespace: namespace,
 						Name:      secretName,
 					},
-					Data: map[string][]byte{secretKey: []byte(secretData)}},
+					Data: map[string][]byte{secretKey: []byte(secretData)},
+				},
 			},
 			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName},
 			expected:            map[string]string{"host": secretData},
@@ -531,7 +534,8 @@ func TestResolveAuthRef(t *testing.T) {
 						Namespace: clusterNamespace,
 						Name:      secretName,
 					},
-					Data: map[string][]byte{secretKey: []byte(secretData)}},
+					Data: map[string][]byte{secretKey: []byte(secretData)},
+				},
 			},
 			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
 			expected:            map[string]string{"host": secretData},
@@ -601,7 +605,8 @@ func TestResolveAuthRef(t *testing.T) {
 						Namespace: namespace,
 						Name:      secretName,
 					},
-					Data: map[string][]byte{secretKey: []byte(secretData)}},
+					Data: map[string][]byte{secretKey: []byte(secretData)},
+				},
 			},
 			soar:                &kedav1alpha1.AuthenticationRef{Name: triggerAuthenticationName, Kind: "ClusterTriggerAuthentication"},
 			expected:            map[string]string{"host": ""},
@@ -991,4 +996,71 @@ func TestEnvWithRestrictedNamespace(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestResolveAuthRef_FromFile(t *testing.T) {
+	// Create temp file with auth params
+	tempFile, err := os.CreateTemp("", "auth_test_*.json")
+	assert.NoError(t, err)
+	defer os.Remove(tempFile.Name())
+
+	authParams := map[string]string{"username": "testuser", "password": "testpass"}
+	data, _ := json.Marshal(authParams)
+	_, err = tempFile.Write(data)
+	assert.NoError(t, err)
+	tempFile.Close()
+
+	// Test resolveAuthRef with FilePath
+	authRef := &kedav1alpha1.AuthenticationRef{
+		Name:     "test",
+		Kind:     "ClusterTriggerAuthentication",
+		FilePath: tempFile.Name(),
+	}
+
+	result, podIdentity, err := resolveAuthRef(context.TODO(), nil, logf.Log.WithName("test"), authRef, nil, "test-ns", nil)
+	assert.NoError(t, err)
+	assert.Equal(t, authParams, result)
+	assert.Equal(t, kedav1alpha1.PodIdentityProviderNone, podIdentity.Provider)
+
+	// Test that FilePath with wrong Kind fails
+	authRefWrongKind := &kedav1alpha1.AuthenticationRef{
+		Name:     "test",
+		Kind:     "TriggerAuthentication", // Wrong kind
+		FilePath: tempFile.Name(),
+	}
+	_, _, err = resolveAuthRef(context.TODO(), nil, logf.Log.WithName("test"), authRefWrongKind, nil, "test-ns", nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "filePath is only supported for ClusterTriggerAuthentication")
+}
+
+func TestReadAuthParamsFromFile(t *testing.T) {
+	// Test successful read
+	tempFile, err := os.CreateTemp("", "auth_params_*.json")
+	assert.NoError(t, err)
+	defer os.Remove(tempFile.Name())
+
+	expected := map[string]string{"key": "value"}
+	data, _ := json.Marshal(expected)
+	_, _ = tempFile.Write(data)
+	_ = tempFile.Close()
+
+	result, err := readAuthParamsFromFile(tempFile.Name())
+	assert.NoError(t, err)
+	assert.Equal(t, expected, result)
+
+	// Test file not found
+	_, err = readAuthParamsFromFile("/nonexistent/file.json")
+	assert.Error(t, err)
+
+	// Test invalid JSON
+	tempFile2, _ := os.CreateTemp("", "invalid_*.json")
+	defer func() {
+		_ = os.Remove(tempFile2.Name())
+	}()
+
+	_, _ = tempFile2.WriteString("invalid json")
+	_ = tempFile2.Close()
+
+	_, err = readAuthParamsFromFile(tempFile2.Name())
+	assert.Error(t, err)
 }
