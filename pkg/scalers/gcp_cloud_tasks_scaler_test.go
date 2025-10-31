@@ -39,6 +39,7 @@ var testGcpCloudTasksMetadata = []parseGcpCloudTasksMetadataTestData{
 		FilterDuration:  0,
 		QueueName:       "myQueue",
 		ProjectID:       "myproject",
+		Credentials:     "{}",
 		gcpAuthorization: &gcp.AuthorizationMetadata{
 			GoogleApplicationCredentials: "{}",
 			PodIdentityProviderEnabled:   false,
@@ -75,6 +76,7 @@ var testGcpCloudTasksMetadata = []parseGcpCloudTasksMetadataTestData{
 		FilterDuration:  0,
 		QueueName:       "mysubscription",
 		ProjectID:       "myproject",
+		Credentials:     "{}",
 		gcpAuthorization: &gcp.AuthorizationMetadata{
 			GoogleApplicationCredentials: "{}",
 			PodIdentityProviderEnabled:   false,
@@ -87,6 +89,7 @@ var testGcpCloudTasksMetadata = []parseGcpCloudTasksMetadataTestData{
 		FilterDuration:  0,
 		QueueName:       "myQueue",
 		ProjectID:       "myProject",
+		Credentials:     "{}",
 		gcpAuthorization: &gcp.AuthorizationMetadata{
 			GoogleApplicationCredentials: "{}",
 			PodIdentityProviderEnabled:   false,
@@ -99,6 +102,7 @@ var testGcpCloudTasksMetadata = []parseGcpCloudTasksMetadataTestData{
 		FilterDuration:  0,
 		QueueName:       "myQueue",
 		ProjectID:       "myProject",
+		Credentials:     "{}",
 		gcpAuthorization: &gcp.AuthorizationMetadata{
 			GoogleApplicationCredentials: "{}",
 			PodIdentityProviderEnabled:   false,
@@ -123,7 +127,7 @@ func TestGcpCloudTasksParseMetadata(t *testing.T) {
 			})
 
 			if err != nil && !testData.isError {
-				t.Errorf("Expected success but got error")
+				t.Errorf("Expected success but got error: %v", err)
 			}
 
 			if testData.isError && err == nil {

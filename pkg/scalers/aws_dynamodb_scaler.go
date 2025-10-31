@@ -40,6 +40,11 @@ type awsDynamoDBMetadata struct {
 	TargetValue               int64  `keda:"name=targetValue, order=triggerMetadata, optional, default=-1"`
 	ActivationTargetValue     int64  `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
 	FilterExpression          string `keda:"name=filterExpression, order=triggerMetadata, optional"`
+
+	IdentityOwner string `keda:"name=identityOwner, order=triggerMetadata, optional"`
+
+	ExpressionAttributeNames  string `keda:"name=expressionAttributeNames, order=triggerMetadata"`
+	ExpressionAttributeValues string `keda:"name=expressionAttributeValues, order=triggerMetadata"`
 }
 
 func NewAwsDynamoDBScaler(ctx context.Context, config *scalersconfig.ScalerConfig) (Scaler, error) {
@@ -83,28 +88,27 @@ func parseAwsDynamoDBMetadata(config *scalersconfig.ScalerConfig) (*awsDynamoDBM
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing DynamoDb metadata: %w", err)
 	}
-	if val, ok := config.TriggerMetadata["expressionAttributeNames"]; ok && val != "" {
-		names, err := json2Map(val)
 
+	if meta.ExpressionAttributeNames != "" {
+		names, err := json2Map(meta.ExpressionAttributeNames)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing expressionAttributeNames: %w", err)
 		}
-
 		meta.expressionAttributeNames = names
 	} else {
 		return nil, ErrAwsDynamoNoExpressionAttributeNames
 	}
-	if val, ok := config.TriggerMetadata["expressionAttributeValues"]; ok && val != "" {
-		values, err := json2DynamoMap(val)
 
+	if meta.ExpressionAttributeValues != "" {
+		values, err := json2DynamoMap(meta.ExpressionAttributeValues)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing expressionAttributeValues: %w", err)
 		}
-
 		meta.expressionAttributeValues = values
 	} else {
 		return nil, ErrAwsDynamoNoExpressionAttributeValues
 	}
+
 	if meta.TargetValue == -1 && config.AsMetricSource {
 		meta.TargetValue = 0
 	} else if meta.TargetValue == -1 && !config.AsMetricSource {

@@ -205,7 +205,6 @@ spec:
     metadata:
       url: '{{.HubGraphURL}}'
       browserName: 'chrome'
-      platformName: ''
       activationThreshold: '1'
     authenticationRef:
       name: '{{.TriggerAuthName}}'
@@ -301,7 +300,6 @@ spec:
       metadata:
         url: '{{.HubGraphURL}}'
         browserName: 'firefox'
-        platformName: ''
         activationThreshold: '1'
       authenticationRef:
         name: '{{.TriggerAuthName}}'
@@ -399,7 +397,6 @@ spec:
       url: '{{.HubGraphURL}}'
       browserName: 'MicrosoftEdge'
       sessionBrowserName: 'msedge'
-      platformName: ''
       activationThreshold: '1'
     authenticationRef:
       name: '{{.TriggerAuthName}}'
