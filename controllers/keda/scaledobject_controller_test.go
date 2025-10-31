@@ -26,6 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -36,6 +37,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
+	"github.com/kedacore/keda/v2/pkg/mock/mock_scale"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_scaling"
 	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -1950,6 +1952,265 @@ var _ = Describe("ScaledObjectController", func() {
 			}
 			return so.Status.Conditions.GetReadyCondition().Status
 		}).Should(Equal(metav1.ConditionFalse))
+	})
+
+	Describe("checkAndScaleToPausedCount", func() {
+		var (
+			ctrl        *gomock.Controller
+			reconciler  ScaledObjectReconciler
+			ctx         context.Context
+			scaledObject *kedav1alpha1.ScaledObject
+		)
+
+		BeforeEach(func() {
+			ctrl = gomock.NewController(util.GinkgoTestReporter{})
+			ctx = context.Background()
+
+			// Create a basic ScaledObject for testing
+			scaledObject = &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-so",
+					Namespace: "test-ns",
+					Annotations: map[string]string{
+						kedav1alpha1.PausedReplicasAnnotation: "3",
+					},
+				},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: "test-deployment",
+						// Using default Deployment kind (apps/v1) to avoid needing restMapper
+					},
+				},
+			}
+		})
+
+		AfterEach(func() {
+			ctrl.Finish()
+		})
+
+		Context("when paused replica annotation is not present", func() {
+			It("should return true with no error and not attempt scaling", func() {
+				scaledObject.Annotations = map[string]string{}
+
+				result, err := reconciler.checkAndScaleToPausedCount(ctx, testLogger, scaledObject)
+
+				Expect(err).To(BeNil())
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("when paused replica count is invalid", func() {
+			It("should return error for non-numeric value", func() {
+				scaledObject.Annotations[kedav1alpha1.PausedReplicasAnnotation] = "invalid"
+
+				result, err := reconciler.checkAndScaleToPausedCount(ctx, testLogger, scaledObject)
+
+				Expect(err).ToNot(BeNil())
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("with mocked scale client", func() {
+			var (
+				mockScaleClient *mock_scale.MockScalesGetter
+				mockScaleIface  *mock_scale.MockScaleInterface
+			)
+
+			BeforeEach(func() {
+				mockScaleClient = mock_scale.NewMockScalesGetter(ctrl)
+				mockScaleIface = mock_scale.NewMockScaleInterface(ctrl)
+
+				reconciler = ScaledObjectReconciler{
+					ScaleClient: mockScaleClient,
+					restMapper:  nil, // Deployment doesn't need restMapper
+				}
+			})
+
+			Context("when getting scale subresource fails", func() {
+				It("should return error", func() {
+					expectedErr := fmt.Errorf("failed to get scale")
+
+					mockScaleClient.EXPECT().
+						Scales("test-ns").
+						Return(mockScaleIface)
+
+					mockScaleIface.EXPECT().
+						Get(ctx, gomock.Any(), "test-deployment", gomock.Any()).
+						Return(nil, expectedErr)
+
+					result, err := reconciler.checkAndScaleToPausedCount(ctx, testLogger, scaledObject)
+
+					Expect(err).To(Equal(expectedErr))
+					Expect(result).To(BeTrue())
+				})
+			})
+
+			Context("when target is already at paused replica count", func() {
+				It("should return true without calling Update", func() {
+					currentScale := &autoscalingv1.Scale{
+						Spec: autoscalingv1.ScaleSpec{
+							Replicas: 3, // Already at target
+						},
+					}
+
+					mockScaleClient.EXPECT().
+						Scales("test-ns").
+						Return(mockScaleIface)
+
+					mockScaleIface.EXPECT().
+						Get(ctx, gomock.Any(), "test-deployment", gomock.Any()).
+						Return(currentScale, nil)
+
+					// Should NOT call Update since already at target
+
+					result, err := reconciler.checkAndScaleToPausedCount(ctx, testLogger, scaledObject)
+
+					Expect(err).To(BeNil())
+					Expect(result).To(BeTrue())
+				})
+			})
+
+			Context("when target needs to be scaled to paused replica count", func() {
+				It("should successfully scale from 5 to 3 replicas", func() {
+					currentScale := &autoscalingv1.Scale{
+						Spec: autoscalingv1.ScaleSpec{
+							Replicas: 5,
+						},
+					}
+
+					updatedScale := &autoscalingv1.Scale{
+						Spec: autoscalingv1.ScaleSpec{
+							Replicas: 3,
+						},
+					}
+
+					mockScaleClient.EXPECT().
+						Scales("test-ns").
+						Return(mockScaleIface).
+						Times(2) // Once for Get, once for Update
+
+					mockScaleIface.EXPECT().
+						Get(ctx, gomock.Any(), "test-deployment", gomock.Any()).
+						Return(currentScale, nil)
+
+					mockScaleIface.EXPECT().
+						Update(ctx, gomock.Any(), gomock.Any(), gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ interface{}, scale *autoscalingv1.Scale, _ interface{}) (*autoscalingv1.Scale, error) {
+							Expect(scale.Spec.Replicas).To(Equal(int32(3)))
+							return updatedScale, nil
+						})
+
+					result, err := reconciler.checkAndScaleToPausedCount(ctx, testLogger, scaledObject)
+
+					Expect(err).To(BeNil())
+					Expect(result).To(BeTrue())
+				})
+
+				It("should successfully scale from 1 to 0 replicas", func() {
+					scaledObject.Annotations[kedav1alpha1.PausedReplicasAnnotation] = "0"
+
+					currentScale := &autoscalingv1.Scale{
+						Spec: autoscalingv1.ScaleSpec{
+							Replicas: 1,
+						},
+					}
+
+					updatedScale := &autoscalingv1.Scale{
+						Spec: autoscalingv1.ScaleSpec{
+							Replicas: 0,
+						},
+					}
+
+					mockScaleClient.EXPECT().
+						Scales("test-ns").
+						Return(mockScaleIface).
+						Times(2)
+
+					mockScaleIface.EXPECT().
+						Get(ctx, gomock.Any(), "test-deployment", gomock.Any()).
+						Return(currentScale, nil)
+
+					mockScaleIface.EXPECT().
+						Update(ctx, gomock.Any(), gomock.Any(), gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ interface{}, scale *autoscalingv1.Scale, _ interface{}) (*autoscalingv1.Scale, error) {
+							Expect(scale.Spec.Replicas).To(Equal(int32(0)))
+							return updatedScale, nil
+						})
+
+					result, err := reconciler.checkAndScaleToPausedCount(ctx, testLogger, scaledObject)
+
+					Expect(err).To(BeNil())
+					Expect(result).To(BeTrue())
+				})
+
+				It("should successfully scale up from 1 to 5 replicas", func() {
+					scaledObject.Annotations[kedav1alpha1.PausedReplicasAnnotation] = "5"
+
+					currentScale := &autoscalingv1.Scale{
+						Spec: autoscalingv1.ScaleSpec{
+							Replicas: 1,
+						},
+					}
+
+					updatedScale := &autoscalingv1.Scale{
+						Spec: autoscalingv1.ScaleSpec{
+							Replicas: 5,
+						},
+					}
+
+					mockScaleClient.EXPECT().
+						Scales("test-ns").
+						Return(mockScaleIface).
+						Times(2)
+
+					mockScaleIface.EXPECT().
+						Get(ctx, gomock.Any(), "test-deployment", gomock.Any()).
+						Return(currentScale, nil)
+
+					mockScaleIface.EXPECT().
+						Update(ctx, gomock.Any(), gomock.Any(), gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ interface{}, scale *autoscalingv1.Scale, _ interface{}) (*autoscalingv1.Scale, error) {
+							Expect(scale.Spec.Replicas).To(Equal(int32(5)))
+							return updatedScale, nil
+						})
+
+					result, err := reconciler.checkAndScaleToPausedCount(ctx, testLogger, scaledObject)
+
+					Expect(err).To(BeNil())
+					Expect(result).To(BeTrue())
+				})
+			})
+
+			Context("when scaling update fails", func() {
+				It("should return error and false", func() {
+					currentScale := &autoscalingv1.Scale{
+						Spec: autoscalingv1.ScaleSpec{
+							Replicas: 5,
+						},
+					}
+
+					expectedErr := fmt.Errorf("failed to update scale")
+
+					mockScaleClient.EXPECT().
+						Scales("test-ns").
+						Return(mockScaleIface).
+						Times(2)
+
+					mockScaleIface.EXPECT().
+						Get(ctx, gomock.Any(), "test-deployment", gomock.Any()).
+						Return(currentScale, nil)
+
+					mockScaleIface.EXPECT().
+						Update(ctx, gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(nil, expectedErr)
+
+					result, err := reconciler.checkAndScaleToPausedCount(ctx, testLogger, scaledObject)
+
+					Expect(err).To(Equal(expectedErr))
+					Expect(result).To(BeFalse())
+				})
+			})
+		})
 	})
 
 })

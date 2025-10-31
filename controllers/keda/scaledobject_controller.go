@@ -241,14 +241,18 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 	needsToPause := scaledObject.NeedToBePausedByAnnotation()
 	switch {
 	case needsToPause:
-		scaledToPausedCount := true
-		if conditions.GetPausedCondition().Status == metav1.ConditionTrue {
-			// If scaledobject is in paused condition but replica count is not equal to paused replica count, the following scaling logic needs to be trigger again.
-			scaledToPausedCount = r.checkIfTargetResourceReachPausedCount(ctx, logger, scaledObject)
-			if scaledToPausedCount {
-				return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
-			}
+		// Scale to paused replica count (this also checks if already at target)
+		scaledToPausedCount, err := r.checkAndScaleToPausedCount(ctx, logger, scaledObject)
+		if err != nil {
+			msg := "failed to check or scale to paused replica count"
+			return msg, err
 		}
+
+		if conditions.GetPausedCondition().Status == metav1.ConditionTrue && scaledToPausedCount {
+			// Already paused and at target replica count, nothing to do
+			return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
+		}
+
 		if scaledToPausedCount {
 			msg := kedav1alpha1.ScaledObjectConditionPausedMessage
 			if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
@@ -347,32 +351,55 @@ func (r *ScaledObjectReconciler) ensureScaledObjectLabel(ctx context.Context, lo
 	return r.Client.Update(ctx, scaledObject)
 }
 
-func (r *ScaledObjectReconciler) checkIfTargetResourceReachPausedCount(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) bool {
+func (r *ScaledObjectReconciler) checkAndScaleToPausedCount(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) (bool, error) {
 	pausedReplicaCount, pausedReplicasAnnotationFound := scaledObject.GetAnnotations()[kedav1alpha1.PausedReplicasAnnotation]
 	if !pausedReplicasAnnotationFound {
-		return true
+		return true, nil
 	}
 	pausedReplicaCountNum, err := strconv.ParseInt(pausedReplicaCount, 10, 32)
 	if err != nil {
-		return true
+		logger.Error(err, "failed to parse paused replica count")
+		return true, err
 	}
+	targetReplicas := int32(pausedReplicaCountNum)
 
 	gvkr, err := kedav1alpha1.ParseGVKR(r.restMapper, scaledObject.Spec.ScaleTargetRef.APIVersion, scaledObject.Spec.ScaleTargetRef.Kind)
 	if err != nil {
 		logger.Error(err, "failed to parse Group, Version, Kind, Resource", "apiVersion", scaledObject.Spec.ScaleTargetRef.APIVersion, "kind", scaledObject.Spec.ScaleTargetRef.Kind)
-		return true
+		return true, err
 	}
 	gvkString := gvkr.GVKString()
 	logger.V(1).Info("Parsed Group, Version, Kind, Resource", "GVK", gvkString, "Resource", gvkr.Resource)
 
-	// check if we already know.
-	var scale *autoscalingv1.Scale
+	// Get current scale
 	gr := gvkr.GroupResource()
 	scale, errScale := (r.ScaleClient).Scales(scaledObject.Namespace).Get(ctx, gr, scaledObject.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
 	if errScale != nil {
-		return true
+		logger.Error(errScale, "failed to get scale subresource")
+		return true, errScale
 	}
-	return scale.Spec.Replicas == int32(pausedReplicaCountNum)
+
+	currentReplicas := scale.Spec.Replicas
+
+	// Check if already at target
+	if currentReplicas == targetReplicas {
+		logger.V(1).Info("Target already at paused replica count", "replicas", targetReplicas)
+		return true, nil
+	}
+
+	// NOT at target - need to scale
+	logger.Info("Scaling target to paused replica count", "current", currentReplicas, "target", targetReplicas)
+
+	// Update scale
+	scale.Spec.Replicas = targetReplicas
+	_, err = r.ScaleClient.Scales(scaledObject.Namespace).Update(ctx, gr, scale, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Error(err, "failed to scale target to paused replica count", "target", targetReplicas)
+		return false, err
+	}
+
+	logger.Info("Successfully scaled target to paused replica count", "replicas", targetReplicas)
+	return true, nil
 }
 
 // checkTargetResourceIsScalable checks if resource targeted for scaling exists and exposes /scale subresource

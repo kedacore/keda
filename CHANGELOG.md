@@ -75,6 +75,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
+- **General**: Fix race when pausing `ScaledObject` that intermittently prevented scaling to paused replicas; reconciler now scales to paused count before stopping the loop ([#7214](https://github.com/kedacore/keda/pull/7214))
 - **IBMMQ Scaler**: Create new HTTP request for each queue query in IBMMQ scaler ([#7202](https://github.com/kedacore/keda/pull/7202))
 
 ### Deprecations
