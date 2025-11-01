@@ -12,8 +12,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/ericlagergren/decimal"
-
+	"github.com/solarwinds/swo-sdk-go/swov1/optionalnullable"
 	"github.com/solarwinds/swo-sdk-go/swov1/types"
 )
 
@@ -157,6 +156,16 @@ func populateDeepObjectParams(tag *paramTag, objType reflect.Type, objValue refl
 
 	switch objValue.Kind() {
 	case reflect.Map:
+		// check if optionalnullable.OptionalNullable[T]
+		if nullableValue, ok := optionalnullable.AsOptionalNullable(objValue); ok {
+			// Handle optionalnullable.OptionalNullable[T] using GetUntyped method
+			if value, isSet := nullableValue.GetUntyped(); isSet && value != nil {
+				values.Add(tag.ParamName, valToString(value))
+			}
+			// If not set or explicitly null, skip adding to values
+			return values
+		}
+
 		populateDeepObjectParamsMap(values, tag.ParamName, objValue)
 	case reflect.Struct:
 		populateDeepObjectParamsStruct(values, tag.ParamName, objValue)
@@ -235,7 +244,7 @@ func populateDeepObjectParamsStruct(qsValues url.Values, priorScope string, stru
 			populateDeepObjectParamsMap(qsValues, scope, fieldValue)
 		case reflect.Struct:
 			switch fieldValue.Type() {
-			case reflect.TypeOf(big.Int{}), reflect.TypeOf(decimal.Big{}), reflect.TypeOf(time.Time{}), reflect.TypeOf(types.Date{}):
+			case reflect.TypeOf(big.Int{}), reflect.TypeOf(time.Time{}), reflect.TypeOf(types.Date{}):
 				qsValues.Add(scope, valToString(fieldValue.Interface()))
 
 				continue

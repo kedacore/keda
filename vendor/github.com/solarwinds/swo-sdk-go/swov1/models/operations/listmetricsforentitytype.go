@@ -21,31 +21,31 @@ func (l ListMetricsForEntityTypeRequest) MarshalJSON() ([]byte, error) {
 }
 
 func (l *ListMetricsForEntityTypeRequest) UnmarshalJSON(data []byte) error {
-	if err := utils.UnmarshalJSON(data, &l, "", false, false); err != nil {
+	if err := utils.UnmarshalJSON(data, &l, "", false, []string{"type"}); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *ListMetricsForEntityTypeRequest) GetType() string {
-	if o == nil {
+func (l *ListMetricsForEntityTypeRequest) GetType() string {
+	if l == nil {
 		return ""
 	}
-	return o.Type
+	return l.Type
 }
 
-func (o *ListMetricsForEntityTypeRequest) GetStartTime() *time.Time {
-	if o == nil {
+func (l *ListMetricsForEntityTypeRequest) GetStartTime() *time.Time {
+	if l == nil {
 		return nil
 	}
-	return o.StartTime
+	return l.StartTime
 }
 
-func (o *ListMetricsForEntityTypeRequest) GetEndTime() *time.Time {
-	if o == nil {
+func (l *ListMetricsForEntityTypeRequest) GetEndTime() *time.Time {
+	if l == nil {
 		return nil
 	}
-	return o.EndTime
+	return l.EndTime
 }
 
 // ListMetricsForEntityTypeResponseBody - The request has succeeded.
@@ -55,18 +55,18 @@ type ListMetricsForEntityTypeResponseBody struct {
 	Metrics []components.CommonMetricInfo `json:"metrics"`
 }
 
-func (o *ListMetricsForEntityTypeResponseBody) GetType() string {
-	if o == nil {
+func (l *ListMetricsForEntityTypeResponseBody) GetType() string {
+	if l == nil {
 		return ""
 	}
-	return o.Type
+	return l.Type
 }
 
-func (o *ListMetricsForEntityTypeResponseBody) GetMetrics() []components.CommonMetricInfo {
-	if o == nil {
+func (l *ListMetricsForEntityTypeResponseBody) GetMetrics() []components.CommonMetricInfo {
+	if l == nil {
 		return []components.CommonMetricInfo{}
 	}
-	return o.Metrics
+	return l.Metrics
 }
 
 type ListMetricsForEntityTypeResponse struct {
@@ -75,16 +75,16 @@ type ListMetricsForEntityTypeResponse struct {
 	Object *ListMetricsForEntityTypeResponseBody
 }
 
-func (o *ListMetricsForEntityTypeResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (l *ListMetricsForEntityTypeResponse) GetHTTPMeta() components.HTTPMetadata {
+	if l == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return l.HTTPMeta
 }
 
-func (o *ListMetricsForEntityTypeResponse) GetObject() *ListMetricsForEntityTypeResponseBody {
-	if o == nil {
+func (l *ListMetricsForEntityTypeResponse) GetObject() *ListMetricsForEntityTypeResponseBody {
+	if l == nil {
 		return nil
 	}
-	return o.Object
+	return l.Object
 }

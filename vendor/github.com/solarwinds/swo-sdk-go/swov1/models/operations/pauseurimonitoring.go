@@ -10,29 +10,29 @@ type PauseURIMonitoringRequest struct {
 	EntityID string `pathParam:"style=simple,explode=false,name=entityId"`
 }
 
-func (o *PauseURIMonitoringRequest) GetEntityID() string {
-	if o == nil {
+func (p *PauseURIMonitoringRequest) GetEntityID() string {
+	if p == nil {
 		return ""
 	}
-	return o.EntityID
+	return p.EntityID
 }
 
 type PauseURIMonitoringResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
 	// The request has succeeded.
-	EntityID *components.EntityID
+	CommonEntityID *components.CommonEntityID
 }
 
-func (o *PauseURIMonitoringResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (p *PauseURIMonitoringResponse) GetHTTPMeta() components.HTTPMetadata {
+	if p == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return p.HTTPMeta
 }
 
-func (o *PauseURIMonitoringResponse) GetEntityID() *components.EntityID {
-	if o == nil {
+func (p *PauseURIMonitoringResponse) GetCommonEntityID() *components.CommonEntityID {
+	if p == nil {
 		return nil
 	}
-	return o.EntityID
+	return p.CommonEntityID
 }

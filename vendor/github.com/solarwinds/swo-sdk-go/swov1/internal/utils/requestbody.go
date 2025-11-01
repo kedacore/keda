@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+
+	"github.com/solarwinds/swo-sdk-go/swov1/optionalnullable"
 )
 
 const (
@@ -340,6 +342,17 @@ func encodeFormData(fieldName string, w io.Writer, data interface{}) error {
 			}
 		}
 	case reflect.Map:
+		// check if optionalnullable.OptionalNullable[T]
+		if nullableValue, ok := optionalnullable.AsOptionalNullable(requestValType); ok {
+			// Handle optionalnullable.OptionalNullable[T] using GetUntyped method
+			if value, isSet := nullableValue.GetUntyped(); isSet && value != nil {
+				dataValues.Set(fieldName, valToString(value))
+			}
+			// If not set or explicitly null, skip adding to form
+			break
+		}
+
+		// Handle regular map
 		for _, k := range requestValType.MapKeys() {
 			v := requestValType.MapIndex(k)
 			dataValues.Set(fmt.Sprintf("%v", k.Interface()), valToString(v.Interface()))

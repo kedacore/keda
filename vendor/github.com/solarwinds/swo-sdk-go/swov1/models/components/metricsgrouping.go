@@ -8,16 +8,16 @@ type MetricsGrouping struct {
 	Measurements []MetricsMeasurement `json:"measurements"`
 }
 
-func (o *MetricsGrouping) GetAttributes() []CommonKeyValuePair {
-	if o == nil {
+func (m *MetricsGrouping) GetAttributes() []CommonKeyValuePair {
+	if m == nil {
 		return []CommonKeyValuePair{}
 	}
-	return o.Attributes
+	return m.Attributes
 }
 
-func (o *MetricsGrouping) GetMeasurements() []MetricsMeasurement {
-	if o == nil {
+func (m *MetricsGrouping) GetMeasurements() []MetricsMeasurement {
+	if m == nil {
 		return []MetricsMeasurement{}
 	}
-	return o.Measurements
+	return m.Measurements
 }

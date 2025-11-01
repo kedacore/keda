@@ -72,12 +72,12 @@ func main() {
 		swov1.WithSecurity(os.Getenv("SWO_API_TOKEN")),
 	)
 
-	res, err := s.ChangeEvents.CreateChangeEvent(ctx, components.ChangeEvent{
-		ID:        swov1.Int64(1731676626),
+	res, err := s.ChangeEvents.CreateChangeEvent(ctx, components.ChangeEventsChangeEvent{
+		ID:        swov1.Pointer[int64](1731676626),
 		Name:      "app-deploys",
 		Title:     "deployed v45",
-		Timestamp: swov1.Int64(1731676626),
-		Source:    swov1.String("foo3.example.com"),
+		Timestamp: swov1.Pointer[int64](1731676626),
+		Source:    swov1.Pointer("foo3.example.com"),
 		Tags: map[string]string{
 			"app":         "foo",
 			"environment": "production",
@@ -130,12 +130,12 @@ func main() {
 		swov1.WithSecurity(os.Getenv("SWO_API_TOKEN")),
 	)
 
-	res, err := s.ChangeEvents.CreateChangeEvent(ctx, components.ChangeEvent{
-		ID:        swov1.Int64(1731676626),
+	res, err := s.ChangeEvents.CreateChangeEvent(ctx, components.ChangeEventsChangeEvent{
+		ID:        swov1.Pointer[int64](1731676626),
 		Name:      "app-deploys",
 		Title:     "deployed v45",
-		Timestamp: swov1.Int64(1731676626),
-		Source:    swov1.String("foo3.example.com"),
+		Timestamp: swov1.Pointer[int64](1731676626),
+		Source:    swov1.Pointer("foo3.example.com"),
 		Tags: map[string]string{
 			"app":         "foo",
 			"environment": "production",
@@ -190,6 +190,12 @@ func main() {
 * [ListProbes](docs/sdks/dem/README.md#listprobes) - Get a list of existing synthetic probes
 * [GetDemSettings](docs/sdks/dem/README.md#getdemsettings) - Get DEM settings
 * [SetDemSettings](docs/sdks/dem/README.md#setdemsettings) - Set DEM settings
+* [CreateTransaction](docs/sdks/dem/README.md#createtransaction) - Create transaction monitoring configuration
+* [GetTransaction](docs/sdks/dem/README.md#gettransaction) - Get transaction monitoring configuration
+* [UpdateTransaction](docs/sdks/dem/README.md#updatetransaction) - Update transaction monitoring configuration
+* [DeleteTransaction](docs/sdks/dem/README.md#deletetransaction) - Delete transaction
+* [PauseTransactionMonitoring](docs/sdks/dem/README.md#pausetransactionmonitoring) - Pause monitoring of the transaction
+* [UnpauseTransactionMonitoring](docs/sdks/dem/README.md#unpausetransactionmonitoring) - Unpause monitoring of the transaction
 * [CreateURI](docs/sdks/dem/README.md#createuri) - Create URI monitoring configuration
 * [GetURI](docs/sdks/dem/README.md#geturi) - Get URI monitoring configuration
 * [UpdateURI](docs/sdks/dem/README.md#updateuri) - Update URI monitoring configuration
@@ -230,7 +236,6 @@ func main() {
 * [ListMetricAttributes](docs/sdks/metrics/README.md#listmetricattributes) - List metric attribute names
 * [ListMetricAttributeValues](docs/sdks/metrics/README.md#listmetricattributevalues) - List metric attribute values
 * [ListMetricMeasurements](docs/sdks/metrics/README.md#listmetricmeasurements) - List metric measurement values, grouped by attributes, filtered by the filter. An empty list indicates no data points are available for the given parameters.
-
 
 ### [Tokens](docs/sdks/tokens/README.md)
 
@@ -317,12 +322,12 @@ func main() {
 		swov1.WithSecurity(os.Getenv("SWO_API_TOKEN")),
 	)
 
-	res, err := s.ChangeEvents.CreateChangeEvent(ctx, components.ChangeEvent{
-		ID:        swov1.Int64(1731676626),
+	res, err := s.ChangeEvents.CreateChangeEvent(ctx, components.ChangeEventsChangeEvent{
+		ID:        swov1.Pointer[int64](1731676626),
 		Name:      "app-deploys",
 		Title:     "deployed v45",
-		Timestamp: swov1.Int64(1731676626),
-		Source:    swov1.String("foo3.example.com"),
+		Timestamp: swov1.Pointer[int64](1731676626),
+		Source:    swov1.Pointer("foo3.example.com"),
 		Tags: map[string]string{
 			"app":         "foo",
 			"environment": "production",
@@ -385,12 +390,12 @@ func main() {
 		swov1.WithSecurity(os.Getenv("SWO_API_TOKEN")),
 	)
 
-	res, err := s.ChangeEvents.CreateChangeEvent(ctx, components.ChangeEvent{
-		ID:        swov1.Int64(1731676626),
+	res, err := s.ChangeEvents.CreateChangeEvent(ctx, components.ChangeEventsChangeEvent{
+		ID:        swov1.Pointer[int64](1731676626),
 		Name:      "app-deploys",
 		Title:     "deployed v45",
-		Timestamp: swov1.Int64(1731676626),
-		Source:    swov1.String("foo3.example.com"),
+		Timestamp: swov1.Pointer[int64](1731676626),
+		Source:    swov1.Pointer("foo3.example.com"),
 		Tags: map[string]string{
 			"app":         "foo",
 			"environment": "production",
@@ -420,15 +425,14 @@ Handling errors in this SDK should largely match your expectations. All operatio
 
 By Default, an API error will return `apierrors.APIError`. When custom error responses are specified for an operation, the SDK may also return their associated error. You can refer to respective *Errors* tables in SDK docs for more details on possible error types for each operation.
 
-For example, the `ActivateAwsIntegration` function may return the following errors:
+For example, the `CreateChangeEvent` function may return the following errors:
 
-| Error Type                                                           | Status Code | Content Type     |
-| -------------------------------------------------------------------- | ----------- | ---------------- |
-| apierrors.ActivateAwsIntegrationResponseBody                         | 400         | application/json |
-| apierrors.ActivateAwsIntegrationCloudAccountsResponseBody            | 401         | application/json |
-| apierrors.ActivateAwsIntegrationCloudAccountsResponseResponseBody    | 404         | application/json |
-| apierrors.ActivateAwsIntegrationCloudAccountsResponse500ResponseBody | 500         | application/json |
-| apierrors.APIError                                                   | 4XX, 5XX    | \*/\*            |
+| Error Type                                | Status Code | Content Type     |
+| ----------------------------------------- | ----------- | ---------------- |
+| apierrors.CommonBadRequestErrorResponse   | 400         | application/json |
+| apierrors.CommonUnauthorizedErrorResponse | 401         | application/json |
+| apierrors.CommonInternalErrorResponse     | 500         | application/json |
+| apierrors.APIError                        | 4XX, 5XX    | \*/\*            |
 
 ### Example
 
@@ -452,32 +456,38 @@ func main() {
 		swov1.WithSecurity(os.Getenv("SWO_API_TOKEN")),
 	)
 
-	res, err := s.CloudAccounts.ActivateAwsIntegration(ctx, components.ActivateAwsIntegrationRequest{
-		ManagementAccountID: "<id>",
-		AccountID:           "<id>",
-		Enable:              true,
+	res, err := s.ChangeEvents.CreateChangeEvent(ctx, components.ChangeEventsChangeEvent{
+		ID:        swov1.Pointer[int64](1731676626),
+		Name:      "app-deploys",
+		Title:     "deployed v45",
+		Timestamp: swov1.Pointer[int64](1731676626),
+		Source:    swov1.Pointer("foo3.example.com"),
+		Tags: map[string]string{
+			"app":         "foo",
+			"environment": "production",
+		},
+		Links: []components.CommonLink{
+			components.CommonLink{
+				Rel:  "self",
+				Href: "https://example.com",
+			},
+		},
 	})
 	if err != nil {
 
-		var e *apierrors.ActivateAwsIntegrationResponseBody
+		var e *apierrors.CommonBadRequestErrorResponse
 		if errors.As(err, &e) {
 			// handle error
 			log.Fatal(e.Error())
 		}
 
-		var e *apierrors.ActivateAwsIntegrationCloudAccountsResponseBody
+		var e *apierrors.CommonUnauthorizedErrorResponse
 		if errors.As(err, &e) {
 			// handle error
 			log.Fatal(e.Error())
 		}
 
-		var e *apierrors.ActivateAwsIntegrationCloudAccountsResponseResponseBody
-		if errors.As(err, &e) {
-			// handle error
-			log.Fatal(e.Error())
-		}
-
-		var e *apierrors.ActivateAwsIntegrationCloudAccountsResponse500ResponseBody
+		var e *apierrors.CommonInternalErrorResponse
 		if errors.As(err, &e) {
 			// handle error
 			log.Fatal(e.Error())
@@ -526,12 +536,12 @@ func main() {
 		swov1.WithSecurity(os.Getenv("SWO_API_TOKEN")),
 	)
 
-	res, err := s.ChangeEvents.CreateChangeEvent(ctx, components.ChangeEvent{
-		ID:        swov1.Int64(1731676626),
+	res, err := s.ChangeEvents.CreateChangeEvent(ctx, components.ChangeEventsChangeEvent{
+		ID:        swov1.Pointer[int64](1731676626),
 		Name:      "app-deploys",
 		Title:     "deployed v45",
-		Timestamp: swov1.Int64(1731676626),
-		Source:    swov1.String("foo3.example.com"),
+		Timestamp: swov1.Pointer[int64](1731676626),
+		Source:    swov1.Pointer("foo3.example.com"),
 		Tags: map[string]string{
 			"app":         "foo",
 			"environment": "production",
@@ -575,12 +585,12 @@ func main() {
 		swov1.WithSecurity(os.Getenv("SWO_API_TOKEN")),
 	)
 
-	res, err := s.ChangeEvents.CreateChangeEvent(ctx, components.ChangeEvent{
-		ID:        swov1.Int64(1731676626),
+	res, err := s.ChangeEvents.CreateChangeEvent(ctx, components.ChangeEventsChangeEvent{
+		ID:        swov1.Pointer[int64](1731676626),
 		Name:      "app-deploys",
 		Title:     "deployed v45",
-		Timestamp: swov1.Int64(1731676626),
-		Source:    swov1.String("foo3.example.com"),
+		Timestamp: swov1.Pointer[int64](1731676626),
+		Source:    swov1.Pointer("foo3.example.com"),
 		Tags: map[string]string{
 			"app":         "foo",
 			"environment": "production",
@@ -620,12 +630,13 @@ The built-in `net/http` client satisfies this interface and a default client bas
 import (
 	"net/http"
 	"time"
-	"github.com/myorg/your-go-sdk"
+
+	"github.com/solarwinds/swo-sdk-go/swov1"
 )
 
 var (
 	httpClient = &http.Client{Timeout: 30 * time.Second}
-	sdkClient  = sdk.New(sdk.WithClient(httpClient))
+	sdkClient  = swov1.New(swov1.WithClient(httpClient))
 )
 ```
 

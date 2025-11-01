@@ -11,8 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ericlagergren/decimal"
-
+	"github.com/solarwinds/swo-sdk-go/swov1/optionalnullable"
 	"github.com/solarwinds/swo-sdk-go/swov1/types"
 )
 
@@ -114,6 +113,16 @@ func getSimplePathParams(parentName string, objType reflect.Type, objValue refle
 		}
 		pathParams[parentName] = strings.Join(ppVals, ",")
 	case reflect.Map:
+		// check if optionalnullable.OptionalNullable[T]
+		if nullableValue, ok := optionalnullable.AsOptionalNullable(objValue); ok {
+			// Handle optionalnullable.OptionalNullable[T] using GetUntyped method
+			if value, isSet := nullableValue.GetUntyped(); isSet && value != nil {
+				pathParams[parentName] = valToString(value)
+			}
+			// If not set or explicitly null, return nil (skip parameter)
+			return pathParams
+		}
+
 		if objValue.Len() == 0 {
 			return nil
 		}
@@ -134,8 +143,6 @@ func getSimplePathParams(parentName string, objType reflect.Type, objValue refle
 		case types.Date:
 			pathParams[parentName] = valToString(objValue.Interface())
 		case big.Int:
-			pathParams[parentName] = valToString(objValue.Interface())
-		case decimal.Big:
 			pathParams[parentName] = valToString(objValue.Interface())
 		default:
 			var ppVals []string

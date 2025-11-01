@@ -27,50 +27,50 @@ func (c CommonMetricInfo) MarshalJSON() ([]byte, error) {
 }
 
 func (c *CommonMetricInfo) UnmarshalJSON(data []byte) error {
-	if err := utils.UnmarshalJSON(data, &c, "", false, false); err != nil {
+	if err := utils.UnmarshalJSON(data, &c, "", false, []string{"name"}); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *CommonMetricInfo) GetName() string {
-	if o == nil {
+func (c *CommonMetricInfo) GetName() string {
+	if c == nil {
 		return ""
 	}
-	return o.Name
+	return c.Name
 }
 
-func (o *CommonMetricInfo) GetDisplayName() *string {
-	if o == nil {
+func (c *CommonMetricInfo) GetDisplayName() *string {
+	if c == nil {
 		return nil
 	}
-	return o.DisplayName
+	return c.DisplayName
 }
 
-func (o *CommonMetricInfo) GetDescription() *string {
-	if o == nil {
+func (c *CommonMetricInfo) GetDescription() *string {
+	if c == nil {
 		return nil
 	}
-	return o.Description
+	return c.Description
 }
 
-func (o *CommonMetricInfo) GetUnits() *string {
-	if o == nil {
+func (c *CommonMetricInfo) GetUnits() *string {
+	if c == nil {
 		return nil
 	}
-	return o.Units
+	return c.Units
 }
 
-func (o *CommonMetricInfo) GetFormula() *string {
-	if o == nil {
+func (c *CommonMetricInfo) GetFormula() *string {
+	if c == nil {
 		return nil
 	}
-	return o.Formula
+	return c.Formula
 }
 
-func (o *CommonMetricInfo) GetLastReportedTime() *time.Time {
-	if o == nil {
+func (c *CommonMetricInfo) GetLastReportedTime() *time.Time {
+	if c == nil {
 		return nil
 	}
-	return o.LastReportedTime
+	return c.LastReportedTime
 }

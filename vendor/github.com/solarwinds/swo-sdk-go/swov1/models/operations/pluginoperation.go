@@ -11,27 +11,27 @@ type PluginOperationRequest struct {
 	Operation string `pathParam:"style=simple,explode=false,name=operation"`
 }
 
-func (o *PluginOperationRequest) GetEntityID() string {
-	if o == nil {
+func (p *PluginOperationRequest) GetEntityID() string {
+	if p == nil {
 		return ""
 	}
-	return o.EntityID
+	return p.EntityID
 }
 
-func (o *PluginOperationRequest) GetOperation() string {
-	if o == nil {
+func (p *PluginOperationRequest) GetOperation() string {
+	if p == nil {
 		return ""
 	}
-	return o.Operation
+	return p.Operation
 }
 
 type PluginOperationResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
 }
 
-func (o *PluginOperationResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (p *PluginOperationResponse) GetHTTPMeta() components.HTTPMetadata {
+	if p == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return p.HTTPMeta
 }

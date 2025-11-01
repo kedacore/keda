@@ -10,29 +10,29 @@ type DeleteWebsiteRequest struct {
 	EntityID string `pathParam:"style=simple,explode=false,name=entityId"`
 }
 
-func (o *DeleteWebsiteRequest) GetEntityID() string {
-	if o == nil {
+func (d *DeleteWebsiteRequest) GetEntityID() string {
+	if d == nil {
 		return ""
 	}
-	return o.EntityID
+	return d.EntityID
 }
 
 type DeleteWebsiteResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
 	// The request has succeeded.
-	EntityID *components.EntityID
+	CommonEntityID *components.CommonEntityID
 }
 
-func (o *DeleteWebsiteResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (d *DeleteWebsiteResponse) GetHTTPMeta() components.HTTPMetadata {
+	if d == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return d.HTTPMeta
 }
 
-func (o *DeleteWebsiteResponse) GetEntityID() *components.EntityID {
-	if o == nil {
+func (d *DeleteWebsiteResponse) GetCommonEntityID() *components.CommonEntityID {
+	if d == nil {
 		return nil
 	}
-	return o.EntityID
+	return d.CommonEntityID
 }
