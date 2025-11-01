@@ -128,6 +128,7 @@ type (
 		contextPropagators     []ContextPropagator
 		client                 *WorkflowClient
 		priority               *commonpb.Priority
+		retryPolicy            *RetryPolicy
 	}
 
 	// context.WithValue need this type instead of basic type string to avoid lint error
@@ -367,6 +368,7 @@ func (a *activityEnvironmentInterceptor) GetInfo(ctx context.Context) ActivityIn
 		WorkflowNamespace:      a.env.workflowNamespace,
 		IsLocalActivity:        a.env.isLocalActivity,
 		Priority:               convertFromPBPriority(a.env.priority),
+		RetryPolicy:            a.env.retryPolicy,
 	}
 }
 

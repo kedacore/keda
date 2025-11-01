@@ -137,7 +137,7 @@ func versioningOverrideToProto(versioningOverride VersioningOverride) *workflowp
 			PinnedVersion: v.Version.toCanonicalString(),
 			Deployment: &deploymentpb.Deployment{
 				SeriesName: v.Version.DeploymentName,
-				BuildId:    v.Version.BuildId,
+				BuildId:    v.Version.BuildID,
 			},
 			Override: &workflowpb.VersioningOverride_Pinned{
 				Pinned: &workflowpb.VersioningOverride_PinnedOverride{
@@ -190,7 +190,7 @@ func versioningOverrideFromProto(versioningOverride *workflowpb.VersioningOverri
 				//lint:ignore SA1019 ignore deprecated versioning APIs
 				DeploymentName: versioningOverride.GetDeployment().SeriesName,
 				//lint:ignore SA1019 ignore deprecated versioning APIs
-				BuildId: versioningOverride.GetDeployment().BuildId,
+				BuildID: versioningOverride.GetDeployment().BuildId,
 			},
 		}
 	default:

@@ -419,7 +419,7 @@ func sessionCreationActivity(ctx context.Context, sessionID string) error {
 			sessionEnv.CompleteSession(sessionID)
 			// Because of how session creation configures retryPolicy, we need to wrap context cancels that don't
 			// originate from the server as non-retryable errors. See retrypolicy in createSession() above.
-			if !(ctx.Err() == context.Canceled && errors.Is(context.Cause(ctx), &CanceledError{})) {
+			if !(ctx.Err() == context.Canceled && IsCanceledError(context.Cause(ctx))) {
 				return NewApplicationErrorWithOptions(
 					"session failed due to worker shutdown", "SessionWorkerShutdown",
 					ApplicationErrorOptions{NonRetryable: true, Cause: ctx.Err()})

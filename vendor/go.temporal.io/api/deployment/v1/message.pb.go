@@ -641,8 +641,13 @@ type WorkerDeploymentInfo struct {
 	// `identity` value sent by APIs such as `SetWorkerDeploymentCurrentVersion` and
 	// `SetWorkerDeploymentRampingVersion`.
 	LastModifierIdentity string `protobuf:"bytes,5,opt,name=last_modifier_identity,json=lastModifierIdentity,proto3" json:"last_modifier_identity,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Identity of the client that has the exclusive right to make changes to this Worker Deployment.
+	// Empty by default.
+	// If this is set, clients whose identity does not match `manager_identity` will not be able to make changes
+	// to this Worker Deployment. They can either set their own identity as the manager or unset the field to proceed.
+	ManagerIdentity string `protobuf:"bytes,6,opt,name=manager_identity,json=managerIdentity,proto3" json:"manager_identity,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *WorkerDeploymentInfo) Reset() {
@@ -706,6 +711,13 @@ func (x *WorkerDeploymentInfo) GetRoutingConfig() *RoutingConfig {
 func (x *WorkerDeploymentInfo) GetLastModifierIdentity() string {
 	if x != nil {
 		return x.LastModifierIdentity
+	}
+	return ""
+}
+
+func (x *WorkerDeploymentInfo) GetManagerIdentity() string {
+	if x != nil {
+		return x.ManagerIdentity
 	}
 	return ""
 }
@@ -1268,14 +1280,15 @@ const file_temporal_api_deployment_v1_message_proto_rawDesc = "" +
 	"\x13VersionDrainageInfo\x12D\n" +
 	"\x06status\x18\x01 \x01(\x0e2,.temporal.api.enums.v1.VersionDrainageStatusR\x06status\x12F\n" +
 	"\x11last_changed_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x0flastChangedTime\x12F\n" +
-	"\x11last_checked_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x0flastCheckedTime\"\xcc\t\n" +
+	"\x11last_checked_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x0flastCheckedTime\"\xf7\t\n" +
 	"\x14WorkerDeploymentInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12|\n" +
 	"\x11version_summaries\x18\x02 \x03(\v2O.temporal.api.deployment.v1.WorkerDeploymentInfo.WorkerDeploymentVersionSummaryR\x10versionSummaries\x12;\n" +
 	"\vcreate_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"createTime\x12P\n" +
 	"\x0erouting_config\x18\x04 \x01(\v2).temporal.api.deployment.v1.RoutingConfigR\rroutingConfig\x124\n" +
-	"\x16last_modifier_identity\x18\x05 \x01(\tR\x14lastModifierIdentity\x1a\xdc\x06\n" +
+	"\x16last_modifier_identity\x18\x05 \x01(\tR\x14lastModifierIdentity\x12)\n" +
+	"\x10manager_identity\x18\x06 \x01(\tR\x0fmanagerIdentity\x1a\xdc\x06\n" +
 	"\x1eWorkerDeploymentVersionSummary\x12\x1c\n" +
 	"\aversion\x18\x01 \x01(\tB\x02\x18\x01R\aversion\x12L\n" +
 	"\x06status\x18\v \x01(\x0e24.temporal.api.enums.v1.WorkerDeploymentVersionStatusR\x06status\x12b\n" +

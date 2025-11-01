@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"time"
 
@@ -139,7 +140,7 @@ func requiredInterceptors(
 		// Performs retries *IF* retry options are set for the call.
 		grpc_retry.UnaryClientInterceptor(),
 		// Prevents retrying grpc message too large errors, while allowing retries of other resource exhausted errors.
-		retry.SetGrpcMessageTooLargeErrorCauseInterceptor,
+		retry.GrpcMessageTooLargeErrorInterceptor,
 		// Report metrics for every call made to the server.
 		metrics.NewGRPCInterceptor(clientOptions.MetricsHandler, attemptSuffix, clientOptions.DisableErrorCodeMetricTags),
 	}
@@ -199,6 +200,9 @@ func headersProviderInterceptor(headersProvider HeadersProvider) grpc.UnaryClien
 
 func errorInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	err := invoker(ctx, method, req, reply, cc, opts...)
-	err = serviceerror.FromStatus(status.Convert(err))
+	var grpcMessageTooLargeErr *retry.GrpcMessageTooLargeError
+	if !errors.As(err, &grpcMessageTooLargeErr) {
+		err = serviceerror.FromStatus(status.Convert(err))
+	}
 	return err
 }
