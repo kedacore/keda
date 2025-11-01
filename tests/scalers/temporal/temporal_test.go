@@ -147,7 +147,7 @@ spec:
         args:
         - "run-worker"
         - "--language=go"
-        - "--server-address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
+        - "--embedded-server-address={{.TemporalDeploymentName}}.{{.TestNamespace}}.svc.cluster.local:7233"
         - "--run-id=test"
         - "--scenario=workflow_with_single_noop_activity"
         - "--dir-name=prepared"
