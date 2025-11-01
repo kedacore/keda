@@ -137,7 +137,7 @@ func tarParseOctal(b []byte) int64 {
 		if b == 0 {
 			break
 		}
-		if !(b >= '0' && b <= '7') {
+		if b < '0' || b > '7' {
 			return -1
 		}
 		ret = (ret << 3) | int64(b-'0')
