@@ -603,6 +603,9 @@ var defaultPartitions = endpoints.Partitions{
 			}: endpoints.Endpoint{
 				Deprecated: aws.TrueTernary,
 			},
+			endpoints.EndpointKey{
+				Region: "us-isob-west-1",
+			}: endpoints.Endpoint{},
 		},
 	},
 	{
