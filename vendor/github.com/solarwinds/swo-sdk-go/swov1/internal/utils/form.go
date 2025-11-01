@@ -10,8 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ericlagergren/decimal"
-
+	"github.com/solarwinds/swo-sdk-go/swov1/optionalnullable"
 	"github.com/solarwinds/swo-sdk-go/swov1/types"
 )
 
@@ -41,8 +40,6 @@ func populateForm(paramName string, explode bool, objType reflect.Type, objValue
 			formValues.Add(paramName, valToString(objValue.Interface()))
 		case big.Int:
 			formValues.Add(paramName, valToString(objValue.Interface()))
-		case decimal.Big:
-			formValues.Add(paramName, valToString(objValue.Interface()))
 		default:
 			var items []string
 
@@ -64,7 +61,13 @@ func populateForm(paramName string, explode bool, objType reflect.Type, objValue
 				}
 
 				if explode {
-					formValues.Add(fieldName, valToString(valType.Interface()))
+					if valType.Kind() == reflect.Slice || valType.Kind() == reflect.Array {
+						for i := 0; i < valType.Len(); i++ {
+							formValues.Add(fieldName, valToString(valType.Index(i).Interface()))
+						}
+					} else {
+						formValues.Add(fieldName, valToString(valType.Interface()))
+					}
 				} else {
 					items = append(items, fmt.Sprintf("%s%s%s", fieldName, delimiter, valToString(valType.Interface())))
 				}
@@ -75,6 +78,16 @@ func populateForm(paramName string, explode bool, objType reflect.Type, objValue
 			}
 		}
 	case reflect.Map:
+		// check if optionalnullable.OptionalNullable[T]
+		if nullableValue, ok := optionalnullable.AsOptionalNullable(objValue); ok {
+			// Handle optionalnullable.OptionalNullable[T] using GetUntyped method
+			if value, isSet := nullableValue.GetUntyped(); isSet && value != nil {
+				formValues.Add(paramName, valToString(value))
+			}
+			// If not set or explicitly null, skip adding to form
+			return formValues
+		}
+
 		items := []string{}
 
 		iter := objValue.MapRange()

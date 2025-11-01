@@ -10,9 +10,9 @@ type ActivateAwsIntegrationResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
 }
 
-func (o *ActivateAwsIntegrationResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (a *ActivateAwsIntegrationResponse) GetHTTPMeta() components.HTTPMetadata {
+	if a == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return a.HTTPMeta
 }
