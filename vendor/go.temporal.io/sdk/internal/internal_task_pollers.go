@@ -544,7 +544,8 @@ func (wtp *workflowTaskProcessor) RespondTaskCompletedWithMetrics(
 
 	response, err = wtp.sendTaskCompletedRequest(completedRequest, task)
 
-	if isGrpcMessageTooLargeError(err) {
+	var grpcMessageTooLargeErr *retry.GrpcMessageTooLargeError
+	if errors.As(err, &grpcMessageTooLargeErr) {
 		secondEmitFailMetric, secondErr := wtp.reportGrpcMessageTooLarge(completedRequest, task, err)
 		if secondEmitFailMetric {
 			emitFailMetric = true
@@ -1536,9 +1537,4 @@ func (nt *nexusTask) scaleDecision() (pollerScaleDecision, bool) {
 	return pollerScaleDecision{
 		pollRequestDeltaSuggestion: int(nt.task.PollerScalingDecision.PollRequestDeltaSuggestion),
 	}, true
-}
-
-func isGrpcMessageTooLargeError(err error) bool {
-	serviceErr, ok := err.(*serviceerror.ResourceExhausted)
-	return ok && serviceErr.Cause == retry.RESOURCE_EXHAUSTED_CAUSE_EXT_GRPC_MESSAGE_TOO_LARGE
 }

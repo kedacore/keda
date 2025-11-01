@@ -24,7 +24,6 @@ import (
 	"go.temporal.io/api/serviceerror"
 	taskqueuepb "go.temporal.io/api/taskqueue/v1"
 	"go.temporal.io/api/workflowservice/v1"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"go.temporal.io/sdk/internal/common/retry"
@@ -50,6 +49,11 @@ var (
 	//
 	// WARNING: Activity pause is currently experimental
 	ErrActivityPaused = errors.New("activity paused")
+
+	// ErrActivityReset is returned from an activity heartbeat or the cause of an activity's context to indicate that the activity has been reset.
+	//
+	// WARNING: Activity reset is currently experimental
+	ErrActivityReset = errors.New("activity reset")
 )
 
 type (
@@ -2156,16 +2160,15 @@ func (i *temporalInvoker) internalHeartBeat(ctx context.Context, details *common
 	case nil:
 		// No error, do nothing.
 	default:
-		if errors.Is(err, ErrActivityPaused) {
-			// We are asked to pause. inform the activity about cancellation through context.
+		if errors.Is(err, ErrActivityPaused) || errors.Is(err, ErrActivityReset) {
+			// We are asked to pause/reset. inform the activity about cancellation through context.
 			i.cancelHandler(err)
 			isActivityCanceled = true
 		}
 		// Transient errors are getting retried for the duration of the heartbeat timeout.
 		// The fact that error has been returned means that activity should now be timed out, hence we should
 		// propagate cancellation to the handler.
-		statusErr, _ := status.FromError(err)
-		if retry.IsRetryable(statusErr, i.excludeInternalFromRetry) {
+		if retry.IsRetryable(err, i.excludeInternalFromRetry) {
 			i.cancelHandler(err)
 			isActivityCanceled = true
 		}
@@ -2305,7 +2308,7 @@ func (ath *activityTaskHandlerImpl) Execute(taskQueue string, t *workflowservice
 
 	// Cancels that don't originate from the server will have separate cancel reasons, like
 	// ErrWorkerShutdown or ErrActivityPaused
-	isActivityCanceled := ctx.Err() == context.Canceled && errors.Is(context.Cause(ctx), &CanceledError{})
+	isActivityCanceled := ctx.Err() == context.Canceled && IsCanceledError(context.Cause(ctx))
 
 	dlCancelFunc()
 	if <-ctx.Done(); ctx.Err() == context.DeadlineExceeded {
@@ -2416,6 +2419,8 @@ func recordActivityHeartbeat(ctx context.Context, service workflowservice.Workfl
 			return NewCanceledError()
 		} else if heartbeatResponse.GetActivityPaused() {
 			return ErrActivityPaused
+		} else if heartbeatResponse.GetActivityReset() {
+			return ErrActivityReset
 		}
 	}
 	return err

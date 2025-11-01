@@ -225,7 +225,7 @@ type (
 		// The name of the deployment this worker version belongs to
 		DeploymentName string
 		// The build id specific to this worker
-		BuildId string
+		BuildID string
 	}
 )
 
@@ -1846,7 +1846,7 @@ func NewAggregatedWorker(client *WorkflowClient, taskQueue string, options Worke
 	}
 
 	if (options.DeploymentOptions.Version != WorkerDeploymentVersion{}) {
-		options.BuildID = options.DeploymentOptions.Version.BuildId
+		options.BuildID = options.DeploymentOptions.Version.BuildID
 	}
 	if !options.DeploymentOptions.UseVersioning &&
 		options.DeploymentOptions.DefaultVersioningBehavior != VersioningBehaviorUnspecified {
@@ -2287,26 +2287,26 @@ func executeFunction(fn interface{}, args []interface{}) (interface{}, error) {
 func workerDeploymentVersionFromProto(wd *deploymentpb.WorkerDeploymentVersion) WorkerDeploymentVersion {
 	return WorkerDeploymentVersion{
 		DeploymentName: wd.DeploymentName,
-		BuildId:        wd.BuildId,
+		BuildID:        wd.BuildId,
 	}
 }
 
 func (wd *WorkerDeploymentVersion) toProto() *deploymentpb.WorkerDeploymentVersion {
 	return &deploymentpb.WorkerDeploymentVersion{
 		DeploymentName: wd.DeploymentName,
-		BuildId:        wd.BuildId,
+		BuildId:        wd.BuildID,
 	}
 }
 
 func (wd *WorkerDeploymentVersion) toCanonicalString() string {
-	return fmt.Sprintf("%s.%s", wd.DeploymentName, wd.BuildId)
+	return fmt.Sprintf("%s.%s", wd.DeploymentName, wd.BuildID)
 }
 
 func workerDeploymentVersionFromString(version string) *WorkerDeploymentVersion {
 	if splitVersion := strings.SplitN(version, ".", 2); len(splitVersion) == 2 {
 		return &WorkerDeploymentVersion{
 			DeploymentName: splitVersion[0],
-			BuildId:        splitVersion[1],
+			BuildID:        splitVersion[1],
 		}
 	}
 	return nil
@@ -2318,6 +2318,6 @@ func workerDeploymentVersionFromProtoOrString(wd *deploymentpb.WorkerDeploymentV
 	}
 	return &WorkerDeploymentVersion{
 		DeploymentName: wd.DeploymentName,
-		BuildId:        wd.BuildId,
+		BuildID:        wd.BuildId,
 	}
 }

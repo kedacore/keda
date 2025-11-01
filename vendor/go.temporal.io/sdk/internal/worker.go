@@ -462,7 +462,7 @@ func workerDeploymentOptionsToProto(useVersioning bool, version WorkerDeployment
 		}
 		return &deploymentpb.WorkerDeploymentOptions{
 			DeploymentName:       version.DeploymentName,
-			BuildId:              version.BuildId,
+			BuildId:              version.BuildID,
 			WorkerVersioningMode: workerVersioningMode,
 		}
 	}
