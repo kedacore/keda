@@ -71,7 +71,7 @@ func Dbf(raw []byte, limit uint32) bool {
 	}
 
 	// 3rd and 4th bytes contain the last update month and day of month.
-	if !(0 < raw[2] && raw[2] < 13 && 0 < raw[3] && raw[3] < 32) {
+	if raw[2] == 0 || raw[2] > 12 || raw[3] == 0 || raw[3] > 31 {
 		return false
 	}
 
@@ -153,7 +153,7 @@ func Marc(raw []byte, limit uint32) bool {
 	return bytes.Contains(raw[:min(2048, len(raw))], []byte{0x1E})
 }
 
-// Glb matches a glTF model format file.
+// GLB matches a glTF model format file.
 // GLB is the binary file format representation of 3D models saved in
 // the GL transmission Format (glTF).
 // GLB uses little endian and its header structure is as follows:
@@ -168,7 +168,7 @@ func Marc(raw []byte, limit uint32) bool {
 //
 // [glTF specification]: https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html
 // [IANA glTF entry]: https://www.iana.org/assignments/media-types/model/gltf-binary
-var Glb = prefix([]byte("\x67\x6C\x54\x46\x02\x00\x00\x00"),
+var GLB = prefix([]byte("\x67\x6C\x54\x46\x02\x00\x00\x00"),
 	[]byte("\x67\x6C\x54\x46\x01\x00\x00\x00"))
 
 // TzIf matches a Time Zone Information Format (TZif) file.
