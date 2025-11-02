@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,8 +15,6 @@ import (
 
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
-
-var _ = godotenv.Load("../../../.env")
 
 const (
 	testName = "file-based-auth-test"
@@ -69,6 +66,15 @@ spec:
           emptyDir: {}
 `
 
+	clusterTriggerAuthenticationTemplate = `
+apiVersion: keda.sh/v1alpha1
+kind: ClusterTriggerAuthentication
+metadata:
+  name: file-auth
+spec:
+  filePath: creds.json
+`
+
 	scaledObjectTemplate = `
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -92,7 +98,6 @@ spec:
       authenticationRef:
         name: file-auth
         kind: ClusterTriggerAuthentication
-        filePath: /mnt/auth/creds.json
 `
 )
 
@@ -118,9 +123,11 @@ func TestFileBasedAuthentication(t *testing.T) {
 func TestFileBasedAuthTemplates(t *testing.T) {
 	t.Log("--- testing file-based auth YAML templates ---")
 
-	// Test that templates contain expected filePath
-	assert.Contains(t, scaledObjectTemplate, "filePath: /mnt/auth/creds.json")
+	// Test that templates contain expected filePath in ClusterTriggerAuthentication
+	assert.Contains(t, clusterTriggerAuthenticationTemplate, "filePath: creds.json")
 	assert.Contains(t, scaledObjectTemplate, "authenticationRef:")
+	assert.Contains(t, scaledObjectTemplate, "name: file-auth")
+	assert.Contains(t, scaledObjectTemplate, "kind: ClusterTriggerAuthentication")
 
 	// Test that deployment template has init container and volume setup
 	assert.Contains(t, deploymentTemplate, "initContainers:")
@@ -154,14 +161,26 @@ func patchOperatorDeployment(t *testing.T, kc *kubernetes.Clientset) {
 				MountPath: "/mnt/auth",
 			},
 		},
+		SecurityContext: &corev1.SecurityContext{
+			RunAsNonRoot: &[]bool{true}[0],
+			RunAsUser:    &[]int64{1000}[0],
+		},
 	})
+
+	// Add the filepath-auth-root-path arg to the operator container
+	if len(operatorDeployment.Spec.Template.Spec.Containers) > 0 {
+		operatorDeployment.Spec.Template.Spec.Containers[0].Args = append(
+			operatorDeployment.Spec.Template.Spec.Containers[0].Args,
+			"--filepath-auth-root-path=/mnt/auth",
+		)
+	}
 
 	// Update the deployment
 	_, err = kc.AppsV1().Deployments("keda").Update(context.Background(), operatorDeployment, metav1.UpdateOptions{})
 	if err != nil {
 		t.Logf("Failed to patch operator deployment: %v", err)
 	} else {
-		t.Log("Patched operator deployment with auth init container")
+		t.Log("Patched operator deployment with auth init container and filepath arg")
 	}
 }
 
@@ -172,6 +191,7 @@ func getTemplateData() (templateData, []Template) {
 			ScaledObjectName: scaledObjectName,
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "clusterTriggerAuthenticationTemplate", Config: clusterTriggerAuthenticationTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }
@@ -189,11 +209,21 @@ func testScaledObjectWithFileAuth(t *testing.T, kc *kubernetes.Clientset) {
 	}
 	assert.NotNil(t, scaledObject)
 
-	// Verify the authenticationRef has the filePath
+	// Verify the authenticationRef exists
 	if len(scaledObject.Spec.Triggers) > 0 {
 		assert.NotNil(t, scaledObject.Spec.Triggers[0].AuthenticationRef)
-		assert.Equal(t, "/mnt/auth/creds.json", scaledObject.Spec.Triggers[0].AuthenticationRef.FilePath)
+		assert.Equal(t, "file-auth", scaledObject.Spec.Triggers[0].AuthenticationRef.Name)
+		assert.Equal(t, "ClusterTriggerAuthentication", scaledObject.Spec.Triggers[0].AuthenticationRef.Kind)
 	}
+
+	// Verify ClusterTriggerAuthentication has the filePath
+	clusterTriggerAuth, err := kedaKc.ClusterTriggerAuthentications().Get(context.Background(), "file-auth", metav1.GetOptions{})
+	if err != nil {
+		t.Logf("ClusterTriggerAuthentication not found: %v", err)
+		return
+	}
+	assert.NotNil(t, clusterTriggerAuth)
+	assert.Equal(t, "creds.json", clusterTriggerAuth.Spec.FilePath)
 
 	// Verify deployment has init container that creates the auth file
 	deployment, err := kc.AppsV1().Deployments(testNamespace).Get(context.Background(), deploymentName, metav1.GetOptions{})
