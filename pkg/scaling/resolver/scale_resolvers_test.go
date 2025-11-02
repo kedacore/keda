@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -999,10 +1000,19 @@ func TestEnvWithRestrictedNamespace(t *testing.T) {
 }
 
 func TestResolveAuthRef_FromFile(t *testing.T) {
+	if err := corev1.AddToScheme(scheme.Scheme); err != nil {
+		t.Errorf("Expected Error because: %v", err)
+	}
+	if err := kedav1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		t.Errorf("Expected Error because: %v", err)
+	}
+
 	// Create temp file with auth params
-	tempFile, err := os.CreateTemp("", "auth_test_*.json")
+	tempFile, err := os.CreateTemp("/tmp", "auth_test_*.json")
 	assert.NoError(t, err)
 	defer os.Remove(tempFile.Name())
+
+	SetConfig(&Config{FilePathAuthRootPath: "/tmp"})
 
 	authParams := map[string]string{"username": "testuser", "password": "testpass"}
 	data, _ := json.Marshal(authParams)
@@ -1010,32 +1020,59 @@ func TestResolveAuthRef_FromFile(t *testing.T) {
 	assert.NoError(t, err)
 	tempFile.Close()
 
+	os.Setenv("KEDA_CLUSTER_OBJECT_NAMESPACE", clusterNamespace)
+
 	// Test resolveAuthRef with FilePath
+	existing := []runtime.Object{
+		&kedav1alpha1.ClusterTriggerAuthentication{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+			},
+			Spec: kedav1alpha1.TriggerAuthenticationSpec{
+				FilePath: filepath.Base(tempFile.Name()),
+			},
+		},
+	}
+	client := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(existing...).Build()
 	authRef := &kedav1alpha1.AuthenticationRef{
-		Name:     "test",
-		Kind:     "ClusterTriggerAuthentication",
-		FilePath: tempFile.Name(),
+		Name: "test",
+		Kind: "ClusterTriggerAuthentication",
 	}
 
-	result, podIdentity, err := resolveAuthRef(context.TODO(), nil, logf.Log.WithName("test"), authRef, nil, "test-ns", nil)
+	result, podIdentity, err := resolveAuthRef(context.TODO(), client, logf.Log.WithName("test"), authRef, nil, clusterNamespace, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, authParams, result)
 	assert.Equal(t, kedav1alpha1.PodIdentityProviderNone, podIdentity.Provider)
 
 	// Test that FilePath with wrong Kind fails
-	authRefWrongKind := &kedav1alpha1.AuthenticationRef{
-		Name:     "test",
-		Kind:     "TriggerAuthentication", // Wrong kind
-		FilePath: tempFile.Name(),
+	existingWrong := []runtime.Object{
+		&kedav1alpha1.TriggerAuthentication{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: clusterNamespace,
+			},
+			Spec: kedav1alpha1.TriggerAuthenticationSpec{
+				FilePath: filepath.Base(tempFile.Name()),
+			},
+		},
 	}
-	_, _, err = resolveAuthRef(context.TODO(), nil, logf.Log.WithName("test"), authRefWrongKind, nil, "test-ns", nil)
+	clientWrong := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(existingWrong...).Build()
+	authRefWrongKind := &kedav1alpha1.AuthenticationRef{
+		Name: "test",
+		Kind: "TriggerAuthentication", // Wrong kind
+	}
+	_, _, err = resolveAuthRef(context.TODO(), clientWrong, logf.Log.WithName("test"), authRefWrongKind, nil, clusterNamespace, nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "filePath is only supported for ClusterTriggerAuthentication")
 }
 
 func TestReadAuthParamsFromFile(t *testing.T) {
+	// Save and reset config
+	oldConfig := globalConfig
+	defer func() { globalConfig = oldConfig }()
+	SetConfig(&Config{FilePathAuthRootPath: "/tmp"})
 	// Test successful read
-	tempFile, err := os.CreateTemp("", "auth_params_*.json")
+	tempFile, err := os.CreateTemp("/tmp", "auth_params_*.json")
 	assert.NoError(t, err)
 	defer os.Remove(tempFile.Name())
 
@@ -1044,16 +1081,16 @@ func TestReadAuthParamsFromFile(t *testing.T) {
 	_, _ = tempFile.Write(data)
 	_ = tempFile.Close()
 
-	result, err := readAuthParamsFromFile(tempFile.Name())
+	result, err := readAuthParamsFromFile(filepath.Base(tempFile.Name()))
 	assert.NoError(t, err)
 	assert.Equal(t, expected, result)
 
 	// Test file not found
-	_, err = readAuthParamsFromFile("/nonexistent/file.json")
+	_, err = readAuthParamsFromFile("nonexistent.json")
 	assert.Error(t, err)
 
 	// Test invalid JSON
-	tempFile2, _ := os.CreateTemp("", "invalid_*.json")
+	tempFile2, _ := os.CreateTemp("/tmp", "invalid_*.json")
 	defer func() {
 		_ = os.Remove(tempFile2.Name())
 	}()
@@ -1061,6 +1098,29 @@ func TestReadAuthParamsFromFile(t *testing.T) {
 	_, _ = tempFile2.WriteString("invalid json")
 	_ = tempFile2.Close()
 
-	_, err = readAuthParamsFromFile(tempFile2.Name())
+	_, err = readAuthParamsFromFile(filepath.Base(tempFile2.Name()))
 	assert.Error(t, err)
+}
+
+func TestReadAuthParamsFromFile_Errors(t *testing.T) {
+	// Save and reset config
+	oldConfig := globalConfig
+	defer func() { globalConfig = oldConfig }()
+	SetConfig(&Config{})
+
+	// Test config not set
+	_, err := readAuthParamsFromFile("test.json")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "filepath-auth-root-path not configured")
+
+	// Test absolute path
+	SetConfig(&Config{FilePathAuthRootPath: "/tmp"})
+	_, err = readAuthParamsFromFile("/absolute/path.json")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "filePath must be relative")
+
+	// Test path with ..
+	_, err = readAuthParamsFromFile("../test.json")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "filePath must be relative")
 }

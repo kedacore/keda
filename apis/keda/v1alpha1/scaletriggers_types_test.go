@@ -1,7 +1,6 @@
 package v1alpha1
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -103,23 +102,4 @@ func TestValidateTriggers(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestAuthenticationRef_WithFilePath(t *testing.T) {
-	authRef := AuthenticationRef{
-		Name:     "test-auth",
-		Kind:     "ClusterTriggerAuthentication",
-		FilePath: "/mnt/auth/creds.json",
-	}
-	// Test JSON marshaling/unmarshaling
-	data, err := json.Marshal(authRef)
-	assert.NoError(t, err)
-	assert.Contains(t, string(data), `"filePath":"/mnt/auth/creds.json"`)
-
-	var unmarshaled AuthenticationRef
-	err = json.Unmarshal(data, &unmarshaled)
-	assert.NoError(t, err)
-	assert.Equal(t, "/mnt/auth/creds.json", unmarshaled.FilePath)
-	assert.Equal(t, "test-auth", unmarshaled.Name)
-	assert.Equal(t, "ClusterTriggerAuthentication", unmarshaled.Kind)
 }

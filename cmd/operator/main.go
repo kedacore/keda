@@ -48,6 +48,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scaling"
+	"github.com/kedacore/keda/v2/pkg/scaling/resolver"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -86,6 +87,7 @@ func main() {
 	var validatingWebhookName string
 	var caDirs []string
 	var enableWebhookPatching bool
+	var filePathAuthRootPath string
 	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
 	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the prometheus metric endpoint binds to.")
@@ -109,6 +111,7 @@ func main() {
 	pflag.StringVar(&validatingWebhookName, "validating-webhook-name", "keda-admission", "ValidatingWebhookConfiguration name. Defaults to keda-admission")
 	pflag.StringArrayVar(&caDirs, "ca-dir", []string{"/custom/ca"}, "Directory with CA certificates for scalers to authenticate TLS connections. Can be specified multiple times. Defaults to /custom/ca")
 	pflag.BoolVar(&enableWebhookPatching, "enable-webhook-patching", true, "Enable patching of webhook resources. Defaults to true.")
+	pflag.StringVar(&filePathAuthRootPath, "filepath-auth-root-path", "", "Allowed filesystem path for KEDA to read auth from.")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -146,6 +149,10 @@ func main() {
 		setupLog.Error(err, "invalid KEDA_OPERATOR_LEADER_ELECTION_RETRY_PERIOD")
 		os.Exit(1)
 	}
+
+	resolver.SetConfig(&resolver.Config{
+		FilePathAuthRootPath: filePathAuthRootPath,
+	})
 
 	cfg := ctrl.GetConfigOrDie()
 	cfg.QPS = adapterClientRequestQPS
