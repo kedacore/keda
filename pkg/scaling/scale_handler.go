@@ -19,7 +19,6 @@ package scaling
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -55,9 +54,6 @@ import (
 
 var (
 	log = logf.Log.WithName("scale_handler")
-
-	// sendRawMetrics is a feature flag that enables sending the raw metric values to all subscribed parties
-	sendRawMetrics = os.Getenv("RAW_METRICS_GRPC_PROTOCOL") == "enabled"
 )
 
 // ScaleHandler encapsulates the logic of calling the right scalers for
@@ -584,7 +580,8 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 				metricValue := metric.Value.AsApproximateFloat64()
 				metricscollector.RecordScalerMetric(scaledObjectNamespace, scaledObjectName, result.triggerName, result.triggerIndex, metric.MetricName, true, metricValue)
 			}
-			if sendRawMetrics {
+			// this is for raw metrics subscription for HPA requests
+			if shouldSendRawMetrics(RawMetricsHPA) {
 				// send the raw metric to all subscribed clients in a non-blocking fashion
 				go h.sendWhenSubscribed(scaledObjectName, scaledObjectNamespace, result.triggerName, metrics)
 			}
@@ -685,6 +682,12 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		}
 
 		metricscollector.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, result.Err)
+
+		// this is for raw metrics subscription for polling interval
+		if shouldSendRawMetrics(RawMetricsPollingInterval) {
+			// send the raw metric to all subscribed clients in a non-blocking fashion
+			go h.sendWhenSubscribed(scaledObject.Name, scaledObject.Namespace, result.TriggerName, result.Metrics)
+		}
 	}
 
 	// invalidate the cache for the ScaledObject, if we hit an error in any scaler
@@ -887,7 +890,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 				isError = true
 				continue
 			}
-			if sendRawMetrics {
+			if shouldSendRawMetrics(RawMetricsPollingInterval) {
 				// send the raw metric to all subscribed clients in a non-blocking fashion
 				go h.sendWhenSubscribed(scaledJob.Name, scaledJob.Namespace, scalerName, metrics)
 			}

@@ -180,8 +180,8 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 	t.Cleanup(func() {
-		redis.RemoveCluster(t, testName, redisNamespace)
 		DeleteKubernetesResources(t, testNamespace, data, templates)
+		redis.RemoveCluster(t, testName, redisNamespace)
 	})
 	// Create Redis Cluster
 	redis.InstallCluster(t, kc, testName, redisNamespace, redisPassword)

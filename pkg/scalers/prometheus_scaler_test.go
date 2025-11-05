@@ -425,7 +425,7 @@ func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestPrometheusScaler_ExecutePromQuery_WithGCPNativeAuthentication(t *testing.T) {
+func TestPrometheusScaler_ExecutePromQuery_WithGcpNativeAuthentication(t *testing.T) {
 	fakeGoogleOAuthServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `{"token_type": "Bearer", "access_token": "fake_access_token"}`)
 	}))

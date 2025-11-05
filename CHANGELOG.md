@@ -75,7 +75,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- **General**: Fix incorrect 'unmatched input property' notification ([#7174](https://github.com/kedacore/keda/issues/7174))
+- **IBMMQ Scaler**: Create new HTTP request for each queue query in IBMMQ scaler ([#7202](https://github.com/kedacore/keda/pull/7202))
 
 ### Deprecations
 
@@ -92,6 +92,18 @@ New deprecation(s):
 ### Other
 - **Docs**: Update [ROADMAP.md](ROADMAP.md) with upcoming-release cycle information (contribution) ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
+
+## v2.18.1
+
+### Fixes
+
+- **General**: Add feature flag `KEDA_CHECK_UNEXPECTED_SCALERS_PARAMS` for checking unexpected scaler parameters ([#6721](https://github.com/kedacore/keda/issues/6721))
+- **General**: Fix incorrect 'unmatched input property' notification ([#7174](https://github.com/kedacore/keda/issues/7174))
+- **Kafka Scaler**: Fix missing error returns in error handling ([#7182](https://github.com/kedacore/keda/pull/7182))
+
+### Other
+
+- **General**: Raw metrics stream - send also metrics during ScaledObject's interval ([#7197](https://github.com/kedacore/keda/issues/7197))
 
 ## v2.18.0
 

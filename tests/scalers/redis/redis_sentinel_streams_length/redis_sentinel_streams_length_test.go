@@ -194,8 +194,8 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 	t.Cleanup(func() {
-		redis.RemoveSentinel(t, testName, redisNamespace)
 		DeleteKubernetesResources(t, testNamespace, data, templates)
+		redis.RemoveSentinel(t, testName, redisNamespace)
 	})
 
 	// Create Redis Sentinel

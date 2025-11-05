@@ -47,6 +47,8 @@ type awsCloudwatchMetadata struct {
 
 	AwsRegion   string `keda:"name=awsRegion,   order=triggerMetadata;authParams"`
 	AwsEndpoint string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
+
+	IdentityOwner string `keda:"name=identityOwner, order=triggerMetadata, optional"`
 }
 
 func (a *awsCloudwatchMetadata) Validate() error {

@@ -38,6 +38,7 @@ type lokiMetadata struct {
 	TenantName          string  `keda:"name=tenantName,order=triggerMetadata,optional"`
 	IgnoreNullValues    bool    `keda:"name=ignoreNullValues,order=triggerMetadata,default=true"`
 	UnsafeSsl           bool    `keda:"name=unsafeSsl,order=triggerMetadata,default=false"`
+	AuthModes           string  `keda:"name=authModes, order=triggerMetadata, optional"`
 	TriggerIndex        int
 
 	authentication.Config `keda:"optional"`
