@@ -456,6 +456,12 @@
                     "metadataVariableReadable": true
                 },
                 {
+                    "name": "awsAccountId",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
                     "name": "awsRegion",
                     "type": "string",
                     "metadataVariableReadable": true,

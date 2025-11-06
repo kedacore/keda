@@ -45,8 +45,9 @@ type awsCloudwatchMetadata struct {
 	MetricStatPeriod     int64  `keda:"name=metricStatPeriod,     order=triggerMetadata, default=300"`
 	MetricEndTimeOffset  int64  `keda:"name=metricEndTimeOffset,  order=triggerMetadata, default=0"`
 
-	AwsRegion   string `keda:"name=awsRegion,   order=triggerMetadata;authParams"`
-	AwsEndpoint string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
+	AwsAccountID string `keda:"name=awsAccountId, order=triggerMetadata, optional"`
+	AwsRegion    string `keda:"name=awsRegion,    order=triggerMetadata;authParams"`
+	AwsEndpoint  string `keda:"name=awsEndpoint,  order=triggerMetadata, optional"`
 
 	IdentityOwner string `keda:"name=identityOwner, order=triggerMetadata, optional"`
 }
@@ -261,6 +262,10 @@ func (s *awsCloudwatchScaler) GetCloudwatchMetrics(ctx context.Context) (float64
 				},
 			},
 		}
+	}
+
+	if s.metadata.AwsAccountID != "" {
+		input.MetricDataQueries[0].AccountId = aws.String(s.metadata.AwsAccountID)
 	}
 
 	output, err := s.cwClient.GetMetricData(ctx, &input)
