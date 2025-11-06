@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.18.1](#v2181)
 - [v2.18.0](#v2180)
 - [v2.17.2](#v2172)
 - [v2.17.1](#v2171)
