@@ -224,7 +224,7 @@ spec:
   triggers:
     - type: pulsar
       metadata:
-        msgBacklog: "{{.MsgBacklog}}"
+        msgBacklogThreshold: "{{.MsgBacklog}}"
         activationMsgBacklogThreshold: "5"
         adminURL: https://{{.TestName}}.{{.TestName}}:8443
         topic:  persistent://public/default/keda

@@ -49,7 +49,9 @@ var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 			Filter:                sdFilter,
 			TargetValue:           7,
 			ActivationTargetValue: 5,
+			Credentials:           "{}",
 			metricName:            "s0-gcp-stackdriver-myProject",
+			aggregation:           nil,
 			gcpAuthorization: &gcp.AuthorizationMetadata{
 				GoogleApplicationCredentials: "{}",
 				PodIdentityProviderEnabled:   false,
@@ -70,7 +72,9 @@ var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 			Filter:                sdFilter,
 			TargetValue:           5,
 			ActivationTargetValue: 0,
+			Credentials:           "{}",
 			metricName:            "s0-gcp-stackdriver-myProject",
+			aggregation:           nil,
 			gcpAuthorization: &gcp.AuthorizationMetadata{
 				GoogleApplicationCredentials: "{}",
 				PodIdentityProviderEnabled:   false,
@@ -92,8 +96,10 @@ var testStackdriverMetadata = []parseStackdriverMetadataTestData{
 			Filter:                sdFilter,
 			TargetValue:           5,
 			ActivationTargetValue: 0,
-			metricName:            "s0-gcp-stackdriver-myProject",
+			Credentials:           "{}",
 			ValueIfNull:           func() *float64 { v := 1.5; return &v }(),
+			metricName:            "s0-gcp-stackdriver-myProject",
+			aggregation:           nil,
 			gcpAuthorization: &gcp.AuthorizationMetadata{
 				GoogleApplicationCredentials: "{}",
 				PodIdentityProviderEnabled:   false,
@@ -140,10 +146,10 @@ func TestStackdriverParseMetadata(t *testing.T) {
 				AuthParams:      testData.authParams,
 				TriggerMetadata: testData.metadata,
 				ResolvedEnv:     testStackdriverResolvedEnv,
-			}, logr.Discard())
+			})
 
 			if err != nil && !testData.isError {
-				t.Errorf("Expected success but got error")
+				t.Errorf("Expected success but got error: %v", err)
 			}
 
 			if testData.isError && err == nil {
@@ -192,7 +198,7 @@ func TestGcpStackdriverGetMetricSpecForScaling(t *testing.T) {
 				TriggerMetadata: test.metadata,
 				ResolvedEnv:     testStackdriverResolvedEnv,
 				TriggerIndex:    test.triggerIndex,
-			}, logr.Discard())
+			})
 			if err != nil {
 				t.Fatal("Could not parse metadata:", err)
 			}

@@ -51,6 +51,8 @@ type prometheusMetadata struct {
 	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata,            optional"`
 	AwsRegion           string                 `keda:"name=awsRegion,           order=triggerMetadata;authParams, optional"`
 	Timeout             time.Duration          `keda:"name=timeout,             order=triggerMetadata,            optional"` // custom HTTP client timeout
+	IdentityOwner       string                 `keda:"name=identityOwner,       order=triggerMetadata,            optional"`
+	AuthModes           string                 `keda:"name=authModes,           order=triggerMetadata,            optional"`
 }
 
 type promQueryResult struct {

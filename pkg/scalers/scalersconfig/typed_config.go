@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"maps"
 	"net/url"
+	"os"
 	"reflect"
 	"runtime/debug"
 	"slices"
@@ -35,6 +36,8 @@ import (
 
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
+
+var checkUnexpectedParamEnabled = os.Getenv("KEDA_CHECK_UNEXPECTED_SCALERS_PARAMS") == "enabled"
 
 // CustomValidator is an interface that can be implemented to validate the configuration of the typed config
 type CustomValidator interface {
@@ -314,7 +317,7 @@ func (sc *ScalerConfig) setValue(field reflect.Value, params Params) ([]string, 
 	if err := setConfigValueHelper(params, valFromConfig, field); err != nil {
 		return nil, fmt.Errorf("unable to set param %q value %q: %w", params.Name(), valFromConfig, err)
 	}
-	return []string{params.Name()}, nil
+	return params.Names, nil
 }
 
 // setConfigValueURLParams is a function that sets the value of the url.Values field
@@ -521,7 +524,11 @@ func (sc *ScalerConfig) configParamValue(params Params) (string, bool) {
 }
 
 // checkUnexpectedParameterExist is a function that checks if there are any unexpected parameters in the TriggerMetadata
+// this is controlled by a feature flag KEDA_CHECK_UNEXPECTED_SCALERS_PARAMS env variable. By default it's disabled.
 func (sc *ScalerConfig) checkUnexpectedParameterExist(parsedParamNames []string, logger logr.Logger) {
+	if !checkUnexpectedParamEnabled {
+		return
+	}
 	for k := range sc.TriggerMetadata {
 		suffix := "FromEnv"
 		if !strings.HasSuffix(k, "FromEnv") {
@@ -530,7 +537,11 @@ func (sc *ScalerConfig) checkUnexpectedParameterExist(parsedParamNames []string,
 		key := strings.TrimSuffix(k, suffix)
 		if !slices.Contains(parsedParamNames, key) {
 			if sc.Recorder != nil {
-				message := fmt.Sprintf("Unmatched input property %s in scaler %s", key+suffix, sc.ScalableObjectType)
+				scalerIdentifier := sc.TriggerType
+				if sc.TriggerName != "" {
+					scalerIdentifier = fmt.Sprintf("%s (%s)", sc.TriggerType, sc.TriggerName)
+				}
+				message := fmt.Sprintf("Unmatched input property %s in scaler %s", key+suffix, scalerIdentifier)
 				// Just logging as it's optional property checking and should not block the scaling
 				logger.Error(nil, message)
 				sc.Recorder.Event(sc.ScaledObject, corev1.EventTypeWarning, eventreason.KEDAScalersInfo, message)

@@ -24,7 +24,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/admin"
-	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -162,7 +161,7 @@ func parseAzureServiceBusMetadata(config *scalersconfig.ScalerConfig) (*azureSer
 		}
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		if meta.Namespace != "" {
-			envSuffixProvider := func(env az.Environment) (string, error) {
+			envSuffixProvider := func(env azure.AzEnvironment) (string, error) {
 				return env.ServiceBusEndpointSuffix, nil
 			}
 

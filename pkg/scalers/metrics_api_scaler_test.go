@@ -103,15 +103,13 @@ var metricsAPIMetricIdentifiers = []metricsAPIMetricIdentifier{
 
 func TestMetricsAPIGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range metricsAPIMetricIdentifiers {
-		s, err := NewMetricsAPIScaler(
-			&scalersconfig.ScalerConfig{
-				ResolvedEnv:       map[string]string{},
-				TriggerMetadata:   testData.metadataTestData.metadata,
-				AuthParams:        map[string]string{},
-				GlobalHTTPTimeout: 3000 * time.Millisecond,
-				TriggerIndex:      testData.triggerIndex,
-			},
-		)
+		s, err := NewMetricsAPIScaler(&scalersconfig.ScalerConfig{
+			ResolvedEnv:       map[string]string{},
+			TriggerMetadata:   testData.metadataTestData.metadata,
+			AuthParams:        map[string]string{},
+			GlobalHTTPTimeout: 3000 * time.Millisecond,
+			TriggerIndex:      testData.triggerIndex,
+		}, nil)
 		if err != nil {
 			t.Errorf("Error creating the Scaler")
 		}
@@ -215,14 +213,12 @@ func TestBearerAuth(t *testing.T) {
 		"authMode":      "bearer",
 	}
 
-	s, err := NewMetricsAPIScaler(
-		&scalersconfig.ScalerConfig{
-			ResolvedEnv:       map[string]string{},
-			TriggerMetadata:   metadata,
-			AuthParams:        authentication,
-			GlobalHTTPTimeout: 3000 * time.Millisecond,
-		},
-	)
+	s, err := NewMetricsAPIScaler(&scalersconfig.ScalerConfig{
+		ResolvedEnv:       map[string]string{},
+		TriggerMetadata:   metadata,
+		AuthParams:        authentication,
+		GlobalHTTPTimeout: 3000 * time.Millisecond,
+	}, nil)
 	if err != nil {
 		t.Errorf("Error creating the Scaler")
 	}

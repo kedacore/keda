@@ -38,6 +38,8 @@ type awsSqsQueueMetadata struct {
 	ScaleOnInFlight             bool `keda:"name=scaleOnInFlight, order=triggerMetadata, default=true"`
 	ScaleOnDelayed              bool `keda:"name=scaleOnDelayed, order=triggerMetadata, default=false"`
 	awsSqsQueueMetricNames      []types.QueueAttributeName
+
+	IdentityOwner string `keda:"name=identityOwner, order=triggerMetadata, optional"`
 }
 
 // NewAwsSqsQueueScaler creates a new awsSqsQueueScaler

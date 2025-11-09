@@ -21,9 +21,10 @@ package v1alpha1
 import (
 	http "net/http"
 
+	rest "k8s.io/client-go/rest"
+
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	scheme "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/scheme"
-	rest "k8s.io/client-go/rest"
 )
 
 type KedaV1alpha1Interface interface {

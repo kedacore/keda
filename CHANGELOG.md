@@ -16,6 +16,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.18.1](#v2181)
 - [v2.18.0](#v2180)
 - [v2.17.2](#v2172)
 - [v2.17.1](#v2171)
@@ -63,7 +64,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Introduce new Kubernetes Resource Scaler ([#7212](https://github.com/kedacore/keda/issues/7212))
 
 #### Experimental
 
@@ -71,11 +72,11 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- *Dynamodb Scaler*: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **IBMMQ Scaler**: Create new HTTP request for each queue query in IBMMQ scaler ([#7202](https://github.com/kedacore/keda/pull/7202))
 
 ### Deprecations
 
@@ -92,6 +93,18 @@ New deprecation(s):
 ### Other
 
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+## v2.18.1
+
+### Fixes
+
+- **General**: Add feature flag `KEDA_CHECK_UNEXPECTED_SCALERS_PARAMS` for checking unexpected scaler parameters ([#6721](https://github.com/kedacore/keda/issues/6721))
+- **General**: Fix incorrect 'unmatched input property' notification ([#7174](https://github.com/kedacore/keda/issues/7174))
+- **Kafka Scaler**: Fix missing error returns in error handling ([#7182](https://github.com/kedacore/keda/pull/7182))
+
+### Other
+
+- **General**: Raw metrics stream - send also metrics during ScaledObject's interval ([#7197](https://github.com/kedacore/keda/issues/7197))
 
 ## v2.18.0
 
@@ -116,8 +129,8 @@ New deprecation(s):
 
 - **General**: Add error and event for mismatching input property ([#6721](https://github.com/kedacore/keda/issues/6721))
 - **General**: Allow excluding labels from being propagated from ScaledObject and ScaledJob to generated HPA and Job objects ([#6849](https://github.com/kedacore/keda/issues/6849))
-- **General**: Only add webhook DNS names when webhook patching is enabled ([#7002](https://github.com/kedacore/keda/issues/7002))
 - **General**: Improve Events emitted from ScaledObject controller ([#6802](https://github.com/kedacore/keda/issues/6802))
+- **General**: Only add webhook DNS names when webhook patching is enabled ([#7002](https://github.com/kedacore/keda/issues/7002))
 - **Apache Kafka Scaler**: Add support for even distribution of partitions to consumers ([#2581](https://github.com/kedacore/keda/issues/2581))
 - **Artemis Scaler**: Add TLS support with client certificates for secure HTTPS connections ([#6448](https://github.com/kedacore/keda/issues/6448))
 - **AWS CloudWatch Scaler**: Add support for CloudWatch extended statistics (e.g P99 / TM90 and etc) ([#7109](https://github.com/kedacore/keda/issues/7109))
@@ -128,12 +141,14 @@ New deprecation(s):
 - **Github Scaler**: Add support to control unlabeled job/runner matching ([#6900](https://github.com/kedacore/keda/issues/6900))
 - **InfluxDB Scaler**: Add support for InfluxDB v3 ([#6981](https://github.com/kedacore/keda/issues/6981))
 - **Kafka Scaler**: Add support for even distribution of partitions to consumers ([#2581](https://github.com/kedacore/keda/issues/2581))
+- **Metrics API scaler**: Introduce new `aggregateFromKubeServiceEndpoints` and `aggregationType` metadata fields to `metrics-api` so it is able to fetch metrics from all endpoints behind a kubernetes service and aggregate them ([#6565](https://github.com/kedacore/keda/pull/6565))
 - **Metrics API Scaler**: Support AuthParams for authMode ([#6939](https://github.com/kedacore/keda/issues/6939))
 - **Metrics API Scaler**: Support multiple auth methods simultaneously ([#6642](https://github.com/kedacore/keda/issues/6642))
 - **RabbitMQ Scaler**: add `DeliverGetRate`, `PublishedToDeliveredRatio` and `ExpectedQueueConsumptionTime` trigger modes to RabbitMQ scaler ([#7071](https://github.com/kedacore/keda/issues/7071))
 - **Solace Scaler**: Add hostlist support for Solace brokers ([#7090](https://github.com/kedacore/keda/issues/7090))
 - **Temporal Scaler**: Always set `temporal-namespace` header on requests([#7079](https://github.com/kedacore/keda/issues/7079))
 - **Temporal Scaler**: Support custom `tlsServerName` ([#6820](https://github.com/kedacore/keda/pull/6820))
+
 
 ### Fixes
 
@@ -145,6 +160,7 @@ New deprecation(s):
 - **General**: Fix SIGSEGV when doing fallback of non-static behavior on any ScaleTargetRef that is neither a Deployment nor a StatefulSet ([#6992](https://github.com/kedacore/keda/pull/6992))
 - **General**: New Scaled{Object,Job} has paused condition in their status as False instead of Unknown ([#7011](https://github.com/kedacore/keda/issues/7011))
 - **General**: Remove `klogr` dependency and replace with `zap` ([#5732](https://github.com/kedacore/keda/issues/5732))
+- **General**: Replace deprecated `azure autorest` dependency to `azure sdk for go` ([#7033](https://github.com/kedacore/keda/issues/7073))
 - **General**: Resolve race condition when removing paused-replicas annotation from ScaledObject ([#6982](https://github.com/kedacore/keda/issues/6982))
 - **General**: Sets hpaName in Status when ScaledObject adopts/finds an existing HPA ([#6336](https://github.com/kedacore/keda/issues/6336))
 - **Cron Scaler**: Fix cron scaler to return zero metric value by default([#6886](https://github.com/kedacore/keda/issues/6886))

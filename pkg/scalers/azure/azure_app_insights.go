@@ -2,19 +2,18 @@ package azure
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery"
-	"github.com/Azure/azure-sdk-for-go/sdk/monitor/query/azmetrics"
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 const (
@@ -62,19 +61,6 @@ func toISO8601(time string) (string, error) {
 	return fmt.Sprintf("PT%02dH%02dM", hours, minutes), nil
 }
 
-func getAuthConfig(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) auth.AuthorizerConfig {
-	switch podIdentity.Provider {
-	case "", kedav1alpha1.PodIdentityProviderNone:
-		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
-		config.Resource = info.AppInsightsResourceURL
-		config.AADEndpoint = info.ActiveDirectoryEndpoint
-		return config
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		return NewAzureADWorkloadIdentityConfig(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), info.AppInsightsResourceURL)
-	}
-	return nil
-}
-
 func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetric) (float64, error) {
 	if _, ok := metric.Value[info.MetricID]; !ok {
 		return -1, fmt.Errorf("metric named %s not found in app insights response", info.MetricID)
@@ -113,18 +99,8 @@ func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interfac
 }
 
 // GetAzureAppInsightsMetricValue returns the value of an Azure App Insights metric, rounded to the nearest int
-func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity, ignoreNullValues bool) (float64, error) {
-
+func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, _ kedav1alpha1.AuthPodIdentity, ignoreNullValues bool) (float64, error) {
 	creds, err := azidentity.NewDefaultAzureCredential(nil)
-	if err != nil {
-		//TODO: handle error
-	}
-
-	metricsClient, _ := azmetrics.NewClient(info.ApplicationInsightsID, creds, nil)
-	metricsClient.QueryResources(ctx, info.TenantID, &azmetrics.ClientQueryResourcesOptions{})
-
-	config := getAuthConfig(ctx, info, podIdentity)
-	authorizer, err := config.Authorizer()
 	if err != nil {
 		return -1, err
 	}
@@ -139,13 +115,6 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, p
 		return -1, err
 	}
 
-	req.URL.Path = fmt.Sprintf("v1/apps/%s/metrics/%s", info.ApplicationInsightsID, info.MetricID)
-
-	q := req.URL.Query()
-	for key, value := range queryParams {
-		q.Add(key, fmt.Sprintf("%v", value))
-	}
-
 	bearerToken, err := creds.GetToken(ctx, policy.TokenRequestOptions{})
 	if err != nil {
 		return -1, err
@@ -153,21 +122,28 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, p
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", bearerToken))
 
-	if err != nil {
-		return -1, err
+	req.URL.Path = fmt.Sprintf("v1/apps/%s/metrics/%s", info.ApplicationInsightsID, info.MetricID)
+	q := req.URL.Query()
+	for key, value := range queryParams {
+		q.Add(key, fmt.Sprintf("%v", value))
 	}
 
-	resp, err := autorest.Send(req,
-		autorest.DoErrorUnlessStatusCode(http.StatusOK),
-		autorest.DoCloseIfError())
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return -1, fmt.Errorf("app insights request failed with status code %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return -1, err
 	}
 
 	metric := &ApplicationInsightsMetric{}
-	err = autorest.Respond(resp,
-		autorest.ByUnmarshallingJSON(metric),
-		autorest.ByClosing())
+	err = json.Unmarshal(body, metric)
 	if err != nil {
 		return -1, err
 	}
