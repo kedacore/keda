@@ -77,6 +77,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
+- **General**: Replace deprecated `azure autorest` dependency to `azure sdk for go` ([#7033](https://github.com/kedacore/keda/issues/7073))
 - **IBMMQ Scaler**: Create new HTTP request for each queue query in IBMMQ scaler ([#7202](https://github.com/kedacore/keda/pull/7202))
 
 ### Deprecations
@@ -161,7 +162,6 @@ New deprecation(s):
 - **General**: Fix SIGSEGV when doing fallback of non-static behavior on any ScaleTargetRef that is neither a Deployment nor a StatefulSet ([#6992](https://github.com/kedacore/keda/pull/6992))
 - **General**: New Scaled{Object,Job} has paused condition in their status as False instead of Unknown ([#7011](https://github.com/kedacore/keda/issues/7011))
 - **General**: Remove `klogr` dependency and replace with `zap` ([#5732](https://github.com/kedacore/keda/issues/5732))
-- **General**: Replace deprecated `azure autorest` dependency to `azure sdk for go` ([#7033](https://github.com/kedacore/keda/issues/7073))
 - **General**: Resolve race condition when removing paused-replicas annotation from ScaledObject ([#6982](https://github.com/kedacore/keda/issues/6982))
 - **General**: Sets hpaName in Status when ScaledObject adopts/finds an existing HPA ([#6336](https://github.com/kedacore/keda/issues/6336))
 - **Cron Scaler**: Fix cron scaler to return zero metric value by default([#6886](https://github.com/kedacore/keda/issues/6886))
