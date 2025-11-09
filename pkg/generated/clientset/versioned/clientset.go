@@ -22,11 +22,10 @@ import (
 	fmt "fmt"
 	http "net/http"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
-
-	kedav1alpha1 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
 )
 
 type Interface interface {
