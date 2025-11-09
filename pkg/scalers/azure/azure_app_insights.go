@@ -71,7 +71,7 @@ func getAuthConfig(info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentit
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		return azidentity.NewClientSecretCredential(info.TenantID, info.ClientID, info.ClientPassword, nil)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		return azidentity.NewWorkloadIdentityCredential(nil)
+		return NewADWorkloadIdentityCredential(podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID())
 	default:
 		return nil, fmt.Errorf("unknown pod identity provider: %s", podIdentity.Provider)
 	}
