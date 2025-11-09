@@ -199,6 +199,11 @@ func validateAPIMetadata(meta *datadogMetadata, config *scalersconfig.ScalerConf
 	meta.HpaMetricName = meta.Query[0:idx]
 	meta.HpaMetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", meta.HpaMetricName)))
 
+	// Set UseFiller flag if metricUnavailableValue is explicitly configured
+	if _, ok := config.TriggerMetadata["metricUnavailableValue"]; ok {
+		meta.UseFiller = true
+	}
+
 	return nil
 }
 
@@ -247,6 +252,11 @@ func validateClusterAgentMetadata(meta *datadogMetadata, config *scalersconfig.S
 
 	meta.HpaMetricName = "datadogmetric@" + meta.DatadogMetricNamespace + ":" + meta.DatadogMetricName
 	meta.DatadogMetricServiceURL = buildClusterAgentURL(meta.DatadogMetricsService, meta.DatadogNamespace, meta.DatadogMetricsServicePort)
+
+	// Set UseFiller flag if metricUnavailableValue is explicitly configured
+	if _, ok := config.TriggerMetadata["metricUnavailableValue"]; ok {
+		meta.UseFiller = true
+	}
 
 	return nil
 }
@@ -525,9 +535,6 @@ func (s *datadogMetadata) Validate() error {
 		if _, err := parseDatadogQuery(s.Query); err != nil {
 			return fmt.Errorf("error in query: %w", err)
 		}
-	}
-	if s.FillValue == 0 {
-		s.UseFiller = false
 	}
 	if s.AuthMode != "" {
 		authType := authentication.Type(strings.TrimSpace(s.AuthMode))
