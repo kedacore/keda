@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -49,6 +50,7 @@ type azureAppInsightsScaler struct {
 	metadata    *azureAppInsightsMetadata
 	podIdentity kedav1alpha1.AuthPodIdentity
 	logger      logr.Logger
+	httpClient  *http.Client
 }
 
 // NewAzureAppInsightsScaler creates a new AzureAppInsightsScaler
@@ -65,11 +67,16 @@ func NewAzureAppInsightsScaler(config *scalersconfig.ScalerConfig) (Scaler, erro
 		return nil, fmt.Errorf("error parsing azure app insights metadata: %w", err)
 	}
 
+	// handle HTTP client timeout
+	httpClientTimeout := config.GlobalHTTPTimeout
+	httpClient := kedautil.CreateHTTPClient(httpClientTimeout, false)
+
 	return &azureAppInsightsScaler{
 		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
 		logger:      logger,
+		httpClient:  httpClient,
 	}, nil
 }
 
@@ -233,7 +240,7 @@ func (s *azureAppInsightsScaler) GetMetricSpecForScaling(context.Context) []v2.M
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureAppInsightsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	val, err := azure.GetAzureAppInsightsMetricValue(ctx, s.metadata.azureAppInsightsInfo, s.podIdentity, s.metadata.ignoreNullValues)
+	val, err := azure.GetAzureAppInsightsMetricValue(ctx, s.metadata.azureAppInsightsInfo, s.podIdentity, s.metadata.ignoreNullValues, s.httpClient)
 	if err != nil {
 		s.logger.Error(err, "error getting azure app insights metric")
 		return []external_metrics.ExternalMetricValue{}, false, err

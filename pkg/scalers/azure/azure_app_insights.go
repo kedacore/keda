@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -24,6 +25,10 @@ var AppInsightsResourceURLInCloud = map[string]string{
 	"AZUREPUBLICCLOUD":       "https://api.applicationinsights.io",
 	"AZUREUSGOVERNMENTCLOUD": "https://api.applicationinsights.us",
 	"AZURECHINACLOUD":        "https://api.applicationinsights.azure.cn",
+}
+
+type Credential interface {
+	GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error)
 }
 
 type AppInsightsInfo struct {
@@ -59,6 +64,17 @@ func toISO8601(time string) (string, error) {
 	}
 
 	return fmt.Sprintf("PT%02dH%02dM", hours, minutes), nil
+}
+
+func getAuthConfig(info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) (Credential, error) {
+	switch podIdentity.Provider {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		return azidentity.NewClientSecretCredential(info.TenantID, info.ClientID, info.ClientPassword, nil)
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		return azidentity.NewWorkloadIdentityCredential(nil)
+	default:
+		return nil, fmt.Errorf("unknown pod identity provider: %s", podIdentity.Provider)
+	}
 }
 
 func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetric) (float64, error) {
@@ -99,8 +115,8 @@ func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interfac
 }
 
 // GetAzureAppInsightsMetricValue returns the value of an Azure App Insights metric, rounded to the nearest int
-func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, _ kedav1alpha1.AuthPodIdentity, ignoreNullValues bool) (float64, error) {
-	creds, err := azidentity.NewDefaultAzureCredential(nil)
+func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity, ignoreNullValues bool, httpClient *http.Client) (float64, error) {
+	creds, err := getAuthConfig(info, podIdentity)
 	if err != nil {
 		return -1, err
 	}
@@ -128,7 +144,7 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, _
 		q.Add(key, fmt.Sprintf("%v", value))
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return 0, err
 	}
