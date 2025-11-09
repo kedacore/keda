@@ -26,9 +26,6 @@ import (
 
 	amqpAuth "github.com/Azure/azure-amqp-common-go/v4/auth"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
-
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 )
 
@@ -127,24 +124,6 @@ func getScopedResource(resource string) string {
 	}
 
 	return resource
-}
-
-type ADWorkloadIdentityConfig struct {
-	ctx                   context.Context
-	IdentityID            string
-	IdentityTenantID      string
-	IdentityAuthorityHost string
-	Resource              string
-}
-
-func NewAzureADWorkloadIdentityConfig(ctx context.Context, identityID, identityTenantID, identityAuthorityHost, resource string) auth.AuthorizerConfig {
-	return ADWorkloadIdentityConfig{ctx: ctx, IdentityID: identityID, IdentityTenantID: identityTenantID, IdentityAuthorityHost: identityAuthorityHost, Resource: resource}
-}
-
-// Authorizer implements the auth.AuthorizerConfig interface
-func (aadWiConfig ADWorkloadIdentityConfig) Authorizer() (autorest.Authorizer, error) {
-	return autorest.NewBearerAuthorizer(NewAzureADWorkloadIdentityTokenProvider(
-		aadWiConfig.ctx, aadWiConfig.IdentityID, aadWiConfig.IdentityTenantID, aadWiConfig.IdentityAuthorityHost, aadWiConfig.Resource)), nil
 }
 
 func NewADWorkloadIdentityCredential(identityID, identityTenantID string) (*azidentity.WorkloadIdentityCredential, error) {

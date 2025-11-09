@@ -21,12 +21,13 @@ package v1alpha1
 import (
 	context "context"
 
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	scheme "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	gentype "k8s.io/client-go/gentype"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	scheme "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/scheme"
 )
 
 // ClusterTriggerAuthenticationsGetter has a method to return a ClusterTriggerAuthenticationInterface.

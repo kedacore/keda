@@ -19,9 +19,10 @@ limitations under the License.
 package fake
 
 import (
+	gentype "k8s.io/client-go/gentype"
+
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
-	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeTriggerAuthentications implements TriggerAuthenticationInterface

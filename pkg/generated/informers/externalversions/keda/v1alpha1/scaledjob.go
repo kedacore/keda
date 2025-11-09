@@ -22,14 +22,15 @@ import (
 	context "context"
 	time "time"
 
-	apiskedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	versioned "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
-	internalinterfaces "github.com/kedacore/keda/v2/pkg/generated/informers/externalversions/internalinterfaces"
-	kedav1alpha1 "github.com/kedacore/keda/v2/pkg/generated/listers/keda/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
+
+	apiskedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	versioned "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
+	internalinterfaces "github.com/kedacore/keda/v2/pkg/generated/informers/externalversions/internalinterfaces"
+	kedav1alpha1 "github.com/kedacore/keda/v2/pkg/generated/listers/keda/v1alpha1"
 )
 
 // ScaledJobInformer provides access to a shared informer and lister for

@@ -1,23 +1,8 @@
 package azure
 
-// Copyright 2017 Microsoft Corporation
-//
-//  Licensed under the Apache License, Version 2.0 (the "License");
-//  you may not use this file except in compliance with the License.
-//  You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-//  Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//  See the License for the specific language governing permissions and
-//  limitations under the License.
-
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -31,7 +16,7 @@ const (
 	NotAvailable = "N/A"
 )
 
-var environments = map[string]Environment{
+var environments = map[string]AzEnvironment{
 	"AZURECHINACLOUD":        ChinaCloud,
 	"AZUREGERMANCLOUD":       GermanCloud,
 	"AZURECLOUD":             PublicCloud,
@@ -57,8 +42,8 @@ type ResourceIdentifier struct {
 	MicrosoftGraph      string `json:"microsoftGraph"`
 }
 
-// Environment represents a set of endpoints for each of Azure's Clouds.
-type Environment struct {
+// AzEnvironment represents a set of endpoints for each of Azure's Clouds.
+type AzEnvironment struct {
 	Name                         string             `json:"name"`
 	ManagementPortalURL          string             `json:"managementPortalURL"`
 	PublishSettingsURL           string             `json:"publishSettingsURL"`
@@ -94,7 +79,7 @@ type Environment struct {
 
 var (
 	// PublicCloud is the default public Azure cloud environment
-	PublicCloud = Environment{
+	PublicCloud = AzEnvironment{
 		Name:                         "AzurePublicCloud",
 		ManagementPortalURL:          "https://manage.windowsazure.com/",
 		PublishSettingsURL:           "https://manage.windowsazure.com/publishsettings/index",
@@ -143,7 +128,7 @@ var (
 	}
 
 	// USGovernmentCloud is the cloud environment for the US Government
-	USGovernmentCloud = Environment{
+	USGovernmentCloud = AzEnvironment{
 		Name:                         "AzureUSGovernmentCloud",
 		ManagementPortalURL:          "https://manage.windowsazure.us/",
 		PublishSettingsURL:           "https://manage.windowsazure.us/publishsettings/index",
@@ -192,7 +177,7 @@ var (
 	}
 
 	// ChinaCloud is the cloud environment operated in China
-	ChinaCloud = Environment{
+	ChinaCloud = AzEnvironment{
 		Name:                         "AzureChinaCloud",
 		ManagementPortalURL:          "https://manage.chinacloudapi.com/",
 		PublishSettingsURL:           "https://manage.chinacloudapi.com/publishsettings/index",
@@ -241,7 +226,7 @@ var (
 	}
 
 	// GermanCloud is the cloud environment operated in Germany
-	GermanCloud = Environment{
+	GermanCloud = AzEnvironment{
 		Name:                         "AzureGermanCloud",
 		ManagementPortalURL:          "http://portal.microsoftazure.de/",
 		PublishSettingsURL:           "https://manage.microsoftazure.de/publishsettings/index",
@@ -291,7 +276,7 @@ var (
 )
 
 // EnvironmentFromName returns an Environment based on the common name specified.
-func EnvironmentFromName(name string) (Environment, error) {
+func EnvironmentFromName(name string) (AzEnvironment, error) {
 	// IMPORTANT
 	// As per @radhikagupta5:
 	// This is technical debt, fundamentally here because Kubernetes is not currently accepting
@@ -314,8 +299,8 @@ func EnvironmentFromName(name string) (Environment, error) {
 // EnvironmentFromFile loads an Environment from a configuration file available on disk.
 // This function is particularly useful in the Hybrid Cloud model, where one must define their own
 // endpoints.
-func EnvironmentFromFile(location string) (unmarshaled Environment, err error) {
-	fileContents, err := ioutil.ReadFile(location)
+func EnvironmentFromFile(location string) (unmarshaled AzEnvironment, err error) {
+	fileContents, err := os.ReadFile(location)
 	if err != nil {
 		return
 	}
@@ -326,6 +311,6 @@ func EnvironmentFromFile(location string) (unmarshaled Environment, err error) {
 }
 
 // SetEnvironment updates the environment map with the specified values.
-func SetEnvironment(name string, env Environment) {
+func SetEnvironment(name string, env AzEnvironment) {
 	environments[strings.ToUpper(name)] = env
 }

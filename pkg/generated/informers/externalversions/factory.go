@@ -23,13 +23,14 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
-	internalinterfaces "github.com/kedacore/keda/v2/pkg/generated/informers/externalversions/internalinterfaces"
-	keda "github.com/kedacore/keda/v2/pkg/generated/informers/externalversions/keda"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
+
+	versioned "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
+	internalinterfaces "github.com/kedacore/keda/v2/pkg/generated/informers/externalversions/internalinterfaces"
+	keda "github.com/kedacore/keda/v2/pkg/generated/informers/externalversions/keda"
 )
 
 // SharedInformerOption defines the functional option type for SharedInformerFactory.

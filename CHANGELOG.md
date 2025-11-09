@@ -77,14 +77,6 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- **General**: Fix HPA behavior not restored when paused-scale-in/out annotation is deleted without corresponding custom behavior ([#7291](https://github.com/kedacore/keda/pull/7291))
-- **General**: Fix nil reference panic when transfer-hpa-ownership is set but no hpa name is provided ([#7254](https://github.com/kedacore/keda/issues/7254))
-- **General**: Fix race condition in paused-replicas annotation causing ScaledObject to get stuck ([#7231](https://github.com/kedacore/keda/issues/7231))
-- **General**: Fix ScaledObject controller error handling for requestScaleLoop ([#7273](https://github.com/kedacore/keda/pull/7273))
-- **General**: Remove unnecessary scaledObjectMetricSpecs variable in HPA ([#7292](https://github.com/kedacore/keda/pull/7292))
-- **General**: Use TriggerError when all ScaledJob triggers fail ([#7205](https://github.com/kedacore/keda/pull/7205))
-- **ActiveMQ Scaler**: Correct parse error ActiveMQ ([#7245](https://github.com/kedacore/keda/pull/7245))
-- **Datadog Scaler**: Fix metricUnavailableValue parameter not working ([#7238](https://github.com/kedacore/keda/issues/7238))
 - **IBMMQ Scaler**: Create new HTTP request for each queue query in IBMMQ scaler ([#7202](https://github.com/kedacore/keda/pull/7202))
 
 ### Deprecations
@@ -169,6 +161,7 @@ New deprecation(s):
 - **General**: Fix SIGSEGV when doing fallback of non-static behavior on any ScaleTargetRef that is neither a Deployment nor a StatefulSet ([#6992](https://github.com/kedacore/keda/pull/6992))
 - **General**: New Scaled{Object,Job} has paused condition in their status as False instead of Unknown ([#7011](https://github.com/kedacore/keda/issues/7011))
 - **General**: Remove `klogr` dependency and replace with `zap` ([#5732](https://github.com/kedacore/keda/issues/5732))
+- **General**: Replace deprecated `azure autorest` dependency to `azure sdk for go` ([#7033](https://github.com/kedacore/keda/issues/7073))
 - **General**: Resolve race condition when removing paused-replicas annotation from ScaledObject ([#6982](https://github.com/kedacore/keda/issues/6982))
 - **General**: Sets hpaName in Status when ScaledObject adopts/finds an existing HPA ([#6336](https://github.com/kedacore/keda/issues/6336))
 - **Cron Scaler**: Fix cron scaler to return zero metric value by default([#6886](https://github.com/kedacore/keda/issues/6886))

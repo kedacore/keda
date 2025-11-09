@@ -19,10 +19,11 @@ limitations under the License.
 package v1alpha1
 
 import (
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	listers "k8s.io/client-go/listers"
 	cache "k8s.io/client-go/tools/cache"
+
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 // TriggerAuthenticationLister helps list TriggerAuthentications.
