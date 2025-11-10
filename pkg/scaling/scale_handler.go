@@ -759,7 +759,7 @@ type scalerState struct {
 // for an specific scaler. The state contains if it's active or
 // with erros, but also the records for the cache and he metrics
 // for the custom formulas
-func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, triggerIndex int, scalerConfig scalersconfig.ScalerConfig,
+func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, triggerIndex int, scalerConfig scalersconfig.ScalerConfig,
 	cache *cache.ScalersCache, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) scalerState {
 	result := scalerState{
 		IsActive:    false,
@@ -795,6 +795,14 @@ func (*scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, 
 		if latency != -1 {
 			metricscollector.RecordScalerLatency(scaledObject.Namespace, scaledObject.Name, result.TriggerName, triggerIndex, metricName, true, latency)
 		}
+
+		// Apply fallback if needed
+		metrics, fallbackActive, err := fallback.GetMetricsWithFallback(ctx, h.client, h.scaleClient, metrics, err, metricName, scaledObject, spec)
+		if fallbackActive {
+			logger.V(1).Info("Using fallback metrics in polling loop", "scaler", result.TriggerName, "metricName", metricName)
+			isMetricActive = true
+		}
+
 		result.Metrics = append(result.Metrics, metrics...)
 		logger.V(1).Info("Getting metrics and activity from scaler", "scaler", result.TriggerName, "metricName", metricName, "metrics", metrics, "activity", isMetricActive, "scalerError", err)
 

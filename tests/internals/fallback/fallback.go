@@ -531,6 +531,7 @@ func TestFallback(t *testing.T, s ScaleTargetType) {
 	TestFallbackWithCurrentReplicasIfLower(t, s)
 	TestFallbackWithCurrentReplicas(t, s)
 	TestFallbackWithStatic(t, s)
+	TestFallbackFromZero(t, s)
 }
 
 func TestFallbackWithAverageValueMetrics(t *testing.T, s ScaleTargetType) {
@@ -762,6 +763,37 @@ func TestFallbackWithStatic(t *testing.T, s ScaleTargetType) {
 	helper.KubectlApplyWithTemplate(t, data, "fallbackMSDeploymentTemplate", fallbackMSDeploymentTemplate)
 
 	// Should keep fallback value (3) because of static
+	assert.True(t, scaleTargetMap[s].WaitForReplicaReadyCount(t, kc, scaleTargetName, data.Namespace, 3, 30, 3),
+		"replica count should remain at 3 after fallback")
+
+	// Ensure the replica count remains stable
+	scaleTargetMap[s].AssertReplicaCountNotChangeDuringTimePeriod(t, kc, scaleTargetName, data.Namespace, 3, 30)
+
+	helper.DeleteKubernetesResources(t, data.Namespace, data, templates)
+}
+
+func TestFallbackFromZero(t *testing.T, s ScaleTargetType) {
+	kc := helper.GetKubernetesClient(t)
+	t.Logf("--- running TestFallbackFromZero test for %s ---", s)
+	data, templates := getTemplateData(s)
+
+	// Replace the default scaledObject template
+	for i, tmpl := range templates {
+		if tmpl.Name == "scaledObjectTemplate" {
+			templates[i].Config = scaledObjectTemplateWithStatic
+			break
+		}
+	}
+
+	helper.CreateKubernetesResources(t, kc, data.Namespace, data, templates)
+
+	assert.True(t, scaleTargetMap[s].WaitForReplicaReadyCount(t, kc, scaleTargetName, data.Namespace, minReplicas, 180, 3),
+		"replica count should be %d after 9 minutes", minReplicas)
+
+	// Stop metrics server to trigger fallback
+	helper.KubectlApplyWithTemplate(t, data, "fallbackMSDeploymentTemplate", fallbackMSDeploymentTemplate)
+
+	// Should go to fallback value (3) because of static
 	assert.True(t, scaleTargetMap[s].WaitForReplicaReadyCount(t, kc, scaleTargetName, data.Namespace, 3, 30, 3),
 		"replica count should remain at 3 after fallback")
 
