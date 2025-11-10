@@ -27,10 +27,6 @@ var AppInsightsResourceURLInCloud = map[string]string{
 	"AZURECHINACLOUD":        "https://api.applicationinsights.azure.cn",
 }
 
-type Credential interface {
-	GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error)
-}
-
 type AppInsightsInfo struct {
 	ApplicationInsightsID   string
 	TenantID                string
