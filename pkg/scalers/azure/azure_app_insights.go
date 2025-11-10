@@ -66,7 +66,7 @@ func toISO8601(time string) (string, error) {
 	return fmt.Sprintf("PT%02dH%02dM", hours, minutes), nil
 }
 
-func getAuthConfig(info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) (Credential, error) {
+func getAuthConfig(info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) (azcore.TokenCredential, error) {
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
 		return azidentity.NewClientSecretCredential(info.TenantID, info.ClientID, info.ClientPassword, nil)
