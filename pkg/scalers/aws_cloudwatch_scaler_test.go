@@ -479,6 +479,23 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		false,
 		"Multiple dimensions with valid separator",
 	},
+	// Test for metric from from another AWS Account
+	{
+		map[string]string{
+			"namespace":                   "AWS/SQS",
+			"dimensionName":               "QueueName",
+			"dimensionValue":              "keda",
+			"metricName":                  "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":           "2",
+			"activationTargetMetricValue": "0",
+			"minMetricValue":              "0",
+			"awsRegion":                   "eu-west-1",
+			"awsAccountId":                "123456789012",
+		},
+		testAWSAuthentication,
+		false,
+		"properly formed cloudwatch query from another AWS account",
+	},
 }
 
 var awsCloudwatchMetricIdentifiers = []awsCloudwatchMetricIdentifier{
@@ -741,4 +758,31 @@ func TestComputeQueryWindow(t *testing.T) {
 		assert.Equal(t, testData.expectedStartTime, startTime.UTC().Format(time.RFC3339Nano), "unexpected startTime", "name", testData.name)
 		assert.Equal(t, testData.expectedEndTime, endTime.UTC().Format(time.RFC3339Nano), "unexpected endTime", "name", testData.name)
 	}
+}
+
+func TestCreateCloudwatchMetricDataInput(t *testing.T) {
+	meta := map[string]string{
+		"namespace":                   "AWS/SQS",
+		"dimensionName":               "QueueName",
+		"dimensionValue":              "keda",
+		"metricName":                  "ApproximateNumberOfMessagesVisible",
+		"targetMetricValue":           "2",
+		"activationTargetMetricValue": "0",
+		"minMetricValue":              "0",
+		"awsRegion":                   "eu-west-1",
+		"awsAccountId":                "123456789012",
+	}
+
+	config := &scalersconfig.ScalerConfig{
+		TriggerMetadata: meta,
+		ResolvedEnv:     testAWSCloudwatchResolvedEnv,
+		AuthParams:      testAWSAuthentication,
+	}
+
+	awsMeta, err := parseAwsCloudwatchMetadata(config)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	assert.Equal(t, "123456789012", awsMeta.AwsAccountID, "AWSAccountID should equal '123456789012'")
 }
