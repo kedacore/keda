@@ -2,7 +2,6 @@ package scalers
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"regexp"
 	"strings"
@@ -16,8 +15,10 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
+	"github.com/kedacore/keda/v2/pkg/scalers/connectionpool"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -35,7 +36,8 @@ var (
 type postgreSQLScaler struct {
 	metricType  v2.MetricTargetType
 	metadata    *postgreSQLMetadata
-	connection  *sql.DB
+	connection  *pgxpool.Pool
+	poolKey     string
 	podIdentity kedav1alpha1.AuthPodIdentity
 	logger      logr.Logger
 }
@@ -102,7 +104,7 @@ func NewPostgreSQLScaler(ctx context.Context, config *scalersconfig.ScalerConfig
 		return nil, fmt.Errorf("error parsing postgreSQL metadata: %w", err)
 	}
 
-	conn, err := getConnection(ctx, meta, podIdentity, logger)
+	conn, poolKey, err := getConnection(ctx, meta, podIdentity, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing postgreSQL connection: %w", err)
 	}
@@ -110,6 +112,7 @@ func NewPostgreSQLScaler(ctx context.Context, config *scalersconfig.ScalerConfig
 		metricType:  metricType,
 		metadata:    meta,
 		connection:  conn,
+		poolKey:     poolKey,
 		podIdentity: podIdentity,
 		logger:      logger,
 	}, nil
@@ -163,38 +166,37 @@ func buildConnArray(meta *postgreSQLMetadata) []string {
 	return params
 }
 
-func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*sql.DB, error) {
+func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*pgxpool.Pool, string, error) {
 	connectionString := meta.Connection
-
+	poolKey := fmt.Sprintf("%s:%s/%s", meta.Host, meta.Port, meta.DBName)
 	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
 		accessToken, err := getAzureAccessToken(ctx, meta, azureDatabasePostgresResource)
 		if err != nil {
-			return nil, err
+			return nil, poolKey, err
 		}
 		newPasswordField := "password=" + escapePostgreConnectionParameter(accessToken)
 		connectionString = passwordConnPattern.ReplaceAllString(meta.Connection, newPasswordField)
 	}
-
-	db, err := sql.Open("pgx", connectionString)
+	maxConns := connectionpool.LookupMaxConns("postgres", fmt.Sprintf("%s.%s", meta.Host, meta.DBName))
+	db, err := connectionpool.GetOrCreate(poolKey, func() (connectionpool.ResourcePool, error) {
+		return connectionpool.NewPostgresPool(ctx, connectionString, maxConns)
+	})
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Found error opening postgreSQL: %s", err))
-		return nil, err
+		return nil, poolKey, err
 	}
-	err = db.Ping()
-	if err != nil {
-		logger.Error(err, fmt.Sprintf("Found error pinging postgreSQL: %s", err))
-		return nil, err
+	pgPool := db.(*connectionpool.PostgresPool).Pool
+	if err := pgPool.Ping(ctx); err != nil {
+		logger.Error(err, "error pinging PostgreSQL")
+		return nil, poolKey, err
 	}
-	return db, nil
+	return pgPool, poolKey, nil
 }
 
 // Close disposes of postgres connections
 func (s *postgreSQLScaler) Close(context.Context) error {
-	err := s.connection.Close()
-	if err != nil {
-		s.logger.Error(err, "Error closing postgreSQL connection")
-		return err
-	}
+	s.logger.V(1).Info("Releasing PostgreSQL pooled connection")
+	connectionpool.Release(s.poolKey)
 	return nil
 }
 
@@ -205,7 +207,7 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error)
 		if s.metadata.azureAuthContext.token.ExpiresOn.Before(time.Now()) {
 			s.logger.Info("The Azure Access Token expired, retrieving a new Azure Access Token and instantiating a new Postgres connection object.")
 			s.connection.Close()
-			newConnection, err := getConnection(ctx, s.metadata, s.podIdentity, s.logger)
+			newConnection, _, err := getConnection(ctx, s.metadata, s.podIdentity, s.logger)
 			if err != nil {
 				return 0, fmt.Errorf("error establishing postgreSQL connection: %w", err)
 			}
@@ -213,7 +215,7 @@ func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error)
 		}
 	}
 
-	err := s.connection.QueryRowContext(ctx, s.metadata.Query).Scan(&id)
+	err := s.connection.QueryRow(ctx, s.metadata.Query).Scan(&id)
 	if err != nil {
 		s.logger.Error(err, fmt.Sprintf("could not query postgreSQL: %s", err))
 		return 0, fmt.Errorf("could not query postgreSQL: %w", err)

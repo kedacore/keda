@@ -50,7 +50,7 @@ func TestPostgreSQLGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		mockPostgresSQLScaler := postgreSQLScaler{"", meta, nil, kedav1alpha1.AuthPodIdentity{}, logr.Discard()}
+		mockPostgresSQLScaler := postgreSQLScaler{"", meta, nil, "postgres", kedav1alpha1.AuthPodIdentity{}, logr.Discard()}
 
 		metricSpec := mockPostgresSQLScaler.GetMetricSpecForScaling(context.Background())
 		metricName := metricSpec[0].External.Metric.Name
