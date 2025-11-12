@@ -2,13 +2,16 @@ package azure
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -59,17 +62,15 @@ func toISO8601(time string) (string, error) {
 	return fmt.Sprintf("PT%02dH%02dM", hours, minutes), nil
 }
 
-func getAuthConfig(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) auth.AuthorizerConfig {
+func getAuthConfig(info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) (azcore.TokenCredential, error) {
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
-		config.Resource = info.AppInsightsResourceURL
-		config.AADEndpoint = info.ActiveDirectoryEndpoint
-		return config
+		return azidentity.NewClientSecretCredential(info.TenantID, info.ClientID, info.ClientPassword, nil)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		return NewAzureADWorkloadIdentityConfig(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), info.AppInsightsResourceURL)
+		return NewADWorkloadIdentityCredential(podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID())
+	default:
+		return nil, fmt.Errorf("unknown pod identity provider: %s", podIdentity.Provider)
 	}
-	return nil
 }
 
 func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetric) (float64, error) {
@@ -110,9 +111,8 @@ func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interfac
 }
 
 // GetAzureAppInsightsMetricValue returns the value of an Azure App Insights metric, rounded to the nearest int
-func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity, ignoreNullValues bool) (float64, error) {
-	config := getAuthConfig(ctx, info, podIdentity)
-	authorizer, err := config.Authorizer()
+func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity, ignoreNullValues bool, httpClient *http.Client) (float64, error) {
+	creds, err := getAuthConfig(info, podIdentity)
 	if err != nil {
 		return -1, err
 	}
@@ -122,29 +122,40 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, p
 		return -1, err
 	}
 
-	req, err := autorest.Prepare(&http.Request{},
-		autorest.WithBaseURL(info.AppInsightsResourceURL),
-		autorest.WithPath("v1/apps"),
-		autorest.WithPath(info.ApplicationInsightsID),
-		autorest.WithPath("metrics"),
-		autorest.WithPath(info.MetricID),
-		autorest.WithQueryParameters(queryParams),
-		authorizer.WithAuthorization())
+	req, err := http.NewRequest(http.MethodGet, info.AppInsightsResourceURL, nil)
 	if err != nil {
 		return -1, err
 	}
 
-	resp, err := autorest.Send(req,
-		autorest.DoErrorUnlessStatusCode(http.StatusOK),
-		autorest.DoCloseIfError())
+	bearerToken, err := creds.GetToken(ctx, policy.TokenRequestOptions{})
+	if err != nil {
+		return -1, err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", bearerToken))
+
+	req.URL.Path = fmt.Sprintf("v1/apps/%s/metrics/%s", info.ApplicationInsightsID, info.MetricID)
+	q := req.URL.Query()
+	for key, value := range queryParams {
+		q.Add(key, fmt.Sprintf("%v", value))
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return -1, fmt.Errorf("app insights request failed with status code %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return -1, err
 	}
 
 	metric := &ApplicationInsightsMetric{}
-	err = autorest.Respond(resp,
-		autorest.ByUnmarshallingJSON(metric),
-		autorest.ByClosing())
+	err = json.Unmarshal(body, metric)
 	if err != nil {
 		return -1, err
 	}

@@ -13,9 +13,10 @@ import (
 	context "context"
 	reflect "reflect"
 
+	gomock "go.uber.org/mock/gomock"
+
 	v1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	executor "github.com/kedacore/keda/v2/pkg/scaling/executor"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockScaleExecutor is a mock of ScaleExecutor interface.
