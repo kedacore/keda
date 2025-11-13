@@ -83,12 +83,12 @@ func startConfigWatcher(ctx context.Context) {
 	}
 }
 
-// LookupMaxConns returns max connections for a scaler/resource identifier.
-// Keys are structured as <scaler>.<identifier>, e.g., "postgres.db1.analytics".
-func LookupMaxConns(scalerType, identifier string) int32 {
+// LookupConfigValue returns config for a scaler/resource identifier.
+// Keys are structured for eg. as <scaler>.<identifier>, e.g., "postgres.db1.analytics".
+func LookupConfigValue(scalerType, identifier string) string {
 	key := fmt.Sprintf("%s.%s", scalerType, identifier)
 	if val, ok := globalOverrides.Load(key); ok {
-		return val.(int32)
+		return val.(string)
 	}
-	return 0
+	return ""
 }

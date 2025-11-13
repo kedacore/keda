@@ -31,4 +31,4 @@ jobs:
 
       - name: Push Docker image
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/keda-test:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/keda-test:${{ github.event.inputs.tag }}

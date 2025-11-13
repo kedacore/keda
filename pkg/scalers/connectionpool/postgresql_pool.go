@@ -26,7 +26,7 @@ func NewPostgresPool(ctx context.Context, connStr string, maxConns int32) (Resou
 	if maxConns > 0 {
 		logger.Info("Initializing PostgreSQL pool with max connections", "maxConns", maxConns)
 		cfg.MaxConns = maxConns
-	}else{
+	} else {
 		logger.Info("Initialized PostgreSQL pool with default connection settings")
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
@@ -34,6 +34,6 @@ func NewPostgresPool(ctx context.Context, connStr string, maxConns int32) (Resou
 		logger.Error(err, "Failed to create PostgreSQL pool")
 		return nil, err
 	}
-	logger.Info("PostgreSQL pool created successfully")
+	logger.Info("PostgreSQL pool created", "maxConns", pool.Config().MaxConns)
 	return &PostgresPool{Pool: pool}, nil
 }
