@@ -325,3 +325,41 @@ func TestBuildMetricURL(t *testing.T) {
 		t.Error("Expected https://localhost:8080/apis/datadoghq.com/v1alpha1/namespaces/datadogMetricNamespace/datadogMetricName, got ", url)
 	}
 }
+
+func TestDatadogMetadataValidateUseFiller(t *testing.T) {
+	testCases := []struct {
+		metricUnavailableValue string
+		expectedUseFiller      bool
+		expectedFillValue      float64
+	}{
+		{"", false, 0},     // Not configured
+		{"0", true, 0},     // Explicitly set to 0
+		{"1.5", true, 1.5}, // Positive value
+		{"-1.0", true, -1}, // Negative value
+		{"0.1", true, 0.1}, // Small positive value
+	}
+
+	for idx, tc := range testCases {
+		testData := &datadogAuthMetadataTestData{
+			metadata:   map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7"},
+			authParams: map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"},
+			isError:    false,
+		}
+		if tc.metricUnavailableValue != "" {
+			testData.metadata["metricUnavailableValue"] = tc.metricUnavailableValue
+		}
+
+		meta, err := createAndValidateMetadata(testData, false, 0)
+		if err != nil {
+			t.Errorf("Test case %d: Validate() unexpected error = %v", idx, err)
+		}
+		if meta.UseFiller != tc.expectedUseFiller {
+			t.Errorf("Test case %d: UseFiller = %v, want %v (metricUnavailableValue = %q)",
+				idx, meta.UseFiller, tc.expectedUseFiller, tc.metricUnavailableValue)
+		}
+		if meta.FillValue != tc.expectedFillValue {
+			t.Errorf("Test case %d: FillValue = %v, want %v (metricUnavailableValue = %q)",
+				idx, meta.FillValue, tc.expectedFillValue, tc.metricUnavailableValue)
+		}
+	}
+}
