@@ -14,28 +14,28 @@ For more details about this new release schedule, see [this issue](https://githu
 
 Here is an overview of our current release estimations:
 
-| Version | Estimated Release Date                               |
+| Version | Estimated Release Date                               |
 |:--------|:-----------------------------------------------------|
-| v2.18   | 2nd week of October 2025                            |
-| v2.19   | 2nd week of January 2026                            |
-| v2.20   | 2nd week of May 2026                                |
-| v2.21   | 2nd week of September 2026                          |
+| v2.19   | 2nd week of January 2026                            |
+| v2.20   | 2nd week of May 2026                                |
+| v2.21   | 2nd week of September 2026                          |
 
 Here is an overview of our previous releases:
 
-| Version | Release Date      | Links                                                                  |
+| Version | Release Date      | Links                                                                  |
 |:--------|:------------------|:-----------------------------------------------------------------------|
-| v2.17   | Apr 7th, 2025     | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.17.0) |
-| v2.16   | Nov 7th, 2024     | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.16.0) |
-| v2.15   | Aug 1st, 2024     | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.15.0) |
-| v2.14   | April 25th, 2024  | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.14.0) |
-| v2.13   | Jan 19th, 2024    | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.13.0) |
-| v2.12   | Sept 28th, 2023   | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.12.0) |
-| v2.11   | June 22nd, 2023   | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.11.0) |
-| v2.10   | March 9th, 2023   | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.10.0) |
-| v2.9    | Dec 9th, 2022     | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.9.0)  |
-| v2.8    | August 10th, 2022 | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.8.0)  |
-| v2.7    | May 5th, 2022     | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.7.0)  |
+| v2.18   | Oct 19th, 2025    | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.18.0) |
+| v2.17   | Apr 7th, 2025     | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.17.0) |
+| v2.16   | Nov 7th, 2024     | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.16.0) |
+| v2.15   | Aug 1st, 2024     | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.15.0) |
+| v2.14   | April 25th, 2024  | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.14.0) |
+| v2.13   | Jan 19th, 2024    | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.13.0) |
+| v2.12   | Sept 28th, 2023   | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.12.0) |
+| v2.11   | June 22nd, 2023   | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.11.0) |
+| v2.10   | March 9th, 2023   | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.10.0) |
+| v2.9    | Dec 9th, 2022     | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.9.0)  |
+| v2.8    | August 10th, 2022 | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.8.0)  |
+| v2.7    | May 5th, 2022     | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.7.0)  |
 
 ## Using our roadmap
 
