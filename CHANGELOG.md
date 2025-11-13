@@ -73,6 +73,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - *Dynamodb Scaler*: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
+- **AWS Scalers**: Add support for AWS External ID in TriggerAuthentication podIdentity for all AWS scalers (SQS, Kinesis, DynamoDB, CloudWatch, etc.) to enable cross-account access scenarios ([#6921](https://github.com/kedacore/keda/issues/6921))
 
 ### Fixes
 
