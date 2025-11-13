@@ -178,13 +178,17 @@ func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity ke
 		connectionString = passwordConnPattern.ReplaceAllString(meta.Connection, newPasswordField)
 	}
 	maxConns := connectionpool.LookupMaxConns("postgres", fmt.Sprintf("%s.%s", meta.Host, meta.DBName))
+	logger.Info("Resolved maxConns for PostgreSQL target", "host", meta.Host, "dbName", meta.DBName, "maxConns", maxConns)
+	logger.Info("Requesting PostgreSQL connection pool", "poolKey", poolKey)
 	db, err := connectionpool.GetOrCreate(poolKey, func() (connectionpool.ResourcePool, error) {
+		logger.Info("Creating or reusing PostgreSQL pool", "poolKey", poolKey)
 		return connectionpool.NewPostgresPool(ctx, connectionString, maxConns)
 	})
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Found error opening postgreSQL: %s", err))
 		return nil, poolKey, err
 	}
+	logger.Info("PostgreSQL connection pool ready", "poolKey", poolKey)
 	pgPool := db.(*connectionpool.PostgresPool).Pool
 	if err := pgPool.Ping(ctx); err != nil {
 		logger.Error(err, "error pinging PostgreSQL")
