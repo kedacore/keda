@@ -193,6 +193,10 @@ func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity ke
 	pgPool := db.(*connectionpool.PostgresPool).Pool
 	if err := pgPool.Ping(ctx); err != nil {
 		logger.Error(err, "error pinging PostgreSQL")
+		if strings.Contains(err.Error(), "28P01") {
+			logger.Info("Auth failure during pool creation; closing bad pool", "poolKey", poolKey)
+			connectionpool.Release(poolKey)
+		}
 		return nil, poolKey, err
 	}
 	return pgPool, poolKey, nil
@@ -207,23 +211,24 @@ func (s *postgreSQLScaler) Close(context.Context) error {
 
 func (s *postgreSQLScaler) getActiveNumber(ctx context.Context) (float64, error) {
 	var id float64
-
-	if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
-		if s.metadata.azureAuthContext.token.ExpiresOn.Before(time.Now()) {
-			s.logger.Info("The Azure Access Token expired, retrieving a new Azure Access Token and instantiating a new Postgres connection object.")
-			s.connection.Close()
-			newConnection, _, err := getConnection(ctx, s.metadata, s.podIdentity, s.logger)
-			if err != nil {
-				return 0, fmt.Errorf("error establishing postgreSQL connection: %w", err)
+	if s.connection != nil {
+		if s.podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
+			if s.metadata.azureAuthContext.token.ExpiresOn.Before(time.Now()) {
+				s.logger.Info("The Azure Access Token expired, retrieving a new Azure Access Token and instantiating a new Postgres connection object.")
+				s.connection.Close()
+				newConnection, _, err := getConnection(ctx, s.metadata, s.podIdentity, s.logger)
+				if err != nil {
+					return 0, fmt.Errorf("error establishing postgreSQL connection: %w", err)
+				}
+				s.connection = newConnection
 			}
-			s.connection = newConnection
 		}
-	}
 
-	err := s.connection.QueryRow(ctx, s.metadata.Query).Scan(&id)
-	if err != nil {
-		s.logger.Error(err, fmt.Sprintf("could not query postgreSQL: %s", err))
-		return 0, fmt.Errorf("could not query postgreSQL: %w", err)
+		err := s.connection.QueryRow(ctx, s.metadata.Query).Scan(&id)
+		if err != nil {
+			s.logger.Error(err, fmt.Sprintf("could not query postgreSQL: %s", err))
+			return 0, fmt.Errorf("could not query postgreSQL: %w", err)
+		}
 	}
 	return id, nil
 }

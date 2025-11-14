@@ -11,7 +11,7 @@ type PostgresPool struct {
 	Pool *pgxpool.Pool
 }
 
-func (p *PostgresPool) Close() {
+func (p *PostgresPool) close() {
 	logger.V(1).Info("Closing PostgreSQL pool")
 	p.Pool.Close()
 }

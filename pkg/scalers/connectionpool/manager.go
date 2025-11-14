@@ -6,7 +6,7 @@ import (
 
 // ResourcePool : generic interface for any DB pool
 type ResourcePool interface {
-	Close()
+	close()
 }
 
 // poolEntry : tracks a ResourcePool with reference count
@@ -38,7 +38,7 @@ func GetOrCreate(poolKey string, createFn func() (ResourcePool, error)) (Resourc
 	actual, loaded := poolMap.LoadOrStore(poolKey, entry)
 	if loaded {
 		logger.Info("Duplicate creation detected, closing redundant pool", "poolKey", poolKey)
-		newPool.Close()
+		newPool.close()
 		old := actual.(*poolEntry)
 		old.ref++
 		logger.V(1).Info("Reusing existing pool after race", "poolKey", poolKey, "refCount", old.ref)
@@ -60,7 +60,7 @@ func Release(poolKey string) {
 	logger.V(1).Info("Released pool reference", "poolKey", poolKey, "refCount", entry.ref)
 	if entry.ref <= 0 {
 		logger.Info("Closing pool, no active references", "poolKey", poolKey)
-		entry.pool.Close()
+		entry.pool.close()
 		poolMap.Delete(poolKey)
 	}
 }
@@ -70,7 +70,7 @@ func CloseAll() {
 	poolMap.Range(func(key, val any) bool {
 		entry := val.(*poolEntry)
 		logger.Info("Closing pool", "poolKey", key)
-		entry.pool.Close()
+		entry.pool.close()
 		poolMap.Delete(key)
 		return true
 	})
