@@ -328,38 +328,68 @@ func TestBuildMetricURL(t *testing.T) {
 
 func TestDatadogMetadataValidateUseFiller(t *testing.T) {
 	testCases := []struct {
+		name                   string
 		metricUnavailableValue string
+		useClusterAgent        bool
 		expectedUseFiller      bool
 		expectedFillValue      float64
 	}{
-		{"", false, 0},     // Not configured
-		{"0", true, 0},     // Explicitly set to 0
-		{"1.5", true, 1.5}, // Positive value
-		{"-1.0", true, -1}, // Negative value
-		{"0.1", true, 0.1}, // Small positive value
+		// API metadata tests
+		{"API: Not configured", "", false, false, 0},
+		{"API: Explicitly set to 0", "0", false, true, 0},
+		{"API: Positive value", "1.5", false, true, 1.5},
+		{"API: Negative value", "-1.0", false, true, -1},
+		{"API: Small positive value", "0.1", false, true, 0.1},
+
+		// Cluster Agent metadata tests
+		{"ClusterAgent: Not configured", "", true, false, 0},
+		{"ClusterAgent: Explicitly set to 0", "0", true, true, 0},
+		{"ClusterAgent: Positive value", "1.5", true, true, 1.5},
+		{"ClusterAgent: Negative value", "-1.0", true, true, -1},
+		{"ClusterAgent: Small positive value", "0.1", true, true, 0.1},
 	}
 
-	for idx, tc := range testCases {
-		testData := &datadogAuthMetadataTestData{
-			metadata:   map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7"},
-			authParams: map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"},
-			isError:    false,
-		}
-		if tc.metricUnavailableValue != "" {
-			testData.metadata["metricUnavailableValue"] = tc.metricUnavailableValue
-		}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testData := &datadogAuthMetadataTestData{
+				metadata:   map[string]string{},
+				authParams: map[string]string{},
+				isError:    false,
+			}
 
-		meta, err := createAndValidateMetadata(testData, false, 0)
-		if err != nil {
-			t.Errorf("Test case %d: Validate() unexpected error = %v", idx, err)
-		}
-		if meta.UseFiller != tc.expectedUseFiller {
-			t.Errorf("Test case %d: UseFiller = %v, want %v (metricUnavailableValue = %q)",
-				idx, meta.UseFiller, tc.expectedUseFiller, tc.metricUnavailableValue)
-		}
-		if meta.FillValue != tc.expectedFillValue {
-			t.Errorf("Test case %d: FillValue = %v, want %v (metricUnavailableValue = %q)",
-				idx, meta.FillValue, tc.expectedFillValue, tc.metricUnavailableValue)
-		}
+			// Set required metadata based on mode
+			if tc.useClusterAgent {
+				// Cluster Agent mode requires different metadata
+				testData.authParams["datadogMetricsService"] = "datadog-metrics-service"
+				testData.authParams["datadogNamespace"] = "default"
+				testData.metadata["datadogMetricName"] = "test-metric"
+				testData.metadata["datadogMetricNamespace"] = "test-namespace"
+				testData.metadata["queryValue"] = "7"
+			} else {
+				// API mode requires query and credentials
+				testData.metadata["query"] = "sum:trace.redis.command.hits{env:none,service:redis}.as_count()"
+				testData.metadata["queryValue"] = "7"
+				testData.authParams["apiKey"] = "apiKey"
+				testData.authParams["appKey"] = "appKey"
+				testData.authParams["datadogSite"] = "datadogSite"
+			}
+
+			if tc.metricUnavailableValue != "" {
+				testData.metadata["metricUnavailableValue"] = tc.metricUnavailableValue
+			}
+
+			meta, err := createAndValidateMetadata(testData, tc.useClusterAgent, 0)
+			if err != nil {
+				t.Errorf("Validate() unexpected error = %v", err)
+			}
+			if meta.UseFiller != tc.expectedUseFiller {
+				t.Errorf("UseFiller = %v, want %v (metricUnavailableValue = %q)",
+					meta.UseFiller, tc.expectedUseFiller, tc.metricUnavailableValue)
+			}
+			if meta.FillValue != tc.expectedFillValue {
+				t.Errorf("FillValue = %v, want %v (metricUnavailableValue = %q)",
+					meta.FillValue, tc.expectedFillValue, tc.metricUnavailableValue)
+			}
+		})
 	}
 }
