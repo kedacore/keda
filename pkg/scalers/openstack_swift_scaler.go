@@ -40,10 +40,6 @@ type openstackSwiftMetadata struct {
 }
 
 func (m *openstackSwiftMetadata) Validate() error {
-	if m.AuthURL == "" {
-		return fmt.Errorf("authURL must be specified")
-	}
-
 	if m.UserID != "" {
 		if m.Password == "" {
 			return fmt.Errorf("password must be specified when using userID")
