@@ -88,7 +88,7 @@ func startConfigWatcher(ctx context.Context) {
 }
 
 // LookupConfigValue returns config for a scaler/resource identifier.
-// Keys are structured for eg. as <scaler>.<identifier>, e.g., "postgres.db1.analytics".
+// Keys are structured for eg. as <scaler>.<identifier>, e.g., "postgres.dbserver.db".
 func LookupConfigValue(scalerType, identifier string) string {
 	key := fmt.Sprintf("%s.%s", scalerType, identifier)
 	if val, ok := globalOverrides.Load(key); ok {

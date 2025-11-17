@@ -183,8 +183,7 @@ func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity ke
 		logger.Info("Invalid value in configmap; using default of max connections", "Server", meta.Host, "dbName", meta.DBName)
 		maxConns = 0
 	}
-	logger.Info("Resolved maxConns for PostgreSQL target", "host", meta.Host, "dbName", meta.DBName, "maxConns", maxConns)
-	logger.Info("Requesting PostgreSQL connection pool", "poolKey", poolKey)
+	logger.Info("Requesting PostgreSQL connection pool", "poolKey", poolKey, "maxConns", maxConns)
 	db, err := connectionpool.GetOrCreate(poolKey, func() (connectionpool.ResourcePool, error) {
 		logger.Info("Creating or reusing PostgreSQL pool", "poolKey", poolKey)
 		return connectionpool.NewPostgresPool(ctx, connectionString, int32(maxConns))
@@ -196,11 +195,8 @@ func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity ke
 	logger.Info("PostgreSQL connection pool ready", "poolKey", poolKey)
 	pgPool := db.(*connectionpool.PostgresPool).Pool
 	if err := pgPool.Ping(ctx); err != nil {
-		logger.Error(err, "error pinging PostgreSQL")
-		if strings.Contains(err.Error(), "28P01") {
-			logger.Info("Auth failure during pool creation; closing bad pool", "poolKey", poolKey)
-			connectionpool.Release(poolKey)
-		}
+		logger.Error(err, "Failed to ping PostgreSQL. Releasing bad connection pool", "poolKey", poolKey)
+		connectionpool.Release(poolKey)
 		return nil, poolKey, err
 	}
 	return pgPool, poolKey, nil
