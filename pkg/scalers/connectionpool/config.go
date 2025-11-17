@@ -34,7 +34,7 @@ func loadConfig() {
 		return
 	}
 
-	var parsed map[string]int32
+	var parsed map[string]string
 	if err := yaml.Unmarshal(data, &parsed); err != nil {
 		logger.Error(err, "Invalid pool config format", "path", configPath)
 		return

@@ -180,7 +180,7 @@ func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity ke
 	}
 	maxConns, err := strconv.ParseInt(connectionpool.LookupConfigValue("postgres", fmt.Sprintf("%s.%s", meta.Host, meta.DBName)), 10, 32)
 	if err != nil {
-		logger.Info("Invalid value in configmap; using default of max connections", "Server", meta.Host, "dbName", meta.DBName)
+		logger.Info("Invalid value in configmap; set default max connection pool", "Server", meta.Host, "dbName", meta.DBName)
 		maxConns = 0
 	}
 	logger.Info("Requesting PostgreSQL connection pool", "poolKey", poolKey, "maxConns", maxConns)
