@@ -105,14 +105,14 @@ func TestParseStanAuthParams(t *testing.T) {
 			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, meta.enableTLS)
 		}
 		if meta.enableTLS {
-			if meta.ca != testData.authParams["ca"] {
-				t.Errorf("Expected ca to be set to %v but got %v\n", testData.authParams["ca"], meta.enableTLS)
+			if meta.CA != testData.authParams["ca"] {
+				t.Errorf("Expected ca to be set to %v but got %v\n", testData.authParams["ca"], meta.CA)
 			}
-			if meta.cert != testData.authParams["cert"] {
-				t.Errorf("Expected cert to be set to %v but got %v\n", testData.authParams["cert"], meta.cert)
+			if meta.Cert != testData.authParams["cert"] {
+				t.Errorf("Expected cert to be set to %v but got %v\n", testData.authParams["cert"], meta.Cert)
 			}
-			if meta.key != testData.authParams["key"] {
-				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["key"], meta.key)
+			if meta.Key != testData.authParams["key"] {
+				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["key"], meta.Key)
 			}
 		}
 	}
