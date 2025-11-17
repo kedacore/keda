@@ -30,6 +30,7 @@ func loadConfig() {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		logger.V(1).Info("No pool config found;", "path", configPath, "err", err)
+		clearGlobalPoolOverride()
 		return
 	}
 
@@ -40,10 +41,7 @@ func loadConfig() {
 	}
 
 	// clear existing map before writing new values
-	globalOverrides.Range(func(key, value any) bool {
-		globalOverrides.Delete(key)
-		return true
-	})
+	clearGlobalPoolOverride()
 
 	// store new values
 	for key, val := range parsed {
@@ -51,6 +49,12 @@ func loadConfig() {
 	}
 
 	logger.Info("Loaded global pool configuration", "entries", len(parsed))
+}
+func clearGlobalPoolOverride() {
+	globalOverrides.Range(func(key, value any) bool {
+		globalOverrides.Delete(key)
+		return true
+	})
 }
 
 // startConfigWatcher watches for ConfigMap updates and reloads on file change.

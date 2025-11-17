@@ -178,7 +178,11 @@ func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity ke
 		newPasswordField := "password=" + escapePostgreConnectionParameter(accessToken)
 		connectionString = passwordConnPattern.ReplaceAllString(meta.Connection, newPasswordField)
 	}
-	maxConns, _ := strconv.ParseInt(connectionpool.LookupConfigValue("postgres", fmt.Sprintf("%s.%s", meta.Host, meta.DBName)), 10, 32)
+	maxConns, err := strconv.ParseInt(connectionpool.LookupConfigValue("postgres", fmt.Sprintf("%s.%s", meta.Host, meta.DBName)), 10, 32)
+	if err != nil {
+		logger.Info("Invalid value in configmap; using default of max connections", "Server", meta.Host, "dbName", meta.DBName)
+		maxConns = 0
+	}
 	logger.Info("Resolved maxConns for PostgreSQL target", "host", meta.Host, "dbName", meta.DBName, "maxConns", maxConns)
 	logger.Info("Requesting PostgreSQL connection pool", "poolKey", poolKey)
 	db, err := connectionpool.GetOrCreate(poolKey, func() (connectionpool.ResourcePool, error) {

@@ -12,7 +12,7 @@ type PostgresPool struct {
 }
 
 func (p *PostgresPool) close() {
-	logger.V(1).Info("Closing PostgreSQL pool")
+	logger.V(1).Info("Closing PostgreSQL pool", "server", p.Pool.Config().ConnConfig.Host)
 	p.Pool.Close()
 }
 
