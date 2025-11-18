@@ -1,4 +1,4 @@
-kedaVersion: 2.18.0
+kedaVersion: main
 schemaVersion: 1
 scalers:
     - type: activemq
@@ -150,6 +150,10 @@ scalers:
           type: string
           metadataVariableReadable: true
           triggerAuthenticationVariableReadable: true
+        - name: dbName
+          type: string
+          metadataVariableReadable: true
+          triggerAuthenticationVariableReadable: true
         - name: collection
           type: string
           metadataVariableReadable: true
@@ -169,6 +173,10 @@ scalers:
           default: "false"
           metadataVariableReadable: true
         - name: connectionLimit
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: authModes
           type: string
           optional: true
           metadataVariableReadable: true
@@ -302,6 +310,10 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+        - name: identityOwner
+          type: string
+          optional: true
+          metadataVariableReadable: true
     - type: aws-dynamodb
       parameters:
         - name: tableName
@@ -331,6 +343,20 @@ scalers:
           type: string
           default: "0"
           metadataVariableReadable: true
+        - name: filterExpression
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: identityOwner
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: expressionAttributeNames
+          type: string
+          metadataVariableReadable: true
+        - name: expressionAttributeValues
+          type: string
+          metadataVariableReadable: true
     - type: aws-dynamodb-streams
       parameters:
         - name: shardCount
@@ -352,6 +378,10 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+        - name: identityOwner
+          type: string
+          optional: true
+          metadataVariableReadable: true
     - type: aws-kinesis-stream
       parameters:
         - name: shardCount
@@ -370,6 +400,10 @@ scalers:
           metadataVariableReadable: true
           triggerAuthenticationVariableReadable: true
         - name: awsEndpoint
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: identityOwner
           type: string
           optional: true
           metadataVariableReadable: true
@@ -402,6 +436,10 @@ scalers:
         - name: scaleOnDelayed
           type: string
           default: "false"
+          metadataVariableReadable: true
+        - name: identityOwner
+          type: string
+          optional: true
           metadataVariableReadable: true
     - type: azure-eventhub
       parameters:
@@ -531,6 +569,12 @@ scalers:
       parameters:
         - name: organizationURL
           type: string
+          metadataVariableReadable: true
+          envVariableReadable: true
+          triggerAuthenticationVariableReadable: true
+        - name: personalAccessToken
+          type: string
+          optional: true
           envVariableReadable: true
           triggerAuthenticationVariableReadable: true
         - name: parent
@@ -551,37 +595,30 @@ scalers:
           metadataVariableReadable: true
         - name: targetPipelinesQueueLength
           type: string
-          optional: true
           default: "1"
           metadataVariableReadable: true
         - name: activationTargetPipelinesQueueLength
           type: string
-          optional: true
           default: "0"
           metadataVariableReadable: true
         - name: jobsToFetch
           type: string
-          optional: true
           default: "250"
           metadataVariableReadable: true
         - name: fetchUnfinishedJobsOnly
           type: string
-          optional: true
           default: "false"
           metadataVariableReadable: true
         - name: requireAllDemands
           type: string
-          optional: true
           default: "false"
           metadataVariableReadable: true
         - name: requireAllDemandsAndIgnoreOthers
           type: string
-          optional: true
           default: "false"
           metadataVariableReadable: true
         - name: caseInsensitiveDemandsProcessing
           type: string
-          optional: true
           default: "false"
           metadataVariableReadable: true
     - type: azure-queue
@@ -910,6 +947,10 @@ scalers:
           type: string
           default: "0"
           metadataVariableReadable: true
+        - name: useClusterAgentProxy
+          type: string
+          default: "false"
+          metadataVariableReadable: true
         - name: hpaMetricName
           type: string
           optional: true
@@ -1176,6 +1217,16 @@ scalers:
           type: string
           deprecatedAnnounce: This scaler is deprecated. More info -> 'https://keda.sh/blog/2025-09-15-gcp-deprecations'
           metadataVariableReadable: true
+        - name: credentials
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+        - name: credentialsFromEnvFile
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
     - type: gcp-storage
       parameters:
         - name: bucketName
@@ -1201,6 +1252,16 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+        - name: credentials
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+        - name: credentialsFromEnvFile
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
     - type: github-runner
       parameters:
         - name: githubApiURL
@@ -1265,6 +1326,39 @@ scalers:
           metadataVariableReadable: true
           envVariableReadable: true
         - name: appKey
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+    - type: graphite
+      parameters:
+        - name: serverAddress
+          type: string
+          metadataVariableReadable: true
+        - name: query
+          type: string
+          metadataVariableReadable: true
+        - name: threshold
+          type: string
+          default: "100"
+          metadataVariableReadable: true
+        - name: activationThreshold
+          type: string
+          default: "0"
+          metadataVariableReadable: true
+        - name: queryTime
+          type: string
+          metadataVariableReadable: true
+        - name: authMode
+          type: string
+          optional: true
+          allowedValue:
+            - basic
+          metadataVariableReadable: true
+        - name: username
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: password
           type: string
           optional: true
           triggerAuthenticationVariableReadable: true
@@ -1430,6 +1524,47 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+    - type: kubernetes-resource
+      parameters:
+        - name: resourceKind
+          type: string
+          allowedValue:
+            - ConfigMap
+            - Secret
+          metadataVariableReadable: true
+        - name: resourceName
+          type: string
+          metadataVariableReadable: true
+        - name: key
+          type: string
+          metadataVariableReadable: true
+        - name: format
+          type: string
+          default: number
+          allowedValue:
+            - number
+            - json
+            - yaml
+          metadataVariableReadable: true
+        - name: valueLocation
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: valueType
+          type: string
+          default: float64
+          allowedValue:
+            - float64
+            - int64
+            - quantity
+          metadataVariableReadable: true
+        - name: targetValue
+          type: string
+          metadataVariableReadable: true
+        - name: activationTargetValue
+          type: string
+          default: "0"
+          metadataVariableReadable: true
     - type: kubernetes-workload
       parameters:
         - name: podSelector
@@ -1492,6 +1627,10 @@ scalers:
         - name: unsafeSsl
           type: string
           default: "false"
+          metadataVariableReadable: true
+        - name: authModes
+          type: string
+          optional: true
           metadataVariableReadable: true
     - type: mssql
       parameters:
@@ -1563,6 +1702,19 @@ scalers:
         - name: unsafeSsl
           type: string
           default: "false"
+          metadataVariableReadable: true
+        - name: aggregateFromKubeServiceEndpoints
+          type: string
+          default: "false"
+          metadataVariableReadable: true
+        - name: aggregationType
+          type: string
+          default: average
+          allowedValue:
+            - average
+            - sum
+            - max
+            - min
           metadataVariableReadable: true
     - type: mongodb
       parameters:
@@ -1862,6 +2014,10 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+        - name: authModes
+          type: string
+          optional: true
+          metadataVariableReadable: true
     - type: prometheus
       parameters:
         - name: serverAddress
@@ -1903,6 +2059,14 @@ scalers:
           metadataVariableReadable: true
           triggerAuthenticationVariableReadable: true
         - name: timeout
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: identityOwner
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: authModes
           type: string
           optional: true
           metadataVariableReadable: true
@@ -1948,6 +2112,16 @@ scalers:
           optional: true
           metadataVariableReadable: true
           envVariableReadable: true
+        - name: credentials
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+        - name: credentialsFromEnvFile
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
     - type: pulsar
       parameters:
         - name: adminURL
@@ -1975,6 +2149,10 @@ scalers:
           default: "false"
           metadataVariableReadable: true
         - name: tls
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: authModes
           type: string
           optional: true
           metadataVariableReadable: true
@@ -2899,6 +3077,7 @@ scalers:
           metadataVariableReadable: true
         - name: activationValue
           type: string
+          default: "0"
           metadataVariableReadable: true
         - name: metricName
           type: string
@@ -3027,6 +3206,28 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
+        - name: alignmentPeriodSeconds
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: alignmentAligner
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: alignmentReducer
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: credentials
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
+        - name: credentialsFromEnvFile
+          type: string
+          optional: true
+          metadataVariableReadable: true
+          envVariableReadable: true
     - type: sumologic
       parameters:
         - name: accessID

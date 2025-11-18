@@ -529,7 +529,7 @@ func main() {
 	pflag.StringVar(&builderFilePath, "scalers-builder-file", "../pkg/scaling/scalers_builder.go", "The file that exists `buildScaler` func.")
 	pflag.StringVar(&scalersFilesDirPath, "scalers-files-dir", "../pkg/scalers", "The directory that exists all scalers' files.")
 	pflag.StringVar(&specifyScaler, "specify-scaler", "", "Specify scaler name.")
-	pflag.StringVar(&outputFileName, "output-file-name", "scalers-metadata-schema", "Output file name.")
+	pflag.StringVar(&outputFileName, "output-file-name", "scalers-schema", "Output file name.")
 	pflag.StringVar(&outputFilePath, "output-file-path", "./", "Output file path.")
 	pflag.StringVar(&outputFormat, "output-file-format", "both", "Output file format. support json and yaml.")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)

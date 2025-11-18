@@ -65,6 +65,7 @@ jobs:
         run: make release
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
+          SCALERS_SCHEMA_OUTPUT_FILE_PATH: ${{ github.workspace }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
@@ -88,69 +89,12 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
-        # Get release information to determine id of the current release
-      - name: Get Release
-        id: get-release-info
-        uses: bruceadams/get-release@74c3d60f5a28f358ccf241a00c9021ea16f0569f # v1.3.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Upload deployment YAML file to GitHub release
-      - name: Upload Deployment YAML file
-        id: upload-deployment-yaml
-        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Add artifacts the release
+      - name: Upload Release artifacts
+        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
         with:
-          upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-${{ steps.get_version.outputs.VERSION }}.yaml
-          asset_path: keda-${{ steps.get_version.outputs.VERSION }}.yaml
-          asset_name: keda-${{ steps.get_version.outputs.VERSION }}.yaml
-          asset_content_type: application/x-yaml
-
-      # Upload core deployment YAML file to GitHub release (TO BE DELETED FOR v2.12)
-      - name: Upload Deployment YAML file
-        id: upload-core-deployment-yaml
-        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-${{ steps.get_version.outputs.VERSION }}-core.yaml
-          asset_path: keda-${{ steps.get_version.outputs.VERSION }}-core.yaml
-          asset_name: keda-${{ steps.get_version.outputs.VERSION }}-core.yaml
-          asset_content_type: application/x-yaml
-
-      # Upload CRD deployment YAML file to GitHub release
-      - name: Upload Deployment YAML file
-        id: upload-crd-deployment-yaml
-        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-${{ steps.get_version.outputs.VERSION }}-crds.yaml
-          asset_path: keda-${{ steps.get_version.outputs.VERSION }}-crds.yaml
-          asset_name: keda-${{ steps.get_version.outputs.VERSION }}-crds.yaml
-          asset_content_type: application/x-yaml
-
-      # Upload scalers schema YAML file to GitHub release
-      - name: Upload scalers schema YAML file
-        id: upload-scalers-schema-yaml
-        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-scalers-schema-${{ steps.get_version.outputs.VERSION }}.yaml
-          asset_path: schema/generated/scalers-metadata-schema-${{ steps.get_version.outputs.VERSION }}.yaml
-          asset_name: keda-scalers-schema-${{ steps.get_version.outputs.VERSION }}.yaml
-          asset_content_type: application/x-yaml
-
-      # Upload scalers schema JSON file to GitHub release
-      - name: Upload scalers schema JSON file
-        id: upload-scalers-schema-json
-        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-scalers-schema-${{ steps.get_version.outputs.VERSION }}.json
-          asset_path: schema/generated/scalers-metadata-schema-${{ steps.get_version.outputs.VERSION }}.json
-          asset_name: keda-scalers-schema-${{ steps.get_version.outputs.VERSION }}.json
-          asset_content_type: application/json
+          files: |
+            keda-${{ steps.get_version.outputs.VERSION }}.yaml
+            keda-${{ steps.get_version.outputs.VERSION }}-core.yaml
+            keda-${{ steps.get_version.outputs.VERSION }}-crds.yaml
+            scalers-schema-${{ steps.get_version.outputs.VERSION }}.*

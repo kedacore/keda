@@ -120,7 +120,7 @@ func parseActiveMQMetadata(config *scalersconfig.ScalerConfig) (*activeMQMetadat
 	meta := &activeMQMetadata{}
 	meta.triggerIndex = config.TriggerIndex
 	if err := config.TypedConfig(meta); err != nil {
-		return nil, fmt.Errorf("error parsing prometheus metadata: %w", err)
+		return nil, fmt.Errorf("error parsing ActiveMQ metadata: %w", err)
 	}
 	return meta, nil
 }
