@@ -67,9 +67,9 @@ type datadogMetadata struct {
 	LastAvailablePointOffset int     `keda:"name=lastAvailablePointOffset,order=triggerMetadata, default=0"`
 
 	// TriggerMetadata Common
-	UseClusterAgentProxy bool    `keda:"name=useClusterAgentProxy, order=triggerMetadata, default=false"`
-	HpaMetricName        string  `keda:"name=hpaMetricName,          order=triggerMetadata, optional"`
-	FillValue            float64 `keda:"name=metricUnavailableValue, order=triggerMetadata, default=0"`
+	UseClusterAgentProxy bool     `keda:"name=useClusterAgentProxy, order=triggerMetadata, default=false"`
+	HpaMetricName        string   `keda:"name=hpaMetricName,          order=triggerMetadata, optional"`
+	FillValue            *float64 `keda:"name=metricUnavailableValue, order=triggerMetadata, optional"`
 	UseFiller            bool
 	TargetValue          float64       `keda:"name=targetValue;queryValue, order=triggerMetadata, default=-1"`
 	Timeout              time.Duration `keda:"name=timeout,             	order=triggerMetadata, optional"`
@@ -200,7 +200,7 @@ func validateAPIMetadata(meta *datadogMetadata, config *scalersconfig.ScalerConf
 	meta.HpaMetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", meta.HpaMetricName)))
 
 	// Set UseFiller flag if metricUnavailableValue is explicitly configured
-	if _, ok := config.TriggerMetadata["metricUnavailableValue"]; ok {
+	if meta.FillValue != nil {
 		meta.UseFiller = true
 	}
 
@@ -254,7 +254,7 @@ func validateClusterAgentMetadata(meta *datadogMetadata, config *scalersconfig.S
 	meta.DatadogMetricServiceURL = buildClusterAgentURL(meta.DatadogMetricsService, meta.DatadogNamespace, meta.DatadogMetricsServicePort)
 
 	// Set UseFiller flag if metricUnavailableValue is explicitly configured
-	if _, ok := config.TriggerMetadata["metricUnavailableValue"]; ok {
+	if meta.FillValue != nil {
 		meta.UseFiller = true
 	}
 
@@ -361,7 +361,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		if !s.metadata.UseFiller {
 			return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 		}
-		return s.metadata.FillValue, nil
+		return *s.metadata.FillValue, nil
 	}
 
 	// Require queryAggregator be set explicitly for multi-query
@@ -390,7 +390,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 			if !s.metadata.UseFiller {
 				return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 			}
-			return s.metadata.FillValue, nil
+			return *s.metadata.FillValue, nil
 		}
 		// Return the last point from the series
 		results[i] = *points[index][1]

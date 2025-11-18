@@ -386,9 +386,21 @@ func TestDatadogMetadataValidateUseFiller(t *testing.T) {
 				t.Errorf("UseFiller = %v, want %v (metricUnavailableValue = %q)",
 					meta.UseFiller, tc.expectedUseFiller, tc.metricUnavailableValue)
 			}
-			if meta.FillValue != tc.expectedFillValue {
-				t.Errorf("FillValue = %v, want %v (metricUnavailableValue = %q)",
-					meta.FillValue, tc.expectedFillValue, tc.metricUnavailableValue)
+
+			// Check FillValue based on whether it should be set
+			if tc.expectedUseFiller {
+				if meta.FillValue == nil {
+					t.Errorf("FillValue is nil, want %v (metricUnavailableValue = %q)",
+						tc.expectedFillValue, tc.metricUnavailableValue)
+				} else if *meta.FillValue != tc.expectedFillValue {
+					t.Errorf("FillValue = %v, want %v (metricUnavailableValue = %q)",
+						*meta.FillValue, tc.expectedFillValue, tc.metricUnavailableValue)
+				}
+			} else {
+				if meta.FillValue != nil {
+					t.Errorf("FillValue = %v, want nil (metricUnavailableValue = %q)",
+						*meta.FillValue, tc.metricUnavailableValue)
+				}
 			}
 		})
 	}
