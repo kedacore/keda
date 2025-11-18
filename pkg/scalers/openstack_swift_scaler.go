@@ -21,18 +21,18 @@ type openstackSwiftMetadata struct {
 	ObjectCount           int64  `keda:"name=objectCount,           order=triggerMetadata, default=2"`
 	ActivationObjectCount int64  `keda:"name=activationObjectCount, order=triggerMetadata, default=0"`
 	ObjectPrefix          string `keda:"name=objectPrefix,          order=triggerMetadata, optional"`
-	ObjectDelimiter       string `keda:"name=objectDelimiter,      order=triggerMetadata, optional"`
+	ObjectDelimiter       string `keda:"name=objectDelimiter,       order=triggerMetadata, optional"`
 	ObjectLimit           string `keda:"name=objectLimit,           order=triggerMetadata, optional"`
 	HTTPClientTimeout     int    `keda:"name=timeout,               order=triggerMetadata, default=30"`
 	OnlyFiles             bool   `keda:"name=onlyFiles,             order=triggerMetadata, optional"`
 
 	// Authentication fields
 	UserID              string `keda:"name=userID,              order=authParams, optional"`
-	Password            string `keda:"name=password,           order=authParams, optional"`
+	Password            string `keda:"name=password,            order=authParams, optional"`
 	ProjectID           string `keda:"name=projectID,           order=authParams, optional"`
-	AuthURL             string `keda:"name=authURL,            order=authParams"`
-	AppCredentialID     string `keda:"name=appCredentialID,    order=authParams, optional"`
-	AppCredentialSecret string `keda:"name=appCredentialSecret,  order=authParams, optional"`
+	AuthURL             string `keda:"name=authURL,             order=authParams"`
+	AppCredentialID     string `keda:"name=appCredentialID,     order=authParams, optional"`
+	AppCredentialSecret string `keda:"name=appCredentialSecret, order=authParams, optional"`
 	RegionName          string `keda:"name=regionName,          order=authParams, optional"`
 
 	metricName   string
