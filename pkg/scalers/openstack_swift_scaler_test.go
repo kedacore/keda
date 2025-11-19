@@ -108,10 +108,6 @@ func TestOpenstackSwiftGetMetricSpecForScaling(t *testing.T) {
 		if err != nil {
 			t.Fatal("Could not parse metadata:", err)
 		}
-		_, err = parseOpenstackSwiftAuthenticationMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, TriggerIndex: testData.scaledIndex})
-		if err != nil {
-			t.Fatal("Could not parse auth metadata:", err)
-		}
 
 		mockSwiftScaler := openstackSwiftScaler{"", meta, &gophercloud.ServiceClient{}, logr.Discard()}
 
@@ -154,7 +150,7 @@ func TestParseOpenstackSwiftAuthenticationMetadataForInvalidCases(t *testing.T) 
 
 	for _, testData := range testCases {
 		t.Run(testData.name, func(pt *testing.T) {
-			_, err := parseOpenstackSwiftAuthenticationMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, TriggerIndex: testData.scaledIndex})
+			_, err := parseOpenstackSwiftMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: testData.resolvedEnv, TriggerMetadata: testData.metadataTestData.metadata, AuthParams: testData.authMetadataTestData.authMetadata, TriggerIndex: testData.scaledIndex})
 			assert.NotNil(t, err)
 		})
 	}
