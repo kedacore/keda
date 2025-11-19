@@ -1470,7 +1470,7 @@
                 {
                     "name": "metricUnavailableValue",
                     "type": "string",
-                    "default": "0",
+                    "optional": true,
                     "metadataVariableReadable": true
                 },
                 {
