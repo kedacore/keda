@@ -957,7 +957,7 @@ scalers:
           metadataVariableReadable: true
         - name: metricUnavailableValue
           type: string
-          default: "0"
+          optional: true
           metadataVariableReadable: true
         - name: targetValue
           type: string
@@ -1938,6 +1938,70 @@ scalers:
           type: string
           default: "30"
           metadataVariableReadable: true
+    - type: openstack-swift
+      parameters:
+        - name: swiftURL
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: containerName
+          type: string
+          metadataVariableReadable: true
+        - name: objectCount
+          type: string
+          default: "2"
+          metadataVariableReadable: true
+        - name: activationObjectCount
+          type: string
+          default: "0"
+          metadataVariableReadable: true
+        - name: objectPrefix
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: objectDelimiter
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: objectLimit
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: timeout
+          type: string
+          default: "30"
+          metadataVariableReadable: true
+        - name: onlyFiles
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: userID
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: password
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: projectID
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: authURL
+          type: string
+          triggerAuthenticationVariableReadable: true
+        - name: appCredentialID
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: appCredentialSecret
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: regionName
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
     - type: postgresql
       parameters:
         - name: targetQueryValue
