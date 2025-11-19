@@ -777,7 +777,7 @@ func TestFallbackFromZero(t *testing.T, s ScaleTargetType) {
 	t.Logf("--- running TestFallbackFromZero test for %s ---", s)
 	data, templates := getTemplateData(s)
 
-	// Replace the default scaledObject template
+	// Replace the default ScaledObject template
 	for i, tmpl := range templates {
 		if tmpl.Name == "scaledObjectTemplate" {
 			templates[i].Config = scaledObjectTemplateWithStatic
