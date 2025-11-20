@@ -13,11 +13,12 @@ import (
 	context "context"
 	reflect "reflect"
 
+	gomock "go.uber.org/mock/gomock"
+	external_metrics "k8s.io/metrics/pkg/apis/external_metrics"
+
 	api "github.com/kedacore/keda/v2/pkg/metricsservice/api"
 	scaling "github.com/kedacore/keda/v2/pkg/scaling"
 	cache "github.com/kedacore/keda/v2/pkg/scaling/cache"
-	gomock "go.uber.org/mock/gomock"
-	external_metrics "k8s.io/metrics/pkg/apis/external_metrics"
 )
 
 // MockScaleHandler is a mock of ScaleHandler interface.

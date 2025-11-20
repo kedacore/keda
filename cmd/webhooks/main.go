@@ -37,7 +37,6 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/k8s"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
-	//+kubebuilder:scaffold:imports
 )
 
 var (
