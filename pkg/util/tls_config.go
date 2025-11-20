@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
@@ -25,6 +26,8 @@ import (
 
 	"github.com/youmark/pkcs8"
 	ctrl "sigs.k8s.io/controller-runtime"
+
+	"github.com/kedacore/keda/v2/pkg/metricsservice/utils"
 )
 
 var minTLSVersion uint16
@@ -71,6 +74,13 @@ func NewTLSConfigWithPassword(clientCert, clientKey, clientKeyPassword, caCert s
 // and CA certificate. If none are appropriate, a nil *tls.Config is returned.
 func NewTLSConfig(clientCert, clientKey, caCert string, unsafeSsl bool) (*tls.Config, error) {
 	return NewTLSConfigWithPassword(clientCert, clientKey, "", caCert, unsafeSsl)
+}
+
+// NewTLSConfigFromFiles returns a *tls.Config using the given the paths to key, cert and ca cert. If caCertPem is not empty,
+// the cert will be loaded from this in-memory representation, otherwise the caCertFile file will be tried.
+// If none are appropriate, a nil *tls.Config is returned.
+func NewTLSConfigFromFiles(clientCertFile, clientKeyFile, caCertFile string, unsafeSsl bool) (*tls.Config, error) {
+	return utils.LoadGrpcTLSConfig(context.Background(), caCertFile, clientCertFile, clientKeyFile, false, unsafeSsl)
 }
 
 // CreateTLSClientConfig returns a new TLS Config

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -33,12 +34,8 @@ import (
 
 var log = logf.Log.WithName("grpc_server_certificates")
 
-// LoadGrpcTLSCredentials reads the certificate from the given path and returns TLS transport credentials
-func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (credentials.TransportCredentials, error) {
-	caPath := path.Join(certDir, "ca.crt")
-	certPath := path.Join(certDir, "tls.crt")
-	keyPath := path.Join(certDir, "tls.key")
-
+// LoadGrpcTLSConfig reads the certificate from the given paths and returns *tls.Config
+func LoadGrpcTLSConfig(ctx context.Context, caPath, certPath, keyPath string, server, unsafeSsl bool) (*tls.Config, error) {
 	// Load certificate of the CA who signed client's certificate
 	pemClientCA, err := os.ReadFile(caPath)
 	if err != nil {
@@ -65,9 +62,10 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 	if err != nil {
 		return nil, err
 	}
-	err = watcher.Add(certDir)
-	if err != nil {
-		return nil, err
+	for _, dir := range []string{caPath, certPath, keyPath} {
+		if e := watcher.Add(filepath.Dir(dir)); e != nil {
+			return nil, err
+		}
 	}
 
 	certMutex := sync.RWMutex{}
@@ -127,7 +125,8 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 
 	// Create the credentials and return it
 	config := &tls.Config{
-		MinVersion: tls.VersionTLS13,
+		MinVersion:         tls.VersionTLS13,
+		InsecureSkipVerify: unsafeSsl,
 		GetCertificate: func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
 			certMutex.RLock()
 			defer certMutex.RUnlock()
@@ -146,5 +145,19 @@ func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (c
 		config.RootCAs = certPool
 	}
 
-	return credentials.NewTLS(config), nil
+	return config, nil
+}
+
+// LoadGrpcTLSCredentials reads the certificate from the given directory and returns TLS transport credentials
+func LoadGrpcTLSCredentials(ctx context.Context, certDir string, server bool) (credentials.TransportCredentials, error) {
+	caPath := path.Join(certDir, "ca.crt")
+	certPath := path.Join(certDir, "tls.crt")
+	keyPath := path.Join(certDir, "tls.key")
+
+	tlsConfig, err := LoadGrpcTLSConfig(ctx, caPath, certPath, keyPath, server, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return credentials.NewTLS(tlsConfig), nil
 }
