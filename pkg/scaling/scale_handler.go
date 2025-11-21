@@ -314,6 +314,81 @@ func (h *scaleHandler) getScalersCacheForScaledObject(ctx context.Context, scale
 	return h.performGetScalersCache(ctx, key, nil, nil, "ScaledObject", scaledObjectNamespace, scaledObjectName)
 }
 
+// needsPodSpecResolution checks if PodSpec resolution is needed for the given triggers.
+// PodSpec is needed if:
+//   - Any trigger uses *FromEnv parameters (reads from pod environment variables)
+//   - Any trigger has authenticationRef that uses PodSpec features (Env, PodIdentity, or AwsSecretManager)
+//   - It's a ScaledJob (always needs PodSpec since it has JobTargetRef.Template)
+func needsPodSpecResolution(ctx context.Context, client client.Client, scalableObject interface{}, withTriggers *kedav1alpha1.WithTriggers, namespace string) bool {
+	// ScaledJob always needs PodSpec since it has JobTargetRef.Template
+	if _, ok := scalableObject.(*kedav1alpha1.ScaledJob); ok {
+		return true
+	}
+
+	// Check if any trigger needs PodSpec
+	for _, trigger := range withTriggers.Spec.Triggers {
+		// Check if trigger uses *FromEnv parameters
+		for key := range trigger.Metadata {
+			if strings.HasSuffix(key, "FromEnv") {
+				return true
+			}
+		}
+
+		// Check if trigger has authenticationRef that needs PodSpec
+		if trigger.AuthenticationRef != nil {
+			if needsPodSpecForAuth(ctx, client, trigger.AuthenticationRef, namespace) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// needsPodSpecForAuth checks if TriggerAuthentication needs PodSpec.
+// PodSpec is needed if TriggerAuthentication uses:
+//   - Env field (reads environment variables from pod)
+//   - PodIdentity field (uses ServiceAccount from pod)
+//   - AwsSecretManager (needs podSpec for initialization)
+func needsPodSpecForAuth(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.AuthenticationRef, namespace string) bool {
+	if triggerAuthRef == nil || triggerAuthRef.Name == "" {
+		return false
+	}
+
+	triggerAuthSpec, _, err := resolver.GetTriggerAuthSpec(ctx, client, triggerAuthRef, namespace)
+	if err != nil {
+		// If we can't fetch TriggerAuthentication, be conservative and assume PodSpec is needed
+		// This ensures backward compatibility
+		return true
+	}
+
+	// Check if TriggerAuthentication uses PodSpec features
+	if triggerAuthSpec.PodIdentity != nil {
+		return true
+	}
+	if len(triggerAuthSpec.Env) > 0 {
+		return true
+	}
+	// AwsSecretManager needs PodSpec only if it uses Pod Identity with workload identity owner
+	if triggerAuthSpec.AwsSecretManager != nil && len(triggerAuthSpec.AwsSecretManager.Secrets) > 0 {
+		if triggerAuthSpec.AwsSecretManager.PodIdentity != nil {
+			podIdentity := triggerAuthSpec.AwsSecretManager.PodIdentity
+			// PodSpec is needed if using AWS Pod Identity with workload identity owner
+			// (needs ServiceAccount from pod to resolve role ARN)
+			if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAws && podIdentity.IsWorkloadIdentityOwner() {
+				return true
+			}
+		}
+		// If AwsSecretManager uses credentials (not Pod Identity), it doesn't need PodSpec
+		// But we can't know without checking credentials field, so be conservative
+		// This is safe - might resolve PodSpec unnecessarily, but won't break
+	}
+
+	// SecretTargetRef, ConfigMapTargetRef, HashiCorpVault, AzureKeyVault, GCPSecretManager,
+	// and BoundServiceAccountToken don't need PodSpec
+	return false
+}
+
 // performGetScalersCache returns cache for input scalableObject, it is common code used by GetScalersCache() and getScalersCacheForScaledObject() methods
 func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, scalableObject interface{}, scalableObjectGeneration *int64, scalableObjectKind, scalableObjectNamespace, scalableObjectName string) (*cache.ScalersCache, error) {
 	h.scalerCachesLock.RLock()
@@ -363,9 +438,14 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 		return nil, err
 	}
 
-	podTemplateSpec, containerName, err := resolver.ResolveScaleTargetPodSpec(ctx, h.client, scalableObject)
-	if err != nil {
-		return nil, err
+	// Only resolve PodSpec if needed (lazy resolution)
+	var podTemplateSpec *corev1.PodTemplateSpec
+	var containerName string
+	if needsPodSpecResolution(ctx, h.client, scalableObject, withTriggers, scalableObjectNamespace) {
+		podTemplateSpec, containerName, err = resolver.ResolveScaleTargetPodSpec(ctx, h.client, scalableObject)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	asMetricSource := false
