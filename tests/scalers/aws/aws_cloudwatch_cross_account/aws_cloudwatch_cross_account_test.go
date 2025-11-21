@@ -115,7 +115,7 @@ spec:
         name: keda-trigger-auth-aws-credentials
       metadata:
         awsRegion: {{.AwsRegion}}
-        awsAccountId: {{.AwsAccountID}}
+        awsAccountId: "{{.AwsAccountID}}"
         namespace: {{.CloudWatchMetricNamespace}}
         dimensionName: {{.CloudWatchMetricDimensionName}}
         dimensionValue: {{.CloudWatchMetricDimensionValue}}
