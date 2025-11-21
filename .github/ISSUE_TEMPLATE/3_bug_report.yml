@@ -105,6 +105,15 @@ body:
     placeholder: ie. Azure Service Bus, Kafka, ...
   validations:
     required: false
+- type: dropdown
+  attributes:
+    label: Would you be open to contributing a fix?
+    options:
+      - "Yes"
+      - "No"
+      - "Maybe"
+  validations:
+    required: false
 - type: textarea
   id: anything-else
   attributes:

@@ -68,13 +68,25 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 
 	readyCondition := scaledJob.Status.Conditions.GetReadyCondition()
 	if isError {
-		// some triggers responded with error
-		// Set ScaledJob.Status.ReadyCondition to Unknown
-		msg := "Some triggers defined in ScaledJob are not working correctly"
-		logger.V(1).Info(msg)
-		if !readyCondition.IsUnknown() {
-			if err := e.setReadyCondition(ctx, logger, scaledJob, metav1.ConditionUnknown, "PartialTriggerError", msg); err != nil {
-				logger.Error(err, "error setting ready condition")
+		if isActive {
+			// some triggers responded with error, but at least one is active
+			// Set ScaledJob.Status.ReadyCondition to Unknown
+			msg := "Some triggers defined in ScaledJob are not working correctly"
+			logger.V(1).Info(msg)
+			if !readyCondition.IsUnknown() {
+				if err := e.setReadyCondition(ctx, logger, scaledJob, metav1.ConditionUnknown, "PartialTriggerError", msg); err != nil {
+					logger.Error(err, "error setting ready condition")
+				}
+			}
+		} else {
+			// all triggers responded with error (no active triggers)
+			// Set ScaledJob.Status.ReadyCondition to False
+			msg := "Triggers defined in ScaledJob are not working correctly"
+			logger.V(1).Info(msg)
+			if !readyCondition.IsFalse() {
+				if err := e.setReadyCondition(ctx, logger, scaledJob, metav1.ConditionFalse, "TriggerError", msg); err != nil {
+					logger.Error(err, "error setting ready condition")
+				}
 			}
 		}
 	} else if !readyCondition.IsTrue() {
