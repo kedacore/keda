@@ -277,9 +277,15 @@ func verifyHpas(incomingSo *ScaledObject, action string, _ bool) error {
 			}
 
 			if !owned {
-				if incomingSo.Annotations[ScaledObjectTransferHpaOwnershipAnnotation] == "true" &&
-					incomingSo.Spec.Advanced.HorizontalPodAutoscalerConfig.Name == hpa.Name {
-					scaledobjectlog.Info(fmt.Sprintf("%s hpa ownership being transferred to %s", hpa.Name, incomingSo.Name))
+				if incomingSo.Annotations[ScaledObjectTransferHpaOwnershipAnnotation] == "true" {
+					if incomingSo.Spec.Advanced != nil && incomingSo.Spec.Advanced.HorizontalPodAutoscalerConfig != nil && incomingSo.Spec.Advanced.HorizontalPodAutoscalerConfig.Name == hpa.Name {
+						scaledobjectlog.Info(fmt.Sprintf("%s hpa ownership being transferred to %s", hpa.Name, incomingSo.Name))
+					} else {
+						err = fmt.Errorf("the existing hpa '%s' for workload '%s' of type '%s' must be specified by name in advanced settings to enable ownership transfer", hpa.Name, incomingSo.Spec.ScaleTargetRef.Name, incomingSoGvkr.GVKString())
+						scaledobjectlog.Error(err, "validation error")
+						metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "transfer-ownership-missing-hpa-name")
+						return err
+					}
 				} else {
 					err = fmt.Errorf("the workload '%s' of type '%s' is already managed by the hpa '%s'", incomingSo.Spec.ScaleTargetRef.Name, incomingSoGvkr.GVKString(), hpa.Name)
 					scaledobjectlog.Error(err, "validation error")

@@ -77,6 +77,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
+- **General**: Fix nil reference panic when transfer-hpa-ownership is set but no hpa name is provided ([#7254](https://github.com/kedacore/keda/issues/7254))
 - **General**: Fix race condition in paused-replicas annotation causing ScaledObject to get stuck ([#7231](https://github.com/kedacore/keda/issues/7231))
 - **General**: Use TriggerError when all ScaledJob triggers fail ([#7205](https://github.com/kedacore/keda/pull/7205))
 - **ActiveMQ Scaler**: Correct parse error ActiveMQ ([#7245](https://github.com/kedacore/keda/pull/7245))
