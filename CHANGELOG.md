@@ -72,12 +72,15 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
-- *Dynamodb Scaler*: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
+- **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
+- **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
 
 ### Fixes
 
 - **General**: Apply fallback in polling loop to enable scaling from zero ([#7239](https://github.com/kedacore/keda/issues/7239))
+- **General**: Fix nil reference panic when transfer-hpa-ownership is set but no hpa name is provided ([#7254](https://github.com/kedacore/keda/issues/7254))
 - **General**: Fix race condition in paused-replicas annotation causing ScaledObject to get stuck ([#7231](https://github.com/kedacore/keda/issues/7231))
+- **General**: Use TriggerError when all ScaledJob triggers fail ([#7205](https://github.com/kedacore/keda/pull/7205))
 - **ActiveMQ Scaler**: Correct parse error ActiveMQ ([#7245](https://github.com/kedacore/keda/pull/7245))
 - **Datadog Scaler**: Fix metricUnavailableValue parameter not working ([#7238](https://github.com/kedacore/keda/issues/7238))
 - **IBMMQ Scaler**: Create new HTTP request for each queue query in IBMMQ scaler ([#7202](https://github.com/kedacore/keda/pull/7202))
