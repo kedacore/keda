@@ -3,22 +3,23 @@ package connectionpool
 import (
 	"context"
 	"errors"
-	"sync/atomic"
 	"testing"
+
+	"go.uber.org/atomic"
 )
 
 // mockPool simulates a ResourcePool for testing purposes.
 type mockPool struct {
-	closed int32
+	closed atomic.Int32
 }
 
 func (m *mockPool) close() {
-	atomic.StoreInt32(&m.closed, 1)
+	m.closed.Store(1)
 }
 
 func isClosed(p ResourcePool) bool {
 	if m, ok := p.(*mockPool); ok {
-		return atomic.LoadInt32(&m.closed) == 1
+		return m.closed.Load() == 1
 	}
 	return false
 }

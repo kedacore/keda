@@ -2,31 +2,29 @@ package connectionpool
 
 import (
 	"sync"
+
+	"go.uber.org/atomic"
 )
 
-// ResourcePool : generic interface for any DB pool
 type ResourcePool interface {
 	close()
 }
 
-// poolEntry : tracks a ResourcePool with reference count
 type poolEntry struct {
 	pool ResourcePool
-	ref  int32
+	ref  atomic.Int32
 }
 
-var (
-	poolMap sync.Map
-)
+var poolMap sync.Map
 
-// GetOrCreate : reuse or create new pool
 func GetOrCreate(poolKey string, createFn func() (ResourcePool, error)) (ResourcePool, error) {
 	if val, ok := poolMap.Load(poolKey); ok {
 		entry := val.(*poolEntry)
-		entry.ref++
-		logger.V(1).Info("Reusing existing pool", "poolKey", poolKey, "refCount", entry.ref)
+		entry.ref.Inc()
+		logger.V(1).Info("Reusing existing pool", "poolKey", poolKey, "refCount", entry.ref.Load())
 		return entry.pool, nil
 	}
+
 	logger.Info("Creating new pool", "poolKey", poolKey)
 	newPool, err := createFn()
 	if err != nil {
@@ -34,21 +32,23 @@ func GetOrCreate(poolKey string, createFn func() (ResourcePool, error)) (Resourc
 		return nil, err
 	}
 
-	entry := &poolEntry{pool: newPool, ref: 1}
-	actual, loaded := poolMap.LoadOrStore(poolKey, entry)
+	e := &poolEntry{pool: newPool}
+	e.ref.Store(1)
+
+	actual, loaded := poolMap.LoadOrStore(poolKey, e)
 	if loaded {
 		logger.Info("Duplicate creation detected, closing redundant pool", "poolKey", poolKey)
 		newPool.close()
 		old := actual.(*poolEntry)
-		old.ref++
-		logger.V(1).Info("Reusing existing pool after race", "poolKey", poolKey, "refCount", old.ref)
+		old.ref.Inc()
+		logger.V(1).Info("Reusing existing pool after race", "poolKey", poolKey, "refCount", old.ref.Load())
 		return old.pool, nil
 	}
+
 	logger.Info("Pool created successfully", "poolKey", poolKey)
 	return newPool, nil
 }
 
-// Release : decrease ref count, close when last user gone
 func Release(poolKey string) {
 	val, ok := poolMap.Load(poolKey)
 	if !ok {
@@ -56,16 +56,15 @@ func Release(poolKey string) {
 		return
 	}
 	entry := val.(*poolEntry)
-	entry.ref--
-	logger.V(1).Info("Released pool reference", "poolKey", poolKey, "refCount", entry.ref)
-	if entry.ref <= 0 {
+	if entry.ref.Dec() <= 0 {
 		logger.Info("Closing pool, no active references", "poolKey", poolKey)
 		entry.pool.close()
 		poolMap.Delete(poolKey)
+	} else {
+		logger.V(1).Info("Released pool reference", "poolKey", poolKey, "refCount", entry.ref.Load())
 	}
 }
 
-// CloseAll : close all pools (on operator shutdown)
 func CloseAll() {
 	poolMap.Range(func(key, val any) bool {
 		entry := val.(*poolEntry)

@@ -51,7 +51,7 @@ func loadConfig() {
 	logger.Info("Loaded global pool configuration", "entries", len(parsed))
 }
 func clearGlobalPoolOverride() {
-	globalOverrides.Range(func(key, value any) bool {
+	globalOverrides.Range(func(key, _ any) bool {
 		globalOverrides.Delete(key)
 		return true
 	})
