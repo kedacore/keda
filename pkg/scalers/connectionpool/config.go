@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-
 	"sync"
 
 	"github.com/fsnotify/fsnotify"

@@ -12,16 +12,15 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/go-logr/logr"
-	_ "github.com/jackc/pgx/v5/stdlib" // PostgreSQL drive required for this scaler
-	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/metrics/pkg/apis/external_metrics"
-
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib" // PostgreSQL drive required for this scaler
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/connectionpool"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
+	v2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
 const (
