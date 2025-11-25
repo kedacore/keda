@@ -63,6 +63,34 @@ spec:
           spec:
             description: TriggerAuthenticationSpec defines the various ways to authenticate
             properties:
+              akeyless:
+                description: Akeyless is used to authenticate using Akeyless
+                properties:
+                  accessId:
+                    type: string
+                  accessKey:
+                    type: string
+                  gatewayUrl:
+                    type: string
+                  secrets:
+                    items:
+                      properties:
+                        key:
+                          type: string
+                        parameter:
+                          type: string
+                        path:
+                          type: string
+                      required:
+                      - parameter
+                      - path
+                      type: object
+                    type: array
+                required:
+                - accessId
+                - gatewayUrl
+                - secrets
+                type: object
               awsSecretManager:
                 description: AwsSecretManager is used to authenticate using AwsSecretManager
                 properties:
