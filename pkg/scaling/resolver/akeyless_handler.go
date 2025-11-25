@@ -29,14 +29,11 @@ const (
 	STATIC_SECRET_RESPONSE  = "STATIC_SECRET"
 	DYNAMIC_SECRET_RESPONSE = "DYNAMIC_SECRET"
 	ROTATED_SECRET_RESPONSE = "ROTATED_SECRET"
-	STATIC_SECRET_TYPE      = "static-secret"
-	DYNAMIC_SECRET_TYPE     = "dynamic-secret"
-	ROTATED_SECRET_TYPE     = "rotated-secret"
 	ALL_SECRET_TYPES        = "all"
 	CLIENT_SOURCE           = "akeylessclienttype"
 )
 
-var supportedSecretTypes = []string{STATIC_SECRET_TYPE, DYNAMIC_SECRET_TYPE, ROTATED_SECRET_TYPE}
+var supportedSecretTypes = []string{STATIC_SECRET_RESPONSE, DYNAMIC_SECRET_RESPONSE, ROTATED_SECRET_RESPONSE}
 
 type AkeylessHandler struct {
 	akeyless *kedav1alpha1.Akeyless
