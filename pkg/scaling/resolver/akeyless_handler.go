@@ -55,7 +55,7 @@ func (h *AkeylessHandler) Initialize(ctx context.Context) error {
 
 	// Validate Gateway URL is not empty and is a valid URL
 	if h.akeyless.GatewayUrl == "" {
-		h.logger.Info("gatewayUrl is not set, using default value %s...", PUBLIC_GATEWAY_URL)
+		h.logger.Info(fmt.Sprintf("gatewayUrl is not set, using default value %s...", PUBLIC_GATEWAY_URL))
 		h.akeyless.GatewayUrl = PUBLIC_GATEWAY_URL
 	} else {
 		_, err := url.ParseRequestURI(h.akeyless.GatewayUrl)
@@ -69,7 +69,7 @@ func (h *AkeylessHandler) Initialize(ctx context.Context) error {
 		return errors.New("accessId is required")
 	}
 
-	h.logger.Info("initializing Akeyless handler '%s'...", h.akeyless.GatewayUrl)
+	h.logger.Info(fmt.Sprintf("initializing Akeyless handler '%s'...", h.akeyless.GatewayUrl))
 	err := h.Authenticate(ctx)
 	if err != nil {
 		return errors.New("unable to authenticate with Akeyless")
@@ -82,7 +82,7 @@ func (h *AkeylessHandler) Initialize(ctx context.Context) error {
 // Authenticate with Akeyless
 func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 
-	h.logger.Info("authenticating with Akeyless '%s' using Access ID '%s'...", h.akeyless.GatewayUrl, h.akeyless.AccessId)
+	h.logger.Info(fmt.Sprintf("authenticating with Akeyless '%s' using Access ID '%s'...", h.akeyless.GatewayUrl, h.akeyless.AccessId))
 	authRequest := akeyless_client.NewAuth()
 	authRequest.SetAccessId(h.akeyless.AccessId)
 
@@ -93,13 +93,13 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 		return errors.New("unable to extract access type character from accessId, expected format is p-([A-Za-z0-9]{14}|[A-Za-z0-9]{12})")
 	}
 
-	h.logger.Info("getting access type display name for character '%s'...", accessTypeChar)
+	h.logger.Info(fmt.Sprintf("getting access type display name for character '%s'...", accessTypeChar))
 	accessType, err := getAccessTypeDisplayName(accessTypeChar)
 	if err != nil {
 		return errors.New("unable to get access type display name, expected format is p-([A-Za-z0-9]{14}|[A-Za-z0-9]{12})")
 	}
 
-	h.logger.Info("authenticating using access type '%s'...", accessType)
+	h.logger.Info(fmt.Sprintf("authenticating using access type '%s'...", accessType))
 
 	// TODO add support for other access types
 	switch accessType {
@@ -133,7 +133,7 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 		return fmt.Errorf("failed to authenticate with Akeyless (HTTP status code: %d): %w", httpResponse.StatusCode, errors.New(httpResponse.Status))
 	}
 
-	h.logger.Info("authentication successful - token expires at %s", out.GetExpiration())
+	h.logger.Info(fmt.Sprintf("authentication successful - token expires at %s", out.GetExpiration()))
 	h.token = out.GetToken()
 	return nil
 }
@@ -171,13 +171,27 @@ func (h *AkeylessHandler) GetSecretsValue(ctx context.Context, secretResults map
 				break
 			}
 
-			// single static secrets can be of type string, or map[string]string
+			// single static secrets can be of type string, or map[string]string (e.g. key/value, username/password, JSON)
 			// if it's a map[string]string, we use the provided key to get the value
-			secretValue, ok := value.(map[string]string)[secret.Key]
-			if !ok {
-				err = fmt.Errorf("failed to get secret '%s' value for static secret from Akeyless API: key not found", secret.Path)
+			var secretValue string
+			if strValue, ok := value.(string); ok {
+				secretValue = strValue
+			} else if mapValue, ok := value.(map[string]string); ok {
+				if secret.Key != "" {
+					err = fmt.Errorf("failed to get secret '%s' value for static secret from Akeyless API: key not found", secret.Path)
+					break
+				}
+				var found bool
+				secretValue, found = mapValue[secret.Key]
+				if !found {
+					err = fmt.Errorf("failed to get secret '%s' value for static secret from Akeyless API: key not found", secret.Path)
+					break
+				}
+			} else {
+				err = fmt.Errorf("failed to get secret '%s' value for static secret from Akeyless API: value is not a string or map[string]string", secret.Path)
 				break
 			}
+
 			secretResults[secret.Parameter] = secretValue
 
 		case DYNAMIC_SECRET_RESPONSE:
