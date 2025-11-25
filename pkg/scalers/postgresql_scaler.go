@@ -14,13 +14,14 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // PostgreSQL drive required for this scaler
+	v2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/metrics/pkg/apis/external_metrics"
+
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/connectionpool"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
-	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
 const (
