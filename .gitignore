@@ -17,6 +17,7 @@ testbin/*
 # Kubernetes Generated files - skip generated files, except for vendored files
 
 !vendor/**/zz_generated.*
+vendor/**
 
 # editor and IDE paraphernalia
 .idea
@@ -45,6 +46,9 @@ cover.out
 # GO debug binaries
 cmd/manager/debug.test
 __debug_bin
+
+# goenv
+.go-version
 
 # GO Test result
 report.xml

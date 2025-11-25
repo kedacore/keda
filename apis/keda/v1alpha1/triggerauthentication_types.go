@@ -98,6 +98,9 @@ type TriggerAuthenticationSpec struct {
 
 	// +optional
 	BoundServiceAccountToken []BoundServiceAccountToken `json:"boundServiceAccountToken,omitempty"`
+
+	// +optional
+	Akeyless *Akeyless `json:"akeyless,omitempty"`
 }
 
 // TriggerAuthenticationStatus defines the observed state of TriggerAuthentication
@@ -230,6 +233,26 @@ type HashiCorpVault struct {
 
 	// +optional
 	Mount string `json:"mount,omitempty"`
+}
+
+// Akeyless is used to authenticate using Akeyless
+type Akeyless struct {
+	GatewayUrl string           `json:"gatewayUrl"`
+	AccessId   string           `json:"accessId"`
+	Secrets    []AkeylessSecret `json:"secrets"`
+
+	// +optional
+	AccessKey *string `json:"accessKey,omitempty"`
+
+	// TODO add k8s, aws, azure, gcp, etc. authentication methods
+}
+
+type AkeylessSecret struct {
+	Parameter string `json:"parameter"`
+	Path      string `json:"path"`
+
+	// +optional
+	Key string `json:"key,omitempty"`
 }
 
 // Credential defines the Hashicorp Vault credentials depending on the authentication method
