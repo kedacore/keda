@@ -10,6 +10,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/akeylesslabs/akeyless-go-cloud-id/cloudprovider/aws"
+	"github.com/akeylesslabs/akeyless-go-cloud-id/cloudprovider/azure"
+	"github.com/akeylesslabs/akeyless-go-cloud-id/cloudprovider/gcp"
 	"github.com/akeylesslabs/akeyless-go/v5"
 	akeyless_client "github.com/akeylesslabs/akeyless-go/v5"
 	"github.com/go-logr/logr"
@@ -112,12 +115,29 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 		authRequest.SetAccessKey(*accessKey)
 	case AUTH_AWS_IAM:
 		authRequest.SetAccessType(AUTH_AWS_IAM)
+		id, err := aws.GetCloudId()
+		if err != nil {
+			return fmt.Errorf("unable to get cloud ID for AWS IAM: %w", err)
+		}
+		authRequest.SetCloudId(id)
 	case AUTH_GCP:
 		authRequest.SetAccessType(AUTH_GCP)
+		// TODO add conf for audience
+		id, err := gcp.GetCloudID("akeyless.io")
+		if err != nil {
+			return fmt.Errorf("unable to get cloud ID for GCP: %w", err)
+		}
+		authRequest.SetCloudId(id)
 	case AUTH_AZURE_AD:
 		authRequest.SetAccessType(AUTH_AZURE_AD)
+		// TODO add conf for object ID
+		id, err := azure.GetCloudId("")
+		if err != nil {
+			return fmt.Errorf("unable to get cloud ID for Azure AD: %w", err)
+		}
+		authRequest.SetCloudId(id)
 	default:
-		return errors.New("unsupported access type: " + accessType)
+		return fmt.Errorf("unsupported access type: %s", accessType)
 	}
 
 	// Create Akeyless API client configuration
@@ -137,7 +157,7 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 	h.logger.Info("authenticating with Akeyless...")
 	out, httpResponse, err := h.client.Auth(ctx).Body(*authRequest).Execute()
 	if err != nil || httpResponse.StatusCode != 200 {
-		return fmt.Errorf("failed to authenticate with Akeyless (HTTP status code: %d): %w", httpResponse.StatusCode, errors.New(httpResponse.Status))
+		return fmt.Errorf("failed to authenticate with Akeyless (HTTP status code: %d): %w", httpResponse.StatusCode, err)
 	}
 
 	h.logger.Info(fmt.Sprintf("authentication successful - token expires at %s", out.GetExpiration()))

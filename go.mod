@@ -49,6 +49,7 @@ require (
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/IBM/sarama v1.46.1
 	github.com/InfluxCommunity/influxdb3-go/v2 v2.10.0
+	github.com/akeylesslabs/akeyless-go-cloud-id v0.3.5
 	github.com/akeylesslabs/akeyless-go/v5 v5.0.14
 	github.com/arangodb/go-driver v1.6.7
 	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4
@@ -150,6 +151,11 @@ require (
 	sigs.k8s.io/controller-tools v0.16.5
 	sigs.k8s.io/custom-metrics-apiserver v1.33.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.7.1
+)
+
+require (
+	github.com/aws/aws-sdk-go v1.55.7 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )
 
 require (
