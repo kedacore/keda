@@ -250,7 +250,7 @@ type Akeyless struct {
 	// +optional
 	AccessKey *string `json:"accessKey,omitempty"`
 
-	// TODO add k8s, aws, azure, gcp, etc. authentication methods
+	// TODO add k8s authentication methods
 }
 
 type AkeylessSecret struct {
