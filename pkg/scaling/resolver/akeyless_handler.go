@@ -166,7 +166,6 @@ func (h *AkeylessHandler) GetSecretsValue(ctx context.Context, secretResults map
 			if apiErr != nil {
 				return nil, fmt.Errorf("failed to get secret '%s' value for static secret from Akeyless API: %w", secret.Path, apiErr)
 			}
-			h.logger.Info(fmt.Sprintf("secret value for static secret '%s' is '%s'", secret.Path, secretRespMap))
 			// check if secret key is in response
 			value, ok := secretRespMap[secret.Path]
 			if !ok {
@@ -174,7 +173,6 @@ func (h *AkeylessHandler) GetSecretsValue(ctx context.Context, secretResults map
 			}
 			// single static secrets can be of type string, or map[string]string (e.g. key/value, username/password, JSON)
 			// if it's a map[string]string, we use the provided key to get the value
-			var secretValue string
 			if strValue, ok := value.(string); ok {
 				h.logger.Info(fmt.Sprintf("secret value for static secret '%s' is a string", secret.Path))
 				secretValue = strValue
@@ -199,16 +197,13 @@ func (h *AkeylessHandler) GetSecretsValue(ctx context.Context, secretResults map
 			} else {
 				return nil, fmt.Errorf("failed to get secret '%s' value for static secret: unexpected value type: %T", secret.Path, value)
 			}
-
-			secretResults[secret.Parameter] = secretValue
 		case DYNAMIC_SECRET_RESPONSE:
 			h.logger.Info(fmt.Sprintf("getting dynamic secret value for '%s' from Akeyless API...", secret.Path))
 			getDynamicSecretValue := akeyless.NewGetDynamicSecretValue(secret.Path)
 			getDynamicSecretValue.SetToken(h.token)
 			secretRespMap, httpResponse, apiErr := h.client.GetDynamicSecretValue(ctx).Body(*getDynamicSecretValue).Execute()
 			if apiErr != nil {
-				err = fmt.Errorf("failed to get dynamic secret '%s' value from Akeyless API: %w", secret.Path, apiErr)
-				break
+				return nil, fmt.Errorf("failed to get dynamic secret '%s' value from Akeyless API: %w", secret.Path, apiErr)
 			}
 			if httpResponse.StatusCode != 200 {
 				return nil, fmt.Errorf("failed to get dynamic secret '%s' value from Akeyless API (HTTP status code: %d): %w", secret.Path, httpResponse.StatusCode, errors.New(httpResponse.Status))
@@ -254,7 +249,6 @@ func (h *AkeylessHandler) GetSecretsValue(ctx context.Context, secretResults map
 					return nil, fmt.Errorf("failed to get secret '%s' value for dynamic secret: key '%s' not found", secret.Path, secret.Key)
 				}
 			}
-			secretResults[secret.Parameter] = secretValue
 		case ROTATED_SECRET_RESPONSE:
 			h.logger.Info(fmt.Sprintf("getting rotated secret value for '%s'...", secret.Path))
 			getRotatedSecretValue := akeyless.NewGetRotatedSecretValue(secret.Path)
@@ -297,6 +291,7 @@ func (h *AkeylessHandler) GetSecretsValue(ctx context.Context, secretResults map
 		}
 		secretResults[secret.Parameter] = secretValue
 	}
+	h.logger.Info(fmt.Sprintf("returning %d secrets values", len(secretResults)))
 	return secretResults, nil
 }
 

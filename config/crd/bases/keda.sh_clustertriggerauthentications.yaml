@@ -30,6 +30,15 @@ spec:
     - jsonPath: .spec.hashiCorpVault.address
       name: VaultAddress
       type: string
+    - jsonPath: .spec.akeyless.gatewayUrl
+      name: AkeylessGatewayUrl
+      type: string
+    - jsonPath: .spec.akeyless.accessId
+      name: AkeylessAccessId
+      type: string
+    - jsonPath: .spec.akeyless.secrets[*].path
+      name: AkeylessSecrets
+      type: string
     - jsonPath: .status.scaledobjects
       name: ScaledObjects
       priority: 1

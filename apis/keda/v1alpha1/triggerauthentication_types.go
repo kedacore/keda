@@ -31,6 +31,9 @@ import (
 // +kubebuilder:printcolumn:name="Secret",type="string",JSONPath=".spec.secretTargetRef[*].name"
 // +kubebuilder:printcolumn:name="Env",type="string",JSONPath=".spec.env[*].name"
 // +kubebuilder:printcolumn:name="VaultAddress",type="string",JSONPath=".spec.hashiCorpVault.address"
+// +kubebuilder:printcolumn:name="AkeylessGatewayUrl",type="string",JSONPath=".spec.akeyless.gatewayUrl"
+// +kubebuilder:printcolumn:name="AkeylessAccessId",type="string",JSONPath=".spec.akeyless.accessId"
+// +kubebuilder:printcolumn:name="AkeylessSecrets",type="string",JSONPath=".spec.akeyless.secrets[*].path"
 // +kubebuilder:printcolumn:name="ScaledObjects",type="string",priority=1,JSONPath=".status.scaledobjects"
 // +kubebuilder:printcolumn:name="ScaledJobs",type="string",priority=1,JSONPath=".status.scaledjobs"
 type ClusterTriggerAuthentication struct {
@@ -60,6 +63,9 @@ type ClusterTriggerAuthenticationList struct {
 // +kubebuilder:printcolumn:name="Secret",type="string",JSONPath=".spec.secretTargetRef[*].name"
 // +kubebuilder:printcolumn:name="Env",type="string",JSONPath=".spec.env[*].name"
 // +kubebuilder:printcolumn:name="VaultAddress",type="string",JSONPath=".spec.hashiCorpVault.address"
+// +kubebuilder:printcolumn:name="AkeylessGatewayUrl",type="string",JSONPath=".spec.akeyless.gatewayUrl"
+// +kubebuilder:printcolumn:name="AkeylessAccessID",type="string",JSONPath=".spec.akeyless.accessId"
+// +kubebuilder:printcolumn:name="AkeylessSecrets",type="string",JSONPath=".spec.akeyless.secrets[*].path"
 // +kubebuilder:printcolumn:name="ScaledObjects",type="string",priority=1,JSONPath=".status.scaledobjects"
 // +kubebuilder:printcolumn:name="ScaledJobs",type="string",priority=1,JSONPath=".status.scaledjobs"
 type TriggerAuthentication struct {
@@ -246,10 +252,6 @@ type Akeyless struct {
 
 	// TODO add k8s, aws, azure, gcp, etc. authentication methods
 }
-
-// +kubebuilder:printcolumn:name="AkeylessGateway",type="string",JSONPath=".spec.akeyless.gatewayUrl"
-// +kubebuilder:printcolumn:name="AkeylessAccessID",type="string",JSONPath=".spec.akeyless.accessId"
-// +kubebuilder:printcolumn:name="AkeylessSecrets",type="string",JSONPath=".spec.akeyless.secrets[*].path"
 
 type AkeylessSecret struct {
 	Parameter string `json:"parameter"`
