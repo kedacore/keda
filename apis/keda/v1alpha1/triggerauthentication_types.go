@@ -247,6 +247,10 @@ type Akeyless struct {
 	// TODO add k8s, aws, azure, gcp, etc. authentication methods
 }
 
+// +kubebuilder:printcolumn:name="AkeylessGateway",type="string",JSONPath=".spec.akeyless.gatewayUrl"
+// +kubebuilder:printcolumn:name="AkeylessAccessID",type="string",JSONPath=".spec.akeyless.accessId"
+// +kubebuilder:printcolumn:name="AkeylessSecrets",type="string",JSONPath=".spec.akeyless.secrets[*].path"
+
 type AkeylessSecret struct {
 	Parameter string `json:"parameter"`
 	Path      string `json:"path"`
