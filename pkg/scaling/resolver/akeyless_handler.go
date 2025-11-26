@@ -21,10 +21,10 @@ const (
 	AUTH_ACCESS_KEY = "access_key"
 
 	// TODO uncomment when supported by the API
-	// AUTH_AWS_IAM            = "aws_iam"
+	AUTH_AWS_IAM = "aws_iam"
 	// AUTH_K8S                = "k8s"
-	// AUTH_GCP                = "gcp"
-	// AUTH_AZURE_AD           = "azure_ad"
+	AUTH_GCP                = "gcp"
+	AUTH_AZURE_AD           = "azure_ad"
 	PUBLIC_GATEWAY_URL      = "https://api.akeyless.io"
 	USER_AGENT              = "keda.sh"
 	STATIC_SECRET_RESPONSE  = "STATIC_SECRET"
@@ -73,7 +73,7 @@ func (h *AkeylessHandler) Initialize(ctx context.Context) error {
 	h.logger.Info(fmt.Sprintf("initializing Akeyless handler '%s'...", h.akeyless.GatewayUrl))
 	err := h.Authenticate(ctx)
 	if err != nil {
-		return errors.New("unable to authenticate with Akeyless")
+		return fmt.Errorf("unable to authenticate with Akeyless: %w", err)
 	}
 
 	h.logger.Info("Akeyless handler initialized successfully")
@@ -110,6 +110,12 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 			return errors.New("access key is required for access type 'access_key'")
 		}
 		authRequest.SetAccessKey(*accessKey)
+	case AUTH_AWS_IAM:
+		authRequest.SetAccessType(AUTH_AWS_IAM)
+	case AUTH_GCP:
+		authRequest.SetAccessType(AUTH_GCP)
+	case AUTH_AZURE_AD:
+		authRequest.SetAccessType(AUTH_AZURE_AD)
 	default:
 		return errors.New("unsupported access type: " + accessType)
 	}
@@ -313,11 +319,11 @@ func (h *AkeylessHandler) GetSecretType(ctx context.Context, secretName string) 
 // AccessTypeCharMap maps single-character access types to their display names.
 var accessTypeCharMap = map[string]string{
 	"a": AUTH_ACCESS_KEY,
+	"w": AUTH_AWS_IAM,
 	// TODO add support for other access types
-	// "w": AUTH_IAM,
 	// "k": AUTH_K8S,
-	// "g": AUTH_GCP,
-	// "z": AUTH_AZURE_AD,
+	"g": AUTH_GCP,
+	"z": AUTH_AZURE_AD,
 }
 
 // AccessIdRegex is the compiled regular expression for validating Akeyless Access IDs.

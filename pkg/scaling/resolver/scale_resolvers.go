@@ -362,6 +362,7 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				err := akeylessHandler.Initialize(ctx)
 				if err != nil {
 					logger.Error(err, "error authenticating to Akeyless", "triggerAuthRef.Name", triggerAuthRef.Name)
+					return result, podIdentity, err
 				}
 				result, err = akeylessHandler.GetSecretsValue(ctx, result)
 				if err != nil {
