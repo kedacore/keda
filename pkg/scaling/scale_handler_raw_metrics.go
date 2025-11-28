@@ -98,8 +98,9 @@ type metricMeta struct {
 }
 
 type RawMetrics struct {
-	Meta   metricMeta
-	Values []external_metrics.ExternalMetricValue
+	Meta     metricMeta
+	Values   []external_metrics.ExternalMetricValue
+	IsActive bool
 }
 
 type RawMetricSubscriptions struct {
@@ -207,7 +208,7 @@ func (h *scaleHandler) GetRawMetricsChan(subscriber string) (chan RawMetrics, ch
 	return h.rawMetricsSubscriptions[subscriber].rawMetrics, h.rawMetricsSubscriptions[subscriber].done
 }
 
-func (h *scaleHandler) sendWhenSubscribed(soName, ns, triggerName string, metrics []external_metrics.ExternalMetricValue) {
+func (h *scaleHandler) sendWhenSubscribed(soName, ns, triggerName string, isActive bool, metrics []external_metrics.ExternalMetricValue) {
 	mm := metricMeta{
 		TriggerName:      triggerName,
 		ScaledObjectName: soName,
@@ -225,7 +226,7 @@ func (h *scaleHandler) sendWhenSubscribed(soName, ns, triggerName string, metric
 	if len(targets) > 0 {
 		vals := make([]external_metrics.ExternalMetricValue, len(metrics))
 		copy(vals, metrics)
-		msg := RawMetrics{Meta: mm, Values: vals}
+		msg := RawMetrics{Meta: mm, Values: vals, IsActive: isActive}
 
 		for _, t := range targets {
 			select {
