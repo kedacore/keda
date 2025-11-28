@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 	"regexp"
 	"slices"
 	"strings"
@@ -141,23 +140,16 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 		if h.akeyless.K8sAuthConfigName == "" {
 			return errors.New("k8sAuthConfigName is required for access type 'k8s'")
 		}
+		authRequest.SetK8sAuthConfigName(h.akeyless.K8sAuthConfigName)
+
 		if h.akeyless.K8sGatewayUrl == "" {
 			return errors.New("k8sGatewayUrl is required for access type 'k8s'")
 		}
-
-		// if k8s service account token is provided, try to read it from the file system
-		if h.akeyless.K8sServiceAccountToken == "" {
-			h.logger.Info(fmt.Sprintf("k8sServiceAccountToken is not provided, attempting to retrieve from file '%s'...", K8S_SERVICE_ACCOUNT_TOKEN_FILE))
-			token, err := os.ReadFile(K8S_SERVICE_ACCOUNT_TOKEN_FILE)
-			if err != nil {
-				return fmt.Errorf("unable to read k8s service account token from file '%s': %w", K8S_SERVICE_ACCOUNT_TOKEN_FILE, err)
-			}
-			h.akeyless.K8sServiceAccountToken = string(token)
-		}
-
-		authRequest.SetK8sAuthConfigName(h.akeyless.K8sAuthConfigName)
-		authRequest.SetK8sServiceAccountToken(h.akeyless.K8sServiceAccountToken)
 		authRequest.SetGatewayUrl(h.akeyless.K8sGatewayUrl)
+
+		if h.akeyless.K8sServiceAccountToken != "" {
+			authRequest.SetK8sServiceAccountToken(h.akeyless.K8sServiceAccountToken)
+		}
 
 	default:
 		return fmt.Errorf("unsupported access type: %s", accessType)
@@ -363,8 +355,7 @@ func (h *AkeylessHandler) GetSecretType(ctx context.Context, secretName string) 
 var accessTypeCharMap = map[string]string{
 	"a": AUTH_ACCESS_KEY,
 	"w": AUTH_AWS_IAM,
-	// TODO add support for other access types
-	// "k": AUTH_K8S,
+	"k": AUTH_K8S,
 	"g": AUTH_GCP,
 	"z": AUTH_AZURE_AD,
 }
