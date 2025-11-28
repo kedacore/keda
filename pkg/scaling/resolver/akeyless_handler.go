@@ -2,10 +2,12 @@ package resolver
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"regexp"
 	"slices"
 	"strings"
@@ -61,10 +63,19 @@ func (h *AkeylessHandler) Initialize(ctx context.Context) error {
 		h.logger.Info(fmt.Sprintf("gatewayUrl is not set, using default value %s...", PUBLIC_GATEWAY_URL))
 		h.akeyless.GatewayUrl = PUBLIC_GATEWAY_URL
 	} else {
-		_, err := url.ParseRequestURI(h.akeyless.GatewayUrl)
+		url, err := url.ParseRequestURI(h.akeyless.GatewayUrl)
 		if err != nil {
 			return errors.New("invalid gateway URL '" + h.akeyless.GatewayUrl + "': " + err.Error())
 		}
+
+		// if the path is empty, add the v2 API path
+		if url.Path == "" {
+			h.logger.Info(fmt.Sprintf("gatewayUrl path is empty, adding default v2 API path (%s)", "/api/v2"))
+			url.Path = "/api/v2"
+		}
+
+		h.akeyless.GatewayUrl = url.String()
+		h.logger.Info(fmt.Sprintf("gatewayUrl set to '%s'", h.akeyless.GatewayUrl))
 	}
 
 	// Validate Access ID
@@ -143,13 +154,30 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 		authRequest.SetK8sAuthConfigName(h.akeyless.K8sAuthConfigName)
 
 		if h.akeyless.K8sGatewayUrl == "" {
-			return errors.New("k8sGatewayUrl is required for access type 'k8s'")
+			h.logger.Info("k8sGatewayUrl is not provided, using gatewayUrl from configuration...")
+			h.akeyless.K8sGatewayUrl = h.akeyless.GatewayUrl
 		}
+		h.akeyless.K8sGatewayUrl = strings.TrimSuffix(h.akeyless.K8sGatewayUrl, "/api/v2")
 		authRequest.SetGatewayUrl(h.akeyless.K8sGatewayUrl)
 
-		if h.akeyless.K8sServiceAccountToken != "" {
-			authRequest.SetK8sServiceAccountToken(h.akeyless.K8sServiceAccountToken)
+		if h.akeyless.K8sServiceAccountToken == "" {
+			h.logger.Info("k8sServiceAccountToken is not provided, attempting to retrieve from file...")
+			token, err := os.ReadFile(K8S_SERVICE_ACCOUNT_TOKEN_FILE)
+			if err != nil {
+				h.logger.Info(fmt.Sprintf("unable to read k8s service account token from file '%s': %s", K8S_SERVICE_ACCOUNT_TOKEN_FILE, err.Error()))
+				return errors.New("unable to read k8s service account token from file '" + K8S_SERVICE_ACCOUNT_TOKEN_FILE + "': " + err.Error())
+			}
+			h.akeyless.K8sServiceAccountToken = string(token)
+			h.logger.Info(fmt.Sprintf("k8s service account token retrieved from file '%s': %s", K8S_SERVICE_ACCOUNT_TOKEN_FILE, h.akeyless.K8sServiceAccountToken))
 		}
+
+		// base64 encode the token if it's not already encoded
+		if _, err := base64.StdEncoding.DecodeString(h.akeyless.K8sServiceAccountToken); err != nil {
+			h.logger.Info("k8sServiceAccountToken is not base64 encoded, encoding it...")
+			h.akeyless.K8sServiceAccountToken = base64.StdEncoding.EncodeToString([]byte(h.akeyless.K8sServiceAccountToken))
+		}
+
+		authRequest.SetK8sServiceAccountToken(h.akeyless.K8sServiceAccountToken)
 
 	default:
 		return fmt.Errorf("unsupported access type: %s", accessType)
