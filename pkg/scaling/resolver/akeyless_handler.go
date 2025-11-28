@@ -153,7 +153,7 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 		authRequest.SetK8sAuthConfigName(h.akeyless.K8sAuthConfigName)
 
 		if h.akeyless.K8sGatewayUrl == "" {
-			h.logger.Info("k8sGatewayUrl is not provided, using gatewayUrl '%s'...", h.akeyless.GatewayUrl)
+			h.logger.Info(fmt.Sprintf("k8sGatewayUrl is not provided, using gatewayUrl '%s'...", h.akeyless.GatewayUrl))
 			h.akeyless.K8sGatewayUrl = h.akeyless.GatewayUrl
 		}
 		h.akeyless.K8sGatewayUrl = strings.TrimSuffix(h.akeyless.K8sGatewayUrl, "/api/v2")
