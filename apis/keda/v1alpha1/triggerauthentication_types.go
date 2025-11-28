@@ -250,7 +250,12 @@ type Akeyless struct {
 	// +optional
 	AccessKey *string `json:"accessKey,omitempty"`
 
-	// TODO add k8s authentication methods
+	// +optional
+	K8sAuthConfigName string `json:"k8sAuthConfigName,omitempty"`
+	// +optional
+	K8sServiceAccountToken string `json:"k8sServiceAccountToken,omitempty"`
+	// +optional
+	K8sGatewayUrl string `json:"k8sGatewayUrl,omitempty"`
 }
 
 type AkeylessSecret struct {

@@ -82,6 +82,12 @@ spec:
                     type: string
                   gatewayUrl:
                     type: string
+                  k8sAuthConfigName:
+                    type: string
+                  k8sGatewayUrl:
+                    type: string
+                  k8sServiceAccountToken:
+                    type: string
                   secrets:
                     items:
                       properties:

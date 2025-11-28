@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"regexp"
 	"slices"
 	"strings"
@@ -21,20 +22,19 @@ import (
 )
 
 const (
-	AUTH_ACCESS_KEY = "access_key"
-
-	// TODO uncomment when supported by the API
-	AUTH_AWS_IAM = "aws_iam"
-	// AUTH_K8S                = "k8s"
-	AUTH_GCP                = "gcp"
-	AUTH_AZURE_AD           = "azure_ad"
-	PUBLIC_GATEWAY_URL      = "https://api.akeyless.io"
-	USER_AGENT              = "keda.sh"
-	STATIC_SECRET_RESPONSE  = "STATIC_SECRET"
-	DYNAMIC_SECRET_RESPONSE = "DYNAMIC_SECRET"
-	ROTATED_SECRET_RESPONSE = "ROTATED_SECRET"
-	ALL_SECRET_TYPES        = "all"
-	CLIENT_SOURCE           = "akeylessclienttype"
+	AUTH_ACCESS_KEY                = "access_key"
+	AUTH_AWS_IAM                   = "aws_iam"
+	AUTH_K8S                       = "k8s"
+	AUTH_GCP                       = "gcp"
+	AUTH_AZURE_AD                  = "azure_ad"
+	PUBLIC_GATEWAY_URL             = "https://api.akeyless.io"
+	USER_AGENT                     = "keda.sh"
+	STATIC_SECRET_RESPONSE         = "STATIC_SECRET"
+	DYNAMIC_SECRET_RESPONSE        = "DYNAMIC_SECRET"
+	ROTATED_SECRET_RESPONSE        = "ROTATED_SECRET"
+	ALL_SECRET_TYPES               = "all"
+	CLIENT_SOURCE                  = "akeylessclienttype"
+	K8S_SERVICE_ACCOUNT_TOKEN_FILE = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
 
 var supportedSecretTypes = []string{STATIC_SECRET_RESPONSE, DYNAMIC_SECRET_RESPONSE, ROTATED_SECRET_RESPONSE}
@@ -105,7 +105,6 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 
 	h.logger.Info(fmt.Sprintf("authenticating using access type '%s'...", accessType))
 
-	// TODO add support for other access types
 	switch accessType {
 	case AUTH_ACCESS_KEY:
 		accessKey := h.akeyless.AccessKey
@@ -136,6 +135,30 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 			return fmt.Errorf("unable to get cloud ID for Azure AD: %w", err)
 		}
 		authRequest.SetCloudId(id)
+	case AUTH_K8S:
+		authRequest.SetAccessType(AUTH_K8S)
+
+		if h.akeyless.K8sAuthConfigName == "" {
+			return errors.New("k8sAuthConfigName is required for access type 'k8s'")
+		}
+		if h.akeyless.K8sGatewayUrl == "" {
+			return errors.New("k8sGatewayUrl is required for access type 'k8s'")
+		}
+
+		// if k8s service account token is provided, try to read it from the file system
+		if h.akeyless.K8sServiceAccountToken == "" {
+			h.logger.Info(fmt.Sprintf("k8sServiceAccountToken is not provided, attempting to retrieve from file '%s'...", K8S_SERVICE_ACCOUNT_TOKEN_FILE))
+			token, err := os.ReadFile(K8S_SERVICE_ACCOUNT_TOKEN_FILE)
+			if err != nil {
+				return fmt.Errorf("unable to read k8s service account token from file '%s': %w", K8S_SERVICE_ACCOUNT_TOKEN_FILE, err)
+			}
+			h.akeyless.K8sServiceAccountToken = string(token)
+		}
+
+		authRequest.SetK8sAuthConfigName(h.akeyless.K8sAuthConfigName)
+		authRequest.SetK8sServiceAccountToken(h.akeyless.K8sServiceAccountToken)
+		authRequest.SetGatewayUrl(h.akeyless.K8sGatewayUrl)
+
 	default:
 		return fmt.Errorf("unsupported access type: %s", accessType)
 	}
