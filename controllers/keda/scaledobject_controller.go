@@ -317,6 +317,9 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		return "Cannot update ScaledObject status with triggers'types and authentications'types", err
 	}
 
+	// Check if cooldownPeriod or pollingInterval are configured unnecessarily
+	r.checkScalingConfiguration(scaledObject)
+
 	// Create a new HPA or update existing one according to ScaledObject
 	newHPACreated, err := r.ensureHPAForScaledObjectExists(ctx, logger, scaledObject, &gvkr)
 	if err != nil {
@@ -344,6 +347,31 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		return "ScaledObject paused replicas are being scaled", fmt.Errorf("ScaledObject paused replicas are being scaled")
 	}
 	return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
+}
+
+// checkScalingConfiguration checks if cooldownPeriod or pollingInterval are configured when minReplicaCount is not 0, and emits informational events if so
+func (r *ScaledObjectReconciler) checkScalingConfiguration(scaledObject *kedav1alpha1.ScaledObject) {
+	minReplicas := int32(0)
+	if scaledObject.Spec.MinReplicaCount != nil {
+		minReplicas = *scaledObject.Spec.MinReplicaCount
+	}
+
+	// Only check if minReplicaCount is not 0
+	if minReplicas == 0 {
+		return
+	}
+
+	// Check CooldownPeriod
+	if scaledObject.Spec.CooldownPeriod != nil {
+		msg := fmt.Sprintf("CooldownPeriod is configured but minReplicaCount is %d. CooldownPeriod is only relevant when scaling to 0 replicas", minReplicas)
+		r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectReadyType, eventreason.KEDAScalersInfo, msg)
+	}
+
+	// Check PollingInterval
+	if scaledObject.Spec.PollingInterval != nil {
+		msg := fmt.Sprintf("PollingInterval is configured but minReplicaCount is %d. PollingInterval is only relevant when scaling to 0 replicas", minReplicas)
+		r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectReadyType, eventreason.KEDAScalersInfo, msg)
+	}
 }
 
 // ensureScaledObjectLabel ensures that scaledobject.keda.sh/name=<scaledObject.Name> label exist in the ScaledObject
