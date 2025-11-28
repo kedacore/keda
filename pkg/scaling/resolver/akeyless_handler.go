@@ -107,7 +107,6 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 		return errors.New("unable to extract access type character from accessId, expected format is p-([A-Za-z0-9]{14}|[A-Za-z0-9]{12})")
 	}
 
-	h.logger.Info(fmt.Sprintf("getting access type display name for character '%s'...", accessTypeChar))
 	accessType, err := getAccessTypeDisplayName(accessTypeChar)
 	if err != nil {
 		return errors.New("unable to get access type display name, expected format is p-([A-Za-z0-9]{14}|[A-Za-z0-9]{12})")
@@ -154,7 +153,7 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 		authRequest.SetK8sAuthConfigName(h.akeyless.K8sAuthConfigName)
 
 		if h.akeyless.K8sGatewayUrl == "" {
-			h.logger.Info("k8sGatewayUrl is not provided, using gatewayUrl from configuration...")
+			h.logger.Info("k8sGatewayUrl is not provided, using gatewayUrl '%s'...", h.akeyless.GatewayUrl)
 			h.akeyless.K8sGatewayUrl = h.akeyless.GatewayUrl
 		}
 		h.akeyless.K8sGatewayUrl = strings.TrimSuffix(h.akeyless.K8sGatewayUrl, "/api/v2")
@@ -168,7 +167,7 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 				return errors.New("unable to read k8s service account token from file '" + K8S_SERVICE_ACCOUNT_TOKEN_FILE + "': " + err.Error())
 			}
 			h.akeyless.K8sServiceAccountToken = string(token)
-			h.logger.Info(fmt.Sprintf("k8s service account token retrieved from file '%s': %s", K8S_SERVICE_ACCOUNT_TOKEN_FILE, h.akeyless.K8sServiceAccountToken))
+			h.logger.Info(fmt.Sprintf("k8s service account token retrieved from file '%s'", K8S_SERVICE_ACCOUNT_TOKEN_FILE))
 		}
 
 		// base64 encode the token if it's not already encoded
@@ -236,36 +235,36 @@ func (h *AkeylessHandler) GetSecretsValue(ctx context.Context, secretResults map
 				return nil, fmt.Errorf("failed to get secret '%s' value for static secret from Akeyless API: %w", secret.Path, apiErr)
 			}
 			// check if secret key is in response
-			value, ok := secretRespMap[secret.Path]
+			secretValueStr, ok := secretRespMap[secret.Path].(string)
 			if !ok {
 				return nil, fmt.Errorf("failed to get secret '%s' value for static secret from Akeyless API: %w", secret.Path, apiErr)
 			}
-			// single static secrets can be of type string, or map[string]string (e.g. key/value, username/password, JSON)
-			// if it's a map[string]string, we use the provided key to get the value
-			if strValue, ok := value.(string); ok {
-				h.logger.Info(fmt.Sprintf("secret value for static secret '%s' is a string", secret.Path))
-				secretValue = strValue
-			} else if mapValue, ok := value.(map[string]string); ok {
-				h.logger.Info(fmt.Sprintf("secret value for static secret '%s' is a map[string]string", secret.Path))
-				// if the key is not provided, return stringified json
+
+			// single static secrets can be of basic auth (username/password) string or generic JSON/Key-Value format
+			// if it's a JSON string, we parse it as JSON and return the value for the key if provided
+			// if it's not a JSON string, we return the value as is
+			var jsonMap map[string]any
+			if err := json.Unmarshal([]byte(secretValueStr), &jsonMap); err == nil {
+				// Successfully parsed as JSON
+				h.logger.Info(fmt.Sprintf("secret value for static secret '%s' is a JSON string", secret.Path))
+
 				if secret.Key == "" {
-					h.logger.Info(fmt.Sprintf("secret value for static secret '%s' is a map[string]string and key is not provided, returning stringified JSON", secret.Path))
-					jsonBytes, err := json.Marshal(mapValue)
+					h.logger.Info(fmt.Sprintf("secret value for static secret '%s' is a JSON string and key is not provided, returning stringified JSON", secret.Path))
+					jsonBytes, err := json.Marshal(jsonMap)
 					if err != nil {
-						return nil, fmt.Errorf("failed to marshal static secret '%s' value to JSON: %w", secret.Path, err)
+						return nil, fmt.Errorf("failed to marshal JSON value for static secret '%s': %w", secret.Path, err)
 					}
-					secretValue = string(jsonBytes)
+					secretValueStr = string(jsonBytes)
 				} else {
-					h.logger.Info(fmt.Sprintf("secret value for static secret '%s' is a map[string]string and key is provided, returning value for key '%s'", secret.Path, secret.Key))
+					h.logger.Info(fmt.Sprintf("secret value for static secret '%s' is a JSON string and key is provided, searching for value for key '%s'", secret.Path, secret.Key))
 					var found bool
-					secretValue, found = mapValue[secret.Key]
+					secretValueStr, found = jsonMap[secret.Key].(string)
 					if !found {
 						return nil, fmt.Errorf("failed to get secret '%s' value for static secret: key '%s' not found", secret.Path, secret.Key)
 					}
 				}
-			} else {
-				return nil, fmt.Errorf("failed to get secret '%s' value for static secret: unexpected value type: %T", secret.Path, value)
 			}
+			secretValue = secretValueStr
 		case DYNAMIC_SECRET_RESPONSE:
 			h.logger.Info(fmt.Sprintf("getting dynamic secret value for '%s' from Akeyless API...", secret.Path))
 			getDynamicSecretValue := akeyless.NewGetDynamicSecretValue(secret.Path)
