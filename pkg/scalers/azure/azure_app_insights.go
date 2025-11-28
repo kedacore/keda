@@ -127,7 +127,7 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, p
 		return -1, err
 	}
 
-	bearerToken, err := creds.GetToken(ctx, policy.TokenRequestOptions{})
+	bearerToken, err := creds.GetToken(ctx, policy.TokenRequestOptions{Scopes: []string{getScopedResource(info.AppInsightsResourceURL)}})
 	if err != nil {
 		return -1, err
 	}
