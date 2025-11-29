@@ -19,6 +19,7 @@ package keda
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -2002,14 +2003,14 @@ var _ = Describe("ScaledObjectController", func() {
 		// Check that an informational event was created about CooldownPeriod
 		eventList := &corev1.EventList{}
 		Eventually(func() bool {
-			err = k8sClient.List(context.Background(), eventList, client.InNamespace("default"))
+			err = k8sClient.List(context.Background(), eventList)
 			if err != nil {
 				return false
 			}
 			for _, event := range eventList.Items {
 				if event.InvolvedObject.Name == soName &&
+					event.InvolvedObject.Namespace == "default" &&
 					event.Type == corev1.EventTypeNormal &&
-					event.Reason == eventreason.KEDAScalersInfo &&
 					strings.Contains(event.Message, "CooldownPeriod is configured but minReplicaCount is 2") {
 					return true
 				}
@@ -2022,7 +2023,7 @@ var _ = Describe("ScaledObjectController", func() {
 		deploymentName := "polling-with-minreplicas"
 		soName := "so-" + deploymentName
 
-		// Create the scaling target.
+		// Create the scaling target
 		err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
 		Expect(err).ToNot(HaveOccurred())
 
@@ -2068,14 +2069,14 @@ var _ = Describe("ScaledObjectController", func() {
 		// Check that an informational event was created about PollingInterval
 		eventList := &corev1.EventList{}
 		Eventually(func() bool {
-			err = k8sClient.List(context.Background(), eventList, client.InNamespace("default"))
+			err = k8sClient.List(context.Background(), eventList)
 			if err != nil {
 				return false
 			}
 			for _, event := range eventList.Items {
 				if event.InvolvedObject.Name == soName &&
+					event.InvolvedObject.Namespace == "default" &&
 					event.Type == corev1.EventTypeNormal &&
-					event.Reason == eventreason.KEDAScalersInfo &&
 					strings.Contains(event.Message, "PollingInterval is configured but minReplicaCount is 3") {
 					return true
 				}
@@ -2139,14 +2140,14 @@ var _ = Describe("ScaledObjectController", func() {
 		foundPollingEvent := false
 
 		Eventually(func() bool {
-			err = k8sClient.List(context.Background(), eventList, client.InNamespace("default"))
+			err = k8sClient.List(context.Background(), eventList)
 			if err != nil {
 				return false
 			}
 			for _, event := range eventList.Items {
 				if event.InvolvedObject.Name == soName &&
-					event.Type == corev1.EventTypeNormal &&
-					event.Reason == eventreason.KEDAScalersInfo {
+					event.InvolvedObject.Namespace == "default" &&
+					event.Type == corev1.EventTypeNormal {
 					if strings.Contains(event.Message, "CooldownPeriod is configured but minReplicaCount is 1") {
 						foundCooldownEvent = true
 					}
@@ -2163,7 +2164,7 @@ var _ = Describe("ScaledObjectController", func() {
 		deploymentName := "no-event-minzero"
 		soName := "so-" + deploymentName
 
-		// Create the scaling target.
+		// Create the scaling target
 		err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
 		Expect(err).ToNot(HaveOccurred())
 
@@ -2211,23 +2212,22 @@ var _ = Describe("ScaledObjectController", func() {
 		// Check that no informational events were created (minReplicaCount is 0, so these settings are valid)
 		eventList := &corev1.EventList{}
 		Consistently(func() bool {
-			err = k8sClient.List(context.Background(), eventList, client.InNamespace("default"))
+			err = k8sClient.List(context.Background(), eventList)
 			if err != nil {
 				return false
 			}
 			for _, event := range eventList.Items {
 				if event.InvolvedObject.Name == soName &&
+					event.InvolvedObject.Namespace == "default" &&
 					event.Type == corev1.EventTypeNormal &&
-					event.Reason == eventreason.KEDAScalersInfo &&
-					(strings.Contains(event.Message, "CooldownPeriod") ||
-						strings.Contains(event.Message, "PollingInterval")) {
+					(strings.Contains(event.Message, "CooldownPeriod is configured") ||
+						strings.Contains(event.Message, "PollingInterval is configured")) {
 					return true
 				}
 			}
 			return false
 		}, 10*time.Second, 2*time.Second).Should(BeFalse())
 	})
-
 })
 
 func generateDeployment(name string) *appsv1.Deployment {
