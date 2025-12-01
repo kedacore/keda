@@ -1016,7 +1016,7 @@ github.com/hashicorp/hcl/hcl/token
 github.com/hashicorp/hcl/json/parser
 github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
-# github.com/hashicorp/vault/api v1.21.0
+# github.com/hashicorp/vault/api v1.22.0
 ## explicit; go 1.23.0
 github.com/hashicorp/vault/api
 # github.com/imdario/mergo v0.3.16

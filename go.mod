@@ -81,7 +81,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud v1.14.1
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
-	github.com/hashicorp/vault/api v1.21.0
+	github.com/hashicorp/vault/api v1.22.0
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/joho/godotenv v1.5.1
