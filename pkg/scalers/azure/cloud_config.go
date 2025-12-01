@@ -290,7 +290,7 @@ func EnvironmentFromName(name string) (AzEnvironment, error) {
 	name = strings.ToUpper(name)
 	env, ok := environments[name]
 	if !ok {
-		return env, fmt.Errorf("autorest/azure: There is no cloud environment matching the name %q", name)
+		return env, fmt.Errorf("there is no cloud environment matching the name %q", name)
 	}
 
 	return env, nil

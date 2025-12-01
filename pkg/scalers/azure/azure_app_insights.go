@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -122,7 +124,8 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, p
 		return -1, err
 	}
 
-	req, err := http.NewRequest(http.MethodGet, info.AppInsightsResourceURL, nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/v1/apps/%s/metrics/%s", info.AppInsightsResourceURL,
+		info.ApplicationInsightsID, info.MetricID), nil)
 	if err != nil {
 		return -1, err
 	}
@@ -132,13 +135,21 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, p
 		return -1, err
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", bearerToken))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", bearerToken.Token))
 
-	req.URL.Path = fmt.Sprintf("v1/apps/%s/metrics/%s", info.ApplicationInsightsID, info.MetricID)
-	q := req.URL.Query()
-	for key, value := range queryParams {
-		q.Add(key, fmt.Sprintf("%v", value))
+	parameters := mapToValues(queryParams)
+	v := req.URL.Query()
+	for key, value := range parameters {
+		for i := range value {
+			d, err := url.QueryUnescape(value[i])
+			if err != nil {
+				return -1, err
+			}
+			value[i] = d
+		}
+		v[key] = value
 	}
+	req.URL.RawQuery = v.Encode()
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -165,4 +176,34 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, p
 		return 0.0, nil
 	}
 	return val, err
+}
+
+// mapToValues method converts map[string]interface{} to url.Values.
+func mapToValues(m map[string]interface{}) url.Values {
+	v := url.Values{}
+	for key, value := range m {
+		x := reflect.ValueOf(value)
+		if x.Kind() == reflect.Array || x.Kind() == reflect.Slice {
+			for i := 0; i < x.Len(); i++ {
+				v.Add(key, ensureValueString(x.Index(i)))
+			}
+		} else {
+			v.Add(key, ensureValueString(value))
+		}
+	}
+	return v
+}
+
+func ensureValueString(value interface{}) string {
+	if value == nil {
+		return ""
+	}
+	switch v := value.(type) {
+	case string:
+		return v
+	case []byte:
+		return string(v)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }
