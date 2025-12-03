@@ -795,7 +795,7 @@ func TestFallbackFromZero(t *testing.T, s ScaleTargetType) {
 
 	// Should go to fallback value (3) because of static
 	assert.True(t, scaleTargetMap[s].WaitForReplicaReadyCount(t, kc, scaleTargetName, data.Namespace, 3, 30, 3),
-		"replica count should remain at 3 after fallback")
+		"replica count should be 3 after fallback")
 
 	// Ensure the replica count remains stable
 	scaleTargetMap[s].AssertReplicaCountNotChangeDuringTimePeriod(t, kc, scaleTargetName, data.Namespace, 3, 30)

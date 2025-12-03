@@ -684,7 +684,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 // the state of the scaler and all the required
 // info for calculating the ScaledObjectState
 type scalerState struct {
-	// IsActive will be overrided by formula calculation
+	// IsActive will be overridden by formula calculation
 	IsActive        bool
 	TriggerName     string
 	Metrics         []external_metrics.ExternalMetricValue
@@ -821,7 +821,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 }
 
 // getScalerState returns getStateScalerResult with the state
-// for an specific scaler. The state contains if it's active or
+// for a specific scaler. The state contains if it's active or
 // with errors, but also the records for the cache and the metrics
 // for the custom formulas
 func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler, triggerIndex int, scalerConfig scalersconfig.ScalerConfig,
@@ -858,7 +858,6 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 
 		var latency time.Duration
 		rawMetrics, isMetricActive, latency, rawErr := cache.GetMetricsAndActivityForScaler(ctx, triggerIndex, metricName)
-		metricscollector.RecordScalerError(scaledObject.Namespace, scaledObject.Name, result.TriggerName, triggerIndex, metricName, true, rawErr)
 		if latency != -1 {
 			metricscollector.RecordScalerLatency(scaledObject.Namespace, scaledObject.Name, result.TriggerName, triggerIndex, metricName, true, latency)
 		}
