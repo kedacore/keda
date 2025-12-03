@@ -441,7 +441,7 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject int
 /// ----------             ScaledObject related methods               --------- ///
 /// --------------------------------------------------------------------------- ///
 
-// processMetricsWithFallback processes metrics with fallback support and handles metric recording.
+// processMetricsWithFallback processes metrics with fallback support and handles metric recording
 func (h *scaleHandler) processMetricsWithFallback(
 	ctx context.Context,
 	rawMetrics []external_metrics.ExternalMetricValue,
