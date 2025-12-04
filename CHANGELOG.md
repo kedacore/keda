@@ -95,7 +95,7 @@ New deprecation(s):
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **CI**: Use GitHub-hosted ARM64 runners ([#7293](https://github.com/kedacore/keda/issues/7293))
 
 ## v2.18.2
 
