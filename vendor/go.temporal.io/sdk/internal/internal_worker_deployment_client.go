@@ -140,6 +140,7 @@ func workerDeploymentInfoFromProto(info *deployment.WorkerDeploymentInfo) Worker
 		VersionSummaries:     workerDeploymentVersionSummariesFromProto(info.VersionSummaries),
 		RoutingConfig:        workerDeploymentRoutingConfigFromProto(info.RoutingConfig),
 		LastModifierIdentity: info.LastModifierIdentity,
+		ManagerIdentity:      info.ManagerIdentity,
 	}
 
 }
@@ -212,6 +213,7 @@ func (h *workerDeploymentHandleImpl) SetCurrentVersion(ctx context.Context, opti
 		ConflictToken:           options.ConflictToken,
 		Identity:                identity,
 		IgnoreMissingTaskQueues: options.IgnoreMissingTaskQueues,
+		AllowNoPollers:          options.AllowNoPollers,
 	}
 	grpcCtx, cancel := newGRPCContext(ctx, defaultGrpcRetryParameters(ctx))
 	defer cancel()
@@ -251,6 +253,7 @@ func (h *workerDeploymentHandleImpl) SetRampingVersion(ctx context.Context, opti
 		ConflictToken:           options.ConflictToken,
 		Identity:                identity,
 		IgnoreMissingTaskQueues: options.IgnoreMissingTaskQueues,
+		AllowNoPollers:          options.AllowNoPollers,
 	}
 	grpcCtx, cancel := newGRPCContext(ctx, defaultGrpcRetryParameters(ctx))
 	defer cancel()
@@ -266,6 +269,48 @@ func (h *workerDeploymentHandleImpl) SetRampingVersion(ctx context.Context, opti
 			//lint:ignore SA1019 ignore deprecated versioning APIs
 			resp.PreviousDeploymentVersion, resp.PreviousVersion),
 		PreviousPercentage: resp.GetPreviousPercentage(),
+	}, nil
+
+}
+
+func (h *workerDeploymentHandleImpl) SetManagerIdentity(ctx context.Context, options WorkerDeploymentSetManagerIdentityOptions) (WorkerDeploymentSetManagerIdentityResponse, error) {
+	if err := h.validate(); err != nil {
+		return WorkerDeploymentSetManagerIdentityResponse{}, err
+	}
+	if err := h.workflowClient.ensureInitialized(ctx); err != nil {
+		return WorkerDeploymentSetManagerIdentityResponse{}, err
+	}
+
+	identity := h.workflowClient.identity
+	if options.Identity != "" {
+		identity = options.Identity
+	}
+
+	request := &workflowservice.SetWorkerDeploymentManagerRequest{
+		Namespace:      h.workflowClient.namespace,
+		DeploymentName: h.Name,
+		ConflictToken:  options.ConflictToken,
+		Identity:       identity,
+	}
+	if options.Self {
+		if options.ManagerIdentity != "" {
+			return WorkerDeploymentSetManagerIdentityResponse{}, fmt.Errorf("invalid input: if Self is true, ManagerIdentity must be empty but was '%s'", options.ManagerIdentity)
+		}
+		request.NewManagerIdentity = &workflowservice.SetWorkerDeploymentManagerRequest_Self{Self: true}
+	} else {
+		request.NewManagerIdentity = &workflowservice.SetWorkerDeploymentManagerRequest_ManagerIdentity{ManagerIdentity: options.ManagerIdentity}
+	}
+	grpcCtx, cancel := newGRPCContext(ctx, defaultGrpcRetryParameters(ctx))
+	defer cancel()
+
+	resp, err := h.workflowClient.workflowService.SetWorkerDeploymentManager(grpcCtx, request)
+	if err != nil {
+		return WorkerDeploymentSetManagerIdentityResponse{}, err
+	}
+
+	return WorkerDeploymentSetManagerIdentityResponse{
+		ConflictToken:           resp.GetConflictToken(),
+		PreviousManagerIdentity: resp.GetPreviousManagerIdentity(),
 	}, nil
 
 }
@@ -411,7 +456,7 @@ func (h *workerDeploymentHandleImpl) UpdateVersionMetadata(ctx context.Context, 
 	if err := h.validate(); err != nil {
 		return WorkerDeploymentUpdateVersionMetadataResponse{}, err
 	}
-	if options.Version.BuildId == "" {
+	if options.Version.BuildID == "" {
 		return WorkerDeploymentUpdateVersionMetadataResponse{}, errBuildIdCantBeEmpty
 	}
 	if err := h.workflowClient.ensureInitialized(ctx); err != nil {

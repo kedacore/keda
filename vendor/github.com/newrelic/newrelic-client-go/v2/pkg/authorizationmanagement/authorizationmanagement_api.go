@@ -3,7 +3,7 @@ package authorizationmanagement
 
 import "context"
 
-// Grant access for a group
+// Grant access to a Group, User, System Identity, System Identity Group, or Organization
 func (a *Authorizationmanagement) AuthorizationManagementGrantAccess(
 	grantAccessOptions AuthorizationManagementGrantAccess,
 ) (*AuthorizationManagementGrantAccessPayload, error) {
@@ -12,7 +12,7 @@ func (a *Authorizationmanagement) AuthorizationManagementGrantAccess(
 	)
 }
 
-// Grant access for a group
+// Grant access to a Group, User, System Identity, System Identity Group, or Organization
 func (a *Authorizationmanagement) AuthorizationManagementGrantAccessWithContext(
 	ctx context.Context,
 	grantAccessOptions AuthorizationManagementGrantAccess,
@@ -39,8 +39,12 @@ const AuthorizationManagementGrantAccessMutation = `mutation(
 ) { authorizationManagementGrantAccess(
 	grantAccessOptions: $grantAccessOptions,
 ) {
+	accessGrants {
+		id
+	}
 	roles {
 		accountId
+		dataAccessPolicyId
 		displayName
 		groupId
 		id
@@ -87,8 +91,12 @@ const AuthorizationManagementRevokeAccessMutation = `mutation(
 ) { authorizationManagementRevokeAccess(
 	revokeAccessOptions: $revokeAccessOptions,
 ) {
+	accessGrants {
+		id
+	}
 	roles {
 		accountId
+		dataAccessPolicyId
 		displayName
 		groupId
 		id

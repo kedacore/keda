@@ -70,7 +70,7 @@ type NewRelic struct {
 	Notifications           notifications.Notifications
 	Nrdb                    nrdb.Nrdb
 	Nrqldroprules           nrqldroprules.Nrqldroprules
-	Organization            organization.Organization
+	Organization            organization.OrganizationManagement
 	Pipelinecontrol         pipelinecontrol.Pipelinecontrol
 	Plugins                 plugins.Plugins
 	ServiceLevel            servicelevel.Servicelevel

@@ -1,3 +1,52 @@
+# v1.40.3 (2025-12-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.24.0. Notably this version of the library reduces the allocation footprint of the middleware system. We observe a ~10% reduction in allocations per SDK call with this change.
+
+# v1.40.2 (2025-11-25)
+
+* **Bug Fix**: Add error check for endpoint param binding during auth scheme resolution to fix panic reported in #3234
+
+# v1.40.1 (2025-11-19.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.0 (2025-11-19)
+
+* **Feature**: Adds support to create, update, retrieve, rotate, and delete managed external secrets.
+
+# v1.39.13 (2025-11-12)
+
+* **Bug Fix**: Further reduce allocation overhead when the metrics system isn't in-use.
+* **Bug Fix**: Reduce allocation overhead when the client doesn't have any HTTP interceptors configured.
+* **Bug Fix**: Remove blank trace spans towards the beginning of the request that added no additional information. This conveys a slight reduction in overall allocations.
+
+# v1.39.12 (2025-11-11)
+
+* **Bug Fix**: Return validation error if input region is not a valid host label.
+
+# v1.39.11 (2025-11-04)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.23.2 which should convey some passive reduction of overall allocations, especially when not using the metrics system.
+
+# v1.39.10 (2025-10-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.9 (2025-10-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.39.8 (2025-10-22)
+
+* No change notes available for this release.
+
+# v1.39.7 (2025-10-16)
+
+* **Dependency Update**: Bump minimum Go version to 1.23.
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.39.6 (2025-09-26)
 
 * **Dependency Update**: Updated to the latest SDK module versions

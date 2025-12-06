@@ -268,6 +268,8 @@ func NewFromConnectionString(connectionString string) (*Client, error) {
 //   - INFLUX_GZIP_THRESHOLD - payload size threshold for gzipping data
 //   - INFLUX_WRITE_NO_SYNC - bool value whether to skip waiting for WAL persistence on write
 //     (See WriteOptions.NoSync for more details)
+//   - INFLUX_WRITE_TIMEOUT - duration value (e.g. 10s) to determine how long to wait for a write response
+//   - INFLUX_QUERY_TIMEOUT - duration value (e.g. 10s) applied to queries for calculating a context response Deadline
 func NewFromEnv() (*Client, error) {
 	cfg := ClientConfig{}
 	err := cfg.env()
