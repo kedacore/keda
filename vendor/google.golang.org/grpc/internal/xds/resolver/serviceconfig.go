@@ -151,11 +151,8 @@ func (cs *erroringConfigSelector) SelectConfig(iresolver.RPCInfo) (*iresolver.RP
 func (cs *erroringConfigSelector) stop() {}
 
 type configSelector struct {
-	channelID            uint64 // Static hash when hash policy is HashPolicyTypeChannelID
-	xdsNodeID            string // xDS node ID, for annotating errors.
-	sendNewServiceConfig func() // Function to send a new service config to gRPC.
-
-	// Configuration received from the xDS management server.
+	r                *xdsResolver
+	xdsNodeID        string
 	virtualHost      virtualHost
 	routes           []route
 	clusters         map[string]*clusterInfo
@@ -217,7 +214,9 @@ func (cs *configSelector) SelectConfig(rpcInfo iresolver.RPCInfo) (*iresolver.RP
 			if v := atomic.AddInt32(ref, -1); v == 0 {
 				// This entry will be removed from activeClusters when
 				// producing the service config for the empty update.
-				cs.sendNewServiceConfig()
+				cs.r.serializer.TrySchedule(func(context.Context) {
+					cs.r.onClusterRefDownToZero()
+				})
 			}
 		},
 		Interceptor: interceptor,
@@ -282,7 +281,7 @@ func (cs *configSelector) generateHash(rpcInfo iresolver.RPCInfo, hashPolicies [
 			generatedPolicyHash = true
 		case xdsresource.HashPolicyTypeChannelID:
 			// Use the static channel ID as the hash for this policy.
-			policyHash = cs.channelID
+			policyHash = cs.r.channelID
 			generatedHash = true
 			generatedPolicyHash = true
 		}
@@ -359,7 +358,9 @@ func (cs *configSelector) stop() {
 	// selector; we need another update to delete clusters from the config (if
 	// we don't have another update pending already).
 	if needUpdate {
-		cs.sendNewServiceConfig()
+		cs.r.serializer.TrySchedule(func(context.Context) {
+			cs.r.onClusterRefDownToZero()
+		})
 	}
 }
 

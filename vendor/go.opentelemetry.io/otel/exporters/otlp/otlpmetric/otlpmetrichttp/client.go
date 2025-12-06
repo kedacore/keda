@@ -18,14 +18,14 @@ import (
 	"sync"
 	"time"
 
-	colmetricpb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
-	metricpb "go.opentelemetry.io/proto/otlp/metrics/v1"
 	"google.golang.org/protobuf/proto"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp/internal"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp/internal/oconf"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp/internal/retry"
+	colmetricpb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
+	metricpb "go.opentelemetry.io/proto/otlp/metrics/v1"
 )
 
 type client struct {
@@ -55,23 +55,20 @@ var ourTransport = &http.Transport{
 
 // newClient creates a new HTTP metric client.
 func newClient(cfg oconf.Config) (*client, error) {
-	httpClient := cfg.Metrics.HTTPClient
-	if httpClient == nil {
-		httpClient = &http.Client{
-			Transport: ourTransport,
-			Timeout:   cfg.Metrics.Timeout,
+	httpClient := &http.Client{
+		Transport: ourTransport,
+		Timeout:   cfg.Metrics.Timeout,
+	}
+
+	if cfg.Metrics.TLSCfg != nil || cfg.Metrics.Proxy != nil {
+		clonedTransport := ourTransport.Clone()
+		httpClient.Transport = clonedTransport
+
+		if cfg.Metrics.TLSCfg != nil {
+			clonedTransport.TLSClientConfig = cfg.Metrics.TLSCfg
 		}
-
-		if cfg.Metrics.TLSCfg != nil || cfg.Metrics.Proxy != nil {
-			clonedTransport := ourTransport.Clone()
-			httpClient.Transport = clonedTransport
-
-			if cfg.Metrics.TLSCfg != nil {
-				clonedTransport.TLSClientConfig = cfg.Metrics.TLSCfg
-			}
-			if cfg.Metrics.Proxy != nil {
-				clonedTransport.Proxy = cfg.Metrics.Proxy
-			}
+		if cfg.Metrics.Proxy != nil {
+			clonedTransport.Proxy = cfg.Metrics.Proxy
 		}
 	}
 
@@ -203,7 +200,7 @@ func (c *client) UploadMetrics(ctx context.Context, protoMetrics *metricpb.Resou
 			return err
 		}
 		respStr := strings.TrimSpace(respData.String())
-		if respStr == "" {
+		if len(respStr) == 0 {
 			respStr = "(empty)"
 		}
 		bodyErr := fmt.Errorf("body: %s", respStr)
@@ -223,7 +220,7 @@ func (c *client) UploadMetrics(ctx context.Context, protoMetrics *metricpb.Resou
 }
 
 var gzPool = sync.Pool{
-	New: func() any {
+	New: func() interface{} {
 		w := gzip.NewWriter(io.Discard)
 		return w
 	},
@@ -235,7 +232,7 @@ func (c *client) newRequest(ctx context.Context, body []byte) (request, error) {
 
 	switch c.compression {
 	case NoCompression:
-		r.ContentLength = int64(len(body))
+		r.ContentLength = (int64)(len(body))
 		req.bodyReader = bodyReader(body)
 	case GzipCompression:
 		// Ensure the content length is not used.
@@ -280,7 +277,7 @@ type request struct {
 // reset reinitializes the request Body and uses ctx for the request.
 func (r *request) reset(ctx context.Context) {
 	r.Body = r.bodyReader()
-	r.Request = r.WithContext(ctx)
+	r.Request = r.Request.WithContext(ctx)
 }
 
 // retryableError represents a request failure that can be retried.
@@ -316,7 +313,7 @@ func (e retryableError) Unwrap() error {
 	return e.err
 }
 
-func (e retryableError) As(target any) bool {
+func (e retryableError) As(target interface{}) bool {
 	if e.err == nil {
 		return false
 	}

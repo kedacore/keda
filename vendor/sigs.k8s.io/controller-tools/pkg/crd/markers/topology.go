@@ -66,16 +66,6 @@ func init() {
 //     are typically manipulated together by the same actor.
 type ListType string
 
-const (
-	Map     ListType = "map"
-	Set     ListType = "set"
-	Atomic  ListType = "atomic"
-	Array   ListType = "array"
-	Object  ListType = "object"
-	Integer ListType = "integer"
-	Number  ListType = "number"
-)
-
 // +controllertools:marker:generateHelp:category="CRD processing"
 
 // ListMapKey specifies the keys to map listTypes.
@@ -118,10 +108,10 @@ type MapType string
 type StructType string
 
 func (l ListType) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
-	if schema.Type != string(Array) {
+	if schema.Type != "array" {
 		return fmt.Errorf("must apply listType to an array, found %s", schema.Type)
 	}
-	if l != Map && l != Atomic && l != Set {
+	if l != "map" && l != "atomic" && l != "set" {
 		return fmt.Errorf(`ListType must be either "map", "set" or "atomic"`)
 	}
 	p := string(l)
@@ -134,10 +124,10 @@ func (l ListType) ApplyPriority() ApplyPriority {
 }
 
 func (l ListMapKey) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
-	if schema.Type != string(Array) {
+	if schema.Type != "array" {
 		return fmt.Errorf("must apply listMapKey to an array, found %s", schema.Type)
 	}
-	if schema.XListType == nil || *schema.XListType != string(Map) {
+	if schema.XListType == nil || *schema.XListType != "map" {
 		return fmt.Errorf("must apply listMapKey to an associative-list")
 	}
 	schema.XListMapKeys = append(schema.XListMapKeys, string(l))
@@ -145,7 +135,7 @@ func (l ListMapKey) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
 }
 
 func (m MapType) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
-	if schema.Type != string(Object) {
+	if schema.Type != "object" {
 		return fmt.Errorf("must apply mapType to an object")
 	}
 
@@ -160,7 +150,7 @@ func (m MapType) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
 }
 
 func (s StructType) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
-	if schema.Type != string(Object) && schema.Type != "" {
+	if schema.Type != "object" && schema.Type != "" {
 		return fmt.Errorf("must apply structType to an object; either explicitly set or defaulted through an empty schema type")
 	}
 

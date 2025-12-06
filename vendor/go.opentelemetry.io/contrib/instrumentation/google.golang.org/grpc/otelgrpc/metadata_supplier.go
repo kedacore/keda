@@ -6,14 +6,15 @@ package otelgrpc // import "go.opentelemetry.io/contrib/instrumentation/google.g
 import (
 	"context"
 
+	"google.golang.org/grpc/metadata"
+
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc/metadata"
 )
 
 type metadataSupplier struct {
-	metadata metadata.MD
+	metadata *metadata.MD
 }
 
 // assert that metadataSupplier implements the TextMapCarrier interface.
@@ -27,13 +28,13 @@ func (s *metadataSupplier) Get(key string) string {
 	return values[0]
 }
 
-func (s *metadataSupplier) Set(key, value string) {
+func (s *metadataSupplier) Set(key string, value string) {
 	s.metadata.Set(key, value)
 }
 
 func (s *metadataSupplier) Keys() []string {
-	out := make([]string, 0, len(s.metadata))
-	for key := range s.metadata {
+	out := make([]string, 0, len(*s.metadata))
+	for key := range *s.metadata {
 		out = append(out, key)
 	}
 	return out
@@ -42,12 +43,11 @@ func (s *metadataSupplier) Keys() []string {
 // Inject injects correlation context and span context into the gRPC
 // metadata object. This function is meant to be used on outgoing
 // requests.
-//
 // Deprecated: Unnecessary public func.
 func Inject(ctx context.Context, md *metadata.MD, opts ...Option) {
-	c := newConfig(opts)
+	c := newConfig(opts, "")
 	c.Propagators.Inject(ctx, &metadataSupplier{
-		metadata: *md,
+		metadata: md,
 	})
 }
 
@@ -57,7 +57,7 @@ func inject(ctx context.Context, propagators propagation.TextMapPropagator) cont
 		md = metadata.MD{}
 	}
 	propagators.Inject(ctx, &metadataSupplier{
-		metadata: md,
+		metadata: &md,
 	})
 	return metadata.NewOutgoingContext(ctx, md)
 }
@@ -65,12 +65,11 @@ func inject(ctx context.Context, propagators propagation.TextMapPropagator) cont
 // Extract returns the correlation context and span context that
 // another service encoded in the gRPC metadata object with Inject.
 // This function is meant to be used on incoming requests.
-//
 // Deprecated: Unnecessary public func.
 func Extract(ctx context.Context, md *metadata.MD, opts ...Option) (baggage.Baggage, trace.SpanContext) {
-	c := newConfig(opts)
+	c := newConfig(opts, "")
 	ctx = c.Propagators.Extract(ctx, &metadataSupplier{
-		metadata: *md,
+		metadata: md,
 	})
 
 	return baggage.FromContext(ctx), trace.SpanContextFromContext(ctx)
@@ -83,6 +82,6 @@ func extract(ctx context.Context, propagators propagation.TextMapPropagator) con
 	}
 
 	return propagators.Extract(ctx, &metadataSupplier{
-		metadata: md,
+		metadata: &md,
 	})
 }

@@ -31,70 +31,34 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// channelCredsRegistry is a map from channel credential type name to
-// ChannelCredential builder.
-var channelCredsRegistry = make(map[string]ChannelCredentials)
+// registry is a map from credential type name to Credential builder.
+var registry = make(map[string]Credentials)
 
-// callCredsRegistry is a map from call credential type name to
-// ChannelCredential builder.
-var callCredsRegistry = make(map[string]CallCredentials)
-
-// ChannelCredentials interface encapsulates a credentials.Bundle builder
+// Credentials interface encapsulates a credentials.Bundle builder
 // that can be used for communicating with the xDS Management server.
-type ChannelCredentials interface {
-	// Build returns a credential bundle associated with this credential, and a
-	// function to clean up any additional resources associated with this bundle
+type Credentials interface {
+	// Build returns a credential bundle associated with this credential, and
+	// a function to cleans up additional resources associated with this bundle
 	// when it is no longer needed.
 	Build(config json.RawMessage) (credentials.Bundle, func(), error)
 	// Name returns the credential name associated with this credential.
 	Name() string
 }
 
-// RegisterChannelCredentials registers ChannelCredentials used for connecting
-// to the xDS management server.
+// RegisterCredentials registers Credentials used for connecting to the xds
+// management server.
 //
 // NOTE: this function must only be called during initialization time (i.e. in
 // an init() function), and is not thread-safe. If multiple credentials are
 // registered with the same name, the one registered last will take effect.
-func RegisterChannelCredentials(c ChannelCredentials) {
-	channelCredsRegistry[c.Name()] = c
+func RegisterCredentials(c Credentials) {
+	registry[c.Name()] = c
 }
 
-// GetChannelCredentials returns the credentials associated with a given name.
+// GetCredentials returns the credentials associated with a given name.
 // If no credentials are registered with the name, nil will be returned.
-func GetChannelCredentials(name string) ChannelCredentials {
-	if c, ok := channelCredsRegistry[name]; ok {
-		return c
-	}
-
-	return nil
-}
-
-// CallCredentials interface encapsulates a credentials.PerRPCCredentials
-// builder that can be used for communicating with the xDS Management server.
-type CallCredentials interface {
-	// Build returns a PerRPCCredentials created from the provided
-	// configuration, and a function to clean up any additional resources
-	// associated with them when they are no longer needed.
-	Build(config json.RawMessage) (credentials.PerRPCCredentials, func(), error)
-	// Name returns the credential name associated with this credential.
-	Name() string
-}
-
-// RegisterCallCredentials registers CallCredentials used for connecting
-// to the xDS management server.
-//
-// NOTE: this function must only be called during initialization time (i.e. in
-// an init() function), and is not thread-safe. If multiple credentials are
-// registered with the same name, the one registered last will take effect.
-func RegisterCallCredentials(c CallCredentials) {
-	callCredsRegistry[c.Name()] = c
-}
-
-// GetCallCredentials returns the credentials associated with a given name.
-// If no credentials are registered with the name, nil will be returned.
-func GetCallCredentials(name string) CallCredentials {
-	if c, ok := callCredsRegistry[name]; ok {
+func GetCredentials(name string) Credentials {
+	if c, ok := registry[name]; ok {
 		return c
 	}
 

@@ -570,6 +570,10 @@ func (a *authority) handleRevertingToPrimaryOnUpdate(serverConfig *ServerConfig)
 		return true
 	}
 
+	if a.logger.V(2) {
+		a.logger.Infof("Received update from non-active server %q", serverConfig)
+	}
+
 	// If the resource update is not from the current active server, it means
 	// that we have received an update either from:
 	// - a server that has a higher priority than the current active server and
@@ -582,13 +586,7 @@ func (a *authority) handleRevertingToPrimaryOnUpdate(serverConfig *ServerConfig)
 	serverIdx := a.serverIndexForConfig(serverConfig)
 	activeServerIdx := a.serverIndexForConfig(a.activeXDSChannel.serverConfig)
 	if activeServerIdx < serverIdx {
-		if a.logger.V(2) {
-			a.logger.Infof("Ignoring update from lower priority server [%d] %q", serverIdx, serverConfig)
-		}
 		return false
-	}
-	if a.logger.V(2) {
-		a.logger.Infof("Received update from higher priority server [%d] %q", serverIdx, serverConfig)
 	}
 
 	// At this point, we are guaranteed that we have received a response from a
@@ -624,7 +622,7 @@ func (a *authority) handleRevertingToPrimaryOnUpdate(serverConfig *ServerConfig)
 		// Release the reference to the channel.
 		if cfg.cleanup != nil {
 			if a.logger.V(2) {
-				a.logger.Infof("Closing lower priority server [%d] %q", i, cfg.serverConfig)
+				a.logger.Infof("Closing lower priority server %q", cfg.serverConfig)
 			}
 			cfg.cleanup()
 			cfg.cleanup = nil

@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/fatih/color"
 	"sigs.k8s.io/controller-tools/pkg/genall/help"
+
+	"github.com/fatih/color"
 )
 
 var (
@@ -76,8 +77,7 @@ func MarkersDetails(fullDetail bool, groupName string, markers []help.MarkerDoc)
 			}
 		}
 
-		switch {
-		case marker.AnonymousField():
+		if marker.AnonymousField() {
 			out.Print(Indented(1, Line(fieldDetailStyle.Containing(FieldSyntaxHelp(marker.Fields[0])))))
 			out.Print(Text("  "))
 			out.Print(summary)
@@ -85,7 +85,7 @@ func MarkersDetails(fullDetail bool, groupName string, markers []help.MarkerDoc)
 				out.Print(Indented(2, Line(Text(marker.Details))))
 			}
 			out.Print(Newlines(1))
-		case !marker.Empty():
+		} else if !marker.Empty() {
 			out.Print(Newlines(1))
 			if fullDetail {
 				for _, arg := range marker.Fields {
@@ -108,7 +108,7 @@ func MarkersDetails(fullDetail bool, groupName string, markers []help.MarkerDoc)
 
 				out.Print(Indented(1, table))
 			}
-		default:
+		} else {
 			out.Print(Newlines(1))
 		}
 	}

@@ -10,7 +10,6 @@ linters:
     - depguard
     - errcheck
     - errorlint
-    - gocritic
     - godot
     - gosec
     - govet
@@ -87,18 +86,6 @@ linters:
           deny:
             - pkg: go.opentelemetry.io/otel/exporters/otlp/otlptrace/internal
               desc: Do not use cross-module internal packages.
-    gocritic:
-      disabled-checks:
-        - appendAssign
-        - commentedOutCode
-        - dupArg
-        - hugeParam
-        - importShadow
-        - preferDecodeRune
-        - rangeValCopy
-        - unnamedResult
-        - whyNoLint
-      enable-all: true
     godot:
       exclude:
         # Exclude links.
@@ -180,10 +167,7 @@ linters:
             - fmt.Print
             - fmt.Printf
             - fmt.Println
-        - name: unused-parameter
-        - name: unused-receiver
         - name: unnecessary-stmt
-        - name: use-any
         - name: useless-break
         - name: var-declaration
         - name: var-naming
@@ -240,6 +224,10 @@ linters:
       - linters:
           - gosec
         text: 'G402: TLS MinVersion too low.'
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
@@ -249,12 +237,14 @@ formatters:
     - goimports
     - golines
   settings:
-    gofumpt:
-      extra-rules: true
     goimports:
       local-prefixes:
-        - go.opentelemetry.io/otel
+        - go.opentelemetry.io
     golines:
       max-len: 120
   exclusions:
     generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

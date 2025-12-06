@@ -24,11 +24,11 @@ func TraceBasedFilter(ctx context.Context) bool {
 }
 
 // AlwaysOnFilter is a [Filter] that always offers measurements.
-func AlwaysOnFilter(context.Context) bool {
+func AlwaysOnFilter(ctx context.Context) bool {
 	return true
 }
 
 // AlwaysOffFilter is a [Filter] that never offers measurements.
-func AlwaysOffFilter(context.Context) bool {
+func AlwaysOffFilter(ctx context.Context) bool {
 	return false
 }

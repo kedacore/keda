@@ -18,7 +18,6 @@ package secretmanager
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -29,12 +28,9 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const serviceName = "secretmanager.googleapis.com"
-
-var protoVersion = fmt.Sprintf("1.%d", protoimpl.MaxVersion)
 
 // For more information on implementing a client constructor hook, see
 // https://github.com/googleapis/google-cloud-go/wiki/Customizing-constructors.

@@ -72,6 +72,9 @@ func (h *clientMetricsHandler) initializeMetrics() {
 func getOrCreateCallInfo(ctx context.Context, cc *grpc.ClientConn, method string, opts ...grpc.CallOption) (context.Context, *callInfo) {
 	ci := getCallInfo(ctx)
 	if ci == nil {
+		if logger.V(2) {
+			logger.Info("Creating new CallInfo since its not present in context")
+		}
 		ci = &callInfo{
 			target: cc.CanonicalTarget(),
 			method: determineMethod(method, opts...),
@@ -174,8 +177,7 @@ func (h *clientMetricsHandler) TagRPC(ctx context.Context, info *stats.RPCTagInf
 			// executes on the callpath that this OpenTelemetry component
 			// currently supports.
 			TelemetryLabels: map[string]string{
-				"grpc.lb.locality":        "",
-				"grpc.lb.backend_service": "",
+				"grpc.lb.locality": "",
 			},
 		}
 		ctx = istats.SetLabels(ctx, labels)

@@ -24,17 +24,6 @@ import (
 	"sigs.k8s.io/controller-tools/pkg/markers"
 )
 
-func (AtMostOneOf) Help() *markers.DefinitionHelp {
-	return &markers.DefinitionHelp{
-		Category: "CRD validation",
-		DetailedHelp: markers.DetailedHelp{
-			Summary: "adds a validation constraint that allows at most one of the specified fields.",
-			Details: "This marker may be repeated to specify multiple AtMostOneOf constraints that are mutually exclusive.",
-		},
-		FieldHelp: map[string]markers.DetailedHelp{},
-	}
-}
-
 func (Default) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "CRD validation",
@@ -73,17 +62,6 @@ func (Enum) Help() *markers.DefinitionHelp {
 		DetailedHelp: markers.DetailedHelp{
 			Summary: "specifies that this (scalar) field is restricted to the *exact* values specified here.",
 			Details: "",
-		},
-		FieldHelp: map[string]markers.DetailedHelp{},
-	}
-}
-
-func (ExactlyOneOf) Help() *markers.DefinitionHelp {
-	return &markers.DefinitionHelp{
-		Category: "CRD validation",
-		DetailedHelp: markers.DetailedHelp{
-			Summary: "adds a validation constraint that allows at exactly one of the specified fields.",
-			Details: "This marker may be repeated to specify multiple ExactlyOneOf constraints that are mutually exclusive.",
 		},
 		FieldHelp: map[string]markers.DetailedHelp{},
 	}
@@ -491,22 +469,6 @@ func (SubresourceStatus) Help() *markers.DefinitionHelp {
 	}
 }
 
-func (Title) Help() *markers.DefinitionHelp {
-	return &markers.DefinitionHelp{
-		Category: "CRD validation",
-		DetailedHelp: markers.DetailedHelp{
-			Summary: "sets the title for this field.",
-			Details: "The title is metadata that makes the OpenAPI documentation more user-friendly,\nmaking the schema more understandable when viewed in documentation tools.\nIt's a metadata field that doesn't affect validation but provides\nimportant context about what the schema represents.",
-		},
-		FieldHelp: map[string]markers.DetailedHelp{
-			"Value": {
-				Summary: "",
-				Details: "",
-			},
-		},
-	}
-}
-
 func (Type) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "CRD validation",
@@ -598,10 +560,6 @@ func (XValidation) Help() *markers.DefinitionHelp {
 				Details: "",
 			},
 			"FieldPath": {
-				Summary: "",
-				Details: "",
-			},
-			"OptionalOldSelf": {
 				Summary: "",
 				Details: "",
 			},

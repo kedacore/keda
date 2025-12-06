@@ -18,6 +18,7 @@ package crd
 import (
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/utils/ptr"
+
 	"sigs.k8s.io/controller-tools/pkg/loader"
 )
 

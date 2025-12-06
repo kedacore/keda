@@ -32,9 +32,10 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/util/version"
+	"github.com/blang/semver/v4"
 	"sigs.k8s.io/yaml"
 )
 
@@ -110,25 +111,6 @@ type archive struct {
 	SelfLink string `json:"selfLink"`
 }
 
-// parseKubernetesVersion returns:
-//  1. the SemVer form of s when it refers to a specific Kubernetes release, or
-//  2. the major and minor portions of s when it refers to a release series, or
-//  3. an error
-func parseKubernetesVersion(s string) (exact string, major, minor uint, err error) {
-	if v, err := version.ParseSemantic(s); err == nil {
-		return v.String(), 0, 0, nil
-	}
-
-	// See two parseable components and nothing else.
-	if v, err := version.ParseGeneric(s); err == nil && len(v.Components()) == 2 {
-		if v.String() == strings.TrimPrefix(s, "v") {
-			return "", v.Major(), v.Minor(), nil
-		}
-	}
-
-	return "", 0, 0, fmt.Errorf("could not parse %q as version", s)
-}
-
 func downloadBinaryAssets(ctx context.Context, binaryAssetsDirectory, binaryAssetsVersion, binaryAssetsIndexURL string) (string, string, string, error) {
 	if binaryAssetsIndexURL == "" {
 		binaryAssetsIndexURL = DefaultBinaryAssetsIndexURL
@@ -143,23 +125,14 @@ func downloadBinaryAssets(ctx context.Context, binaryAssetsDirectory, binaryAsse
 	}
 
 	var binaryAssetsIndex *index
-	switch exact, major, minor, err := parseKubernetesVersion(binaryAssetsVersion); {
-	case binaryAssetsVersion != "" && err != nil:
-		return "", "", "", err
-
-	case binaryAssetsVersion != "" && exact != "":
-		// Look for these specific binaries locally before downloading them from the release index.
-		// Use the canonical form of the version from here on.
-		binaryAssetsVersion = "v" + exact
-
-	case binaryAssetsVersion == "" || major != 0 || minor != 0:
-		// Select a stable version from the release index before continuing.
+	if binaryAssetsVersion == "" {
+		var err error
 		binaryAssetsIndex, err = getIndex(ctx, binaryAssetsIndexURL)
 		if err != nil {
 			return "", "", "", err
 		}
 
-		binaryAssetsVersion, err = latestStableVersionFromIndex(binaryAssetsIndex, major, minor)
+		binaryAssetsVersion, err = latestStableVersionFromIndex(binaryAssetsIndex)
 		if err != nil {
 			return "", "", "", err
 		}
@@ -279,50 +252,34 @@ func downloadBinaryAssetsArchive(ctx context.Context, index *index, version stri
 	return readBody(resp, out, archiveName, archive.Hash)
 }
 
-// latestStableVersionFromIndex returns the version with highest [precedence] in index that is not a prerelease.
-// When either major or minor are not zero, the returned version will have those major and minor versions.
-// Note that the version cannot be limited to 0.0.x this way.
-//
-// It is an error when there is no appropriate version in index.
-//
-// [precedence]: https://semver.org/spec/v2.0.0.html#spec-item-11
-func latestStableVersionFromIndex(index *index, major, minor uint) (string, error) {
+func latestStableVersionFromIndex(index *index) (string, error) {
 	if len(index.Releases) == 0 {
 		return "", fmt.Errorf("failed to find latest stable version from index: index is empty")
 	}
 
-	var found *version.Version
+	parsedVersions := []semver.Version{}
 	for releaseVersion := range index.Releases {
-		v, err := version.ParseSemantic(releaseVersion)
+		v, err := semver.ParseTolerant(releaseVersion)
 		if err != nil {
 			return "", fmt.Errorf("failed to parse version %q: %w", releaseVersion, err)
 		}
 
 		// Filter out pre-releases.
-		if len(v.PreRelease()) > 0 {
+		if len(v.Pre) > 0 {
 			continue
 		}
 
-		// Filter on release series, if any.
-		if (major != 0 || minor != 0) && (v.Major() != major || v.Minor() != minor) {
-			continue
-		}
-
-		if found == nil || v.GreaterThan(found) {
-			found = v
-		}
+		parsedVersions = append(parsedVersions, v)
 	}
 
-	if found == nil {
-		search := "any"
-		if major != 0 || minor != 0 {
-			search = fmt.Sprint(major, ".", minor)
-		}
-
-		return "", fmt.Errorf("failed to find latest stable version from index: index does not have %s stable versions", search)
+	if len(parsedVersions) == 0 {
+		return "", fmt.Errorf("failed to find latest stable version from index: index does not have stable versions")
 	}
 
-	return "v" + found.String(), nil
+	sort.Slice(parsedVersions, func(i, j int) bool {
+		return parsedVersions[i].GT(parsedVersions[j])
+	})
+	return "v" + parsedVersions[0].String(), nil
 }
 
 func getIndex(ctx context.Context, indexURL string) (*index, error) {

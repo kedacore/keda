@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"sync/atomic"
 )
 
 // connErrPair pairs conn and error which is returned by accept on sub-listeners.
@@ -39,7 +38,6 @@ type multiListener struct {
 	connCh chan connErrPair
 	// stopCh communicates from parent to child listeners.
 	stopCh chan struct{}
-	closed atomic.Bool
 }
 
 // compile time check to ensure *multiListener implements net.Listener
@@ -152,8 +150,10 @@ func (ml *multiListener) Accept() (net.Conn, error) {
 // the go-routines to exit.
 func (ml *multiListener) Close() error {
 	// Make sure this can be called repeatedly without explosions.
-	if !ml.closed.CompareAndSwap(false, true) {
+	select {
+	case <-ml.stopCh:
 		return fmt.Errorf("use of closed network connection")
+	default:
 	}
 
 	// Tell all sub-listeners to stop.

@@ -5,18 +5,17 @@ package env
 
 import (
 	"fmt"
-	"strings"
 
 	"sigs.k8s.io/controller-runtime/tools/setup-envtest/versions"
 )
 
 // orderPlatforms orders platforms by OS then arch.
-func orderPlatforms(first, second versions.Platform) int {
+func orderPlatforms(first, second versions.Platform) bool {
 	// sort by OS, then arch
 	if first.OS != second.OS {
-		return strings.Compare(first.OS, second.OS)
+		return first.OS < second.OS
 	}
-	return strings.Compare(first.Arch, second.Arch)
+	return first.Arch < second.Arch
 }
 
 // PrintFormat indicates how to print out fetch and switch results.

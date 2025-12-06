@@ -9,9 +9,10 @@ import (
 	"os"
 
 	"cloud.google.com/go/compute/metadata"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
 
 // GKE collects resource information of GKE computing instances.
@@ -24,7 +25,7 @@ type GKE struct{}
 var _ resource.Detector = (*GKE)(nil)
 
 // Detect detects associated resources when running in GKE environment.
-func (*GKE) Detect(ctx context.Context) (*resource.Resource, error) {
+func (gke *GKE) Detect(ctx context.Context) (*resource.Resource, error) {
 	gcpDetecor := GCE{}
 	gceLablRes, err := gcpDetecor.Detect(ctx)
 

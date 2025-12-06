@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/exemplar"
 	"go.opentelemetry.io/otel/sdk/metric/internal"
 	"go.opentelemetry.io/otel/sdk/metric/internal/aggregate"
+	"go.opentelemetry.io/otel/sdk/metric/internal/x"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
@@ -36,24 +37,17 @@ type instrumentSync struct {
 	compAgg     aggregate.ComputeAggregation
 }
 
-func newPipeline(
-	res *resource.Resource,
-	reader Reader,
-	views []View,
-	exemplarFilter exemplar.Filter,
-	cardinalityLimit int,
-) *pipeline {
+func newPipeline(res *resource.Resource, reader Reader, views []View, exemplarFilter exemplar.Filter) *pipeline {
 	if res == nil {
 		res = resource.Empty()
 	}
 	return &pipeline{
-		resource:         res,
-		reader:           reader,
-		views:            views,
-		int64Measures:    map[observableID[int64]][]aggregate.Measure[int64]{},
-		float64Measures:  map[observableID[float64]][]aggregate.Measure[float64]{},
-		exemplarFilter:   exemplarFilter,
-		cardinalityLimit: cardinalityLimit,
+		resource:        res,
+		reader:          reader,
+		views:           views,
+		int64Measures:   map[observableID[int64]][]aggregate.Measure[int64]{},
+		float64Measures: map[observableID[float64]][]aggregate.Measure[float64]{},
+		exemplarFilter:  exemplarFilter,
 		// aggregations is lazy allocated when needed.
 	}
 }
@@ -71,13 +65,12 @@ type pipeline struct {
 	views  []View
 
 	sync.Mutex
-	int64Measures    map[observableID[int64]][]aggregate.Measure[int64]
-	float64Measures  map[observableID[float64]][]aggregate.Measure[float64]
-	aggregations     map[instrumentation.Scope][]instrumentSync
-	callbacks        []func(context.Context) error
-	multiCallbacks   list.List
-	exemplarFilter   exemplar.Filter
-	cardinalityLimit int
+	int64Measures   map[observableID[int64]][]aggregate.Measure[int64]
+	float64Measures map[observableID[float64]][]aggregate.Measure[float64]
+	aggregations    map[instrumentation.Scope][]instrumentSync
+	callbacks       []func(context.Context) error
+	multiCallbacks  list.List
+	exemplarFilter  exemplar.Filter
 }
 
 // addInt64Measure adds a new int64 measure to the pipeline for each observer.
@@ -395,9 +388,10 @@ func (i *inserter[N]) cachedAggregator(
 		b.Filter = stream.AttributeFilter
 		// A value less than or equal to zero will disable the aggregation
 		// limits for the builder (an all the created aggregates).
-		// cardinalityLimit will be 0 by default if unset (or
+		// CardinalityLimit.Lookup returns 0 by default if unset (or
 		// unrecognized input). Use that value directly.
-		b.AggregationLimit = i.pipeline.cardinalityLimit
+		b.AggregationLimit, _ = x.CardinalityLimit.Lookup()
+
 		in, out, err := i.aggregateFunc(b, stream.Aggregation, kind)
 		if err != nil {
 			return aggVal[N]{0, nil, err}
@@ -432,7 +426,7 @@ func (i *inserter[N]) logConflict(id instID) {
 	}
 
 	const msg = "duplicate metric stream definitions"
-	args := []any{
+	args := []interface{}{
 		"names", fmt.Sprintf("%q, %q", existing.Name, id.Name),
 		"descriptions", fmt.Sprintf("%q, %q", existing.Description, id.Description),
 		"kinds", fmt.Sprintf("%s, %s", existing.Kind, id.Kind),
@@ -466,7 +460,7 @@ func (i *inserter[N]) logConflict(id instID) {
 	global.Warn(msg, args...)
 }
 
-func (*inserter[N]) instID(kind InstrumentKind, stream Stream) instID {
+func (i *inserter[N]) instID(kind InstrumentKind, stream Stream) instID {
 	var zero N
 	return instID{
 		Name:        stream.Name,
@@ -596,16 +590,10 @@ func isAggregatorCompatible(kind InstrumentKind, agg Aggregation) error {
 // measurement.
 type pipelines []*pipeline
 
-func newPipelines(
-	res *resource.Resource,
-	readers []Reader,
-	views []View,
-	exemplarFilter exemplar.Filter,
-	cardinalityLimit int,
-) pipelines {
+func newPipelines(res *resource.Resource, readers []Reader, views []View, exemplarFilter exemplar.Filter) pipelines {
 	pipes := make([]*pipeline, 0, len(readers))
 	for _, r := range readers {
-		p := newPipeline(res, r, views, exemplarFilter, cardinalityLimit)
+		p := newPipeline(res, r, views, exemplarFilter)
 		r.register(p)
 		pipes = append(pipes, p)
 	}

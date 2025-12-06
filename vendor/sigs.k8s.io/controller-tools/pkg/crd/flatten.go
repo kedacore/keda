@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+
 	"sigs.k8s.io/controller-tools/pkg/loader"
 )
 
@@ -294,8 +295,8 @@ func RefParts(ref string) (typ string, pkgName string, err error) {
 	}
 	ref = ref[len(defPrefix):]
 	// decode the json pointer encodings
-	ref = strings.ReplaceAll(ref, "~1", "/")
-	ref = strings.ReplaceAll(ref, "~0", "~")
+	ref = strings.Replace(ref, "~1", "/", -1)
+	ref = strings.Replace(ref, "~0", "~", -1)
 	nameParts := strings.SplitN(ref, "~", 2)
 
 	if len(nameParts) == 1 {

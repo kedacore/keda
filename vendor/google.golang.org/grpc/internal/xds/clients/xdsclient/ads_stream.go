@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"google.golang.org/grpc/grpclog"
@@ -102,11 +103,11 @@ type adsStreamImpl struct {
 	requestCh    *buffer.Unbounded   // Subscriptions and unsubscriptions are pushed here.
 	runnerDoneCh chan struct{}       // Notify completion of runner goroutine.
 	cancel       context.CancelFunc  // To cancel the context passed to the runner goroutine.
-	fc           *adsFlowControl     // Flow control for ADS stream.
 
 	// Guards access to the below fields (and to the contents of the map).
 	mu                sync.Mutex
 	resourceTypeState map[ResourceType]*resourceTypeState // Map of resource types to their state.
+	fc                *adsFlowControl                     // Flow control for ADS stream.
 	firstRequest      bool                                // False after the first request is sent out.
 }
 
@@ -134,7 +135,6 @@ func newADSStreamImpl(opts adsStreamOpts) *adsStreamImpl {
 		streamCh:          make(chan clients.Stream, 1),
 		requestCh:         buffer.NewUnbounded(),
 		runnerDoneCh:      make(chan struct{}),
-		fc:                newADSFlowControl(),
 		resourceTypeState: make(map[ResourceType]*resourceTypeState),
 	}
 
@@ -150,7 +150,6 @@ func newADSStreamImpl(opts adsStreamOpts) *adsStreamImpl {
 // Stop blocks until the stream is closed and all spawned goroutines exit.
 func (s *adsStreamImpl) Stop() {
 	s.cancel()
-	s.fc.stop()
 	s.requestCh.Close()
 	<-s.runnerDoneCh
 	s.logger.Infof("Shutdown ADS stream")
@@ -241,6 +240,9 @@ func (s *adsStreamImpl) runner(ctx context.Context) {
 		}
 
 		s.mu.Lock()
+		// Flow control is a property of the underlying streaming RPC call and
+		// needs to be initialized everytime a new one is created.
+		s.fc = newADSFlowControl(s.logger)
 		s.firstRequest = true
 		s.mu.Unlock()
 
@@ -254,7 +256,7 @@ func (s *adsStreamImpl) runner(ctx context.Context) {
 
 		// Backoff state is reset upon successful receipt of at least one
 		// message from the server.
-		if s.recv(stream) {
+		if s.recv(ctx, stream) {
 			return backoff.ErrResetBackoff
 		}
 		return nil
@@ -316,13 +318,11 @@ func (s *adsStreamImpl) sendNew(stream clients.Stream, typ ResourceType) error {
 	// This allows us to batch writes for requests which are generated as part
 	// of local processing of a received response.
 	state := s.resourceTypeState[typ]
-	bufferRequest := func() {
+	if s.fc.pending.Load() {
 		select {
 		case state.bufferedRequests <- struct{}{}:
 		default:
 		}
-	}
-	if s.fc.runIfPending(bufferRequest) {
 		return nil
 	}
 
@@ -458,7 +458,7 @@ func (s *adsStreamImpl) sendMessageLocked(stream clients.Stream, names []string,
 	if s.logger.V(perRPCVerbosityLevel) {
 		s.logger.Infof("ADS request sent: %v", pretty.ToJSON(req))
 	} else if s.logger.V(2) {
-		s.logger.Infof("ADS request sent for type %q, resources: %v, version: %q, nonce: %q", url, names, version, nonce)
+		s.logger.Warningf("ADS request sent for type %q, resources: %v, version: %q, nonce: %q", url, names, version, nonce)
 	}
 
 	return nil
@@ -477,19 +477,18 @@ func (s *adsStreamImpl) sendMessageLocked(stream clients.Stream, names []string,
 //
 // It returns a boolean indicating whether at least one message was received
 // from the server.
-func (s *adsStreamImpl) recv(stream clients.Stream) bool {
+func (s *adsStreamImpl) recv(ctx context.Context, stream clients.Stream) bool {
 	msgReceived := false
 	for {
-		// Wait for ADS stream level flow control to be available.
-		if s.fc.wait() {
+		// Wait for ADS stream level flow control to be available, and send out
+		// a request if anything was buffered while we were waiting for local
+		// processing of the previous response to complete.
+		if !s.fc.wait(ctx) {
 			if s.logger.V(2) {
-				s.logger.Infof("ADS stream stopped while waiting for flow control")
+				s.logger.Infof("ADS stream context canceled")
 			}
 			return msgReceived
 		}
-
-		// Send out a request if anything was buffered while we were waiting for
-		// local processing of the previous response to complete.
 		s.sendBuffered(stream)
 
 		resources, url, version, nonce, err := s.recvMessage(stream)
@@ -509,8 +508,8 @@ func (s *adsStreamImpl) recv(stream clients.Stream) bool {
 		}
 		var resourceNames []string
 		var nackErr error
-		s.fc.setPending(true)
-		resourceNames, nackErr = s.eventHandler.onResponse(resp, sync.OnceFunc(func() { s.fc.setPending(false) }))
+		s.fc.setPending()
+		resourceNames, nackErr = s.eventHandler.onResponse(resp, s.fc.onDone)
 		if xdsresource.ErrType(nackErr) == xdsresource.ErrorTypeResourceTypeUnsupported {
 			// A general guiding principle is that if the server sends
 			// something the client didn't actually subscribe to, then the
@@ -708,84 +707,69 @@ func resourceNames(m map[string]*xdsresource.ResourceWatchState) []string {
 	return ret
 }
 
-// adsFlowControl implements ADS stream level flow control that enables the ADS
-// stream to block the reading of the next message until the previous update is
-// consumed by all watchers.
+// adsFlowControl implements ADS stream level flow control that enables the
+// transport to block the reading of the next message off of the stream until
+// the previous update is consumed by all watchers.
 //
-// The lifetime of the flow control is tied to the lifetime of the stream. When
-// the stream is closed, it is the responsibility of the caller to stop the flow
-// control. This ensures that any goroutine blocked on the flow control's wait
-// method is unblocked.
+// The lifetime of the flow control is tied to the lifetime of the stream.
 type adsFlowControl struct {
-	mu sync.Mutex
-	// cond is used to signal when the most recent update has been consumed, or
-	// the flow control has been stopped (in which case, waiters should be
-	// unblocked as well).
-	cond    *sync.Cond
-	pending bool // indicates if the most recent update is pending consumption
-	stopped bool // indicates if the ADS stream has been stopped
+	logger *igrpclog.PrefixLogger
+
+	// Whether the most recent update is pending consumption by all watchers.
+	pending atomic.Bool
+	// Channel used to notify when all the watchers have consumed the most
+	// recent update. Wait() blocks on reading a value from this channel.
+	readyCh chan struct{}
 }
 
 // newADSFlowControl returns a new adsFlowControl.
-func newADSFlowControl() *adsFlowControl {
-	fc := &adsFlowControl{}
-	fc.cond = sync.NewCond(&fc.mu)
-	return fc
-}
-
-// stop marks the flow control as stopped and signals the condition variable to
-// unblock any goroutine waiting on it.
-func (fc *adsFlowControl) stop() {
-	fc.mu.Lock()
-	defer fc.mu.Unlock()
-
-	fc.stopped = true
-	fc.cond.Broadcast()
-}
-
-// setPending changes the internal state to indicate whether there is an update
-// pending consumption by all watchers. If there is no longer a pending update,
-// the condition variable is signaled to allow the recv method to proceed.
-func (fc *adsFlowControl) setPending(pending bool) {
-	fc.mu.Lock()
-	defer fc.mu.Unlock()
-
-	if fc.stopped {
-		return
-	}
-
-	fc.pending = pending
-	if !pending {
-		fc.cond.Broadcast()
+func newADSFlowControl(logger *igrpclog.PrefixLogger) *adsFlowControl {
+	return &adsFlowControl{
+		logger:  logger,
+		readyCh: make(chan struct{}, 1),
 	}
 }
 
-func (fc *adsFlowControl) runIfPending(f func()) bool {
-	fc.mu.Lock()
-	defer fc.mu.Unlock()
+// setPending changes the internal state to indicate that there is an update
+// pending consumption by all watchers.
+func (fc *adsFlowControl) setPending() {
+	fc.pending.Store(true)
+}
 
-	if fc.stopped {
+// wait blocks until all the watchers have consumed the most recent update and
+// returns true. If the context expires before that, it returns false.
+func (fc *adsFlowControl) wait(ctx context.Context) bool {
+	// If there is no pending update, there is no need to block.
+	if !fc.pending.Load() {
+		// If all watchers finished processing the most recent update before the
+		// `recv` goroutine made the next call to `Wait()`, there would be an
+		// entry in the readyCh channel that needs to be drained to ensure that
+		// the next call to `Wait()` doesn't unblock before it actually should.
+		select {
+		case <-fc.readyCh:
+		default:
+		}
+		return true
+	}
+
+	select {
+	case <-ctx.Done():
 		return false
+	case <-fc.readyCh:
+		return true
 	}
-
-	// If there's a pending update, run the function while still holding the
-	// lock. This ensures that the pending state does not change between the
-	// check and the function call.
-	if fc.pending {
-		f()
-	}
-	return fc.pending
 }
 
-// wait blocks until all the watchers have consumed the most recent update.
-// Returns true if the flow control was stopped while waiting, false otherwise.
-func (fc *adsFlowControl) wait() bool {
-	fc.mu.Lock()
-	defer fc.mu.Unlock()
-
-	for fc.pending && !fc.stopped {
-		fc.cond.Wait()
+// onDone indicates that all watchers have consumed the most recent update.
+func (fc *adsFlowControl) onDone() {
+	select {
+	// Writes to the readyCh channel should not block ideally. The default
+	// branch here is to appease the paranoid mind.
+	case fc.readyCh <- struct{}{}:
+	default:
+		if fc.logger.V(2) {
+			fc.logger.Infof("ADS stream flow control readyCh is full")
+		}
 	}
-
-	return fc.stopped
+	fc.pending.Store(false)
 }

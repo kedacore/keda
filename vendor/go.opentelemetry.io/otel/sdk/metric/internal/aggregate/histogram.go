@@ -140,9 +140,7 @@ type histogram[N int64 | float64] struct {
 	start    time.Time
 }
 
-func (s *histogram[N]) delta(
-	dest *metricdata.Aggregation, //nolint:gocritic // The pointer is needed for the ComputeAggregation interface
-) int {
+func (s *histogram[N]) delta(dest *metricdata.Aggregation) int {
 	t := now()
 
 	// If *dest is not a metricdata.Histogram, memory reuse is missed. In that
@@ -192,9 +190,7 @@ func (s *histogram[N]) delta(
 	return n
 }
 
-func (s *histogram[N]) cumulative(
-	dest *metricdata.Aggregation, //nolint:gocritic // The pointer is needed for the ComputeAggregation interface
-) int {
+func (s *histogram[N]) cumulative(dest *metricdata.Aggregation) int {
 	t := now()
 
 	// If *dest is not a metricdata.Histogram, memory reuse is missed. In that

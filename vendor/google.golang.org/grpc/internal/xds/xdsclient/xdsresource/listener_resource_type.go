@@ -18,49 +18,42 @@
 package xdsresource
 
 import (
-	"bytes"
 	"fmt"
 
+	"google.golang.org/grpc/internal/pretty"
 	"google.golang.org/grpc/internal/xds/bootstrap"
-	"google.golang.org/grpc/internal/xds/clients/xdsclient"
+	xdsclient "google.golang.org/grpc/internal/xds/clients/xdsclient"
 	"google.golang.org/grpc/internal/xds/xdsclient/xdsresource/version"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
-// ListenerResourceTypeName is a human friendly name for the listener resource.
-const ListenerResourceTypeName = "ListenerResource"
+const (
+	// ListenerResourceTypeName represents the transport agnostic name for the
+	// listener resource.
+	ListenerResourceTypeName = "ListenerResource"
+)
 
-// listenerResourceDecoder is an implementation of the xdsclient.Decoder
-// interface for listener resources.
-type listenerResourceDecoder struct {
-	bootstrapConfig *bootstrap.Config
-}
+var (
+	// Compile time interface checks.
+	_ Type = listenerResourceType{}
 
-func (d *listenerResourceDecoder) Decode(resource *xdsclient.AnyProto, _ xdsclient.DecodeOptions) (*xdsclient.DecodeResult, error) {
-	name, listener, err := unmarshalListenerResource(resource.ToAny())
-	if name == "" {
-		// Name is unset only when protobuf deserialization fails.
-		return nil, err
+	// Singleton instantiation of the resource type implementation.
+	listenerType = listenerResourceType{
+		resourceTypeState: resourceTypeState{
+			typeURL:                    version.V3ListenerURL,
+			typeName:                   ListenerResourceTypeName,
+			allResourcesRequiredInSotW: true,
+		},
 	}
-	if err != nil {
-		// Protobuf deserialization succeeded, but resource validation failed.
-		return &xdsclient.DecodeResult{
-			Name:     name,
-			Resource: &ListenerResourceData{Resource: ListenerUpdate{}},
-		}, err
-	}
+)
 
-	// Perform extra validation here.
-	if err := listenerValidator(d.bootstrapConfig, listener); err != nil {
-		return &xdsclient.DecodeResult{
-			Name:     name,
-			Resource: &ListenerResourceData{Resource: ListenerUpdate{}},
-		}, err
-	}
-
-	return &xdsclient.DecodeResult{
-		Name:     name,
-		Resource: &ListenerResourceData{Resource: listener},
-	}, nil
+// listenerResourceType provides the resource-type specific functionality for a
+// Listener resource.
+//
+// Implements the Type interface.
+type listenerResourceType struct {
+	resourceTypeState
 }
 
 func securityConfigValidator(bc *bootstrap.Config, sc *SecurityConfig) error {
@@ -92,23 +85,58 @@ func listenerValidator(bc *bootstrap.Config, lis ListenerUpdate) error {
 	})
 }
 
-// ListenerResourceData is an implementation of the xdsclient.ResourceData
-// interface for listener resources.
+// Decode deserializes and validates an xDS resource serialized inside the
+// provided `Any` proto, as received from the xDS management server.
+func (listenerResourceType) Decode(opts *DecodeOptions, resource *anypb.Any) (*DecodeResult, error) {
+	name, listener, err := unmarshalListenerResource(resource)
+	switch {
+	case name == "":
+		// Name is unset only when protobuf deserialization fails.
+		return nil, err
+	case err != nil:
+		// Protobuf deserialization succeeded, but resource validation failed.
+		return &DecodeResult{Name: name, Resource: &ListenerResourceData{Resource: ListenerUpdate{}}}, err
+	}
+
+	// Perform extra validation here.
+	if err := listenerValidator(opts.BootstrapConfig, listener); err != nil {
+		return &DecodeResult{Name: name, Resource: &ListenerResourceData{Resource: ListenerUpdate{}}}, err
+	}
+
+	return &DecodeResult{Name: name, Resource: &ListenerResourceData{Resource: listener}}, nil
+}
+
+// ListenerResourceData wraps the configuration of a Listener resource as
+// received from the management server.
+//
+// Implements the ResourceData interface.
 type ListenerResourceData struct {
+	ResourceData
+
+	// TODO: We have always stored update structs by value. See if this can be
+	// switched to a pointer?
 	Resource ListenerUpdate
 }
 
-// Equal returns true if other is equal to l.
-func (l *ListenerResourceData) Equal(other xdsclient.ResourceData) bool {
-	if other == nil {
+// RawEqual returns true if other is equal to l.
+func (l *ListenerResourceData) RawEqual(other ResourceData) bool {
+	if l == nil && other == nil {
+		return true
+	}
+	if (l == nil) != (other == nil) {
 		return false
 	}
-	return bytes.Equal(l.Bytes(), other.Bytes())
+	return proto.Equal(l.Resource.Raw, other.Raw())
 }
 
-// Bytes returns the protobuf serialized bytes of the listener resource proto.
-func (l *ListenerResourceData) Bytes() []byte {
-	return l.Resource.Raw.GetValue()
+// ToJSON returns a JSON string representation of the resource data.
+func (l *ListenerResourceData) ToJSON() string {
+	return pretty.ToJSON(l.Resource)
+}
+
+// Raw returns the underlying raw protobuf form of the listener resource.
+func (l *ListenerResourceData) Raw() *anypb.Any {
+	return l.Resource.Raw
 }
 
 // ListenerWatcher wraps the callbacks to be invoked for different
@@ -116,7 +144,7 @@ func (l *ListenerResourceData) Bytes() []byte {
 // contains an exhaustive list of what method is invoked under what conditions.
 type ListenerWatcher interface {
 	// ResourceChanged indicates a new version of the resource is available.
-	ResourceChanged(resource *ListenerUpdate, done func())
+	ResourceChanged(resource *ListenerResourceData, done func())
 
 	// ResourceError indicates an error occurred while trying to fetch or
 	// decode the associated resource. The previous version of the resource
@@ -135,9 +163,9 @@ type delegatingListenerWatcher struct {
 	watcher ListenerWatcher
 }
 
-func (d *delegatingListenerWatcher) ResourceChanged(data xdsclient.ResourceData, onDone func()) {
+func (d *delegatingListenerWatcher) ResourceChanged(data ResourceData, onDone func()) {
 	l := data.(*ListenerResourceData)
-	d.watcher.ResourceChanged(&l.Resource, onDone)
+	d.watcher.ResourceChanged(l, onDone)
 }
 func (d *delegatingListenerWatcher) ResourceError(err error, onDone func()) {
 	d.watcher.ResourceError(err, onDone)
@@ -149,12 +177,13 @@ func (d *delegatingListenerWatcher) AmbientError(err error, onDone func()) {
 
 // WatchListener uses xDS to discover the configuration associated with the
 // provided listener resource name.
-func WatchListener(p ProducerV2, name string, w ListenerWatcher) (cancel func()) {
-	return p.WatchResourceV2(version.V3ListenerURL, name, &delegatingListenerWatcher{watcher: w})
+func WatchListener(p Producer, name string, w ListenerWatcher) (cancel func()) {
+	delegator := &delegatingListenerWatcher{watcher: w}
+	return p.WatchResource(listenerType, name, delegator)
 }
 
-// NewListenerResourceTypeDecoder returns a xdsclient.Decoder that wraps
+// NewGenericListenerResourceTypeDecoder returns a xdsclient.Decoder that wraps
 // the xdsresource.listenerType.
-func NewListenerResourceTypeDecoder(bc *bootstrap.Config) xdsclient.Decoder {
-	return &listenerResourceDecoder{bootstrapConfig: bc}
+func NewGenericListenerResourceTypeDecoder(bc *bootstrap.Config) xdsclient.Decoder {
+	return &GenericResourceTypeDecoder{ResourceType: listenerType, BootstrapConfig: bc}
 }

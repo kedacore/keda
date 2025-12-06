@@ -18,10 +18,10 @@ func dropReservoir[N int64 | float64](attribute.Set) FilteredExemplarReservoir[N
 type dropRes[N int64 | float64] struct{}
 
 // Offer does nothing, all measurements offered will be dropped.
-func (*dropRes[N]) Offer(context.Context, N, []attribute.KeyValue) {}
+func (r *dropRes[N]) Offer(context.Context, N, []attribute.KeyValue) {}
 
 // Collect resets dest. No exemplars will ever be returned.
-func (*dropRes[N]) Collect(dest *[]exemplar.Exemplar) {
+func (r *dropRes[N]) Collect(dest *[]exemplar.Exemplar) {
 	clear(*dest) // Erase elements to let GC collect objects
 	*dest = (*dest)[:0]
 }

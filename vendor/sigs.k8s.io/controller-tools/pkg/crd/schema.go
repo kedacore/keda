@@ -26,8 +26,8 @@ import (
 	"strings"
 
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
 	crdmarkers "sigs.k8s.io/controller-tools/pkg/crd/markers"
+
 	"sigs.k8s.io/controller-tools/pkg/loader"
 	"sigs.k8s.io/controller-tools/pkg/markers"
 )
@@ -113,26 +113,12 @@ func (c *schemaContext) requestSchema(pkgPath, typeName string) {
 
 // infoToSchema creates a schema for the type in the given set of type information.
 func infoToSchema(ctx *schemaContext) *apiext.JSONSchemaProps {
-	if obj := ctx.pkg.Types.Scope().Lookup(ctx.info.Name); obj != nil {
-		switch {
-		// If the obj implements a JSON marshaler and has a marker, use the
-		// markers value and do not traverse as the marshaler could be doing
-		// anything. If there is no marker, fall back to traversing.
-		case implements(obj.Type(), jsonMarshaler):
-			schema := &apiext.JSONSchemaProps{}
-			applyMarkers(ctx, ctx.info.Markers, schema, ctx.info.RawSpec.Type)
-			if schema.Type != "" {
-				return schema
-			}
-
-		// If the obj implements a text marshaler, encode it as a string.
-		case implements(obj.Type(), textMarshaler):
-			schema := &apiext.JSONSchemaProps{Type: "string"}
-			applyMarkers(ctx, ctx.info.Markers, schema, ctx.info.RawSpec.Type)
-			if schema.Type != "string" {
-				err := fmt.Errorf("%q implements encoding.TextMarshaler but schema type is not string: %q", ctx.info.RawSpec.Name, schema.Type)
-				ctx.pkg.AddError(loader.ErrFromNode(err, ctx.info.RawSpec.Type))
-			}
+	// If the obj implements a JSON marshaler and has a marker, use the markers value and do not traverse as
+	// the marshaler could be doing anything. If there is no marker, fall back to traversing.
+	if obj := ctx.pkg.Types.Scope().Lookup(ctx.info.Name); obj != nil && implementsJSONMarshaler(obj.Type()) {
+		schema := &apiext.JSONSchemaProps{}
+		applyMarkers(ctx, ctx.info.Markers, schema, ctx.info.RawSpec.Type)
+		if schema.Type != "" {
 			return schema
 		}
 	}
@@ -247,7 +233,7 @@ func typeToSchema(ctx *schemaContext, rawType ast.Expr) *apiext.JSONSchemaProps 
 // escapes).
 func qualifiedName(pkgName, typeName string) string {
 	if pkgName != "" {
-		return strings.ReplaceAll(pkgName, "/", "~1") + "~0" + typeName
+		return strings.Replace(pkgName, "/", "~1", -1) + "~0" + typeName
 	}
 	return typeName
 }
@@ -268,7 +254,7 @@ func localNamedToSchema(ctx *schemaContext, ident *ast.Ident) *apiext.JSONSchema
 	// This reproduces the behavior we had pre gotypesalias=1 (needed if this
 	// project is compiled with default settings and Go >= 1.23).
 	if aliasInfo, isAlias := typeInfo.(*types.Alias); isAlias {
-		typeInfo = aliasInfo.Rhs()
+		typeInfo = aliasInfo.Underlying()
 	}
 	if basicInfo, isBasic := typeInfo.(*types.Basic); isBasic {
 		typ, fmt, err := builtinToType(basicInfo, ctx.allowDangerousTypes)
@@ -398,8 +384,6 @@ func mapToSchema(ctx *schemaContext, mapType *ast.MapType) *apiext.JSONSchemaPro
 
 // structToSchema creates a schema for the given struct.  Embedded fields are placed in AllOf,
 // and can be flattened later with a Flattener.
-//
-//nolint:gocyclo
 func structToSchema(ctx *schemaContext, structType *ast.StructType) *apiext.JSONSchemaProps {
 	props := &apiext.JSONSchemaProps{
 		Type:       "object",
@@ -408,17 +392,6 @@ func structToSchema(ctx *schemaContext, structType *ast.StructType) *apiext.JSON
 
 	if ctx.info.RawSpec.Type != structType {
 		ctx.pkg.AddError(loader.ErrFromNode(fmt.Errorf("encountered non-top-level struct (possibly embedded), those aren't allowed"), structType))
-		return props
-	}
-
-	exactlyOneOf, err := oneOfValuesToSet(ctx.info.Markers[crdmarkers.ValidationExactlyOneOfPrefix])
-	if err != nil {
-		ctx.pkg.AddError(loader.ErrFromNode(err, structType))
-		return props
-	}
-	atMostOneOf, err := oneOfValuesToSet(ctx.info.Markers[crdmarkers.ValidationAtMostOneOfPrefix])
-	if err != nil {
-		ctx.pkg.AddError(loader.ErrFromNode(err, structType))
 		return props
 	}
 
@@ -461,21 +434,13 @@ func structToSchema(ctx *schemaContext, structType *ast.StructType) *apiext.JSON
 
 		switch {
 		case field.Markers.Get("kubebuilder:validation:Optional") != nil:
-			// explicitly optional - kubebuilder
+			// explicity optional - kubebuilder
 		case field.Markers.Get("kubebuilder:validation:Required") != nil:
-			if exactlyOneOf.Has(fieldName) || atMostOneOf.Has(fieldName) {
-				ctx.pkg.AddError(loader.ErrFromNode(fmt.Errorf("field %s is part of OneOf constraint and cannot be marked as required", fieldName), structType))
-				return props
-			}
 			// explicitly required - kubebuilder
 			props.Required = append(props.Required, fieldName)
 		case field.Markers.Get("optional") != nil:
-			// explicitly optional - kubernetes
+			// explicity optional - kubernetes
 		case field.Markers.Get("required") != nil:
-			if exactlyOneOf.Has(fieldName) || atMostOneOf.Has(fieldName) {
-				ctx.pkg.AddError(loader.ErrFromNode(fmt.Errorf("field %s is part of OneOf constraint and cannot be marked as required", fieldName), structType))
-				return props
-			}
 			// explicitly required - kubernetes
 			props.Required = append(props.Required, fieldName)
 
@@ -483,10 +448,6 @@ func structToSchema(ctx *schemaContext, structType *ast.StructType) *apiext.JSON
 		case defaultMode == "required":
 			// ...everything that's not inline / omitempty is required
 			if !inline && !omitEmpty {
-				if exactlyOneOf.Has(fieldName) || atMostOneOf.Has(fieldName) {
-					ctx.pkg.AddError(loader.ErrFromNode(fmt.Errorf("field %s is part of OneOf constraint and must have omitempty tag", fieldName), structType))
-					return props
-				}
 				props.Required = append(props.Required, fieldName)
 			}
 
@@ -514,41 +475,6 @@ func structToSchema(ctx *schemaContext, structType *ast.StructType) *apiext.JSON
 	}
 
 	return props
-}
-
-func oneOfValuesToSet(oneOfGroups []any) (sets.Set[string], error) {
-	set := sets.New[string]()
-	for _, oneOf := range oneOfGroups {
-		switch vals := oneOf.(type) {
-		case crdmarkers.ExactlyOneOf:
-			if err := validateOneOfValues(vals...); err != nil {
-				return nil, fmt.Errorf("%s: %w", crdmarkers.ValidationExactlyOneOfPrefix, err)
-			}
-			set.Insert(vals...)
-		case crdmarkers.AtMostOneOf:
-			if err := validateOneOfValues(vals...); err != nil {
-				return nil, fmt.Errorf("%s: %w", crdmarkers.ValidationAtMostOneOfPrefix, err)
-			}
-			set.Insert(vals...)
-		default:
-			return nil, fmt.Errorf("expected ExactlyOneOf or AtMostOneOf, got %T", oneOf)
-		}
-	}
-	return set, nil
-}
-
-func validateOneOfValues(fields ...string) error {
-	var invalid []string
-	for _, field := range fields {
-		if strings.Contains(field, ".") {
-			// nested fields are not allowed in OneOf validation markers
-			invalid = append(invalid, field)
-		}
-	}
-	if len(invalid) > 0 {
-		return fmt.Errorf("cannot reference nested fields: %s", strings.Join(invalid, ","))
-	}
-	return nil
 }
 
 // builtinToType converts builtin basic types to their equivalent JSON schema form.
@@ -595,15 +521,6 @@ var jsonMarshaler = types.NewInterfaceType([]*types.Func{
 				types.NewVar(token.NoPos, nil, "", types.Universe.Lookup("error").Type())), false)),
 }, nil).Complete()
 
-// Open coded go/types representation of encoding.TextMarshaler
-var textMarshaler = types.NewInterfaceType([]*types.Func{
-	types.NewFunc(token.NoPos, nil, "MarshalText",
-		types.NewSignatureType(nil, nil, nil, nil,
-			types.NewTuple(
-				types.NewVar(token.NoPos, nil, "text", types.NewSlice(types.Universe.Lookup("byte").Type())),
-				types.NewVar(token.NoPos, nil, "err", types.Universe.Lookup("error").Type())), false)),
-}, nil).Complete()
-
-func implements(typ types.Type, iface *types.Interface) bool {
-	return types.Implements(typ, iface) || types.Implements(types.NewPointer(typ), iface)
+func implementsJSONMarshaler(typ types.Type) bool {
+	return types.Implements(typ, jsonMarshaler) || types.Implements(types.NewPointer(typ), jsonMarshaler)
 }

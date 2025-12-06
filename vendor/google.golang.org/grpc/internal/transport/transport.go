@@ -68,11 +68,11 @@ type recvBuffer struct {
 	err     error
 }
 
-// init allows a recvBuffer to be initialized in-place, which is useful
-// for resetting a buffer or for avoiding a heap allocation when the buffer
-// is embedded in another struct.
-func (b *recvBuffer) init() {
-	b.c = make(chan recvMsg, 1)
+func newRecvBuffer() *recvBuffer {
+	b := &recvBuffer{
+		c: make(chan recvMsg, 1),
+	}
+	return b
 }
 
 func (b *recvBuffer) put(r recvMsg) {
@@ -123,13 +123,12 @@ func (b *recvBuffer) get() <-chan recvMsg {
 // recvBufferReader implements io.Reader interface to read the data from
 // recvBuffer.
 type recvBufferReader struct {
-	_            noCopy
-	clientStream *ClientStream // The client transport stream is closed with a status representing ctx.Err() and nil trailer metadata.
-	ctx          context.Context
-	ctxDone      <-chan struct{} // cache of ctx.Done() (for performance).
-	recv         *recvBuffer
-	last         mem.Buffer // Stores the remaining data in the previous calls.
-	err          error
+	closeStream func(error) // Closes the client transport stream with the given error and nil trailer metadata.
+	ctx         context.Context
+	ctxDone     <-chan struct{} // cache of ctx.Done() (for performance).
+	recv        *recvBuffer
+	last        mem.Buffer // Stores the remaining data in the previous calls.
+	err         error
 }
 
 func (r *recvBufferReader) ReadMessageHeader(header []byte) (n int, err error) {
@@ -140,7 +139,7 @@ func (r *recvBufferReader) ReadMessageHeader(header []byte) (n int, err error) {
 		n, r.last = mem.ReadUnsafe(header, r.last)
 		return n, nil
 	}
-	if r.clientStream != nil {
+	if r.closeStream != nil {
 		n, r.err = r.readMessageHeaderClient(header)
 	} else {
 		n, r.err = r.readMessageHeader(header)
@@ -165,7 +164,7 @@ func (r *recvBufferReader) Read(n int) (buf mem.Buffer, err error) {
 		}
 		return buf, nil
 	}
-	if r.clientStream != nil {
+	if r.closeStream != nil {
 		buf, r.err = r.readClient(n)
 	} else {
 		buf, r.err = r.read(n)
@@ -210,7 +209,7 @@ func (r *recvBufferReader) readMessageHeaderClient(header []byte) (n int, err er
 		// TODO: delaying ctx error seems like a unnecessary side effect. What
 		// we really want is to mark the stream as done, and return ctx error
 		// faster.
-		r.clientStream.Close(ContextErr(r.ctx.Err()))
+		r.closeStream(ContextErr(r.ctx.Err()))
 		m := <-r.recv.get()
 		return r.readMessageHeaderAdditional(m, header)
 	case m := <-r.recv.get():
@@ -237,7 +236,7 @@ func (r *recvBufferReader) readClient(n int) (buf mem.Buffer, err error) {
 		// TODO: delaying ctx error seems like a unnecessary side effect. What
 		// we really want is to mark the stream as done, and return ctx error
 		// faster.
-		r.clientStream.Close(ContextErr(r.ctx.Err()))
+		r.closeStream(ContextErr(r.ctx.Err()))
 		m := <-r.recv.get()
 		return r.readAdditional(m, n)
 	case m := <-r.recv.get():
@@ -286,32 +285,27 @@ const (
 
 // Stream represents an RPC in the transport layer.
 type Stream struct {
+	id           uint32
 	ctx          context.Context // the associated context of the stream
 	method       string          // the associated RPC method of the stream
 	recvCompress string
 	sendCompress string
+	buf          *recvBuffer
+	trReader     *transportReader
+	fc           *inFlow
+	wq           *writeQuota
 
-	readRequester readRequester
+	// Callback to state application's intentions to read data. This
+	// is used to adjust flow control, if needed.
+	requestRead func(int)
+
+	state streamState
 
 	// contentSubtype is the content-subtype for requests.
 	// this must be lowercase or the behavior is undefined.
 	contentSubtype string
 
 	trailer metadata.MD // the key-value map of trailer metadata.
-
-	// Non-pointer fields are at the end to optimize GC performance.
-	state    streamState
-	id       uint32
-	buf      recvBuffer
-	trReader transportReader
-	fc       inFlow
-	wq       writeQuota
-}
-
-// readRequester is used to state application's intentions to read data. This
-// is used to adjust flow control, if needed.
-type readRequester interface {
-	requestRead(int)
 }
 
 func (s *Stream) swapState(st streamState) streamState {
@@ -361,7 +355,7 @@ func (s *Stream) ReadMessageHeader(header []byte) (err error) {
 	if er := s.trReader.er; er != nil {
 		return er
 	}
-	s.readRequester.requestRead(len(header))
+	s.requestRead(len(header))
 	for len(header) != 0 {
 		n, err := s.trReader.ReadMessageHeader(header)
 		header = header[n:]
@@ -384,7 +378,7 @@ func (s *Stream) read(n int) (data mem.BufferSlice, err error) {
 	if er := s.trReader.er; er != nil {
 		return nil, er
 	}
-	s.readRequester.requestRead(n)
+	s.requestRead(n)
 	for n != 0 {
 		buf, err := s.trReader.Read(n)
 		var bufLen int
@@ -407,34 +401,16 @@ func (s *Stream) read(n int) (data mem.BufferSlice, err error) {
 	return data, nil
 }
 
-// noCopy may be embedded into structs which must not be copied
-// after the first use.
-//
-// See https://golang.org/issues/8005#issuecomment-190753527
-// for details.
-type noCopy struct {
-}
-
-func (*noCopy) Lock()   {}
-func (*noCopy) Unlock() {}
-
 // transportReader reads all the data available for this Stream from the transport and
 // passes them into the decoder, which converts them into a gRPC message stream.
 // The error is io.EOF when the stream is done or another non-nil error if
 // the stream broke.
 type transportReader struct {
-	_ noCopy
+	reader *recvBufferReader
 	// The handler to control the window update procedure for both this
 	// particular stream and the associated transport.
-	windowHandler windowHandler
+	windowHandler func(int)
 	er            error
-	reader        recvBufferReader
-}
-
-// The handler to control the window update procedure for both this
-// particular stream and the associated transport.
-type windowHandler interface {
-	updateWindow(int)
 }
 
 func (t *transportReader) ReadMessageHeader(header []byte) (int, error) {
@@ -443,7 +419,7 @@ func (t *transportReader) ReadMessageHeader(header []byte) (int, error) {
 		t.er = err
 		return 0, err
 	}
-	t.windowHandler.updateWindow(n)
+	t.windowHandler(n)
 	return n, nil
 }
 
@@ -453,7 +429,7 @@ func (t *transportReader) Read(n int) (mem.Buffer, error) {
 		t.er = err
 		return buf, err
 	}
-	t.windowHandler.updateWindow(buf.Len())
+	t.windowHandler(buf.Len())
 	return buf, nil
 }
 
@@ -478,7 +454,7 @@ type ServerConfig struct {
 	ConnectionTimeout     time.Duration
 	Credentials           credentials.TransportCredentials
 	InTapHandle           tap.ServerInHandle
-	StatsHandler          stats.Handler
+	StatsHandlers         []stats.Handler
 	KeepaliveParams       keepalive.ServerParameters
 	KeepalivePolicy       keepalive.EnforcementPolicy
 	InitialWindowSize     int32
@@ -639,8 +615,6 @@ type internalServerTransport interface {
 	write(s *ServerStream, hdr []byte, data mem.BufferSlice, opts *WriteOptions) error
 	writeStatus(s *ServerStream, st *status.Status) error
 	incrMsgRecv()
-	adjustWindow(s *ServerStream, n uint32)
-	updateWindow(s *ServerStream, n uint32)
 }
 
 // connectionErrorf creates an ConnectionError with the specified error description.

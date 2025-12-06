@@ -50,7 +50,16 @@ var (
 	binDir = flag.String("bin-dir", "",
 		"directory to store binary assets (default: $OS_SPECIFIC_DATA_DIR/envtest-binaries)")
 
-	index = flag.String("index", remote.DefaultIndexURL, "index to discover envtest binaries")
+	useDeprecatedGCS = flag.Bool("use-deprecated-gcs", false, "use GCS to fetch envtest binaries. Note: This is deprecated and will be removed soon. For more details see: https://github.com/kubernetes-sigs/controller-runtime/pull/2811")
+
+	// These flags are only used with --use-deprecated-gcs.
+	remoteBucket = flag.String("remote-bucket", "kubebuilder-tools", "remote GCS bucket to download from (only used with --use-deprecated-gcs)")
+	remoteServer = flag.String("remote-server", "storage.googleapis.com",
+		"remote server to query from.  You can override this if you want to run "+
+			"an internal storage server instead, or for testing. (only used with --use-deprecated-gcs)")
+
+	// This flag is only used if --use-deprecated-gcs is not set or false (default).
+	index = flag.String("index", remote.DefaultIndexURL, "index to discover envtest binaries (only used if --use-deprecated-gcs is not set, or set to false)")
 )
 
 // TODO(directxman12): handle interrupts?
@@ -79,18 +88,29 @@ func setupEnv(globalLog logr.Logger, version string) *envp.Env {
 	}
 	log.V(1).Info("using binaries directory", "dir", *binDir)
 
-	client := &remote.HTTPClient{
-		Log:      globalLog.WithName("storage-client"),
-		IndexURL: *index,
+	var client remote.Client
+	if useDeprecatedGCS != nil && *useDeprecatedGCS {
+		client = &remote.GCSClient{ //nolint:staticcheck // deprecation accepted for now
+			Log:    globalLog.WithName("storage-client"),
+			Bucket: *remoteBucket,
+			Server: *remoteServer,
+		}
+		log.V(1).Info("using deprecated GCS client", "bucket", *remoteBucket, "server", *remoteServer)
+	} else {
+		client = &remote.HTTPClient{
+			Log:      globalLog.WithName("storage-client"),
+			IndexURL: *index,
+		}
+		log.V(1).Info("using HTTP client", "index", *index)
 	}
-	log.V(1).Info("using HTTP client", "index", *index)
 
 	env := &envp.Env{
-		Log:           globalLog,
-		Client:        client,
-		VerifySum:     *verify,
-		ForceDownload: *force,
-		NoDownload:    *installedOnly,
+		Log:              globalLog,
+		UseDeprecatedGCS: useDeprecatedGCS != nil && *useDeprecatedGCS,
+		Client:           client,
+		VerifySum:        *verify,
+		ForceDownload:    *force,
+		NoDownload:       *installedOnly,
 		Platform: versions.PlatformItem{
 			Platform: versions.Platform{
 				OS:   *targetOS,
@@ -169,7 +189,7 @@ Commands:
 
 	use:
 		get information for the requested version, downloading it if necessary and allowed.
-		Needs a concrete platform (no wildcards), but wildcard versions are supported.
+		Needs a concrete platform (no wildcards), but wilcard versions are supported.
 
 	list:
 		list installed *and* available versions matching the given version & platform.
@@ -183,9 +203,6 @@ Commands:
 	sideload:
 		reads a .tar.gz file from stdin and expand it into the store.
 		must have a concrete version and platform.
-
-	version:
-		list the installed version of setup-envtest.
 
 Versions:
 
@@ -259,6 +276,7 @@ Environment Variables:
 		version = flag.Arg(1)
 	}
 	env := setupEnv(globalLog, version)
+
 	// perform our main set of actions
 	switch action := flag.Arg(0); action {
 	case "use":
@@ -276,8 +294,6 @@ Environment Variables:
 			Input:       os.Stdin,
 			PrintFormat: printFormat,
 		}.Do(env)
-	case "version":
-		workflows.Version{}.Do(env)
 	default:
 		flag.Usage()
 		envp.Exit(2, "unknown action %q", action)
