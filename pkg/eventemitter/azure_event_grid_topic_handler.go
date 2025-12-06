@@ -27,7 +27,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/messaging"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid/publisher"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azeventgrid"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -41,14 +41,14 @@ type AzureEventGridTopicHandler struct {
 	Context      context.Context
 	Endpoint     string
 	ClusterName  string
-	Client       *publisher.Client
+	Client       *azeventgrid.Client
 	logger       logr.Logger
 	activeStatus metav1.ConditionStatus
 }
 
 func NewAzureEventGridTopicHandler(context context.Context, clusterName string, spec *eventingv1alpha1.AzureEventGridTopicSpec, authParams map[string]string, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*AzureEventGridTopicHandler, error) {
 	var err error
-	var client *publisher.Client
+	var client *azeventgrid.Client
 
 	switch podIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
@@ -56,14 +56,14 @@ func NewAzureEventGridTopicHandler(context context.Context, clusterName string, 
 			err = fmt.Errorf("no azure event grid access key provided")
 			break
 		}
-		client, err = publisher.NewClientWithSharedKeyCredential(spec.Endpoint, azcore.NewKeyCredential(authParams["accessKey"]), nil)
+		client, err = azeventgrid.NewClientWithSharedKeyCredential(spec.Endpoint, azcore.NewKeyCredential(authParams["accessKey"]), nil)
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
 		creds, chainedErr := azure.NewChainedCredential(logger, podIdentity)
 		if chainedErr != nil {
 			err = chainedErr
 			break
 		}
-		client, err = publisher.NewClient(spec.Endpoint, creds, nil)
+		client, err = azeventgrid.NewClient(spec.Endpoint, creds, nil)
 	default:
 		err = fmt.Errorf("incorrect auth provided")
 	}
@@ -116,7 +116,7 @@ func (a *AzureEventGridTopicHandler) EmitEvent(eventData eventdata.EventData, fa
 		event,
 	}
 
-	_, err = a.Client.PublishCloudEvents(a.Context, eventsToSend, &publisher.PublishCloudEventsOptions{})
+	_, err = a.Client.PublishCloudEvents(a.Context, eventsToSend, &azeventgrid.PublishCloudEventsOptions{})
 
 	if err != nil {
 		a.logger.Error(err, "Failed to Publish Event to Azure Event Grid ")

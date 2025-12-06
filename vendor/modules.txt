@@ -124,21 +124,17 @@ github.com/Azure/azure-sdk-for-go/sdk/internal/poller
 github.com/Azure/azure-sdk-for-go/sdk/internal/telemetry
 github.com/Azure/azure-sdk-for-go/sdk/internal/temporal
 github.com/Azure/azure-sdk-for-go/sdk/internal/uuid
-# github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid v0.5.0
-## explicit; go 1.18
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid/internal
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventgrid/publisher
-# github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.4.0
+# github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2 v2.0.1
 ## explicit; go 1.23.0
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/amqpwrap
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/auth
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/eh
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/exported
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/sas
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/sbauth
-github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/utils
+github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2
+github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/internal
+github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/internal/amqpwrap
+github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/internal/auth
+github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/internal/eh
+github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/internal/exported
+github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/internal/sas
+github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/internal/sbauth
+github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/internal/utils
 # github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.10.0
 ## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus
@@ -152,6 +148,10 @@ github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/exported
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/sas
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/sbauth
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus/internal/utils
+# github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azeventgrid v1.0.0
+## explicit; go 1.18
+github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azeventgrid
+github.com/Azure/azure-sdk-for-go/sdk/messaging/eventgrid/azeventgrid/internal
 # github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.2.0
 ## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery
