@@ -13,10 +13,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 const (
@@ -64,17 +61,6 @@ func toISO8601(time string) (string, error) {
 	return fmt.Sprintf("PT%02dH%02dM", hours, minutes), nil
 }
 
-func getAuthConfig(info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) (azcore.TokenCredential, error) {
-	switch podIdentity.Provider {
-	case "", kedav1alpha1.PodIdentityProviderNone:
-		return azidentity.NewClientSecretCredential(info.TenantID, info.ClientID, info.ClientPassword, nil)
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		return NewADWorkloadIdentityCredential(podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID())
-	default:
-		return nil, fmt.Errorf("unknown pod identity provider: %s", podIdentity.Provider)
-	}
-}
-
 func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetric) (float64, error) {
 	if _, ok := metric.Value[info.MetricID]; !ok {
 		return -1, fmt.Errorf("metric named %s not found in app insights response", info.MetricID)
@@ -113,12 +99,8 @@ func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interfac
 }
 
 // GetAzureAppInsightsMetricValue returns the value of an Azure App Insights metric, rounded to the nearest int
-func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity, ignoreNullValues bool, httpClient *http.Client) (float64, error) {
-	creds, err := getAuthConfig(info, podIdentity)
-	if err != nil {
-		return -1, err
-	}
-
+func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, ignoreNullValues bool,
+	httpClient *http.Client, creds azcore.TokenCredential) (float64, error) {
 	queryParams, err := queryParamsForAppInsightsRequest(info)
 	if err != nil {
 		return -1, err
