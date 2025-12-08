@@ -9,8 +9,6 @@ import (
 
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/retry"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/util/backoffutils"
-	enumspb "go.temporal.io/api/enums/v1"
-	"go.temporal.io/api/errordetails/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -43,6 +41,11 @@ type (
 		expirationInterval time.Duration
 		jitter             float64
 		maximumAttempts    int
+	}
+
+	GrpcMessageTooLargeError struct {
+		err    error
+		status *status.Status
 	}
 
 	contextKey struct{}
@@ -94,15 +97,15 @@ func NewGrpcRetryConfig(initialInterval time.Duration) *GrpcRetryConfig {
 var (
 	// ConfigKey context key for GrpcRetryConfig
 	ConfigKey = contextKey{}
-	// gRPC response codes that represent unconditionally retryable errors.
+	// gRPC response codes that represent retryable errors.
 	// The following status codes are never retried by the library:
 	//    INVALID_ARGUMENT, NOT_FOUND, ALREADY_EXISTS, FAILED_PRECONDITION, ABORTED, OUT_OF_RANGE, DATA_LOSS
 	// codes.DeadlineExceeded and codes.Canceled are not here (and shouldn't be here!)
 	// because they are coming from go context and "context errors are not retriable based on user settings"
 	// by gRPC library.
-	// codes.Internal and codes.ResourceExhausted have special logic for whether they are retryable or not,
-	// and so they're not included in this list.
-	alwaysRetryableCodes = []codes.Code{codes.Aborted, codes.Unavailable, codes.Unknown}
+	// codes.ResourceExhausted is non-retryable if it comes from GrpcMessageTooLargeError, but otherwise is retryable.
+	// codes.Internal is not included because it's retryable or non-retryable depending on server capabilities.
+	retryableCodesWithoutInternal = []codes.Code{codes.Aborted, codes.ResourceExhausted, codes.Unavailable, codes.Unknown}
 )
 
 // NewRetryOptionsInterceptor creates a new gRPC interceptor that populates retry options for each call based on values
@@ -132,7 +135,7 @@ func NewRetryOptionsInterceptor(excludeInternal *atomic.Bool) grpc.UnaryClientIn
 				opts = append(opts, grpc_retry.WithMax(math.MaxUint32))
 			}
 			opts = append(opts, grpc_retry.WithRetriable(func(err error) bool {
-				return IsRetryable(status.Convert(err), excludeInternal)
+				return IsRetryable(err, excludeInternal)
 			}))
 		} else {
 			// Do not retry if retry config is not set.
@@ -142,12 +145,16 @@ func NewRetryOptionsInterceptor(excludeInternal *atomic.Bool) grpc.UnaryClientIn
 	}
 }
 
-func IsRetryable(status *status.Status, excludeInternalFromRetry *atomic.Bool) bool {
-	if status == nil {
+func IsRetryable(err error, excludeInternalFromRetry *atomic.Bool) bool {
+	if _, ok := err.(*GrpcMessageTooLargeError); ok {
 		return false
 	}
-	errCode := status.Code()
-	for _, retryable := range alwaysRetryableCodes {
+	grpcStatus := status.Convert(err)
+	if grpcStatus == nil {
+		return false
+	}
+	errCode := grpcStatus.Code()
+	for _, retryable := range retryableCodesWithoutInternal {
 		if errCode == retryable {
 			return true
 		}
@@ -155,43 +162,40 @@ func IsRetryable(status *status.Status, excludeInternalFromRetry *atomic.Bool) b
 	if errCode == codes.Internal {
 		return !excludeInternalFromRetry.Load()
 	}
-	if errCode == codes.ResourceExhausted {
-		if details := status.Details(); len(details) > 0 {
-			if failure, ok := details[0].(*errordetails.ResourceExhaustedFailure); ok {
-				return failure.Cause != RESOURCE_EXHAUSTED_CAUSE_EXT_GRPC_MESSAGE_TOO_LARGE
-			}
-		}
-	}
 	return false
 }
 
-// RESOURCE_EXHAUSTED_CAUSE_EXT_GRPC_MESSAGE_TOO_LARGE is an extension to the ResourceExhaustedCause enum to mark gRPC message too large errors.
-const RESOURCE_EXHAUSTED_CAUSE_EXT_GRPC_MESSAGE_TOO_LARGE enumspb.ResourceExhaustedCause = 101 // TODO: add the cause to the upstream API repo and remove this (see https://github.com/temporalio/sdk-go/issues/2030)
-
-// SetGrpcMessageTooLargeErrorCauseInterceptor adds appropriate error details if the error cause is gRPC message being too large.
-func SetGrpcMessageTooLargeErrorCauseInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+// GrpcMessageTooLargeErrorInterceptor checks if the error is caused by gRPC message being too large and converts it into GrpcMessageTooLargeError.
+func GrpcMessageTooLargeErrorInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	err := invoker(ctx, method, req, reply, cc, opts...)
-	if grpcStatus := status.Convert(err); isGrpcMessageTooLargeError(grpcStatus) {
-		// Copying code and message but ignoring original details
-		newStatus := status.New(grpcStatus.Code(), grpcStatus.Message())
-		newStatus, detailsErr := newStatus.WithDetails(&errordetails.ResourceExhaustedFailure{
-			Cause: RESOURCE_EXHAUSTED_CAUSE_EXT_GRPC_MESSAGE_TOO_LARGE,
-		})
-		if detailsErr == nil {
-			if newErr := newStatus.Err(); newErr != nil {
-				err = newErr
-			}
-		}
+	if grpcStatus := status.Convert(err); isGrpcMessageTooLargeStatus(grpcStatus) {
+		err = &GrpcMessageTooLargeError{err: err, status: grpcStatus}
 	}
 	return err
 }
 
-func isGrpcMessageTooLargeError(status *status.Status) bool {
+func (e *GrpcMessageTooLargeError) Error() string {
+	return e.err.Error()
+}
+
+func (e *GrpcMessageTooLargeError) Unwrap() error {
+	return e.err
+}
+
+func (e *GrpcMessageTooLargeError) GRPCStatus() *status.Status {
+	return e.status
+}
+
+func isGrpcMessageTooLargeStatus(status *status.Status) bool {
 	if status == nil {
 		return false
 	}
 	message := status.Message()
+	// Source: https://github.com/search?q=repo%3Agrpc%2Fgrpc-go+ResourceExhausted&type=code
 	return strings.HasPrefix(message, "grpc: received message larger than max") ||
 		strings.HasPrefix(message, "grpc: message after decompression larger than max") ||
-		strings.HasPrefix(message, "grpc: received message after decompression larger than max")
+		strings.HasPrefix(message, "grpc: received message after decompression larger than max") ||
+		strings.HasPrefix(message, "grpc: trying to send message larger than max") ||
+		strings.HasPrefix(message, "grpc: message too large") ||
+		strings.HasPrefix(message, "trying to send message larger than max")
 }

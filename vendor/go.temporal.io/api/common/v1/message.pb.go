@@ -1108,7 +1108,7 @@ type Priority struct {
 	// configuration, and defaults to 5.
 	//
 	// If priority is not present (or zero), then the effective priority will be
-	// the default priority, which is is calculated by (min+max)/2. With the
+	// the default priority, which is calculated by (min+max)/2. With the
 	// default max of 5, and min of 1, that comes out to 3.
 	PriorityKey int32 `protobuf:"varint,1,opt,name=priority_key,json=priorityKey,proto3" json:"priority_key,omitempty"`
 	// Fairness key is a short string that's used as a key for a fairness

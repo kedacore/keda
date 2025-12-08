@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+
+	"github.com/solarwinds/swo-sdk-go/swov1/optionalnullable"
 )
 
 func PopulateHeaders(_ context.Context, req *http.Request, headers interface{}, globals interface{}) {
@@ -98,6 +100,16 @@ func serializeHeader(objType reflect.Type, objValue reflect.Value, explode bool)
 
 		return strings.Join(items, ",")
 	case reflect.Map:
+		// check if optionalnullable.OptionalNullable[T]
+		if nullableValue, ok := optionalnullable.AsOptionalNullable(objValue); ok {
+			// Handle optionalnullable.OptionalNullable[T] using GetUntyped method
+			if value, isSet := nullableValue.GetUntyped(); isSet && value != nil {
+				return valToString(value)
+			}
+			// If not set or explicitly null, return empty string
+			return ""
+		}
+
 		items := []string{}
 
 		iter := objValue.MapRange()

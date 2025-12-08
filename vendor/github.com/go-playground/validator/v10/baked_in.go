@@ -118,6 +118,7 @@ var (
 		"fieldcontains":                 fieldContains,
 		"fieldexcludes":                 fieldExcludes,
 		"alpha":                         isAlpha,
+		"alphaspace":                    isAlphaSpace,
 		"alphanum":                      isAlphanum,
 		"alphaunicode":                  isAlphaUnicode,
 		"alphanumunicode":               isAlphanumUnicode,
@@ -134,6 +135,7 @@ var (
 		"email":                         isEmail,
 		"url":                           isURL,
 		"http_url":                      isHttpURL,
+		"https_url":                     isHttpsURL,
 		"uri":                           isURI,
 		"urn_rfc2141":                   isUrnRFC2141, // RFC 2141
 		"file":                          isFile,
@@ -1513,6 +1515,29 @@ func isHttpURL(fl FieldLevel) bool {
 	panic(fmt.Sprintf("Bad field type %s", field.Type()))
 }
 
+// isHttpsURL is the validation function for validating if the current field's value is a valid HTTPS-only URL.
+func isHttpsURL(fl FieldLevel) bool {
+	if !isURL(fl) {
+		return false
+	}
+
+	field := fl.Field()
+	switch field.Kind() {
+	case reflect.String:
+
+		s := strings.ToLower(field.String())
+
+		url, err := url.Parse(s)
+		if err != nil || url.Host == "" {
+			return false
+		}
+
+		return url.Scheme == "https"
+	}
+
+	panic(fmt.Sprintf("Bad field type %s", field.Type()))
+}
+
 // isUrnRFC2141 is the validation function for validating if the current field's value is a valid URN as per RFC 2141.
 func isUrnRFC2141(fl FieldLevel) bool {
 	field := fl.Field()
@@ -1743,6 +1768,11 @@ func isAlphanumUnicode(fl FieldLevel) bool {
 	return alphaUnicodeNumericRegex().MatchString(fl.Field().String())
 }
 
+// isAlphaSpace is the validation function for validating if the current field's value is a valid alpha value with spaces.
+func isAlphaSpace(fl FieldLevel) bool {
+	return alphaSpaceRegex().MatchString(fl.Field().String())
+}
+
 // isAlphaUnicode is the validation function for validating if the current field's value is a valid alpha unicode value.
 func isAlphaUnicode(fl FieldLevel) bool {
 	return alphaUnicodeRegex().MatchString(fl.Field().String())
@@ -1872,6 +1902,15 @@ func requiredIf(fl FieldLevel) bool {
 	if len(params)%2 != 0 {
 		panic(fmt.Sprintf("Bad param number for required_if %s", fl.FieldName()))
 	}
+
+	seen := make(map[string]struct{})
+	for i := 0; i < len(params); i += 2 {
+		if _, ok := seen[params[i]]; ok {
+			panic(fmt.Sprintf("Duplicate param %s for required_if %s", params[i], fl.FieldName()))
+		}
+		seen[params[i]] = struct{}{}
+	}
+
 	for i := 0; i < len(params); i += 2 {
 		if !requireCheckFieldValue(fl, params[i], params[i+1], false) {
 			return true

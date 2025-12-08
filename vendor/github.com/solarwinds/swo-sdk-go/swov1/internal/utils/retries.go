@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/solarwinds/swo-sdk-go/swov1/retry"
+	"io"
 	"math"
 	"math/rand"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -26,6 +28,17 @@ type Retries struct {
 	Config      *retry.Config
 	StatusCodes []string
 }
+
+var (
+	// IETF RFC 7231 4.2 safe and idempotent HTTP methods for connection retries
+	idempotentHTTPMethods = []string{
+		http.MethodDelete,
+		http.MethodGet,
+		http.MethodHead,
+		http.MethodOptions,
+		http.MethodPut,
+	}
+)
 
 func Retry(ctx context.Context, r Retries, operation func() (*http.Response, error)) (*http.Response, error) {
 	switch r.Config.Strategy {
@@ -49,11 +62,48 @@ func Retry(ctx context.Context, r Retries, operation func() (*http.Response, err
 
 			res, err := operation()
 			if err != nil {
+				if !r.Config.RetryConnectionErrors {
+					return retry.Permanent(err)
+				}
+
+				var httpMethod string
+
+				// Use http.Request method if available
+				if res != nil && res.Request != nil {
+					httpMethod = res.Request.Method
+				}
+
+				isIdempotentHTTPMethod := slices.Contains(idempotentHTTPMethods, httpMethod)
 				urlError := new(url.Error)
+
 				if errors.As(err, &urlError) {
-					if (urlError.Temporary() || urlError.Timeout()) && r.Config.RetryConnectionErrors {
+					if urlError.Temporary() || urlError.Timeout() {
 						return err
 					}
+
+					// In certain error cases, the http.Request may not have
+					// been populated, so use url.Error.Op which only has its
+					// first character capitalized from the original request
+					// HTTP method.
+					if httpMethod == "" {
+						httpMethod = strings.ToUpper(urlError.Op)
+					}
+
+					isIdempotentHTTPMethod = slices.Contains(idempotentHTTPMethods, httpMethod)
+
+					// Connection closed
+					if errors.Is(urlError.Err, io.EOF) && isIdempotentHTTPMethod {
+						return err
+					}
+				}
+
+				// syscall detection is not available on every platform, so
+				// fallback to best effort string detection.
+				isBrokenPipeError := strings.Contains(err.Error(), "broken pipe")
+				isConnectionResetError := strings.Contains(err.Error(), "connection reset")
+
+				if (isBrokenPipeError || isConnectionResetError) && isIdempotentHTTPMethod {
+					return err
 				}
 
 				return retry.Permanent(err)

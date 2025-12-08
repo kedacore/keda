@@ -9,39 +9,39 @@ import (
 type UpdateWebsiteRequest struct {
 	EntityID string `pathParam:"style=simple,explode=false,name=entityId"`
 	// The updated website monitoring configuration
-	Website components.Website `request:"mediaType=application/json"`
+	DemWebsite components.DemWebsite `request:"mediaType=application/json"`
 }
 
-func (o *UpdateWebsiteRequest) GetEntityID() string {
-	if o == nil {
+func (u *UpdateWebsiteRequest) GetEntityID() string {
+	if u == nil {
 		return ""
 	}
-	return o.EntityID
+	return u.EntityID
 }
 
-func (o *UpdateWebsiteRequest) GetWebsite() components.Website {
-	if o == nil {
-		return components.Website{}
+func (u *UpdateWebsiteRequest) GetDemWebsite() components.DemWebsite {
+	if u == nil {
+		return components.DemWebsite{}
 	}
-	return o.Website
+	return u.DemWebsite
 }
 
 type UpdateWebsiteResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
 	// The request has succeeded.
-	EntityID *components.EntityID
+	CommonEntityID *components.CommonEntityID
 }
 
-func (o *UpdateWebsiteResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (u *UpdateWebsiteResponse) GetHTTPMeta() components.HTTPMetadata {
+	if u == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return u.HTTPMeta
 }
 
-func (o *UpdateWebsiteResponse) GetEntityID() *components.EntityID {
-	if o == nil {
+func (u *UpdateWebsiteResponse) GetCommonEntityID() *components.CommonEntityID {
+	if u == nil {
 		return nil
 	}
-	return o.EntityID
+	return u.CommonEntityID
 }

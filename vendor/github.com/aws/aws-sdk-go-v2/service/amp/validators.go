@@ -30,6 +30,26 @@ func (m *validateOpCreateAlertManagerDefinition) HandleInitialize(ctx context.Co
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpCreateAnomalyDetector struct {
+}
+
+func (*validateOpCreateAnomalyDetector) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpCreateAnomalyDetector) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*CreateAnomalyDetectorInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpCreateAnomalyDetectorInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpCreateLoggingConfiguration struct {
 }
 
@@ -125,6 +145,26 @@ func (m *validateOpDeleteAlertManagerDefinition) HandleInitialize(ctx context.Co
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpDeleteAlertManagerDefinitionInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpDeleteAnomalyDetector struct {
+}
+
+func (*validateOpDeleteAnomalyDetector) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpDeleteAnomalyDetector) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*DeleteAnomalyDetectorInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpDeleteAnomalyDetectorInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -290,6 +330,26 @@ func (m *validateOpDescribeAlertManagerDefinition) HandleInitialize(ctx context.
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpDescribeAnomalyDetector struct {
+}
+
+func (*validateOpDescribeAnomalyDetector) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpDescribeAnomalyDetector) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*DescribeAnomalyDetectorInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpDescribeAnomalyDetectorInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpDescribeLoggingConfiguration struct {
 }
 
@@ -450,6 +510,26 @@ func (m *validateOpDescribeWorkspace) HandleInitialize(ctx context.Context, in m
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpListAnomalyDetectors struct {
+}
+
+func (*validateOpListAnomalyDetectors) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpListAnomalyDetectors) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*ListAnomalyDetectorsInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpListAnomalyDetectorsInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpListRuleGroupsNamespaces struct {
 }
 
@@ -505,6 +585,26 @@ func (m *validateOpPutAlertManagerDefinition) HandleInitialize(ctx context.Conte
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpPutAlertManagerDefinitionInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpPutAnomalyDetector struct {
+}
+
+func (*validateOpPutAnomalyDetector) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpPutAnomalyDetector) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*PutAnomalyDetectorInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpPutAnomalyDetectorInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -714,6 +814,10 @@ func addOpCreateAlertManagerDefinitionValidationMiddleware(stack *middleware.Sta
 	return stack.Initialize.Add(&validateOpCreateAlertManagerDefinition{}, middleware.After)
 }
 
+func addOpCreateAnomalyDetectorValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpCreateAnomalyDetector{}, middleware.After)
+}
+
 func addOpCreateLoggingConfigurationValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpCreateLoggingConfiguration{}, middleware.After)
 }
@@ -732,6 +836,10 @@ func addOpCreateScraperValidationMiddleware(stack *middleware.Stack) error {
 
 func addOpDeleteAlertManagerDefinitionValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDeleteAlertManagerDefinition{}, middleware.After)
+}
+
+func addOpDeleteAnomalyDetectorValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpDeleteAnomalyDetector{}, middleware.After)
 }
 
 func addOpDeleteLoggingConfigurationValidationMiddleware(stack *middleware.Stack) error {
@@ -766,6 +874,10 @@ func addOpDescribeAlertManagerDefinitionValidationMiddleware(stack *middleware.S
 	return stack.Initialize.Add(&validateOpDescribeAlertManagerDefinition{}, middleware.After)
 }
 
+func addOpDescribeAnomalyDetectorValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpDescribeAnomalyDetector{}, middleware.After)
+}
+
 func addOpDescribeLoggingConfigurationValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDescribeLoggingConfiguration{}, middleware.After)
 }
@@ -798,6 +910,10 @@ func addOpDescribeWorkspaceValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDescribeWorkspace{}, middleware.After)
 }
 
+func addOpListAnomalyDetectorsValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpListAnomalyDetectors{}, middleware.After)
+}
+
 func addOpListRuleGroupsNamespacesValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpListRuleGroupsNamespaces{}, middleware.After)
 }
@@ -808,6 +924,10 @@ func addOpListTagsForResourceValidationMiddleware(stack *middleware.Stack) error
 
 func addOpPutAlertManagerDefinitionValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpPutAlertManagerDefinition{}, middleware.After)
+}
+
+func addOpPutAnomalyDetectorValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpPutAnomalyDetector{}, middleware.After)
 }
 
 func addOpPutResourcePolicyValidationMiddleware(stack *middleware.Stack) error {
@@ -857,6 +977,25 @@ func validateAmpConfiguration(v *types.AmpConfiguration) error {
 	invalidParams := smithy.InvalidParamsError{Context: "AmpConfiguration"}
 	if v.WorkspaceArn == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("WorkspaceArn"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateAnomalyDetectorConfiguration(v types.AnomalyDetectorConfiguration) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "AnomalyDetectorConfiguration"}
+	switch uv := v.(type) {
+	case *types.AnomalyDetectorConfigurationMemberRandomCutForest:
+		if err := validateRandomCutForestConfiguration(&uv.Value); err != nil {
+			invalidParams.AddNested("[randomCutForest]", err.(smithy.InvalidParamsError))
+		}
+
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1010,6 +1149,21 @@ func validateLoggingFilter(v *types.LoggingFilter) error {
 	}
 }
 
+func validateRandomCutForestConfiguration(v *types.RandomCutForestConfiguration) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RandomCutForestConfiguration"}
+	if v.Query == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Query"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateScraperComponent(v *types.ScraperComponent) error {
 	if v == nil {
 		return nil
@@ -1072,6 +1226,29 @@ func validateSource(v types.Source) error {
 			invalidParams.AddNested("[eksConfiguration]", err.(smithy.InvalidParamsError))
 		}
 
+	case *types.SourceMemberVpcConfiguration:
+		if err := validateVpcConfiguration(&uv.Value); err != nil {
+			invalidParams.AddNested("[vpcConfiguration]", err.(smithy.InvalidParamsError))
+		}
+
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateVpcConfiguration(v *types.VpcConfiguration) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "VpcConfiguration"}
+	if v.SecurityGroupIds == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("SecurityGroupIds"))
+	}
+	if v.SubnetIds == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("SubnetIds"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1090,6 +1267,31 @@ func validateOpCreateAlertManagerDefinitionInput(v *CreateAlertManagerDefinition
 	}
 	if v.Data == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("Data"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpCreateAnomalyDetectorInput(v *CreateAnomalyDetectorInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "CreateAnomalyDetectorInput"}
+	if v.WorkspaceId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("WorkspaceId"))
+	}
+	if v.Alias == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Alias"))
+	}
+	if v.Configuration == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Configuration"))
+	} else if v.Configuration != nil {
+		if err := validateAnomalyDetectorConfiguration(v.Configuration); err != nil {
+			invalidParams.AddNested("Configuration", err.(smithy.InvalidParamsError))
+		}
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1195,6 +1397,24 @@ func validateOpDeleteAlertManagerDefinitionInput(v *DeleteAlertManagerDefinition
 	invalidParams := smithy.InvalidParamsError{Context: "DeleteAlertManagerDefinitionInput"}
 	if v.WorkspaceId == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("WorkspaceId"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpDeleteAnomalyDetectorInput(v *DeleteAnomalyDetectorInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DeleteAnomalyDetectorInput"}
+	if v.WorkspaceId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("WorkspaceId"))
+	}
+	if v.AnomalyDetectorId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("AnomalyDetectorId"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1326,6 +1546,24 @@ func validateOpDescribeAlertManagerDefinitionInput(v *DescribeAlertManagerDefini
 	}
 }
 
+func validateOpDescribeAnomalyDetectorInput(v *DescribeAnomalyDetectorInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DescribeAnomalyDetectorInput"}
+	if v.WorkspaceId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("WorkspaceId"))
+	}
+	if v.AnomalyDetectorId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("AnomalyDetectorId"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpDescribeLoggingConfigurationInput(v *DescribeLoggingConfigurationInput) error {
 	if v == nil {
 		return nil
@@ -1449,6 +1687,21 @@ func validateOpDescribeWorkspaceInput(v *DescribeWorkspaceInput) error {
 	}
 }
 
+func validateOpListAnomalyDetectorsInput(v *ListAnomalyDetectorsInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ListAnomalyDetectorsInput"}
+	if v.WorkspaceId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("WorkspaceId"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpListRuleGroupsNamespacesInput(v *ListRuleGroupsNamespacesInput) error {
 	if v == nil {
 		return nil
@@ -1489,6 +1742,31 @@ func validateOpPutAlertManagerDefinitionInput(v *PutAlertManagerDefinitionInput)
 	}
 	if v.Data == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("Data"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpPutAnomalyDetectorInput(v *PutAnomalyDetectorInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "PutAnomalyDetectorInput"}
+	if v.WorkspaceId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("WorkspaceId"))
+	}
+	if v.AnomalyDetectorId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("AnomalyDetectorId"))
+	}
+	if v.Configuration == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Configuration"))
+	} else if v.Configuration != nil {
+		if err := validateAnomalyDetectorConfiguration(v.Configuration); err != nil {
+			invalidParams.AddNested("Configuration", err.(smithy.InvalidParamsError))
+		}
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams

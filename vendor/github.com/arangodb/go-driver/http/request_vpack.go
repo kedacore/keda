@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,13 +17,12 @@
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
 //
-// Author Ewout Prangsma
-//
 
 package http
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -46,7 +45,7 @@ func (b *velocyPackBody) SetBody(body ...interface{}) error {
 
 	switch len(body) {
 	case 0:
-		return driver.WithStack(fmt.Errorf("Must provide at least 1 body"))
+		return driver.WithStack(errors.New("Must provide at least 1 body"))
 	case 1:
 		if data, err := velocypack.Marshal(body[0]); err != nil {
 			return driver.WithStack(err)
@@ -63,7 +62,7 @@ func (b *velocyPackBody) SetBody(body ...interface{}) error {
 		}
 		return nil
 	default:
-		return driver.WithStack(fmt.Errorf("Must provide at most 2 bodies"))
+		return driver.WithStack(errors.New("Must provide at most 2 bodies"))
 	}
 
 	return nil

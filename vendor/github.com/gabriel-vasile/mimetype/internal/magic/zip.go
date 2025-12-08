@@ -2,7 +2,8 @@ package magic
 
 import (
 	"bytes"
-	"encoding/binary"
+
+	"github.com/gabriel-vasile/mimetype/internal/scan"
 )
 
 var (
@@ -40,92 +41,149 @@ func Zip(raw []byte, limit uint32) bool {
 		(raw[3] == 0x4 || raw[3] == 0x6 || raw[3] == 0x8)
 }
 
-// Jar matches a Java archive file.
+// Jar matches a Java archive file. There are two types of Jar files:
+// 1. the ones that can be opened with jexec and have 0xCAFE optional flag
+// https://stackoverflow.com/tags/executable-jar/info
+// 2. regular jars, same as above, just without the executable flag
+// https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=262278#c0
+// There is an argument to only check for manifest, since it's the common nominator
+// for both executable and non-executable versions. But the traversing zip entries
+// is unreliable because it does linear search for signatures
+// (instead of relying on offsets told by the file.)
 func Jar(raw []byte, limit uint32) bool {
-	return zipContains(raw, []byte("META-INF/MANIFEST.MF"), false)
+	return executableJar(raw) ||
+		zipHas(raw, zipEntries{{
+			name: []byte("META-INF/MANIFEST.MF"),
+		}, {
+			name: []byte("META-INF/"),
+		}}, 1)
 }
 
-func zipContains(raw, sig []byte, msoCheck bool) bool {
-	b := readBuf(raw)
-	pk := []byte("PK\003\004")
-	if len(b) < 0x1E {
+// KMZ matches a zipped KML file, which is "doc.kml" by convention.
+func KMZ(raw []byte, _ uint32) bool {
+	return zipHas(raw, zipEntries{{
+		name: []byte("doc.kml"),
+	}}, 100)
+}
+
+// An executable Jar has a 0xCAFE flag enabled in the first zip entry.
+// The rule from file/file is:
+// >(26.s+30)	leshort	0xcafe		Java archive data (JAR)
+func executableJar(b scan.Bytes) bool {
+	b.Advance(0x1A)
+	offset, ok := b.Uint16()
+	if !ok {
 		return false
 	}
+	b.Advance(int(offset) + 2)
 
-	if !b.advance(0x1E) {
-		return false
-	}
-	if bytes.HasPrefix(b, sig) {
-		return true
-	}
+	cafe, ok := b.Uint16()
+	return ok && cafe == 0xCAFE
+}
 
-	if msoCheck {
-		skipFiles := [][]byte{
-			[]byte("[Content_Types].xml"),
-			[]byte("_rels/.rels"),
-			[]byte("docProps"),
-			[]byte("customXml"),
-			[]byte("[trash]"),
-		}
+// zipIterator iterates over a zip file returning the name of the zip entries
+// in that file.
+type zipIterator struct {
+	b scan.Bytes
+}
 
-		hasSkipFile := false
-		for _, sf := range skipFiles {
-			if bytes.HasPrefix(b, sf) {
-				hasSkipFile = true
-				break
-			}
-		}
-		if !hasSkipFile {
-			return false
-		}
-	}
+type zipEntries []struct {
+	name []byte
+	dir  bool // dir means checking just the prefix of the entry, not the whole path
+}
 
-	searchOffset := binary.LittleEndian.Uint32(raw[18:]) + 49
-	if !b.advance(int(searchOffset)) {
-		return false
-	}
-
-	nextHeader := bytes.Index(raw[searchOffset:], pk)
-	if !b.advance(nextHeader) {
-		return false
-	}
-	if bytes.HasPrefix(b, sig) {
-		return true
-	}
-
-	for i := 0; i < 4; i++ {
-		if !b.advance(0x1A) {
-			return false
+func (z zipEntries) match(file []byte) bool {
+	for i := range z {
+		if z[i].dir && bytes.HasPrefix(file, z[i].name) {
+			return true
 		}
-		nextHeader = bytes.Index(b, pk)
-		if nextHeader == -1 {
-			return false
-		}
-		if !b.advance(nextHeader + 0x1E) {
-			return false
-		}
-		if bytes.HasPrefix(b, sig) {
+		if bytes.Equal(file, z[i].name) {
 			return true
 		}
 	}
 	return false
+}
+
+func zipHas(raw scan.Bytes, searchFor zipEntries, stopAfter int) bool {
+	iter := zipIterator{raw}
+	for i := 0; i < stopAfter; i++ {
+		f := iter.next()
+		if len(f) == 0 {
+			break
+		}
+		if searchFor.match(f) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// msoxml behaves like zipHas, but it puts restrictions on what the first zip
+// entry can be.
+func msoxml(raw scan.Bytes, searchFor zipEntries, stopAfter int) bool {
+	iter := zipIterator{raw}
+	for i := 0; i < stopAfter; i++ {
+		f := iter.next()
+		if len(f) == 0 {
+			break
+		}
+		if searchFor.match(f) {
+			return true
+		}
+		// If the first is not one of the next usually expected entries,
+		// then abort this check.
+		if i == 0 {
+			if !bytes.Equal(f, []byte("[Content_Types].xml")) &&
+				!bytes.Equal(f, []byte("_rels/.rels")) &&
+				!bytes.Equal(f, []byte("docProps")) &&
+				!bytes.Equal(f, []byte("customXml")) &&
+				!bytes.Equal(f, []byte("[trash]")) {
+				return false
+			}
+		}
+	}
+
+	return false
+}
+
+// next extracts the name of the next zip entry.
+func (i *zipIterator) next() []byte {
+	pk := []byte("PK\003\004")
+
+	n := bytes.Index(i.b, pk)
+	if n == -1 {
+		return nil
+	}
+	i.b.Advance(n)
+	if !i.b.Advance(0x1A) {
+		return nil
+	}
+	l, ok := i.b.Uint16()
+	if !ok {
+		return nil
+	}
+	if !i.b.Advance(0x02) {
+		return nil
+	}
+	if len(i.b) < int(l) {
+		return nil
+	}
+	return i.b[:l]
 }
 
 // APK matches an Android Package Archive.
 // The source of signatures is https://github.com/file/file/blob/1778642b8ba3d947a779a36fcd81f8e807220a19/magic/Magdir/archive#L1820-L1887
 func APK(raw []byte, _ uint32) bool {
-	apkSignatures := [][]byte{
-		[]byte("AndroidManifest.xml"),
-		[]byte("META-INF/com/android/build/gradle/app-metadata.properties"),
-		[]byte("classes.dex"),
-		[]byte("resources.arsc"),
-		[]byte("res/drawable"),
-	}
-	for _, sig := range apkSignatures {
-		if zipContains(raw, sig, false) {
-			return true
-		}
-	}
-
-	return false
+	return zipHas(raw, zipEntries{{
+		name: []byte("AndroidManifest.xml"),
+	}, {
+		name: []byte("META-INF/com/android/build/gradle/app-metadata.properties"),
+	}, {
+		name: []byte("classes.dex"),
+	}, {
+		name: []byte("resources.arsc"),
+	}, {
+		name: []byte("res/drawable"),
+	}}, 100)
 }

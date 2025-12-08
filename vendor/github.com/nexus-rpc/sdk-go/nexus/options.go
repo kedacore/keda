@@ -1,8 +1,6 @@
 package nexus
 
-import (
-	"time"
-)
+import "time"
 
 // StartOperationOptions are options for the StartOperation client and server APIs.
 type StartOperationOptions struct {
@@ -31,7 +29,19 @@ type StartOperationOptions struct {
 	Links []Link
 }
 
+// CancelOperationOptions are options for the CancelOperation client and server APIs.
+type CancelOperationOptions struct {
+	// Header contains the request header fields either received by the server or to be sent by the client.
+	//
+	// Header will always be non empty in server methods and can be optionally set in the client API.
+	//
+	// Header values set here will overwrite any SDK-provided values for the same key.
+	Header Header
+}
+
 // GetOperationResultOptions are options for the GetOperationResult client and server APIs.
+//
+// Deprecated: Getting a result from a handler is no longer supported.
 type GetOperationResultOptions struct {
 	// Header contains the request header fields either received by the server or to be sent by the client.
 	//
@@ -45,17 +55,9 @@ type GetOperationResultOptions struct {
 }
 
 // GetOperationInfoOptions are options for the GetOperationInfo client and server APIs.
+//
+// Deprecated: Getting info from a handler is no longer supported.
 type GetOperationInfoOptions struct {
-	// Header contains the request header fields either received by the server or to be sent by the client.
-	//
-	// Header will always be non empty in server methods and can be optionally set in the client API.
-	//
-	// Header values set here will overwrite any SDK-provided values for the same key.
-	Header Header
-}
-
-// CancelOperationOptions are options for the CancelOperation client and server APIs.
-type CancelOperationOptions struct {
 	// Header contains the request header fields either received by the server or to be sent by the client.
 	//
 	// Header will always be non empty in server methods and can be optionally set in the client API.
