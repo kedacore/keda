@@ -45,6 +45,10 @@ type (
 		//
 		// WARNING: Task queue priority is currently experimental.
 		Priority Priority
+		// Retry policy for the activity. Note that the server may have set a different policy than the one provided
+		// when scheduling the activity. If the value is nil, it means the server didn't send information about
+		// retry policy (e.g. due to old server version), but it may still be defined server-side.
+		RetryPolicy *RetryPolicy
 	}
 
 	// RegisterActivityOptions consists of options for registering an activity.
@@ -337,6 +341,7 @@ func WithActivityTask(
 			Name: task.WorkflowType.GetName(),
 		},
 		workflowNamespace:  task.WorkflowNamespace,
+		retryPolicy:        convertFromPBRetryPolicy(task.RetryPolicy),
 		workerStopChannel:  workerStopChannel,
 		contextPropagators: contextPropagators,
 		client:             client,
@@ -400,6 +405,7 @@ func WithLocalActivityTask(
 		startedTime:            startedTime,
 		dataConverter:          dataConverter,
 		attempt:                task.attempt,
+		retryPolicy:            task.retryPolicy,
 		client:                 client,
 		workerStopChannel:      workerStopChannel,
 	})

@@ -25,6 +25,7 @@ package influxdb3
 import (
 	"fmt"
 	"log/slog"
+	"maps"
 	"time"
 )
 
@@ -32,7 +33,7 @@ import (
 type PointValues struct {
 	MeasurementName string
 	Tags            map[string]string
-	Fields          map[string]interface{}
+	Fields          map[string]any
 	Timestamp       time.Time
 }
 
@@ -41,7 +42,7 @@ func NewPointValues(measurementName string) *PointValues {
 	return &PointValues{
 		MeasurementName: measurementName,
 		Tags:            make(map[string]string),
-		Fields:          make(map[string]interface{}),
+		Fields:          make(map[string]any),
 	}
 }
 
@@ -206,7 +207,7 @@ func (pv *PointValues) SetBooleanField(name string, value bool) *PointValues {
 }
 
 // GetField gets field of given name. Can be nil if field doesn't exist.
-func (pv *PointValues) GetField(name string) interface{} {
+func (pv *PointValues) GetField(name string) any {
 	value, exists := pv.Fields[name]
 	if !exists {
 		return nil
@@ -214,8 +215,8 @@ func (pv *PointValues) GetField(name string) interface{} {
 	return value
 }
 
-// SetField adds or replaces a field with an interface{} value.
-func (pv *PointValues) SetField(name string, value interface{}) *PointValues {
+// SetField adds or replaces a field with an any value.
+func (pv *PointValues) SetField(name string, value any) *PointValues {
 	pv.Fields[name] = value
 	return pv
 }
@@ -245,17 +246,13 @@ func (pv *PointValues) Copy() *PointValues {
 	newPDV := &PointValues{
 		MeasurementName: pv.MeasurementName,
 		Tags:            make(map[string]string, len(pv.Tags)),
-		Fields:          make(map[string]interface{}, len(pv.Fields)),
+		Fields:          make(map[string]any, len(pv.Fields)),
 		Timestamp:       pv.Timestamp,
 	}
 
-	for k, v := range pv.Tags {
-		newPDV.Tags[k] = v
-	}
+	maps.Copy(newPDV.Tags, pv.Tags)
 
-	for k, v := range pv.Fields {
-		newPDV.Fields[k] = v
-	}
+	maps.Copy(newPDV.Fields, pv.Fields)
 
 	return newPDV
 }

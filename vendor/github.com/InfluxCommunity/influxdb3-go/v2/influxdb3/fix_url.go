@@ -43,16 +43,15 @@ import (
 func ReplaceURLProtocolWithPort(url string) (string, *bool) {
 	url = strings.TrimSuffix(url, "/")
 	var safe *bool
-
-	if strings.HasPrefix(url, "http://") {
-		url = strings.TrimPrefix(url, "http://")
+	if u, f := strings.CutPrefix(url, "http://"); f {
+		url = u
 		safe = new(bool)
 		*safe = false
 		if strings.Count(url, ":") == 0 {
 			url += ":80"
 		}
-	} else if strings.HasPrefix(url, "https://") {
-		url = strings.TrimPrefix(url, "https://")
+	} else if u, f = strings.CutPrefix(url, "https://"); f {
+		url = u
 		safe = new(bool)
 		*safe = true
 		if strings.Count(url, ":") == 0 {

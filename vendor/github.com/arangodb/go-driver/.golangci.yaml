@@ -1,52 +1,77 @@
----
-
+version: 2
 run:
   issues-exit-code: 3
-  timeout: 30m
-  skip-dirs:
-    - vendor
-
 linters:
-  fast: false
-  enable-all: false
-  disable-all: false
-  presets:
-    - performance
-    - format
-    - complexity
-    - bugs
-    - unused
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - durationcheck
+    - fatcontext
+    - gocheckcompilerdirectives
+    - gochecksumtype
+    - gosmopolitan
+    - loggercheck
+    - makezero
+    - nilerr
+    - nilnesserr
+    - perfsprint
+    - protogetter
+    - reassign
+    - recvcheck
+    - rowserrcheck
+    - spancheck
+    - sqlclosecheck
+#    - testifylint
+#    - zerologlint
   disable:
-    - staticcheck
-    - errcheck
-    - govet
-    - gosec
-    - ineffassign
-    - noctx
     - contextcheck
-    - unparam
-    - scopelint
-    - exhaustive
     - cyclop
-    - errorlint
+    - errcheck
     - errchkjson
-    - nestif
-    - prealloc
-    - maligned
+    - errorlint
+    - exhaustive
     - funlen
-    - typecheck
-    - deadcode
-    - unused
-    - maintidx
-    - varcheck
     - gocognit
-    - gofumpt
     - gocyclo
-    - musttag # seems to be broken
-linters-settings:
-  gci:
-    sections:
-      - standard
-      - default
-      - prefix(github.com/arangodb)
-      - prefix(github.com/arangodb/go-driver)
+    - gosec
+    - govet
+    - ineffassign
+    - maintidx
+    - musttag
+    - nestif
+    - noctx
+    - prealloc
+    - staticcheck
+    - unparam
+    - unused
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - goimports
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/arangodb)
+        - prefix(github.com/arangodb/go-driver)
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

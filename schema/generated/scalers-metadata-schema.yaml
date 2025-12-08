@@ -957,7 +957,7 @@ scalers:
           metadataVariableReadable: true
         - name: metricUnavailableValue
           type: string
-          default: "0"
+          optional: true
           metadataVariableReadable: true
         - name: targetValue
           type: string
