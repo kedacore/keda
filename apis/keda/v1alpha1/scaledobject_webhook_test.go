@@ -373,7 +373,7 @@ var _ = It("shouldn't validate the so creation when there is another hpa with cu
 	namespaceName := "custom-apis"
 	namespace := createNamespace(namespaceName)
 	so := createScaledObject(soName, namespaceName, workloadName, "custom-api/v1", "custom-kind", false, map[string]string{}, "")
-	hpa := createHpa(hpaName, namespaceName, workloadName, "custom-apii/v1", "custom-kind", nil)
+	hpa := createHpa(hpaName, namespaceName, workloadName, "custom-api/v1", "custom-kind", nil)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
