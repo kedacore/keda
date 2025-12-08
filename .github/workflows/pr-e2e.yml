@@ -39,7 +39,7 @@ jobs:
 
       - name: Add label to skip e2e test
         if: ${{ startsWith(github.event.comment.body,'/skip-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GH_AUTOMATION_PAT }}
           script: |
@@ -300,7 +300,7 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: Upload test logs
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: e2e-test-logs
           path: "${{ github.workspace }}/**/*.log"
@@ -389,7 +389,7 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: Upload test logs
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: arm-smoke-test-logs
           path: "${{ github.workspace }}/**/*.log"
@@ -492,7 +492,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
 
       - name: Upload test logs
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: s390x-smoke-test-logs
           path: "${{ github.workspace }}/**/*.log"
