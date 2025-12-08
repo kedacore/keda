@@ -9,19 +9,19 @@ import (
 type CreateURIResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
 	// The request has succeeded and a new resource has been created as a result.
-	EntityID *components.EntityID
+	CommonEntityID *components.CommonEntityID
 }
 
-func (o *CreateURIResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (c *CreateURIResponse) GetHTTPMeta() components.HTTPMetadata {
+	if c == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return c.HTTPMeta
 }
 
-func (o *CreateURIResponse) GetEntityID() *components.EntityID {
-	if o == nil {
+func (c *CreateURIResponse) GetCommonEntityID() *components.CommonEntityID {
+	if c == nil {
 		return nil
 	}
-	return o.EntityID
+	return c.CommonEntityID
 }

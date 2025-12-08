@@ -17,10 +17,10 @@ jobs:
       id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
 
     # keda-tools is built from github.com/test-tools/tools/Dockerfile
-    container: ghcr.io/kedacore/keda-tools:1.24.7
+    container: ghcr.io/kedacore/keda-tools:1.25.5
     steps:
       - name: Check out code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           fetch-depth: 1
 
@@ -45,7 +45,7 @@ jobs:
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
 
       - name: Go modules sync
-        run: go mod tidy -compat=1.24
+        run: go mod tidy -compat=1.25
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
@@ -88,19 +88,9 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
 
-        # Get release information to determine id of the current release
-      - name: Get Release
-        id: get-release-info
-        uses: bruceadams/get-release@74c3d60f5a28f358ccf241a00c9021ea16f0569f # v1.3.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Upload deployment YAML file to GitHub release
-      - name: Upload Deployment YAML file
-        id: upload-deployment-yaml
-        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Add artifacts the release
+      - name: Upload Release artifacts
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           upload_url: https://uploads.github.com/repos/kedacore/keda/releases/${{ steps.get-release-info.outputs.id }}/assets?name=keda-${{ steps.get_version.outputs.VERSION }}.yaml
           asset_path: keda-${{ steps.get_version.outputs.VERSION }}.yaml

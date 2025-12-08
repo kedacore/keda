@@ -10,10 +10,10 @@ import (
 type MetricsAggregationMethods string
 
 const (
+	MetricsAggregationMethodsAvg   MetricsAggregationMethods = "AVG"
 	MetricsAggregationMethodsCount MetricsAggregationMethods = "COUNT"
 	MetricsAggregationMethodsMin   MetricsAggregationMethods = "MIN"
 	MetricsAggregationMethodsMax   MetricsAggregationMethods = "MAX"
-	MetricsAggregationMethodsAvg   MetricsAggregationMethods = "AVG"
 	MetricsAggregationMethodsSum   MetricsAggregationMethods = "SUM"
 	MetricsAggregationMethodsLast  MetricsAggregationMethods = "LAST"
 )
@@ -27,13 +27,13 @@ func (e *MetricsAggregationMethods) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	switch v {
+	case "AVG":
+		fallthrough
 	case "COUNT":
 		fallthrough
 	case "MIN":
 		fallthrough
 	case "MAX":
-		fallthrough
-	case "AVG":
 		fallthrough
 	case "SUM":
 		fallthrough

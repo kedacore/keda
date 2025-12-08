@@ -53,6 +53,8 @@ var MultiTenantAuthorizationGrantScopeEnumTypes = struct {
 	GROUP MultiTenantAuthorizationGrantScopeEnum
 	// Grant scoped to an organization
 	ORGANIZATION MultiTenantAuthorizationGrantScopeEnum
+	// Grant scoped to an entity
+	OTHER MultiTenantAuthorizationGrantScopeEnum
 }{
 	// Grant scoped to an account
 	ACCOUNT: "ACCOUNT",
@@ -60,6 +62,8 @@ var MultiTenantAuthorizationGrantScopeEnumTypes = struct {
 	GROUP: "GROUP",
 	// Grant scoped to an organization
 	ORGANIZATION: "ORGANIZATION",
+	// Grant scoped to an entity
+	OTHER: "OTHER",
 }
 
 // MultiTenantAuthorizationGrantSortEnum - The possible fields a grant can be sorted on
@@ -71,6 +75,33 @@ var MultiTenantAuthorizationGrantSortEnumTypes = struct {
 }{
 	// Id of the grant
 	ID: "ID",
+}
+
+// MultiTenantAuthorizationGranteeTypeEnum - Defines the grantee types for customer administration
+type MultiTenantAuthorizationGranteeTypeEnum string
+
+var MultiTenantAuthorizationGranteeTypeEnumTypes = struct {
+	// Group grantee type
+	GROUP MultiTenantAuthorizationGranteeTypeEnum
+	// Organization grantee type
+	ORGANIZATION MultiTenantAuthorizationGranteeTypeEnum
+	// System identity grantee type
+	SYSTEM_IDENTITY MultiTenantAuthorizationGranteeTypeEnum
+	// System identity group grantee type
+	SYSTEM_IDENTITY_GROUP MultiTenantAuthorizationGranteeTypeEnum
+	// User grantee type
+	USER MultiTenantAuthorizationGranteeTypeEnum
+}{
+	// Group grantee type
+	GROUP: "GROUP",
+	// Organization grantee type
+	ORGANIZATION: "ORGANIZATION",
+	// System identity grantee type
+	SYSTEM_IDENTITY: "SYSTEM_IDENTITY",
+	// System identity group grantee type
+	SYSTEM_IDENTITY_GROUP: "SYSTEM_IDENTITY_GROUP",
+	// User grantee type
+	USER: "USER",
 }
 
 // MultiTenantAuthorizationPermissionCategoryEnum - The kind of access granted by permissions
@@ -114,6 +145,8 @@ var MultiTenantAuthorizationRoleScopeEnumTypes = struct {
 	GROUP MultiTenantAuthorizationRoleScopeEnum
 	// Organization scoped role
 	ORGANIZATION MultiTenantAuthorizationRoleScopeEnum
+	// Other scoped role
+	OTHER MultiTenantAuthorizationRoleScopeEnum
 }{
 	// Account scoped role
 	ACCOUNT: "ACCOUNT",
@@ -121,6 +154,8 @@ var MultiTenantAuthorizationRoleScopeEnumTypes = struct {
 	GROUP: "GROUP",
 	// Organization scoped role
 	ORGANIZATION: "ORGANIZATION",
+	// Other scoped role
+	OTHER: "OTHER",
 }
 
 // MultiTenantAuthorizationRoleSortEnum - The list of sortable fields
@@ -605,10 +640,26 @@ type AuthorizationManagementAuthenticationDomainSearch struct {
 	TotalCount int `json:"totalCount"`
 }
 
+// AuthorizationManagementDataAccessPolicy - A Data Access Policy defines what data is allowed
+type AuthorizationManagementDataAccessPolicy struct {
+	// a value that uniquely identifies this object
+	ID string `json:"id"`
+}
+
+// AuthorizationManagementGrant - An access grant defines the access given to a group or user.
+type AuthorizationManagementGrant struct {
+	// the data access policy that defines the data access for this grant
+	DataAccessPolicy AuthorizationManagementDataAccessPolicy `json:"dataAccessPolicy,omitempty"`
+	// a value that uniquely identifies this object
+	ID string `json:"id"`
+}
+
 // AuthorizationManagementGrantedRole - A Granted Role represents the access given to a group.
 type AuthorizationManagementGrantedRole struct {
 	// the account that this role grants access to
 	AccountID int `json:"accountId,omitempty"`
+	// the data access policy that defines the data access
+	DataAccessPolicyId string `json:"dataAccessPolicyId,omitempty"`
 	// the name of the object
 	DisplayName string `json:"displayName,omitempty"`
 	// the group that this role grants access to
@@ -719,8 +770,24 @@ type CustomerAdministrationJobs struct {
 	OrganizationCreateAsyncResults OrganizationOrganizationCreateAsyncResultCollection `json:"organizationCreateAsyncResults,omitempty"`
 }
 
+// EntityManagementBudgetAccount - Represents an account.
+type EntityManagementBudgetAccount struct {
+	// The unique identifier of the account.
+	ID int `json:"id"`
+}
+
+// EntityManagementBudgetOrganization - Represents an organization.
+type EntityManagementBudgetOrganization struct {
+	// The unique identifier of the organization.
+	ID string `json:"id"`
+}
+
 // MultiTenantAuthorizationGrant - A grant within the system
 type MultiTenantAuthorizationGrant struct {
+	// The data access policy associated to the grant
+	DataAccessPolicy MultiTenantAuthorizationGrantDataAccessPolicy `json:"dataAccessPolicy,omitempty"`
+	// The grantee associated to the grant
+	Grantee MultiTenantAuthorizationGrantee `json:"grantee"`
 	// The group associated to the grant
 	Group MultiTenantAuthorizationGrantGroup `json:"group"`
 	// The id of the grant
@@ -745,12 +812,34 @@ type MultiTenantAuthorizationGrantCollection struct {
 	Items []MultiTenantAuthorizationGrant `json:"items"`
 	// an opaque cursor to supply with subsequent   requests to get the next page of results, null if there are no more pages
 	NextCursor string `json:"nextCursor,omitempty"`
+	// the total number of results
+	TotalCount int `json:"totalCount"`
+}
+
+// MultiTenantAuthorizationGrantDataAccessPolicy - The data access policy associated to the grant
+type MultiTenantAuthorizationGrantDataAccessPolicy struct {
+	// The id of the data access policy
+	ID string `json:"id,omitempty"`
+	// The name of the data access policy
+	Name string `json:"name,omitempty"`
+}
+
+// MultiTenantAuthorizationGrantDataAccessPolicyIdInputFilter - Filters grants by data access policy id
+type MultiTenantAuthorizationGrantDataAccessPolicyIdInputFilter struct {
+	// Performs an equals operation
+	Eq string `json:"eq,omitempty"`
+	// Performs an in operation
+	In []string `json:"in"`
 }
 
 // MultiTenantAuthorizationGrantFilterInputExpression - Provides all the available filters on a grant
 type MultiTenantAuthorizationGrantFilterInputExpression struct {
 	// The authentication domain id of the grant
 	AuthenticationDomainId *MultiTenantAuthorizationGrantAuthenticationDomainIdInputFilter `json:"authenticationDomainId,omitempty"`
+	// The data access policy id of the grant
+	DataAccessPolicyId *MultiTenantAuthorizationGrantDataAccessPolicyIdInputFilter `json:"dataAccessPolicyId,omitempty"`
+	// The the Grantee for the grant. This is used to filter grants by the details of the Grantee.
+	Grantee *MultiTenantAuthorizationGranteeInputFilter `json:"grantee,omitempty"`
 	// The group id of the grant
 	GroupId *MultiTenantAuthorizationGrantGroupIdInputFilter `json:"groupId,omitempty"`
 	// The id of the grant
@@ -763,11 +852,13 @@ type MultiTenantAuthorizationGrantFilterInputExpression struct {
 	ScopeId *MultiTenantAuthorizationGrantScopeIdInputFilter `json:"scopeId,omitempty"`
 	// The scope type of the grant
 	ScopeType *MultiTenantAuthorizationGrantScopeTypeInputFilter `json:"scopeType,omitempty"`
+	// The v2 scope type of the grant
+	ScopeV2Type *MultiTenantAuthorizationGrantScopeTypeV2InputFilter `json:"scopeV2Type,omitempty"`
 }
 
 // MultiTenantAuthorizationGrantGroup - The group associated to the grant
 type MultiTenantAuthorizationGrantGroup struct {
-	// The id of the group
+	// The id of the group. If the grant is not to a group, this will be an empty string.
 	ID string `json:"id"`
 }
 
@@ -813,6 +904,8 @@ type MultiTenantAuthorizationGrantScope struct {
 	ID string `json:"id"`
 	// The type of the resource in scope
 	Type MultiTenantAuthorizationGrantScopeEnum `json:"type"`
+	// The type of the resource in scope
+	Typev2 string `json:"typev2"`
 }
 
 // MultiTenantAuthorizationGrantScopeIdInputFilter - Filters on the grants scope id
@@ -829,6 +922,12 @@ type MultiTenantAuthorizationGrantScopeTypeInputFilter struct {
 	Eq MultiTenantAuthorizationGrantScopeEnum `json:"eq"`
 }
 
+// MultiTenantAuthorizationGrantScopeTypeV2InputFilter - Filters on the grants v2 scope type
+type MultiTenantAuthorizationGrantScopeTypeV2InputFilter struct {
+	// Performs an equals operation
+	Eq string `json:"eq"`
+}
+
 // MultiTenantAuthorizationGrantSortInput - Provides the sorting options for grants
 type MultiTenantAuthorizationGrantSortInput struct {
 	// The direction which the field should be sorted
@@ -837,12 +936,48 @@ type MultiTenantAuthorizationGrantSortInput struct {
 	Key MultiTenantAuthorizationGrantSortEnum `json:"key"`
 }
 
+// MultiTenantAuthorizationGrantee - The Grantee of the grant
+type MultiTenantAuthorizationGrantee struct {
+	// The id of the grantee
+	ID string `json:"id"`
+	// the type of the grantee
+	Type MultiTenantAuthorizationGranteeTypeEnum `json:"type"`
+}
+
+// MultiTenantAuthorizationGranteeIdInputFilter - Filters on the grants scope id
+type MultiTenantAuthorizationGranteeIdInputFilter struct {
+	// Performs an equals operation
+	Eq string `json:"eq,omitempty"`
+	// Performs an in operation
+	In []string `json:"in"`
+}
+
+// MultiTenantAuthorizationGranteeInputFilter - Filters on the grantee
+type MultiTenantAuthorizationGranteeInputFilter struct {
+	// Filters on the grantee id
+	GranteeId MultiTenantAuthorizationGranteeIdInputFilter `json:"granteeId,omitempty"`
+	// Filters on the grantee type
+	GranteeType MultiTenantAuthorizationGranteeTypeInputFilter `json:"granteeType,omitempty"`
+}
+
+// MultiTenantAuthorizationGranteeTypeInputFilter - Filters on the grants scope id
+type MultiTenantAuthorizationGranteeTypeInputFilter struct {
+	// Performs an equals operation
+	Eq MultiTenantAuthorizationGranteeTypeEnum `json:"eq,omitempty"`
+	// Performs an in operation
+	In []MultiTenantAuthorizationGranteeTypeEnum `json:"in"`
+}
+
 // MultiTenantAuthorizationPermission - An allowed action
 type MultiTenantAuthorizationPermission struct {
 	// The kind of access
 	Category MultiTenantAuthorizationPermissionCategoryEnum `json:"category,omitempty"`
 	// The feature the permission controls access to
 	Feature string `json:"feature,omitempty"`
+	// The description of the feature the permission controls has access to
+	FeatureDescription string `json:"featureDescription,omitempty"`
+	// The documentation path of the feature the permission controls access to
+	FeatureDocumentationPath string `json:"featureDocumentationPath,omitempty"`
 	// a value that uniquely identifies this object
 	ID string `json:"id"`
 	// Name of the permission if category is OTHER
@@ -863,12 +998,20 @@ type MultiTenantAuthorizationPermissionCollection struct {
 type MultiTenantAuthorizationPermissionFilter struct {
 	// Filter permissions by role id
 	RoleId MultiTenantAuthorizationPermissionFilterRoleIdInput `json:"roleId,omitempty"`
+	// Filter permissions by scope
+	Scope MultiTenantAuthorizationPermissionFilterScopeInput `json:"scope,omitempty"`
 }
 
 // MultiTenantAuthorizationPermissionFilterRoleIdInput - Filter permissions by role id
 type MultiTenantAuthorizationPermissionFilterRoleIdInput struct {
 	// performs an equals operation
 	Eq string `json:"eq"`
+}
+
+// MultiTenantAuthorizationPermissionFilterScopeInput - Filter permissions by scope
+type MultiTenantAuthorizationPermissionFilterScopeInput struct {
+	// performs an equals operation
+	Eq string `json:"eq,omitempty"`
 }
 
 // MultiTenantAuthorizationRole - Describes a role within the system
@@ -905,6 +1048,8 @@ type MultiTenantAuthorizationRoleFilterInputExpression struct {
 	OrganizationId *MultiTenantAuthorizationRoleOrganizationIdInputFilter `json:"organizationId,omitempty"`
 	// The scope of the role
 	Scope *MultiTenantAuthorizationRoleScopeInputFilter `json:"scope,omitempty"`
+	// The scope of the role
+	ScopeV2 *MultiTenantAuthorizationRoleScopeV2InputFilter `json:"scopeV2,omitempty"`
 	// The type of the role
 	Type *MultiTenantAuthorizationRoleTypeInputFilter `json:"type,omitempty"`
 }
@@ -941,6 +1086,12 @@ type MultiTenantAuthorizationRoleOrganizationIdInputFilter struct {
 type MultiTenantAuthorizationRoleScopeInputFilter struct {
 	// performs an equals operation
 	Eq MultiTenantAuthorizationRoleScopeEnum `json:"eq"`
+}
+
+// MultiTenantAuthorizationRoleScopeV2InputFilter - Provides all the available filters on the role scope
+type MultiTenantAuthorizationRoleScopeV2InputFilter struct {
+	// performs an equals operation
+	Eq string `json:"eq"`
 }
 
 // MultiTenantAuthorizationRoleSortInput - Provides the field and direction the result should be sorted
@@ -1302,6 +1453,8 @@ type OrganizationAccountShare struct {
 	AccountID int `json:"accountId"`
 	// The account share ID
 	ID string `json:"id"`
+	// The limiting data access policy for the account share.
+	LimitingDataAccessPolicy OrganizationAccountShareLimitingDataAccessPolicyWrapper `json:"limitingDataAccessPolicy,omitempty"`
 	// The limiting role
 	LimitingRole OrganizationAccountShareLimitingRoleWrapper `json:"limitingRole"`
 	// The name of the account share
@@ -1324,8 +1477,16 @@ type OrganizationAccountShareCollection struct {
 type OrganizationAccountShareFilterInput struct {
 	// Filter by account id
 	AccountID OrganizationAccountIdInput `json:"accountId,omitempty"`
+	// Filter by limiting data access policy id
+	LimitingDataAccessPolicyId OrganizationLimitingDataAccessPolicyIdInput `json:"limitingDataAccessPolicyId,omitempty"`
 	// Filter by target id
 	TargetId *OrganizationTargetIdInput `json:"targetId,omitempty"`
+}
+
+// OrganizationAccountShareLimitingDataAccessPolicyWrapper - An account share's limiting data access policy
+type OrganizationAccountShareLimitingDataAccessPolicyWrapper struct {
+	// id
+	ID string `json:"id"`
 }
 
 // OrganizationAccountShareLimitingRoleWrapper - An account share's limiting role
@@ -1468,6 +1629,8 @@ type OrganizationCustomerOrganization struct {
 	ID string `json:"id"`
 	// The name of the organization
 	Name string `json:"name,omitempty"`
+	// The ID of the organization storage account
+	StorageAccountId int `json:"storageAccountId,omitempty"`
 }
 
 // OrganizationCustomerOrganizationFilterInput - A filter for customer organizations
@@ -1496,6 +1659,12 @@ type OrganizationCustomerOrganizationWrapper struct {
 type OrganizationIdInput struct {
 	// An authentication domain id
 	Eq string `json:"eq"`
+}
+
+// OrganizationLimitingDataAccessPolicyIdInput - Provides the operations available on the limiting data access policy id
+type OrganizationLimitingDataAccessPolicyIdInput struct {
+	// A data access policy id
+	Eq string `json:"eq,omitempty"`
 }
 
 // OrganizationNameInput - Provides the operations available on the name
@@ -1674,6 +1843,8 @@ type OrganizationSharedAccount struct {
 	AccountID int `json:"accountId"`
 	// The ID of the account share.
 	ID string `json:"id"`
+	// The ID of the limiting data access policy for the account share.
+	LimitingDataAccessPolicyId string `json:"limitingDataAccessPolicyId,omitempty"`
 	// The ID of the limiting role for the account share.
 	LimitingRoleId int `json:"limitingRoleId"`
 	// The name of the account share.
@@ -1704,9 +1875,11 @@ type TimeWindowInput struct {
 
 // User - The `User` object provides general data about the user.
 type User struct {
-	Email string `json:"email,omitempty"`
-	ID    int    `json:"id,omitempty"`
-	Name  string `json:"name,omitempty"`
+	CreatedAt    int    `json:"createdAt,omitempty"`
+	Email        string `json:"email,omitempty"`
+	ID           int    `json:"id,omitempty"`
+	Name         string `json:"name,omitempty"`
+	TimeZoneName string `json:"timeZoneName,omitempty"`
 }
 
 // UserManagementAuthenticationDomain - An "authentication domain" is a grouping of New Relic users governed by the same user management settings, like how they're provisioned (added and updated), how they're authenticated (logged in), session settings, and how user upgrades are managed.

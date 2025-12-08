@@ -106,8 +106,9 @@ validate := validator.New(validator.WithRequiredStructEnabled())
 | datauri | Data URL |
 | fqdn | Full Qualified Domain Name (FQDN) |
 | hostname | Hostname RFC 952 |
-| hostname_port | HostPort |
 | hostname_rfc1123 | Hostname RFC 1123 |
+| hostname_port | HostPort |
+| port | Port number |
 | ip | Internet Protocol Address IP |
 | ip4_addr | Internet Protocol Address IPv4 |
 | ip6_addr | Internet Protocol Address IPv6 |
@@ -124,7 +125,8 @@ validate := validator.New(validator.WithRequiredStructEnabled())
 | unix_addr | Unix domain socket end point Address |
 | uri | URI String |
 | url | URL String |
-| http_url | HTTP URL String |
+| http_url | HTTP(s) URL String |
+| https_url | HTTPS-only URL String |
 | url_encoded | URL Encoded |
 | urn_rfc2141 | Urn RFC 2141 String |
 
@@ -133,6 +135,7 @@ validate := validator.New(validator.WithRequiredStructEnabled())
 | Tag | Description |
 | - | - |
 | alpha | Alpha Only |
+| alphaspace | Alpha Space |
 | alphanum | Alphanumeric |
 | alphanumunicode | Alphanumeric Unicode |
 | alphaunicode | Alpha Unicode |

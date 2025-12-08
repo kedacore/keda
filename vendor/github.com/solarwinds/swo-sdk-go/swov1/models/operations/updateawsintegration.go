@@ -9,19 +9,19 @@ import (
 type UpdateAwsIntegrationResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
 	// The request has succeeded.
-	UpdateAwsIntegrationResponse *components.UpdateAwsIntegrationResponse
+	CloudAccountsAwsUpdateIntegrationResponse *components.CloudAccountsAwsUpdateIntegrationResponse
 }
 
-func (o *UpdateAwsIntegrationResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (u *UpdateAwsIntegrationResponse) GetHTTPMeta() components.HTTPMetadata {
+	if u == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return u.HTTPMeta
 }
 
-func (o *UpdateAwsIntegrationResponse) GetUpdateAwsIntegrationResponse() *components.UpdateAwsIntegrationResponse {
-	if o == nil {
+func (u *UpdateAwsIntegrationResponse) GetCloudAccountsAwsUpdateIntegrationResponse() *components.CloudAccountsAwsUpdateIntegrationResponse {
+	if u == nil {
 		return nil
 	}
-	return o.UpdateAwsIntegrationResponse
+	return u.CloudAccountsAwsUpdateIntegrationResponse
 }
