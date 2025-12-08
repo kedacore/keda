@@ -114,16 +114,16 @@ func (mr *MockScaleInterfaceMockRecorder) Patch(ctx, gvr, name, pt, data, opts a
 }
 
 // Update mocks base method.
-func (m *MockScaleInterface) Update(ctx context.Context, resource schema.GroupResource, arg2 *v1.Scale, opts v10.UpdateOptions) (*v1.Scale, error) {
+func (m *MockScaleInterface) Update(ctx context.Context, resource schema.GroupResource, scale *v1.Scale, opts v10.UpdateOptions) (*v1.Scale, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", ctx, resource, arg2, opts)
+	ret := m.ctrl.Call(m, "Update", ctx, resource, scale, opts)
 	ret0, _ := ret[0].(*v1.Scale)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockScaleInterfaceMockRecorder) Update(ctx, resource, arg2, opts any) *gomock.Call {
+func (mr *MockScaleInterfaceMockRecorder) Update(ctx, resource, scale, opts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockScaleInterface)(nil).Update), ctx, resource, arg2, opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockScaleInterface)(nil).Update), ctx, resource, scale, opts)
 }
