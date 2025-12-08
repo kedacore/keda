@@ -810,6 +810,151 @@ var _ = Describe("ScaledObjectController", func() {
 			}).WithTimeout(1 * time.Minute).WithPolling(10 * time.Second).Should(Equal(autoscalingv2.MinChangePolicySelect))
 		})
 
+		It("removes scale down disabled policy when annotation removed without custom scaledown behavior", func() {
+			// This test verifies that when paused-scale-in annotation is deleted
+			// and no custom ScaleDown behavior is defined in the ScaledObject spec, but ScaleUp is.
+			// The HPA's ScaleDown should be cleared (nil) instead of remaining as Disabled,
+			// while ScaleUp should be preserved.
+			// NOTE: We include another annotation to prevent the edge case where removing the
+			// only annotation makes annotations nil, which triggers update via annotation check.
+			deploymentName := "remove-scale-in-no-custom-scaledown"
+			soName := "so-" + deploymentName
+
+			// Create the scaling target.
+			err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
+			Expect(err).ToNot(HaveOccurred())
+
+			// Create the ScaledObject with custom ScaleUp behavior but NO ScaleDown behavior
+			// Include another annotation so that removing paused-scale-in doesn't make annotations nil
+			minReplicaCount := int32(1)
+			maxReplicaCount := int32(10)
+			scaleUpStabilizationWindow := int32(60)
+			scaleUpPeriodSeconds := int32(30)
+			scaleUpSelectPolicy := autoscalingv2.MaxChangePolicySelect
+			so := &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      soName,
+					Namespace: "default",
+					Annotations: map[string]string{
+						kedav1alpha1.PausedScaleInAnnotation: "true",
+						"some-other-annotation":              "some-value",
+					},
+				},
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+						Name: deploymentName,
+					},
+					MinReplicaCount: &minReplicaCount,
+					MaxReplicaCount: &maxReplicaCount,
+					Triggers: []kedav1alpha1.ScaleTriggers{
+						{
+							Type: "cron",
+							Metadata: map[string]string{
+								"timezone":        "UTC",
+								"start":           "0 * * * *",
+								"end":             "1 * * * *",
+								"desiredReplicas": "2",
+							},
+						},
+					},
+					Advanced: &kedav1alpha1.AdvancedConfig{
+						HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{
+							Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
+								// Full custom ScaleUp policy, ScaleDown is nil
+								ScaleUp: &autoscalingv2.HPAScalingRules{
+									StabilizationWindowSeconds: &scaleUpStabilizationWindow,
+									SelectPolicy:               &scaleUpSelectPolicy,
+									Policies: []autoscalingv2.HPAScalingPolicy{
+										{
+											Type:          autoscalingv2.PodsScalingPolicy,
+											Value:         5,
+											PeriodSeconds: scaleUpPeriodSeconds,
+										},
+									},
+								},
+								// ScaleDown is intentionally nil
+							},
+						},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), so)
+			Expect(err).ToNot(HaveOccurred())
+			testLogger.Info("Created scaled object with custom ScaleUp but no ScaleDown behavior")
+
+			// Get and confirm the HPA has Disabled policy for ScaleDown due to annotation
+			hpa := &autoscalingv2.HorizontalPodAutoscaler{}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
+			}).ShouldNot(HaveOccurred())
+			Expect(hpa.Spec.Behavior).ToNot(BeNil())
+			Expect(hpa.Spec.Behavior.ScaleDown).ToNot(BeNil())
+			Expect(*hpa.Spec.Behavior.ScaleDown.SelectPolicy).To(Equal(autoscalingv2.DisabledPolicySelect))
+			// ScaleUp should have our full custom policy
+			Expect(hpa.Spec.Behavior.ScaleUp).ToNot(BeNil())
+			Expect(*hpa.Spec.Behavior.ScaleUp.StabilizationWindowSeconds).To(Equal(scaleUpStabilizationWindow))
+			Expect(*hpa.Spec.Behavior.ScaleUp.SelectPolicy).To(Equal(scaleUpSelectPolicy))
+			Expect(hpa.Spec.Behavior.ScaleUp.Policies).To(HaveLen(1))
+			Expect(hpa.Spec.Behavior.ScaleUp.Policies[0].PeriodSeconds).To(Equal(scaleUpPeriodSeconds))
+
+			Eventually(func() metav1.ConditionStatus {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Ω(err).ToNot(HaveOccurred())
+				return so.Status.Conditions.GetPausedCondition().Status
+			}, 2*time.Minute).WithPolling(5 * time.Second).Should(Equal(metav1.ConditionTrue))
+
+			// Remove the annotation (DELETE, not set to false)
+			Eventually(func() error {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Expect(err).ToNot(HaveOccurred())
+				delete(so.ObjectMeta.Annotations, kedav1alpha1.PausedScaleInAnnotation)
+				return k8sClient.Update(context.Background(), so)
+			}).ShouldNot(HaveOccurred())
+
+			Eventually(func() metav1.ConditionStatus {
+				err = k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
+				Ω(err).ToNot(HaveOccurred())
+				return so.Status.Conditions.GetPausedCondition().Status
+			}, 2*time.Minute).WithPolling(5 * time.Second).Should(Equal(metav1.ConditionFalse))
+
+			// The HPA should no longer have the Disabled ScaleDown policy
+			// ScaleDown.SelectPolicy should NOT be Disabled, and ScaleUp should be preserved with full custom policy
+			// Note: Kubernetes may default ScaleDown to some values, but it should not be Disabled
+			Eventually(func() bool {
+				err := k8sClient.Get(context.Background(), types.NamespacedName{Name: "keda-hpa-" + soName, Namespace: "default"}, hpa)
+				Expect(err).ToNot(HaveOccurred())
+				// Behavior should still exist (for ScaleUp)
+				if hpa.Spec.Behavior == nil {
+					return false
+				}
+				// ScaleDown should NOT have Disabled policy after removing annotation
+				// (it may be nil or have default values, but not Disabled)
+				if hpa.Spec.Behavior.ScaleDown != nil &&
+					hpa.Spec.Behavior.ScaleDown.SelectPolicy != nil &&
+					*hpa.Spec.Behavior.ScaleDown.SelectPolicy == autoscalingv2.DisabledPolicySelect {
+					return false
+				}
+				// ScaleUp should still have our full custom policy
+				if hpa.Spec.Behavior.ScaleUp == nil {
+					return false
+				}
+				if hpa.Spec.Behavior.ScaleUp.StabilizationWindowSeconds == nil ||
+					*hpa.Spec.Behavior.ScaleUp.StabilizationWindowSeconds != scaleUpStabilizationWindow {
+					return false
+				}
+				if hpa.Spec.Behavior.ScaleUp.SelectPolicy == nil ||
+					*hpa.Spec.Behavior.ScaleUp.SelectPolicy != scaleUpSelectPolicy {
+					return false
+				}
+				if len(hpa.Spec.Behavior.ScaleUp.Policies) != 1 ||
+					hpa.Spec.Behavior.ScaleUp.Policies[0].PeriodSeconds != scaleUpPeriodSeconds {
+					return false
+				}
+				return true
+			}).WithTimeout(1*time.Minute).WithPolling(10*time.Second).Should(BeTrue(),
+				"HPA ScaleDown should not be Disabled and ScaleUp should be preserved after removing paused-scale-in annotation")
+		})
+
 		It("deploys ScaledObject and creates HPA with scale up select policy disabled when pause scale-out annotation set", func() {
 			deploymentName := "disable-scale-out"
 			soName := "so-" + deploymentName
