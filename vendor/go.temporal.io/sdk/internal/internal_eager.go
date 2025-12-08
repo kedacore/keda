@@ -10,4 +10,6 @@ type eagerWorker interface {
 	// pushEagerTask pushes a new eager workflow task to the workers task queue.
 	// should only be called with a reserved slot.
 	pushEagerTask(task eagerTask)
+	// getDeploymentOptions returns the worker's deployment options
+	getDeploymentOptions() WorkerDeploymentOptions
 }

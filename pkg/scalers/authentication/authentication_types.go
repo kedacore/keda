@@ -33,6 +33,7 @@ const (
 )
 
 // AuthMeta is the metadata for the authentication types
+//
 // Deprecated: use Config instead
 type AuthMeta struct {
 	// bearer auth

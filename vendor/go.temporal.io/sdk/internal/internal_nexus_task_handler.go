@@ -246,17 +246,12 @@ func (h *nexusTaskHandler) handleStartOperation(
 			}
 		}
 		token := t.OperationToken
-		//lint:ignore SA1019 this field might be set by users of older SDKs.
-		if t.OperationID != "" {
-			token = t.OperationID //lint:ignore SA1019 this field might be set by users of older SDKs.
-		}
 		return &nexuspb.Response{
 			Variant: &nexuspb.Response_StartOperation{
 				StartOperation: &nexuspb.StartOperationResponse{
 					Variant: &nexuspb.StartOperationResponse_AsyncSuccess{
 						AsyncSuccess: &nexuspb.StartOperationResponse_Async{
 							OperationToken: token,
-							OperationId:    token,
 							Links:          links,
 						},
 					},

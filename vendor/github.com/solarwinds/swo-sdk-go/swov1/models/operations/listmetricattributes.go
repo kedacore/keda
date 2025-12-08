@@ -9,7 +9,7 @@ import (
 )
 
 type ListMetricAttributesRequest struct {
-	// metric name
+	// Metric name.
 	Name string `pathParam:"style=simple,explode=false,name=name"`
 	// Timestamp in ISO 8601 format in UTC timezone: yyyy-MM-ddTHH:mm:ssZ
 	StartTime *time.Time `queryParam:"style=form,explode=false,name=startTime"`
@@ -26,45 +26,45 @@ func (l ListMetricAttributesRequest) MarshalJSON() ([]byte, error) {
 }
 
 func (l *ListMetricAttributesRequest) UnmarshalJSON(data []byte) error {
-	if err := utils.UnmarshalJSON(data, &l, "", false, false); err != nil {
+	if err := utils.UnmarshalJSON(data, &l, "", false, []string{"name"}); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *ListMetricAttributesRequest) GetName() string {
-	if o == nil {
+func (l *ListMetricAttributesRequest) GetName() string {
+	if l == nil {
 		return ""
 	}
-	return o.Name
+	return l.Name
 }
 
-func (o *ListMetricAttributesRequest) GetStartTime() *time.Time {
-	if o == nil {
+func (l *ListMetricAttributesRequest) GetStartTime() *time.Time {
+	if l == nil {
 		return nil
 	}
-	return o.StartTime
+	return l.StartTime
 }
 
-func (o *ListMetricAttributesRequest) GetEndTime() *time.Time {
-	if o == nil {
+func (l *ListMetricAttributesRequest) GetEndTime() *time.Time {
+	if l == nil {
 		return nil
 	}
-	return o.EndTime
+	return l.EndTime
 }
 
-func (o *ListMetricAttributesRequest) GetPageSize() *int {
-	if o == nil {
+func (l *ListMetricAttributesRequest) GetPageSize() *int {
+	if l == nil {
 		return nil
 	}
-	return o.PageSize
+	return l.PageSize
 }
 
-func (o *ListMetricAttributesRequest) GetSkipToken() *string {
-	if o == nil {
+func (l *ListMetricAttributesRequest) GetSkipToken() *string {
+	if l == nil {
 		return nil
 	}
-	return o.SkipToken
+	return l.SkipToken
 }
 
 // ListMetricAttributesResponseBody - The request has succeeded.
@@ -73,18 +73,18 @@ type ListMetricAttributesResponseBody struct {
 	PageInfo components.CommonPageInfo `json:"pageInfo"`
 }
 
-func (o *ListMetricAttributesResponseBody) GetNames() []string {
-	if o == nil {
+func (l *ListMetricAttributesResponseBody) GetNames() []string {
+	if l == nil {
 		return []string{}
 	}
-	return o.Names
+	return l.Names
 }
 
-func (o *ListMetricAttributesResponseBody) GetPageInfo() components.CommonPageInfo {
-	if o == nil {
+func (l *ListMetricAttributesResponseBody) GetPageInfo() components.CommonPageInfo {
+	if l == nil {
 		return components.CommonPageInfo{}
 	}
-	return o.PageInfo
+	return l.PageInfo
 }
 
 type ListMetricAttributesResponse struct {
@@ -95,16 +95,16 @@ type ListMetricAttributesResponse struct {
 	Next func() (*ListMetricAttributesResponse, error)
 }
 
-func (o *ListMetricAttributesResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (l *ListMetricAttributesResponse) GetHTTPMeta() components.HTTPMetadata {
+	if l == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return l.HTTPMeta
 }
 
-func (o *ListMetricAttributesResponse) GetObject() *ListMetricAttributesResponseBody {
-	if o == nil {
+func (l *ListMetricAttributesResponse) GetObject() *ListMetricAttributesResponseBody {
+	if l == nil {
 		return nil
 	}
-	return o.Object
+	return l.Object
 }
