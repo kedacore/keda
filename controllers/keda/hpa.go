@@ -274,7 +274,6 @@ func (r *ScaledObjectReconciler) deleteHPA(ctx context.Context, logger logr.Logg
 
 // getScaledObjectMetricSpecs returns MetricSpec for HPA, generater from Triggers defitinion in ScaledObject
 func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) ([]autoscalingv2.MetricSpec, error) {
-	var scaledObjectMetricSpecs []autoscalingv2.MetricSpec
 	var externalMetricNames []string
 	var resourceMetricNames []string
 
@@ -303,12 +302,11 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 			externalMetricNames = append(externalMetricNames, externalMetricName)
 		}
 	}
-	scaledObjectMetricSpecs = append(scaledObjectMetricSpecs, metricSpecs...)
 
 	// sort metrics in ScaledObject, this way we always check the same resource in Reconcile loop and we can prevent unnecessary HPA updates,
 	// see https://github.com/kedacore/keda/issues/1531 for details
-	sort.Slice(scaledObjectMetricSpecs, func(i, j int) bool {
-		return scaledObjectMetricSpecs[i].Type < scaledObjectMetricSpecs[j].Type
+	sort.Slice(metricSpecs, func(i, j int) bool {
+		return metricSpecs[i].Type < metricSpecs[j].Type
 	})
 
 	// store External.MetricNames,Resource.MetricsNames used by scalers defined in the ScaledObject
@@ -369,13 +367,13 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 			// overwrite external metrics in returned array with composite metric ONLY (keep resource metrics)
 			finalHpaSpecs := []autoscalingv2.MetricSpec{}
 			// keep resource specs
-			for _, rm := range scaledObjectMetricSpecs {
+			for _, rm := range metricSpecs {
 				if rm.Resource != nil {
 					finalHpaSpecs = append(finalHpaSpecs, rm)
 				}
 			}
 			finalHpaSpecs = append(finalHpaSpecs, compositeSpec)
-			scaledObjectMetricSpecs = finalHpaSpecs
+			metricSpecs = finalHpaSpecs
 		}
 	}
 	err = kedastatus.UpdateScaledObjectStatus(ctx, r.Client, logger, scaledObject, status)
@@ -385,7 +383,7 @@ func (r *ScaledObjectReconciler) getScaledObjectMetricSpecs(ctx context.Context,
 		return nil, err
 	}
 
-	return scaledObjectMetricSpecs, nil
+	return metricSpecs, nil
 }
 
 func updateHealthStatus(scaledObject *kedav1alpha1.ScaledObject, externalMetricNames []string, status *kedav1alpha1.ScaledObjectStatus) {
