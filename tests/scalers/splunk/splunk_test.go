@@ -159,6 +159,8 @@ spec:
           env:
             - name: SPLUNK_START_ARGS
               value: --accept-license
+            - name: SPLUNK_GENERAL_TERMS
+              value: --accept-sgt-current-at-splunk-com
             - name: SPLUNK_PASSWORD
               value: {{.SplunkPassword}}
           ports:

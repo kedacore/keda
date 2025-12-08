@@ -2701,6 +2701,7 @@ const getEntityQuery = `query(
 			options {
 				excluded
 				ignoreTimeRange
+				showApplyAction
 			}
 			replacementStrategy
 			title
