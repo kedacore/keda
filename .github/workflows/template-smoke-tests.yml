@@ -18,6 +18,11 @@ jobs:
     name: Validate k8s-${{ inputs.kubernetesVersion }}
     runs-on: ${{ inputs.runs-on }}
     steps:
+      - name: Check out code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 1
+          
       - name: Setup Go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
@@ -28,12 +33,7 @@ jobs:
           sudo apt update
           sudo apt install curl make ca-certificates gcc libc-dev wget -y
         env:
-          DEBIAN_FRONTEND: noninteractive
-
-      - name: Check out code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          fetch-depth: 1
+          DEBIAN_FRONTEND: noninteractive      
 
       - name: Create k8s ${{ inputs.kubernetesVersion }} Kind Cluster
         uses: helm/kind-action@92086f6be054225fa813e0a4b13787fc9088faab # v1.13.0
