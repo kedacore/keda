@@ -214,7 +214,11 @@ func (r *ScaledObjectReconciler) updateHPAIfNeeded(ctx context.Context, logger l
 	}
 
 	// DeepDerivative ignores extra entries in arrays which makes removing the last trigger not update things, so trigger and update any time the metrics count is different.
-	if len(hpa.Spec.Metrics) != len(foundHpa.Spec.Metrics) || !equality.Semantic.DeepDerivative(hpa.Spec, foundHpa.Spec) {
+	// DeepDerivative also treats nil as "unset" and a subset of any value, so we need to explicitly check Behavior with DeepEqual
+	// to detect when paused-scale-in/out annotations are removed and Behavior should change from Disabled back to nil.
+	if len(hpa.Spec.Metrics) != len(foundHpa.Spec.Metrics) ||
+		!equality.Semantic.DeepEqual(hpa.Spec.Behavior, foundHpa.Spec.Behavior) ||
+		!equality.Semantic.DeepDerivative(hpa.Spec, foundHpa.Spec) {
 		logger.V(1).Info("Found difference in the HPA spec accordint to ScaledObject", "currentHPA", foundHpa.Spec, "newHPA", hpa.Spec)
 		if err = r.Client.Update(ctx, hpa); err != nil {
 			foundHpa.Spec = hpa.Spec
