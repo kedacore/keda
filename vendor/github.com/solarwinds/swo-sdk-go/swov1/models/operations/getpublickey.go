@@ -9,19 +9,19 @@ import (
 type GetPublicKeyResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
 	// The request has succeeded.
-	DatabaseCredentialsPublicKeyResponse *components.DatabaseCredentialsPublicKeyResponse
+	DboDatabaseCredentialsPublicKeyResponse *components.DboDatabaseCredentialsPublicKeyResponse
 }
 
-func (o *GetPublicKeyResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (g *GetPublicKeyResponse) GetHTTPMeta() components.HTTPMetadata {
+	if g == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return g.HTTPMeta
 }
 
-func (o *GetPublicKeyResponse) GetDatabaseCredentialsPublicKeyResponse() *components.DatabaseCredentialsPublicKeyResponse {
-	if o == nil {
+func (g *GetPublicKeyResponse) GetDboDatabaseCredentialsPublicKeyResponse() *components.DboDatabaseCredentialsPublicKeyResponse {
+	if g == nil {
 		return nil
 	}
-	return o.DatabaseCredentialsPublicKeyResponse
+	return g.DboDatabaseCredentialsPublicKeyResponse
 }

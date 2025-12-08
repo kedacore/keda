@@ -17,10 +17,10 @@ jobs:
       id-token: write # needed for signing the images with GitHub OIDC Token **not production ready**
 
     # keda-tools is built from github.com/test-tools/tools/Dockerfile
-    container: ghcr.io/kedacore/keda-tools:1.24.7
+    container: ghcr.io/kedacore/keda-tools:1.25.5
     steps:
       - name: Check out code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           fetch-depth: 1
 
@@ -45,7 +45,7 @@ jobs:
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
 
       - name: Go modules sync
-        run: go mod tidy -compat=1.24
+        run: go mod tidy -compat=1.25
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
@@ -91,7 +91,7 @@ jobs:
 
       # Add artifacts the release
       - name: Upload Release artifacts
-        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           files: |
             keda-${{ steps.get_version.outputs.VERSION }}.yaml

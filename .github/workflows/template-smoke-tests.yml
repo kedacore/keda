@@ -19,9 +19,9 @@ jobs:
     runs-on: ${{ inputs.runs-on }}
     steps:
       - name: Setup Go
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: "1.25"
+          go-version-file: 'go.mod'
 
       - name: Install prerequisites
         run: |
@@ -31,12 +31,12 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
 
       - name: Check out code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           fetch-depth: 1
 
       - name: Create k8s ${{ inputs.kubernetesVersion }} Kind Cluster
-        uses: helm/kind-action@0025e74a8c7512023d06dc019c617aa3cf561fde # v1.10.0
+        uses: helm/kind-action@92086f6be054225fa813e0a4b13787fc9088faab # v1.13.0
         with:
           node_image: ${{ inputs.kindImage }}
           cluster_name: smoke-tests-cluster-${{ inputs.kubernetesVersion }}

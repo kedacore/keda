@@ -12,14 +12,14 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     name: Comment evaluate
-    container: ghcr.io/kedacore/keda-tools:1.24.7
+    container: ghcr.io/kedacore/keda-tools:1.25.5
     outputs:
       run-e2e: ${{ startsWith(github.event.comment.body,'/run-e2e') && steps.checkUserMember.outputs.isTeamMember == 'true' }}
       pr_num: ${{ steps.parser.outputs.pr_num }}
       image_tag: "pr-${{ steps.parser.outputs.pr_num }}-${{ steps.parser.outputs.commit_sha }}"
       commit_sha: ${{ steps.parser.outputs.commit_sha }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
       - uses: tspascoal/get-user-teams-membership@57e9f42acd78f4d0f496b3be4368fc5f62696662 # v3.0.0
         id: checkUserMember
@@ -71,7 +71,7 @@ jobs:
     needs: triage
     runs-on: ARM64
     name: Build images
-    container: ghcr.io/kedacore/keda-tools:1.24.7
+    container: ghcr.io/kedacore/keda-tools:1.25.5
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -81,7 +81,7 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.E2E_CHECK_NAME }}
           status: in_progress
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: Set status in-progress
         uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
@@ -90,7 +90,7 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.ARM_SMOKE_CHECK_NAME }}
           status: in_progress
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: Set status in-progress
         uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
@@ -99,9 +99,9 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.S390X_SMOKE_CHECK_NAME }}
           status: in_progress
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -144,7 +144,7 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.E2E_CHECK_NAME }}
           conclusion: failure
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: Set status failure
         uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
@@ -154,7 +154,7 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.ARM_SMOKE_CHECK_NAME }}
           status: failure
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: Set status failure
         uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
@@ -164,7 +164,7 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.S390X_SMOKE_CHECK_NAME }}
           status: failure
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: Exit on failure
         if: steps.regex-validation.outcome != 'success'
@@ -193,7 +193,7 @@ jobs:
     needs: [triage, build-test-images]
     runs-on: e2e
     name: Execute e2e tests
-    container: ghcr.io/kedacore/keda-tools:1.24.7
+    container: ghcr.io/kedacore/keda-tools:1.25.5
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
       - name: Set status in-progress
@@ -203,9 +203,9 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.E2E_CHECK_NAME }}
           status: in_progress
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -279,7 +279,7 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.E2E_CHECK_NAME }}
           conclusion: success
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: React to comment with failure
         uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
@@ -297,7 +297,7 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.E2E_CHECK_NAME }}
           conclusion: failure
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: Upload test logs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -319,12 +319,12 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.ARM_SMOKE_CHECK_NAME }}
           status: in_progress
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: Setup Go
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: "1.25"
+          go-version-file: 'go.mod'
 
       - name: Install prerequisites
         run: |
@@ -334,12 +334,12 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
 
       - name: Check out code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           fetch-depth: 1
 
       - name: Create k8s ${{ inputs.kubernetesVersion }} Kind Cluster
-        uses: helm/kind-action@0025e74a8c7512023d06dc019c617aa3cf561fde # v1.10.0
+        uses: helm/kind-action@92086f6be054225fa813e0a4b13787fc9088faab # v1.13.0
         with:
           node_image: kindest/node:v1.32.0@sha256:c48c62eac5da28cdadcf560d1d8616cfa6783b58f0d94cf63ad1bf49600cb027
           cluster_name: ${{ runner.name }}
@@ -368,7 +368,7 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.ARM_SMOKE_CHECK_NAME }}
           conclusion: success
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: React to comment with failure
         uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
@@ -386,7 +386,7 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.ARM_SMOKE_CHECK_NAME }}
           conclusion: failure
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: Upload test logs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -408,12 +408,12 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.S390X_SMOKE_CHECK_NAME }}
           status: in_progress
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: Setup Go
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: "1.25"
+          go-version-file: 'go.mod'
 
       - name: Install prerequisites
         run: |
@@ -423,7 +423,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
 
       - name: Check out code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           fetch-depth: 1
 
@@ -464,7 +464,7 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.S390X_SMOKE_CHECK_NAME }}
           conclusion: success
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: React to comment with failure
         uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
@@ -482,7 +482,7 @@ jobs:
           sha: ${{ needs.triage.outputs.commit_sha }}
           name: ${{ env.S390X_SMOKE_CHECK_NAME }}
           conclusion: failure
-          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+          details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: Remove Kubernetes
         run: |
