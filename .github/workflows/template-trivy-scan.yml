@@ -36,7 +36,7 @@ jobs:
     name: Trivy - ${{ inputs.runs-on }} - ${{ inputs.scan-type }} ${{ inputs.image-ref }}
     runs-on: ${{ inputs.runs-on }}
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Run Trivy
         uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4 # v0.32.0
