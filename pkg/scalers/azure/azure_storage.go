@@ -24,7 +24,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue"
-	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -69,13 +68,13 @@ func (e StorageEndpointType) Name() string {
 }
 
 // GetEndpointSuffix returns the endpoint suffix for a StorageEndpointType based on the specified environment
-func (e StorageEndpointType) GetEndpointSuffix(environment az.Environment) string {
+func (e StorageEndpointType) GetEndpointSuffix(environment AzEnvironment) string {
 	return fmt.Sprintf("%s.%s", e.Name(), environment.StorageEndpointSuffix)
 }
 
 // ParseAzureStorageEndpointSuffix parses cloud and endpointSuffix metadata and returns endpoint suffix
 func ParseAzureStorageEndpointSuffix(metadata map[string]string, endpointType StorageEndpointType) (string, error) {
-	envSuffixProvider := func(env az.Environment) (string, error) {
+	envSuffixProvider := func(env AzEnvironment) (string, error) {
 		return endpointType.GetEndpointSuffix(env), nil
 	}
 

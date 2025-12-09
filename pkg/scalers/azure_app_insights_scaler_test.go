@@ -3,6 +3,7 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -17,6 +18,11 @@ type azureAppInsightsScalerTestData struct {
 	isError bool
 	config  scalersconfig.ScalerConfig
 }
+
+var (
+	identityId = "my-workload-identity-id"
+	tenantId   = "my-tenant-id"
+)
 
 var azureAppInsightsScalerData = []azureAppInsightsScalerTestData{
 	{name: "no target value", isError: true, config: scalersconfig.ScalerConfig{
@@ -125,7 +131,7 @@ var azureAppInsightsScalerData = []azureAppInsightsScalerTestData{
 		TriggerMetadata: map[string]string{
 			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234",
 		},
-		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, IdentityID: &identityId, IdentityTenantID: &tenantId},
 	}},
 	{name: "invalid workload Identity", isError: true, config: scalersconfig.ScalerConfig{
 		TriggerMetadata: map[string]string{
@@ -137,13 +143,13 @@ var azureAppInsightsScalerData = []azureAppInsightsScalerTestData{
 		TriggerMetadata: map[string]string{
 			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234", "ignoreNullValues": "true",
 		},
-		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, IdentityID: &identityId, IdentityTenantID: &tenantId},
 	}},
 	{name: "correct ignoreNullValues (false)", isError: false, config: scalersconfig.ScalerConfig{
 		TriggerMetadata: map[string]string{
 			"targetValue": "11", "applicationInsightsId": "1234", "metricId": "unittest/test", "metricAggregationTimespan": "01:02", "metricAggregationType": "max", "metricFilter": "cloud/roleName eq 'test'", "tenantId": "1234", "ignoreNullValues": "false",
 		},
-		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload},
+		PodIdentity: kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderAzureWorkload, IdentityID: &identityId, IdentityTenantID: &tenantId},
 	}},
 	{name: "incorrect ignoreNullValues", isError: true, config: scalersconfig.ScalerConfig{
 		TriggerMetadata: map[string]string{
@@ -240,6 +246,10 @@ var azureAppInsightsScalerData = []azureAppInsightsScalerTestData{
 }
 
 func TestNewAzureAppInsightsScaler(t *testing.T) {
+	err := os.Setenv("AZURE_FEDERATED_TOKEN_FILE", "/tmp/tokenfile")
+	if err != nil {
+		t.Errorf("Error setting AZURE_FEDERATED_TOKEN_FILE")
+	}
 	for _, testData := range azureAppInsightsScalerData {
 		_, err := NewAzureAppInsightsScaler(&testData.config)
 		if err != nil && !testData.isError {
