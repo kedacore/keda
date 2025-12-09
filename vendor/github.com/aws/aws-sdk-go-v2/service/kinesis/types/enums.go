@@ -73,6 +73,48 @@ func (MetricsName) Values() []MetricsName {
 	}
 }
 
+type MinimumThroughputBillingCommitmentInputStatus string
+
+// Enum values for MinimumThroughputBillingCommitmentInputStatus
+const (
+	MinimumThroughputBillingCommitmentInputStatusEnabled  MinimumThroughputBillingCommitmentInputStatus = "ENABLED"
+	MinimumThroughputBillingCommitmentInputStatusDisabled MinimumThroughputBillingCommitmentInputStatus = "DISABLED"
+)
+
+// Values returns all known values for
+// MinimumThroughputBillingCommitmentInputStatus. Note that this can be expanded in
+// the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (MinimumThroughputBillingCommitmentInputStatus) Values() []MinimumThroughputBillingCommitmentInputStatus {
+	return []MinimumThroughputBillingCommitmentInputStatus{
+		"ENABLED",
+		"DISABLED",
+	}
+}
+
+type MinimumThroughputBillingCommitmentOutputStatus string
+
+// Enum values for MinimumThroughputBillingCommitmentOutputStatus
+const (
+	MinimumThroughputBillingCommitmentOutputStatusEnabled                        MinimumThroughputBillingCommitmentOutputStatus = "ENABLED"
+	MinimumThroughputBillingCommitmentOutputStatusDisabled                       MinimumThroughputBillingCommitmentOutputStatus = "DISABLED"
+	MinimumThroughputBillingCommitmentOutputStatusEnabledUntilEarliestAllowedEnd MinimumThroughputBillingCommitmentOutputStatus = "ENABLED_UNTIL_EARLIEST_ALLOWED_END"
+)
+
+// Values returns all known values for
+// MinimumThroughputBillingCommitmentOutputStatus. Note that this can be expanded
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (MinimumThroughputBillingCommitmentOutputStatus) Values() []MinimumThroughputBillingCommitmentOutputStatus {
+	return []MinimumThroughputBillingCommitmentOutputStatus{
+		"ENABLED",
+		"DISABLED",
+		"ENABLED_UNTIL_EARLIEST_ALLOWED_END",
+	}
+}
+
 type ScalingType string
 
 // Enum values for ScalingType

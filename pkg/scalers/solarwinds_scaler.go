@@ -115,7 +115,7 @@ func (s *solarWindsScaler) getMetricValueViaSDK(ctx context.Context, _ string) (
 		AggregateBy: s.convertAggregation(s.metadata.Aggregation),
 		StartTime:   &startTime,
 		EndTime:     &endTime,
-		SeriesType:  components.MetricSeriesTypeScalar,
+		SeriesType:  components.MetricsMetricSeriesTypeScalar,
 	})
 
 	if err != nil {

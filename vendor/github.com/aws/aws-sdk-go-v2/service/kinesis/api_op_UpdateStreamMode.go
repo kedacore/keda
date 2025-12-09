@@ -16,6 +16,12 @@ import (
 //
 // Streams, you can choose between an on-demand capacity mode and a provisioned
 // capacity mode for your data stream.
+//
+// If you'd still like to proactively scale your on-demand data stream’s capacity,
+// you can unlock the warm throughput feature for on-demand data streams by
+// enabling MinimumThroughputBillingCommitment for your account. Once your account
+// has MinimumThroughputBillingCommitment enabled, you can specify the warm
+// throughput in MiB per second that your stream can support in writes.
 func (c *Client) UpdateStreamMode(ctx context.Context, params *UpdateStreamModeInput, optFns ...func(*Options)) (*UpdateStreamModeOutput, error) {
 	if params == nil {
 		params = &UpdateStreamModeInput{}
@@ -44,6 +50,12 @@ type UpdateStreamModeInput struct {
 	//
 	// This member is required.
 	StreamModeDetails *types.StreamModeDetails
+
+	// The target warm throughput in MB/s that the stream should be scaled to handle.
+	// This represents the throughput capacity that will be immediately available for
+	// write operations. This field is only valid when the stream mode is being updated
+	// to on-demand.
+	WarmThroughputMiBps *int32
 
 	noSmithyDocumentSerde
 }
@@ -155,40 +167,7 @@ func (c *Client) addOperationUpdateStreamModeMiddlewares(stack *middleware.Stack
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

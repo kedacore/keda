@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   track_issue:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Get project data
         env:
