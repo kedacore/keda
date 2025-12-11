@@ -203,6 +203,8 @@ func validateAPIMetadata(meta *datadogMetadata, config *scalersconfig.ScalerConf
 	if meta.FillValue != nil {
 		meta.UseFiller = true
 	}
+	meta.HpaMetricName = meta.Query[0:idx]
+	meta.HpaMetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("datadog-%s", meta.HpaMetricName)))
 
 	return nil
 }

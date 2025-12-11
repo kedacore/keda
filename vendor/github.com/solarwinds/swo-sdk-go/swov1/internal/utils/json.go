@@ -5,6 +5,7 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -14,8 +15,6 @@ import (
 	"unsafe"
 
 	"github.com/solarwinds/swo-sdk-go/swov1/types"
-
-	"github.com/ericlagergren/decimal"
 )
 
 func MarshalJSON(v interface{}, tag reflect.StructTag, topLevel bool) ([]byte, error) {
@@ -40,21 +39,30 @@ func MarshalJSON(v interface{}, tag reflect.StructTag, topLevel bool) ([]byte, e
 			fieldName := field.Name
 
 			omitEmpty := false
+			omitZero := false
 			jsonTag := field.Tag.Get("json")
 			if jsonTag != "" {
 				for _, tag := range strings.Split(jsonTag, ",") {
 					if tag == "omitempty" {
 						omitEmpty = true
+					} else if tag == "omitzero" {
+						omitZero = true
 					} else {
 						fieldName = tag
 					}
 				}
 			}
 
-			if isNil(field.Type, fieldVal) && field.Tag.Get("const") == "" {
-				if omitEmpty {
+			if (omitEmpty || omitZero) && field.Tag.Get("const") == "" {
+				// Both omitempty and omitzero skip zero values (including nil)
+				if isNil(field.Type, fieldVal) {
 					continue
 				}
+
+				if omitZero && fieldVal.IsZero() {
+					continue
+				}
+
 			}
 
 			if !field.IsExported() && field.Tag.Get("const") == "" {
@@ -114,9 +122,9 @@ func MarshalJSON(v interface{}, tag reflect.StructTag, topLevel bool) ([]byte, e
 	}
 }
 
-func UnmarshalJSON(b []byte, v interface{}, tag reflect.StructTag, topLevel bool, disallowUnknownFields bool) error {
+func UnmarshalJSON(b []byte, v interface{}, tag reflect.StructTag, topLevel bool, requiredFields []string) error {
 	if reflect.TypeOf(v).Kind() != reflect.Ptr {
-		return fmt.Errorf("v must be a pointer")
+		return errors.New("v must be a pointer")
 	}
 
 	typ, val := dereferencePointers(reflect.TypeOf(v), reflect.ValueOf(v))
@@ -124,17 +132,23 @@ func UnmarshalJSON(b []byte, v interface{}, tag reflect.StructTag, topLevel bool
 	switch {
 	case isModelType(typ):
 		if topLevel || bytes.Equal(b, []byte("null")) {
-			d := json.NewDecoder(bytes.NewReader(b))
-			if disallowUnknownFields {
-				d.DisallowUnknownFields()
-			}
-			return d.Decode(v)
+			return json.Unmarshal(b, v)
 		}
 
-		var unmarhsaled map[string]json.RawMessage
+		var unmarshaled map[string]json.RawMessage
 
-		if err := json.Unmarshal(b, &unmarhsaled); err != nil {
+		if err := json.Unmarshal(b, &unmarshaled); err != nil {
 			return err
+		}
+
+		missingFields := []string{}
+		for _, requiredField := range requiredFields {
+			if _, ok := unmarshaled[requiredField]; !ok {
+				missingFields = append(missingFields, requiredField)
+			}
+		}
+		if len(missingFields) > 0 {
+			return fmt.Errorf("missing required fields: %s", strings.Join(missingFields, ", "))
 		}
 
 		var additionalPropertiesField *reflect.StructField
@@ -149,7 +163,7 @@ func UnmarshalJSON(b []byte, v interface{}, tag reflect.StructTag, topLevel bool
 			jsonTag := field.Tag.Get("json")
 			if jsonTag != "" {
 				for _, tag := range strings.Split(jsonTag, ",") {
-					if tag != "omitempty" {
+					if tag != "omitempty" && tag != "omitzero" {
 						fieldName = tag
 					}
 				}
@@ -163,7 +177,7 @@ func UnmarshalJSON(b []byte, v interface{}, tag reflect.StructTag, topLevel bool
 
 			// If we receive a value for a const field ignore it but mark it as unmarshaled
 			if field.Tag.Get("const") != "" {
-				if r, ok := unmarhsaled[fieldName]; ok {
+				if r, ok := unmarshaled[fieldName]; ok {
 					val := string(r)
 
 					if strings.HasPrefix(val, `"`) && strings.HasSuffix(val, `"`) {
@@ -178,13 +192,13 @@ func UnmarshalJSON(b []byte, v interface{}, tag reflect.StructTag, topLevel bool
 						return fmt.Errorf("const field `%s` does not match expected value `%s` got `%s`", fieldName, constValue, val)
 					}
 
-					delete(unmarhsaled, fieldName)
+					delete(unmarshaled, fieldName)
 				}
 			} else if !field.IsExported() {
 				continue
 			}
 
-			value, ok := unmarhsaled[fieldName]
+			value, ok := unmarshaled[fieldName]
 			if !ok {
 				defaultTag, defaultOk := field.Tag.Lookup("default")
 				if defaultOk {
@@ -192,26 +206,22 @@ func UnmarshalJSON(b []byte, v interface{}, tag reflect.StructTag, topLevel bool
 					ok = true
 				}
 			} else {
-				delete(unmarhsaled, fieldName)
+				delete(unmarshaled, fieldName)
 			}
 
 			if ok {
-				if err := unmarshalValue(value, fieldVal, field.Tag, disallowUnknownFields); err != nil {
+				if err := unmarshalValue(value, fieldVal, field.Tag); err != nil {
 					return err
 				}
 			}
 		}
 
-		keys := make([]string, 0, len(unmarhsaled))
-		for k := range unmarhsaled {
+		keys := make([]string, 0, len(unmarshaled))
+		for k := range unmarshaled {
 			keys = append(keys, k)
 		}
 
 		if len(keys) > 0 {
-			if disallowUnknownFields && (additionalPropertiesField == nil || additionalPropertiesValue == nil) {
-				return fmt.Errorf("unknown fields: %v", keys)
-			}
-
 			if additionalPropertiesField != nil && additionalPropertiesValue != nil {
 				typeOfMap := additionalPropertiesField.Type
 				if additionalPropertiesValue.Type().Kind() == reflect.Interface {
@@ -222,10 +232,10 @@ func UnmarshalJSON(b []byte, v interface{}, tag reflect.StructTag, topLevel bool
 
 				mapValue := reflect.MakeMap(typeOfMap)
 
-				for key, value := range unmarhsaled {
+				for key, value := range unmarshaled {
 					val := reflect.New(typeOfMap.Elem())
 
-					if err := unmarshalValue(value, val, additionalPropertiesField.Tag, disallowUnknownFields); err != nil {
+					if err := unmarshalValue(value, val, additionalPropertiesField.Tag); err != nil {
 						return err
 					}
 
@@ -244,7 +254,7 @@ func UnmarshalJSON(b []byte, v interface{}, tag reflect.StructTag, topLevel bool
 			}
 		}
 	default:
-		return unmarshalValue(b, reflect.ValueOf(v), tag, disallowUnknownFields)
+		return unmarshalValue(b, reflect.ValueOf(v), tag)
 	}
 
 	return nil
@@ -282,6 +292,11 @@ func marshalValue(v interface{}, tag reflect.StructTag) (json.RawMessage, error)
 	case reflect.Map:
 		if isNil(typ, val) {
 			return []byte("null"), nil
+		}
+
+		// Check if the map implements json.Marshaler (like optionalnullable.OptionalNullable[T])
+		if marshaler, ok := val.Interface().(json.Marshaler); ok {
+			return marshaler.MarshalJSON()
 		}
 
 		out := map[string]json.RawMessage{}
@@ -337,17 +352,6 @@ func marshalValue(v interface{}, tag reflect.StructTag) (json.RawMessage, error)
 				b := val.Interface().(big.Int)
 				return []byte(fmt.Sprintf(`"%s"`, (&b).String())), nil
 			}
-		case reflect.TypeOf(decimal.Big{}):
-			format := tag.Get("decimal")
-			if format == "number" {
-				b := val.Interface().(decimal.Big)
-				f, ok := (&b).Float64()
-				if ok {
-					return []byte(b.String()), nil
-				}
-
-				return []byte(fmt.Sprintf(`%f`, f)), nil
-			}
 		}
 	}
 
@@ -378,11 +382,6 @@ func handleDefaultConstValue(tagValue string, val interface{}, tag reflect.Struc
 		if format == "string" {
 			return []byte(fmt.Sprintf(`"%s"`, tagValue))
 		}
-	case reflect.TypeOf(decimal.Big{}):
-		decimalTag := tag.Get("decimal")
-		if decimalTag != "number" {
-			return []byte(fmt.Sprintf(`"%s"`, tagValue))
-		}
 	case reflect.TypeOf(types.Date{}):
 		return []byte(fmt.Sprintf(`"%s"`, tagValue))
 	default:
@@ -394,7 +393,7 @@ func handleDefaultConstValue(tagValue string, val interface{}, tag reflect.Struc
 	return []byte(tagValue)
 }
 
-func unmarshalValue(value json.RawMessage, v reflect.Value, tag reflect.StructTag, disallowUnknownFields bool) error {
+func unmarshalValue(value json.RawMessage, v reflect.Value, tag reflect.StructTag) error {
 	if bytes.Equal(value, []byte("null")) {
 		if v.CanAddr() {
 			return json.Unmarshal(value, v.Addr().Interface())
@@ -466,18 +465,18 @@ func unmarshalValue(value json.RawMessage, v reflect.Value, tag reflect.StructTa
 			}
 		}
 
-		var unmarhsaled map[string]json.RawMessage
+		var unmarshaled map[string]json.RawMessage
 
-		if err := json.Unmarshal(value, &unmarhsaled); err != nil {
+		if err := json.Unmarshal(value, &unmarshaled); err != nil {
 			return err
 		}
 
 		m := reflect.MakeMap(typ)
 
-		for k, value := range unmarhsaled {
+		for k, value := range unmarshaled {
 			itemVal := reflect.New(typ.Elem())
 
-			if err := unmarshalValue(value, itemVal, tag, disallowUnknownFields); err != nil {
+			if err := unmarshalValue(value, itemVal, tag); err != nil {
 				return err
 			}
 
@@ -498,7 +497,7 @@ func unmarshalValue(value json.RawMessage, v reflect.Value, tag reflect.StructTa
 		for index, value := range unmarshaled {
 			itemVal := reflect.New(typ.Elem())
 
-			if err := unmarshalValue(value, itemVal, tag, disallowUnknownFields); err != nil {
+			if err := unmarshalValue(value, itemVal, tag); err != nil {
 				return err
 			}
 
@@ -563,27 +562,6 @@ func unmarshalValue(value json.RawMessage, v reflect.Value, tag reflect.StructTa
 
 			v.Set(reflect.ValueOf(b))
 			return nil
-		case reflect.TypeOf(decimal.Big{}):
-			var d *decimal.Big
-			format := tag.Get("decimal")
-			if format == "number" {
-				var ok bool
-				d, ok = new(decimal.Big).SetString(string(value))
-				if !ok {
-					return fmt.Errorf("failed to parse number as decimal.Big")
-				}
-			} else {
-				if err := json.Unmarshal(value, &d); err != nil {
-					return err
-				}
-			}
-
-			if v.Kind() == reflect.Ptr && v.Elem().Kind() == reflect.Ptr {
-				v = v.Elem()
-			}
-
-			v.Set(reflect.ValueOf(d))
-			return nil
 		case reflect.TypeOf(types.Date{}):
 			var s string
 
@@ -616,11 +594,7 @@ func unmarshalValue(value json.RawMessage, v reflect.Value, tag reflect.StructTa
 		val = v.Interface()
 	}
 
-	d := json.NewDecoder(bytes.NewReader(value))
-	if disallowUnknownFields {
-		d.DisallowUnknownFields()
-	}
-	return d.Decode(val)
+	return json.Unmarshal(value, val)
 }
 
 func dereferencePointers(typ reflect.Type, val reflect.Value) (reflect.Type, reflect.Value) {
@@ -652,8 +626,6 @@ func isComplexValueType(typ reflect.Type) bool {
 			fallthrough
 		case reflect.TypeOf(big.Int{}):
 			fallthrough
-		case reflect.TypeOf(decimal.Big{}):
-			fallthrough
 		case reflect.TypeOf(types.Date{}):
 			return true
 		}
@@ -672,4 +644,270 @@ func isModelType(typ reflect.Type) bool {
 	}
 
 	return false
+}
+
+// CalculateJSONSize returns the byte size of the JSON representation of a value.
+// This is used to determine which union type variant has the most data.
+func CalculateJSONSize(v interface{}) int {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return 0
+	}
+	return len(data)
+}
+
+// UnionCandidate represents a candidate type during union deserialization
+type UnionCandidate struct {
+	FieldCount   int
+	InexactCount int // Count of fields with unknown/unrecognized enum values
+	Size         int
+	Type         any // The union type enum value
+	Value        any // The unmarshaled value
+}
+
+// FieldCounts holds the result of counting fields in a value
+type FieldCounts struct {
+	Total   int // Total number of populated fields
+	Inexact int // Number of fields with unknown/unrecognized open enum values
+}
+
+// CountFieldsWithInexact recursively counts fields and tracks inexact matches (unknown open enum values).
+func CountFieldsWithInexact(v interface{}) FieldCounts {
+	if v == nil {
+		return FieldCounts{}
+	}
+
+	typ := reflect.TypeOf(v)
+	val := reflect.ValueOf(v)
+
+	// Dereference pointers
+	for typ.Kind() == reflect.Ptr {
+		if val.IsNil() {
+			return FieldCounts{}
+		}
+		typ = typ.Elem()
+		val = val.Elem()
+	}
+
+	return countFieldsRecursive(typ, val)
+}
+
+// PickBestCandidate selects the best union type candidate using a multi-stage filtering approach:
+// 1. If multiple candidates, filter by field count (keep only those with max field count)
+// 2. If still multiple, filter by inexact count (keep only those with min inexact count)
+// 3. If still multiple, filter by JSON size (keep only those with max size)
+// 4. Return the first remaining candidate
+func PickBestCandidate(candidates []UnionCandidate) *UnionCandidate {
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	if len(candidates) == 1 {
+		return &candidates[0]
+	}
+
+	// Filter by field count if we have multiple candidates
+	if len(candidates) > 1 {
+		maxFieldCount := -1
+		for i := range candidates {
+			fieldCounts := CountFieldsWithInexact(candidates[i].Value)
+			candidates[i].FieldCount = fieldCounts.Total
+			candidates[i].InexactCount = fieldCounts.Inexact
+			if candidates[i].FieldCount > maxFieldCount {
+				maxFieldCount = candidates[i].FieldCount
+			}
+		}
+
+		// Keep only candidates with maximum field count
+		filtered := make([]UnionCandidate, 0, len(candidates))
+		for _, c := range candidates {
+			if c.FieldCount == maxFieldCount {
+				filtered = append(filtered, c)
+			}
+		}
+		candidates = filtered
+	}
+
+	if len(candidates) == 1 {
+		return &candidates[0]
+	}
+
+	// Filter by inexact count if we still have multiple candidates
+	// Prefer candidates with fewer unknown/unrecognized enum values
+	if len(candidates) > 1 {
+		minInexactCount := int(^uint(0) >> 1) // max int
+		for _, c := range candidates {
+			if c.InexactCount < minInexactCount {
+				minInexactCount = c.InexactCount
+			}
+		}
+
+		// Keep only candidates with minimum inexact count
+		filtered := make([]UnionCandidate, 0, len(candidates))
+		for _, c := range candidates {
+			if c.InexactCount == minInexactCount {
+				filtered = append(filtered, c)
+			}
+		}
+		candidates = filtered
+	}
+
+	if len(candidates) == 1 {
+		return &candidates[0]
+	}
+
+	// Filter by JSON size if we still have multiple candidates
+	if len(candidates) > 1 {
+		maxSize := -1
+		for i := range candidates {
+			candidates[i].Size = CalculateJSONSize(candidates[i].Value)
+			if candidates[i].Size > maxSize {
+				maxSize = candidates[i].Size
+			}
+		}
+
+		// Keep only candidates with maximum size
+		filtered := make([]UnionCandidate, 0, len(candidates))
+		for _, c := range candidates {
+			if c.Size == maxSize {
+				filtered = append(filtered, c)
+			}
+		}
+		candidates = filtered
+	}
+
+	// Pick the first remaining candidate
+	return &candidates[0]
+}
+
+func countFieldsRecursive(typ reflect.Type, val reflect.Value) FieldCounts {
+	counts := FieldCounts{}
+
+	// Check if the value has an IsExact() method (for open enums)
+	// Try both the value and its pointer
+	if val.CanInterface() && val.CanAddr() {
+		ptrVal := val.Addr()
+		if method := ptrVal.MethodByName("IsExact"); method.IsValid() {
+			results := method.Call(nil)
+			if len(results) == 1 && results[0].Kind() == reflect.Bool {
+				isExact := results[0].Bool()
+				counts.Total = 1
+				if !isExact {
+					counts.Inexact = 1 // Unknown enum value
+				}
+				return counts
+			}
+		}
+	}
+
+	switch typ.Kind() {
+	case reflect.Struct:
+		// Handle special types
+		switch typ {
+		case reflect.TypeOf(time.Time{}):
+			if !val.Interface().(time.Time).IsZero() {
+				return FieldCounts{Total: 1}
+			}
+			return FieldCounts{}
+		case reflect.TypeOf(big.Int{}):
+			b := val.Interface().(big.Int)
+			if b.Sign() != 0 {
+				return FieldCounts{Total: 1}
+			}
+			return FieldCounts{}
+		case reflect.TypeOf(types.Date{}):
+			// Date is always counted if it exists
+			return FieldCounts{Total: 1}
+		}
+
+		// For regular structs, count non-zero fields
+		for i := 0; i < typ.NumField(); i++ {
+			field := typ.Field(i)
+			fieldVal := val.Field(i)
+
+			// Skip unexported fields and const fields
+			if !field.IsExported() || field.Tag.Get("const") != "" {
+				continue
+			}
+
+			// Skip fields tagged with json:"-"
+			jsonTag := field.Tag.Get("json")
+			if jsonTag == "-" {
+				continue
+			}
+
+			fieldTyp := field.Type
+			// Dereference pointer types for the field
+			for fieldTyp.Kind() == reflect.Ptr {
+				if fieldVal.IsNil() {
+					break
+				}
+				fieldTyp = fieldTyp.Elem()
+				fieldVal = fieldVal.Elem()
+			}
+
+			if !isNil(field.Type, val.Field(i)) {
+				fieldCounts := countFieldsRecursive(fieldTyp, fieldVal)
+				counts.Total += fieldCounts.Total
+				counts.Inexact += fieldCounts.Inexact
+			}
+		}
+
+	case reflect.Slice, reflect.Array:
+		if val.IsNil() || val.Len() == 0 {
+			return FieldCounts{}
+		}
+		// Count each array/slice element
+		for i := 0; i < val.Len(); i++ {
+			itemVal := val.Index(i)
+			itemTyp := itemVal.Type()
+
+			// Dereference pointer types
+			for itemTyp.Kind() == reflect.Ptr {
+				if itemVal.IsNil() {
+					break
+				}
+				itemTyp = itemTyp.Elem()
+				itemVal = itemVal.Elem()
+			}
+
+			if !isNil(itemTyp, itemVal) {
+				itemCounts := countFieldsRecursive(itemTyp, itemVal)
+				counts.Total += itemCounts.Total
+				counts.Inexact += itemCounts.Inexact
+			}
+		}
+
+	case reflect.String:
+		if val.String() != "" {
+			counts.Total = 1
+		}
+
+	case reflect.Bool:
+		// Bools always count as a field (even if false)
+		counts.Total = 1
+
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if val.Int() != 0 {
+			counts.Total = 1
+		}
+
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if val.Uint() != 0 {
+			counts.Total = 1
+		}
+
+	case reflect.Float32, reflect.Float64:
+		if val.Float() != 0 {
+			counts.Total = 1
+		}
+
+	default:
+		// For any other type, if it's not zero, count it as 1
+		if !val.IsZero() {
+			counts.Total = 1
+		}
+	}
+
+	return counts
 }

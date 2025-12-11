@@ -7,15 +7,15 @@ import (
 )
 
 type GetMetricByNameRequest struct {
-	// metric name
+	// Metric name.
 	Name string `pathParam:"style=simple,explode=false,name=name"`
 }
 
-func (o *GetMetricByNameRequest) GetName() string {
-	if o == nil {
+func (g *GetMetricByNameRequest) GetName() string {
+	if g == nil {
 		return ""
 	}
-	return o.Name
+	return g.Name
 }
 
 type GetMetricByNameResponse struct {
@@ -26,16 +26,16 @@ type GetMetricByNameResponse struct {
 	Next func() (*GetMetricByNameResponse, error)
 }
 
-func (o *GetMetricByNameResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (g *GetMetricByNameResponse) GetHTTPMeta() components.HTTPMetadata {
+	if g == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return g.HTTPMeta
 }
 
-func (o *GetMetricByNameResponse) GetCommonMetricInfo() *components.CommonMetricInfo {
-	if o == nil {
+func (g *GetMetricByNameResponse) GetCommonMetricInfo() *components.CommonMetricInfo {
+	if g == nil {
 		return nil
 	}
-	return o.CommonMetricInfo
+	return g.CommonMetricInfo
 }
