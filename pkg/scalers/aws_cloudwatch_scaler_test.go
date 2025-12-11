@@ -496,6 +496,76 @@ var testAWSCloudwatchMetadata = []parseAWSCloudwatchMetadataTestData{
 		false,
 		"properly formed cloudwatch query from another AWS account",
 	},
+	{
+		map[string]string{
+			"namespace":                   "AWS/SQS",
+			"dimensionName":               "QueueName",
+			"dimensionValue":              "keda",
+			"metricName":                  "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":           "2",
+			"activationTargetMetricValue": "0",
+			"minMetricValue":              "0",
+			"awsRegion":                   "eu-west-1",
+		},
+		map[string]string{
+			"awsAccessKeyId": testAWSCloudwatchAccessKeyID,
+		},
+		true,
+		"with AWS static credentials from TriggerAuthentication, missing Secret Access Key",
+	},
+	{
+		map[string]string{
+			"namespace":                   "AWS/SQS",
+			"dimensionName":               "QueueName",
+			"dimensionValue":              "keda",
+			"metricName":                  "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":           "2",
+			"activationTargetMetricValue": "0",
+			"minMetricValue":              "0",
+			"awsRegion":                   "eu-west-1",
+		},
+		map[string]string{
+			"awsAccessKeyId":  testAWSCloudwatchAccessKeyID,
+			"awsSessionToken": "none",
+		},
+		true,
+		"with AWS temporary credentials from TriggerAuthentication, missing Secret Access Key",
+	},
+	{
+		map[string]string{
+			"namespace":                   "AWS/SQS",
+			"dimensionName":               "QueueName",
+			"dimensionValue":              "keda",
+			"metricName":                  "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":           "2",
+			"activationTargetMetricValue": "0",
+			"minMetricValue":              "0",
+			"awsRegion":                   "eu-west-1",
+		},
+		map[string]string{
+			"awsSecretAccessKey": testAWSCloudwatchSecretAccessKey,
+		},
+		true,
+		"with AWS static credentials from TriggerAuthentication, missing Access Key Id",
+	},
+	{
+		map[string]string{
+			"namespace":                   "AWS/SQS",
+			"dimensionName":               "QueueName",
+			"dimensionValue":              "keda",
+			"metricName":                  "ApproximateNumberOfMessagesVisible",
+			"targetMetricValue":           "2",
+			"activationTargetMetricValue": "0",
+			"minMetricValue":              "0",
+			"awsRegion":                   "eu-west-1",
+		},
+		map[string]string{
+			"awsSecretAccessKey": testAWSCloudwatchSecretAccessKey,
+			"awsSessionToken":    "none",
+		},
+		true,
+		"with AWS temporary credentials from TriggerAuthentication, missing Access Key Id",
+	},
 }
 
 var awsCloudwatchMetricIdentifiers = []awsCloudwatchMetricIdentifier{
