@@ -180,6 +180,7 @@ type (
 		workerType              string
 		identity                string
 		buildId                 string
+		deploymentOptions       WorkerDeploymentOptions
 		logger                  log.Logger
 		stopTimeout             time.Duration
 		fatalErrCb              func(error)
@@ -508,6 +509,10 @@ func (bw *baseWorker) releaseSlot(permit *SlotPermit, reason SlotReleaseReason) 
 func (bw *baseWorker) pushEagerTask(task eagerTask) {
 	// Should always be non-blocking. Slots are reserved before requesting eager tasks.
 	bw.eagerTaskQueueCh <- task
+}
+
+func (bw *baseWorker) getDeploymentOptions() WorkerDeploymentOptions {
+	return bw.options.deploymentOptions
 }
 
 func (bw *baseWorker) processTaskAsync(eagerOrPolled eagerOrPolledTask) {
@@ -880,7 +885,7 @@ func newScalableTaskPoller(
 	}
 	switch p := pollerBehavior.(type) {
 	case *pollerBehaviorAutoscaling:
-		tw.pollerCount = p.initialNumberOfPollers
+		tw.pollerCount = p.maximumNumberOfPollers
 		tw.pollerSemaphore = newPollerSemaphore(p.initialNumberOfPollers)
 		tw.pollerAutoscalerReportHandle = newPollScalerReportHandle(pollScalerReportHandleOptions{
 			initialPollerCount: p.initialNumberOfPollers,

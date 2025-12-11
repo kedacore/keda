@@ -338,7 +338,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 
 	// Notify ScaleHandler if a new HPA was created or if ScaledObject was updated
 	if newHPACreated || scaleObjectSpecChanged {
-		if r.requestScaleLoop(ctx, logger, scaledObject) != nil {
+		if err := r.requestScaleLoop(ctx, logger, scaledObject); err != nil {
 			return "failed to start a new scale loop with scaling logic", err
 		}
 		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
