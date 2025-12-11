@@ -583,7 +583,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 			// this is for raw metrics subscription for HPA requests
 			if shouldSendRawMetrics(RawMetricsHPA) {
 				// send the raw metric to all subscribed clients in a non-blocking fashion
-				go h.sendWhenSubscribed(scaledObjectName, scaledObjectNamespace, result.triggerName, metrics)
+				go h.sendWhenSubscribed(scaledObjectName, scaledObjectNamespace, result.triggerName, fallbackActive, metrics)
 			}
 		}
 		if fallbackActive {
@@ -686,7 +686,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 		// this is for raw metrics subscription for polling interval
 		if shouldSendRawMetrics(RawMetricsPollingInterval) {
 			// send the raw metric to all subscribed clients in a non-blocking fashion
-			go h.sendWhenSubscribed(scaledObject.Name, scaledObject.Namespace, result.TriggerName, result.Metrics)
+			go h.sendWhenSubscribed(scaledObject.Name, scaledObject.Namespace, result.TriggerName, result.IsActive, result.Metrics)
 		}
 	}
 
@@ -892,7 +892,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			}
 			if shouldSendRawMetrics(RawMetricsPollingInterval) {
 				// send the raw metric to all subscribed clients in a non-blocking fashion
-				go h.sendWhenSubscribed(scaledJob.Name, scaledJob.Namespace, scalerName, metrics)
+				go h.sendWhenSubscribed(scaledJob.Name, scaledJob.Namespace, scalerName, isTriggerActive, metrics)
 			}
 			if isTriggerActive {
 				isActive = true

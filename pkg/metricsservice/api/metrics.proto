@@ -60,4 +60,5 @@ message RawMetric {
     double value = 1;
     google.protobuf.Timestamp timestamp = 2;
     ScaledObjectRef metadata = 3;
+    bool isActive = 4;
 }
