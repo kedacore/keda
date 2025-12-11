@@ -442,18 +442,7 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject int
 /// --------------------------------------------------------------------------- ///
 
 // processMetricsWithFallback processes metrics with fallback support and handles metric recording
-func (h *scaleHandler) processMetricsWithFallback(
-	ctx context.Context,
-	rawMetrics []external_metrics.ExternalMetricValue,
-	rawErr error,
-	metricName string,
-	triggerName string,
-	triggerIndex int,
-	scaledObject *kedav1alpha1.ScaledObject,
-	metricSpec v2.MetricSpec,
-	sendRawMetricsCondition bool,
-	logger logr.Logger,
-) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (h *scaleHandler) processMetricsWithFallback(ctx context.Context, rawMetrics []external_metrics.ExternalMetricValue, rawErr error, metricName string, triggerName string, triggerIndex int, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, sendRawMetricsCondition bool, logger logr.Logger) ([]external_metrics.ExternalMetricValue, bool, error) {
 	// check if we need to set a fallback
 	metrics, fallbackActive, err := fallback.GetMetricsWithFallback(
 		ctx,
