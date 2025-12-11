@@ -358,7 +358,10 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 				}
 			}
 			if triggerAuthSpec.Akeyless != nil && len(triggerAuthSpec.Akeyless.Secrets) > 0 {
-				akeylessHandler := NewAkeylessHandler(triggerAuthSpec.Akeyless, logger)
+				akeylessHandler := &AkeylessHandler{
+					akeyless: triggerAuthSpec.Akeyless,
+					logger:   logger,
+				}
 				err := akeylessHandler.Initialize(ctx)
 				if err != nil {
 					logger.Error(err, "error authenticating to Akeyless", "triggerAuthRef.Name", triggerAuthRef.Name)

@@ -243,8 +243,8 @@ type HashiCorpVault struct {
 
 // Akeyless is used to authenticate using Akeyless
 type Akeyless struct {
-	GatewayUrl string           `json:"gatewayUrl"`
-	AccessId   string           `json:"accessId"`
+	GatewayURL string           `json:"gatewayUrl"`
+	AccessID   string           `json:"accessId"`
 	Secrets    []AkeylessSecret `json:"secrets"`
 
 	// +optional
@@ -255,7 +255,7 @@ type Akeyless struct {
 	// +optional
 	K8sServiceAccountToken string `json:"k8sServiceAccountToken,omitempty"`
 	// +optional
-	K8sGatewayUrl string `json:"k8sGatewayUrl,omitempty"`
+	K8sGatewayURL string `json:"k8sGatewayUrl,omitempty"`
 }
 
 type AkeylessSecret struct {

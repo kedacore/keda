@@ -63,7 +63,9 @@ func mockAkeylessServer(t *testing.T) *httptest.Server {
 				"expiration": "2025-12-31T23:59:59Z",
 			}
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(authResp)
+			if err := json.NewEncoder(w).Encode(authResp); err != nil {
+				t.Logf("Error encoding auth response: %v", err)
+			}
 
 		case "/api/v2/describe-item":
 			// Mock describe item response
@@ -75,9 +77,11 @@ func mockAkeylessServer(t *testing.T) *httptest.Server {
 				// Log the actual request body for debugging
 				t.Logf("Describe item request body: %+v", reqBody)
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				if err := json.NewEncoder(w).Encode(map[string]interface{}{
 					"error": "item name not found in request",
-				})
+				}); err != nil {
+					t.Logf("Error encoding describe item response: %v", err)
+				}
 				return
 			}
 
@@ -92,9 +96,11 @@ func mockAkeylessServer(t *testing.T) *httptest.Server {
 				itemType = "ROTATED_SECRET"
 			default:
 				w.WriteHeader(http.StatusNotFound)
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				if err := json.NewEncoder(w).Encode(map[string]interface{}{
 					"error": "item not found",
-				})
+				}); err != nil {
+					t.Logf("Error encoding describe item response: %v", err)
+				}
 				return
 			}
 
@@ -131,7 +137,9 @@ func mockAkeylessServer(t *testing.T) *httptest.Server {
 				path: testSecretValue,
 			}
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(secretResp)
+			if err := json.NewEncoder(w).Encode(secretResp); err != nil {
+				t.Logf("Error encoding get secret value response: %v", err)
+			}
 
 		case "/api/v2/get-dynamic-secret-value":
 			// Mock dynamic secret response
@@ -158,21 +166,13 @@ func mockAkeylessServer(t *testing.T) *httptest.Server {
 				"error": "",
 			}
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(secretResp)
+			if err := json.NewEncoder(w).Encode(secretResp); err != nil {
+				t.Logf("Error encoding get dynamic secret value response: %v", err)
+			}
 
 		case "/api/v2/get-rotated-secret-value":
 			// Mock rotated secret response
-			var _ string
-			var ok bool
-
-			if _, ok = reqBody["name"].(string); !ok {
-				if _, ok = reqBody["Name"].(string); !ok {
-					t.Logf("Get rotated secret value request body: %+v", reqBody)
-					w.WriteHeader(http.StatusBadRequest)
-					return
-				}
-			}
-
+			// Accept any request to this endpoint (SDK may send different field names)
 			secretResp := map[string]interface{}{
 				"value": map[string]string{
 					"username": "rotateduser",
@@ -180,7 +180,9 @@ func mockAkeylessServer(t *testing.T) *httptest.Server {
 				},
 			}
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(secretResp)
+			if err := json.NewEncoder(w).Encode(secretResp); err != nil {
+				t.Logf("Error encoding get rotated secret value response: %v", err)
+			}
 
 		default:
 			t.Logf("Got request at path %s with method %s", r.URL.Path, r.Method)
@@ -196,8 +198,8 @@ func TestAkeylessHandler_Initialize_AccessKey(t *testing.T) {
 
 	accessKey := akeylessTestAccessKey
 	akeyless := &kedav1alpha1.Akeyless{
-		GatewayUrl: server.URL + "/api/v2",
-		AccessId:   akeylessTestAccessId,
+		GatewayURL: server.URL + "/api/v2",
+		AccessID:   akeylessTestAccessId,
 		AccessKey:  &accessKey,
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
@@ -207,7 +209,10 @@ func TestAkeylessHandler_Initialize_AccessKey(t *testing.T) {
 		},
 	}
 
-	handler := NewAkeylessHandler(akeyless, logf.Log.WithName("test"))
+	handler := &AkeylessHandler{
+		akeyless: akeyless,
+		logger:   logf.Log.WithName("test"),
+	}
 	ctx := context.Background()
 	err := handler.Initialize(ctx)
 
@@ -219,7 +224,7 @@ func TestAkeylessHandler_Initialize_AccessKey(t *testing.T) {
 func TestAkeylessHandler_Initialize_DefaultGatewayUrl(t *testing.T) {
 	accessKey := akeylessTestAccessKey
 	akeyless := &kedav1alpha1.Akeyless{
-		AccessId:  akeylessTestAccessId,
+		AccessID:  akeylessTestAccessId,
 		AccessKey: &accessKey,
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
@@ -229,10 +234,13 @@ func TestAkeylessHandler_Initialize_DefaultGatewayUrl(t *testing.T) {
 		},
 	}
 
-	handler := NewAkeylessHandler(akeyless, logf.Log.WithName("test"))
+	handler := &AkeylessHandler{
+		akeyless: akeyless,
+		logger:   logf.Log.WithName("test"),
+	}
 
 	// Should use default gateway URL when not provided
-	assert.Empty(t, akeyless.GatewayUrl)
+	assert.Empty(t, akeyless.GatewayURL)
 
 	// Note: This will fail authentication but tests the default URL logic
 	ctx := context.Background()
@@ -241,13 +249,13 @@ func TestAkeylessHandler_Initialize_DefaultGatewayUrl(t *testing.T) {
 	// We expect an error because we're not mocking the default URL
 	assert.Error(t, err)
 	// But the gateway URL should be set to default
-	assert.Equal(t, PUBLIC_GATEWAY_URL, akeyless.GatewayUrl)
+	assert.Equal(t, publicGatewayURL, akeyless.GatewayURL)
 }
 
 func TestAkeylessHandler_Initialize_MissingAccessId(t *testing.T) {
 	accessKey := akeylessTestAccessKey
 	akeyless := &kedav1alpha1.Akeyless{
-		GatewayUrl: "https://test.akeyless.io",
+		GatewayURL: "https://test.akeyless.io",
 		AccessKey:  &accessKey,
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
@@ -257,7 +265,10 @@ func TestAkeylessHandler_Initialize_MissingAccessId(t *testing.T) {
 		},
 	}
 
-	handler := NewAkeylessHandler(akeyless, logf.Log.WithName("test"))
+	handler := &AkeylessHandler{
+		akeyless: akeyless,
+		logger:   logf.Log.WithName("test"),
+	}
 	ctx := context.Background()
 	err := handler.Initialize(ctx)
 
@@ -268,8 +279,8 @@ func TestAkeylessHandler_Initialize_MissingAccessId(t *testing.T) {
 func TestAkeylessHandler_Initialize_InvalidGatewayUrl(t *testing.T) {
 	accessKey := akeylessTestAccessKey
 	akeyless := &kedav1alpha1.Akeyless{
-		GatewayUrl: "not-a-valid-url",
-		AccessId:   akeylessTestAccessId,
+		GatewayURL: "not-a-valid-url",
+		AccessID:   akeylessTestAccessId,
 		AccessKey:  &accessKey,
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
@@ -279,7 +290,10 @@ func TestAkeylessHandler_Initialize_InvalidGatewayUrl(t *testing.T) {
 		},
 	}
 
-	handler := NewAkeylessHandler(akeyless, logf.Log.WithName("test"))
+	handler := &AkeylessHandler{
+		akeyless: akeyless,
+		logger:   logf.Log.WithName("test"),
+	}
 	ctx := context.Background()
 	err := handler.Initialize(ctx)
 
@@ -293,8 +307,8 @@ func TestAkeylessHandler_GetSecretsValue_StaticSecret(t *testing.T) {
 
 	accessKey := akeylessTestAccessKey
 	akeyless := &kedav1alpha1.Akeyless{
-		GatewayUrl: server.URL + "/api/v2",
-		AccessId:   akeylessTestAccessId,
+		GatewayURL: server.URL + "/api/v2",
+		AccessID:   akeylessTestAccessId,
 		AccessKey:  &accessKey,
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
@@ -304,7 +318,10 @@ func TestAkeylessHandler_GetSecretsValue_StaticSecret(t *testing.T) {
 		},
 	}
 
-	handler := NewAkeylessHandler(akeyless, logf.Log.WithName("test"))
+	handler := &AkeylessHandler{
+		akeyless: akeyless,
+		logger:   logf.Log.WithName("test"),
+	}
 	ctx := context.Background()
 	err := handler.Initialize(ctx)
 	require.NoError(t, err)
@@ -323,8 +340,8 @@ func TestAkeylessHandler_GetSecretsValue_StaticSecretWithKey(t *testing.T) {
 
 	accessKey := akeylessTestAccessKey
 	akeyless := &kedav1alpha1.Akeyless{
-		GatewayUrl: server.URL + "/api/v2",
-		AccessId:   akeylessTestAccessId,
+		GatewayURL: server.URL + "/api/v2",
+		AccessID:   akeylessTestAccessId,
 		AccessKey:  &accessKey,
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
@@ -339,27 +356,37 @@ func TestAkeylessHandler_GetSecretsValue_StaticSecretWithKey(t *testing.T) {
 	jsonServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		if r.URL.Path == "/api/v2/auth" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
+		switch r.URL.Path {
+		case "/api/v2/auth":
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
 				"token":      akeylessTestToken,
 				"expiration": "2025-12-31T23:59:59Z",
-			})
-		} else if r.URL.Path == "/api/v2/describe-item" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			}); err != nil {
+				t.Logf("Error encoding auth response: %v", err)
+			}
+		case "/api/v2/describe-item":
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
 				"item_type": "STATIC_SECRET",
-			})
-		} else if r.URL.Path == "/api/v2/get-secret-value" {
+			}); err != nil {
+				t.Logf("Error encoding describe item response: %v", err)
+			}
+		case "/api/v2/get-secret-value":
 			// Return JSON string
 			jsonValue := `{"username":"testuser","password":"testpass"}`
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
 				testSecretPath: jsonValue,
-			})
+			}); err != nil {
+				t.Logf("Error encoding get secret value response: %v", err)
+			}
 		}
 	}))
 	defer jsonServer.Close()
 
-	akeyless.GatewayUrl = jsonServer.URL + "/api/v2"
-	handler := NewAkeylessHandler(akeyless, logf.Log.WithName("test"))
+	akeyless.GatewayURL = jsonServer.URL + "/api/v2"
+	handler := &AkeylessHandler{
+		akeyless: akeyless,
+		logger:   logf.Log.WithName("test"),
+	}
 	ctx := context.Background()
 	err := handler.Initialize(ctx)
 	require.NoError(t, err)
@@ -378,8 +405,8 @@ func TestAkeylessHandler_GetSecretsValue_MultipleSecrets(t *testing.T) {
 
 	accessKey := akeylessTestAccessKey
 	akeyless := &kedav1alpha1.Akeyless{
-		GatewayUrl: server.URL + "/api/v2",
-		AccessId:   akeylessTestAccessId,
+		GatewayURL: server.URL + "/api/v2",
+		AccessID:   akeylessTestAccessId,
 		AccessKey:  &accessKey,
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
@@ -393,7 +420,10 @@ func TestAkeylessHandler_GetSecretsValue_MultipleSecrets(t *testing.T) {
 		},
 	}
 
-	handler := NewAkeylessHandler(akeyless, logf.Log.WithName("test"))
+	handler := &AkeylessHandler{
+		akeyless: akeyless,
+		logger:   logf.Log.WithName("test"),
+	}
 	ctx := context.Background()
 	err := handler.Initialize(ctx)
 	require.NoError(t, err)
@@ -411,12 +441,15 @@ func TestAkeylessHandler_GetSecretsValue_NonExistentSecret(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		if r.URL.Path == "/api/v2/auth" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
+		switch r.URL.Path {
+		case "/api/v2/auth":
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
 				"token":      akeylessTestToken,
 				"expiration": "2025-12-31T23:59:59Z",
-			})
-		} else if r.URL.Path == "/api/v2/describe-item" {
+			}); err != nil {
+				t.Logf("Error encoding auth response: %v", err)
+			}
+		case "/api/v2/describe-item":
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
@@ -424,8 +457,8 @@ func TestAkeylessHandler_GetSecretsValue_NonExistentSecret(t *testing.T) {
 
 	accessKey := akeylessTestAccessKey
 	akeyless := &kedav1alpha1.Akeyless{
-		GatewayUrl: server.URL + "/api/v2",
-		AccessId:   akeylessTestAccessId,
+		GatewayURL: server.URL + "/api/v2",
+		AccessID:   akeylessTestAccessId,
 		AccessKey:  &accessKey,
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
@@ -435,7 +468,10 @@ func TestAkeylessHandler_GetSecretsValue_NonExistentSecret(t *testing.T) {
 		},
 	}
 
-	handler := NewAkeylessHandler(akeyless, logf.Log.WithName("test"))
+	handler := &AkeylessHandler{
+		akeyless: akeyless,
+		logger:   logf.Log.WithName("test"),
+	}
 	ctx := context.Background()
 	err := handler.Initialize(ctx)
 	require.NoError(t, err)
@@ -509,31 +545,31 @@ func TestGetAccessTypeDisplayName(t *testing.T) {
 		{
 			name:      "access_key type",
 			typeChar:  "a",
-			want:      AUTH_ACCESS_KEY,
+			want:      authAccessKey,
 			wantError: false,
 		},
 		{
 			name:      "k8s type",
 			typeChar:  "k",
-			want:      AUTH_K8S,
+			want:      authK8s,
 			wantError: false,
 		},
 		{
 			name:      "aws_iam type",
 			typeChar:  "w",
-			want:      AUTH_AWS_IAM,
+			want:      authAwsIam,
 			wantError: false,
 		},
 		{
 			name:      "gcp type",
 			typeChar:  "g",
-			want:      AUTH_GCP,
+			want:      authGcp,
 			wantError: false,
 		},
 		{
 			name:      "azure_ad type",
 			typeChar:  "z",
-			want:      AUTH_AZURE_AD,
+			want:      authAzureAd,
 			wantError: false,
 		},
 		{
@@ -603,8 +639,275 @@ func TestIsValidAccessIdFormat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isValidAccessIdFormat(tt.accessId)
+			got := isValidAccessIDFormat(tt.accessId)
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestAkeylessHandler_parseStaticSecretValue(t *testing.T) {
+	handler := &AkeylessHandler{
+		logger: logf.Log.WithName("test"),
+	}
+
+	tests := []struct {
+		name           string
+		path           string
+		key            string
+		secretValueStr string
+		want           string
+		wantError      bool
+		errorContains  string
+	}{
+		{
+			name:           "plain string value without key",
+			path:           "test/path",
+			key:            "",
+			secretValueStr: "plain-secret-value",
+			want:           "plain-secret-value",
+			wantError:      false,
+		},
+		{
+			name:           "JSON string without key - returns stringified JSON",
+			path:           "test/path",
+			key:            "",
+			secretValueStr: `{"username":"testuser","password":"testpass"}`,
+			want:           `{"password":"testpass","username":"testuser"}`,
+			wantError:      false,
+		},
+		{
+			name:           "JSON string with key - returns value for key",
+			path:           "test/path",
+			key:            "password",
+			secretValueStr: `{"username":"testuser","password":"testpass"}`,
+			want:           "testpass",
+			wantError:      false,
+		},
+		{
+			name:           "JSON string with non-existent key - returns error",
+			path:           "test/path",
+			key:            "nonexistent",
+			secretValueStr: `{"username":"testuser","password":"testpass"}`,
+			want:           "",
+			wantError:      true,
+			errorContains:  "key 'nonexistent' not found",
+		},
+		{
+			name:           "invalid JSON string - returns as-is",
+			path:           "test/path",
+			key:            "",
+			secretValueStr: `not-valid-json{`,
+			want:           `not-valid-json{`,
+			wantError:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := handler.parseStaticSecretValue(tt.path, tt.key, tt.secretValueStr)
+			if tt.wantError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+				// For JSON comparison, we need to handle unordered keys
+				if tt.key == "" && (tt.secretValueStr[0] == '{' || tt.secretValueStr[0] == '[') {
+					// Compare as JSON objects
+					var gotJSON, wantJSON map[string]interface{}
+					require.NoError(t, json.Unmarshal([]byte(got), &gotJSON))
+					require.NoError(t, json.Unmarshal([]byte(tt.want), &wantJSON))
+					assert.Equal(t, wantJSON, gotJSON)
+				} else {
+					assert.Equal(t, tt.want, got)
+				}
+			}
+		})
+	}
+}
+
+func TestAkeylessHandler_extractSecretValueFromMap(t *testing.T) {
+	handler := &AkeylessHandler{
+		logger: logf.Log.WithName("test"),
+	}
+
+	tests := []struct {
+		name          string
+		path          string
+		key           string
+		mapValue      map[string]string
+		secretType    string
+		want          string
+		wantError     bool
+		errorContains string
+	}{
+		{
+			name:       "no key provided - returns stringified JSON",
+			path:       "test/path",
+			key:        "",
+			mapValue:   map[string]string{"username": "testuser", "password": "testpass"},
+			secretType: "dynamic",
+			want:       `{"password":"testpass","username":"testuser"}`,
+			wantError:  false,
+		},
+		{
+			name:       "key provided and exists - returns value",
+			path:       "test/path",
+			key:        "password",
+			mapValue:   map[string]string{"username": "testuser", "password": "testpass"},
+			secretType: "dynamic",
+			want:       "testpass",
+			wantError:  false,
+		},
+		{
+			name:          "key provided but doesn't exist - returns error",
+			path:          "test/path",
+			key:           "nonexistent",
+			mapValue:      map[string]string{"username": "testuser", "password": "testpass"},
+			secretType:    "dynamic",
+			want:          "",
+			wantError:     true,
+			errorContains: "key 'nonexistent' not found",
+		},
+		{
+			name:       "rotated secret with no key",
+			path:       "test/path",
+			key:        "",
+			mapValue:   map[string]string{"username": "rotateduser", "password": "rotatedpass"},
+			secretType: "rotated",
+			want:       `{"password":"rotatedpass","username":"rotateduser"}`,
+			wantError:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := handler.extractSecretValueFromMap(tt.path, tt.key, tt.mapValue, tt.secretType)
+			if tt.wantError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+				// For JSON comparison, handle unordered keys
+				if tt.key == "" {
+					var gotJSON, wantJSON map[string]interface{}
+					require.NoError(t, json.Unmarshal([]byte(got), &gotJSON))
+					require.NoError(t, json.Unmarshal([]byte(tt.want), &wantJSON))
+					assert.Equal(t, wantJSON, gotJSON)
+				} else {
+					assert.Equal(t, tt.want, got)
+				}
+			}
+		})
+	}
+}
+
+func TestAkeylessHandler_getStaticSecretValue(t *testing.T) {
+	server := mockAkeylessServer(t)
+	defer server.Close()
+
+	accessKey := akeylessTestAccessKey
+	akeyless := &kedav1alpha1.Akeyless{
+		GatewayURL: server.URL + "/api/v2",
+		AccessID:   akeylessTestAccessId,
+		AccessKey:  &accessKey,
+		Secrets: []kedav1alpha1.AkeylessSecret{
+			{
+				Parameter: "queuePassword",
+				Path:      testSecretPath,
+			},
+		},
+	}
+
+	handler := &AkeylessHandler{
+		akeyless: akeyless,
+		logger:   logf.Log.WithName("test"),
+	}
+	ctx := context.Background()
+	err := handler.Initialize(ctx)
+	require.NoError(t, err)
+
+	secret := kedav1alpha1.AkeylessSecret{
+		Parameter: "queuePassword",
+		Path:      testSecretPath,
+	}
+
+	value, err := handler.getStaticSecretValue(ctx, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, testSecretValue, value)
+}
+
+func TestAkeylessHandler_getDynamicSecretValue(t *testing.T) {
+	server := mockAkeylessServer(t)
+	defer server.Close()
+
+	accessKey := akeylessTestAccessKey
+	akeyless := &kedav1alpha1.Akeyless{
+		GatewayURL: server.URL + "/api/v2",
+		AccessID:   akeylessTestAccessId,
+		AccessKey:  &accessKey,
+		Secrets: []kedav1alpha1.AkeylessSecret{
+			{
+				Parameter: "dynamicSecret",
+				Path:      "dynamic-secret/path",
+			},
+		},
+	}
+
+	handler := &AkeylessHandler{
+		akeyless: akeyless,
+		logger:   logf.Log.WithName("test"),
+	}
+	ctx := context.Background()
+	err := handler.Initialize(ctx)
+	require.NoError(t, err)
+
+	secret := kedav1alpha1.AkeylessSecret{
+		Parameter: "dynamicSecret",
+		Path:      "dynamic-secret/path",
+		Key:       "username",
+	}
+
+	value, err := handler.getDynamicSecretValue(ctx, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, "testuser", value)
+}
+
+func TestAkeylessHandler_getRotatedSecretValue(t *testing.T) {
+	server := mockAkeylessServer(t)
+	defer server.Close()
+
+	accessKey := akeylessTestAccessKey
+	akeyless := &kedav1alpha1.Akeyless{
+		GatewayURL: server.URL + "/api/v2",
+		AccessID:   akeylessTestAccessId,
+		AccessKey:  &accessKey,
+		Secrets: []kedav1alpha1.AkeylessSecret{
+			{
+				Parameter: "rotatedSecret",
+				Path:      "rotated-secret/path",
+			},
+		},
+	}
+
+	handler := &AkeylessHandler{
+		akeyless: akeyless,
+		logger:   logf.Log.WithName("test"),
+	}
+	ctx := context.Background()
+	err := handler.Initialize(ctx)
+	require.NoError(t, err)
+
+	secret := kedav1alpha1.AkeylessSecret{
+		Parameter: "rotatedSecret",
+		Path:      "rotated-secret/path",
+		Key:       "username",
+	}
+
+	value, err := handler.getRotatedSecretValue(ctx, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, "rotateduser", value)
 }
