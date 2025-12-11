@@ -315,6 +315,68 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			},
 		},
 	},
+	{
+		name: "with AWS static credentials from TriggerAuthentication, missing Secret Access Key",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
+			"targetValue":               "3",
+		},
+		authParams: map[string]string{
+			"awsAccessKeyId": testAWSDynamoAccessKeyID,
+		},
+		expectedError: awsutils.ErrAwsNoSecretAccessKey,
+	},
+	{
+		name: "with AWS temporary credentials from TriggerAuthentication, missing Secret Access Key",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
+			"targetValue":               "3",
+		},
+		authParams: map[string]string{
+			"awsAccessKeyId":  testAWSDynamoAccessKeyID,
+			"awsSessionToken": "none",
+		},
+		expectedError: awsutils.ErrAwsNoSecretAccessKey,
+	},
+	{
+		name: "with AWS static credentials from TriggerAuthentication, missing Access Key Id",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
+			"targetValue":               "3",
+		},
+		authParams: map[string]string{
+			"awsSecretAccessKey": testAWSDynamoSecretAccessKey,
+		},
+		expectedError: awsutils.ErrAwsNoAccessKey,
+	},
+	{
+		name: "with AWS temporary credentials from TriggerAuthentication, missing Access Key Id",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
+			"targetValue":               "3",
+		},
+		authParams: map[string]string{
+			"awsSecretAccessKey": testAWSDynamoSecretAccessKey,
+			"awsSessionToken":    "none",
+		},
+		expectedError: awsutils.ErrAwsNoAccessKey,
+	},
 }
 
 func TestParseDynamoMetadata(t *testing.T) {

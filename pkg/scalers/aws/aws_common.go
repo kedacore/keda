@@ -26,7 +26,6 @@ package aws
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -38,6 +37,9 @@ import (
 
 // ErrAwsNoAccessKey is returned when awsAccessKeyID is missing.
 var ErrAwsNoAccessKey = errors.New("awsAccessKeyID not found")
+
+// ErrAwsNoSecretAccessKey is returned when awsSecretAccessKey is missing.
+var ErrAwsNoSecretAccessKey = errors.New("awsSecretAccessKey not found")
 
 var awsSharedCredentialsCache = newSharedConfigsCache()
 
@@ -98,13 +100,16 @@ func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.A
 		switch {
 		case authParams["awsRoleArn"] != "":
 			meta.AwsRoleArn = authParams["awsRoleArn"]
-		case (authParams["awsAccessKeyID"] != "" || authParams["awsAccessKeyId"] != "") && authParams["awsSecretAccessKey"] != "":
+		case authParams["awsAccessKeyID"] != "" || authParams["awsAccessKeyId"] != "":
 			meta.AwsAccessKeyID = authParams["awsAccessKeyID"]
 			if meta.AwsAccessKeyID == "" {
 				meta.AwsAccessKeyID = authParams["awsAccessKeyId"]
 			}
 			meta.AwsSecretAccessKey = authParams["awsSecretAccessKey"]
 			meta.AwsSessionToken = authParams["awsSessionToken"]
+			if len(meta.AwsSecretAccessKey) == 0 {
+				return meta, ErrAwsNoSecretAccessKey
+			}
 		default:
 			if triggerMetadata["awsAccessKeyID"] != "" {
 				meta.AwsAccessKeyID = triggerMetadata["awsAccessKeyID"]
@@ -121,7 +126,7 @@ func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.A
 			}
 
 			if len(meta.AwsSecretAccessKey) == 0 {
-				return meta, fmt.Errorf("awsSecretAccessKey not found")
+				return meta, ErrAwsNoSecretAccessKey
 			}
 		}
 	}
