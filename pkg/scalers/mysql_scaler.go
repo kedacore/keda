@@ -2,6 +2,8 @@ package scalers
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"fmt"
 	"net"
@@ -14,6 +16,11 @@ import (
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
+)
+
+const (
+	mysqlTLSStringEnable  = "enable"
+	mysqlTLSStringDisable = "disable"
 )
 
 type mySQLScaler struct {
@@ -34,6 +41,8 @@ type mySQLMetadata struct {
 	QueryValue           float64 `keda:"name=queryValue,                 order=triggerMetadata"`
 	ActivationQueryValue float64 `keda:"name=activationQueryValue,       order=triggerMetadata, default=0"`
 	MetricName           string  `keda:"name=metricName,                 order=triggerMetadata, optional"`
+	TLS                  string  `keda:"name=tls,                        order=triggerMetadata;authParams;resolvedEnv, optional"`
+	CA                   string  `keda:"name=ca,                         order=triggerMetadata;authParams;resolvedEnv, optional"`
 	TriggerIndex         int
 }
 
@@ -76,6 +85,15 @@ func parseMySQLMetadata(config *scalersconfig.ScalerConfig) (*mySQLMetadata, err
 	}
 	meta.MetricName = GenerateMetricNameWithIndex(config.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("mysql-%s", meta.DBName)))
 
+	switch strings.ToLower(strings.TrimSpace(meta.TLS)) {
+	case "", mysqlTLSStringDisable:
+		// no-op
+	case mysqlTLSStringEnable:
+		// allowed; CA is optional
+	default:
+		return nil, fmt.Errorf("invalid tls value: %s", meta.TLS)
+	}
+
 	return meta, nil
 }
 
@@ -93,6 +111,24 @@ func metadataToConnectionStr(meta *mySQLMetadata) string {
 		config.Passwd = meta.Password
 		config.User = meta.Username
 		config.Net = "tcp"
+		// TLS handling aligned with Kafka-style params (enable/disable)
+		if strings.ToLower(strings.TrimSpace(meta.TLS)) == mysqlTLSStringEnable {
+			if strings.TrimSpace(meta.CA) == "" {
+				// Use default MySQL driver's TLS behavior with system roots
+				config.TLSConfig = stringTrue
+			} else {
+				// Register custom TLS config using provided CA
+				pool := x509.NewCertPool()
+				_ = pool.AppendCertsFromPEM([]byte(meta.CA))
+				tlsCfg := &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12}
+				if host := strings.TrimSpace(meta.Host); host != "" {
+					tlsCfg.ServerName = host
+				}
+				cfgName := fmt.Sprintf("keda-mysql-%d", meta.TriggerIndex)
+				_ = mysql.RegisterTLSConfig(cfgName, tlsCfg)
+				config.TLSConfig = cfgName
+			}
+		}
 		connStr = config.FormatDSN()
 	}
 	return connStr
