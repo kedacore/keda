@@ -96,8 +96,8 @@ New deprecation(s):
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Other
+- **Docs**: Update [ROADMAP.md](ROADMAP.md) with upcoming-release cycle information (contribution) ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ## v2.18.2
 
