@@ -300,7 +300,7 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: Upload test logs
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: e2e-test-logs
           path: "${{ github.workspace }}/**/*.log"
@@ -389,7 +389,7 @@ jobs:
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
       - name: Upload test logs
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: arm-smoke-test-logs
           path: "${{ github.workspace }}/**/*.log"
@@ -492,7 +492,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
 
       - name: Upload test logs
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: s390x-smoke-test-logs
           path: "${{ github.workspace }}/**/*.log"
