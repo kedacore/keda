@@ -10,7 +10,7 @@ env:
 
 jobs:
   triage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     name: Comment evaluate
     container: ghcr.io/kedacore/keda-tools:1.25.5
     outputs:
@@ -69,7 +69,7 @@ jobs:
 
   build-test-images:
     needs: triage
-    runs-on: ARM64
+    runs-on: ubuntu-24.04-arm
     name: Build images
     container: ghcr.io/kedacore/keda-tools:1.25.5
     if: needs.triage.outputs.run-e2e == 'true'
@@ -308,7 +308,7 @@ jobs:
 
   run-arm-smoke-test:
     needs: [triage, build-test-images]
-    runs-on: ARM64
+    runs-on: ubuntu-24.04-arm
     name: Execute ARM smoke tests
     if: needs.triage.outputs.run-e2e == 'true'
     steps:
