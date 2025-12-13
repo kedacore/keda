@@ -74,9 +74,9 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **General**: Correct error message when awsSecretAccessKey is missing in credential-based authentication ([#7265](https://github.com/kedacore/keda/pull/7265))
+- **General**: Lazy PodSpec resolution to reduce memory usage and k8s API calls ([#7259](https://github.com/kedacore/keda/pull/7259))
 - **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
 - **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
-- **General**: Lazy PodSpec resolution to reduce memory usage and k8s API calls ([#7259](https://github.com/kedacore/keda/pull/7259))
 
 ### Fixes
 
