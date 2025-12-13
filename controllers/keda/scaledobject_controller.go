@@ -317,9 +317,6 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		return "Cannot update ScaledObject status with triggers'types and authentications'types", err
 	}
 
-	// Check if cooldownPeriod or pollingInterval are configured unnecessarily
-	r.checkScalingConfiguration(scaledObject)
-
 	// Create a new HPA or update existing one according to ScaledObject
 	newHPACreated, err := r.ensureHPAForScaledObjectExists(ctx, logger, scaledObject, &gvkr)
 	if err != nil {
@@ -347,48 +344,6 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 		return "ScaledObject paused replicas are being scaled", fmt.Errorf("ScaledObject paused replicas are being scaled")
 	}
 	return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
-}
-
-// checkScalingConfiguration checks Scaling Configuration, and emits informational events if necessary
-func (r *ScaledObjectReconciler) checkScalingConfiguration(scaledObject *kedav1alpha1.ScaledObject) {
-	minReplicas := int32(0)
-	if scaledObject.Spec.MinReplicaCount != nil {
-		minReplicas = *scaledObject.Spec.MinReplicaCount
-	}
-	idleReplicas := int32(0)
-	if scaledObject.Spec.IdleReplicaCount != nil {
-		idleReplicas = *scaledObject.Spec.IdleReplicaCount
-	}
-
-	// Check CooldownPeriod because not relevant when minReplicaCount or idleReplicaCount is 0
-	if scaledObject.Spec.CooldownPeriod != nil && (minReplicas == 0 || idleReplicas == 0) {
-		replicaType := ""
-		switch {
-		case minReplicas == 0 && idleReplicas == 0:
-			replicaType = "minReplicaCount and idleReplicaCount are"
-		case minReplicas == 0:
-			replicaType = "minReplicaCount is"
-		case idleReplicas == 0:
-			replicaType = "idleReplicaCount is"
-		}
-		msg := fmt.Sprintf("CooldownPeriod is configured but %s 0. CooldownPeriod is not relevant when scaling to 0 replicas", replicaType)
-		r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectReadyType, eventreason.KEDAScalersInfo, msg)
-	}
-
-	// Check if any trigger uses cached metrics
-	usesCachedMetrics := false
-	for _, trigger := range scaledObject.Spec.Triggers {
-		if trigger.UseCachedMetrics {
-			usesCachedMetrics = true
-			break
-		}
-	}
-
-	// Check PollingInterval because only relevant when minReplicaCount is not 0, unless useCachedMetrics is true
-	if scaledObject.Spec.PollingInterval != nil && minReplicas == 0 && !usesCachedMetrics {
-		msg := "PollingInterval is configured but minReplicaCount is 0. PollingInterval is only relevant when minReplicaCount is not 0 (unless useCachedMetrics is enabled)"
-		r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectReadyType, eventreason.KEDAScalersInfo, msg)
-	}
 }
 
 // ensureScaledObjectLabel ensures that scaledobject.keda.sh/name=<scaledObject.Name> label exist in the ScaledObject
