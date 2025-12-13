@@ -1063,3 +1063,291 @@ func expectNoStatusPatch(ctrl *gomock.Controller) {
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 }
+
+// TestResetScalersCacheKeepMetrics verifies that resetScalersCacheKeepMetrics
+// clears the scaler cache but preserves the metrics cache
+func TestResetScalersCacheKeepMetrics(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
+	recorder := record.NewFakeRecorder(1)
+
+	scaledObjectName := "test-so"
+	scaledObjectNamespace := "test-ns"
+	metricName := "test-metric"
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      scaledObjectName,
+			Namespace: scaledObjectNamespace,
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+				Name: "test-deployment",
+			},
+		},
+	}
+
+	metricValue := scalers.GenerateMetricInMili(metricName, float64(10))
+
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().Close(gomock.Any())
+
+	scalerCache := cache.ScalersCache{
+		Scalers: []cache.ScalerBuilder{{
+			Scaler: scaler,
+		}},
+		Recorder: recorder,
+	}
+
+	caches := map[string]*cache.ScalersCache{}
+	key := scaledObject.GenerateIdentifier()
+	caches[key] = &scalerCache
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		scaleExecutor:            mockExecutor,
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             caches,
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
+	}
+
+	// Store some metrics in the metrics cache
+	metricsRecord := map[string]metricscache.MetricsRecord{
+		metricName: {
+			IsActive:    true,
+			Metric:      []external_metrics.ExternalMetricValue{metricValue},
+			ScalerError: nil,
+		},
+	}
+	sh.scaledObjectsMetricCache.StoreRecords(key, metricsRecord)
+
+	// Verify cache exists before reset
+	assert.NotNil(t, sh.scalerCaches[key])
+	storedMetrics, metricsExist := sh.scaledObjectsMetricCache.ReadRecord(key, metricName)
+	assert.True(t, metricsExist)
+	assert.Equal(t, true, storedMetrics.IsActive)
+
+	// Call resetScalersCacheKeepMetrics
+	err := sh.resetScalersCacheKeepMetrics(context.TODO(), &scaledObject)
+	assert.Nil(t, err)
+
+	// Verify scaler cache was cleared
+	assert.Nil(t, sh.scalerCaches[key])
+
+	// Verify metrics cache was preserved
+	storedMetrics, metricsExist = sh.scaledObjectsMetricCache.ReadRecord(key, metricName)
+	assert.True(t, metricsExist, "Metrics cache should be preserved")
+	assert.Equal(t, true, storedMetrics.IsActive)
+	assert.Equal(t, 1, len(storedMetrics.Metric))
+}
+
+// TestResetScalersCacheKeepMetrics_ScaledJob verifies that resetScalersCacheKeepMetrics
+// works correctly with ScaledJob
+func TestResetScalersCacheKeepMetrics_ScaledJob(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
+	recorder := record.NewFakeRecorder(1)
+
+	scaledJobName := "test-sj"
+	scaledJobNamespace := "test-ns"
+
+	scaledJob := kedav1alpha1.ScaledJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      scaledJobName,
+			Namespace: scaledJobNamespace,
+		},
+		Spec: kedav1alpha1.ScaledJobSpec{
+			JobTargetRef: &batchv1.JobSpec{
+				Template: v1.PodTemplateSpec{
+					Spec: v1.PodSpec{
+						Containers: []v1.Container{{Name: "test"}},
+					},
+				},
+			},
+		},
+	}
+
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().Close(gomock.Any())
+
+	scalerCache := cache.ScalersCache{
+		Scalers: []cache.ScalerBuilder{{
+			Scaler: scaler,
+		}},
+		Recorder: recorder,
+	}
+
+	caches := map[string]*cache.ScalersCache{}
+	key := scaledJob.GenerateIdentifier()
+	caches[key] = &scalerCache
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		scaleExecutor:            mockExecutor,
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             caches,
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
+	}
+
+	// Verify cache exists before reset
+	assert.NotNil(t, sh.scalerCaches[key])
+
+	// Call resetScalersCacheKeepMetrics
+	err := sh.resetScalersCacheKeepMetrics(context.TODO(), &scaledJob)
+	assert.Nil(t, err)
+
+	// Verify scaler cache was cleared
+	assert.Nil(t, sh.scalerCaches[key])
+}
+
+// TestResetScalersCacheKeepMetrics_OnError verifies that the cache is reset
+// when a scaler error occurs during GetScaledObjectMetrics
+func TestResetScalersCacheKeepMetrics_OnError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
+	recorder := record.NewFakeRecorder(10)
+
+	scaledObjectName := "test-so-error"
+	scaledObjectNamespace := "test-ns"
+	metricName := "test-metric"
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      scaledObjectName,
+			Namespace: scaledObjectNamespace,
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+				Name: "test-deployment",
+			},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ExternalMetricNames: []string{metricName},
+		},
+	}
+
+	metricsSpecs := []v2.MetricSpec{createMetricSpec(10, metricName)}
+	metricValue := scalers.GenerateMetricInMili(metricName, float64(10))
+
+	// Scaler that returns error
+	scaler := mock_scalers.NewMockScaler(ctrl)
+	scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs).AnyTimes()
+	scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{}, false, errors.New("scaler error")).AnyTimes()
+	scaler.EXPECT().Close(gomock.Any())
+
+	factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+		// Return error on factory to prevent rebuilding in this test
+		return nil, nil, errors.New("factory error")
+	}
+
+	scalerCache := cache.ScalersCache{
+		ScaledObject: &scaledObject,
+		Scalers: []cache.ScalerBuilder{{
+			Scaler:       scaler,
+			ScalerConfig: scalersconfig.ScalerConfig{},
+			Factory:      factory,
+		}},
+		Recorder: recorder,
+	}
+
+	caches := map[string]*cache.ScalersCache{}
+	key := scaledObject.GenerateIdentifier()
+	caches[key] = &scalerCache
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		scaleExecutor:            mockExecutor,
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             caches,
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
+	}
+
+	// Store metrics in cache before error - these should be preserved
+	metricsRecord := map[string]metricscache.MetricsRecord{
+		metricName: {
+			IsActive:    true,
+			Metric:      []external_metrics.ExternalMetricValue{metricValue},
+			ScalerError: nil,
+		},
+	}
+	sh.scaledObjectsMetricCache.StoreRecords(key, metricsRecord)
+
+	// Verify cache exists before calling GetScaledObjectMetrics
+	assert.NotNil(t, sh.scalerCaches[key])
+
+	// Call GetScaledObjectMetrics which should trigger resetScalersCacheKeepMetrics on error
+	_, err := sh.GetScaledObjectMetrics(context.TODO(), scaledObjectName, scaledObjectNamespace, metricName)
+
+	// GetScaledObjectMetrics should return an error
+	assert.NotNil(t, err)
+
+	// Verify scaler cache was cleared (due to error)
+	assert.Nil(t, sh.scalerCaches[key], "Scaler cache should be cleared after error")
+
+	// Verify metrics cache was preserved
+	storedMetrics, metricsExist := sh.scaledObjectsMetricCache.ReadRecord(key, metricName)
+	assert.True(t, metricsExist, "Metrics cache should be preserved even after scaler error")
+	assert.Equal(t, true, storedMetrics.IsActive)
+}
+
+// TestResetScalersCacheKeepMetrics_NonExistentCache verifies that calling
+// resetScalersCacheKeepMetrics on a non-existent cache doesn't cause errors
+func TestResetScalersCacheKeepMetrics_NonExistentCache(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := mock_client.NewMockClient(ctrl)
+	mockExecutor := mock_executor.NewMockScaleExecutor(ctrl)
+	recorder := record.NewFakeRecorder(1)
+
+	scaledObject := kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "non-existent",
+			Namespace: "test-ns",
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+				Name: "test-deployment",
+			},
+		},
+	}
+
+	sh := scaleHandler{
+		client:                   mockClient,
+		scaleLoopContexts:        &sync.Map{},
+		scaleExecutor:            mockExecutor,
+		globalHTTPTimeout:        time.Duration(1000),
+		recorder:                 recorder,
+		scalerCaches:             map[string]*cache.ScalersCache{},
+		scalerCachesLock:         &sync.RWMutex{},
+		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
+	}
+
+	// Call resetScalersCacheKeepMetrics on non-existent cache
+	err := sh.resetScalersCacheKeepMetrics(context.TODO(), &scaledObject)
+
+	// Should not return error
+	assert.Nil(t, err)
+}
