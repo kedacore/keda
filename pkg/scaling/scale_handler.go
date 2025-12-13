@@ -438,10 +438,16 @@ func (h *scaleHandler) performGetScalersCache(ctx context.Context, key string, s
 		return nil, err
 	}
 
+	// Use the namespace from withTriggers if scalableObjectNamespace is empty
+	namespace := scalableObjectNamespace
+	if namespace == "" {
+		namespace = withTriggers.Namespace
+	}
+
 	// Only resolve PodSpec if needed (lazy resolution)
 	var podTemplateSpec *corev1.PodTemplateSpec
 	var containerName string
-	if needsPodSpecResolution(ctx, h.client, scalableObject, withTriggers, scalableObjectNamespace) {
+	if needsPodSpecResolution(ctx, h.client, scalableObject, withTriggers, namespace) {
 		podTemplateSpec, containerName, err = resolver.ResolveScaleTargetPodSpec(ctx, h.client, scalableObject)
 		if err != nil {
 			return nil, err

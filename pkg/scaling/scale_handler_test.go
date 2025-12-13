@@ -537,8 +537,11 @@ func TestCheckScaledObjectScalersWithTriggerAuthError(t *testing.T) {
 		Recorder: recorder,
 	}
 
-	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: deployment.Name, Namespace: deployment.Namespace}, gomock.Any()).SetArg(2, deployment)
-	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: triggerAuth.Name, Namespace: triggerAuth.Namespace}, gomock.Any()).SetArg(2, triggerAuth)
+	// With the needsPodSpecResolution optimization, the handler will try to fetch
+	// TriggerAuthentication to determine if PodSpec resolution is needed.
+	// Since this TriggerAuth uses only HashiCorpVault (no PodIdentity or Env),
+	// PodSpec resolution is skipped and deployment is not fetched.
+	mockClient.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: triggerAuth.Name, Namespace: triggerAuth.Namespace}, gomock.Any()).SetArg(2, triggerAuth).Times(2)
 
 	sh := scaleHandler{
 		client:                   mockClient,
@@ -1062,4 +1065,408 @@ func createMetricSpec(averageValue int64, metricName string) v2.MetricSpec {
 func expectNoStatusPatch(ctrl *gomock.Controller) {
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+}
+
+// TestNeedsPodSpecResolution tests the lazy PodSpec resolution logic
+func TestNeedsPodSpecResolution(t *testing.T) {
+	testNamespace := "test-namespace"
+
+	tests := []struct {
+		name           string
+		scalableObject interface{}
+		triggers       []kedav1alpha1.ScaleTriggers
+		setupMocks     func(*mock_client.MockClient)
+		expected       bool
+	}{
+		{
+			name: "ScaledJob always needs PodSpec",
+			scalableObject: &kedav1alpha1.ScaledJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-scaledjob",
+					Namespace: testNamespace,
+				},
+			},
+			triggers: []kedav1alpha1.ScaleTriggers{
+				{
+					Type:     "prometheus",
+					Metadata: map[string]string{"serverAddress": "http://localhost:9090"},
+				},
+			},
+			setupMocks: func(mc *mock_client.MockClient) {},
+			expected:   true,
+		},
+		{
+			name: "Trigger with FromEnv parameter needs PodSpec",
+			scalableObject: &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-scaledobject",
+					Namespace: testNamespace,
+				},
+			},
+			triggers: []kedav1alpha1.ScaleTriggers{
+				{
+					Type: "prometheus",
+					Metadata: map[string]string{
+						"serverAddress":    "http://localhost:9090",
+						"queryFromEnv":     "QUERY_VAR",
+						"thresholdFromEnv": "THRESHOLD_VAR",
+					},
+				},
+			},
+			setupMocks: func(mc *mock_client.MockClient) {},
+			expected:   true,
+		},
+		{
+			name: "Trigger with authenticationRef using Env needs PodSpec",
+			scalableObject: &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-scaledobject",
+					Namespace: testNamespace,
+				},
+			},
+			triggers: []kedav1alpha1.ScaleTriggers{
+				{
+					Type:     "prometheus",
+					Metadata: map[string]string{"serverAddress": "http://localhost:9090"},
+					AuthenticationRef: &kedav1alpha1.AuthenticationRef{
+						Name: "test-trigger-auth",
+					},
+				},
+			},
+			setupMocks: func(mc *mock_client.MockClient) {
+				triggerAuth := &kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-trigger-auth",
+						Namespace: testNamespace,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						Env: []kedav1alpha1.AuthEnvironment{
+							{
+								Name:          "API_KEY",
+								ContainerName: "app",
+							},
+						},
+					},
+				}
+				mc.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test-trigger-auth", Namespace: testNamespace}, gomock.Any()).
+					DoAndReturn(func(ctx context.Context, key types.NamespacedName, obj *kedav1alpha1.TriggerAuthentication, opts ...interface{}) error {
+						*obj = *triggerAuth
+						return nil
+					})
+			},
+			expected: true,
+		},
+		{
+			name: "Trigger with authenticationRef using PodIdentity needs PodSpec",
+			scalableObject: &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-scaledobject",
+					Namespace: testNamespace,
+				},
+			},
+			triggers: []kedav1alpha1.ScaleTriggers{
+				{
+					Type:     "azure-blob",
+					Metadata: map[string]string{"blobContainerName": "my-container"},
+					AuthenticationRef: &kedav1alpha1.AuthenticationRef{
+						Name: "test-trigger-auth-pod-id",
+					},
+				},
+			},
+			setupMocks: func(mc *mock_client.MockClient) {
+				triggerAuth := &kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-trigger-auth-pod-id",
+						Namespace: testNamespace,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						PodIdentity: &kedav1alpha1.AuthPodIdentity{
+							Provider: kedav1alpha1.PodIdentityProviderAzureWorkload,
+						},
+					},
+				}
+				mc.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test-trigger-auth-pod-id", Namespace: testNamespace}, gomock.Any()).
+					DoAndReturn(func(ctx context.Context, key types.NamespacedName, obj *kedav1alpha1.TriggerAuthentication, opts ...interface{}) error {
+						*obj = *triggerAuth
+						return nil
+					})
+			},
+			expected: true,
+		},
+		{
+			name: "Trigger with authenticationRef using AWS SecretManager with Pod Identity needs PodSpec",
+			scalableObject: &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-scaledobject",
+					Namespace: testNamespace,
+				},
+			},
+			triggers: []kedav1alpha1.ScaleTriggers{
+				{
+					Type:     "aws-sqs-queue",
+					Metadata: map[string]string{"queueURL": "https://sqs.us-east-1.amazonaws.com/123456789/my-queue"},
+					AuthenticationRef: &kedav1alpha1.AuthenticationRef{
+						Name: "test-trigger-auth-aws",
+					},
+				},
+			},
+			setupMocks: func(mc *mock_client.MockClient) {
+				triggerAuth := &kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-trigger-auth-aws",
+						Namespace: testNamespace,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						AwsSecretManager: &kedav1alpha1.AwsSecretManager{
+							Secrets: []kedav1alpha1.AwsSecretManagerSecret{
+								{
+									Name:      "my-secret",
+									SecretKey: "api-key",
+									Parameter: "API_KEY",
+								},
+							},
+							PodIdentity: &kedav1alpha1.AuthPodIdentity{
+								Provider:      kedav1alpha1.PodIdentityProviderAws,
+								IdentityOwner: stringPtr("workload"),
+							},
+						},
+					},
+				}
+				mc.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test-trigger-auth-aws", Namespace: testNamespace}, gomock.Any()).
+					DoAndReturn(func(ctx context.Context, key types.NamespacedName, obj *kedav1alpha1.TriggerAuthentication, opts ...interface{}) error {
+						*obj = *triggerAuth
+						return nil
+					})
+			},
+			expected: true,
+		},
+		{
+			name: "Trigger with authenticationRef using only SecretTargetRef does NOT need PodSpec",
+			scalableObject: &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-scaledobject",
+					Namespace: testNamespace,
+				},
+			},
+			triggers: []kedav1alpha1.ScaleTriggers{
+				{
+					Type:     "prometheus",
+					Metadata: map[string]string{"serverAddress": "http://localhost:9090"},
+					AuthenticationRef: &kedav1alpha1.AuthenticationRef{
+						Name: "test-trigger-auth-secret",
+					},
+				},
+			},
+			setupMocks: func(mc *mock_client.MockClient) {
+				triggerAuth := &kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-trigger-auth-secret",
+						Namespace: testNamespace,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						SecretTargetRef: []kedav1alpha1.AuthSecretTargetRef{
+							{
+								Parameter: "apiKey",
+								Name:      "my-secret",
+								Key:       "key",
+							},
+						},
+					},
+				}
+				mc.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test-trigger-auth-secret", Namespace: testNamespace}, gomock.Any()).
+					DoAndReturn(func(ctx context.Context, key types.NamespacedName, obj *kedav1alpha1.TriggerAuthentication, opts ...interface{}) error {
+						*obj = *triggerAuth
+						return nil
+					})
+			},
+			expected: false,
+		},
+		{
+			name: "Trigger with authenticationRef using HashiCorp Vault does NOT need PodSpec",
+			scalableObject: &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-scaledobject",
+					Namespace: testNamespace,
+				},
+			},
+			triggers: []kedav1alpha1.ScaleTriggers{
+				{
+					Type:     "prometheus",
+					Metadata: map[string]string{"serverAddress": "http://localhost:9090"},
+					AuthenticationRef: &kedav1alpha1.AuthenticationRef{
+						Name: "test-trigger-auth-vault",
+					},
+				},
+			},
+			setupMocks: func(mc *mock_client.MockClient) {
+				triggerAuth := &kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-trigger-auth-vault",
+						Namespace: testNamespace,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						HashiCorpVault: &kedav1alpha1.HashiCorpVault{
+							Address:        "http://vault:8200",
+							Authentication: kedav1alpha1.VaultAuthentication("token"),
+							Credential: &kedav1alpha1.Credential{
+								Token: "my-token",
+							},
+							Secrets: []kedav1alpha1.VaultSecret{
+								{
+									Path:      "secret/data/app",
+									Key:       "apiKey",
+									Parameter: "API_KEY",
+								},
+							},
+						},
+					},
+				}
+				mc.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test-trigger-auth-vault", Namespace: testNamespace}, gomock.Any()).
+					DoAndReturn(func(ctx context.Context, key types.NamespacedName, obj *kedav1alpha1.TriggerAuthentication, opts ...interface{}) error {
+						*obj = *triggerAuth
+						return nil
+					})
+			},
+			expected: false,
+		},
+		{
+			name: "Trigger with authenticationRef using Datadog API (SecretTargetRef) does NOT need PodSpec",
+			scalableObject: &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-scaledobject",
+					Namespace: testNamespace,
+				},
+			},
+			triggers: []kedav1alpha1.ScaleTriggers{
+				{
+					Type:     "datadog",
+					Metadata: map[string]string{"query": "avg:system.cpu.user{*}", "queryValue": "7"},
+					AuthenticationRef: &kedav1alpha1.AuthenticationRef{
+						Name: "test-trigger-auth-datadog",
+					},
+				},
+			},
+			setupMocks: func(mc *mock_client.MockClient) {
+				triggerAuth := &kedav1alpha1.TriggerAuthentication{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-trigger-auth-datadog",
+						Namespace: testNamespace,
+					},
+					Spec: kedav1alpha1.TriggerAuthenticationSpec{
+						SecretTargetRef: []kedav1alpha1.AuthSecretTargetRef{
+							{
+								Parameter: "apiKey",
+								Name:      "datadog-secret",
+								Key:       "api-key",
+							},
+							{
+								Parameter: "appKey",
+								Name:      "datadog-secret",
+								Key:       "app-key",
+							},
+							{
+								Parameter: "datadogSite",
+								Name:      "datadog-secret",
+								Key:       "site",
+							},
+						},
+					},
+				}
+				mc.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "test-trigger-auth-datadog", Namespace: testNamespace}, gomock.Any()).
+					DoAndReturn(func(ctx context.Context, key types.NamespacedName, obj *kedav1alpha1.TriggerAuthentication, opts ...interface{}) error {
+						*obj = *triggerAuth
+						return nil
+					})
+			},
+			expected: false,
+		},
+		{
+			name: "Simple trigger without special requirements does NOT need PodSpec",
+			scalableObject: &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-scaledobject",
+					Namespace: testNamespace,
+				},
+			},
+			triggers: []kedav1alpha1.ScaleTriggers{
+				{
+					Type: "prometheus",
+					Metadata: map[string]string{
+						"serverAddress": "http://localhost:9090",
+						"query":         "up",
+						"threshold":     "1",
+					},
+				},
+			},
+			setupMocks: func(mc *mock_client.MockClient) {},
+			expected:   false,
+		},
+		{
+			name: "Error fetching TriggerAuthentication returns true (conservative)",
+			scalableObject: &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-scaledobject",
+					Namespace: testNamespace,
+				},
+			},
+			triggers: []kedav1alpha1.ScaleTriggers{
+				{
+					Type:     "prometheus",
+					Metadata: map[string]string{"serverAddress": "http://localhost:9090"},
+					AuthenticationRef: &kedav1alpha1.AuthenticationRef{
+						Name: "missing-trigger-auth",
+					},
+				},
+			},
+			setupMocks: func(mc *mock_client.MockClient) {
+				mc.EXPECT().Get(gomock.Any(), types.NamespacedName{Name: "missing-trigger-auth", Namespace: testNamespace}, gomock.Any()).
+					Return(fmt.Errorf("not found"))
+			},
+			expected: true,
+		},
+		{
+			name: "Multiple triggers - one with FromEnv needs PodSpec",
+			scalableObject: &kedav1alpha1.ScaledObject{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-scaledobject",
+					Namespace: testNamespace,
+				},
+			},
+			triggers: []kedav1alpha1.ScaleTriggers{
+				{
+					Type:     "prometheus",
+					Metadata: map[string]string{"serverAddress": "http://localhost:9090", "query": "up"},
+				},
+				{
+					Type:     "kafka",
+					Metadata: map[string]string{"bootstrapServers": "kafka:9092", "topicFromEnv": "TOPIC_NAME"},
+				},
+			},
+			setupMocks: func(mc *mock_client.MockClient) {},
+			expected:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockClient := mock_client.NewMockClient(ctrl)
+			tt.setupMocks(mockClient)
+
+			withTriggers := &kedav1alpha1.WithTriggers{
+				Spec: kedav1alpha1.WithTriggersSpec{
+					Triggers: tt.triggers,
+				},
+			}
+
+			result := needsPodSpecResolution(context.Background(), mockClient, tt.scalableObject, withTriggers, testNamespace)
+			assert.Equal(t, tt.expected, result, "needsPodSpecResolution returned unexpected result")
+		})
+	}
+}
+
+func stringPtr(s string) *string {
+	return &s
 }
