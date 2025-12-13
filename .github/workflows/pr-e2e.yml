@@ -10,7 +10,7 @@ env:
 
 jobs:
   triage:
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     name: Comment evaluate
     container: ghcr.io/kedacore/keda-tools:1.25.5
     outputs:
