@@ -233,7 +233,7 @@ func TestAkeylessHandler_Initialize_AccessKey(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil, kedav1alpha1.AuthPodIdentity{})
 
 	assert.NoError(t, err)
 	assert.NotNil(t, handler.client)
@@ -264,7 +264,7 @@ func TestAkeylessHandler_Initialize_DefaultGatewayUrl(t *testing.T) {
 
 	// Note: This will fail authentication but tests the default URL logic
 	ctx := context.Background()
-	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil, kedav1alpha1.AuthPodIdentity{})
 
 	// We expect an error because we're not mocking the default URL
 	assert.Error(t, err)
@@ -291,7 +291,7 @@ func TestAkeylessHandler_Initialize_MissingAccessId(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil, kedav1alpha1.AuthPodIdentity{})
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "accessId is required")
@@ -317,7 +317,7 @@ func TestAkeylessHandler_Initialize_InvalidGatewayUrl(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil, kedav1alpha1.AuthPodIdentity{})
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid gateway URL")
@@ -346,7 +346,7 @@ func TestAkeylessHandler_GetSecretsValue_StaticSecret(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil, kedav1alpha1.AuthPodIdentity{})
 	require.NoError(t, err)
 
 	secretResults := make(map[string]string)
@@ -412,7 +412,7 @@ func TestAkeylessHandler_GetSecretsValue_StaticSecretWithKey(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil, kedav1alpha1.AuthPodIdentity{})
 	require.NoError(t, err)
 
 	secretResults := make(map[string]string)
@@ -450,7 +450,7 @@ func TestAkeylessHandler_GetSecretsValue_MultipleSecrets(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil, kedav1alpha1.AuthPodIdentity{})
 	require.NoError(t, err)
 
 	secretResults := make(map[string]string)
@@ -499,7 +499,7 @@ func TestAkeylessHandler_GetSecretsValue_NonExistentSecret(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil, kedav1alpha1.AuthPodIdentity{})
 	require.NoError(t, err)
 
 	secretResults := make(map[string]string)
@@ -854,7 +854,7 @@ func TestAkeylessHandler_getStaticSecretValue(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil, kedav1alpha1.AuthPodIdentity{})
 	require.NoError(t, err)
 
 	secret := kedav1alpha1.AkeylessSecret{
@@ -890,7 +890,7 @@ func TestAkeylessHandler_getDynamicSecretValue(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil, kedav1alpha1.AuthPodIdentity{})
 	require.NoError(t, err)
 
 	secret := kedav1alpha1.AkeylessSecret{
@@ -927,7 +927,7 @@ func TestAkeylessHandler_getRotatedSecretValue(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil, kedav1alpha1.AuthPodIdentity{})
 	require.NoError(t, err)
 
 	secret := kedav1alpha1.AkeylessSecret{

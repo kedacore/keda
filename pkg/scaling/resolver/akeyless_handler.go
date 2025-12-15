@@ -50,16 +50,18 @@ type AkeylessHandler struct {
 	namespace           string
 	secretsLister       corev1listers.SecretLister
 	podSpec             *corev1.PodSpec
+	podIdentity         kedav1alpha1.AuthPodIdentity
 	k8sControllerClient client.Client
 }
 
 // Initialize the AkeylessHandler
-func (h *AkeylessHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister, podSpec *corev1.PodSpec) error {
+func (h *AkeylessHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister, podSpec *corev1.PodSpec, podIdentity kedav1alpha1.AuthPodIdentity) error {
 	h.logger = logger
 	h.k8sControllerClient = client
 	h.namespace = triggerNamespace
 	h.secretsLister = secretsLister
 	h.podSpec = podSpec
+	h.podIdentity = podIdentity
 
 	// Validate Gateway URL is not empty and is a valid URL
 	if h.akeyless.GatewayURL == "" {
@@ -87,7 +89,7 @@ func (h *AkeylessHandler) Initialize(ctx context.Context, client client.Client, 
 	}
 
 	h.logger.Info(fmt.Sprintf("initializing Akeyless handler '%s'...", h.akeyless.GatewayURL))
-	err := h.Authenticate(ctx)
+	err := h.authenticate(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to authenticate with Akeyless: %w", err)
 	}
@@ -96,8 +98,8 @@ func (h *AkeylessHandler) Initialize(ctx context.Context, client client.Client, 
 	return nil
 }
 
-// Authenticate with Akeyless
-func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
+// authenticate with Akeyless
+func (h *AkeylessHandler) authenticate(ctx context.Context) error {
 	h.logger.Info(fmt.Sprintf("authenticating with Akeyless '%s' using Access ID '%s'...", h.akeyless.GatewayURL, h.akeyless.AccessID))
 	authRequest := akeyless.NewAuth()
 	authRequest.SetAccessId(h.akeyless.AccessID)
@@ -153,10 +155,18 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 		authRequest.SetCloudId(id)
 	case authAzureAd:
 		authRequest.SetAccessType(authAzureAd)
-		// TODO add conf for object ID
-		id, err := azure.GetCloudId("")
+
+		var id string
+		var err error
+		identityID := h.podIdentity.GetIdentityID()
+		if identityID == "" {
+			id, err = azure.GetCloudId("")
+		} else {
+			id, err = azure.GetCloudId(identityID)
+		}
+
 		if err != nil {
-			return fmt.Errorf("unable to get cloud ID for Azure AD: %w", err)
+			return fmt.Errorf("unable to get cloud ID for Azure AD using identity ID '%s': %w", identityID, err)
 		}
 		authRequest.SetCloudId(id)
 	case authK8s:
