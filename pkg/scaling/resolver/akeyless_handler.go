@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 	"regexp"
 	"slices"
 	"strings"
@@ -18,6 +17,9 @@ import (
 	"github.com/akeylesslabs/akeyless-go/v5"
 	"github.com/go-logr/logr"
 	"github.com/mitchellh/mapstructure"
+	corev1 "k8s.io/api/core/v1"
+	corev1listers "k8s.io/client-go/listers/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
@@ -41,14 +43,24 @@ const (
 var supportedSecretTypes = []string{staticSecretResponse, dynamicSecretResponse, rotatedSecretResponse}
 
 type AkeylessHandler struct {
-	akeyless *kedav1alpha1.Akeyless
-	client   *akeyless.V2ApiService
-	token    string
-	logger   logr.Logger
+	akeyless            *kedav1alpha1.Akeyless
+	client              *akeyless.V2ApiService
+	token               string
+	logger              logr.Logger
+	namespace           string
+	secretsLister       corev1listers.SecretLister
+	podSpec             *corev1.PodSpec
+	k8sControllerClient client.Client
 }
 
 // Initialize the AkeylessHandler
-func (h *AkeylessHandler) Initialize(ctx context.Context) error {
+func (h *AkeylessHandler) Initialize(ctx context.Context, client client.Client, logger logr.Logger, triggerNamespace string, secretsLister corev1listers.SecretLister, podSpec *corev1.PodSpec) error {
+	h.logger = logger
+	h.k8sControllerClient = client
+	h.namespace = triggerNamespace
+	h.secretsLister = secretsLister
+	h.podSpec = podSpec
+
 	// Validate Gateway URL is not empty and is a valid URL
 	if h.akeyless.GatewayURL == "" {
 		h.logger.Info(fmt.Sprintf("gatewayUrl is not set, using default value %s...", publicGatewayURL))
@@ -105,11 +117,25 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 
 	switch accessType {
 	case authAccessKey:
-		accessKey := h.akeyless.AccessKey
-		if accessKey == nil {
-			return errors.New("access key is required for access type 'access_key'")
+		if h.akeyless.AccessKey == nil {
+			return errors.New("access key is not provided")
 		}
-		authRequest.SetAccessKey(*accessKey)
+		if h.akeyless.AccessKey.ValueFrom.SecretKeyRef.Name == "" {
+			return errors.New("access key name is not provided")
+		}
+		if h.akeyless.AccessKey.ValueFrom.SecretKeyRef.Key == "" {
+			return errors.New("access key key is not provided")
+		}
+		resolvedAccessKey := resolveAuthSecret(ctx, h.k8sControllerClient, h.logger,
+			h.akeyless.AccessKey.ValueFrom.SecretKeyRef.Name,
+			h.namespace,
+			h.akeyless.AccessKey.ValueFrom.SecretKeyRef.Key,
+			h.secretsLister)
+		if resolvedAccessKey == "" {
+			return errors.New("access key '" + h.akeyless.AccessKey.ValueFrom.SecretKeyRef.Name + "' is not provided or could not be resolved")
+		}
+
+		authRequest.SetAccessKey(resolvedAccessKey)
 	case authAwsIam:
 		authRequest.SetAccessType(authAwsIam)
 		id, err := aws.GetCloudId()
@@ -148,24 +174,31 @@ func (h *AkeylessHandler) Authenticate(ctx context.Context) error {
 		h.akeyless.K8sGatewayURL = strings.TrimSuffix(h.akeyless.K8sGatewayURL, "/api/v2")
 		authRequest.SetGatewayUrl(h.akeyless.K8sGatewayURL)
 
-		if h.akeyless.K8sServiceAccountToken == "" {
-			h.logger.Info("k8sServiceAccountToken is not provided, attempting to retrieve from file...")
-			token, err := os.ReadFile(k8sServiceAccountTokenFile)
-			if err != nil {
-				h.logger.Error(fmt.Sprintf("unable to read k8s service account token from file '%s': %s", k8sServiceAccountTokenFile, err.Error()))
-				return errors.New("unable to read k8s service account token from file '" + k8sServiceAccountTokenFile + "': " + err.Error())
-			}
-			h.akeyless.K8sServiceAccountToken = string(token)
-			h.logger.V(1).Info(fmt.Sprintf("k8s service account token retrieved from file '%s'", k8sServiceAccountTokenFile))
+		if h.akeyless.K8sServiceAccountToken == nil {
+			return errors.New("k8sServiceAccountToken is not provided")
+		}
+		if h.akeyless.K8sServiceAccountToken.ValueFrom.SecretKeyRef.Name == "" {
+			return errors.New("k8sServiceAccountToken name is not provided")
+		}
+		if h.akeyless.K8sServiceAccountToken.ValueFrom.SecretKeyRef.Key == "" {
+			return errors.New("k8sServiceAccountToken key is not provided")
+		}
+		resolvedK8sServiceAccountToken := resolveAuthSecret(ctx, h.k8sControllerClient, h.logger,
+			h.akeyless.K8sServiceAccountToken.ValueFrom.SecretKeyRef.Name,
+			h.namespace,
+			h.akeyless.K8sServiceAccountToken.ValueFrom.SecretKeyRef.Key,
+			h.secretsLister)
+		if resolvedK8sServiceAccountToken == "" {
+			return errors.New("k8s service account token is not provided or could not be resolved")
 		}
 
 		// base64 encode the token if it's not already encoded
-		if _, err := base64.StdEncoding.DecodeString(h.akeyless.K8sServiceAccountToken); err != nil {
+		if _, err := base64.StdEncoding.DecodeString(resolvedK8sServiceAccountToken); err != nil {
 			h.logger.Info("k8sServiceAccountToken is not base64 encoded, encoding it...")
-			h.akeyless.K8sServiceAccountToken = base64.StdEncoding.EncodeToString([]byte(h.akeyless.K8sServiceAccountToken))
+			resolvedK8sServiceAccountToken = base64.StdEncoding.EncodeToString([]byte(resolvedK8sServiceAccountToken))
 		}
 
-		authRequest.SetK8sServiceAccountToken(h.akeyless.K8sServiceAccountToken)
+		authRequest.SetK8sServiceAccountToken(resolvedK8sServiceAccountToken)
 
 	default:
 		return fmt.Errorf("unsupported access type: %s", accessType)

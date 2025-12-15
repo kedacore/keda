@@ -25,9 +25,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	corev1 "k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 const (
@@ -36,7 +40,21 @@ const (
 	akeylessTestAccessKey = "test-access-key"
 	testSecretValue       = "test-secret-value"
 	testSecretPath        = "kv/prod/servicebus/password"
+	testNamespace         = "test-namespace"
 )
+
+// setupMockClient creates a mock Kubernetes client that returns a secret with the access key
+func setupMockClient() *mock_client.MockClient {
+	ctrl := gomock.NewController(util.GinkgoTestReporter{})
+	mockClient := mock_client.NewMockClient(ctrl)
+	secret := corev1.Secret{
+		Data: map[string][]byte{
+			"test-key": []byte(akeylessTestAccessKey),
+		},
+	}
+	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, secret).Return(nil).AnyTimes()
+	return mockClient
+}
 
 func mockAkeylessServer(t *testing.T) *httptest.Server {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -196,11 +214,12 @@ func TestAkeylessHandler_Initialize_AccessKey(t *testing.T) {
 	server := mockAkeylessServer(t)
 	defer server.Close()
 
-	accessKey := akeylessTestAccessKey
+	mockClient := setupMockClient()
+
 	akeyless := &kedav1alpha1.Akeyless{
 		GatewayURL: server.URL + "/api/v2",
 		AccessID:   akeylessTestAccessId,
-		AccessKey:  &accessKey,
+		AccessKey:  &kedav1alpha1.AkeylessK8sSecretValue{ValueFrom: kedav1alpha1.ValueFromSecret{SecretKeyRef: kedav1alpha1.SecretKeyRef{Name: "test-secret", Key: "test-key"}}},
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
 				Parameter: "queuePassword",
@@ -214,7 +233,7 @@ func TestAkeylessHandler_Initialize_AccessKey(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, handler.client)
@@ -222,10 +241,11 @@ func TestAkeylessHandler_Initialize_AccessKey(t *testing.T) {
 }
 
 func TestAkeylessHandler_Initialize_DefaultGatewayUrl(t *testing.T) {
-	accessKey := akeylessTestAccessKey
+	mockClient := setupMockClient()
+
 	akeyless := &kedav1alpha1.Akeyless{
 		AccessID:  akeylessTestAccessId,
-		AccessKey: &accessKey,
+		AccessKey: &kedav1alpha1.AkeylessK8sSecretValue{ValueFrom: kedav1alpha1.ValueFromSecret{SecretKeyRef: kedav1alpha1.SecretKeyRef{Name: "test-secret", Key: "test-key"}}},
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
 				Parameter: "queuePassword",
@@ -244,7 +264,7 @@ func TestAkeylessHandler_Initialize_DefaultGatewayUrl(t *testing.T) {
 
 	// Note: This will fail authentication but tests the default URL logic
 	ctx := context.Background()
-	err := handler.Initialize(ctx)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
 
 	// We expect an error because we're not mocking the default URL
 	assert.Error(t, err)
@@ -253,10 +273,11 @@ func TestAkeylessHandler_Initialize_DefaultGatewayUrl(t *testing.T) {
 }
 
 func TestAkeylessHandler_Initialize_MissingAccessId(t *testing.T) {
-	accessKey := akeylessTestAccessKey
+	mockClient := setupMockClient()
+
 	akeyless := &kedav1alpha1.Akeyless{
 		GatewayURL: "https://test.akeyless.io",
-		AccessKey:  &accessKey,
+		AccessKey:  &kedav1alpha1.AkeylessK8sSecretValue{ValueFrom: kedav1alpha1.ValueFromSecret{SecretKeyRef: kedav1alpha1.SecretKeyRef{Name: "test-secret", Key: "test-key"}}},
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
 				Parameter: "queuePassword",
@@ -270,18 +291,19 @@ func TestAkeylessHandler_Initialize_MissingAccessId(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "accessId is required")
 }
 
 func TestAkeylessHandler_Initialize_InvalidGatewayUrl(t *testing.T) {
-	accessKey := akeylessTestAccessKey
+	mockClient := setupMockClient()
+
 	akeyless := &kedav1alpha1.Akeyless{
 		GatewayURL: "not-a-valid-url",
 		AccessID:   akeylessTestAccessId,
-		AccessKey:  &accessKey,
+		AccessKey:  &kedav1alpha1.AkeylessK8sSecretValue{ValueFrom: kedav1alpha1.ValueFromSecret{SecretKeyRef: kedav1alpha1.SecretKeyRef{Name: "test-secret", Key: "test-key"}}},
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
 				Parameter: "queuePassword",
@@ -295,7 +317,7 @@ func TestAkeylessHandler_Initialize_InvalidGatewayUrl(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid gateway URL")
@@ -305,11 +327,12 @@ func TestAkeylessHandler_GetSecretsValue_StaticSecret(t *testing.T) {
 	server := mockAkeylessServer(t)
 	defer server.Close()
 
-	accessKey := akeylessTestAccessKey
+	mockClient := setupMockClient()
+
 	akeyless := &kedav1alpha1.Akeyless{
 		GatewayURL: server.URL + "/api/v2",
 		AccessID:   akeylessTestAccessId,
-		AccessKey:  &accessKey,
+		AccessKey:  &kedav1alpha1.AkeylessK8sSecretValue{ValueFrom: kedav1alpha1.ValueFromSecret{SecretKeyRef: kedav1alpha1.SecretKeyRef{Name: "test-secret", Key: "test-key"}}},
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
 				Parameter: "queuePassword",
@@ -323,7 +346,7 @@ func TestAkeylessHandler_GetSecretsValue_StaticSecret(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
 	require.NoError(t, err)
 
 	secretResults := make(map[string]string)
@@ -338,11 +361,12 @@ func TestAkeylessHandler_GetSecretsValue_StaticSecretWithKey(t *testing.T) {
 	server := mockAkeylessServer(t)
 	defer server.Close()
 
-	accessKey := akeylessTestAccessKey
+	mockClient := setupMockClient()
+
 	akeyless := &kedav1alpha1.Akeyless{
 		GatewayURL: server.URL + "/api/v2",
 		AccessID:   akeylessTestAccessId,
-		AccessKey:  &accessKey,
+		AccessKey:  &kedav1alpha1.AkeylessK8sSecretValue{ValueFrom: kedav1alpha1.ValueFromSecret{SecretKeyRef: kedav1alpha1.SecretKeyRef{Name: "test-secret", Key: "test-key"}}},
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
 				Parameter: "password",
@@ -388,7 +412,7 @@ func TestAkeylessHandler_GetSecretsValue_StaticSecretWithKey(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
 	require.NoError(t, err)
 
 	secretResults := make(map[string]string)
@@ -403,11 +427,12 @@ func TestAkeylessHandler_GetSecretsValue_MultipleSecrets(t *testing.T) {
 	server := mockAkeylessServer(t)
 	defer server.Close()
 
-	accessKey := akeylessTestAccessKey
+	mockClient := setupMockClient()
+
 	akeyless := &kedav1alpha1.Akeyless{
 		GatewayURL: server.URL + "/api/v2",
 		AccessID:   akeylessTestAccessId,
-		AccessKey:  &accessKey,
+		AccessKey:  &kedav1alpha1.AkeylessK8sSecretValue{ValueFrom: kedav1alpha1.ValueFromSecret{SecretKeyRef: kedav1alpha1.SecretKeyRef{Name: "test-secret", Key: "test-key"}}},
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
 				Parameter: "secret1",
@@ -425,7 +450,7 @@ func TestAkeylessHandler_GetSecretsValue_MultipleSecrets(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
 	require.NoError(t, err)
 
 	secretResults := make(map[string]string)
@@ -455,11 +480,12 @@ func TestAkeylessHandler_GetSecretsValue_NonExistentSecret(t *testing.T) {
 	}))
 	defer server.Close()
 
-	accessKey := akeylessTestAccessKey
+	mockClient := setupMockClient()
+
 	akeyless := &kedav1alpha1.Akeyless{
 		GatewayURL: server.URL + "/api/v2",
 		AccessID:   akeylessTestAccessId,
-		AccessKey:  &accessKey,
+		AccessKey:  &kedav1alpha1.AkeylessK8sSecretValue{ValueFrom: kedav1alpha1.ValueFromSecret{SecretKeyRef: kedav1alpha1.SecretKeyRef{Name: "test-secret", Key: "test-key"}}},
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
 				Parameter: "queuePassword",
@@ -473,7 +499,7 @@ func TestAkeylessHandler_GetSecretsValue_NonExistentSecret(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
 	require.NoError(t, err)
 
 	secretResults := make(map[string]string)
@@ -809,11 +835,12 @@ func TestAkeylessHandler_getStaticSecretValue(t *testing.T) {
 	server := mockAkeylessServer(t)
 	defer server.Close()
 
-	accessKey := akeylessTestAccessKey
+	mockClient := setupMockClient()
+
 	akeyless := &kedav1alpha1.Akeyless{
 		GatewayURL: server.URL + "/api/v2",
 		AccessID:   akeylessTestAccessId,
-		AccessKey:  &accessKey,
+		AccessKey:  &kedav1alpha1.AkeylessK8sSecretValue{ValueFrom: kedav1alpha1.ValueFromSecret{SecretKeyRef: kedav1alpha1.SecretKeyRef{Name: "test-secret", Key: "test-key"}}},
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
 				Parameter: "queuePassword",
@@ -827,7 +854,7 @@ func TestAkeylessHandler_getStaticSecretValue(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
 	require.NoError(t, err)
 
 	secret := kedav1alpha1.AkeylessSecret{
@@ -844,11 +871,12 @@ func TestAkeylessHandler_getDynamicSecretValue(t *testing.T) {
 	server := mockAkeylessServer(t)
 	defer server.Close()
 
-	accessKey := akeylessTestAccessKey
+	mockClient := setupMockClient()
+
 	akeyless := &kedav1alpha1.Akeyless{
 		GatewayURL: server.URL + "/api/v2",
 		AccessID:   akeylessTestAccessId,
-		AccessKey:  &accessKey,
+		AccessKey:  &kedav1alpha1.AkeylessK8sSecretValue{ValueFrom: kedav1alpha1.ValueFromSecret{SecretKeyRef: kedav1alpha1.SecretKeyRef{Name: "test-secret", Key: "test-key"}}},
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
 				Parameter: "dynamicSecret",
@@ -862,7 +890,7 @@ func TestAkeylessHandler_getDynamicSecretValue(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
 	require.NoError(t, err)
 
 	secret := kedav1alpha1.AkeylessSecret{
@@ -880,11 +908,12 @@ func TestAkeylessHandler_getRotatedSecretValue(t *testing.T) {
 	server := mockAkeylessServer(t)
 	defer server.Close()
 
-	accessKey := akeylessTestAccessKey
+	mockClient := setupMockClient()
+
 	akeyless := &kedav1alpha1.Akeyless{
 		GatewayURL: server.URL + "/api/v2",
 		AccessID:   akeylessTestAccessId,
-		AccessKey:  &accessKey,
+		AccessKey:  &kedav1alpha1.AkeylessK8sSecretValue{ValueFrom: kedav1alpha1.ValueFromSecret{SecretKeyRef: kedav1alpha1.SecretKeyRef{Name: "test-secret", Key: "test-key"}}},
 		Secrets: []kedav1alpha1.AkeylessSecret{
 			{
 				Parameter: "rotatedSecret",
@@ -898,7 +927,7 @@ func TestAkeylessHandler_getRotatedSecretValue(t *testing.T) {
 		logger:   logf.Log.WithName("test"),
 	}
 	ctx := context.Background()
-	err := handler.Initialize(ctx)
+	err := handler.Initialize(ctx, mockClient, logf.Log.WithName("test"), testNamespace, nil, nil)
 	require.NoError(t, err)
 
 	secret := kedav1alpha1.AkeylessSecret{

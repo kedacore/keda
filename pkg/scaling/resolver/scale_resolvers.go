@@ -360,9 +360,8 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 			if triggerAuthSpec.Akeyless != nil && len(triggerAuthSpec.Akeyless.Secrets) > 0 {
 				akeylessHandler := &AkeylessHandler{
 					akeyless: triggerAuthSpec.Akeyless,
-					logger:   logger,
 				}
-				err := akeylessHandler.Initialize(ctx)
+				err := akeylessHandler.Initialize(ctx, client, logger, triggerNamespace, authClientSet.SecretLister, podSpec)
 				if err != nil {
 					logger.Error(err, "error authenticating to Akeyless", "triggerAuthRef.Name", triggerAuthRef.Name)
 					return result, podIdentity, err

@@ -78,7 +78,27 @@ spec:
                   accessId:
                     type: string
                   accessKey:
-                    type: string
+                    description: AkeylessK8sSecretValue is used as a reference to
+                      a Kubernetes secret
+                    properties:
+                      valueFrom:
+                        properties:
+                          secretKeyRef:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        required:
+                        - secretKeyRef
+                        type: object
+                    required:
+                    - valueFrom
+                    type: object
                   gatewayUrl:
                     type: string
                   k8sAuthConfigName:
@@ -86,7 +106,27 @@ spec:
                   k8sGatewayUrl:
                     type: string
                   k8sServiceAccountToken:
-                    type: string
+                    description: AkeylessK8sSecretValue is used as a reference to
+                      a Kubernetes secret
+                    properties:
+                      valueFrom:
+                        properties:
+                          secretKeyRef:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        required:
+                        - secretKeyRef
+                        type: object
+                    required:
+                    - valueFrom
+                    type: object
                   secrets:
                     items:
                       properties:

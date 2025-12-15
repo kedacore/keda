@@ -248,14 +248,19 @@ type Akeyless struct {
 	Secrets    []AkeylessSecret `json:"secrets"`
 
 	// +optional
-	AccessKey *string `json:"accessKey,omitempty"`
+	AccessKey *AkeylessK8sSecretValue `json:"accessKey,omitempty"`
 
 	// +optional
 	K8sAuthConfigName string `json:"k8sAuthConfigName,omitempty"`
 	// +optional
-	K8sServiceAccountToken string `json:"k8sServiceAccountToken,omitempty"`
+	K8sServiceAccountToken *AkeylessK8sSecretValue `json:"k8sServiceAccountToken,omitempty"`
 	// +optional
 	K8sGatewayURL string `json:"k8sGatewayUrl,omitempty"`
+}
+
+// AkeylessK8sSecretValue is used as a reference to a Kubernetes secret
+type AkeylessK8sSecretValue struct {
+	ValueFrom ValueFromSecret `json:"valueFrom"`
 }
 
 type AkeylessSecret struct {
