@@ -9,7 +9,7 @@ permissions:
 jobs:
   build:
     name: build
-    runs-on: ARM64
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write
@@ -32,13 +32,13 @@ jobs:
           echo "build_cache=$(go env GOCACHE)" >> $GITHUB_OUTPUT
 
       - name: Go modules cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: ${{ steps.go-paths.outputs.mod_cache }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Go build cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: ${{ steps.go-paths.outputs.build_cache }}
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
@@ -94,10 +94,6 @@ jobs:
     uses: kedacore/keda/.github/workflows/template-main-e2e-test.yml@main
     secrets: inherit
 
-  validate-arm64:
-    needs: build
-    uses: kedacore/keda/.github/workflows/template-arm64-smoke-tests.yml@main
-
   validate-s390x:
     needs: build
     uses: kedacore/keda/.github/workflows/template-s390x-smoke-tests.yml@main
@@ -126,7 +122,7 @@ jobs:
       security-events: write
     strategy:
       matrix:
-        runner: [ARM64, ubuntu-latest]
+        runner: [ubuntu-24.04-arm, ubuntu-latest]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}
@@ -143,7 +139,7 @@ jobs:
       security-events: write
     strategy:
       matrix:
-        runner: [ARM64, ubuntu-latest]
+        runner: [ubuntu-24.04-arm, ubuntu-latest]
     uses: kedacore/keda/.github/workflows/template-trivy-scan.yml@main
     with:
       runs-on: ${{ matrix.runner }}

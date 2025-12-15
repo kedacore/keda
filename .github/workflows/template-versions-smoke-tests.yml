@@ -5,20 +5,24 @@ on:
 
 jobs:
   smoke-tests:
-    name: ubuntu-latest
+    name: ${{ matrix.arch }}
     strategy:
       fail-fast: false
       matrix:
-        kubernetesVersion: [v1.33, v1.32, v1.31]
+        arch:
+          - AMD64
+          - ARM64
+        kindVersion:
+          - v1.33.1
+          - v1.32.5
+          - v1.31.9
         include:
-          - kubernetesVersion: v1.33
-            kindImage: kindest/node:v1.33.1@sha256:050072256b9a903bd914c0b2866828150cb229cea0efe5892e2b644d5dd3b34f
-          - kubernetesVersion: v1.32
-            kindImage: kindest/node:v1.32.5@sha256:e3b2327e3a5ab8c76f5ece68936e4cafaa82edf58486b769727ab0b3b97a5b0d
-          - kubernetesVersion: v1.31
-            kindImage: kindest/node:v1.31.9@sha256:b94a3a6c06198d17f59cca8c6f486236fa05e2fb359cbd75dabbfc348a10b211
+          - arch: AMD64
+            runner: ubuntu-latest
+          - arch: ARM64
+            runner: ubuntu-24.04-arm
     uses: kedacore/keda/.github/workflows/template-smoke-tests.yml@main
     with:
-      runs-on: ubuntu-latest
-      kubernetesVersion: ${{ matrix.kubernetesVersion }}
-      kindImage: ${{ matrix.kindImage }}
+      runs-on: ${{ matrix.runner }}
+      kubernetesVersion: ${{ matrix.kindVersion }}
+      kindImage: kindest/node:${{ matrix.kindVersion }}
