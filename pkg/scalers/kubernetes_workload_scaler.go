@@ -24,6 +24,8 @@ type kubernetesWorkloadScaler struct {
 
 const (
 	kubernetesWorkloadMetricType = "External"
+	allNamespaces                = "*"
+	podListPageSize              = 200
 )
 
 var phasesCountedAsTerminated = []corev1.PodPhase{
@@ -35,6 +37,7 @@ type kubernetesWorkloadMetadata struct {
 	PodSelector     string  `keda:"name=podSelector,     order=triggerMetadata"`
 	Value           float64 `keda:"name=value,           order=triggerMetadata, default=0"`
 	ActivationValue float64 `keda:"name=activationValue, order=triggerMetadata, default=0"`
+	Namespace       string  `keda:"name=namespace,       order=triggerMetadata, optional"`
 
 	namespace      string
 	triggerIndex   int
@@ -87,6 +90,12 @@ func parseKubernetesWorkloadMetadata(config *scalersconfig.ScalerConfig) (kubern
 	}
 	meta.podSelector = selector
 
+	if meta.Namespace == allNamespaces {
+		meta.namespace = ""
+	} else if meta.Namespace != "" {
+		meta.namespace = meta.Namespace
+	}
+
 	return meta, nil
 }
 
@@ -120,19 +129,35 @@ func (s *kubernetesWorkloadScaler) GetMetricsAndActivity(ctx context.Context, me
 }
 
 func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int64, error) {
-	podList := &corev1.PodList{}
-	listOptions := client.ListOptions{
-		LabelSelector: s.metadata.podSelector,
-		Namespace:     s.metadata.namespace,
-	}
 
-	err := s.kubeClient.List(ctx, podList, &listOptions)
-	if err != nil {
-		return 0, err
+	var allPods []corev1.Pod
+	continueToken := ""
+
+	for {
+		podList := corev1.PodList{}
+
+		listOptions := client.ListOptions{
+			LabelSelector: s.metadata.podSelector,
+			Namespace:     s.metadata.namespace,
+			Limit:         int64(podListPageSize),
+			Continue:      continueToken,
+		}
+
+		err := s.kubeClient.List(ctx, &podList, &listOptions)
+		if err != nil {
+			return 0, err
+		}
+
+		allPods = append(allPods, podList.Items...)
+		continueToken = podList.Continue
+
+		if continueToken == "" {
+			break
+		}
 	}
 
 	var count int64
-	for _, pod := range podList.Items {
+	for _, pod := range allPods {
 		count += getCountValue(pod)
 	}
 

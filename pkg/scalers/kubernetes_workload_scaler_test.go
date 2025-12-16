@@ -34,6 +34,7 @@ var parseWorkloadMetadataTestDataset = []workloadMetadataTestData{
 	{map[string]string{"value": "0", "podSelector": "app=demo"}, "test", true},
 	{map[string]string{"value": "0", "podSelector": "app=demo"}, "default", true},
 	{map[string]string{"value": "1", "activationValue": "aa", "podSelector": "app=demo"}, "test", true},
+	{map[string]string{"value": "1", "podSelector": "app=demo", "namespace": "default"}, "test", false},
 }
 
 func TestParseWorkloadMetadata(t *testing.T) {
@@ -62,20 +63,24 @@ type workloadIsActiveTestData struct {
 }
 
 var isActiveWorkloadTestDataset = []workloadIsActiveTestData{
-	// "podSelector": "app=demo", "namespace": "test"
+	// "metadata": {"value": "1", "podSelector": "app=demo"}, "namespace": "test"
 	{parseWorkloadMetadataTestDataset[0].metadata, parseWorkloadMetadataTestDataset[0].namespace, 0, false},
 	{parseWorkloadMetadataTestDataset[0].metadata, parseWorkloadMetadataTestDataset[0].namespace, 1, false},
 	{parseWorkloadMetadataTestDataset[0].metadata, parseWorkloadMetadataTestDataset[0].namespace, 15, false},
-	// "podSelector": "app=demo", "namespace": "default"
+	// "metadata": {"value": "1", "podSelector": "app=demo"}, "namespace": "default"
 	{parseWorkloadMetadataTestDataset[1].metadata, parseWorkloadMetadataTestDataset[1].namespace, 0, false},
 	{parseWorkloadMetadataTestDataset[1].metadata, parseWorkloadMetadataTestDataset[1].namespace, 1, true},
 	{parseWorkloadMetadataTestDataset[1].metadata, parseWorkloadMetadataTestDataset[1].namespace, 15, true},
+	// "metadata": {"value": "1", "podSelector": "app=demo", "namespace": "default"}, "namespace": "test"
+	{parseWorkloadMetadataTestDataset[len(parseWorkloadMetadataTestDataset)-1].metadata, parseWorkloadMetadataTestDataset[len(parseWorkloadMetadataTestDataset)-1].namespace, 0, false},
+	{parseWorkloadMetadataTestDataset[len(parseWorkloadMetadataTestDataset)-1].metadata, parseWorkloadMetadataTestDataset[len(parseWorkloadMetadataTestDataset)-1].namespace, 1, true},
+	{parseWorkloadMetadataTestDataset[len(parseWorkloadMetadataTestDataset)-1].metadata, parseWorkloadMetadataTestDataset[len(parseWorkloadMetadataTestDataset)-1].namespace, 15, true},
 }
 
 func TestWorkloadIsActive(t *testing.T) {
 	for _, testData := range isActiveWorkloadTestDataset {
 		s, err := NewKubernetesWorkloadScaler(
-			fake.NewClientBuilder().WithRuntimeObjects(createPodlist(testData.podCount)).Build(),
+			fake.NewClientBuilder().WithRuntimeObjects(createPodlist(testData.podCount, "default")).Build(),
 			&scalersconfig.ScalerConfig{
 				TriggerMetadata:         testData.metadata,
 				AuthParams:              map[string]string{},
@@ -139,13 +144,13 @@ func TestWorkloadGetMetricSpecForScaling(t *testing.T) {
 	}
 }
 
-func createPodlist(count int) *v1.PodList {
+func createPodlist(count int, namespace string) *v1.PodList {
 	list := &v1.PodList{}
 	for i := 0; i < count; i++ {
 		pod := &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        fmt.Sprintf("demo-pod-v%d", i),
-				Namespace:   "default",
+				Namespace:   namespace,
 				Annotations: map[string]string{},
 				Labels: map[string]string{
 					"app": "demo",
