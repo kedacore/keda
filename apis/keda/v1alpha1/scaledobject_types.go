@@ -222,10 +222,12 @@ func (so *ScaledObject) HasPausedAnnotation() bool {
 }
 
 // NeedToBePausedByAnnotation will check whether ScaledObject needs to be paused based on PausedAnnotation or PausedReplicaCount
+// If the paused-replicas annotation value is empty string, it is treated as if the annotation was not set.
 func (so *ScaledObject) NeedToBePausedByAnnotation() bool {
-	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
-	if pausedReplicasAnnotationFound {
-		return true
+	if val, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]; pausedReplicasAnnotationFound {
+		if val != "" {
+			return true
+		}
 	}
 
 	return getBoolAnnotation(so, PausedAnnotation)
