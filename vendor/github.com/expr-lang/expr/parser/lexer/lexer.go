@@ -46,6 +46,9 @@ type Lexer struct {
 		byte, rune int
 	}
 	eof bool
+	// When true, keywords `if`/`else` are not treated as operators and
+	// will be emitted as identifiers instead (for compatibility with custom if()).
+	DisableIfOperator bool
 }
 
 func (l *Lexer) Reset(source file.Source) {
@@ -90,13 +93,6 @@ func (l *Lexer) peek() rune {
 		return r
 	}
 	return eof
-}
-
-func (l *Lexer) peekByte() (byte, bool) {
-	if l.end.byte >= 0 && l.end.byte < len(l.source.String()) {
-		return l.source.String()[l.end.byte], true
-	}
-	return 0, false
 }
 
 func (l *Lexer) backup() {
@@ -215,6 +211,37 @@ func (l *Lexer) scanEscape(quote rune) rune {
 	case 'x':
 		ch = l.scanDigits(l.next(), 16, 2)
 	case 'u':
+		// Support variable-length form: \u{XXXXXX}
+		if l.peek() == '{' {
+			// consume '{'
+			l.next()
+			// read 1-6 hex digits
+			digits := 0
+			for {
+				p := l.peek()
+				if p == '}' {
+					break
+				}
+				if digitVal(p) >= 16 {
+					l.error("invalid char escape")
+					return eof
+				}
+				if digits >= 6 {
+					l.error("invalid char escape")
+					return eof
+				}
+				l.next()
+				digits++
+			}
+			if l.peek() != '}' || digits == 0 {
+				l.error("invalid char escape")
+				return eof
+			}
+			// consume '}' and continue
+			l.next()
+			ch = l.next()
+			break
+		}
 		ch = l.scanDigits(l.next(), 16, 4)
 	case 'U':
 		ch = l.scanDigits(l.next(), 16, 8)
@@ -242,15 +269,47 @@ func (l *Lexer) scanString(quote rune) (n int) {
 }
 
 func (l *Lexer) scanRawString(quote rune) (n int) {
-	ch := l.next() // read character after back tick
-	for ch != quote {
-		if ch == eof {
+	var escapedQuotes int
+loop:
+	for {
+		ch := l.next()
+		for ch == quote && l.peek() == quote {
+			// skip current and next char which are the quote escape sequence
+			l.next()
+			ch = l.next()
+			escapedQuotes++
+		}
+		switch ch {
+		case quote:
+			break loop
+		case eof:
 			l.error("literal not terminated")
 			return
 		}
-		ch = l.next()
 		n++
 	}
-	l.emitValue(String, l.source.String()[l.start.byte+1:l.end.byte-1])
+	str := l.source.String()[l.start.byte+1 : l.end.byte-1]
+
+	// handle simple case where no quoted backtick was found, then no allocation
+	// is needed for the new string
+	if escapedQuotes == 0 {
+		l.emitValue(String, str)
+		return
+	}
+
+	var b strings.Builder
+	var skipped bool
+	b.Grow(len(str) - escapedQuotes)
+	for _, r := range str {
+		if r == quote {
+			if !skipped {
+				skipped = true
+				continue
+			}
+			skipped = false
+		}
+		b.WriteRune(r)
+	}
+	l.emitValue(String, b.String())
 	return
 }

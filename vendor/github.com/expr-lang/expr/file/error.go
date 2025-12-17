@@ -31,12 +31,13 @@ func (e *Error) Bind(source Source) *Error {
 			break
 		}
 		if r == '\n' {
-			lineStart = i
+			lineStart = i + 1
 			e.Line++
 			e.Column = 0
+		} else {
+			e.Column++
 		}
 		runeCount++
-		e.Column++
 	}
 
 	lineEnd := lineStart + strings.IndexByte(src[lineStart:], '\n')
