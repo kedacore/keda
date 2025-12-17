@@ -129,7 +129,6 @@ func (s *kubernetesWorkloadScaler) GetMetricsAndActivity(ctx context.Context, me
 }
 
 func (s *kubernetesWorkloadScaler) getMetricValue(ctx context.Context) (int64, error) {
-
 	var allPods []corev1.Pod
 	continueToken := ""
 
