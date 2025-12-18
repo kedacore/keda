@@ -5,6 +5,7 @@ import (
 	"math"
 	"reflect"
 	"regexp"
+	"runtime/debug"
 
 	"github.com/expr-lang/expr/ast"
 	"github.com/expr-lang/expr/builtin"
@@ -24,7 +25,7 @@ const (
 func Compile(tree *parser.Tree, config *conf.Config) (program *Program, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("%v", r)
+			err = fmt.Errorf("%v\n%s", r, debug.Stack())
 		}
 	}()
 
@@ -34,6 +35,12 @@ func Compile(tree *parser.Tree, config *conf.Config) (program *Program, err erro
 		constantsIndex: make(map[any]int),
 		functionsIndex: make(map[string]int),
 		debugInfo:      make(map[string]string),
+	}
+
+	if config != nil {
+		c.ntCache = &c.config.NtCache
+	} else {
+		c.ntCache = new(Cache)
 	}
 
 	c.compile(tree.Node)
@@ -46,6 +53,8 @@ func Compile(tree *parser.Tree, config *conf.Config) (program *Program, err erro
 			c.emit(OpCast, 1)
 		case reflect.Float64:
 			c.emit(OpCast, 2)
+		case reflect.Bool:
+			c.emit(OpCast, 3)
 		}
 		if c.config.Optimize {
 			c.optimize()
@@ -74,6 +83,7 @@ func Compile(tree *parser.Tree, config *conf.Config) (program *Program, err erro
 
 type compiler struct {
 	config         *conf.Config
+	ntCache        *Cache
 	locations      []file.Location
 	bytecode       []Opcode
 	variables      int
@@ -302,12 +312,12 @@ func (c *compiler) IdentifierNode(node *ast.IdentifierNode) {
 
 	if env.IsFastMap() {
 		c.emit(OpLoadFast, c.addConstant(node.Value))
-	} else if ok, index, name := checker.FieldIndex(env, node); ok {
+	} else if ok, index, name := checker.FieldIndex(c.ntCache, env, node); ok {
 		c.emit(OpLoadField, c.addConstant(&runtime.Field{
 			Index: index,
 			Path:  []string{name},
 		}))
-	} else if ok, index, name := checker.MethodIndex(env, node); ok {
+	} else if ok, index, name := checker.MethodIndex(c.ntCache, env, node); ok {
 		c.emit(OpLoadMethod, c.addConstant(&runtime.Method{
 			Name:  name,
 			Index: index,
@@ -438,6 +448,14 @@ func (c *compiler) BinaryNode(node *ast.BinaryNode) {
 		c.emit(OpNot)
 
 	case "or", "||":
+		if c.config != nil && !c.config.ShortCircuit {
+			c.compile(node.Left)
+			c.derefInNeeded(node.Left)
+			c.compile(node.Right)
+			c.derefInNeeded(node.Right)
+			c.emit(OpOr)
+			break
+		}
 		c.compile(node.Left)
 		c.derefInNeeded(node.Left)
 		end := c.emit(OpJumpIfTrue, placeholder)
@@ -447,6 +465,14 @@ func (c *compiler) BinaryNode(node *ast.BinaryNode) {
 		c.patchJump(end)
 
 	case "and", "&&":
+		if c.config != nil && !c.config.ShortCircuit {
+			c.compile(node.Left)
+			c.derefInNeeded(node.Left)
+			c.compile(node.Right)
+			c.derefInNeeded(node.Right)
+			c.emit(OpAnd)
+			break
+		}
 		c.compile(node.Left)
 		c.derefInNeeded(node.Left)
 		end := c.emit(OpJumpIfFalse, placeholder)
@@ -653,7 +679,7 @@ func (c *compiler) MemberNode(node *ast.MemberNode) {
 		env = c.config.Env
 	}
 
-	if ok, index, name := checker.MethodIndex(env, node); ok {
+	if ok, index, name := checker.MethodIndex(c.ntCache, env, node); ok {
 		c.compile(node.Node)
 		c.emit(OpMethod, c.addConstant(&runtime.Method{
 			Name:  name,
@@ -664,14 +690,14 @@ func (c *compiler) MemberNode(node *ast.MemberNode) {
 	op := OpFetch
 	base := node.Node
 
-	ok, index, nodeName := checker.FieldIndex(env, node)
+	ok, index, nodeName := checker.FieldIndex(c.ntCache, env, node)
 	path := []string{nodeName}
 
 	if ok {
 		op = OpFetchField
 		for !node.Optional {
 			if ident, isIdent := base.(*ast.IdentifierNode); isIdent {
-				if ok, identIndex, name := checker.FieldIndex(env, ident); ok {
+				if ok, identIndex, name := checker.FieldIndex(c.ntCache, env, ident); ok {
 					index = append(identIndex, index...)
 					path = append([]string{name}, path...)
 					c.emitLocation(ident.Location(), OpLoadField, c.addConstant(
@@ -682,7 +708,7 @@ func (c *compiler) MemberNode(node *ast.MemberNode) {
 			}
 
 			if member, isMember := base.(*ast.MemberNode); isMember {
-				if ok, memberIndex, name := checker.FieldIndex(env, member); ok {
+				if ok, memberIndex, name := checker.FieldIndex(c.ntCache, env, member); ok {
 					index = append(memberIndex, index...)
 					path = append([]string{name}, path...)
 					node = member
@@ -706,6 +732,18 @@ func (c *compiler) MemberNode(node *ast.MemberNode) {
 
 	if op == OpFetch {
 		c.compile(node.Property)
+		deref := true
+		// If the map key is a pointer, we should not dereference the property.
+		if node.Node.Type() != nil && node.Node.Type().Kind() == reflect.Map {
+			keyType := node.Node.Type().Key()
+			propType := node.Property.Type()
+			if propType != nil && propType.AssignableTo(keyType) {
+				deref = false
+			}
+		}
+		if deref {
+			c.derefInNeeded(node.Property)
+		}
 		c.emit(OpFetch)
 	} else {
 		c.emitLocation(node.Location(), op, c.addConstant(
@@ -718,11 +756,13 @@ func (c *compiler) SliceNode(node *ast.SliceNode) {
 	c.compile(node.Node)
 	if node.To != nil {
 		c.compile(node.To)
+		c.derefInNeeded(node.To)
 	} else {
 		c.emit(OpLen)
 	}
 	if node.From != nil {
 		c.compile(node.From)
+		c.derefInNeeded(node.From)
 	} else {
 		c.emitPush(0)
 	}
@@ -743,7 +783,7 @@ func (c *compiler) CallNode(node *ast.CallNode) {
 				}
 			}
 		case *ast.IdentifierNode:
-			if t, ok := c.config.Env.MethodByName(callee.Value); ok && t.Method {
+			if t, ok := c.config.Env.MethodByName(c.ntCache, callee.Value); ok && t.Method {
 				fnInOffset = 1
 				fnNumIn--
 			}
@@ -777,7 +817,7 @@ func (c *compiler) CallNode(node *ast.CallNode) {
 	c.compile(node.Callee)
 
 	if c.config != nil {
-		isMethod, _, _ := checker.MethodIndex(c.config.Env, node.Callee)
+		isMethod, _, _ := checker.MethodIndex(c.ntCache, c.config.Env, node.Callee)
 		if index, ok := checker.TypedFuncIndex(node.Callee.Type(), isMethod); ok {
 			c.emit(OpCallTyped, index)
 			return
@@ -1080,7 +1120,7 @@ func (c *compiler) BuiltinNode(node *ast.BuiltinNode) {
 		for i, arg := range node.Arguments {
 			c.compile(arg)
 			argType := arg.Type()
-			if argType.Kind() == reflect.Ptr || arg.Nature().IsUnknown() {
+			if argType.Kind() == reflect.Ptr || arg.Nature().IsUnknown(c.ntCache) {
 				if f.Deref == nil {
 					// By default, builtins expect arguments to be dereferenced.
 					c.emit(OpDeref)
@@ -1095,7 +1135,9 @@ func (c *compiler) BuiltinNode(node *ast.BuiltinNode) {
 		if f.Fast != nil {
 			c.emit(OpCallBuiltin1, id)
 		} else if f.Safe != nil {
-			c.emit(OpPush, c.addConstant(f.Safe))
+			id := c.addConstant(f.Safe)
+			c.emit(OpPush, id)
+			c.debugInfo[fmt.Sprintf("const_%d", id)] = node.Name
 			c.emit(OpCallSafe, len(node.Arguments))
 		} else if f.Func != nil {
 			c.emitFunction(f, len(node.Arguments))
@@ -1201,6 +1243,7 @@ func (c *compiler) lookupVariable(name string) (int, bool) {
 
 func (c *compiler) ConditionalNode(node *ast.ConditionalNode) {
 	c.compile(node.Cond)
+	c.derefInNeeded(node.Cond)
 	otherwise := c.emit(OpJumpIfFalse, placeholder)
 
 	c.emit(OpPop)

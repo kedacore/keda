@@ -701,7 +701,7 @@ github.com/envoyproxy/protoc-gen-validate/validate
 ## explicit; go 1.18
 github.com/evanphx/json-patch/v5
 github.com/evanphx/json-patch/v5/internal/json
-# github.com/expr-lang/expr v1.17.6
+# github.com/expr-lang/expr v1.17.7
 ## explicit; go 1.18
 github.com/expr-lang/expr
 github.com/expr-lang/expr/ast
