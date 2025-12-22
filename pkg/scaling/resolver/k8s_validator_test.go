@@ -19,13 +19,12 @@ package resolver
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestReadKubernetesServiceAccountProjectedToken(t *testing.T) {
@@ -38,7 +37,7 @@ func TestReadKubernetesServiceAccountProjectedToken(t *testing.T) {
 		{
 			name: "valid token",
 			setupToken: func() string {
-				privateKey, _, err := generateTestRSAKeyPair()
+				privateKey, err := generateTestRSAKeyPair()
 				if err != nil {
 					t.Fatalf("failed to generate RSA keys: %v", err)
 				}
@@ -84,7 +83,7 @@ func TestReadKubernetesServiceAccountProjectedToken(t *testing.T) {
 		{
 			name: "not sa token",
 			setupToken: func() string {
-				privateKey, _, err := generateTestRSAKeyPair()
+				privateKey, err := generateTestRSAKeyPair()
 				if err != nil {
 					t.Fatalf("failed to generate RSA keys: %v", err)
 				}
@@ -97,6 +96,7 @@ func TestReadKubernetesServiceAccountProjectedToken(t *testing.T) {
 					"iat": time.Now().Unix(),
 				}
 				tokenBytes, err := createJWTToken(privateKey, claims)
+				assert.NoError(t, err)
 				tokenPath := createTempFile(t, tokenBytes)
 
 				return tokenPath
@@ -127,12 +127,12 @@ func TestReadKubernetesServiceAccountProjectedToken(t *testing.T) {
 }
 
 // Helper function to generate RSA key pair for testing
-func generateTestRSAKeyPair() (*rsa.PrivateKey, *rsa.PublicKey, error) {
+func generateTestRSAKeyPair() (*rsa.PrivateKey, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return privateKey, &privateKey.PublicKey, nil
+	return privateKey, nil
 }
 
 // Helper function to create a valid JWT token for testing
@@ -143,21 +143,6 @@ func createJWTToken(privateKey *rsa.PrivateKey, claims jwt.MapClaims) ([]byte, e
 		return nil, err
 	}
 	return []byte(tokenString), nil
-}
-
-// Helper function to write RSA public key to PEM format
-func writePublicKeyPEM(publicKey *rsa.PublicKey) ([]byte, error) {
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(publicKey)
-	if err != nil {
-		return nil, err
-	}
-
-	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: publicKeyBytes,
-	})
-
-	return publicKeyPEM, nil
 }
 
 // Helper function to create temporary files for testing
