@@ -39,7 +39,7 @@ import (
 )
 
 // timeType is the exact type for the Time
-var timeType = reflect.TypeOf(time.Time{})
+var timeType = reflect.TypeFor[time.Time]()
 
 // WritePoints writes all the given points to the server into the given database.
 // The data is written synchronously. Empty batch is skipped.
@@ -245,7 +245,7 @@ func (c *Client) write(ctx context.Context, buff []byte, options *WriteOptions) 
 //
 // Returns:
 //   - An error, if any.
-func (c *Client) WriteData(ctx context.Context, points []interface{}, options ...WriteOption) error {
+func (c *Client) WriteData(ctx context.Context, points []any, options ...WriteOption) error {
 	return c.writeData(ctx, points, newWriteOptions(c.config.WriteOptions, options))
 }
 
@@ -266,7 +266,7 @@ func (c *Client) WriteData(ctx context.Context, points []interface{}, options ..
 //   - An error, if any.
 //
 // Deprecated: use WriteData with variadic WriteOption option
-func (c *Client) WriteDataWithOptions(ctx context.Context, options *WriteOptions, points ...interface{}) error {
+func (c *Client) WriteDataWithOptions(ctx context.Context, options *WriteOptions, points ...any) error {
 	if options == nil {
 		return errors.New("options not set")
 	}
@@ -274,7 +274,7 @@ func (c *Client) WriteDataWithOptions(ctx context.Context, options *WriteOptions
 	return c.writeData(ctx, points, options)
 }
 
-func (c *Client) writeData(ctx context.Context, points []interface{}, options *WriteOptions) error {
+func (c *Client) writeData(ctx context.Context, points []any, options *WriteOptions) error {
 	var buff []byte
 	for _, p := range points {
 		b, err := encode(p, options)
@@ -287,7 +287,7 @@ func (c *Client) writeData(ctx context.Context, points []interface{}, options *W
 	return c.write(ctx, buff, options)
 }
 
-func encode(x interface{}, options *WriteOptions) ([]byte, error) {
+func encode(x any, options *WriteOptions) ([]byte, error) {
 	t := reflect.TypeOf(x)
 	v := reflect.ValueOf(x)
 	if t.Kind() == reflect.Ptr {
@@ -304,7 +304,7 @@ func encode(x interface{}, options *WriteOptions) ([]byte, error) {
 	var point = &Point{
 		Values: &PointValues{
 			Tags:   make(map[string]string),
-			Fields: make(map[string]interface{}),
+			Fields: make(map[string]any),
 		},
 	}
 
@@ -355,8 +355,8 @@ func encode(x interface{}, options *WriteOptions) ([]byte, error) {
 	return point.MarshalBinaryWithDefaultTags(options.Precision, options.DefaultTags)
 }
 
-func fieldValue(name string, f reflect.StructField, v reflect.Value, t reflect.Type) (interface{}, error) {
-	var fieldVal interface{}
+func fieldValue(name string, f reflect.StructField, v reflect.Value, t reflect.Type) (any, error) {
+	var fieldVal any
 	if f.IsExported() {
 		fieldVal = v.Interface()
 	} else {

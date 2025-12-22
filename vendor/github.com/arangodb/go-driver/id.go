@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,12 +17,11 @@
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
 //
-// Author Ewout Prangsma
-//
 
 package driver
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -45,7 +44,7 @@ func (id DocumentID) String() string {
 // Validate validates the given id.
 func (id DocumentID) Validate() error {
 	if id == "" {
-		return WithStack(fmt.Errorf("DocumentID is empty"))
+		return WithStack(errors.New("DocumentID is empty"))
 	}
 	parts := strings.Split(string(id), "/")
 	if len(parts) != 2 {

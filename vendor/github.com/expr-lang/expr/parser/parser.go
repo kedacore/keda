@@ -12,7 +12,6 @@ import (
 	"github.com/expr-lang/expr/builtin"
 	"github.com/expr-lang/expr/conf"
 	"github.com/expr-lang/expr/file"
-	"github.com/expr-lang/expr/parser/lexer"
 	. "github.com/expr-lang/expr/parser/lexer"
 	"github.com/expr-lang/expr/parser/operator"
 	"github.com/expr-lang/expr/parser/utils"
@@ -49,7 +48,7 @@ var predicates = map[string]struct {
 
 // Parser is a reusable parser. The zero value is ready for use.
 type Parser struct {
-	lexer            *lexer.Lexer
+	lexer            *Lexer
 	current, stashed Token
 	hasStash         bool
 	err              *file.Error
@@ -60,9 +59,17 @@ type Parser struct {
 
 func (p *Parser) Parse(input string, config *conf.Config) (*Tree, error) {
 	if p.lexer == nil {
-		p.lexer = lexer.New()
+		p.lexer = New()
 	}
 	p.config = config
+	// propagate config flags to lexer
+	if p.lexer != nil {
+		if config != nil {
+			p.lexer.DisableIfOperator = config.DisableIfOperator
+		} else {
+			p.lexer.DisableIfOperator = false
+		}
+	}
 	source := file.NewSource(input)
 	p.lexer.Reset(source)
 	p.next()
@@ -219,7 +226,7 @@ func (p *Parser) parseExpression(precedence int) Node {
 		return p.parseVariableDeclaration()
 	}
 
-	if precedence == 0 && p.current.Is(Operator, "if") {
+	if precedence == 0 && (p.config == nil || !p.config.DisableIfOperator) && p.current.Is(Operator, "if") {
 		return p.parseConditionalIf()
 	}
 
@@ -330,14 +337,23 @@ func (p *Parser) parseVariableDeclaration() Node {
 
 func (p *Parser) parseConditionalIf() Node {
 	p.next()
+	if p.err != nil {
+		return nil
+	}
 	nodeCondition := p.parseExpression(0)
 	p.expect(Bracket, "{")
 	expr1 := p.parseSequenceExpression()
 	p.expect(Bracket, "}")
 	p.expect(Operator, "else")
-	p.expect(Bracket, "{")
-	expr2 := p.parseSequenceExpression()
-	p.expect(Bracket, "}")
+
+	var expr2 Node
+	if p.current.Is(Operator, "if") {
+		expr2 = p.parseConditionalIf()
+	} else {
+		p.expect(Bracket, "{")
+		expr2 = p.parseSequenceExpression()
+		p.expect(Bracket, "}")
+	}
 
 	return &ConditionalNode{
 		Cond: nodeCondition,
@@ -363,9 +379,10 @@ func (p *Parser) parseConditional(node Node) Node {
 		}
 
 		node = p.createNode(&ConditionalNode{
-			Cond: node,
-			Exp1: expr1,
-			Exp2: expr2,
+			Ternary: true,
+			Cond:    node,
+			Exp1:    expr1,
+			Exp2:    expr2,
 		}, p.current.Location)
 		if node == nil {
 			return nil
@@ -551,7 +568,10 @@ func (p *Parser) parseCall(token Token, arguments []Node, checkOverrides bool) N
 	}
 	isOverridden = isOverridden && checkOverrides
 
-	if b, ok := predicates[token.Value]; ok && !isOverridden {
+	if _, ok := predicates[token.Value]; ok && p.config != nil && p.config.Disabled[token.Value] && !isOverridden {
+		// Disabled predicate without replacement - fail immediately
+		p.error("unknown name %s", token.Value)
+	} else if b, ok := predicates[token.Value]; ok && !isOverridden {
 		p.expect(Bracket, "(")
 
 		// In case of the pipe operator, the first argument is the left-hand side
@@ -595,6 +615,9 @@ func (p *Parser) parseCall(token Token, arguments []Node, checkOverrides bool) N
 		if node == nil {
 			return nil
 		}
+	} else if _, ok := builtin.Index[token.Value]; ok && p.config != nil && p.config.Disabled[token.Value] && !isOverridden {
+		// Disabled builtin without replacement - fail immediately
+		p.error("unknown name %s", token.Value)
 	} else if _, ok := builtin.Index[token.Value]; ok && (p.config == nil || !p.config.Disabled[token.Value]) && !isOverridden {
 		node = p.createNode(&BuiltinNode{
 			Name:      token.Value,

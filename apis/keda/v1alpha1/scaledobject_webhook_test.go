@@ -290,10 +290,10 @@ var _ = It("should validate the so creation when the fallback is configured, and
 	}).Should(HaveOccurred())
 })
 
-var _ = It("shouldn't validate the so creation when there is another unmanaged hpa and so has transfer-hpa-ownership activated", func() {
+var _ = It("should validate the so creation when there is another unmanaged hpa and so has transfer-hpa-ownership activated and the name is specified", func() {
 
-	hpaName := "test-unmanaged-hpa-ownership"
-	namespaceName := "unmanaged-hpa-ownership"
+	hpaName := "test-unmanaged-hpa-ownership-with-name"
+	namespaceName := "unmanaged-hpa-ownership-with-name"
 	namespace := createNamespace(namespaceName)
 	hpa := createHpa(hpaName, namespaceName, workloadName, "apps/v1", "Deployment", nil)
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{ScaledObjectTransferHpaOwnershipAnnotation: "true"}, hpaName)
@@ -307,6 +307,25 @@ var _ = It("shouldn't validate the so creation when there is another unmanaged h
 	Eventually(func() error {
 		return k8sClient.Create(context.Background(), so)
 	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldn't validate the so creation when there is another unmanaged hpa and so has transfer-hpa-ownership activated but no name specified", func() {
+
+	hpaName := "test-unmanaged-hpa-ownership-without-name"
+	namespaceName := "unmanaged-hpa-ownership-without-name"
+	namespace := createNamespace(namespaceName)
+	hpa := createHpa(hpaName, namespaceName, workloadName, "apps/v1", "Deployment", nil)
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{ScaledObjectTransferHpaOwnershipAnnotation: "true"}, "")
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), hpa)
+	Expect(err).ToNot(HaveOccurred())
+
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
 })
 
 var _ = It("shouldn't validate the so creation when hpa has shared-ownership unactivated", func() {
@@ -353,8 +372,8 @@ var _ = It("shouldn't validate the so creation when there is another hpa with cu
 	hpaName := "test-custom-hpa"
 	namespaceName := "custom-apis"
 	namespace := createNamespace(namespaceName)
-	so := createScaledObject(soName, namespaceName, workloadName, "custom-api", "custom-kind", false, map[string]string{}, "")
-	hpa := createHpa(hpaName, namespaceName, workloadName, "custom-api", "custom-kind", nil)
+	so := createScaledObject(soName, namespaceName, workloadName, "custom-api/v1", "custom-kind", false, map[string]string{}, "")
+	hpa := createHpa(hpaName, namespaceName, workloadName, "custom-api/v1", "custom-kind", nil)
 
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())

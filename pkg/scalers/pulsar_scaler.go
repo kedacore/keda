@@ -50,7 +50,7 @@ type pulsarMetadata struct {
 	ClientID       string `keda:"name=clientID,       order=triggerMetadata, optional"`
 	EndpointParams string `keda:"name=EndpointParams, order=triggerMetadata, optional"`
 
-	pulsarAuth   *authentication.AuthMeta
+	pulsarAuth   *authentication.AuthMeta //nolint:staticcheck // This has to be solved when auth is refactored
 	statsURL     string
 	metricName   string
 	triggerIndex int
@@ -146,7 +146,7 @@ func (m *pulsarMetadata) setupAuthentication(config *scalersconfig.ScalerConfig)
 }
 
 // configureOAuth configures OAuth settings
-func (m *pulsarMetadata) configureOAuth(auth *authentication.AuthMeta) error {
+func (m *pulsarMetadata) configureOAuth(auth *authentication.AuthMeta) error { //nolint:staticcheck // This has to be solved when auth is refactored
 	if auth.OauthTokenURI == "" {
 		auth.OauthTokenURI = m.OauthTokenURI
 	}

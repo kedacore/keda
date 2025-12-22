@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017-2023 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -366,7 +366,7 @@ func setDirtyReadFlagIfRequired(ctx context.Context, wasDirty bool) {
 
 // ApplyVersionHeader adds the driver version to the request.
 func ApplyVersionHeader(ctx context.Context, req Request) {
-	val := fmt.Sprintf("go-driver-v1/%s", DriverVersion())
+	val := "go-driver-v1/" + DriverVersion()
 	if ctx != nil {
 		if v := ctx.Value(keyDriverFlags); v != nil {
 			if flags, ok := v.([]string); ok {

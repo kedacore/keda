@@ -2120,6 +2120,7 @@ const DashboardCreateMutation = `mutation(
 			options {
 				excluded
 				ignoreTimeRange
+				showApplyAction
 			}
 			replacementStrategy
 			title
@@ -4297,6 +4298,7 @@ const DashboardUpdateMutation = `mutation(
 			options {
 				excluded
 				ignoreTimeRange
+				showApplyAction
 			}
 			replacementStrategy
 			title

@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// Copyright 2017-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,14 +17,13 @@
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
 //
-// Author Ewout Prangsma
-//
 
 package http
 
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -216,7 +215,7 @@ func NewJsonBodyBuilder() *jsonBody {
 func (b *jsonBody) SetBody(body ...interface{}) error {
 	switch len(body) {
 	case 0:
-		return driver.WithStack(fmt.Errorf("Must provide at least 1 body"))
+		return driver.WithStack(errors.New("Must provide at least 1 body"))
 	case 1:
 		if data, err := json.Marshal(body[0]); err != nil {
 			return driver.WithStack(err)
@@ -233,7 +232,7 @@ func (b *jsonBody) SetBody(body ...interface{}) error {
 		}
 		return nil
 	default:
-		return driver.WithStack(fmt.Errorf("Must provide at most 2 bodies"))
+		return driver.WithStack(errors.New("Must provide at most 2 bodies"))
 	}
 
 }
@@ -334,7 +333,7 @@ func NewBinaryBodyBuilder(contentType string) *binaryBody {
 // The protocol of the connection determines what kinds of marshalling is taking place.
 func (b *binaryBody) SetBody(body ...interface{}) error {
 	if len(body) == 0 {
-		return driver.WithStack(fmt.Errorf("must provide at least 1 body"))
+		return driver.WithStack(errors.New("must provide at least 1 body"))
 	}
 
 	if data, ok := body[0].([]byte); ok {
@@ -342,7 +341,7 @@ func (b *binaryBody) SetBody(body ...interface{}) error {
 		return nil
 	}
 
-	return driver.WithStack(fmt.Errorf("must provide body as a []byte type"))
+	return driver.WithStack(errors.New("must provide body as a []byte type"))
 }
 
 func (b *binaryBody) SetBodyArray(_ interface{}, _ []map[string]interface{}) error {

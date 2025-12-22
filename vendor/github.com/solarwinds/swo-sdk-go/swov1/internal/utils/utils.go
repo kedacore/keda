@@ -15,8 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/ericlagergren/decimal"
 )
 
 const (
@@ -41,8 +39,8 @@ func UnmarshalJsonFromResponseBody(body io.Reader, out interface{}, tag string) 
 	if err != nil {
 		return fmt.Errorf("error reading response body: %w", err)
 	}
-	if err := UnmarshalJSON(data, out, reflect.StructTag(tag), true, false); err != nil {
-		return fmt.Errorf("error unmarshalling json response body: %w", err)
+	if err := UnmarshalJSON(data, out, reflect.StructTag(tag), true, nil); err != nil {
+		return fmt.Errorf("error unmarshaling json response body: %w", err)
 	}
 
 	return nil
@@ -227,8 +225,6 @@ func valToString(val interface{}) string {
 		return v.Format(time.RFC3339Nano)
 	case big.Int:
 		return v.String()
-	case decimal.Big:
-		return v.String()
 	default:
 		return fmt.Sprintf("%v", v)
 	}
@@ -287,6 +283,21 @@ func isNil(typ reflect.Type, val reflect.Value) bool {
 	}
 
 	return false
+}
+
+func isEmptyContainer(typ reflect.Type, val reflect.Value) bool {
+	if isNil(typ, val) {
+		return true
+	}
+
+	switch typ.Kind() {
+	case reflect.Slice, reflect.Array:
+		return val.Len() == 0
+	case reflect.Map:
+		return val.Len() == 0
+	default:
+		return false
+	}
 }
 
 func isZeroValue(v reflect.Value) bool {

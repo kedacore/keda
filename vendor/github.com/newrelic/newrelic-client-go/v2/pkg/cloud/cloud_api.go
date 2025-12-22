@@ -260,6 +260,12 @@ const CloudConfigureIntegrationMutation = `mutation(
 			metricsPollingInterval
 			resourceGroups
 		}
+		... on CloudAzureAutoDiscoveryIntegration {
+			__typename
+			enabled
+			inventoryPollingInterval
+			metricsPollingInterval
+		}
 		... on CloudAzureContainersIntegration {
 			__typename
 			inventoryPollingInterval
@@ -1070,6 +1076,12 @@ const CloudDisableIntegrationMutation = `mutation(
 			inventoryPollingInterval
 			metricsPollingInterval
 			resourceGroups
+		}
+		... on CloudAzureAutoDiscoveryIntegration {
+			__typename
+			enabled
+			inventoryPollingInterval
+			metricsPollingInterval
 		}
 		... on CloudAzureContainersIntegration {
 			__typename
@@ -2164,6 +2176,12 @@ const getLinkedAccountQuery = `query(
 			metricsPollingInterval
 			resourceGroups
 		}
+		... on CloudAzureAutoDiscoveryIntegration {
+			__typename
+			enabled
+			inventoryPollingInterval
+			metricsPollingInterval
+		}
 		... on CloudAzureContainersIntegration {
 			__typename
 			inventoryPollingInterval
@@ -3032,6 +3050,12 @@ const getLinkedAccountsQuery = `query(
 			inventoryPollingInterval
 			metricsPollingInterval
 			resourceGroups
+		}
+		... on CloudAzureAutoDiscoveryIntegration {
+			__typename
+			enabled
+			inventoryPollingInterval
+			metricsPollingInterval
 		}
 		... on CloudAzureContainersIntegration {
 			__typename

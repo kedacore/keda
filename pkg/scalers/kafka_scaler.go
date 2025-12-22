@@ -738,6 +738,7 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 		if listCGOffsetResponse.Err > 0 {
 			errMsg := fmt.Errorf("error listing cg offset: %w", listCGOffsetResponse.Err)
 			s.logger.Error(errMsg, "")
+			return nil, errMsg
 		}
 
 		for topicName := range listCGOffsetResponse.Blocks {
@@ -764,6 +765,7 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 		if topicMetadata.Err > 0 {
 			errMsg := fmt.Errorf("error describing topics: %w", topicMetadata.Err)
 			s.logger.Error(errMsg, "")
+			return nil, errMsg
 		}
 		partitionMetadata := topicMetadata.Partitions
 		var partitions []int32
@@ -801,6 +803,7 @@ func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*s
 	if offsets.Err > 0 {
 		errMsg := fmt.Errorf("error listing consumer group offsets: %w", offsets.Err)
 		s.logger.Error(errMsg, "")
+		return nil, errMsg
 	}
 	return offsets, nil
 }
@@ -819,6 +822,7 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 	if block.Err > 0 {
 		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d: %w", topic, partitionID, offsets.Err)
 		s.logger.Error(errMsg, "")
+		return 0, 0, errMsg
 	}
 
 	consumerOffset := block.Offset

@@ -20,7 +20,10 @@ import (
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/version"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
+
+var versionLog = ctrl.Log.WithName("k8s_version")
 
 // K8sVersion holds parsed data from a K8s version
 type K8sVersion struct {
@@ -43,6 +46,9 @@ func NewK8sVersion(version *version.Info) K8sVersion {
 	minor, err := strconv.Atoi(minorTrimmed)
 	if err == nil {
 		parsed = true
+	} else {
+		versionLog.Error(err, "Could not parse Kubernetes minor version",
+			"minorTrimmed", minorTrimmed, "rawMinor", version.Minor)
 	}
 
 	k8sVersion := new(K8sVersion)

@@ -1,7 +1,7 @@
 //
 // DISCLAIMER
 //
-// Copyright 2023 ArangoDB GmbH, Cologne, Germany
+// Copyright 2023-2025 ArangoDB GmbH, Cologne, Germany
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@ package driver
 
 import (
 	"context"
-	"fmt"
 	"path"
+	"strconv"
 )
 
 const asyncJobAPI = "_api/job"
@@ -45,7 +45,7 @@ func (c *clientAsyncJob) List(ctx context.Context, jobType AsyncJobStatusType, o
 	}
 
 	if opts != nil && opts.Count != 0 {
-		req.SetQuery("count", fmt.Sprintf("%d", opts.Count))
+		req.SetQuery("count", strconv.Itoa(opts.Count))
 	}
 
 	var rawResponse []byte
@@ -141,7 +141,7 @@ func (c *clientAsyncJob) Delete(ctx context.Context, deleteType AsyncJobDeleteTy
 	}
 
 	if deleteType == DeleteExpiredJobs {
-		req.SetQuery("stamp", fmt.Sprintf("%d", opts.Stamp.Unix()))
+		req.SetQuery("stamp", strconv.FormatInt(opts.Stamp.Unix(), 10))
 	}
 
 	resp, err := c.conn.Do(ctx, req)

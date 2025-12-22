@@ -48,6 +48,7 @@ func Operator(operator string, fn ...string) Option {
 			Overloads: fn,
 			Env:       &c.Env,
 			Functions: c.Functions,
+			NtCache:   &c.NtCache,
 		}
 		c.Visitors = append(c.Visitors, p)
 	}
@@ -108,6 +109,14 @@ func AsFloat64() Option {
 	}
 }
 
+// DisableIfOperator disables the `if ... else ...` operator syntax so a custom
+// function named `if(...)` can be used without conflicts.
+func DisableIfOperator() Option {
+	return func(c *conf.Config) {
+		c.DisableIfOperator = true
+	}
+}
+
 // WarnOnAny tells the compiler to warn if expression return any type.
 func WarnOnAny() Option {
 	return func(c *conf.Config) {
@@ -122,6 +131,13 @@ func WarnOnAny() Option {
 func Optimize(b bool) Option {
 	return func(c *conf.Config) {
 		c.Optimize = b
+	}
+}
+
+// DisableShortCircuit turns short circuit off.
+func DisableShortCircuit() Option {
+	return func(c *conf.Config) {
+		c.ShortCircuit = false
 	}
 }
 

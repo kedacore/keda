@@ -134,21 +134,22 @@ type azurePipelinesScaler struct {
 }
 
 type azurePipelinesMetadata struct {
-	OrganizationURL                      string `keda:"name=organizationURL,          order=resolvedEnv;authParams"`
+	OrganizationURL                      string `keda:"name=organizationURL, order=resolvedEnv;authParams;triggerMetadata"`
 	OrganizationName                     string
+	PersonalAccessToken                  string `keda:"name=personalAccessToken, order=authParams;resolvedEnv, optional"`
 	authContext                          authContext
-	Parent                               string `keda:"name=parent,          order=triggerMetadata, optional"`
-	Demands                              string `keda:"name=demands,          order=triggerMetadata, optional"`
-	PoolName                             string `keda:"name=poolName,          order=triggerMetadata, optional"`
-	PoolID                               int    `keda:"name=poolID,          order=triggerMetadata, optional"`
-	TargetPipelinesQueueLength           int64  `keda:"name=targetPipelinesQueueLength,          order=triggerMetadata, default=1, optional"`
-	ActivationTargetPipelinesQueueLength int64  `keda:"name=activationTargetPipelinesQueueLength,          order=triggerMetadata, default=0, optional"`
-	JobsToFetch                          int64  `keda:"name=jobsToFetch,          order=triggerMetadata, default=250, optional"`
-	FetchUnfinishedJobsOnly              bool   `keda:"name=fetchUnfinishedJobsOnly,          order=triggerMetadata, default=false, optional"`
+	Parent                               string `keda:"name=parent, order=triggerMetadata, optional"`
+	Demands                              string `keda:"name=demands, order=triggerMetadata, optional"`
+	PoolName                             string `keda:"name=poolName, order=triggerMetadata, optional"`
+	PoolID                               int    `keda:"name=poolID, order=triggerMetadata, optional"`
+	TargetPipelinesQueueLength           int64  `keda:"name=targetPipelinesQueueLength, order=triggerMetadata, default=1"`
+	ActivationTargetPipelinesQueueLength int64  `keda:"name=activationTargetPipelinesQueueLength, order=triggerMetadata, default=0"`
+	JobsToFetch                          int64  `keda:"name=jobsToFetch, order=triggerMetadata, default=250"`
+	FetchUnfinishedJobsOnly              bool   `keda:"name=fetchUnfinishedJobsOnly, order=triggerMetadata, default=false"`
 	triggerIndex                         int
-	RequireAllDemands                    bool `keda:"name=requireAllDemands,          order=triggerMetadata, default=false, optional"`
-	RequireAllDemandsAndIgnoreOthers     bool `keda:"name=requireAllDemandsAndIgnoreOthers,          order=triggerMetadata, default=false, optional"`
-	CaseInsensitiveDemandsProcessing     bool `keda:"name=caseInsensitiveDemandsProcessing,          order=triggerMetadata, default=false, optional"`
+	RequireAllDemands                    bool `keda:"name=requireAllDemands, order=triggerMetadata, default=false"`
+	RequireAllDemandsAndIgnoreOthers     bool `keda:"name=requireAllDemandsAndIgnoreOthers, order=triggerMetadata, default=false"`
+	CaseInsensitiveDemandsProcessing     bool `keda:"name=caseInsensitiveDemandsProcessing, order=triggerMetadata, default=false"`
 }
 
 type authContext struct {
@@ -190,28 +191,24 @@ func NewAzurePipelinesScaler(ctx context.Context, config *scalersconfig.ScalerCo
 	}, nil
 }
 
-func getAuthMethod(logger logr.Logger, config *scalersconfig.ScalerConfig) (string, *azidentity.ChainedTokenCredential, kedav1alpha1.AuthPodIdentity, error) {
-	pat := ""
-	if val, ok := config.AuthParams["personalAccessToken"]; ok && val != "" {
-		// Found the personalAccessToken in a parameter from TriggerAuthentication
-		pat = config.AuthParams["personalAccessToken"]
-	} else if val, ok := config.TriggerMetadata["personalAccessTokenFromEnv"]; ok && val != "" {
-		pat = config.ResolvedEnv[config.TriggerMetadata["personalAccessTokenFromEnv"]]
-	} else {
-		switch config.PodIdentity.Provider {
-		case "", kedav1alpha1.PodIdentityProviderNone:
-			return "", nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no personalAccessToken given or PodIdentity provider configured")
-		case kedav1alpha1.PodIdentityProviderAzureWorkload:
-			cred, err := azure.NewChainedCredential(logger, config.PodIdentity)
-			if err != nil {
-				return "", nil, kedav1alpha1.AuthPodIdentity{}, err
-			}
-			return "", cred, kedav1alpha1.AuthPodIdentity{Provider: config.PodIdentity.Provider}, nil
-		default:
-			return "", nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("pod identity %s not supported for azure pipelines", config.PodIdentity.Provider)
-		}
+func getAuthMethod(logger logr.Logger, config *scalersconfig.ScalerConfig, meta *azurePipelinesMetadata) (*azidentity.ChainedTokenCredential, kedav1alpha1.AuthPodIdentity, error) {
+	if meta.PersonalAccessToken != "" {
+		meta.authContext.pat = strings.TrimSuffix(meta.PersonalAccessToken, "\n")
+		return nil, kedav1alpha1.AuthPodIdentity{}, nil
 	}
-	return pat, nil, kedav1alpha1.AuthPodIdentity{}, nil
+
+	switch config.PodIdentity.Provider {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no personalAccessToken given or PodIdentity provider configured")
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		cred, err := azure.NewChainedCredential(logger, config.PodIdentity)
+		if err != nil {
+			return nil, kedav1alpha1.AuthPodIdentity{}, err
+		}
+		return cred, kedav1alpha1.AuthPodIdentity{Provider: config.PodIdentity.Provider}, nil
+	default:
+		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("pod identity %s not supported for azure pipelines", config.PodIdentity.Provider)
+	}
 }
 
 func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config *scalersconfig.ScalerConfig, httpClient *http.Client) (*azurePipelinesMetadata, kedav1alpha1.AuthPodIdentity, error) {
@@ -229,35 +226,28 @@ func parseAzurePipelinesMetadata(ctx context.Context, logger logr.Logger, config
 
 	meta.triggerIndex = config.TriggerIndex
 
-	pat, cred, podIdentity, err := getAuthMethod(logger, config)
+	cred, podIdentity, err := getAuthMethod(logger, config, meta)
 	if err != nil {
 		return nil, kedav1alpha1.AuthPodIdentity{}, err
 	}
-	// Trim any trailing new lines from the Azure Pipelines PAT
-	meta.authContext = authContext{
-		pat:   strings.TrimSuffix(pat, "\n"),
-		cred:  cred,
-		token: nil,
-	}
+
+	meta.authContext.cred = cred
+	meta.authContext.token = nil
 
 	if meta.PoolName != "" {
-		var err error
 		poolID, err := getPoolIDFromName(ctx, logger, meta.PoolName, meta, podIdentity, httpClient)
 		if err != nil {
 			return nil, kedav1alpha1.AuthPodIdentity{}, err
 		}
 		meta.PoolID = poolID
 	} else if meta.PoolID != 0 {
-		var err error
-		_, err = validatePoolID(ctx, logger, meta.PoolID, meta, podIdentity, httpClient)
+		_, err := validatePoolID(ctx, logger, meta.PoolID, meta, podIdentity, httpClient)
 		if err != nil {
 			return nil, kedav1alpha1.AuthPodIdentity{}, err
 		}
 	} else {
 		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no poolName or poolID given")
 	}
-
-	meta.triggerIndex = config.TriggerIndex
 
 	return meta, podIdentity, nil
 }

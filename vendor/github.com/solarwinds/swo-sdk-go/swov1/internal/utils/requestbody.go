@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+
+	"github.com/solarwinds/swo-sdk-go/swov1/optionalnullable"
 )
 
 const (
@@ -205,7 +207,7 @@ func encodeMultipartFormData(w io.Writer, data interface{}) (string, error) {
 			case reflect.Slice, reflect.Array:
 				values := parseDelimitedArray(true, valType, ",")
 				for _, v := range values {
-					if err := writer.WriteField(tag.Name+"[]", v); err != nil {
+					if err := writer.WriteField(tag.Name, v); err != nil {
 						writer.Close()
 						return "", err
 					}
@@ -323,7 +325,7 @@ func encodeFormData(fieldName string, w io.Writer, data interface{}) error {
 				switch tag.Style {
 				// TODO: support other styles
 				case "form":
-					values := populateForm(tag.Name, tag.Explode, fieldType, valType, ",", nil, func(sf reflect.StructField) string {
+					values := populateForm(tag.Name, tag.Explode, fieldType, valType, ",", nil, nil, func(sf reflect.StructField) string {
 						tag := parseFormTag(field)
 						if tag == nil {
 							return ""
@@ -340,6 +342,17 @@ func encodeFormData(fieldName string, w io.Writer, data interface{}) error {
 			}
 		}
 	case reflect.Map:
+		// check if optionalnullable.OptionalNullable[T]
+		if nullableValue, ok := optionalnullable.AsOptionalNullable(requestValType); ok {
+			// Handle optionalnullable.OptionalNullable[T] using GetUntyped method
+			if value, isSet := nullableValue.GetUntyped(); isSet && value != nil {
+				dataValues.Set(fieldName, valToString(value))
+			}
+			// If not set or explicitly null, skip adding to form
+			break
+		}
+
+		// Handle regular map
 		for _, k := range requestValType.MapKeys() {
 			v := requestValType.MapIndex(k)
 			dataValues.Set(fmt.Sprintf("%v", k.Interface()), valToString(v.Interface()))

@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	monitoringpb "cloud.google.com/go/monitoring/apiv3/v2/monitoringpb"
 	"github.com/go-logr/logr"
@@ -23,17 +22,31 @@ type stackdriverScaler struct {
 }
 
 type stackdriverMetadata struct {
-	ProjectID             string  `keda:"name=projectId, order=triggerMetadata"`
-	Filter                string  `keda:"name=filter, order=triggerMetadata, deprecatedAnnounce=This scaler is deprecated. More info -> 'https://keda.sh/blog/2025-09-15-gcp-deprecations'"`
-	TargetValue           float64 `keda:"name=targetValue, order=triggerMetadata, default=5"`
-	ActivationTargetValue float64 `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
-	metricName            string
-	ValueIfNull           *float64 `keda:"name=valueIfNull, order=triggerMetadata, optional"`
-	FilterDuration        int64    `keda:"name=filterDuration, order=triggerMetadata, optional"`
-	TriggerIndex          int
+	ProjectID              string   `keda:"name=projectId, order=triggerMetadata"`
+	Filter                 string   `keda:"name=filter, order=triggerMetadata, deprecatedAnnounce=This scaler is deprecated. More info -> 'https://keda.sh/blog/2025-09-15-gcp-deprecations'"`
+	TargetValue            float64  `keda:"name=targetValue, order=triggerMetadata, default=5"`
+	ActivationTargetValue  float64  `keda:"name=activationTargetValue, order=triggerMetadata, default=0"`
+	ValueIfNull            *float64 `keda:"name=valueIfNull, order=triggerMetadata, optional"`
+	FilterDuration         int64    `keda:"name=filterDuration, order=triggerMetadata, optional"`
+	AlignmentPeriodSeconds int64    `keda:"name=alignmentPeriodSeconds, order=triggerMetadata, optional"`
+	AlignmentAligner       string   `keda:"name=alignmentAligner, order=triggerMetadata, optional"`
+	AlignmentReducer       string   `keda:"name=alignmentReducer, order=triggerMetadata, optional"`
 
+	Credentials            string `keda:"name=credentials, order=triggerMetadata;resolvedEnv, optional"`
+	CredentialsFromEnvFile string `keda:"name=credentialsFromEnvFile, order=triggerMetadata;resolvedEnv, optional"`
+
+	metricName       string
+	TriggerIndex     int
 	gcpAuthorization *gcp.AuthorizationMetadata
 	aggregation      *monitoringpb.Aggregation
+}
+
+func (m *stackdriverMetadata) Validate() error {
+	if m.AlignmentPeriodSeconds != 0 && m.AlignmentPeriodSeconds < 60 {
+		return fmt.Errorf("alignmentPeriodSeconds must be at least 60")
+	}
+
+	return nil
 }
 
 // NewStackdriverScaler creates a new stackdriverScaler
@@ -45,7 +58,7 @@ func NewStackdriverScaler(ctx context.Context, config *scalersconfig.ScalerConfi
 
 	logger := InitializeLogger(config, "gcp_stackdriver_scaler")
 
-	meta, err := parseStackdriverMetadata(config, logger)
+	meta, err := parseStackdriverMetadata(config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Stackdriver metadata: %w", err)
 	}
@@ -64,7 +77,7 @@ func NewStackdriverScaler(ctx context.Context, config *scalersconfig.ScalerConfi
 	}, nil
 }
 
-func parseStackdriverMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*stackdriverMetadata, error) {
+func parseStackdriverMetadata(config *scalersconfig.ScalerConfig) (*stackdriverMetadata, error) {
 	meta := &stackdriverMetadata{}
 
 	if err := config.TypedConfig(meta); err != nil {
@@ -81,7 +94,7 @@ func parseStackdriverMetadata(config *scalersconfig.ScalerConfig, logger logr.Lo
 	}
 	meta.gcpAuthorization = auth
 
-	aggregation, err := parseAggregation(config, logger)
+	aggregation, err := parseAggregation(meta)
 	if err != nil {
 		return nil, err
 	}
@@ -90,26 +103,12 @@ func parseStackdriverMetadata(config *scalersconfig.ScalerConfig, logger logr.Lo
 	return meta, nil
 }
 
-func parseAggregation(config *scalersconfig.ScalerConfig, logger logr.Logger) (*monitoringpb.Aggregation, error) {
-	if period, ok := config.TriggerMetadata["alignmentPeriodSeconds"]; ok {
-		if period == "" {
-			return nil, nil
-		}
-
-		val, err := strconv.ParseInt(period, 10, 64)
-		if val < 60 {
-			logger.Error(err, "Error parsing alignmentPeriodSeconds - must be at least 60")
-			return nil, fmt.Errorf("error parsing alignmentPeriodSeconds - must be at least 60")
-		}
-		if err != nil {
-			logger.Error(err, "Error parsing alignmentPeriodSeconds")
-			return nil, fmt.Errorf("error parsing alignmentPeriodSeconds: %w", err)
-		}
-
-		return gcp.NewStackdriverAggregator(val, config.TriggerMetadata["alignmentAligner"], config.TriggerMetadata["alignmentReducer"])
+func parseAggregation(meta *stackdriverMetadata) (*monitoringpb.Aggregation, error) {
+	if meta.AlignmentPeriodSeconds == 0 {
+		return nil, nil
 	}
 
-	return nil, nil
+	return gcp.NewStackdriverAggregator(meta.AlignmentPeriodSeconds, meta.AlignmentAligner, meta.AlignmentReducer)
 }
 
 func initializeStackdriverClient(ctx context.Context, gcpAuthorization *gcp.AuthorizationMetadata, logger logr.Logger) (*gcp.StackDriverClient, error) {

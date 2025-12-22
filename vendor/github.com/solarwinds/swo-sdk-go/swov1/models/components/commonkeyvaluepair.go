@@ -7,16 +7,16 @@ type CommonKeyValuePair struct {
 	Value string `json:"value"`
 }
 
-func (o *CommonKeyValuePair) GetKey() string {
-	if o == nil {
+func (c *CommonKeyValuePair) GetKey() string {
+	if c == nil {
 		return ""
 	}
-	return o.Key
+	return c.Key
 }
 
-func (o *CommonKeyValuePair) GetValue() string {
-	if o == nil {
+func (c *CommonKeyValuePair) GetValue() string {
+	if c == nil {
 		return ""
 	}
-	return o.Value
+	return c.Value
 }

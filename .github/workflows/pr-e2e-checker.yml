@@ -19,7 +19,7 @@ concurrency:
 jobs:
   e2e-checker:
     name: label checker
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     if: github.event.label.name == 'skip-e2e'
     steps:
       - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2

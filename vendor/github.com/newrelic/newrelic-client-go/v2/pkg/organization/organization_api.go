@@ -4,7 +4,7 @@ package organization
 import "context"
 
 // The new organization to create.
-func (a *Organization) OrganizationCreate(
+func (a *OrganizationManagement) OrganizationCreate(
 	customerId string,
 	newManagedAccount *OrganizationNewManagedAccountInput,
 	organization OrganizationCreateOrganizationInput,
@@ -19,7 +19,7 @@ func (a *Organization) OrganizationCreate(
 }
 
 // The new organization to create.
-func (a *Organization) OrganizationCreateWithContext(
+func (a *OrganizationManagement) OrganizationCreateWithContext(
 	ctx context.Context,
 	customerId string,
 	newManagedAccount *OrganizationNewManagedAccountInput,
@@ -66,7 +66,7 @@ const OrganizationCreateMutation = `mutation(
 } }`
 
 // The shared account to revoke
-func (a *Organization) OrganizationRevokeSharedAccount(
+func (a *OrganizationManagement) OrganizationRevokeSharedAccount(
 	sharedAccount OrganizationRevokeSharedAccountInput,
 ) (*OrganizationRevokeSharedAccountResponse, error) {
 	return a.OrganizationRevokeSharedAccountWithContext(context.Background(),
@@ -75,7 +75,7 @@ func (a *Organization) OrganizationRevokeSharedAccount(
 }
 
 // The shared account to revoke
-func (a *Organization) OrganizationRevokeSharedAccountWithContext(
+func (a *OrganizationManagement) OrganizationRevokeSharedAccountWithContext(
 	ctx context.Context,
 	sharedAccount OrganizationRevokeSharedAccountInput,
 ) (*OrganizationRevokeSharedAccountResponse, error) {
@@ -104,6 +104,7 @@ const OrganizationRevokeSharedAccountMutation = `mutation(
 	sharedAccount {
 		accountId
 		id
+		limitingDataAccessPolicyId
 		limitingRoleId
 		name
 		sourceOrganizationId
@@ -114,7 +115,7 @@ const OrganizationRevokeSharedAccountMutation = `mutation(
 } }`
 
 // The organization to update
-func (a *Organization) OrganizationUpdate(
+func (a *OrganizationManagement) OrganizationUpdate(
 	organization OrganizationUpdateInput,
 	organizationId string,
 ) (*OrganizationUpdateResponse, error) {
@@ -125,7 +126,7 @@ func (a *Organization) OrganizationUpdate(
 }
 
 // The organization to update
-func (a *Organization) OrganizationUpdateWithContext(
+func (a *OrganizationManagement) OrganizationUpdateWithContext(
 	ctx context.Context,
 	organization OrganizationUpdateInput,
 	organizationId string,
@@ -171,7 +172,7 @@ const OrganizationUpdateMutation = `mutation(
 } }`
 
 // The shared account to update
-func (a *Organization) OrganizationUpdateSharedAccount(
+func (a *OrganizationManagement) OrganizationUpdateSharedAccount(
 	sharedAccount OrganizationUpdateSharedAccountInput,
 ) (*OrganizationUpdateSharedAccountResponse, error) {
 	return a.OrganizationUpdateSharedAccountWithContext(context.Background(),
@@ -180,7 +181,7 @@ func (a *Organization) OrganizationUpdateSharedAccount(
 }
 
 // The shared account to update
-func (a *Organization) OrganizationUpdateSharedAccountWithContext(
+func (a *OrganizationManagement) OrganizationUpdateSharedAccountWithContext(
 	ctx context.Context,
 	sharedAccount OrganizationUpdateSharedAccountInput,
 ) (*OrganizationUpdateSharedAccountResponse, error) {
@@ -209,6 +210,7 @@ const OrganizationUpdateSharedAccountMutation = `mutation(
 	sharedAccount {
 		accountId
 		id
+		limitingDataAccessPolicyId
 		limitingRoleId
 		name
 		sourceOrganizationId
@@ -217,3 +219,42 @@ const OrganizationUpdateSharedAccountMutation = `mutation(
 		targetOrganizationName
 	}
 } }`
+
+// The `organization` field is the entry point into data that is scoped to the user's organization.
+func (a *OrganizationManagement) GetOrganization() (*Organization, error) {
+	return a.GetOrganizationWithContext(context.Background())
+}
+
+// The `organization` field is the entry point into data that is scoped to the user's organization.
+func (a *OrganizationManagement) GetOrganizationWithContext(
+	ctx context.Context,
+) (*Organization, error) {
+
+	resp := organizationResponse{}
+	vars := map[string]interface{}{}
+
+	if err := a.client.NerdGraphQueryWithContext(ctx, getOrganizationQuery, vars, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp.Actor.Organization, nil
+}
+
+//const getOrganizationQuery = `query { actor { organization {
+//	administrator {
+//		organizationId
+//		organizationName
+//	}
+//	customerId
+//	id
+//	name
+//	storageAccountId
+//	telemetryId
+//} } }`
+
+// discarding all non-essential attributes, to prevent capability-linked conflicts and errors
+
+const getOrganizationQuery = `query { actor { organization {
+	id
+	name
+} } }`

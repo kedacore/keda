@@ -8,20 +8,20 @@ import (
 
 type CreateTokenResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
-	// The request has succeeded.
-	CreateTokenResponse *components.CreateTokenResponse
+	// The request has succeeded and a new resource has been created as a result.
+	TokensCreateTokenResponse *components.TokensCreateTokenResponse
 }
 
-func (o *CreateTokenResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (c *CreateTokenResponse) GetHTTPMeta() components.HTTPMetadata {
+	if c == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return c.HTTPMeta
 }
 
-func (o *CreateTokenResponse) GetCreateTokenResponse() *components.CreateTokenResponse {
-	if o == nil {
+func (c *CreateTokenResponse) GetTokensCreateTokenResponse() *components.TokensCreateTokenResponse {
+	if c == nil {
 		return nil
 	}
-	return o.CreateTokenResponse
+	return c.TokensCreateTokenResponse
 }

@@ -12,24 +12,25 @@ import (
 )
 
 // The CreateScraper operation creates a scraper to collect metrics. A scraper
-// pulls metrics from Prometheus-compatible sources within an Amazon EKS cluster,
-// and sends them to your Amazon Managed Service for Prometheus workspace. Scrapers
-// are flexible, and can be configured to control what metrics are collected, the
-// frequency of collection, what transformations are applied to the metrics, and
-// more.
+// pulls metrics from Prometheus-compatible sources and sends them to your Amazon
+// Managed Service for Prometheus workspace. You can configure scrapers to collect
+// metrics from Amazon EKS clusters, Amazon MSK clusters, or from VPC-based sources
+// that support DNS-based service discovery. Scrapers are flexible, and can be
+// configured to control what metrics are collected, the frequency of collection,
+// what transformations are applied to the metrics, and more.
 //
 // An IAM role will be created for you that Amazon Managed Service for Prometheus
-// uses to access the metrics in your cluster. You must configure this role with a
-// policy that allows it to scrape metrics from your cluster. For more information,
-// see [Configuring your Amazon EKS cluster]in the Amazon Managed Service for Prometheus User Guide.
+// uses to access the metrics in your source. You must configure this role with a
+// policy that allows it to scrape metrics from your source. For Amazon EKS
+// sources, see [Configuring your Amazon EKS cluster]in the Amazon Managed Service for Prometheus User Guide.
 //
 // The scrapeConfiguration parameter contains the base-64 encoded YAML
 // configuration for the scraper.
 //
 // When creating a scraper, the service creates a Network Interface in each
 // Availability Zone that are passed into CreateScraper through subnets. These
-// network interfaces are used to connect to the Amazon EKS cluster within the VPC
-// for scraping metrics.
+// network interfaces are used to connect to your source within the VPC for
+// scraping metrics.
 //
 // For more information about collectors, including what metrics are collected,
 // and how to configure the scraper, see [Using an Amazon Web Services managed collector]in the Amazon Managed Service for
@@ -68,7 +69,8 @@ type CreateScraperInput struct {
 	// This member is required.
 	ScrapeConfiguration types.ScrapeConfiguration
 
-	// The Amazon EKS cluster from which the scraper will collect metrics.
+	// The Amazon EKS or Amazon Web Services cluster from which the scraper will
+	// collect metrics.
 	//
 	// This member is required.
 	Source types.Source
@@ -215,40 +217,7 @@ func (c *Client) addOperationCreateScraperMiddlewares(stack *middleware.Stack, o
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

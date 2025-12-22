@@ -6,9 +6,9 @@ type Security struct {
 	APIToken *string `security:"scheme,type=http,subtype=bearer,name=Authorization,env=swo_api_token"`
 }
 
-func (o *Security) GetAPIToken() *string {
-	if o == nil {
+func (s *Security) GetAPIToken() *string {
+	if s == nil {
 		return nil
 	}
-	return o.APIToken
+	return s.APIToken
 }

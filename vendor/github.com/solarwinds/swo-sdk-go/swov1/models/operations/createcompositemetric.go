@@ -9,19 +9,19 @@ import (
 type CreateCompositeMetricResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
 	// The request has succeeded and a new resource has been created as a result.
-	CompositeMetric *components.CompositeMetric
+	MetricsCompositeMetric *components.MetricsCompositeMetric
 }
 
-func (o *CreateCompositeMetricResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (c *CreateCompositeMetricResponse) GetHTTPMeta() components.HTTPMetadata {
+	if c == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return c.HTTPMeta
 }
 
-func (o *CreateCompositeMetricResponse) GetCompositeMetric() *components.CompositeMetric {
-	if o == nil {
+func (c *CreateCompositeMetricResponse) GetMetricsCompositeMetric() *components.MetricsCompositeMetric {
+	if c == nil {
 		return nil
 	}
-	return o.CompositeMetric
+	return c.MetricsCompositeMetric
 }

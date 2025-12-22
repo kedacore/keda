@@ -25,6 +25,22 @@ type APIErrorType struct {
 	noSmithyDocumentSerde
 }
 
+// The metadata needed to successfully rotate a managed external secret. A list of
+// key value pairs in JSON format specified by the partner. For more information,
+// see [Managed external secret partners].
+//
+// [Managed external secret partners]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/mes-partners.html
+type ExternalSecretRotationMetadataItem struct {
+
+	// The key that identifies the item.
+	Key *string
+
+	// The value of the specified item.
+	Value *string
+
+	noSmithyDocumentSerde
+}
+
 // Allows you to add filters when you use the search function in Secrets Manager.
 // For more information, see [Find secrets in Secrets Manager].
 //
@@ -176,6 +192,19 @@ type SecretListEntry struct {
 	// The user-provided description of the secret.
 	Description *string
 
+	// The metadata needed to successfully rotate a managed external secret. A list of
+	// key value pairs in JSON format specified by the partner. For more information
+	// about the required information, see [Managed external secrets partners].
+	//
+	// [Managed external secrets partners]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/mes-partners.html
+	ExternalSecretRotationMetadata []ExternalSecretRotationMetadataItem
+
+	// The role that Secrets Manager assumes to call APIs required to perform the
+	// rotation. For more information about the required information, see [Managed external secrets partners].
+	//
+	// [Managed external secrets partners]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/mes-partners.html
+	ExternalSecretRotationRoleArn *string
+
 	// The ARN of the KMS key that Secrets Manager uses to encrypt the secret value.
 	// If the secret is encrypted with the Amazon Web Services managed key
 	// aws/secretsmanager , this field is omitted.
@@ -233,6 +262,12 @@ type SecretListEntry struct {
 	// [TagResource]: https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_TagResource.html
 	// [UntagResource]: https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_UntagResource.html
 	Tags []Tag
+
+	// The exact string that identifies the third-party partner that holds the
+	// external secret. For more information, see [Managed external secret partners].
+	//
+	// [Managed external secret partners]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/mes-partners.html
+	Type *string
 
 	noSmithyDocumentSerde
 }

@@ -139,12 +139,8 @@ type (
 		// If true the worker is opting in to build ID based versioning.
 		UseBuildIDForVersioning bool
 
-		// The worker deployment version identifier.
-		// If non-empty, the [WorkerBuildID] from it, ignoring any previous value.
-		WorkerDeploymentVersion WorkerDeploymentVersion
-
-		// The Versioning Behavior for workflows that do not set one when registering the workflow type.
-		DefaultVersioningBehavior VersioningBehavior
+		// Worker deployment options containing all deployment versioning configuration.
+		DeploymentOptions WorkerDeploymentOptions
 
 		MetricsHandler metrics.Handler
 
@@ -225,7 +221,7 @@ type (
 		// The name of the deployment this worker version belongs to
 		DeploymentName string
 		// The build id specific to this worker
-		BuildId string
+		BuildID string
 	}
 )
 
@@ -344,18 +340,19 @@ func newWorkflowTaskWorkerInternal(
 	}
 
 	bwo := baseWorkerOptions{
-		pollerRate:       defaultPollerRate,
-		slotSupplier:     params.Tuner.GetWorkflowTaskSlotSupplier(),
-		maxTaskPerSecond: defaultWorkerTaskExecutionRate,
-		taskPollers:      scalableTaskPollers,
-		taskProcessor:    taskProcessor,
-		workerType:       "WorkflowWorker",
-		identity:         params.Identity,
-		buildId:          params.getBuildID(),
-		logger:           params.Logger,
-		stopTimeout:      params.WorkerStopTimeout,
-		fatalErrCb:       params.WorkerFatalErrorCallback,
-		metricsHandler:   params.MetricsHandler,
+		pollerRate:        defaultPollerRate,
+		slotSupplier:      params.Tuner.GetWorkflowTaskSlotSupplier(),
+		maxTaskPerSecond:  defaultWorkerTaskExecutionRate,
+		taskPollers:       scalableTaskPollers,
+		taskProcessor:     taskProcessor,
+		workerType:        "WorkflowWorker",
+		identity:          params.Identity,
+		buildId:           params.getBuildID(),
+		deploymentOptions: params.DeploymentOptions,
+		logger:            params.Logger,
+		stopTimeout:       params.WorkerStopTimeout,
+		fatalErrCb:        params.WorkerFatalErrorCallback,
+		metricsHandler:    params.MetricsHandler,
 		slotReservationData: slotReservationData{
 			taskQueue: params.TaskQueue,
 		},
@@ -451,8 +448,17 @@ func newSessionWorker(client *WorkflowClient, params workerExecutionParameters, 
 	creationTaskqueue := getCreationTaskqueue(params.TaskQueue)
 	params.BackgroundContext = context.WithValue(params.BackgroundContext, sessionEnvironmentContextKey, sessionEnvironment)
 	params.TaskQueue = sessionEnvironment.GetResourceSpecificTaskqueue()
+	// For the resource specific task queue, we don't need to include deployment options
+	// Save them to restore later
+	deployments := params.DeploymentOptions
+	useBuildIDForVersioning := params.UseBuildIDForVersioning
+	// Disable versioning for activity worker within session, but still send deployment name for debug purpose
+	params.DeploymentOptions.UseVersioning = false
+	params.UseBuildIDForVersioning = false
 	activityWorker := newActivityWorker(client, params,
-		&workerOverrides{slotSupplier: params.Tuner.GetSessionActivitySlotSupplier()}, env, nil)
+		&workerOverrides{
+			slotSupplier: params.Tuner.GetSessionActivitySlotSupplier(),
+		}, env, nil)
 
 	params.ActivityTaskPollerBehavior = NewPollerBehaviorSimpleMaximum(
 		PollerBehaviorSimpleMaximumOptions{
@@ -460,6 +466,8 @@ func newSessionWorker(client *WorkflowClient, params workerExecutionParameters, 
 		},
 	)
 	params.TaskQueue = creationTaskqueue
+	params.DeploymentOptions = deployments
+	params.UseBuildIDForVersioning = useBuildIDForVersioning
 	// Although we have session token bucket to limit session size across creation
 	// and recreation, we also limit it here for creation only
 	overrides := &workerOverrides{}
@@ -521,7 +529,6 @@ func newActivityWorker(
 	} else {
 		slotSupplier = params.Tuner.GetActivityTaskSlotSupplier()
 	}
-
 	bwo := baseWorkerOptions{
 		pollerRate:       defaultPollerRate,
 		slotSupplier:     slotSupplier,
@@ -1172,8 +1179,8 @@ func (aw *AggregatedWorker) RegisterWorkflow(w interface{}) {
 		panic("workflow worker disabled, cannot register workflow")
 	}
 	if aw.executionParams.UseBuildIDForVersioning &&
-		(aw.executionParams.WorkerDeploymentVersion != WorkerDeploymentVersion{}) &&
-		aw.executionParams.DefaultVersioningBehavior == VersioningBehaviorUnspecified {
+		(aw.executionParams.DeploymentOptions.Version != WorkerDeploymentVersion{}) &&
+		aw.executionParams.DeploymentOptions.DefaultVersioningBehavior == VersioningBehaviorUnspecified {
 		panic("workflow type does not have a versioning behavior")
 	}
 	aw.registry.RegisterWorkflow(w)
@@ -1185,9 +1192,9 @@ func (aw *AggregatedWorker) RegisterWorkflowWithOptions(w interface{}, options R
 		panic("workflow worker disabled, cannot register workflow")
 	}
 	if options.VersioningBehavior == VersioningBehaviorUnspecified &&
-		(aw.executionParams.WorkerDeploymentVersion != WorkerDeploymentVersion{}) &&
+		(aw.executionParams.DeploymentOptions.Version != WorkerDeploymentVersion{}) &&
 		aw.executionParams.UseBuildIDForVersioning &&
-		aw.executionParams.DefaultVersioningBehavior == VersioningBehaviorUnspecified {
+		aw.executionParams.DeploymentOptions.DefaultVersioningBehavior == VersioningBehaviorUnspecified {
 		panic("workflow type does not have a versioning behavior")
 	}
 	aw.registry.RegisterWorkflowWithOptions(w, options)
@@ -1199,8 +1206,8 @@ func (aw *AggregatedWorker) RegisterDynamicWorkflow(w interface{}, options Dynam
 		panic("workflow worker disabled, cannot register workflow")
 	}
 	if options.LoadDynamicRuntimeOptions == nil && aw.executionParams.UseBuildIDForVersioning &&
-		(aw.executionParams.WorkerDeploymentVersion != WorkerDeploymentVersion{}) &&
-		aw.executionParams.DefaultVersioningBehavior == VersioningBehaviorUnspecified {
+		(aw.executionParams.DeploymentOptions.Version != WorkerDeploymentVersion{}) &&
+		aw.executionParams.DeploymentOptions.DefaultVersioningBehavior == VersioningBehaviorUnspecified {
 		panic("dynamic workflow does not have a versioning behavior")
 	}
 	aw.registry.RegisterDynamicWorkflow(w, options)
@@ -1846,7 +1853,7 @@ func NewAggregatedWorker(client *WorkflowClient, taskQueue string, options Worke
 	}
 
 	if (options.DeploymentOptions.Version != WorkerDeploymentVersion{}) {
-		options.BuildID = options.DeploymentOptions.Version.BuildId
+		options.BuildID = options.DeploymentOptions.Version.BuildID
 	}
 	if !options.DeploymentOptions.UseVersioning &&
 		options.DeploymentOptions.DefaultVersioningBehavior != VersioningBehaviorUnspecified {
@@ -1881,10 +1888,6 @@ func NewAggregatedWorker(client *WorkflowClient, taskQueue string, options Worke
 	// All worker systems that depend on the capabilities to process workflow/activity tasks
 	// should take a pointer to this struct and wait for it to be populated when the worker is run.
 	var capabilities workflowservice.GetSystemInfoResponse_Capabilities
-	workerDeploymentVersion := WorkerDeploymentVersion{}
-	if (options.DeploymentOptions.Version != WorkerDeploymentVersion{}) {
-		workerDeploymentVersion = options.DeploymentOptions.Version
-	}
 
 	cache := NewWorkerCache()
 	workerParams := workerExecutionParameters{
@@ -1896,8 +1899,7 @@ func NewAggregatedWorker(client *WorkflowClient, taskQueue string, options Worke
 		Identity:                         client.identity,
 		WorkerBuildID:                    options.BuildID,
 		UseBuildIDForVersioning:          options.UseBuildIDForVersioning || options.DeploymentOptions.UseVersioning,
-		WorkerDeploymentVersion:          workerDeploymentVersion,
-		DefaultVersioningBehavior:        options.DeploymentOptions.DefaultVersioningBehavior,
+		DeploymentOptions:                options.DeploymentOptions,
 		MetricsHandler:                   client.metricsHandler.WithTags(metrics.TaskQueueTags(taskQueue)),
 		Logger:                           client.logger,
 		EnableLoggingInReplay:            options.EnableLoggingInReplay,
@@ -2287,26 +2289,26 @@ func executeFunction(fn interface{}, args []interface{}) (interface{}, error) {
 func workerDeploymentVersionFromProto(wd *deploymentpb.WorkerDeploymentVersion) WorkerDeploymentVersion {
 	return WorkerDeploymentVersion{
 		DeploymentName: wd.DeploymentName,
-		BuildId:        wd.BuildId,
+		BuildID:        wd.BuildId,
 	}
 }
 
 func (wd *WorkerDeploymentVersion) toProto() *deploymentpb.WorkerDeploymentVersion {
 	return &deploymentpb.WorkerDeploymentVersion{
 		DeploymentName: wd.DeploymentName,
-		BuildId:        wd.BuildId,
+		BuildId:        wd.BuildID,
 	}
 }
 
 func (wd *WorkerDeploymentVersion) toCanonicalString() string {
-	return fmt.Sprintf("%s.%s", wd.DeploymentName, wd.BuildId)
+	return fmt.Sprintf("%s.%s", wd.DeploymentName, wd.BuildID)
 }
 
 func workerDeploymentVersionFromString(version string) *WorkerDeploymentVersion {
 	if splitVersion := strings.SplitN(version, ".", 2); len(splitVersion) == 2 {
 		return &WorkerDeploymentVersion{
 			DeploymentName: splitVersion[0],
-			BuildId:        splitVersion[1],
+			BuildID:        splitVersion[1],
 		}
 	}
 	return nil
@@ -2318,6 +2320,6 @@ func workerDeploymentVersionFromProtoOrString(wd *deploymentpb.WorkerDeploymentV
 	}
 	return &WorkerDeploymentVersion{
 		DeploymentName: wd.DeploymentName,
-		BuildId:        wd.BuildId,
+		BuildID:        wd.BuildId,
 	}
 }

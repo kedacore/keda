@@ -56,17 +56,6 @@ func (*UnimplementedOperation[I, O]) Cancel(ctx context.Context, token string, o
 	return HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
 }
 
-// GetInfo implements Operation.
-func (*UnimplementedOperation[I, O]) GetInfo(ctx context.Context, token string, options GetOperationInfoOptions) (*OperationInfo, error) {
-	return nil, HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
-}
-
-// GetResult implements Operation.
-func (*UnimplementedOperation[I, O]) GetResult(ctx context.Context, token string, options GetOperationResultOptions) (O, error) {
-	var empty O
-	return empty, HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")
-}
-
 // Start implements Operation.
 func (h *UnimplementedOperation[I, O]) Start(ctx context.Context, input I, options StartOperationOptions) (HandlerStartOperationResult[O], error) {
 	return nil, HandlerErrorf(HandlerErrorTypeNotImplemented, "not implemented")

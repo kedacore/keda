@@ -13,9 +13,6 @@ import (
 )
 
 // WorkerTuner allows for the dynamic customization of some aspects of worker behavior.
-//
-// WARNING: Custom implementations of SlotSupplier are currently experimental.
-//
 // Exposed as: [go.temporal.io/sdk/worker.WorkerTuner]
 type WorkerTuner interface {
 	// GetWorkflowTaskSlotSupplier returns the SlotSupplier used for workflow tasks.
@@ -31,9 +28,6 @@ type WorkerTuner interface {
 }
 
 // SlotPermit is a permit to use a slot.
-//
-// WARNING: Custom implementations of SlotSupplier are currently experimental.
-//
 // Exposed as: [go.temporal.io/sdk/worker.SlotPermit]
 type SlotPermit struct {
 	// UserData is a field that can be used to store arbitrary on a permit by SlotSupplier
@@ -106,9 +100,6 @@ type SlotReleaseInfo interface {
 
 // SlotSupplier controls how slots are handed out for workflow and activity tasks as well as
 // local activities when used in conjunction with a WorkerTuner.
-//
-// WARNING: Custom implementations of SlotSupplier are currently experimental.
-//
 // Exposed as: [go.temporal.io/sdk/worker.SlotSupplier]
 type SlotSupplier interface {
 	// ReserveSlot is called before polling for new tasks. The implementation should block until
@@ -140,8 +131,6 @@ type SlotSupplier interface {
 }
 
 // CompositeTuner allows you to build a tuner from multiple slot suppliers.
-//
-// WARNING: Custom implementations of SlotSupplier are currently experimental.
 type CompositeTuner struct {
 	workflowSlotSupplier        SlotSupplier
 	activitySlotSupplier        SlotSupplier
@@ -183,9 +172,6 @@ type CompositeTunerOptions struct {
 }
 
 // NewCompositeTuner creates a WorkerTuner that uses a combination of slot suppliers.
-//
-// WARNING: Custom implementations of SlotSupplier are currently experimental.
-//
 // Exposed as: [go.temporal.io/sdk/worker.NewCompositeTuner]
 func NewCompositeTuner(options CompositeTunerOptions) (WorkerTuner, error) {
 	return &CompositeTuner{

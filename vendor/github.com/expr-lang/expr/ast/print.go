@@ -207,6 +207,16 @@ func (n *SequenceNode) String() string {
 }
 
 func (n *ConditionalNode) String() string {
+	if !n.Ternary {
+		cond := n.Cond.String()
+		exp1 := n.Exp1.String()
+		if c2, ok := n.Exp2.(*ConditionalNode); ok && !c2.Ternary {
+			return fmt.Sprintf("if %s { %s } else %s", cond, exp1, c2.String())
+		}
+		exp2 := n.Exp2.String()
+		return fmt.Sprintf("if %s { %s } else { %s }", cond, exp1, exp2)
+	}
+
 	var cond, exp1, exp2 string
 	if _, ok := n.Cond.(*ConditionalNode); ok {
 		cond = fmt.Sprintf("(%s)", n.Cond.String())

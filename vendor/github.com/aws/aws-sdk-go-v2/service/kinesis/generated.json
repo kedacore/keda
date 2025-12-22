@@ -15,6 +15,7 @@
         "api_op_DeleteResourcePolicy.go",
         "api_op_DeleteStream.go",
         "api_op_DeregisterStreamConsumer.go",
+        "api_op_DescribeAccountSettings.go",
         "api_op_DescribeLimits.go",
         "api_op_DescribeStream.go",
         "api_op_DescribeStreamConsumer.go",
@@ -42,8 +43,11 @@
         "api_op_SubscribeToShard.go",
         "api_op_TagResource.go",
         "api_op_UntagResource.go",
+        "api_op_UpdateAccountSettings.go",
+        "api_op_UpdateMaxRecordSize.go",
         "api_op_UpdateShardCount.go",
         "api_op_UpdateStreamMode.go",
+        "api_op_UpdateStreamWarmThroughput.go",
         "auth.go",
         "deserializers.go",
         "doc.go",
@@ -65,7 +69,7 @@
         "types/types_exported_test.go",
         "validators.go"
     ],
-    "go": "1.22",
+    "go": "1.23",
     "module": "github.com/aws/aws-sdk-go-v2/service/kinesis",
     "unstable": false
 }

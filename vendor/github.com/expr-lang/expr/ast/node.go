@@ -15,7 +15,7 @@ var (
 type Node interface {
 	Location() file.Location
 	SetLocation(file.Location)
-	Nature() nature.Nature
+	Nature() *nature.Nature
 	SetNature(nature.Nature)
 	Type() reflect.Type
 	SetType(reflect.Type)
@@ -47,8 +47,8 @@ func (n *base) SetLocation(loc file.Location) {
 }
 
 // Nature returns the nature of the node.
-func (n *base) Nature() nature.Nature {
-	return n.nature
+func (n *base) Nature() *nature.Nature {
+	return &n.nature
 }
 
 // SetNature sets the nature of the node.
@@ -66,7 +66,7 @@ func (n *base) Type() reflect.Type {
 
 // SetType sets the type of the node.
 func (n *base) SetType(t reflect.Type) {
-	n.nature.Type = t
+	n.nature = nature.FromType(t)
 }
 
 // NilNode represents nil.
@@ -200,12 +200,13 @@ type PointerNode struct {
 	Name string // Name of the pointer. Like "index" in "#index".
 }
 
-// ConditionalNode represents a ternary operator.
+// ConditionalNode represents a ternary operator or if/else operator.
 type ConditionalNode struct {
 	base
-	Cond Node // Condition of the ternary operator. Like "foo" in "foo ? bar : baz".
-	Exp1 Node // Expression 1 of the ternary operator. Like "bar" in "foo ? bar : baz".
-	Exp2 Node // Expression 2 of the ternary operator. Like "baz" in "foo ? bar : baz".
+	Ternary bool // Is it ternary or if/else operator?
+	Cond    Node // Condition
+	Exp1    Node // Expression 1
+	Exp2    Node // Expression 2
 }
 
 // VariableDeclaratorNode represents a variable declaration.

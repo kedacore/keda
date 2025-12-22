@@ -37,7 +37,7 @@ type Point struct {
 	Values *PointValues
 
 	// fieldConverter this converter function must return one of these types supported by InfluxDB int64, uint64, float64, bool, string, []byte.
-	fieldConverter func(interface{}) interface{}
+	fieldConverter func(any) any
 }
 
 // NewPointWithPointValues returns a new Point with given PointValues.
@@ -55,7 +55,7 @@ func NewPointWithPointValues(values *PointValues) *Point {
 //
 // Returns:
 //   - The created Point.
-func NewPoint(measurement string, tags map[string]string, fields map[string]interface{}, ts time.Time) *Point {
+func NewPoint(measurement string, tags map[string]string, fields map[string]any, ts time.Time) *Point {
 	m := NewPointWithMeasurement(measurement)
 	if len(tags) > 0 {
 		for k, v := range tags {
@@ -193,12 +193,12 @@ func (p *Point) SetBooleanField(name string, value bool) *Point {
 }
 
 // GetField gets field of given name. Can be nil if field doesn't exist.
-func (p *Point) GetField(name string) interface{} {
+func (p *Point) GetField(name string) any {
 	return p.Values.GetField(name)
 }
 
-// SetField adds or replaces a field with an interface{} value.
-func (p *Point) SetField(name string, value interface{}) *Point {
+// SetField adds or replaces a field with an any value.
+func (p *Point) SetField(name string, value any) *Point {
 	p.Values.SetField(name, value)
 	return p
 }
@@ -316,12 +316,12 @@ func (p *Point) MarshalBinaryWithDefaultTags(precision lineprotocol.Precision, d
 }
 
 // WithFieldConverter sets a custom field converter function for transforming field values when used.
-func (p *Point) WithFieldConverter(converter func(interface{}) interface{}) {
+func (p *Point) WithFieldConverter(converter func(any) any) {
 	p.fieldConverter = converter
 }
 
 // convertField converts any primitive type to types supported by line protocol
-func convertField(v interface{}) interface{} {
+func convertField(v any) any {
 	switch v := v.(type) {
 	case bool, int64, uint64, string, float64:
 		return v

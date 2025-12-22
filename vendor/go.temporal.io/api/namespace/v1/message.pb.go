@@ -461,9 +461,13 @@ type NamespaceInfo_Capabilities struct {
 	// True if the namespace supports sync update
 	SyncUpdate bool `protobuf:"varint,2,opt,name=sync_update,json=syncUpdate,proto3" json:"sync_update,omitempty"`
 	// True if the namespace supports async update
-	AsyncUpdate   bool `protobuf:"varint,3,opt,name=async_update,json=asyncUpdate,proto3" json:"async_update,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	AsyncUpdate bool `protobuf:"varint,3,opt,name=async_update,json=asyncUpdate,proto3" json:"async_update,omitempty"`
+	// True if the namespace supports worker heartbeats
+	WorkerHeartbeats bool `protobuf:"varint,4,opt,name=worker_heartbeats,json=workerHeartbeats,proto3" json:"worker_heartbeats,omitempty"`
+	// True if the namespace supports reported problems search attribute
+	ReportedProblemsSearchAttribute bool `protobuf:"varint,5,opt,name=reported_problems_search_attribute,json=reportedProblemsSearchAttribute,proto3" json:"reported_problems_search_attribute,omitempty"`
+	unknownFields                   protoimpl.UnknownFields
+	sizeCache                       protoimpl.SizeCache
 }
 
 func (x *NamespaceInfo_Capabilities) Reset() {
@@ -517,11 +521,25 @@ func (x *NamespaceInfo_Capabilities) GetAsyncUpdate() bool {
 	return false
 }
 
+func (x *NamespaceInfo_Capabilities) GetWorkerHeartbeats() bool {
+	if x != nil {
+		return x.WorkerHeartbeats
+	}
+	return false
+}
+
+func (x *NamespaceInfo_Capabilities) GetReportedProblemsSearchAttribute() bool {
+	if x != nil {
+		return x.ReportedProblemsSearchAttribute
+	}
+	return false
+}
+
 var File_temporal_api_namespace_v1_message_proto protoreflect.FileDescriptor
 
 const file_temporal_api_namespace_v1_message_proto_rawDesc = "" +
 	"\n" +
-	"'temporal/api/namespace/v1/message.proto\x12\x19temporal.api.namespace.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a%temporal/api/enums/v1/namespace.proto\"\xc5\x04\n" +
+	"'temporal/api/namespace/v1/message.proto\x12\x19temporal.api.namespace.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a%temporal/api/enums/v1/namespace.proto\"\xbf\x05\n" +
 	"\rNamespaceInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12;\n" +
 	"\x05state\x18\x02 \x01(\x0e2%.temporal.api.enums.v1.NamespaceStateR\x05state\x12 \n" +
@@ -534,12 +552,14 @@ const file_temporal_api_namespace_v1_message_proto_rawDesc = "" +
 	"\x12supports_schedules\x18d \x01(\bR\x11supportsSchedules\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\x84\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\xfe\x01\n" +
 	"\fCapabilities\x120\n" +
 	"\x14eager_workflow_start\x18\x01 \x01(\bR\x12eagerWorkflowStart\x12\x1f\n" +
 	"\vsync_update\x18\x02 \x01(\bR\n" +
 	"syncUpdate\x12!\n" +
-	"\fasync_update\x18\x03 \x01(\bR\vasyncUpdate\"\xcf\x05\n" +
+	"\fasync_update\x18\x03 \x01(\bR\vasyncUpdate\x12+\n" +
+	"\x11worker_heartbeats\x18\x04 \x01(\bR\x10workerHeartbeats\x12K\n" +
+	"\"reported_problems_search_attribute\x18\x05 \x01(\bR\x1freportedProblemsSearchAttribute\"\xcf\x05\n" +
 	"\x0fNamespaceConfig\x12b\n" +
 	" workflow_execution_retention_ttl\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\x1dworkflowExecutionRetentionTtl\x12I\n" +
 	"\fbad_binaries\x18\x02 \x01(\v2&.temporal.api.namespace.v1.BadBinariesR\vbadBinaries\x12Z\n" +

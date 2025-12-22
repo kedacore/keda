@@ -24,8 +24,10 @@ import (
 // have the kinesis:TagResource permission for the consumer that will be
 // registered. Tags will take effect from the CREATING status of the consumer.
 //
-// You can register up to 20 consumers per stream. A given consumer can only be
-// registered with one stream at a time.
+// With On-demand Advantage streams, you can register up to 50 consumers per
+// stream to use Enhanced Fan-out. With On-demand Standard and Provisioned streams,
+// you can register up to 20 consumers per stream to use Enhanced Fan-out. A given
+// consumer can only be registered with one stream at a time.
 //
 // For an example of how to use this operation, see [Enhanced Fan-Out Using the Kinesis Data Streams API].
 //
@@ -188,40 +190,7 @@ func (c *Client) addOperationRegisterStreamConsumerMiddlewares(stack *middleware
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -179,7 +179,7 @@ func setVarValue(t *testing.T, value int) {
 }
 
 func InstallCluster(t *testing.T, kc *kubernetes.Clientset) {
-	_, err := ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set persistence.enabled=false --set resourcesPreset=none --set auth.rbac.create=false --set replicaCount=3 --namespace %s --wait etcd oci://registry-1.docker.io/bitnamicharts/etcd --set image.repository=bitnamilegacy/etcd`,
+	_, err := ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set persistence.enabled=false --set auth.rbac.create=false --set replicaCount=3 --namespace %s --wait etcd oci://registry-1.docker.io/cloudpirates/etcd`,
 		testNamespace))
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }

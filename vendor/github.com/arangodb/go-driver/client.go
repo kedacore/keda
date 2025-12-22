@@ -140,7 +140,7 @@ func (v *VersionInfo) IsEnterprise() bool {
 }
 
 // String creates a string representation of the given VersionInfo.
-func (v VersionInfo) String() string {
+func (v *VersionInfo) String() string {
 	result := fmt.Sprintf("%s, version %s, license %s", v.Server, v.Version, v.License)
 	if len(v.Details) > 0 {
 		lines := make([]string, 0, len(v.Details))

@@ -48,6 +48,9 @@ const getAccountSharesQuery = `query(
 	items {
 		accountId
 		id
+		limitingDataAccessPolicy {
+			id
+		}
 		limitingRole {
 			id
 		}
@@ -299,6 +302,14 @@ const getGrantsQuery = `query(
 	sort: $sort,
 ) {
 	items {
+		dataAccessPolicy {
+			id
+			name
+		}
+		grantee {
+			id
+			type
+		}
 		group {
 			id
 		}
@@ -310,9 +321,11 @@ const getGrantsQuery = `query(
 		scope {
 			id
 			type
+			typev2
 		}
 	}
 	nextCursor
+	totalCount
 } } }`
 
 // Named sets of New Relic users within an authentication domain
@@ -492,6 +505,7 @@ const getOrganizationsQuery = `query { customerAdministration { organizations {
 		customerId
 		id
 		name
+		storageAccountId
 	}
 	nextCursor
 } } }`
@@ -531,6 +545,8 @@ const getPermissionsQuery = `query { customerAdministration { permissions {
 	items {
 		category
 		feature
+		featureDescription
+		featureDocumentationPath
 		id
 		name
 		product
@@ -611,9 +627,11 @@ func (a *Customeradministration) GetUserWithContext(
 }
 
 const getUserQuery = `query { customerAdministration { user {
+	createdAt
 	email
 	id
 	name
+	timeZoneName
 } } }`
 
 // A collection of New Relic users

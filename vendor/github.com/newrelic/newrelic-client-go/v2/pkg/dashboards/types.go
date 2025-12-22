@@ -511,6 +511,8 @@ type DashboardVariableOptions struct {
 	Excluded bool `json:"excluded,omitempty"`
 	// Only applies to variables of type NRQL. With this turned on, the time range for the NRQL query will override the time picker on dashboards and other pages. Turn this off to use the time picker as normal.
 	IgnoreTimeRange bool `json:"ignoreTimeRange,omitempty"`
+	// Determines whether or not an Apply action will be shown when selecting multiple values in ENUM and NRQL variables.
+	ShowApplyAction bool `json:"showApplyAction,omitempty"`
 }
 
 // DashboardVariableOptionsInput - Options applied to the variable
@@ -519,6 +521,8 @@ type DashboardVariableOptionsInput struct {
 	Excluded *bool `json:"excluded,omitempty"`
 	// Only applies to variables of type NRQL. With this turned on, the time range for the NRQL query will override the time picker on dashboards and other pages. Turn this off to use the time picker as normal.
 	IgnoreTimeRange *bool `json:"ignoreTimeRange,omitempty"`
+	// Determines whether or not an Apply action will be shown when selecting multiple values in ENUM and NRQL variables.
+	ShowApplyAction *bool `json:"showApplyAction,omitempty"`
 }
 
 // DashboardWidgetConfigurationInput - Typed configuration for known visualizations. At most one may be populated.

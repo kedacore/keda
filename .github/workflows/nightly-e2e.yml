@@ -11,9 +11,6 @@ jobs:
     uses: kedacore/keda/.github/workflows/template-main-e2e-test.yml@main
     secrets: inherit
 
-  validate-arm64:
-    uses: kedacore/keda/.github/workflows/template-arm64-smoke-tests.yml@main
-
   validate-s390x:
     uses: kedacore/keda/.github/workflows/template-s390x-smoke-tests.yml@main
 

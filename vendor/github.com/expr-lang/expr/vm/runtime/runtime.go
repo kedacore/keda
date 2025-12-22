@@ -6,9 +6,17 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"sync"
 
 	"github.com/expr-lang/expr/internal/deref"
 )
+
+var fieldCache sync.Map
+
+type fieldCacheKey struct {
+	t reflect.Type
+	f string
+}
 
 func Fetch(from, i any) any {
 	v := reflect.ValueOf(from)
@@ -63,8 +71,16 @@ func Fetch(from, i any) any {
 
 	case reflect.Struct:
 		fieldName := i.(string)
-		value := v.FieldByNameFunc(func(name string) bool {
-			field, _ := v.Type().FieldByName(name)
+		t := v.Type()
+		key := fieldCacheKey{
+			t: t,
+			f: fieldName,
+		}
+		if cv, ok := fieldCache.Load(key); ok {
+			return v.FieldByIndex(cv.([]int)).Interface()
+		}
+		field, ok := t.FieldByNameFunc(func(name string) bool {
+			field, _ := t.FieldByName(name)
 			switch field.Tag.Get("expr") {
 			case "-":
 				return false
@@ -74,8 +90,12 @@ func Fetch(from, i any) any {
 				return name == fieldName
 			}
 		})
-		if value.IsValid() {
-			return value.Interface()
+		if ok {
+			value := v.FieldByIndex(field.Index)
+			if value.IsValid() {
+				fieldCache.Store(key, field.Index)
+				return value.Interface()
+			}
 		}
 	}
 	panic(fmt.Sprintf("cannot fetch %v from %T", i, from))
@@ -390,6 +410,18 @@ func ToFloat64(a any) float64 {
 		return float64(x)
 	default:
 		panic(fmt.Sprintf("invalid operation: float(%T)", x))
+	}
+}
+
+func ToBool(a any) bool {
+	if a == nil {
+		return false
+	}
+	switch x := a.(type) {
+	case bool:
+		return x
+	default:
+		panic(fmt.Sprintf("invalid operation: bool(%T)", x))
 	}
 }
 

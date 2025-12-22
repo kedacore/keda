@@ -7,31 +7,31 @@ import (
 )
 
 type UpdateDatabaseRequest struct {
-	EntityID              string                           `pathParam:"style=simple,explode=false,name=entityId"`
-	UpdateDatabaseRequest components.UpdateDatabaseRequest `request:"mediaType=application/json"`
+	EntityID                 string                              `pathParam:"style=simple,explode=false,name=entityId"`
+	DboUpdateDatabaseRequest components.DboUpdateDatabaseRequest `request:"mediaType=application/json"`
 }
 
-func (o *UpdateDatabaseRequest) GetEntityID() string {
-	if o == nil {
+func (u *UpdateDatabaseRequest) GetEntityID() string {
+	if u == nil {
 		return ""
 	}
-	return o.EntityID
+	return u.EntityID
 }
 
-func (o *UpdateDatabaseRequest) GetUpdateDatabaseRequest() components.UpdateDatabaseRequest {
-	if o == nil {
-		return components.UpdateDatabaseRequest{}
+func (u *UpdateDatabaseRequest) GetDboUpdateDatabaseRequest() components.DboUpdateDatabaseRequest {
+	if u == nil {
+		return components.DboUpdateDatabaseRequest{}
 	}
-	return o.UpdateDatabaseRequest
+	return u.DboUpdateDatabaseRequest
 }
 
 type UpdateDatabaseResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
 }
 
-func (o *UpdateDatabaseResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (u *UpdateDatabaseResponse) GetHTTPMeta() components.HTTPMetadata {
+	if u == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return u.HTTPMeta
 }

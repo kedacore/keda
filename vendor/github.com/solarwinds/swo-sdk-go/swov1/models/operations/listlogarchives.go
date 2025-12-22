@@ -17,32 +17,32 @@ type ListLogArchivesRequest struct {
 	SkipToken *string `queryParam:"style=form,explode=false,name=skipToken"`
 }
 
-func (o *ListLogArchivesRequest) GetStartTime() string {
-	if o == nil {
+func (l *ListLogArchivesRequest) GetStartTime() string {
+	if l == nil {
 		return ""
 	}
-	return o.StartTime
+	return l.StartTime
 }
 
-func (o *ListLogArchivesRequest) GetEndTime() string {
-	if o == nil {
+func (l *ListLogArchivesRequest) GetEndTime() string {
+	if l == nil {
 		return ""
 	}
-	return o.EndTime
+	return l.EndTime
 }
 
-func (o *ListLogArchivesRequest) GetPageSize() *int {
-	if o == nil {
+func (l *ListLogArchivesRequest) GetPageSize() *int {
+	if l == nil {
 		return nil
 	}
-	return o.PageSize
+	return l.PageSize
 }
 
-func (o *ListLogArchivesRequest) GetSkipToken() *string {
-	if o == nil {
+func (l *ListLogArchivesRequest) GetSkipToken() *string {
+	if l == nil {
 		return nil
 	}
-	return o.SkipToken
+	return l.SkipToken
 }
 
 // ListLogArchivesResponseBody - The request has succeeded.
@@ -51,18 +51,18 @@ type ListLogArchivesResponseBody struct {
 	PageInfo    components.CommonPageInfo `json:"pageInfo"`
 }
 
-func (o *ListLogArchivesResponseBody) GetLogArchives() []components.LogsArchive {
-	if o == nil {
+func (l *ListLogArchivesResponseBody) GetLogArchives() []components.LogsArchive {
+	if l == nil {
 		return []components.LogsArchive{}
 	}
-	return o.LogArchives
+	return l.LogArchives
 }
 
-func (o *ListLogArchivesResponseBody) GetPageInfo() components.CommonPageInfo {
-	if o == nil {
+func (l *ListLogArchivesResponseBody) GetPageInfo() components.CommonPageInfo {
+	if l == nil {
 		return components.CommonPageInfo{}
 	}
-	return o.PageInfo
+	return l.PageInfo
 }
 
 type ListLogArchivesResponse struct {
@@ -73,16 +73,16 @@ type ListLogArchivesResponse struct {
 	Next func() (*ListLogArchivesResponse, error)
 }
 
-func (o *ListLogArchivesResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (l *ListLogArchivesResponse) GetHTTPMeta() components.HTTPMetadata {
+	if l == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return l.HTTPMeta
 }
 
-func (o *ListLogArchivesResponse) GetObject() *ListLogArchivesResponseBody {
-	if o == nil {
+func (l *ListLogArchivesResponse) GetObject() *ListLogArchivesResponseBody {
+	if l == nil {
 		return nil
 	}
-	return o.Object
+	return l.Object
 }

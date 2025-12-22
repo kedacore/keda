@@ -3,9 +3,12 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -49,6 +52,8 @@ type azureAppInsightsScaler struct {
 	metadata    *azureAppInsightsMetadata
 	podIdentity kedav1alpha1.AuthPodIdentity
 	logger      logr.Logger
+	httpClient  *http.Client
+	creds       azcore.TokenCredential
 }
 
 // NewAzureAppInsightsScaler creates a new AzureAppInsightsScaler
@@ -65,12 +70,34 @@ func NewAzureAppInsightsScaler(config *scalersconfig.ScalerConfig) (Scaler, erro
 		return nil, fmt.Errorf("error parsing azure app insights metadata: %w", err)
 	}
 
+	// handle HTTP client timeout
+	httpClientTimeout := config.GlobalHTTPTimeout
+	httpClient := kedautil.CreateHTTPClient(httpClientTimeout, false)
+
+	creds, err := getAuthConfig(meta.azureAppInsightsInfo, config.PodIdentity)
+	if err != nil {
+		return nil, fmt.Errorf("error getting auth config: %w", err)
+	}
+
 	return &azureAppInsightsScaler{
 		metricType:  metricType,
 		metadata:    meta,
 		podIdentity: config.PodIdentity,
 		logger:      logger,
+		httpClient:  httpClient,
+		creds:       creds,
 	}, nil
+}
+
+func getAuthConfig(info azure.AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) (azcore.TokenCredential, error) {
+	switch podIdentity.Provider {
+	case "", kedav1alpha1.PodIdentityProviderNone:
+		return azidentity.NewClientSecretCredential(info.TenantID, info.ClientID, info.ClientPassword, nil)
+	case kedav1alpha1.PodIdentityProviderAzureWorkload:
+		return azure.NewADWorkloadIdentityCredential(podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID())
+	default:
+		return nil, fmt.Errorf("unknown pod identity provider: %s", podIdentity.Provider)
+	}
 }
 
 func parseAzureAppInsightsMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azureAppInsightsMetadata, error) {
@@ -233,7 +260,7 @@ func (s *azureAppInsightsScaler) GetMetricSpecForScaling(context.Context) []v2.M
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureAppInsightsScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	val, err := azure.GetAzureAppInsightsMetricValue(ctx, s.metadata.azureAppInsightsInfo, s.podIdentity, s.metadata.ignoreNullValues)
+	val, err := azure.GetAzureAppInsightsMetricValue(ctx, s.metadata.azureAppInsightsInfo, s.metadata.ignoreNullValues, s.httpClient, s.creds)
 	if err != nil {
 		s.logger.Error(err, "error getting azure app insights metric")
 		return []external_metrics.ExternalMetricValue{}, false, err

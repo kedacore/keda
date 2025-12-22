@@ -130,26 +130,26 @@ func parseIBMMQMetadata(config *scalersconfig.ScalerConfig) (ibmmqMetadata, erro
 func (s *ibmmqScaler) getQueueDepthViaHTTP(ctx context.Context) (int64, error) {
 	depths := make([]int64, 0, len(s.metadata.QueueName))
 
-	req, err := http.NewRequestWithContext(ctx, "POST", s.metadata.Host, nil)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create HTTP request: %w", err)
-	}
-
-	req.Header.Set("ibm-mq-rest-csrf-token", "value")
-	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(s.metadata.Username, s.metadata.Password)
-
 	for _, queueName := range s.metadata.QueueName {
 		requestJSON := []byte(fmt.Sprintf(`{"type": "runCommandJSON", "command": "display", "qualifier": "qlocal", "name": "%s", "responseParameters": ["CURDEPTH"]}`, queueName))
-		req.Body = io.NopCloser(bytes.NewBuffer(requestJSON))
+
+		req, err := http.NewRequestWithContext(ctx, "POST", s.metadata.Host, bytes.NewBuffer(requestJSON))
+		if err != nil {
+			return 0, fmt.Errorf("failed to create HTTP request for queue %s: %w", queueName, err)
+		}
+
+		req.Header.Set("ibm-mq-rest-csrf-token", "value")
+		req.Header.Set("Content-Type", "application/json")
+		req.SetBasicAuth(s.metadata.Username, s.metadata.Password)
 
 		resp, err := s.httpClient.Do(req)
 		if err != nil {
 			return 0, fmt.Errorf("failed to contact MQ via REST for queue %s: %w", queueName, err)
 		}
-		defer resp.Body.Close()
 
 		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
 		if err != nil {
 			return 0, fmt.Errorf("failed to read body of request for queue %s: %w", queueName, err)
 		}

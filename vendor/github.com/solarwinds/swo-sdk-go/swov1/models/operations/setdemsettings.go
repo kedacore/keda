@@ -10,9 +10,9 @@ type SetDemSettingsResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
 }
 
-func (o *SetDemSettingsResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (s *SetDemSettingsResponse) GetHTTPMeta() components.HTTPMetadata {
+	if s == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return s.HTTPMeta
 }

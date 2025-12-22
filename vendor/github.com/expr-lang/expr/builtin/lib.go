@@ -253,7 +253,10 @@ func String(arg any) any {
 	return fmt.Sprintf("%v", arg)
 }
 
-func minMax(name string, fn func(any, any) bool, args ...any) (any, error) {
+func minMax(name string, fn func(any, any) bool, depth int, args ...any) (any, error) {
+	if depth > MaxDepth {
+		return nil, ErrorMaxDepth
+	}
 	var val any
 	for _, arg := range args {
 		rv := reflect.ValueOf(arg)
@@ -261,7 +264,7 @@ func minMax(name string, fn func(any, any) bool, args ...any) (any, error) {
 		case reflect.Array, reflect.Slice:
 			size := rv.Len()
 			for i := 0; i < size; i++ {
-				elemVal, err := minMax(name, fn, rv.Index(i).Interface())
+				elemVal, err := minMax(name, fn, depth+1, rv.Index(i).Interface())
 				if err != nil {
 					return nil, err
 				}
@@ -294,7 +297,10 @@ func minMax(name string, fn func(any, any) bool, args ...any) (any, error) {
 	return val, nil
 }
 
-func mean(args ...any) (int, float64, error) {
+func mean(depth int, args ...any) (int, float64, error) {
+	if depth > MaxDepth {
+		return 0, 0, ErrorMaxDepth
+	}
 	var total float64
 	var count int
 
@@ -304,7 +310,7 @@ func mean(args ...any) (int, float64, error) {
 		case reflect.Array, reflect.Slice:
 			size := rv.Len()
 			for i := 0; i < size; i++ {
-				elemCount, elemSum, err := mean(rv.Index(i).Interface())
+				elemCount, elemSum, err := mean(depth+1, rv.Index(i).Interface())
 				if err != nil {
 					return 0, 0, err
 				}
@@ -327,7 +333,10 @@ func mean(args ...any) (int, float64, error) {
 	return count, total, nil
 }
 
-func median(args ...any) ([]float64, error) {
+func median(depth int, args ...any) ([]float64, error) {
+	if depth > MaxDepth {
+		return nil, ErrorMaxDepth
+	}
 	var values []float64
 
 	for _, arg := range args {
@@ -336,7 +345,7 @@ func median(args ...any) ([]float64, error) {
 		case reflect.Array, reflect.Slice:
 			size := rv.Len()
 			for i := 0; i < size; i++ {
-				elems, err := median(rv.Index(i).Interface())
+				elems, err := median(depth+1, rv.Index(i).Interface())
 				if err != nil {
 					return nil, err
 				}
@@ -355,18 +364,24 @@ func median(args ...any) ([]float64, error) {
 	return values, nil
 }
 
-func flatten(arg reflect.Value) []any {
+func flatten(arg reflect.Value, depth int) ([]any, error) {
+	if depth > MaxDepth {
+		return nil, ErrorMaxDepth
+	}
 	ret := []any{}
 	for i := 0; i < arg.Len(); i++ {
 		v := deref.Value(arg.Index(i))
 		if v.Kind() == reflect.Array || v.Kind() == reflect.Slice {
-			x := flatten(v)
+			x, err := flatten(v, depth+1)
+			if err != nil {
+				return nil, err
+			}
 			ret = append(ret, x...)
 		} else {
 			ret = append(ret, v.Interface())
 		}
 	}
-	return ret
+	return ret, nil
 }
 
 func get(params ...any) (out any, err error) {

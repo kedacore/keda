@@ -444,7 +444,6 @@ spec:
   - type: graphite
     metadata:
       serverAddress: http://graphite.{{.TestNamespace}}.svc:8080
-      metricName: https_metric
       threshold: '100'
       activationThreshold: '50'
       query: "https_metric"

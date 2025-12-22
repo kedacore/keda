@@ -1,6 +1,6 @@
 # ghinstallation
 
-[![GoDoc](https://godoc.org/github.com/bradleyfalzon/ghinstallation?status.svg)](https://godoc.org/github.com/bradleyfalzon/ghinstallation/v2)
+[![Go Reference](https://pkg.go.dev/badge/github.com/bradleyfalzon/ghinstallation/v2.svg)](https://pkg.go.dev/github.com/bradleyfalzon/ghinstallation/v2)
 
 `ghinstallation` provides `Transport`, which implements `http.RoundTripper` to
 provide authentication as an installation for GitHub Apps.
@@ -8,40 +8,39 @@ provide authentication as an installation for GitHub Apps.
 This library is designed to provide automatic authentication for
 https://github.com/google/go-github or your own HTTP client.
 
-See
-https://developer.github.com/apps/building-integrations/setting-up-and-registering-github-apps/about-authentication-options-for-github-apps/
+See https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/about-authentication-with-a-github-app
 
-# Installation
+## Installation
 
 Get the package:
 
 ```bash
-GO111MODULE=on go get -u github.com/bradleyfalzon/ghinstallation/v2
+go get -u github.com/bradleyfalzon/ghinstallation/v2
 ```
 
-# GitHub Example
+## GitHub Example
 
 ```go
 import "github.com/bradleyfalzon/ghinstallation/v2"
 
 func main() {
-    // Shared transport to reuse TCP connections.
-    tr := http.DefaultTransport
+	// Shared transport to reuse TCP connections.
+	tr := http.DefaultTransport
 
-    // Wrap the shared transport for use with the app ID 1 authenticating with installation ID 99.
-    itr, err := ghinstallation.NewKeyFromFile(tr, 1, 99, "2016-10-19.private-key.pem")
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Wrap the shared transport for use with the app ID 1 authenticating with installation ID 99.
+	itr, err := ghinstallation.NewKeyFromFile(tr, 1, 99, "2016-10-19.private-key.pem")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // Use installation transport with github.com/google/go-github
-    client := github.NewClient(&http.Client{Transport: itr})
+	// Use installation transport with github.com/google/go-github
+	client := github.NewClient(&http.Client{Transport: itr})
 }
 ```
 
 You can also use [`New()`](https://pkg.go.dev/github.com/bradleyfalzon/ghinstallation/v2#New) to load a key directly from a `[]byte`.
 
-# GitHub Enterprise Example
+## GitHub Enterprise Example
 
 For clients using GitHub Enterprise, set the base URL as follows:
 
@@ -51,18 +50,18 @@ import "github.com/bradleyfalzon/ghinstallation/v2"
 const GitHubEnterpriseURL = "https://github.example.com/api/v3"
 
 func main() {
-    // Shared transport to reuse TCP connections.
-    tr := http.DefaultTransport
+	// Shared transport to reuse TCP connections.
+	tr := http.DefaultTransport
 
-    // Wrap the shared transport for use with the app ID 1 authenticating with installation ID 99.
-    itr, err := ghinstallation.NewKeyFromFile(tr, 1, 99, "2016-10-19.private-key.pem")
-    if err != nil {
-        log.Fatal(err)
-    }
-    itr.BaseURL = GitHubEnterpriseURL
+	// Wrap the shared transport for use with the app ID 1 authenticating with installation ID 99.
+	itr, err := ghinstallation.NewKeyFromFile(tr, 1, 99, "2016-10-19.private-key.pem")
+	if err != nil {
+		log.Fatal(err)
+	}
+	itr.BaseURL = GitHubEnterpriseURL
 
-    // Use installation transport with github.com/google/go-github
-    client := github.NewEnterpriseClient(GitHubEnterpriseURL, GitHubEnterpriseURL, &http.Client{Transport: itr})
+	// Use installation transport with github.com/google/go-github
+	client := github.NewEnterpriseClient(GitHubEnterpriseURL, GitHubEnterpriseURL, &http.Client{Transport: itr})
 }
 ```
 
@@ -85,7 +84,7 @@ WebHook request
   }
 ```
 
-# Customizing signing behavior
+## Customizing signing behavior
 
 Users can customize signing behavior by passing in a
 [Signer](https://pkg.go.dev/github.com/bradleyfalzon/ghinstallation/v2#Signer)
@@ -101,10 +100,10 @@ atr := NewAppsTransportWithOptions(http.DefaultTransport, 1, WithSigner(signer))
 tr := NewFromAppsTransport(atr, 99)
 ```
 
-# License
+## License
 
 [Apache 2.0](LICENSE)
 
-# Dependencies
+## Dependencies
 
 - [github.com/golang-jwt/jwt-go](https://github.com/golang-jwt/jwt-go)

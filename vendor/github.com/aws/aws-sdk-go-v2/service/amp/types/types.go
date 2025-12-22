@@ -64,6 +64,158 @@ type AmpConfiguration struct {
 	noSmithyDocumentSerde
 }
 
+// The configuration for the anomaly detection algorithm.
+//
+// The following types satisfy this interface:
+//
+//	AnomalyDetectorConfigurationMemberRandomCutForest
+type AnomalyDetectorConfiguration interface {
+	isAnomalyDetectorConfiguration()
+}
+
+// The Random Cut Forest algorithm configuration for anomaly detection.
+type AnomalyDetectorConfigurationMemberRandomCutForest struct {
+	Value RandomCutForestConfiguration
+
+	noSmithyDocumentSerde
+}
+
+func (*AnomalyDetectorConfigurationMemberRandomCutForest) isAnomalyDetectorConfiguration() {}
+
+// Detailed information about an anomaly detector.
+type AnomalyDetectorDescription struct {
+
+	// The user-friendly name of the anomaly detector.
+	//
+	// This member is required.
+	Alias *string
+
+	// The unique identifier of the anomaly detector.
+	//
+	// This member is required.
+	AnomalyDetectorId *string
+
+	// The Amazon Resource Name (ARN) of the anomaly detector.
+	//
+	// This member is required.
+	Arn *string
+
+	// The timestamp when the anomaly detector was created.
+	//
+	// This member is required.
+	CreatedAt *time.Time
+
+	// The timestamp when the anomaly detector was last modified.
+	//
+	// This member is required.
+	ModifiedAt *time.Time
+
+	// The current status of the anomaly detector.
+	//
+	// This member is required.
+	Status *AnomalyDetectorStatus
+
+	// The algorithm configuration of the anomaly detector.
+	Configuration AnomalyDetectorConfiguration
+
+	// The frequency, in seconds, at which the anomaly detector evaluates metrics.
+	EvaluationIntervalInSeconds *int32
+
+	// The Amazon Managed Service for Prometheus metric labels associated with the
+	// anomaly detector.
+	Labels map[string]string
+
+	// The action taken when data is missing during evaluation.
+	MissingDataAction AnomalyDetectorMissingDataAction
+
+	// The tags applied to the anomaly detector.
+	Tags map[string]string
+
+	noSmithyDocumentSerde
+}
+
+// Specifies the action to take when data is missing during anomaly detection
+// evaluation.
+//
+// The following types satisfy this interface:
+//
+//	AnomalyDetectorMissingDataActionMemberMarkAsAnomaly
+//	AnomalyDetectorMissingDataActionMemberSkip
+type AnomalyDetectorMissingDataAction interface {
+	isAnomalyDetectorMissingDataAction()
+}
+
+// Marks missing data points as anomalies.
+type AnomalyDetectorMissingDataActionMemberMarkAsAnomaly struct {
+	Value bool
+
+	noSmithyDocumentSerde
+}
+
+func (*AnomalyDetectorMissingDataActionMemberMarkAsAnomaly) isAnomalyDetectorMissingDataAction() {}
+
+// Skips evaluation when data is missing.
+type AnomalyDetectorMissingDataActionMemberSkip struct {
+	Value bool
+
+	noSmithyDocumentSerde
+}
+
+func (*AnomalyDetectorMissingDataActionMemberSkip) isAnomalyDetectorMissingDataAction() {}
+
+// The status information of an anomaly detector.
+type AnomalyDetectorStatus struct {
+
+	// The status code of the anomaly detector.
+	//
+	// This member is required.
+	StatusCode AnomalyDetectorStatusCode
+
+	// A description of the current status of the anomaly detector.
+	StatusReason *string
+
+	noSmithyDocumentSerde
+}
+
+// Summary information about an anomaly detector for list operations.
+type AnomalyDetectorSummary struct {
+
+	// The user-friendly name of the anomaly detector.
+	//
+	// This member is required.
+	Alias *string
+
+	// The unique identifier of the anomaly detector.
+	//
+	// This member is required.
+	AnomalyDetectorId *string
+
+	// The Amazon Resource Name (ARN) of the anomaly detector.
+	//
+	// This member is required.
+	Arn *string
+
+	// The timestamp when the anomaly detector was created.
+	//
+	// This member is required.
+	CreatedAt *time.Time
+
+	// The timestamp when the anomaly detector was last modified.
+	//
+	// This member is required.
+	ModifiedAt *time.Time
+
+	// The current status of the anomaly detector.
+	//
+	// This member is required.
+	Status *AnomalyDetectorStatus
+
+	// The tags applied to the anomaly detector.
+	Tags map[string]string
+
+	noSmithyDocumentSerde
+}
+
 // Configuration details for logging to CloudWatch Logs.
 type CloudWatchLogDestination struct {
 
@@ -122,6 +274,37 @@ type EksConfiguration struct {
 
 	noSmithyDocumentSerde
 }
+
+// Configuration for threshold settings that determine when values near expected
+// values should be ignored during anomaly detection.
+//
+// The following types satisfy this interface:
+//
+//	IgnoreNearExpectedMemberAmount
+//	IgnoreNearExpectedMemberRatio
+type IgnoreNearExpected interface {
+	isIgnoreNearExpected()
+}
+
+// The absolute amount by which values can differ from expected values before
+// being considered anomalous.
+type IgnoreNearExpectedMemberAmount struct {
+	Value float64
+
+	noSmithyDocumentSerde
+}
+
+func (*IgnoreNearExpectedMemberAmount) isIgnoreNearExpected() {}
+
+// The ratio by which values can differ from expected values before being
+// considered anomalous.
+type IgnoreNearExpectedMemberRatio struct {
+	Value float64
+
+	noSmithyDocumentSerde
+}
+
+func (*IgnoreNearExpectedMemberRatio) isIgnoreNearExpected() {}
 
 // This structure defines one label set used to enforce active time series limits
 // for the workspace, and defines the limit for that label set.
@@ -284,6 +467,43 @@ type QueryLoggingConfigurationStatus struct {
 
 	// If there is a failure, the reason for the failure.
 	StatusReason *string
+
+	noSmithyDocumentSerde
+}
+
+// Configuration for the Random Cut Forest algorithm used for anomaly detection in
+// time-series data.
+type RandomCutForestConfiguration struct {
+
+	// The Prometheus query used to retrieve the time-series data for anomaly
+	// detection.
+	//
+	// Random Cut Forest queries must be wrapped by a supported PromQL aggregation
+	// operator. For more information, see [Aggregation operators]on the Prometheus docs website.
+	//
+	// Supported PromQL aggregation operators: avg , count , group , max , min ,
+	// quantile , stddev , stdvar , and sum .
+	//
+	// [Aggregation operators]: https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators
+	//
+	// This member is required.
+	Query *string
+
+	// Configuration for ignoring values that are near expected values from above
+	// during anomaly detection.
+	IgnoreNearExpectedFromAbove IgnoreNearExpected
+
+	// Configuration for ignoring values that are near expected values from below
+	// during anomaly detection.
+	IgnoreNearExpectedFromBelow IgnoreNearExpected
+
+	// The number of data points sampled from the input stream for the Random Cut
+	// Forest algorithm. The default number is 256 consecutive data points.
+	SampleSize *int32
+
+	// The number of consecutive data points used to create a shingle for the Random
+	// Cut Forest algorithm. The default number is 8 consecutive data points.
+	ShingleSize *int32
 
 	noSmithyDocumentSerde
 }
@@ -621,6 +841,7 @@ type ScraperSummary struct {
 // The following types satisfy this interface:
 //
 //	SourceMemberEksConfiguration
+//	SourceMemberVpcConfiguration
 type Source interface {
 	isSource()
 }
@@ -634,6 +855,18 @@ type SourceMemberEksConfiguration struct {
 
 func (*SourceMemberEksConfiguration) isSource() {}
 
+// The Amazon VPC configuration for the Prometheus collector when connecting to
+// Amazon MSK clusters. This configuration enables secure, private network
+// connectivity between the collector and your Amazon MSK cluster within your
+// Amazon VPC.
+type SourceMemberVpcConfiguration struct {
+	Value VpcConfiguration
+
+	noSmithyDocumentSerde
+}
+
+func (*SourceMemberVpcConfiguration) isSource() {}
+
 // Information about a field passed into a request that resulted in an exception.
 type ValidationExceptionField struct {
 
@@ -646,6 +879,29 @@ type ValidationExceptionField struct {
 	//
 	// This member is required.
 	Name *string
+
+	noSmithyDocumentSerde
+}
+
+// The Amazon VPC configuration that specifies the network settings for a
+// Prometheus collector to securely connect to Amazon MSK clusters. This
+// configuration includes the security groups and subnets that control network
+// access and placement for the collector.
+type VpcConfiguration struct {
+
+	// The security group IDs that control network access for the Prometheus
+	// collector. These security groups must allow the collector to communicate with
+	// your Amazon MSK cluster on the required ports.
+	//
+	// This member is required.
+	SecurityGroupIds []string
+
+	// The subnet IDs where the Prometheus collector will be deployed. The subnets
+	// must be in the same Amazon VPC as your Amazon MSK cluster and have network
+	// connectivity to the cluster.
+	//
+	// This member is required.
+	SubnetIds []string
 
 	noSmithyDocumentSerde
 }
@@ -790,7 +1046,10 @@ type UnknownUnionMember struct {
 	noSmithyDocumentSerde
 }
 
-func (*UnknownUnionMember) isDestination()               {}
-func (*UnknownUnionMember) isScrapeConfiguration()       {}
-func (*UnknownUnionMember) isScraperLoggingDestination() {}
-func (*UnknownUnionMember) isSource()                    {}
+func (*UnknownUnionMember) isAnomalyDetectorConfiguration()     {}
+func (*UnknownUnionMember) isAnomalyDetectorMissingDataAction() {}
+func (*UnknownUnionMember) isDestination()                      {}
+func (*UnknownUnionMember) isIgnoreNearExpected()               {}
+func (*UnknownUnionMember) isScrapeConfiguration()              {}
+func (*UnknownUnionMember) isScraperLoggingDestination()        {}
+func (*UnknownUnionMember) isSource()                           {}

@@ -4,6 +4,8 @@ package magic
 import (
 	"bytes"
 	"fmt"
+
+	"github.com/gabriel-vasile/mimetype/internal/scan"
 )
 
 type (
@@ -74,12 +76,13 @@ func ciCheck(sig, raw []byte) bool {
 // matches the raw input.
 func xml(sigs ...xmlSig) Detector {
 	return func(raw []byte, limit uint32) bool {
-		raw = trimLWS(raw)
-		if len(raw) == 0 {
+		b := scan.Bytes(raw)
+		b.TrimLWS()
+		if len(b) == 0 {
 			return false
 		}
 		for _, s := range sigs {
-			if xmlCheck(s, raw) {
+			if xmlCheck(s, b) {
 				return true
 			}
 		}
@@ -104,19 +107,19 @@ func xmlCheck(sig xmlSig, raw []byte) bool {
 // matches the raw input.
 func markup(sigs ...[]byte) Detector {
 	return func(raw []byte, limit uint32) bool {
-		if bytes.HasPrefix(raw, []byte{0xEF, 0xBB, 0xBF}) {
+		b := scan.Bytes(raw)
+		if bytes.HasPrefix(b, []byte{0xEF, 0xBB, 0xBF}) {
 			// We skip the UTF-8 BOM if present to ensure we correctly
 			// process any leading whitespace. The presence of the BOM
 			// is taken into account during charset detection in charset.go.
-			raw = trimLWS(raw[3:])
-		} else {
-			raw = trimLWS(raw)
+			b.Advance(3)
 		}
-		if len(raw) == 0 {
+		b.TrimLWS()
+		if len(b) == 0 {
 			return false
 		}
 		for _, s := range sigs {
-			if markupCheck(s, raw) {
+			if markupCheck(s, b) {
 				return true
 			}
 		}
@@ -139,7 +142,7 @@ func markupCheck(sig, raw []byte) bool {
 		}
 	}
 	// Next byte must be space or right angle bracket.
-	if db := raw[len(sig)]; db != ' ' && db != '>' {
+	if db := raw[len(sig)]; !scan.ByteIsWS(db) && db != '>' {
 		return false
 	}
 
@@ -183,8 +186,10 @@ func newXMLSig(localName, xmlns string) xmlSig {
 // /usr/bin/env is the interpreter, php is the first and only argument.
 func shebang(sigs ...[]byte) Detector {
 	return func(raw []byte, limit uint32) bool {
+		b := scan.Bytes(raw)
+		line := b.Line()
 		for _, s := range sigs {
-			if shebangCheck(s, firstLine(raw)) {
+			if shebangCheck(s, line) {
 				return true
 			}
 		}
@@ -192,7 +197,7 @@ func shebang(sigs ...[]byte) Detector {
 	}
 }
 
-func shebangCheck(sig, raw []byte) bool {
+func shebangCheck(sig []byte, raw scan.Bytes) bool {
 	if len(raw) < len(sig)+2 {
 		return false
 	}
@@ -200,52 +205,8 @@ func shebangCheck(sig, raw []byte) bool {
 		return false
 	}
 
-	return bytes.Equal(trimLWS(trimRWS(raw[2:])), sig)
-}
-
-// trimLWS trims whitespace from beginning of the input.
-func trimLWS(in []byte) []byte {
-	firstNonWS := 0
-	for ; firstNonWS < len(in) && isWS(in[firstNonWS]); firstNonWS++ {
-	}
-
-	return in[firstNonWS:]
-}
-
-// trimRWS trims whitespace from the end of the input.
-func trimRWS(in []byte) []byte {
-	lastNonWS := len(in) - 1
-	for ; lastNonWS > 0 && isWS(in[lastNonWS]); lastNonWS-- {
-	}
-
-	return in[:lastNonWS+1]
-}
-
-func firstLine(in []byte) []byte {
-	lineEnd := 0
-	for ; lineEnd < len(in) && in[lineEnd] != '\n'; lineEnd++ {
-	}
-
-	return in[:lineEnd]
-}
-
-func isWS(b byte) bool {
-	return b == '\t' || b == '\n' || b == '\x0c' || b == '\r' || b == ' '
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-type readBuf []byte
-
-func (b *readBuf) advance(n int) bool {
-	if n < 0 || len(*b) < n {
-		return false
-	}
-	*b = (*b)[n:]
-	return true
+	raw.Advance(2) // skip #! we checked above
+	raw.TrimLWS()
+	raw.TrimRWS()
+	return bytes.Equal(raw, sig)
 }

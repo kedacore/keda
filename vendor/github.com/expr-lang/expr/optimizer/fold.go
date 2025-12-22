@@ -296,10 +296,12 @@ func (fold *fold) Visit(node *Node) {
 					Name: "filter",
 					Arguments: []Node{
 						base.Arguments[0],
-						&BinaryNode{
-							Operator: "&&",
-							Left:     base.Arguments[1].(*PredicateNode).Node,
-							Right:    n.Arguments[1].(*PredicateNode).Node,
+						&PredicateNode{
+							Node: &BinaryNode{
+								Operator: "&&",
+								Left:     base.Arguments[1].(*PredicateNode).Node,
+								Right:    n.Arguments[1].(*PredicateNode).Node,
+							},
 						},
 					},
 				})

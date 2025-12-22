@@ -19,22 +19,22 @@ func (m MetricsMeasurement) MarshalJSON() ([]byte, error) {
 }
 
 func (m *MetricsMeasurement) UnmarshalJSON(data []byte) error {
-	if err := utils.UnmarshalJSON(data, &m, "", false, false); err != nil {
+	if err := utils.UnmarshalJSON(data, &m, "", false, []string{"time", "value"}); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *MetricsMeasurement) GetTime() time.Time {
-	if o == nil {
+func (m *MetricsMeasurement) GetTime() time.Time {
+	if m == nil {
 		return time.Time{}
 	}
-	return o.Time
+	return m.Time
 }
 
-func (o *MetricsMeasurement) GetValue() float64 {
-	if o == nil {
+func (m *MetricsMeasurement) GetValue() float64 {
+	if m == nil {
 		return 0.0
 	}
-	return o.Value
+	return m.Value
 }

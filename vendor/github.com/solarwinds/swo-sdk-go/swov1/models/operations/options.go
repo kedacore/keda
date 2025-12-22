@@ -18,24 +18,12 @@ const (
 	SupportedOptionURLOverride          = "urlOverride"
 )
 
-type AcceptHeaderEnum string
-
-const (
-	AcceptHeaderEnumApplicationJson      AcceptHeaderEnum = "application/json"
-	AcceptHeaderEnumWildcardRootWildcard AcceptHeaderEnum = "*/*"
-)
-
-func (e AcceptHeaderEnum) ToPointer() *AcceptHeaderEnum {
-	return &e
-}
-
 type Options struct {
-	ServerURL            *string
-	Retries              *retry.Config
-	Timeout              *time.Duration
-	AcceptHeaderOverride *AcceptHeaderEnum
-	URLOverride          *string
-	SetHeaders           map[string]string
+	ServerURL   *string
+	Retries     *retry.Config
+	Timeout     *time.Duration
+	URLOverride *string
+	SetHeaders  map[string]string
 }
 
 type Option func(*Options, ...string) error
@@ -80,17 +68,6 @@ func WithOperationTimeout(timeout time.Duration) Option {
 		}
 
 		opts.Timeout = &timeout
-		return nil
-	}
-}
-
-func WithAcceptHeaderOverride(acceptHeaderOverride AcceptHeaderEnum) Option {
-	return func(opts *Options, supportedOptions ...string) error {
-		if !utils.Contains(supportedOptions, SupportedOptionAcceptHeaderOverride) {
-			return ErrUnsupportedOption
-		}
-
-		opts.AcceptHeaderOverride = &acceptHeaderOverride
 		return nil
 	}
 }

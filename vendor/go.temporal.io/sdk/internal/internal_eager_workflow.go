@@ -5,6 +5,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"go.temporal.io/api/deployment/v1"
+	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/workflowservice/v1"
 )
 
@@ -48,6 +50,19 @@ func (e *eagerWorkflowDispatcher) applyToRequest(request *workflowservice.StartW
 		maybePermit := worker.tryReserveSlot()
 		if maybePermit != nil {
 			request.RequestEagerExecution = true
+			// Attach deployment options if worker has deployment versioning enabled
+			deploymentOpts := worker.getDeploymentOptions()
+			if (deploymentOpts.Version != WorkerDeploymentVersion{}) {
+				wvMode := enums.WORKER_VERSIONING_MODE_UNVERSIONED
+				if deploymentOpts.UseVersioning {
+					wvMode = enums.WORKER_VERSIONING_MODE_VERSIONED
+				}
+				request.EagerWorkerDeploymentOptions = &deployment.WorkerDeploymentOptions{
+					DeploymentName:       deploymentOpts.Version.DeploymentName,
+					BuildId:              deploymentOpts.Version.BuildID,
+					WorkerVersioningMode: wvMode,
+				}
+			}
 			return &eagerWorkflowExecutor{
 				worker: worker,
 				permit: maybePermit,

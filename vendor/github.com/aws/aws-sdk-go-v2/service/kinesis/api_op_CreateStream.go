@@ -20,12 +20,20 @@ import (
 // mode. Data streams with an on-demand mode require no capacity planning and
 // automatically scale to handle gigabytes of write and read throughput per minute.
 // With the on-demand mode, Kinesis Data Streams automatically manages the shards
-// in order to provide the necessary throughput. For the data streams with a
-// provisioned mode, you must specify the number of shards for the data stream.
-// Each shard can support reads up to five transactions per second, up to a maximum
-// data read total of 2 MiB per second. Each shard can support writes up to 1,000
-// records per second, up to a maximum data write total of 1 MiB per second. If the
-// amount of data input increases or decreases, you can add or remove shards.
+// in order to provide the necessary throughput.
+//
+// If you'd still like to proactively scale your on-demand data stream’s capacity,
+// you can unlock the warm throughput feature for on-demand data streams by
+// enabling MinimumThroughputBillingCommitment for your account. Once your account
+// has MinimumThroughputBillingCommitment enabled, you can specify the warm
+// throughput in MiB per second that your stream can support in writes.
+//
+// For the data streams with a provisioned mode, you must specify the number of
+// shards for the data stream. Each shard can support reads up to five transactions
+// per second, up to a maximum data read total of 2 MiB per second. Each shard can
+// support writes up to 1,000 records per second, up to a maximum data write total
+// of 1 MiB per second. If the amount of data input increases or decreases, you can
+// add or remove shards.
 //
 // The stream name identifies the stream. The name is scoped to the Amazon Web
 // Services account used by the application. It is also scoped by Amazon Web
@@ -46,8 +54,9 @@ import (
 //
 //   - Create more shards than are authorized for your account.
 //
-// For the default shard limit for an Amazon Web Services account, see [Amazon Kinesis Data Streams Limits] in the
-// Amazon Kinesis Data Streams Developer Guide. To increase this limit, [contact Amazon Web Services Support].
+// For the default shard or on-demand throughput limits for an Amazon Web Services
+// account, see [Amazon Kinesis Data Streams Limits]in the Amazon Kinesis Data Streams Developer Guide. To increase
+// this limit, [contact Amazon Web Services Support].
 //
 // You can use DescribeStreamSummary to check the stream status, which is returned in StreamStatus .
 //
@@ -91,6 +100,10 @@ type CreateStreamInput struct {
 	// This member is required.
 	StreamName *string
 
+	// The maximum record size of a single record in kibibyte (KiB) that you can write
+	// to, and read from a stream.
+	MaxRecordSizeInKiB *int32
+
 	// The number of shards that the stream will use. The throughput of the stream is
 	// a function of the number of shards; more shards are required for greater
 	// provisioned throughput.
@@ -104,6 +117,11 @@ type CreateStreamInput struct {
 	// A set of up to 50 key-value pairs to use to create the tags. A tag consists of
 	// a required key and an optional value.
 	Tags map[string]string
+
+	// The target warm throughput in MB/s that the stream should be scaled to handle.
+	// This represents the throughput capacity that will be immediately available for
+	// write operations.
+	WarmThroughputMiBps *int32
 
 	noSmithyDocumentSerde
 }
@@ -209,40 +227,7 @@ func (c *Client) addOperationCreateStreamMiddlewares(stack *middleware.Stack, op
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

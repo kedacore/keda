@@ -4,7 +4,7 @@ SCRIPTDIR := $(shell pwd)
 CURR=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ROOTDIR:=$(CURR)
 
-GOVERSION ?= 1.23.12
+GOVERSION ?= 1.24.9
 GOTOOLCHAIN ?= auto
 GOIMAGE ?= golang:$(GOVERSION)
 GOV2IMAGE ?= $(GOIMAGE)
@@ -16,12 +16,9 @@ DOCKER_CMD:=docker run
 GOBUILDTAGS:=$(TAGS)
 GOBUILDTAGSOPT=-tags "$(GOBUILDTAGS)"
 
-ARANGODB ?= arangodb/arangodb:latest
+ARANGODB ?= arangodb/enterprise:latest
 STARTER ?= arangodb/arangodb-starter:latest
 
-ifndef TESTOPTIONS
-	TESTOPTIONS := 
-endif
 ifdef VERBOSE
 	TESTVERBOSEOPTIONS := -v
 endif
@@ -114,8 +111,11 @@ endif
 endif
 
 ifeq ("$(TEST_BENCHMARK)", "true")
-	TAGS := -bench=. -run=notests -cpu=1,2,4
+	TAGS := -bench=. -benchmem -run=notests -cpu=1,2,4
 	TESTS := $(REPOPATH)/test
+ifndef TESTOPTIONS
+	TESTOPTIONS := $(TAGS)
+endif
 endif
 
 ifdef TEST_ENDPOINTS_OVERRIDE
@@ -417,6 +417,7 @@ COMMON_DOCKER_CMD_PARAMS = \
 	-e TEST_AUTHENTICATION=$(TEST_AUTHENTICATION) \
 	-e TEST_JWTSECRET=$(TEST_JWTSECRET) \
 	-e TEST_MODE=$(TEST_MODE) \
+	-e TEST_MODE_K8S=$(TEST_MODE_K8S) \
 	-e TEST_BACKUP_REMOTE_REPO=$(TEST_BACKUP_REMOTE_REPO) \
 	-e TEST_BACKUP_REMOTE_CONFIG='$(TEST_BACKUP_REMOTE_CONFIG)' \
 	-e TEST_DEBUG='$(TEST_DEBUG)' \
@@ -508,14 +509,59 @@ run-benchmarks-single-vpack-no-auth:
 	@echo "Benchmarks: Single server, Velocypack, no authentication"
 	@${MAKE} TEST_MODE="single" TEST_AUTH="none" TEST_CONTENT_TYPE="vpack" TEST_BENCHMARK="true" __run_tests
 
+# V1 Cluster benchmarks
+run-benchmarks-cluster-json-no-auth: 
+	@echo "V1 Benchmarks: Cluster server, JSON no authentication"
+	@${MAKE} TEST_MODE="cluster" TEST_AUTH="none" TEST_CONTENT_TYPE="json" TEST_BENCHMARK="true" __run_tests
+
+run-benchmarks-remote-with-auth:
+	@echo "V1 Benchmarks: Remote server with authentication"
+	@echo "Usage: TEST_ENDPOINTS_OVERRIDE=https://host:port TEST_AUTHENTICATION=basic:user:pass make run-benchmarks-remote-with-auth"
+ifndef TEST_AUTHENTICATION
+	@echo "ERROR: TEST_AUTHENTICATION is not set. Please export it first."
+	@echo "Example: export TEST_AUTHENTICATION='basic:root:password'"
+	@exit 1
+endif
+ifndef TEST_ENDPOINTS_OVERRIDE
+	@echo "ERROR: TEST_ENDPOINTS_OVERRIDE is not set. Please export it first."
+	@echo "Example: export TEST_ENDPOINTS_OVERRIDE='https://host:port'"
+	@exit 1
+endif
+	@${MAKE} TEST_MODE="cluster" TEST_MODE_K8S="k8s" TEST_NOT_WAIT_UNTIL_READY="1" TEST_CONTENT_TYPE="json" TEST_BENCHMARK="true" __run_tests
+	
+
+# V2 Cluster benchmarks
+run-benchmarks-v2-cluster-json-no-auth: 
+	@echo "V2 Benchmarks: Cluster server, JSON no authentication (from benchmark_tests/)"
+	@${MAKE} TEST_MODE="cluster" TEST_AUTH="none" TEST_CONTENT_TYPE="json" TEST_BENCHMARK="true" __run_v2_tests
+
+run-benchmarks-v2-cluster-json-ssl: 
+	@echo "V2 Benchmarks: Cluster server, JSON with SSL"
+	@${MAKE} TEST_MODE="cluster" TEST_AUTH="none" TEST_SSL="auto" TEST_CONTENT_TYPE="json" TEST_BENCHMARK="true" __run_v2_tests
+
+run-benchmarks-v2-remote-with-auth:
+	@echo "V2 Benchmarks: Remote server with authentication"
+	@echo "Usage: TEST_ENDPOINTS_OVERRIDE=https://host:port TEST_AUTHENTICATION=basic:user:pass make run-benchmarks-v2-remote-with-auth"
+ifndef TEST_AUTHENTICATION
+	@echo "ERROR: TEST_AUTHENTICATION is not set. Please export it first."
+	@echo "Example: export TEST_AUTHENTICATION='basic:root:password'"
+	@exit 1
+endif
+ifndef TEST_ENDPOINTS_OVERRIDE
+	@echo "ERROR: TEST_ENDPOINTS_OVERRIDE is not set. Please export it first."
+	@echo "Example: export TEST_ENDPOINTS_OVERRIDE='https://host:port'"
+	@exit 1
+endif
+	@${MAKE} TEST_MODE="cluster" TEST_MODE_K8S="k8s" TEST_NOT_WAIT_UNTIL_READY="1" TEST_CONTENT_TYPE="json" TEST_BENCHMARK="true" __run_v2_tests
+
 ## Lint
 
 .PHONY: tools
 tools: __dir_setup
 	@echo ">> Fetching golangci-lint linter"
-	@GOBIN=$(TMPDIR)/bin go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.52.2
+	@GOBIN=$(TMPDIR)/bin go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.6.1
 	@echo ">> Fetching goimports"
-	@GOBIN=$(TMPDIR)/bin go install golang.org/x/tools/cmd/goimports@v0.32.0
+	@GOBIN=$(TMPDIR)/bin go install golang.org/x/tools/cmd/goimports@v0.38.0
 	@echo ">> Fetching license check"
 	@GOBIN=$(TMPDIR)/bin go install github.com/google/addlicense@v1.0.0
 	@echo ">> Fetching govulncheck"
@@ -545,6 +591,7 @@ fmt-verify: license-verify
 
 .PHONY: linter
 linter: fmt-verify
+	@echo ">> Running linter"
 	@$(TMPDIR)/bin/golangci-lint run ./...
 
 .PHONY: vulncheck

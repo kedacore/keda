@@ -12,12 +12,11 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/ericlagergren/decimal"
-
+	"github.com/solarwinds/swo-sdk-go/swov1/optionalnullable"
 	"github.com/solarwinds/swo-sdk-go/swov1/types"
 )
 
-func PopulateQueryParams(_ context.Context, req *http.Request, queryParams interface{}, globals interface{}) error {
+func PopulateQueryParams(_ context.Context, req *http.Request, queryParams interface{}, globals interface{}, allowEmptyValue map[string]struct{}) error {
 	// Query parameters may already be present from overriding URL
 	if req.URL.RawQuery != "" {
 		return nil
@@ -25,13 +24,13 @@ func PopulateQueryParams(_ context.Context, req *http.Request, queryParams inter
 
 	values := url.Values{}
 
-	globalsAlreadyPopulated, err := populateQueryParams(queryParams, globals, values, []string{})
+	globalsAlreadyPopulated, err := populateQueryParams(queryParams, globals, values, []string{}, allowEmptyValue)
 	if err != nil {
 		return err
 	}
 
 	if globals != nil {
-		_, err = populateQueryParams(globals, nil, values, globalsAlreadyPopulated)
+		_, err = populateQueryParams(globals, nil, values, globalsAlreadyPopulated, allowEmptyValue)
 		if err != nil {
 			return err
 		}
@@ -42,11 +41,14 @@ func PopulateQueryParams(_ context.Context, req *http.Request, queryParams inter
 	return nil
 }
 
-func populateQueryParams(queryParams interface{}, globals interface{}, values url.Values, skipFields []string) ([]string, error) {
-	queryParamsStructType, queryParamsValType := dereferencePointers(reflect.TypeOf(queryParams), reflect.ValueOf(queryParams))
+func populateQueryParams(queryParams interface{}, globals interface{}, values url.Values, skipFields []string, allowEmptyValue map[string]struct{}) ([]string, error) {
+	queryParamsVal := reflect.ValueOf(queryParams)
+	if queryParamsVal.Kind() == reflect.Pointer && queryParamsVal.IsNil() {
+		return nil, nil
+	}
+	queryParamsStructType, queryParamsValType := dereferencePointers(reflect.TypeOf(queryParams), queryParamsVal)
 
 	globalsAlreadyPopulated := []string{}
-
 	for i := 0; i < queryParamsStructType.NumField(); i++ {
 		fieldType := queryParamsStructType.Field(i)
 		valType := queryParamsValType.Field(i)
@@ -99,14 +101,14 @@ func populateQueryParams(queryParams interface{}, globals interface{}, values ur
 					}
 				}
 			case "form":
-				vals := populateFormParams(qpTag, fieldType.Type, valType, ",", defaultValue)
+				vals := populateFormParams(qpTag, fieldType.Type, valType, ",", defaultValue, allowEmptyValue)
 				for k, v := range vals {
 					for _, vv := range v {
 						values.Add(k, vv)
 					}
 				}
 			case "pipeDelimited":
-				vals := populateFormParams(qpTag, fieldType.Type, valType, "|", defaultValue)
+				vals := populateFormParams(qpTag, fieldType.Type, valType, "|", defaultValue, allowEmptyValue)
 				for k, v := range vals {
 					for _, vv := range v {
 						values.Add(k, vv)
@@ -157,6 +159,16 @@ func populateDeepObjectParams(tag *paramTag, objType reflect.Type, objValue refl
 
 	switch objValue.Kind() {
 	case reflect.Map:
+		// check if optionalnullable.OptionalNullable[T]
+		if nullableValue, ok := optionalnullable.AsOptionalNullable(objValue); ok {
+			// Handle optionalnullable.OptionalNullable[T] using GetUntyped method
+			if value, isSet := nullableValue.GetUntyped(); isSet && value != nil {
+				values.Add(tag.ParamName, valToString(value))
+			}
+			// If not set or explicitly null, skip adding to values
+			return values
+		}
+
 		populateDeepObjectParamsMap(values, tag.ParamName, objValue)
 	case reflect.Struct:
 		populateDeepObjectParamsStruct(values, tag.ParamName, objValue)
@@ -235,7 +247,7 @@ func populateDeepObjectParamsStruct(qsValues url.Values, priorScope string, stru
 			populateDeepObjectParamsMap(qsValues, scope, fieldValue)
 		case reflect.Struct:
 			switch fieldValue.Type() {
-			case reflect.TypeOf(big.Int{}), reflect.TypeOf(decimal.Big{}), reflect.TypeOf(time.Time{}), reflect.TypeOf(types.Date{}):
+			case reflect.TypeOf(big.Int{}), reflect.TypeOf(time.Time{}), reflect.TypeOf(types.Date{}):
 				qsValues.Add(scope, valToString(fieldValue.Interface()))
 
 				continue
@@ -248,8 +260,8 @@ func populateDeepObjectParamsStruct(qsValues url.Values, priorScope string, stru
 	}
 }
 
-func populateFormParams(tag *paramTag, objType reflect.Type, objValue reflect.Value, delimiter string, defaultValue *string) url.Values {
-	return populateForm(tag.ParamName, tag.Explode, objType, objValue, delimiter, defaultValue, func(fieldType reflect.StructField) string {
+func populateFormParams(tag *paramTag, objType reflect.Type, objValue reflect.Value, delimiter string, defaultValue *string, allowEmptyValue map[string]struct{}) url.Values {
+	return populateForm(tag.ParamName, tag.Explode, objType, objValue, delimiter, defaultValue, allowEmptyValue, func(fieldType reflect.StructField) string {
 		qpTag := parseQueryParamTag(fieldType)
 		if qpTag == nil {
 			return ""

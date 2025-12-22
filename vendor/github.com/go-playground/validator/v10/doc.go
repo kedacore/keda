@@ -264,6 +264,7 @@ The field under validation must be present and not empty only if all
 the other specified fields are equal to the value following the specified
 field. For strings ensures value is not "". For slices, maps, pointers,
 interfaces, channels and functions ensures the value is not nil. For structs ensures value is not the zero value.
+Using the same field name multiple times in the parameters will result in a panic at runtime.
 
 	Usage: required_if
 
@@ -775,6 +776,12 @@ If the method returns a boolean, it checks if the value is true.
 This validates that a string value contains ASCII alpha characters only
 
 	Usage: alpha
+
+# Alpha Space
+
+This validates that a string value contains ASCII alpha characters and spaces only
+
+	Usage: alphaspace
 
 # Alphanumeric
 
@@ -1329,6 +1336,12 @@ This validates that a string value contains a valid DNS hostname and port that
 can be used to validate fields typically passed to sockets and connections.
 
 	Usage: hostname_port
+
+# Port
+
+This validates that the value falls within the valid port number range of 1 to 65,535.
+
+	Usage: port
 
 # Datetime
 

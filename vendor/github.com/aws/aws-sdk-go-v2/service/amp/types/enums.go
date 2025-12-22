@@ -40,6 +40,35 @@ func (AlertManagerDefinitionStatusCode) Values() []AlertManagerDefinitionStatusC
 	}
 }
 
+type AnomalyDetectorStatusCode string
+
+// Enum values for AnomalyDetectorStatusCode
+const (
+	AnomalyDetectorStatusCodeCreating       AnomalyDetectorStatusCode = "CREATING"
+	AnomalyDetectorStatusCodeActive         AnomalyDetectorStatusCode = "ACTIVE"
+	AnomalyDetectorStatusCodeUpdating       AnomalyDetectorStatusCode = "UPDATING"
+	AnomalyDetectorStatusCodeDeleting       AnomalyDetectorStatusCode = "DELETING"
+	AnomalyDetectorStatusCodeCreationFailed AnomalyDetectorStatusCode = "CREATION_FAILED"
+	AnomalyDetectorStatusCodeUpdateFailed   AnomalyDetectorStatusCode = "UPDATE_FAILED"
+	AnomalyDetectorStatusCodeDeletionFailed AnomalyDetectorStatusCode = "DELETION_FAILED"
+)
+
+// Values returns all known values for AnomalyDetectorStatusCode. Note that this
+// can be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (AnomalyDetectorStatusCode) Values() []AnomalyDetectorStatusCode {
+	return []AnomalyDetectorStatusCode{
+		"CREATING",
+		"ACTIVE",
+		"UPDATING",
+		"DELETING",
+		"CREATION_FAILED",
+		"UPDATE_FAILED",
+		"DELETION_FAILED",
+	}
+}
+
 type LoggingConfigurationStatusCode string
 
 // Enum values for LoggingConfigurationStatusCode

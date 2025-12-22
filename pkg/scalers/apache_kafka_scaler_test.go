@@ -238,6 +238,10 @@ var parseApacheKafkaAuthParamsTestDataset2 = []parseApacheKafkaAuthParamsTestDat
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "allowIdleConsumers": "true"}, map[string]string{"tls": "enable", "sasl": "aws_msk_iam", "awsAccessKeyID": "none", "awsSecretAccessKey": "none"}, true, true},
 	// failure, setting SASL aws_msk_iam with tls disabled
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "allowIdleConsumers": "true", "awsRegion": "us-east-1"}, map[string]string{"sasl": "aws_msk_iam", "awsAccessKeyID": "none", "awsSecretAccessKey": "none"}, true, false},
+	// failure, setting SASL aws_msk_iam without awsSecretAccessKey
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "allowIdleConsumers": "true", "awsRegion": "us-east-1"}, map[string]string{"tls": "enable", "sasl": "aws_msk_iam", "awsAccessKeyID": "none"}, true, true},
+	// failure, setting SASL aws_msk_iam without awsAccessKeyID
+	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topics", "allowIdleConsumers": "true", "awsRegion": "us-east-1"}, map[string]string{"tls": "enable", "sasl": "aws_msk_iam", "awsSecretAccessKey": "none"}, true, true},
 }
 
 var apacheKafkaMetricIdentifiers = []apacheKafkaMetricIdentifier{
