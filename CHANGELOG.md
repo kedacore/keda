@@ -77,6 +77,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Correct error message when awsSecretAccessKey is missing in credential-based authentication ([#7265](https://github.com/kedacore/keda/pull/7265))
 - **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
+- **Azure Service Bus Scaler**: Add configurable retry logic with exponential backoff to handle transient API failures ([#7338](https://github.com/kedacore/keda/issues/7338))
 - **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
 
 ### Fixes
