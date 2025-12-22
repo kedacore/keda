@@ -2836,6 +2836,13 @@
                     "metadataVariableReadable": true
                 },
                 {
+                    "name": "leaderOnly",
+                    "type": "string",
+                    "optional": true,
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
                     "name": "natsServerMonitoringEndpoint",
                     "type": "string",
                     "metadataVariableReadable": true,

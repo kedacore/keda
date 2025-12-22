@@ -42,6 +42,7 @@ type natsJetStreamMetadata struct {
 	LagThreshold           int64  `keda:"name=lagThreshold, order=triggerMetadata, default=10"`
 	ActivationLagThreshold int64  `keda:"name=activationLagThreshold, order=triggerMetadata, default=0"`
 	UseHTTPS               bool   `keda:"name=useHttps, optional, order=triggerMetadata, default=false"`
+	LeaderOnly             bool   `keda:"name=leaderOnly, optional, order=triggerMetadata, default=false"`
 	NatsServerEndpoint     string `keda:"name=natsServerMonitoringEndpoint, order=authParams;triggerMetadata"`
 	monitoringURL          string
 	consumerLeader         string
@@ -151,7 +152,7 @@ func parseNATSJetStreamMetadata(config *scalersconfig.ScalerConfig) (natsJetStre
 	}
 
 	meta.triggerIndex = config.TriggerIndex
-	meta.monitoringURL = getNATSJetStreamMonitoringURL(meta.UseHTTPS, meta.NatsServerEndpoint, meta.AccountID)
+	meta.monitoringURL = getNATSJetStreamMonitoringURL(meta.UseHTTPS, meta.NatsServerEndpoint, meta.AccountID, meta.LeaderOnly)
 	return meta, nil
 }
 
@@ -340,12 +341,16 @@ func (s *natsJetStreamScaler) getNATSJetstreamMonitoringRequest(ctx context.Cont
 	return jsAccountResp, nil
 }
 
-func getNATSJetStreamMonitoringURL(useHTTPS bool, natsServerEndpoint string, id string) string {
+func getNATSJetStreamMonitoringURL(useHTTPS bool, natsServerEndpoint string, id string, leaderOnly bool) string {
 	scheme := natsHTTPProtocol
 	if useHTTPS {
 		scheme = natsHTTPSProtocol
 	}
-	return fmt.Sprintf("%s://%s/jsz?acc=%s&consumers=true&config=true", scheme, natsServerEndpoint, id)
+	url := fmt.Sprintf("%s://%s/jsz?acc=%s&consumers=true&config=true", scheme, natsServerEndpoint, id)
+	if leaderOnly {
+		url += "&leader-only=true"
+	}
+	return url
 }
 
 func (s *natsJetStreamScaler) getNATSJetStreamMonitoringServerURL(nodeHostname string) (string, error) {
