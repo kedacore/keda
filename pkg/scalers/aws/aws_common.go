@@ -87,16 +87,13 @@ func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.A
 		meta.UsingPodIdentity = true
 		if podIdentity.RoleArn != nil && *podIdentity.RoleArn != "" {
 			meta.AwsRoleArn = *podIdentity.RoleArn
-			if podIdentity.AwsExternalID != nil && *podIdentity.AwsExternalID != "" {
-				meta.AwsExternalID = *podIdentity.AwsExternalID
+			if podIdentity.ExternalID != nil && *podIdentity.ExternalID != "" {
+				meta.AwsExternalID = *podIdentity.ExternalID
 			}
 		} else {
 			if val, ok := authParams["awsRoleArn"]; ok && val != "" {
 				meta.AwsRoleArn = val
 			}
-			// if val, ok := authParams["awsExternalID"]; ok && val != "" {
-			// 	meta.AwsExternalID = val
-			// }
 		}
 
 		return meta, nil

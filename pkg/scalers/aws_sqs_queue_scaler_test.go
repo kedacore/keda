@@ -276,9 +276,9 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		map[string]string{},
 		testAWSSQSEmptyResolvedEnv,
 		kedav1alpha1.AuthPodIdentity{
-			Provider:      kedav1alpha1.PodIdentityProviderAws,
-			RoleArn:       &testAWSSQSRoleArnPtr,
-			AwsExternalID: &testAWSSQSExternalIDPtr,
+			Provider:   kedav1alpha1.PodIdentityProviderAws,
+			RoleArn:    &testAWSSQSRoleArnPtr,
+			ExternalID: &testAWSSQSExternalIDPtr,
 		},
 		false,
 		"with AWS Role and External ID from Pod Identity"},
@@ -373,8 +373,8 @@ var testAWSSQSMetadata = []parseAWSSQSMetadataTestData{
 		map[string]string{},
 		testAWSSQSEmptyResolvedEnv,
 		kedav1alpha1.AuthPodIdentity{
-			Provider:      kedav1alpha1.PodIdentityProviderAws,
-			AwsExternalID: &testAWSSQSExternalIDPtr,
+			Provider:   kedav1alpha1.PodIdentityProviderAws,
+			ExternalID: &testAWSSQSExternalIDPtr,
 		},
 		false,
 		"with External ID but missing Role ARN (still valid, just won't use external ID)"},
