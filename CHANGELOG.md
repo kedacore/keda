@@ -15,6 +15,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## History
 
+- [v2.18.3](#v2183)
 - [v2.18.2](#v2182)
 - [v2.18.1](#v2181)
 - [v2.18.0](#v2180)
@@ -59,6 +60,12 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - [v1.2.0](#v120)
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
+
+## v2.18.3
+
+### Fixes
+
+- **General**: Fix CVE-2025-68476 ([#7334](https://github.com/kedacore/keda/pull/7334))
 
 ## v2.18.2
 
