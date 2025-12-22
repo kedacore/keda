@@ -14,9 +14,9 @@ import (
 )
 
 type parseOpenCostMetadataTestData struct {
-	metadata   map[string]string
-	isError    bool
-	testName   string
+	metadata map[string]string
+	isError  bool
+	testName string
 }
 
 type openCostMetricIdentifier struct {
@@ -180,44 +180,44 @@ func TestOpenCostGetMetricsAndActivity(t *testing.T) {
 	defer server.Close()
 
 	testCases := []struct {
-		name           string
-		costThreshold  string
-		costType       string
-		expectedActive bool
-                activationCostThreshold string
-		expectedCost   float64
+		name                    string
+		costThreshold           string
+		costType                string
+		expectedActive          bool
+		activationCostThreshold string
+		expectedCost            float64
 	}{
 		{
-			name:           "active when cost exceeds threshold",
-			costThreshold:  "100",
-			costType:       "totalCost",
-			expectedActive: true,
-			expectedCost:   150.50,
-                        activationCostThreshold: "0",
+			name:                    "active when cost exceeds threshold",
+			costThreshold:           "100",
+			costType:                "totalCost",
+			expectedActive:          true,
+			expectedCost:            150.50,
+			activationCostThreshold: "0",
 		},
 		{
-			name:           "inactive when cost below activation threshold",
-			costThreshold:  "200",
-			costType:       "totalCost",
-			expectedActive: false,
-			expectedCost:   150.50,
-                        activationCostThreshold: "200",
+			name:                    "inactive when cost below activation threshold",
+			costThreshold:           "200",
+			costType:                "totalCost",
+			expectedActive:          false,
+			expectedCost:            150.50,
+			activationCostThreshold: "200",
 		},
 		{
-			name:           "CPU cost type",
-			costThreshold:  "100",
-			costType:       "cpuCost",
-			expectedActive: true,
-			expectedCost:   50.25,
-                        activationCostThreshold: "0",
+			name:                    "CPU cost type",
+			costThreshold:           "100",
+			costType:                "cpuCost",
+			expectedActive:          true,
+			expectedCost:            50.25,
+			activationCostThreshold: "0",
 		},
 		{
-			name:           "RAM cost type",
-			costThreshold:  "100",
-			costType:       "ramCost",
-			expectedActive: true,
-			expectedCost:   75.15,
-                        activationCostThreshold: "0",
+			name:                    "RAM cost type",
+			costThreshold:           "100",
+			costType:                "ramCost",
+			expectedActive:          true,
+			expectedCost:            75.15,
+			activationCostThreshold: "0",
 		},
 	}
 
