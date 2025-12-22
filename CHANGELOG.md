@@ -71,6 +71,86 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
+- **General**: Correct error message when awsSecretAccessKey is missing in credential-based authentication ([#7265](https://github.com/kedacore/keda/pull/7265))
+- **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
+- **AWS Scalers**: Add support for AWS External ID in TriggerAuthentication podIdentity for all AWS scalers (SQS, Kinesis, DynamoDB, CloudWatch, etc.) to enable cross-account access scenarios ([#6921](https://github.com/kedacore/keda/issues/6921))
+- **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
+
+### Fixes
+
+- **General**: Apply fallback in polling loop to enable scaling from zero ([#7239](https://github.com/kedacore/keda/issues/7239))
+- **General**: Replace deprecated `azure autorest` dependency to `azure sdk for go` ([#7073](https://github.com/kedacore/keda/issues/7073))
+- **IBMMQ Scaler**: Create new HTTP request for each queue query in IBMMQ scaler ([#7202](https://github.com/kedacore/keda/pull/7202))
+
+### Deprecations
+
+You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
+
+New deprecation(s):
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Breaking Changes
+
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+
+### Other
+
+- **CI**: Use GitHub-hosted ARM64 runners ([#7293](https://github.com/kedacore/keda/issues/7293))
+
+## v2.18.3
+
+- **General**: Fix CVE-2025-68476 ([#7334](https://github.com/kedacore/keda/pull/7334))
+
+### Fixes
+
+## v2.18.2
+
+### Fixes
+
+- **General**: Fix HPA behavior not restored when paused-scale-in/out annotation is deleted without corresponding custom behavior ([#7291](https://github.com/kedacore/keda/pull/7291))
+- **General**: Fix nil reference panic when transfer-hpa-ownership is set but no hpa name is provided ([#7254](https://github.com/kedacore/keda/issues/7254))
+- **General**: Fix race condition in paused-replicas annotation causing ScaledObject to get stuck ([#7231](https://github.com/kedacore/keda/issues/7231))
+- **General**: Fix ScaledObject controller error handling for requestScaleLoop ([#7273](https://github.com/kedacore/keda/pull/7273))
+- **General**: Remove unnecessary scaledObjectMetricSpecs variable in HPA ([#7292](https://github.com/kedacore/keda/pull/7292))
+- **General**: Use TriggerError when all ScaledJob triggers fail ([#7205](https://github.com/kedacore/keda/pull/7205))
+- **ActiveMQ Scaler**: Correct parse error ActiveMQ ([#7245](https://github.com/kedacore/keda/pull/7245))
+- **Datadog Scaler**: Fix metricUnavailableValue parameter not working ([#7238](https://github.com/kedacore/keda/issues/7238))
+
+## v2.18.1
+
+### Fixes
+
+- **General**: Add feature flag `KEDA_CHECK_UNEXPECTED_SCALERS_PARAMS` for checking unexpected scaler parameters ([#6721](https://github.com/kedacore/keda/issues/6721))
+- **General**: Fix incorrect 'unmatched input property' notification ([#7174](https://github.com/kedacore/keda/issues/7174))
+- **Kafka Scaler**: Fix missing error returns in error handling ([#7182](https://github.com/kedacore/keda/pull/7182))
+
+### Other
+
+- **General**: Raw metrics stream - send also metrics during ScaledObject's interval ([#7197](https://github.com/kedacore/keda/issues/7197))
+
+## v2.18.0
+
+### New
+
+- **General**: Add fallback support for triggers of `Value` metric type ([#6655](https://github.com/kedacore/keda/pull/6655))
+- **General**: Add support for Force Activation annotation ([#6903](https://github.com/kedacore/keda/issues/6903))
+- **General**: Add support for pause scale in annotation ([#6902](https://github.com/kedacore/keda/issues/6902))
+- **General**: Add support for pause scale out annotation ([#7022](https://github.com/kedacore/keda/issues/7022))
+- **General**: Enable support on s390x for KEDA ([#6543](https://github.com/kedacore/keda/issues/6543))
+- **General**: Introduce new Forgejo Scaler ([#6488](https://github.com/kedacore/keda/issues/6488))
+- **General**: Introduce new Solace Direct Messaging scaler ([#6545](https://github.com/kedacore/keda/issues/6545))
+- **General**: Introduce new SolarWinds Scaler ([#6576](https://github.com/kedacore/keda/issues/6576))
+- **General**: Introduce new Splunk Observability Cloud Scaler ([#7152](https://github.com/kedacore/keda/issues/7152))
+- **General**: Introduce new Sumo Logic Scaler ([#6734](https://github.com/kedacore/keda/issues/6734))
+- **General**: Support for declarative e2e test setup and filtering ([#6989](https://github.com/kedacore/keda/issues/6989))
+- **General**: Trigger Schema Generated Tool ([#6345](https://github.com/kedacore/keda/issues/6345))
+- **General**: Vault authentication via cross-namespace service accounts ([#6153](https://github.com/kedacore/keda/issues/6153))
+
+
+### Improvements
+
+- **General**: Add error and event for mismatching input property ([#6721](https://github.com/kedacore/keda/issues/6721))
 - **General**: Allow excluding labels from being propagated from ScaledObject and ScaledJob to generated HPA and Job objects ([#6849](https://github.com/kedacore/keda/issues/6849))
 - **General**: Improve Events emitted from ScaledObject controller ([#6802](https://github.com/kedacore/keda/issues/6802))
 - **AWS Scalers**: Add support for AWS External ID in TriggerAuthentication podIdentity for all AWS scalers (SQS, Kinesis, DynamoDB, CloudWatch, etc.) to enable cross-account access scenarios ([#6921](https://github.com/kedacore/keda/issues/6921))
