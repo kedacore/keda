@@ -53,17 +53,17 @@ type openCostAllocationResponse struct {
 }
 
 type openCostItem struct {
-	Name       string          `json:"name"`
-	Properties openCostProps   `json:"properties"`
-	Window     openCostWindow  `json:"window"`
-	Start      string          `json:"start"`
-	End        string          `json:"end"`
-	CPUCost    float64         `json:"cpuCost"`
-	GPUCost    float64         `json:"gpuCost"`
-	RAMCost    float64         `json:"ramCost"`
-	PVCost     float64         `json:"pvCost"`
+	Name        string         `json:"name"`
+	Properties  openCostProps  `json:"properties"`
+	Window      openCostWindow `json:"window"`
+	Start       string         `json:"start"`
+	End         string         `json:"end"`
+	CPUCost     float64        `json:"cpuCost"`
+	GPUCost     float64        `json:"gpuCost"`
+	RAMCost     float64        `json:"ramCost"`
+	PVCost      float64        `json:"pvCost"`
 	NetworkCost float64        `json:"networkCost"`
-	TotalCost  float64         `json:"totalCost"`
+	TotalCost   float64        `json:"totalCost"`
 }
 
 type openCostProps struct {
