@@ -15,7 +15,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ## History
 
-- [Unreleased](#unreleased)
+- [v2.17.3](#v2173)
 - [v2.17.2](#v2172)
 - [v2.17.1](#v2171)
 - [v2.17.0](#v2170)
@@ -58,39 +58,11 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
 
-## Unreleased
-
-### New
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-#### Experimental
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Improvements
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+## v2.17.3
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Deprecations
-
-You can find all deprecations in [this overview](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abreaking-change) and [join the discussion here](https://github.com/kedacore/keda/discussions/categories/deprecations).
-
-New deprecation(s):
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Breaking Changes
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
-
-### Other
-
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Fix CVE-2025-68476 ([#1](https://github.com/kedacore/keda/pull/1))
 
 ## v2.17.2
 
