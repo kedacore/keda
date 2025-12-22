@@ -195,9 +195,9 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 			if spec.PodIdentity.RoleArn != nil && *spec.PodIdentity.RoleArn != "" && spec.PodIdentity.IsWorkloadIdentityOwner() {
 				return nil, fmt.Errorf("roleArn of PodIdentity can't be set if KEDA isn't identityOwner")
 			}
-			if spec.PodIdentity.AwsExternalID != nil && *spec.PodIdentity.AwsExternalID != "" {
+			if spec.PodIdentity.ExternalID != nil && *spec.PodIdentity.ExternalID != "" {
 				if spec.PodIdentity.RoleArn == nil || *spec.PodIdentity.RoleArn == "" {
-					return nil, fmt.Errorf("awsExternalID of PodIdentity requires roleArn to be set")
+					return nil, fmt.Errorf("externalID of PodIdentity requires roleArn to be set")
 				}
 			}
 		default:

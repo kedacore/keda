@@ -137,8 +137,8 @@ spec:
                       AuthPodIdentity allows users to select the platform native identity
                       mechanism
                     properties:
-                      awsExternalID:
-                        description: AwsExternalID sets the AWS External ID to be
+                      externalID:
+                        description: externalID sets the AWS External ID to be
                           used when assuming a role. This is only applicable when
                           using AWS pod identity with a RoleArn
                         type: string
@@ -252,8 +252,8 @@ spec:
                       AuthPodIdentity allows users to select the platform native identity
                       mechanism
                     properties:
-                      awsExternalID:
-                        description: AwsExternalID sets the AWS External ID to be
+                      externalID:
+                        description: externalID sets the AWS External ID to be
                           used when assuming a role. This is only applicable when
                           using AWS pod identity with a RoleArn
                         type: string
@@ -391,8 +391,8 @@ spec:
                       AuthPodIdentity allows users to select the platform native identity
                       mechanism
                     properties:
-                      awsExternalID:
-                        description: AwsExternalID sets the AWS External ID to be
+                      externalID:
+                        description: externalID sets the AWS External ID to be
                           used when assuming a role. This is only applicable when
                           using AWS pod identity with a RoleArn
                         type: string
@@ -521,8 +521,8 @@ spec:
                   AuthPodIdentity allows users to select the platform native identity
                   mechanism
                 properties:
-                  awsExternalID:
-                    description: AwsExternalID sets the AWS External ID to be used
+                  externalID:
+                    description: externalID sets the AWS External ID to be used
                       when assuming a role. This is only applicable when using AWS
                       pod identity with a RoleArn
                     type: string
