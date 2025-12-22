@@ -192,7 +192,7 @@ func TestOpenCostScaler(t *testing.T) {
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
-func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+func testActivation(t *testing.T, kc *kubernetes.Clientset, _ templateData) {
 	t.Log("--- testing activation ---")
 	// Cost is 150.50, activation threshold is 200, so should not activate
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
