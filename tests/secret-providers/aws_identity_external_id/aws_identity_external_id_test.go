@@ -254,7 +254,7 @@ func cleanupQueue(t *testing.T, sqsClient *sqs.Client, queueURL *string) {
 func createSqsClient() *sqs.Client {
 	configOptions := make([]func(*config.LoadOptions) error, 0)
 	configOptions = append(configOptions, config.WithRegion(awsRegion))
-	cfg, _ := config.LoadDefaultConfig(context.TODO(), configOptions...)
+	cfg, _ := config.LoadDefaultConfig(context.Background(), configOptions...)
 	cfg.Credentials = credentials.NewStaticCredentialsProvider(awsAccessKeyID, awsSecretAccessKey, "")
 	return sqs.NewFromConfig(cfg)
 }

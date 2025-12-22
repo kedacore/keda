@@ -77,8 +77,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Correct error message when awsSecretAccessKey is missing in credential-based authentication ([#7265](https://github.com/kedacore/keda/pull/7265))
 - **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
-- **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
 - **AWS Scalers**: Add support for AWS External ID in TriggerAuthentication podIdentity for all AWS scalers (SQS, Kinesis, DynamoDB, CloudWatch, etc.) to enable cross-account access scenarios ([#6921](https://github.com/kedacore/keda/issues/6921))
+- **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
 
 ### Fixes
 
