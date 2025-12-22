@@ -175,7 +175,8 @@ func TestOpenCostGetMetricsAndActivity(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/allocation", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockResponse)
+		err := json.NewEncoder(w).Encode(mockResponse)
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
