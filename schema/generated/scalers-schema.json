@@ -3066,6 +3066,57 @@
             ]
         },
         {
+            "type": "opencost",
+            "parameters": [
+                {
+                    "name": "serverAddress",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "window",
+                    "type": "string",
+                    "default": "1h",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "aggregate",
+                    "type": "string",
+                    "default": "namespace",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "filter",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "costThreshold",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationCostThreshold",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "costType",
+                    "type": "string",
+                    "default": "totalCost",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "unsafeSsl",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "openstack-metric",
             "parameters": [
                 {
