@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -120,8 +119,7 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 			return token, errors.New("k8s SA file not in config")
 		}
 
-		// Get the JWT from POD
-		jwt, err := os.ReadFile(vh.vault.Credential.ServiceAccount)
+		jwt, err := readKubernetesServiceAccountProjectedToken(vh.vault.Credential.ServiceAccount)
 		if err != nil {
 			return token, err
 		}
