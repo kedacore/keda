@@ -23,13 +23,13 @@ const (
 )
 
 var (
-	testNamespace        = fmt.Sprintf("%s-ns", testName)
-	deploymentName       = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName     = fmt.Sprintf("%s-so", testName)
-	opencostReleaseName  = fmt.Sprintf("%s-opencost", testName)
-	opencostEndpoint     = fmt.Sprintf("http://%s.%s.svc.cluster.local:9003", opencostReleaseName, testNamespace)
-	minReplicaCount      = 0
-	maxReplicaCount      = 2
+	testNamespace       = fmt.Sprintf("%s-ns", testName)
+	deploymentName      = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName    = fmt.Sprintf("%s-so", testName)
+	opencostReleaseName = fmt.Sprintf("%s-opencost", testName)
+	opencostEndpoint    = fmt.Sprintf("http://%s.%s.svc.cluster.local:9003", opencostReleaseName, testNamespace)
+	minReplicaCount     = 0
+	maxReplicaCount     = 2
 )
 
 type templateData struct {
