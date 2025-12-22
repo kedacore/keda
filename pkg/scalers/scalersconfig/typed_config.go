@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"maps"
 	"net/url"
+	"os"
 	"reflect"
 	"runtime/debug"
 	"slices"
@@ -35,6 +36,8 @@ import (
 
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
+
+var checkUnexpectedParamEnabled = os.Getenv("KEDA_CHECK_UNEXPECTED_SCALERS_PARAMS") == "enabled"
 
 // CustomValidator is an interface that can be implemented to validate the configuration of the typed config
 type CustomValidator interface {
@@ -521,7 +524,11 @@ func (sc *ScalerConfig) configParamValue(params Params) (string, bool) {
 }
 
 // checkUnexpectedParameterExist is a function that checks if there are any unexpected parameters in the TriggerMetadata
+// this is controlled by a feature flag KEDA_CHECK_UNEXPECTED_SCALERS_PARAMS env variable. By default it's disabled.
 func (sc *ScalerConfig) checkUnexpectedParameterExist(parsedParamNames []string, logger logr.Logger) {
+	if !checkUnexpectedParamEnabled {
+		return
+	}
 	for k := range sc.TriggerMetadata {
 		suffix := "FromEnv"
 		if !strings.HasSuffix(k, "FromEnv") {
