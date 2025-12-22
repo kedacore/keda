@@ -20,13 +20,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/go-logr/logr"
 	vaultapi "github.com/hashicorp/vault/api"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+)
+
+const (
+	serviceAccountTokenFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 )
 
 // HashicorpVaultHandler is specification of Hashi Corp Vault
@@ -111,7 +114,7 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 
 		if vh.vault.Credential == nil {
 			defaultCred := kedav1alpha1.Credential{
-				ServiceAccount: "/var/run/secrets/kubernetes.io/serviceaccount/token",
+				ServiceAccount: serviceAccountTokenFile,
 			}
 			vh.vault.Credential = &defaultCred
 		}
@@ -121,7 +124,7 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 		}
 
 		// Get the JWT from POD
-		jwt, err := os.ReadFile(vh.vault.Credential.ServiceAccount)
+		jwt, err := readKubernetesServiceAccountProjectedToken(vh.vault.Credential.ServiceAccount)
 		if err != nil {
 			return token, err
 		}
