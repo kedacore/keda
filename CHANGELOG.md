@@ -65,7 +65,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
-- **General**: Fix CVE-2025-68476 ([#1](https://github.com/kedacore/keda/pull/1))
+- **General**: Fix CVE-2025-68476 ([#7334](https://github.com/kedacore/keda/pull/7334))
 
 ## v2.18.2
 
