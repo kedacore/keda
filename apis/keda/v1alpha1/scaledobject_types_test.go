@@ -393,6 +393,24 @@ func TestNeedToBePausedByAnnotation(t *testing.T) {
 			pausedReplicaCount: &pausedReplicaCount,
 			expectResult:       true,
 		},
+		{
+			name:               "PausedReplicasAnnotation with empty string value",
+			annotations:        map[string]string{PausedReplicasAnnotation: ""},
+			pausedReplicaCount: nil,
+			expectResult:       false,
+		},
+		{
+			name:               "PausedReplicasAnnotation empty with PausedAnnotation true",
+			annotations:        map[string]string{PausedAnnotation: "true", PausedReplicasAnnotation: ""},
+			pausedReplicaCount: nil,
+			expectResult:       true, // Falls back to PausedAnnotation when PausedReplicasAnnotation is empty string
+		},
+		{
+			name:               "PausedReplicasAnnotation empty with PausedAnnotation false",
+			annotations:        map[string]string{PausedAnnotation: "false", PausedReplicasAnnotation: ""},
+			pausedReplicaCount: nil,
+			expectResult:       false,
+		},
 	}
 
 	for _, test := range tests {

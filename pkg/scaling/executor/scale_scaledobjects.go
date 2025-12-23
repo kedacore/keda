@@ -383,9 +383,10 @@ func getIdleOrMinimumReplicaCount(scaledObject *kedav1alpha1.ScaledObject) (bool
 
 // GetPausedReplicaCount returns the paused replica count of the ScaledObject.
 // If not paused, it returns nil.
+// If the annotation value is empty string, it is treated as if the annotation was not set.
 func GetPausedReplicaCount(scaledObject *kedav1alpha1.ScaledObject) (*int32, error) {
 	if scaledObject.Annotations != nil {
-		if val, ok := scaledObject.Annotations[kedav1alpha1.PausedReplicasAnnotation]; ok {
+		if val, ok := scaledObject.Annotations[kedav1alpha1.PausedReplicasAnnotation]; ok && val != "" {
 			conv, err := strconv.ParseInt(val, 10, 32)
 			if err != nil {
 				return nil, err
