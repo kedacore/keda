@@ -37,10 +37,12 @@ type prometheusScaler struct {
 // change to false/f if can not accept prometheus return null values
 // https://github.com/kedacore/keda/issues/3065
 type prometheusMetadata struct {
+	metricName   string
 	triggerIndex int
 
 	PrometheusAuth      *authentication.Config `keda:"optional"`
 	ServerAddress       string                 `keda:"name=serverAddress,       order=triggerMetadata"`
+	MetricName          string                 `keda:"name=metricName,          order=triggerMetadata,            optional"`
 	Query               string                 `keda:"name=query,               order=triggerMetadata"`
 	QueryParameters     map[string]string      `keda:"name=queryParameters,     order=triggerMetadata,            optional"`
 	Threshold           float64                `keda:"name=threshold,           order=triggerMetadata"`
@@ -152,6 +154,13 @@ func parsePrometheusMetadata(config *scalersconfig.ScalerConfig) (meta *promethe
 	}
 
 	meta.triggerIndex = config.TriggerIndex
+
+	baseMetricName := "prometheus"
+	if meta.MetricName != "" {
+		baseMetricName = fmt.Sprintf("prometheus-%s", meta.MetricName)
+	}
+	meta.metricName = GenerateMetricNameWithIndex(meta.triggerIndex, kedautil.NormalizeString(baseMetricName))
+
 	err = checkAuthConfigWithPodIdentity(config, meta)
 	if err != nil {
 		return nil, err
@@ -178,10 +187,9 @@ func (s *prometheusScaler) Close(context.Context) error {
 }
 
 func (s *prometheusScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
-	metricName := kedautil.NormalizeString("prometheus")
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.triggerIndex, metricName),
+			Name: s.metadata.metricName,
 		},
 		Target: GetMetricTargetMili(s.metricType, s.metadata.Threshold),
 	}
