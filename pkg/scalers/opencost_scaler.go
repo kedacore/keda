@@ -1,5 +1,35 @@
 package scalers
 
+// OpenCost Scaler
+//
+// The OpenCost scaler enables cost-based autoscaling for Kubernetes workloads by querying
+// the OpenCost API for real-time cost metrics. It supports two scaling modes:
+//
+// 1. Inverse Scaling (Default - inverseScaling=true):
+//    Scale DOWN when costs are HIGH to reduce expenses.
+//    This is the intuitive behavior for cost optimization: when your workload costs exceed
+//    the threshold, KEDA reduces replicas to bring costs back under control.
+//
+//    Use case: Cost containment
+//    - Set a maximum cost budget (costThreshold)
+//    - When costs exceed the budget, scale down to reduce spending
+//    - Example: Limit namespace costs to $100/hour
+//
+// 2. Normal Scaling (inverseScaling=false):
+//    Scale UP when costs are HIGH.
+//    This mode is useful for time-based cost optimization scenarios where high costs
+//    indicate high demand periods.
+//
+//    Use case: Time-based cost optimization
+//    - During peak hours (high demand), costs naturally increase due to more traffic
+//    - Scale UP to handle the increased load efficiently
+//    - During off-peak hours (low demand), costs decrease naturally
+//    - Scale DOWN as there's less work to do
+//    - Example: E-commerce site scales up during business hours when costs/traffic are high
+//
+// The scaler queries OpenCost's allocation API to get cost metrics aggregated by various
+// dimensions (namespace, pod, controller, etc.) and can filter by specific resources.
+
 import (
 	"context"
 	"encoding/json"
@@ -32,7 +62,7 @@ type openCostScalerMetadata struct {
 	Aggregate string `keda:"name=aggregate,order=triggerMetadata,default=namespace"`
 	// Filter to apply (e.g., namespace name, pod name)
 	Filter string `keda:"name=filter,order=triggerMetadata,optional"`
-	// Cost threshold in dollars - scale up when cost exceeds this
+	// Cost threshold in dollars - with inverse scaling (default), scale down when cost exceeds this
 	CostThreshold float64 `keda:"name=costThreshold,order=triggerMetadata"`
 	// Activation cost threshold - scaler becomes active when cost exceeds this
 	ActivationCostThreshold float64 `keda:"name=activationCostThreshold,order=triggerMetadata,default=0"`
@@ -40,6 +70,9 @@ type openCostScalerMetadata struct {
 	CostType string `keda:"name=costType,order=triggerMetadata,default=totalCost"`
 	// Whether to use unsafe SSL
 	UnsafeSsl bool `keda:"name=unsafeSsl,order=triggerMetadata,default=false"`
+	// Inverse scaling: when true (default), scale DOWN when costs are high to reduce expenses.
+	// When false, scale UP when costs are high (useful for time-based cost optimization scenarios).
+	InverseScaling bool `keda:"name=inverseScaling,order=triggerMetadata,default=true"`
 
 	triggerIndex int
 }
@@ -153,7 +186,15 @@ func (s *openCostScaler) GetMetricsAndActivity(ctx context.Context, metricName s
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting cost from OpenCost: %w", err)
 	}
 
-	metric := GenerateMetricInMili(metricName, cost)
+	// When inverseScaling is true (default), invert the metric so HPA scales DOWN when costs are high.
+	// This is the intuitive behavior for cost optimization: reduce replicas to reduce costs.
+	metricValue := cost
+	if s.metadata.InverseScaling {
+		// Invert: report (threshold * 2 - cost) so when cost > threshold, metric < threshold
+		metricValue = (s.metadata.CostThreshold * 2) - cost
+	}
+
+	metric := GenerateMetricInMili(metricName, metricValue)
 	isActive := cost > s.metadata.ActivationCostThreshold
 
 	return []external_metrics.ExternalMetricValue{metric}, isActive, nil
