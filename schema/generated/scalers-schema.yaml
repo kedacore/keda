@@ -2031,6 +2031,10 @@ scalers:
           type: string
           default: "false"
           metadataVariableReadable: true
+        - name: inverseScaling
+          type: string
+          default: "true"
+          metadataVariableReadable: true
     - type: openstack-metric
       parameters:
         - name: metricsURL
