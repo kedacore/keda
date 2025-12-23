@@ -452,6 +452,89 @@ var _ = Describe("fallback", func() {
 		expectedValue := float64(100) // 10 replicas * 10 target value, ignoring current 15
 		Expect(value).Should(Equal(expectedValue))
 	})
+
+	It("should use cached metrics when behavior is 'cached' and metrics are available", func() {
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
+		startingNumberOfFailures := int32(3)
+		behavior := "cached"
+		cachedMetricValue := float64(25)
+
+		// Create cached metrics
+		cachedMetrics := []external_metrics.ExternalMetricValue{
+			{
+				MetricName: metricName,
+				Value:      *resource.NewQuantity(int64(cachedMetricValue), resource.DecimalSI),
+				Timestamp:  metav1.Now(),
+			},
+		}
+
+		so := buildScaledObject(
+			&kedav1alpha1.Fallback{
+				FailureThreshold: int32(3),
+				Replicas:         int32(10),
+				Behavior:         behavior,
+			},
+			&kedav1alpha1.ScaledObjectStatus{
+				Health: map[string]kedav1alpha1.HealthStatus{
+					metricName: {
+						NumberOfFailures: &startingNumberOfFailures,
+						Status:           kedav1alpha1.HealthStatusHappy,
+					},
+				},
+			},
+		)
+		metricSpec := createMetricSpec(10)
+		expectStatusPatch(ctrl, client)
+
+		// Mock deployment lookup for current replicas
+		mockScaleAndDeployment(ctrl, client, scaleClient, 5)
+
+		_, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		resultMetrics, _, err := GetMetricsWithFallback(context.Background(), client, scaleClient, cachedMetrics, err, metricName, so, metricSpec)
+
+		Expect(err).ToNot(HaveOccurred())
+		value := resultMetrics[0].Value.AsApproximateFloat64()
+		Expect(value).Should(Equal(cachedMetricValue))
+		Expect(resultMetrics[0].MetricName).Should(Equal(metricName))
+	})
+
+	It("should use fallback replicas when behavior is 'cached' but no metrics are available", func() {
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Eq(metricName)).Return(nil, false, errors.New("some error"))
+		startingNumberOfFailures := int32(3)
+		behavior := "cached"
+		expectedMetricValue := float64(100) // 10 replicas * 10 target value
+
+		so := buildScaledObject(
+			&kedav1alpha1.Fallback{
+				FailureThreshold: int32(3),
+				Replicas:         int32(10),
+				Behavior:         behavior,
+			},
+			&kedav1alpha1.ScaledObjectStatus{
+				Health: map[string]kedav1alpha1.HealthStatus{
+					metricName: {
+						NumberOfFailures: &startingNumberOfFailures,
+						Status:           kedav1alpha1.HealthStatusHappy,
+					},
+				},
+			},
+		)
+		metricSpec := createMetricSpec(10)
+		expectStatusPatch(ctrl, client)
+
+		// Mock deployment lookup for current replicas
+		mockScaleAndDeployment(ctrl, client, scaleClient, 5)
+
+		// Pass empty metrics slice to simulate no cached metrics
+		emptyMetrics := []external_metrics.ExternalMetricValue{}
+		_, _, err := scaler.GetMetricsAndActivity(context.Background(), metricName)
+		resultMetrics, _, err := GetMetricsWithFallback(context.Background(), client, scaleClient, emptyMetrics, err, metricName, so, metricSpec)
+
+		Expect(err).ToNot(HaveOccurred())
+		value := resultMetrics[0].Value.AsApproximateFloat64()
+		Expect(value).Should(Equal(expectedMetricValue))
+		Expect(resultMetrics[0].MetricName).Should(Equal(metricName))
+	})
 })
 
 // Helper functions
