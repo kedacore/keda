@@ -186,39 +186,71 @@ func TestOpenCostGetMetricsAndActivity(t *testing.T) {
 		costType                string
 		expectedActive          bool
 		activationCostThreshold string
-		expectedCost            float64
+		expectedMetricValue     float64
+		inverseScaling          string
 	}{
 		{
-			name:                    "active when cost exceeds threshold",
+			name:                    "inverse scaling (default): high cost results in low metric",
 			costThreshold:           "100",
 			costType:                "totalCost",
 			expectedActive:          true,
-			expectedCost:            150.50,
+			expectedMetricValue:     49.50,
 			activationCostThreshold: "0",
+			inverseScaling:          "true",
 		},
 		{
-			name:                    "inactive when cost below activation threshold",
+			name:                    "inverse scaling (default): low cost results in high metric",
 			costThreshold:           "200",
 			costType:                "totalCost",
 			expectedActive:          false,
-			expectedCost:            150.50,
+			expectedMetricValue:     249.50,
 			activationCostThreshold: "200",
+			inverseScaling:          "true",
 		},
 		{
-			name:                    "CPU cost type",
+			name:                    "normal scaling: high cost results in high metric",
+			costThreshold:           "100",
+			costType:                "totalCost",
+			expectedActive:          true,
+			expectedMetricValue:     150.50,
+			activationCostThreshold: "0",
+			inverseScaling:          "false",
+		},
+		{
+			name:                    "CPU cost type with inverse scaling",
 			costThreshold:           "100",
 			costType:                "cpuCost",
 			expectedActive:          true,
-			expectedCost:            50.25,
+			expectedMetricValue:     149.75,
 			activationCostThreshold: "0",
+			inverseScaling:          "true",
 		},
 		{
-			name:                    "RAM cost type",
+			name:                    "RAM cost type with inverse scaling",
 			costThreshold:           "100",
 			costType:                "ramCost",
 			expectedActive:          true,
-			expectedCost:            75.15,
+			expectedMetricValue:     124.85,
 			activationCostThreshold: "0",
+			inverseScaling:          "true",
+		},
+		{
+			name:                    "inverse scaling (explicit false): high cost results in high metric",
+			costThreshold:           "100",
+			costType:                "totalCost",
+			expectedActive:          true,
+			expectedMetricValue:     150.50,
+			activationCostThreshold: "0",
+			inverseScaling:          "false",
+		},
+		{
+			name:                    "inverse scaling (explicit false): low cost results in low metric",
+			costThreshold:           "200",
+			costType:                "totalCost",
+			expectedActive:          false,
+			expectedMetricValue:     150.50,
+			activationCostThreshold: "200",
+			inverseScaling:          "false",
 		},
 	}
 
@@ -230,6 +262,7 @@ func TestOpenCostGetMetricsAndActivity(t *testing.T) {
 					"costThreshold":           tc.costThreshold,
 					"costType":                tc.costType,
 					"activationCostThreshold": tc.activationCostThreshold,
+					"inverseScaling":          tc.inverseScaling,
 				},
 				TriggerIndex: 0,
 			}
@@ -241,6 +274,9 @@ func TestOpenCostGetMetricsAndActivity(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectedActive, isActive)
 			assert.Len(t, metrics, 1)
+			// Verify the metric value matches expected (accounting for mili conversion)
+			actualValue := float64(metrics[0].Value.MilliValue()) / 1000.0
+			assert.InDelta(t, tc.expectedMetricValue, actualValue, 0.01)
 		})
 	}
 }
