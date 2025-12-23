@@ -826,26 +826,46 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 	}
 
 	consumerOffset := block.Offset
-	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == latest {
-		retVal := int64(1)
-		if s.metadata.scaleToZeroOnInvalidOffset {
-			retVal = 0
-		}
-		msg := fmt.Sprintf(
-			"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Returning with lag of %d",
-			topic, s.metadata.group, partitionID, retVal)
-		s.logger.V(1).Info(msg)
-		return retVal, retVal, nil
-	}
 
-	if _, found := topicPartitionOffsets[topic]; !found {
-		return 0, 0, fmt.Errorf("error finding partition offset for topic %s", topic)
-	}
-	latestOffset := topicPartitionOffsets[topic][partitionID]
-	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == earliest {
+	// Handle invalid consumer offset for both latest and earliest policies
+	// This must be done before getting latestOffset, so scaleToZeroOnInvalidOffset works
+	// even when latestOffset cannot be retrieved (e.g., missing partition in response)
+	if consumerOffset == invalidOffset {
+		if s.metadata.offsetResetPolicy == latest {
+			retVal := int64(1)
+			if s.metadata.scaleToZeroOnInvalidOffset {
+				retVal = 0
+			}
+			msg := fmt.Sprintf(
+				"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Returning with lag of %d",
+				topic, s.metadata.group, partitionID, retVal)
+			s.logger.V(1).Info(msg)
+			return retVal, retVal, nil
+		}
+		// offsetResetPolicy == earliest
+		// For earliest policy, we need latestOffset to return the full lag when scaleToZeroOnInvalidOffset is false
+		// But if we can't get latestOffset, we should still respect scaleToZeroOnInvalidOffset
 		if s.metadata.scaleToZeroOnInvalidOffset {
 			return 0, 0, nil
 		}
+	}
+
+	topicOffsets, found := topicPartitionOffsets[topic]
+	if !found {
+		s.logger.V(1).Info(fmt.Sprintf("Topic %s not found in latest offset response, treating partition %d as 0 lag", topic, partitionID))
+		return 0, 0, nil
+	}
+	latestOffset, partitionFound := topicOffsets[partitionID]
+	if !partitionFound {
+		// Partition missing from latest offset response - treat as 0 lag and continue
+		// This can happen with Azure Event Hub when partitions are intermittently not returned
+		s.logger.V(1).Info(fmt.Sprintf("Partition %d in topic %s not found in latest offset response, treating as 0 lag", partitionID, topic))
+		return 0, 0, nil
+	}
+
+	// If we got here with invalidOffset and earliest policy, scaleToZeroOnInvalidOffset must be false
+	// Return the full lag (latestOffset) as per earliest policy behavior
+	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == earliest {
 		return latestOffset, latestOffset, nil
 	}
 
