@@ -103,7 +103,7 @@ type rabbitMQMetadata struct {
 	Timeout time.Duration `keda:"name=timeout,                  order=triggerMetadata, optional"`
 
 	Username string `keda:"name=username, order=authParams;resolvedEnv, optional"`
-	Password string `keda:"name=password, order=authParams;resolvedEnv, optional"`
+	Password string `keda:"name=password, order=authParams;resolvedEnv, optional, allowEmpty"`
 
 	// TLS
 	Ca          string `keda:"name=ca,          order=authParams, optional"`
@@ -140,8 +140,12 @@ func (r *rabbitMQMetadata) Validate() error {
 		return fmt.Errorf("pageSize should be 1 or greater")
 	}
 
-	if (r.Username != "" || r.Password != "") && (r.Username == "" || r.Password == "") {
-		return fmt.Errorf("username and password must be given together")
+	// For non-TLS authentication, both username and password must be provided together
+	if r.EnableTLS == rmqTLSDisable {
+		// TLS disabled: traditional username/password validation
+		if (r.Username != "" || r.Password != "") && (r.Username == "" || r.Password == "") {
+			return fmt.Errorf("username and password must be given together")
+		}
 	}
 
 	// If the protocol is auto, check the host scheme.
@@ -304,7 +308,7 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	if meta.Protocol == amqpProtocol {
 		// Override vhost if requested.
 		host := meta.Host
-		if meta.VhostName != "" || (meta.Username != "" && meta.Password != "") {
+		if meta.VhostName != "" || meta.Username != "" {
 			hostURI, err := amqp.ParseURI(host)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing RabbitMQ connection string: %w", err)
@@ -313,9 +317,12 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 				hostURI.Vhost = meta.VhostName
 			}
 
-			if meta.Username != "" && meta.Password != "" {
+			if meta.Username != "" {
 				hostURI.Username = meta.Username
-				hostURI.Password = meta.Password
+				// Only set password if it's provided
+				if meta.Password != "" {
+					hostURI.Password = meta.Password
+				}
 			}
 
 			host = hostURI.String()
@@ -507,8 +514,12 @@ func (s *rabbitMQScaler) getQueueInfoViaHTTP(ctx context.Context) (*queueInfo, e
 	vhost, subpaths := getVhostAndPathFromURL(path, s.metadata.VhostName)
 	parsedURL.Path = subpaths
 
-	if s.metadata.Username != "" && s.metadata.Password != "" {
-		parsedURL.User = url.UserPassword(s.metadata.Username, s.metadata.Password)
+	if s.metadata.Username != "" {
+		if s.metadata.Password != "" {
+			parsedURL.User = url.UserPassword(s.metadata.Username, s.metadata.Password)
+		} else {
+			parsedURL.User = url.User(s.metadata.Username)
+		}
 	}
 
 	var getQueueInfoManagementURI string
