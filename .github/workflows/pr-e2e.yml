@@ -342,7 +342,7 @@ jobs:
         uses: helm/kind-action@92086f6be054225fa813e0a4b13787fc9088faab # v1.13.0
         with:
           node_image: kindest/node:v1.32.0@sha256:c48c62eac5da28cdadcf560d1d8616cfa6783b58f0d94cf63ad1bf49600cb027
-          cluster_name: ${{ runner.name }}
+          cluster_name: arm-smoke-test-${{ github.run_id }}
 
       - name: Run smoke test
         continue-on-error: true
@@ -430,7 +430,7 @@ jobs:
       - name: Install Kubernetes
         run: |
           go install sigs.k8s.io/kind@v0.29.0
-          kind create cluster --name ${{ runner.name }} --image vishnubijukumar/kindest-node-s390x:v0.29.0
+          kind create cluster --name s390x-smoke-test-${{ github.run_id }} --image vishnubijukumar/kindest-node-s390x:v0.29.0
           kubectl -n kube-system set image daemonset/kindnet kindnet-cni=docker.io/vishnubijukumar/kindnetd:v20250512-s390x
           kubectl -n local-path-storage set image deployment/local-path-provisioner local-path-provisioner=docker.io/vishnubijukumar/local-path-provisioner:v1
 
@@ -486,7 +486,7 @@ jobs:
 
       - name: Remove Kubernetes
         run: |
-          kind delete cluster --name ${{ runner.name }}
+          kind delete cluster --name s390x-smoke-test-${{ github.run_id }}
         if: ${{ always() }}
         env:
           DEBIAN_FRONTEND: noninteractive
