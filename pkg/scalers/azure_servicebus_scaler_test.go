@@ -247,3 +247,37 @@ func TestAzServiceBusGetMetricSpecForScaling(t *testing.T) {
 		}
 	}
 }
+
+func TestParseMaxRetriesMetadata(t *testing.T) {
+	// Test default maxRetries value (0)
+	meta, err := parseAzureServiceBusMetadata(&scalersconfig.ScalerConfig{
+		ResolvedEnv:     sampleResolvedEnv,
+		TriggerMetadata: map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting},
+		AuthParams:      map[string]string{},
+		PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: ""},
+		TriggerIndex:    0,
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 0, meta.MaxRetries, "Expected default maxRetries to be 0")
+
+	// Test explicit maxRetries value
+	meta, err = parseAzureServiceBusMetadata(&scalersconfig.ScalerConfig{
+		ResolvedEnv:     sampleResolvedEnv,
+		TriggerMetadata: map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "maxRetries": "3"},
+		AuthParams:      map[string]string{},
+		PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: ""},
+		TriggerIndex:    0,
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 3, meta.MaxRetries, "Expected maxRetries to be 3")
+
+	// Test invalid maxRetries value (non-numeric)
+	_, err = parseAzureServiceBusMetadata(&scalersconfig.ScalerConfig{
+		ResolvedEnv:     sampleResolvedEnv,
+		TriggerMetadata: map[string]string{"queueName": queueName, "connectionFromEnv": connectionSetting, "maxRetries": "invalid"},
+		AuthParams:      map[string]string{},
+		PodIdentity:     kedav1alpha1.AuthPodIdentity{Provider: ""},
+		TriggerIndex:    0,
+	})
+	assert.Error(t, err, "Expected error for invalid maxRetries value")
+}

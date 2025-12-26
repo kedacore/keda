@@ -1072,6 +1072,13 @@
                         "avg"
                     ],
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "maxRetries",
+                    "type": "string",
+                    "optional": true,
+                    "default": "0",
+                    "metadataVariableReadable": true
                 }
             ]
         },
