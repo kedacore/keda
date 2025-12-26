@@ -1582,6 +1582,10 @@ scalers:
           type: string
           default: "0"
           metadataVariableReadable: true
+        - name: namespace
+          type: string
+          optional: true
+          metadataVariableReadable: true
     - type: liiklus
       parameters:
         - name: lagThreshold
