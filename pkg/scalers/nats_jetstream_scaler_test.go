@@ -41,6 +41,8 @@ var testNATSJetStreamMetadata = []parseNATSJetStreamMetadataTestData{
 	{map[string]string{"natsServerMonitoringEndpoint": "localhost:8222", "account": "$G", "accountID": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "false"}, map[string]string{}, false},
 	// All good url.
 	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "true"}, map[string]string{}, false},
+	// All good with leaderOnly.
+	{map[string]string{"natsServerMonitoringEndpoint": "nats.nats:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "leaderOnly": "true"}, map[string]string{}, false},
 	// All good uses ID over name
 	{map[string]string{"natsServerMonitoringEndpoint": "localhost:8222", "accountID": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "false"}, map[string]string{}, false},
 	// nothing passed
@@ -111,15 +113,27 @@ func TestNATSJetStreamGetMetricSpecForScaling(t *testing.T) {
 }
 
 func TestGetNATSJetStreamEndpointHTTPS(t *testing.T) {
-	endpoint := getNATSJetStreamMonitoringURL(true, "nats.nats:8222", "$G")
+	endpoint := getNATSJetStreamMonitoringURL(true, "nats.nats:8222", "$G", false)
 
 	assert.True(t, strings.HasPrefix(endpoint, "https:"))
 }
 
 func TestGetNATSJetStreamEndpointHTTP(t *testing.T) {
-	endpoint := getNATSJetStreamMonitoringURL(false, "nats.nats:8222", "$G")
+	endpoint := getNATSJetStreamMonitoringURL(false, "nats.nats:8222", "$G", false)
 
 	assert.True(t, strings.HasPrefix(endpoint, "http:"))
+}
+
+func TestGetNATSJetStreamEndpointLeaderOnly(t *testing.T) {
+	endpoint := getNATSJetStreamMonitoringURL(false, "nats.nats:8222", "$G", true)
+
+	assert.True(t, strings.Contains(endpoint, "leader-only=true"))
+}
+
+func TestGetNATSJetStreamEndpointWithoutLeaderOnly(t *testing.T) {
+	endpoint := getNATSJetStreamMonitoringURL(false, "nats.nats:8222", "$G", false)
+
+	assert.False(t, strings.Contains(endpoint, "leader-only"))
 }
 
 var testNATSJetStreamGoodMetadata = map[string]string{"natsServerMonitoringEndpoint": "localhost:8222", "account": "$G", "stream": "mystream", "consumer": "pull_consumer", "useHttps": "false", "activationLagThreshold": "10"}
