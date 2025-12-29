@@ -39,8 +39,13 @@ const (
 	defaultFailedJobsHistoryLimit     = int32(100)
 )
 
-func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive, isError bool, scaleTo int64, maxScale int64) {
+func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive, isError bool, scaleTo int64, maxScale int64, options *ScaleExecutorOptions) {
 	logger := e.logger.WithValues("scaledJob.Name", scaledJob.Name, "scaledJob.Namespace", scaledJob.Namespace)
+
+	var activeTriggers []string
+	if options != nil {
+		activeTriggers = options.ActiveTriggers
+	}
 
 	runningJobCount := e.getRunningJobCount(ctx, scaledJob)
 	pendingJobCount := e.getPendingJobCount(ctx, scaledJob)
@@ -124,6 +129,11 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	err := e.cleanUp(ctx, scaledJob)
 	if err != nil {
 		logger.Error(err, "Failed to cleanUp jobs")
+	}
+
+	// Update triggers activity if individual trigger states have changed
+	if err := e.updateTriggersActivity(ctx, logger, scaledJob, activeTriggers); err != nil {
+		logger.Error(err, "Error updating triggers activity")
 	}
 }
 
