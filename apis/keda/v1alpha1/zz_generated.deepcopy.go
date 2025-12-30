@@ -1041,6 +1041,10 @@ func (in *ScaledObjectStatus) DeepCopyInto(out *ScaledObjectStatus) {
 		in, out := &in.LastActiveTime, &out.LastActiveTime
 		*out = (*in).DeepCopy()
 	}
+	if in.HpaMinReplicaSinceTime != nil {
+		in, out := &in.HpaMinReplicaSinceTime, &out.HpaMinReplicaSinceTime
+		*out = (*in).DeepCopy()
+	}
 	if in.ExternalMetricNames != nil {
 		in, out := &in.ExternalMetricNames, &out.ExternalMetricNames
 		*out = make([]string, len(*in))
