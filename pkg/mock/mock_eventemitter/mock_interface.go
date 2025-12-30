@@ -13,11 +13,12 @@ import (
 	context "context"
 	reflect "reflect"
 
-	v1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
-	eventdata "github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 	gomock "go.uber.org/mock/gomock"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+
+	v1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
+	eventdata "github.com/kedacore/keda/v2/pkg/eventemitter/eventdata"
 )
 
 // MockEventHandler is a mock of EventHandler interface.

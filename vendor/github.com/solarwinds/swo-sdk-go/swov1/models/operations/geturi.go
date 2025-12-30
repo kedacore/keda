@@ -10,29 +10,29 @@ type GetURIRequest struct {
 	EntityID string `pathParam:"style=simple,explode=false,name=entityId"`
 }
 
-func (o *GetURIRequest) GetEntityID() string {
-	if o == nil {
+func (g *GetURIRequest) GetEntityID() string {
+	if g == nil {
 		return ""
 	}
-	return o.EntityID
+	return g.EntityID
 }
 
 type GetURIResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
 	// The request has succeeded.
-	GetURIResponse *components.GetURIResponse
+	DemGetURIResponse *components.DemGetURIResponse
 }
 
-func (o *GetURIResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (g *GetURIResponse) GetHTTPMeta() components.HTTPMetadata {
+	if g == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return g.HTTPMeta
 }
 
-func (o *GetURIResponse) GetGetURIResponse() *components.GetURIResponse {
-	if o == nil {
+func (g *GetURIResponse) GetDemGetURIResponse() *components.DemGetURIResponse {
+	if g == nil {
 		return nil
 	}
-	return o.GetURIResponse
+	return g.DemGetURIResponse
 }

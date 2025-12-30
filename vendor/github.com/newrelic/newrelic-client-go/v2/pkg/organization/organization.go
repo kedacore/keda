@@ -6,16 +6,16 @@ import (
 	"github.com/newrelic/newrelic-client-go/v2/pkg/logging"
 )
 
-type Organization struct {
+type OrganizationManagement struct {
 	client http.Client
 	logger logging.Logger
 	config config.Config
 }
 
-func New(config config.Config) Organization {
+func New(config config.Config) OrganizationManagement {
 	client := http.NewClient(config)
 
-	pkg := Organization{
+	pkg := OrganizationManagement{
 		client: client,
 		logger: config.GetLogger(),
 		config: config,

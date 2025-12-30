@@ -10,18 +10,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ericlagergren/decimal"
-
+	"github.com/solarwinds/swo-sdk-go/swov1/optionalnullable"
 	"github.com/solarwinds/swo-sdk-go/swov1/types"
 )
 
-func populateForm(paramName string, explode bool, objType reflect.Type, objValue reflect.Value, delimiter string, defaultValue *string, getFieldName func(reflect.StructField) string) url.Values {
+func populateForm(paramName string, explode bool, objType reflect.Type, objValue reflect.Value, delimiter string, defaultValue *string, allowEmptyValue map[string]struct{}, getFieldName func(reflect.StructField) string) url.Values {
 
 	formValues := url.Values{}
 
 	if isNil(objType, objValue) {
 		if defaultValue != nil {
 			formValues.Add(paramName, *defaultValue)
+		} else if _, ok := allowEmptyValue[paramName]; ok {
+			formValues.Add(paramName, "")
 		}
 
 		return formValues
@@ -40,8 +41,6 @@ func populateForm(paramName string, explode bool, objType reflect.Type, objValue
 		case types.Date:
 			formValues.Add(paramName, valToString(objValue.Interface()))
 		case big.Int:
-			formValues.Add(paramName, valToString(objValue.Interface()))
-		case decimal.Big:
 			formValues.Add(paramName, valToString(objValue.Interface()))
 		default:
 			var items []string
@@ -64,7 +63,13 @@ func populateForm(paramName string, explode bool, objType reflect.Type, objValue
 				}
 
 				if explode {
-					formValues.Add(fieldName, valToString(valType.Interface()))
+					if valType.Kind() == reflect.Slice || valType.Kind() == reflect.Array {
+						for i := 0; i < valType.Len(); i++ {
+							formValues.Add(fieldName, valToString(valType.Index(i).Interface()))
+						}
+					} else {
+						formValues.Add(fieldName, valToString(valType.Interface()))
+					}
 				} else {
 					items = append(items, fmt.Sprintf("%s%s%s", fieldName, delimiter, valToString(valType.Interface())))
 				}
@@ -75,6 +80,16 @@ func populateForm(paramName string, explode bool, objType reflect.Type, objValue
 			}
 		}
 	case reflect.Map:
+		// check if optionalnullable.OptionalNullable[T]
+		if nullableValue, ok := optionalnullable.AsOptionalNullable(objValue); ok {
+			// Handle optionalnullable.OptionalNullable[T] using GetUntyped method
+			if value, isSet := nullableValue.GetUntyped(); isSet && value != nil {
+				formValues.Add(paramName, valToString(value))
+			}
+			// If not set or explicitly null, skip adding to form
+			return formValues
+		}
+
 		items := []string{}
 
 		iter := objValue.MapRange()
@@ -90,12 +105,31 @@ func populateForm(paramName string, explode bool, objType reflect.Type, objValue
 			formValues.Add(paramName, strings.Join(items, delimiter))
 		}
 	case reflect.Slice, reflect.Array:
-		values := parseDelimitedArray(explode, objValue, delimiter)
-		for _, v := range values {
-			formValues.Add(paramName, v)
+		if objValue.Len() == 0 {
+			if _, ok := allowEmptyValue[paramName]; ok {
+				formValues.Add(paramName, "")
+			}
+		} else {
+			values := parseDelimitedArray(explode, objValue, delimiter)
+			for _, v := range values {
+				formValues.Add(paramName, v)
+			}
 		}
 	default:
-		formValues.Add(paramName, valToString(objValue.Interface()))
+		// For string types, use the value directly without conversion
+		if objType.Kind() == reflect.String {
+			stringValue := objValue.String()
+			formValues.Add(paramName, stringValue)
+		} else {
+			stringValue := valToString(objValue.Interface())
+			if stringValue == "" {
+				if _, ok := allowEmptyValue[paramName]; ok {
+					formValues.Add(paramName, "")
+				}
+			} else if stringValue != "" {
+				formValues.Add(paramName, stringValue)
+			}
+		}
 	}
 
 	return formValues

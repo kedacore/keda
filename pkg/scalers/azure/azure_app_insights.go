@@ -2,16 +2,18 @@ package azure
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
 
 const (
@@ -59,19 +61,6 @@ func toISO8601(time string) (string, error) {
 	return fmt.Sprintf("PT%02dH%02dM", hours, minutes), nil
 }
 
-func getAuthConfig(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity) auth.AuthorizerConfig {
-	switch podIdentity.Provider {
-	case "", kedav1alpha1.PodIdentityProviderNone:
-		config := auth.NewClientCredentialsConfig(info.ClientID, info.ClientPassword, info.TenantID)
-		config.Resource = info.AppInsightsResourceURL
-		config.AADEndpoint = info.ActiveDirectoryEndpoint
-		return config
-	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		return NewAzureADWorkloadIdentityConfig(ctx, podIdentity.GetIdentityID(), podIdentity.GetIdentityTenantID(), podIdentity.GetIdentityAuthorityHost(), info.AppInsightsResourceURL)
-	}
-	return nil
-}
-
 func extractAppInsightValue(info AppInsightsInfo, metric ApplicationInsightsMetric) (float64, error) {
 	if _, ok := metric.Value[info.MetricID]; !ok {
 		return -1, fmt.Errorf("metric named %s not found in app insights response", info.MetricID)
@@ -110,41 +99,56 @@ func queryParamsForAppInsightsRequest(info AppInsightsInfo) (map[string]interfac
 }
 
 // GetAzureAppInsightsMetricValue returns the value of an Azure App Insights metric, rounded to the nearest int
-func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, podIdentity kedav1alpha1.AuthPodIdentity, ignoreNullValues bool) (float64, error) {
-	config := getAuthConfig(ctx, info, podIdentity)
-	authorizer, err := config.Authorizer()
-	if err != nil {
-		return -1, err
-	}
-
+func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, ignoreNullValues bool,
+	httpClient *http.Client, creds azcore.TokenCredential) (float64, error) {
 	queryParams, err := queryParamsForAppInsightsRequest(info)
 	if err != nil {
 		return -1, err
 	}
 
-	req, err := autorest.Prepare(&http.Request{},
-		autorest.WithBaseURL(info.AppInsightsResourceURL),
-		autorest.WithPath("v1/apps"),
-		autorest.WithPath(info.ApplicationInsightsID),
-		autorest.WithPath("metrics"),
-		autorest.WithPath(info.MetricID),
-		autorest.WithQueryParameters(queryParams),
-		authorizer.WithAuthorization())
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/v1/apps/%s/metrics/%s", info.AppInsightsResourceURL,
+		info.ApplicationInsightsID, info.MetricID), nil)
 	if err != nil {
 		return -1, err
 	}
 
-	resp, err := autorest.Send(req,
-		autorest.DoErrorUnlessStatusCode(http.StatusOK),
-		autorest.DoCloseIfError())
+	bearerToken, err := creds.GetToken(ctx, policy.TokenRequestOptions{Scopes: []string{getScopedResource(info.AppInsightsResourceURL)}})
+	if err != nil {
+		return -1, err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", bearerToken.Token))
+
+	parameters := mapToValues(queryParams)
+	v := req.URL.Query()
+	for key, value := range parameters {
+		for i := range value {
+			d, err := url.QueryUnescape(value[i])
+			if err != nil {
+				return -1, err
+			}
+			value[i] = d
+		}
+		v[key] = value
+	}
+	req.URL.RawQuery = v.Encode()
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return -1, fmt.Errorf("app insights request failed with status code %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return -1, err
 	}
 
 	metric := &ApplicationInsightsMetric{}
-	err = autorest.Respond(resp,
-		autorest.ByUnmarshallingJSON(metric),
-		autorest.ByClosing())
+	err = json.Unmarshal(body, metric)
 	if err != nil {
 		return -1, err
 	}
@@ -154,4 +158,34 @@ func GetAzureAppInsightsMetricValue(ctx context.Context, info AppInsightsInfo, p
 		return 0.0, nil
 	}
 	return val, err
+}
+
+// mapToValues method converts map[string]interface{} to url.Values.
+func mapToValues(m map[string]interface{}) url.Values {
+	v := url.Values{}
+	for key, value := range m {
+		x := reflect.ValueOf(value)
+		if x.Kind() == reflect.Array || x.Kind() == reflect.Slice {
+			for i := 0; i < x.Len(); i++ {
+				v.Add(key, ensureValueString(x.Index(i)))
+			}
+		} else {
+			v.Add(key, ensureValueString(value))
+		}
+	}
+	return v
+}
+
+func ensureValueString(value interface{}) string {
+	if value == nil {
+		return ""
+	}
+	switch v := value.(type) {
+	case string:
+		return v
+	case []byte:
+		return string(v)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }

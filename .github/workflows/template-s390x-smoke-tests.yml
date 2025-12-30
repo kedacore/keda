@@ -8,10 +8,15 @@ jobs:
     name: Validate k8s
     runs-on: s390x
     steps:
-      - name: Setup Go
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+      - name: Check out code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          go-version: "1.25"
+          fetch-depth: 1
+
+      - name: Setup Go
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        with:
+          go-version-file: 'go.mod'
 
       - name: Install prerequisites
         run: |
@@ -19,11 +24,6 @@ jobs:
           apt install curl make ca-certificates gcc libc-dev wget -y
         env:
           DEBIAN_FRONTEND: noninteractive
-
-      - name: Check out code
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
-        with:
-          fetch-depth: 1
 
       - name: Install Kubernetes
         run: |
@@ -42,7 +42,7 @@ jobs:
         run: make smoke-test
 
       - name: Upload test logs
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: ${{ always() }}
         with:
           name: smoke-test-logs ${{ inputs.runs-on }}-${{ inputs.kubernetesVersion }}

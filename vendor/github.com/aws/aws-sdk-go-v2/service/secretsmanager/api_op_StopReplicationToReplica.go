@@ -43,7 +43,8 @@ func (c *Client) StopReplicationToReplica(ctx context.Context, params *StopRepli
 
 type StopReplicationToReplicaInput struct {
 
-	// The ARN of the primary secret.
+	// The name of the secret or the replica ARN. The replica ARN is the same as the
+	// original primary secret ARN expect the Region is changed to the replica Region.
 	//
 	// This member is required.
 	SecretId *string
@@ -157,40 +158,7 @@ func (c *Client) addOperationStopReplicationToReplicaMiddlewares(stack *middlewa
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -40,7 +40,7 @@ func newNexusTaskPoller(
 			stopC:                   params.WorkerStopChannel,
 			workerBuildID:           params.getBuildID(),
 			useBuildIDVersioning:    params.UseBuildIDForVersioning,
-			workerDeploymentVersion: params.WorkerDeploymentVersion,
+			workerDeploymentVersion: params.DeploymentOptions.Version,
 			capabilities:            params.capabilities,
 		},
 		taskHandler:     taskHandler,
