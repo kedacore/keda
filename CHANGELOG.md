@@ -78,6 +78,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Correct error message when awsSecretAccessKey is missing in credential-based authentication ([#7265](https://github.com/kedacore/keda/pull/7265))
 - **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
 - **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
+- **Gerneral**: Add cooldownOnlyAfterHpaMinReplica bool to control cooldown behavior ([#7204](https://github.com/kedacore/keda/issues/7204))
 
 ### Fixes
 
