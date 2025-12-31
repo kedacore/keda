@@ -154,7 +154,7 @@ func TestScaleToMinReplicasWhenNotActiveAndCooldownOnlyAfterHpaMinReplicaIsEnabl
 	client.EXPECT().Status().Return(statusWriter).Times(2)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, &ScaleExecutorOptions{})
+	scaleExecutor.RequestScale(context.Background(), &scaledObject, false, false, &ScaleExecutorOptions{})
 
 	assert.Equal(t, minReplicas, scale.Spec.Replicas)
 	condition := scaledObject.Status.Conditions.GetActiveCondition()
@@ -220,7 +220,7 @@ func TestNoScaleToMinReplicasWhenCooldownOnlyAfterHpaMinReplicaIsEnabledAndWithi
 	client.EXPECT().Status().Return(statusWriter).Times(2)
 	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 
-	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, &ScaleExecutorOptions{})
+	scaleExecutor.RequestScale(context.Background(), &scaledObject, false, false, &ScaleExecutorOptions{})
 
 	assert.Equal(t, numberOfReplicas, scale.Spec.Replicas)
 	condition := scaledObject.Status.Conditions.GetActiveCondition()
