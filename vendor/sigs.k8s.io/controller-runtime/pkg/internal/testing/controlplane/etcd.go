@@ -159,6 +159,10 @@ func (e *Etcd) setProcessState() error {
 // Stop stops this process gracefully, waits for its termination, and cleans up
 // the DataDir if necessary.
 func (e *Etcd) Stop() error {
+	if e.processState == nil {
+		return nil
+	}
+
 	if e.processState.DirNeedsCleaning {
 		e.DataDir = "" // reset the directory if it was randomly allocated, so that we can safely restart
 	}
