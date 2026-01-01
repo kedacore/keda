@@ -698,8 +698,8 @@ github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f h1:y5//uYreIhSUg3J
 github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f/go.mod h1:ZdcZmHo+o7JKHSa8/e818NopupXU1YMK5fe1lsApnBw=
 github.com/neelance/astrewrite v0.0.0-20160511093645-99348263ae86/go.mod h1:kHJEU3ofeGjhHklVoIGuVj85JJwZ6kWPaJwCIxgnFmo=
 github.com/neelance/sourcemap v0.0.0-20200213170602-2833bce08e4c/go.mod h1:Qr6/a/Q4r9LP1IltGz7tA7iOK1WonHEYhu1HRBA7ZiM=
-github.com/newrelic/newrelic-client-go/v2 v2.74.2 h1:5XGck+tgn6A8/p9BTuI8IDRbUNxCzz3dJCRzTHrTU4s=
-github.com/newrelic/newrelic-client-go/v2 v2.74.2/go.mod h1:P6rXSHPtayzr50+UEYvvjzYPiADv7w2SqeyKz0z5HkU=
+github.com/newrelic/newrelic-client-go/v2 v2.75.1 h1:ebmXwQwLtrTaYe4SXkoYsu8FbjGykS3F7SIRhuG4tjY=
+github.com/newrelic/newrelic-client-go/v2 v2.75.1/go.mod h1:P6rXSHPtayzr50+UEYvvjzYPiADv7w2SqeyKz0z5HkU=
 github.com/nexus-rpc/sdk-go v0.5.1 h1:UFYYfoHlQc+Pn9gQpmn9QE7xluewAn2AO1OSkAh7YFU=
 github.com/nexus-rpc/sdk-go v0.5.1/go.mod h1:FHdPfVQwRuJFZFTF0Y2GOAxCrbIBNrcPna9slkGKPYk=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
