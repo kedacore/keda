@@ -363,6 +363,12 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 	return result, podIdentity, err
 }
 
+// GetTriggerAuthSpec fetches TriggerAuthentication or ClusterTriggerAuthentication spec.
+// This is exported so it can be used to check if PodSpec is needed before resolution.
+func GetTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.AuthenticationRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, string, error) {
+	return getTriggerAuthSpec(ctx, client, triggerAuthRef, namespace)
+}
+
 func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.AuthenticationRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, string, error) {
 	switch triggerAuthRef.Kind {
 	case "", "TriggerAuthentication":
