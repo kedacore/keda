@@ -218,7 +218,7 @@ jobs:
           gh pr checkout ${{ needs.triage.outputs.pr_num }}
           git checkout ${{ needs.triage.outputs.commit_sha }}
 
-      - uses: oNaiPs/secrets-to-env-action@ec46a22bfc9b37e014b627b3208b07eb8909ea0f # v1.5
+      - uses: oNaiPs/secrets-to-env-action@be0f849b5f57bce2c73624f006578c3b16e98e0c # v1.7
         with:
           secrets: ${{ toJSON(secrets) }}
 
