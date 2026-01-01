@@ -131,21 +131,21 @@ require (
 	google.golang.org/protobuf v1.36.10
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/gotestsum v1.13.0
-	k8s.io/api v0.33.5
-	k8s.io/apimachinery v0.33.5
-	k8s.io/apiserver v0.33.5
-	k8s.io/client-go v0.33.5
+	k8s.io/api v0.34.2
+	k8s.io/apimachinery v0.34.2
+	k8s.io/apiserver v0.34.2
+	k8s.io/client-go v0.34.2
 	k8s.io/code-generator v0.33.5
-	k8s.io/component-base v0.33.5
+	k8s.io/component-base v0.34.2
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/kube-openapi v0.0.0-20250627150254-e9823e99808e
-	k8s.io/metrics v0.33.1
-	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
+	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912
+	k8s.io/metrics v0.34.2
+	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
 	knative.dev/pkg v0.0.0-20250326102644-9f3e60a9244c
 	sigs.k8s.io/controller-runtime v0.21.0
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20240804232438-89b5deec030c
 	sigs.k8s.io/controller-tools v0.16.5
-	sigs.k8s.io/custom-metrics-apiserver v1.33.0
+	sigs.k8s.io/custom-metrics-apiserver v1.34.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.8.0
 )
 
@@ -201,7 +201,7 @@ require (
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
-	github.com/emicklei/go-restful/v3 v3.12.2 // indirect
+	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.35.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
@@ -226,7 +226,7 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
-	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
@@ -369,7 +369,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/apiextensions-apiserver v0.34.2 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250604051438-85fd79dbfd9f // indirect
-	k8s.io/kms v0.33.5 // indirect
+	k8s.io/kms v0.34.2 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.31.2 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
 	sigs.k8s.io/kustomize/api v0.21.0 // indirect
