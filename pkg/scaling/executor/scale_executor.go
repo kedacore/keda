@@ -40,7 +40,7 @@ const (
 
 // ScaleExecutor contains methods RequestJobScale and RequestScale
 type ScaleExecutor interface {
-	RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, isError bool, scaleTo int64, maxScale int64)
+	RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive bool, isError bool, scaleTo int64, maxScale int64, options *ScaleExecutorOptions)
 	RequestScale(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject, isActive bool, isError bool, options *ScaleExecutorOptions)
 }
 
@@ -119,9 +119,52 @@ func (e *scaleExecutor) setReadyCondition(ctx context.Context, logger logr.Logge
 	return e.setCondition(ctx, logger, object, status, reason, message, active)
 }
 
-func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string) error {
-	active := func(conditions kedav1alpha1.Conditions, status metav1.ConditionStatus, reason string, message string) {
-		conditions.SetActiveCondition(status, reason, message)
+func (e *scaleExecutor) setActiveCondition(ctx context.Context, logger logr.Logger, object interface{}, status metav1.ConditionStatus, reason string, message string, activeTriggers []string) error {
+	now := metav1.Now()
+
+	transform := func(runtimeObj runtimeclient.Object, _ interface{}) error {
+		var triggersActivity *map[string]kedav1alpha1.TriggerActivityStatus
+		var allTriggerNames []string
+
+		switch obj := runtimeObj.(type) {
+		case *kedav1alpha1.ScaledObject:
+			obj.Status.Conditions.SetActiveCondition(status, reason, message)
+			triggersActivity = &obj.Status.TriggersActivity
+			allTriggerNames = obj.Status.ExternalMetricNames
+
+		case *kedav1alpha1.ScaledJob:
+			obj.Status.Conditions.SetActiveCondition(status, reason, message)
+			triggersActivity = &obj.Status.TriggersActivity
+			allTriggerNames = obj.Status.ExternalMetricNames
+
+		default:
+			return fmt.Errorf("unsupported object type for setActiveCondition")
+		}
+
+		if *triggersActivity == nil {
+			*triggersActivity = make(map[string]kedav1alpha1.TriggerActivityStatus)
+		}
+
+		// Create set of active triggers for quick lookup
+		activeSet := make(map[string]bool)
+		for _, trigger := range activeTriggers {
+			activeSet[trigger] = true
+		}
+
+		// Update activity status for all triggers
+		for _, trigger := range allTriggerNames {
+			triggerStatus := (*triggersActivity)[trigger]
+			if activeSet[trigger] {
+				triggerStatus.IsActive = true
+				triggerStatus.LastActiveTime = &now
+			} else {
+				triggerStatus.IsActive = false
+			}
+			(*triggersActivity)[trigger] = triggerStatus
+		}
+
+		return nil
 	}
-	return e.setCondition(ctx, logger, object, status, reason, message, active)
+
+	return kedastatus.TransformObject(ctx, e.client, logger, object, nil, transform)
 }

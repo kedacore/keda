@@ -87,6 +87,10 @@ type ScaledJobStatus struct {
 	TriggersTypes *string `json:"triggersTypes,omitempty"`
 	// +optional
 	AuthenticationsTypes *string `json:"authenticationsTypes,omitempty"`
+	// +optional
+	ExternalMetricNames []string `json:"externalMetricNames,omitempty"`
+	// +optional
+	TriggersActivity map[string]TriggerActivityStatus `json:"triggersActivity,omitempty"`
 }
 
 // ScaledJobList contains a list of ScaledJob

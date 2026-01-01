@@ -39,8 +39,13 @@ const (
 	defaultFailedJobsHistoryLimit     = int32(100)
 )
 
-func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive, isError bool, scaleTo int64, maxScale int64) {
+func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive, isError bool, scaleTo int64, maxScale int64, options *ScaleExecutorOptions) {
 	logger := e.logger.WithValues("scaledJob.Name", scaledJob.Name, "scaledJob.Namespace", scaledJob.Namespace)
+
+	var activeTriggers []string
+	if options != nil {
+		activeTriggers = options.ActiveTriggers
+	}
 
 	runningJobCount := e.getRunningJobCount(ctx, scaledJob)
 	pendingJobCount := e.getPendingJobCount(ctx, scaledJob)
@@ -103,12 +108,12 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	condition := scaledJob.Status.Conditions.GetActiveCondition()
 	if condition.IsUnknown() || condition.IsTrue() != isActive {
 		if isActive {
-			if err := e.setActiveCondition(ctx, logger, scaledJob, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active"); err != nil {
+			if err := e.setActiveCondition(ctx, logger, scaledJob, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active", activeTriggers); err != nil {
 				logger.Error(err, "Error setting active condition when triggers are active")
 				return
 			}
 		} else {
-			if err := e.setActiveCondition(ctx, logger, scaledJob, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
+			if err := e.setActiveCondition(ctx, logger, scaledJob, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active", activeTriggers); err != nil {
 				logger.Error(err, "Error setting active condition when triggers are not active")
 				return
 			}

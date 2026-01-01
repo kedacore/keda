@@ -648,7 +648,7 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	assert.Equal(t, []string{"*mock_scalers.MockScaler"}, activeTriggers)
 }
 
-func TestIsScaledJobActive(t *testing.T) {
+func TestGetScaledJobState(t *testing.T) {
 	metricName := "s0-queueLength"
 	ctrl := gomock.NewController(t)
 	recorder := record.NewFakeRecorder(1)
@@ -680,7 +680,7 @@ func TestIsScaledJobActive(t *testing.T) {
 		subsLock:                 &sync.RWMutex{},
 	}
 	// nosemgrep: context-todo
-	isActive, isError, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
+	isActive, isError, queueLength, maxValue, _ := sh.getScaledJobState(context.TODO(), scaledJobSingle)
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, false, isError)
 	assert.Equal(t, int64(20), queueLength)
@@ -741,7 +741,7 @@ func TestIsScaledJobActive(t *testing.T) {
 		}
 		fmt.Printf("index: %d", index)
 		// nosemgrep: context-todo
-		isActive, isError, queueLength, maxValue = sh.isScaledJobActive(context.TODO(), scaledJob)
+		isActive, isError, queueLength, maxValue, _ := sh.getScaledJobState(context.TODO(), scaledJob)
 		//	assert.Equal(t, 5, index)
 		assert.Equal(t, scalerTestData.ResultIsActive, isActive)
 		assert.Equal(t, scalerTestData.ResultIsError, isError)
@@ -751,7 +751,7 @@ func TestIsScaledJobActive(t *testing.T) {
 	}
 }
 
-func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T) {
+func TestGetScaledJobStateIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T) {
 	metricName := "s0-queueLength"
 	ctrl := gomock.NewController(t)
 	recorder := record.NewFakeRecorder(1)
@@ -786,7 +786,7 @@ func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T
 	}
 
 	// nosemgrep: context-todo
-	isActive, isError, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
+	isActive, isError, queueLength, maxValue, _ := sh.getScaledJobState(context.TODO(), scaledJobSingle)
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, false, isError)
 	assert.Equal(t, int64(0), queueLength)

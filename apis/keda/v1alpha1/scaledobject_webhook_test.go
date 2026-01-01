@@ -1405,8 +1405,8 @@ func createScaledObjectSTZ(name string, namespace string, targetName string, min
 			ScaleTargetRef: &ScaleTarget{
 				Name: targetName,
 			},
-			MinReplicaCount: ptr.To[int32](minReplicas),
-			MaxReplicaCount: ptr.To[int32](maxReplicas),
+			MinReplicaCount: ptr.To(minReplicas),
+			MaxReplicaCount: ptr.To(maxReplicas),
 			CooldownPeriod:  ptr.To[int32](1),
 			Triggers:        triggers,
 		},
