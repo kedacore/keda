@@ -124,6 +124,55 @@ const getAccountsQuery = `query(
 	totalCount
 } } }`
 
+func (a *Customeradministration) GetAccountsMinimized(
+	cursor string,
+	filter OrganizationAccountFilterInput,
+	sort []OrganizationAccountSortInput,
+) (*OrganizationAccountCollection, error) {
+	return a.GetAccountsWithContext(context.Background(),
+		cursor,
+		filter,
+		sort,
+	)
+}
+
+// accounts
+func (a *Customeradministration) GetAccountsWithContextMinimized(
+	ctx context.Context,
+	cursor string,
+	filter OrganizationAccountFilterInput,
+	sort []OrganizationAccountSortInput,
+) (*OrganizationAccountCollection, error) {
+
+	resp := accountsResponse{}
+	vars := map[string]interface{}{
+		"cursor": cursor,
+		"filter": filter,
+		"sort":   sort,
+	}
+
+	if err := a.client.NerdGraphQueryWithContext(ctx, getAccountsQueryMinimized, vars, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp.CustomerAdministration.Accounts, nil
+}
+
+const getAccountsQueryMinimized = `query(
+	$filter: OrganizationAccountFilterInput!,
+	$sort: [OrganizationAccountSortInput!],
+) { customerAdministration { accounts(
+	filter: $filter,
+	sort: $sort,
+) {
+	items {
+		id
+		name
+		regionCode
+		status
+	}
+} } }`
+
 // Authentication domains
 func (a *Customeradministration) GetAuthenticationDomains(
 	cursor string,
