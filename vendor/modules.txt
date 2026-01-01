@@ -1286,7 +1286,7 @@ github.com/oapi-codegen/runtime/types
 # github.com/olekukonko/tablewriter v0.0.5
 ## explicit; go 1.12
 github.com/olekukonko/tablewriter
-# github.com/onsi/ginkgo/v2 v2.27.2
+# github.com/onsi/ginkgo/v2 v2.27.3
 ## explicit; go 1.23.0
 github.com/onsi/ginkgo/v2
 github.com/onsi/ginkgo/v2/config
