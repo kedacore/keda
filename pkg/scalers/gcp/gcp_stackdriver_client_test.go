@@ -5,6 +5,7 @@ import (
 
 	monitoringpb "cloud.google.com/go/monitoring/apiv3/v2/monitoringpb"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/genproto/googleapis/api/distribution"
 )
 
 func TestNewPubSubAggregator(t *testing.T) {
@@ -197,6 +198,116 @@ func TestGetActualProjectID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			pid := getActualProjectID(tc.client, tc.projectID)
 			assert.Equal(t, pid, tc.expected)
+		})
+	}
+}
+
+func TestExtractValueFromPoint(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		point    *monitoringpb.Point
+		expected float64
+		isError  bool
+	}{
+		{
+			name: "double value",
+			point: &monitoringpb.Point{
+				Value: &monitoringpb.TypedValue{
+					Value: &monitoringpb.TypedValue_DoubleValue{
+						DoubleValue: 42.5,
+					},
+				},
+			},
+			expected: 42.5,
+			isError:  false,
+		},
+		{
+			name: "int64 value",
+			point: &monitoringpb.Point{
+				Value: &monitoringpb.TypedValue{
+					Value: &monitoringpb.TypedValue_Int64Value{
+						Int64Value: 100,
+					},
+				},
+			},
+			expected: 100,
+			isError:  false,
+		},
+		{
+			name: "distribution value with count",
+			point: &monitoringpb.Point{
+				Value: &monitoringpb.TypedValue{
+					Value: &monitoringpb.TypedValue_DistributionValue{
+						DistributionValue: &distribution.Distribution{
+							Count: 25,
+							Mean:  10.5,
+						},
+					},
+				},
+			},
+			expected: 25,
+			isError:  false,
+		},
+		{
+			name: "distribution value with zero count",
+			point: &monitoringpb.Point{
+				Value: &monitoringpb.TypedValue{
+					Value: &monitoringpb.TypedValue_DistributionValue{
+						DistributionValue: &distribution.Distribution{
+							Count: 0,
+							Mean:  0,
+						},
+					},
+				},
+			},
+			expected: 0,
+			isError:  false,
+		},
+		{
+			name: "bool value true",
+			point: &monitoringpb.Point{
+				Value: &monitoringpb.TypedValue{
+					Value: &monitoringpb.TypedValue_BoolValue{
+						BoolValue: true,
+					},
+				},
+			},
+			expected: 1,
+			isError:  false,
+		},
+		{
+			name: "bool value false",
+			point: &monitoringpb.Point{
+				Value: &monitoringpb.TypedValue{
+					Value: &monitoringpb.TypedValue_BoolValue{
+						BoolValue: false,
+					},
+				},
+			},
+			expected: 0,
+			isError:  false,
+		},
+		{
+			name: "string value (unsupported)",
+			point: &monitoringpb.Point{
+				Value: &monitoringpb.TypedValue{
+					Value: &monitoringpb.TypedValue_StringValue{
+						StringValue: "test",
+					},
+				},
+			},
+			expected: -1,
+			isError:  true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			value, err := extractValueFromPoint(tc.point)
+			if tc.isError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expected, value)
+			}
 		})
 	}
 }

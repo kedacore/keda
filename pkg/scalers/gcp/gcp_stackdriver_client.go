@@ -379,11 +379,25 @@ func (s *StackDriverClient) Close() error {
 // extractValueFromPoint attempts to extract a float64 by asserting the point's value type
 func extractValueFromPoint(point *monitoringpb.Point) (float64, error) {
 	typedValue := point.GetValue()
-	switch typedValue.Value.(type) {
+	switch v := typedValue.Value.(type) {
 	case *monitoringpb.TypedValue_DoubleValue:
 		return typedValue.GetDoubleValue(), nil
 	case *monitoringpb.TypedValue_Int64Value:
 		return float64(typedValue.GetInt64Value()), nil
+	case *monitoringpb.TypedValue_DistributionValue:
+		// For distribution metrics, return the count of values
+		// This is useful for metrics like message counts where the underlying
+		// metric is a distribution (e.g., message sizes) but we want the count
+		dist := v.DistributionValue
+		if dist != nil {
+			return float64(dist.GetCount()), nil
+		}
+		return 0, nil
+	case *monitoringpb.TypedValue_BoolValue:
+		if typedValue.GetBoolValue() {
+			return 1, nil
+		}
+		return 0, nil
 	}
 	return -1, fmt.Errorf("could not extract value from metric of type %T", typedValue)
 }
