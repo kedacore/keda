@@ -431,14 +431,34 @@ func TestDatadogGetQueryResultHandles422NoData(t *testing.T) {
 		},
 		{
 			name:        "no data with filler",
-			body:        `{"errors":["No data points found for query"]}`,
+			body:        `{"errors":["No datapoints found for query"]}`,
 			useFiller:   true,
 			fillValue:   1.5,
 			expectValue: 1.5,
 		},
 		{
+			name:        "no data from errors string",
+			body:        `{"errors":"No data points found within the given time window"}`,
+			expectValue: 0,
+		},
+		{
+			name:        "no data from error field",
+			body:        `{"error":"No data points found for query"}`,
+			expectValue: 0,
+		},
+		{
 			name:      "unprocessable error remains fatal",
 			body:      `{"errors":["Invalid query"]}`,
+			expectErr: true,
+		},
+		{
+			name:      "mixed errors remain fatal",
+			body:      `{"errors":["No data points found within the given time window","Invalid query"]}`,
+			expectErr: true,
+		},
+		{
+			name:      "invalid json remains fatal",
+			body:      `no data points found within the given time window`,
 			expectErr: true,
 		},
 	}
