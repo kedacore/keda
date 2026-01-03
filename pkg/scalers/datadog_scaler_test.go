@@ -3,10 +3,13 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
 
+	datadog "github.com/DataDog/datadog-api-client-go/api/v1/datadog"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 
@@ -401,6 +404,87 @@ func TestDatadogMetadataValidateUseFiller(t *testing.T) {
 					t.Errorf("FillValue = %v, want nil (metricUnavailableValue = %q)",
 						*meta.FillValue, tc.metricUnavailableValue)
 				}
+			}
+		})
+	}
+}
+
+func TestDatadogGetQueryResultHandles422NoData(t *testing.T) {
+	testCases := []struct {
+		name         string
+		body         string
+		useFiller    bool
+		fillValue    float64
+		expectValue  float64
+		expectErr    bool
+	}{
+		{
+			name:        "no data without filler",
+			body:        `{"errors":["No data points found within the given time window"]}`,
+			expectValue: 0,
+		},
+		{
+			name:        "no data with filler",
+			body:        `{"errors":["No data points found for query"]}`,
+			useFiller:   true,
+			fillValue:   1.5,
+			expectValue: 1.5,
+		},
+		{
+			name:      "unprocessable error remains fatal",
+			body:      `{"errors":["Invalid query"]}`,
+			expectErr: true,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/api/v1/query" {
+					http.NotFound(w, r)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				_, _ = w.Write([]byte(testCase.body))
+			}))
+			t.Cleanup(server.Close)
+
+			configuration := datadog.NewConfiguration()
+			configuration.Servers = datadog.ServerConfigurations{{URL: server.URL}}
+			configuration.HTTPClient = server.Client()
+			apiClient := datadog.NewAPIClient(configuration)
+
+			meta := &datadogMetadata{
+				APIKey:      "apiKey",
+				AppKey:      "appKey",
+				DatadogSite: "datadoghq.com",
+				Query:       "avg:system.cpu.user{*}",
+				Age:         90,
+			}
+			if testCase.useFiller {
+				meta.UseFiller = true
+				meta.FillValue = &testCase.fillValue
+			}
+
+			scaler := &datadogScaler{
+				metadata:  meta,
+				apiClient: apiClient,
+				logger:    logr.Discard(),
+			}
+
+			value, err := scaler.getQueryResult(context.Background())
+			if testCase.expectErr {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if value != testCase.expectValue {
+				t.Fatalf("expected %v, got %v", testCase.expectValue, value)
 			}
 		})
 	}

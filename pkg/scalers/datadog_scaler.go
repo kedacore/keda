@@ -81,6 +81,16 @@ const avgString = "average"
 
 var filter *regexp.Regexp
 
+var datadogNoDataErrorSubstrings = []string{
+	"no data",
+	"no data points",
+	"no datapoints",
+	"no points",
+	"no metrics",
+	"no series",
+	"no results",
+}
+
 func init() {
 	filter = regexp.MustCompile(`.*\{.*\}.*`)
 }
@@ -322,6 +332,16 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 			return -1, fmt.Errorf("your Datadog account reached the %s queries per %s seconds rate limit, next limit reset will happen in %s seconds", rateLimit, rateLimitPeriod, rateLimitReset)
 		}
 
+		if r.StatusCode == http.StatusUnprocessableEntity {
+			if message, ok := datadogNoDataMessage(err); ok {
+				s.logger.V(1).Info("Datadog query returned no data for the time window", "message", message)
+				if s.metadata.UseFiller {
+					return *s.metadata.FillValue, nil
+				}
+				return 0, nil
+			}
+		}
+
 		if r.StatusCode != 200 {
 			if err != nil {
 				return -1, fmt.Errorf("error when retrieving Datadog metrics: %w", err)
@@ -405,6 +425,61 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		// Aggregate Results - default Max value:
 		return slices.Max(results), nil
 	}
+}
+
+// Datadog can return 422 responses for empty time windows; treat matched messages as no data.
+func datadogNoDataMessage(err error) (string, bool) {
+	if err == nil {
+		return "", false
+	}
+
+	var apiErr datadog.GenericOpenAPIError
+	if !errors.As(err, &apiErr) {
+		return "", false
+	}
+
+	body := apiErr.Body()
+	if len(body) == 0 {
+		return "", false
+	}
+
+	messages := datadogErrorMessagesFromBody(body)
+	for _, message := range messages {
+		lower := strings.ToLower(message)
+		for _, fragment := range datadogNoDataErrorSubstrings {
+			if strings.Contains(lower, fragment) {
+				return message, true
+			}
+		}
+	}
+
+	return "", false
+}
+
+func datadogErrorMessagesFromBody(body []byte) []string {
+	messages := make([]string, 0, 2)
+	if body == nil {
+		return messages
+	}
+
+	errorsValue := gjson.GetBytes(body, "errors")
+	if errorsValue.Type == gjson.String {
+		messages = append(messages, errorsValue.String())
+	}
+	for _, entry := range errorsValue.Array() {
+		if entry.Type == gjson.String {
+			messages = append(messages, entry.String())
+		}
+	}
+
+	if message := gjson.GetBytes(body, "error"); message.Type == gjson.String {
+		messages = append(messages, message.String())
+	}
+	if message := gjson.GetBytes(body, "message"); message.Type == gjson.String {
+		messages = append(messages, message.String())
+	}
+
+	return messages
 }
 
 func (s *datadogScaler) getDatadogMetricValue(req *http.Request) (float64, error) {
