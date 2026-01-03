@@ -3,8 +3,8 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
-	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
@@ -15,6 +15,12 @@ import (
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 type datadogQueries struct {
 	input   string
@@ -411,12 +417,12 @@ func TestDatadogMetadataValidateUseFiller(t *testing.T) {
 
 func TestDatadogGetQueryResultHandles422NoData(t *testing.T) {
 	testCases := []struct {
-		name         string
-		body         string
-		useFiller    bool
-		fillValue    float64
-		expectValue  float64
-		expectErr    bool
+		name        string
+		body        string
+		useFiller   bool
+		fillValue   float64
+		expectValue float64
+		expectErr   bool
 	}{
 		{
 			name:        "no data without filler",
@@ -439,20 +445,22 @@ func TestDatadogGetQueryResultHandles422NoData(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/api/v1/query" {
-					http.NotFound(w, r)
-					return
+			transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				if req.URL.Path != "/api/v1/query" {
+					return nil, fmt.Errorf("unexpected path %s", req.URL.Path)
 				}
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusUnprocessableEntity)
-				_, _ = w.Write([]byte(testCase.body))
-			}))
-			t.Cleanup(server.Close)
+				return &http.Response{
+					StatusCode: http.StatusUnprocessableEntity,
+					Status:     fmt.Sprintf("%d %s", http.StatusUnprocessableEntity, http.StatusText(http.StatusUnprocessableEntity)),
+					Header:     http.Header{"Content-Type": []string{"application/json"}},
+					Body:       io.NopCloser(strings.NewReader(testCase.body)),
+					Request:    req,
+				}, nil
+			})
 
 			configuration := datadog.NewConfiguration()
-			configuration.Servers = datadog.ServerConfigurations{{URL: server.URL}}
-			configuration.HTTPClient = server.Client()
+			configuration.Servers = datadog.ServerConfigurations{{URL: "https://example.com"}}
+			configuration.HTTPClient = &http.Client{Transport: transport}
 			apiClient := datadog.NewAPIClient(configuration)
 
 			meta := &datadogMetadata{
