@@ -3,15 +3,24 @@ package scalers
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"slices"
 	"strings"
 	"testing"
 
+	datadog "github.com/DataDog/datadog-api-client-go/api/v1/datadog"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 type datadogQueries struct {
 	input   string
@@ -401,6 +410,89 @@ func TestDatadogMetadataValidateUseFiller(t *testing.T) {
 					t.Errorf("FillValue = %v, want nil (metricUnavailableValue = %q)",
 						*meta.FillValue, tc.metricUnavailableValue)
 				}
+			}
+		})
+	}
+}
+
+func TestDatadogGetQueryResultHandles422NoData(t *testing.T) {
+	testCases := []struct {
+		name        string
+		body        string
+		useFiller   bool
+		fillValue   float64
+		expectValue float64
+		expectErr   bool
+	}{
+		{
+			name:        "no data without filler",
+			body:        `{"errors":["No data points found within the given time window"]}`,
+			expectValue: 0,
+		},
+		{
+			name:        "no data with filler",
+			body:        `{"errors":["No data points found for query"]}`,
+			useFiller:   true,
+			fillValue:   1.5,
+			expectValue: 1.5,
+		},
+		{
+			name:      "unprocessable error remains fatal",
+			body:      `{"errors":["Invalid query"]}`,
+			expectErr: true,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				if req.URL.Path != "/api/v1/query" {
+					return nil, fmt.Errorf("unexpected path %s", req.URL.Path)
+				}
+				return &http.Response{
+					StatusCode: http.StatusUnprocessableEntity,
+					Status:     fmt.Sprintf("%d %s", http.StatusUnprocessableEntity, http.StatusText(http.StatusUnprocessableEntity)),
+					Header:     http.Header{"Content-Type": []string{"application/json"}},
+					Body:       io.NopCloser(strings.NewReader(testCase.body)),
+					Request:    req,
+				}, nil
+			})
+
+			configuration := datadog.NewConfiguration()
+			configuration.Servers = datadog.ServerConfigurations{{URL: "https://example.com"}}
+			configuration.HTTPClient = &http.Client{Transport: transport}
+			apiClient := datadog.NewAPIClient(configuration)
+
+			meta := &datadogMetadata{
+				APIKey:      "apiKey",
+				AppKey:      "appKey",
+				DatadogSite: "datadoghq.com",
+				Query:       "avg:system.cpu.user{*}",
+				Age:         90,
+			}
+			if testCase.useFiller {
+				meta.UseFiller = true
+				meta.FillValue = &testCase.fillValue
+			}
+
+			scaler := &datadogScaler{
+				metadata:  meta,
+				apiClient: apiClient,
+				logger:    logr.Discard(),
+			}
+
+			value, err := scaler.getQueryResult(context.Background())
+			if testCase.expectErr {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if value != testCase.expectValue {
+				t.Fatalf("expected %v, got %v", testCase.expectValue, value)
 			}
 		})
 	}
