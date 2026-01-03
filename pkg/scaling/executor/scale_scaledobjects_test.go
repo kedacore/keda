@@ -20,6 +20,7 @@ import (
 	"context"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -90,6 +91,138 @@ func TestScaleToMinReplicasWhenNotActive(t *testing.T) {
 	scaleExecutor.RequestScale(context.TODO(), &scaledObject, false, false, &ScaleExecutorOptions{})
 
 	assert.Equal(t, minReplicas, scale.Spec.Replicas)
+	condition := scaledObject.Status.Conditions.GetActiveCondition()
+	assert.Equal(t, true, condition.IsFalse())
+}
+
+func TestScaleToMinReplicasWhenNotActiveAndCooldownOnlyAfterHpaMinReplicaIsEnabled(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+
+	minReplicas := int32(0)
+
+	scaledObject := v1alpha1.ScaledObject{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: v1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &v1alpha1.ScaleTarget{
+				Name: "name",
+			},
+			Advanced: &v1alpha1.AdvancedConfig{
+				CooldownOnlyAfterHpaMinReplica: true,
+			},
+			MinReplicaCount: &minReplicas,
+		},
+		Status: v1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+			LastActiveTime:         &v1.Time{Time: time.Now().Add(-10 * time.Minute)},
+			HpaMinReplicaSinceTime: &v1.Time{Time: time.Now().Add(-10 * time.Minute)},
+		},
+	}
+
+	scaledObject.Status.Conditions = *v1alpha1.GetInitializedConditions()
+
+	numberOfReplicas := int32(1)
+
+	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &numberOfReplicas,
+		},
+	})
+
+	scale := &autoscalingv1.Scale{
+		Spec: autoscalingv1.ScaleSpec{
+			Replicas: numberOfReplicas,
+		},
+	}
+
+	mockScaleClient.EXPECT().Scales(gomock.Any()).Return(mockScaleInterface).Times(2)
+	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
+	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any())
+
+	client.EXPECT().Status().Return(statusWriter).Times(2)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+
+	scaleExecutor.RequestScale(context.Background(), &scaledObject, false, false, &ScaleExecutorOptions{})
+
+	assert.Equal(t, minReplicas, scale.Spec.Replicas)
+	condition := scaledObject.Status.Conditions.GetActiveCondition()
+	assert.Equal(t, true, condition.IsFalse())
+}
+
+func TestNoScaleToMinReplicasWhenCooldownOnlyAfterHpaMinReplicaIsEnabledAndWithinCooldownPeriod(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mock_client.NewMockClient(ctrl)
+	recorder := record.NewFakeRecorder(1)
+	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
+	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	scaleExecutor := NewScaleExecutor(client, mockScaleClient, nil, recorder)
+
+	minReplicas := int32(0)
+
+	scaledObject := v1alpha1.ScaledObject{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: v1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &v1alpha1.ScaleTarget{
+				Name: "name",
+			},
+			Advanced: &v1alpha1.AdvancedConfig{
+				CooldownOnlyAfterHpaMinReplica: true,
+			},
+			MinReplicaCount: &minReplicas,
+		},
+		Status: v1alpha1.ScaledObjectStatus{
+			ScaleTargetGVKR: &v1alpha1.GroupVersionKindResource{
+				Group: "apps",
+				Kind:  "Deployment",
+			},
+			LastActiveTime:         &v1.Time{Time: time.Now().Add(-10 * time.Minute)},
+			HpaMinReplicaSinceTime: &v1.Time{Time: time.Now().Add(-1 * time.Minute)},
+		},
+	}
+
+	scaledObject.Status.Conditions = *v1alpha1.GetInitializedConditions()
+
+	numberOfReplicas := int32(1)
+
+	client.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &numberOfReplicas,
+		},
+	})
+
+	scale := &autoscalingv1.Scale{
+		Spec: autoscalingv1.ScaleSpec{
+			Replicas: numberOfReplicas,
+		},
+	}
+
+	mockScaleClient.EXPECT().Scales(gomock.Any()).Return(mockScaleInterface).Times(1)
+	mockScaleInterface.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scale, nil)
+	mockScaleInterface.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Eq(scale), gomock.Any()).Times(0)
+
+	client.EXPECT().Status().Return(statusWriter).Times(2)
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
+
+	scaleExecutor.RequestScale(context.Background(), &scaledObject, false, false, &ScaleExecutorOptions{})
+
+	assert.Equal(t, numberOfReplicas, scale.Spec.Replicas)
 	condition := scaledObject.Status.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsFalse())
 }

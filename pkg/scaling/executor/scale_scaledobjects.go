@@ -46,6 +46,29 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		logger.Error(err, "Error getting information on the current Scale")
 		return
 	}
+
+	// only manage HpaMinReplicaSinceTime field if the feature CooldownOnlyAfterHpaMinReplica is enabled
+	if scaledObject.Spec.Advanced != nil && scaledObject.Spec.Advanced.CooldownOnlyAfterHpaMinReplica {
+		hpaMinReplicas := scaledObject.GetHPAMinReplicas()
+		if currentReplicas <= *hpaMinReplicas && scaledObject.Status.HpaMinReplicaSinceTime == nil {
+			status := scaledObject.Status.DeepCopy()
+			status.HpaMinReplicaSinceTime = &metav1.Time{Time: time.Now()}
+			err = kedastatus.UpdateScaledObjectStatus(ctx, e.client, logger, scaledObject, status)
+			if err != nil {
+				logger.Error(err, "Error updating HPA min replica since time")
+				return
+			}
+		} else if currentReplicas > *hpaMinReplicas && scaledObject.Status.HpaMinReplicaSinceTime != nil {
+			status := scaledObject.Status.DeepCopy()
+			status.HpaMinReplicaSinceTime = nil
+			err = kedastatus.UpdateScaledObjectStatus(ctx, e.client, logger, scaledObject, status)
+			if err != nil {
+				logger.Error(err, "Error updating HPA min replica since time")
+				return
+			}
+		}
+	}
+
 	// if the ScaledObject's triggers aren't in the error state,
 	// but ScaledObject.Status.ReadyCondition is set not set to 'true' -> set it back to 'true'
 	readyCondition := scaledObject.Status.Conditions.GetReadyCondition()
@@ -243,10 +266,26 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 		scaledObject.CreationTimestamp = metav1.NewTime(time.Now())
 	}
 
+	if scale == nil {
+		var err error
+		scale, err = e.getScaleTargetScale(ctx, scaledObject)
+		if err != nil {
+			logger.Error(err, "Error in getting scale object")
+			return
+		}
+	}
+
+	cooldownOnlyAfterHpaMinReplica := false
+	if scaledObject.Spec.Advanced != nil {
+		cooldownOnlyAfterHpaMinReplica = scaledObject.Spec.Advanced.CooldownOnlyAfterHpaMinReplica
+	}
+
 	// LastActiveTime can be nil if the ScaleTarget was scaled outside of KEDA.
 	// In this case we will ignore the cooldown period and scale it down
-	if (scaledObject.Status.LastActiveTime == nil && scaledObject.CreationTimestamp.Add(initialCooldownPeriod).Before(time.Now())) || (scaledObject.Status.LastActiveTime != nil &&
-		scaledObject.Status.LastActiveTime.Add(cooldownPeriod).Before(time.Now())) {
+	if (scaledObject.Status.LastActiveTime == nil && scaledObject.CreationTimestamp.Add(initialCooldownPeriod).Before(time.Now())) ||
+		(!cooldownOnlyAfterHpaMinReplica && scaledObject.Status.LastActiveTime != nil && scaledObject.Status.LastActiveTime.Add(cooldownPeriod).Before(time.Now())) ||
+		(cooldownOnlyAfterHpaMinReplica && scaledObject.Status.HpaMinReplicaSinceTime != nil && scaledObject.Status.HpaMinReplicaSinceTime.Add(cooldownPeriod).Before(time.Now()) &&
+			scale.Spec.Replicas <= *scaledObject.GetHPAMinReplicas()) {
 		// or last time a trigger was active was > cooldown period, so scale in.
 		idleValue, scaleToReplicas := getIdleOrMinimumReplicaCount(scaledObject)
 

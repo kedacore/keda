@@ -78,6 +78,8 @@ spec:
               advanced:
                 description: AdvancedConfig specifies advance scaling options
                 properties:
+                  cooldownOnlyAfterHpaMinReplica:
+                    type: boolean
                   horizontalPodAutoscalerConfig:
                     description: HorizontalPodAutoscalerConfig specifies horizontal
                       scale config
@@ -405,6 +407,9 @@ spec:
                       type: string
                   type: object
                 type: object
+              hpaMinReplicaSinceTime:
+                format: date-time
+                type: string
               hpaName:
                 type: string
               lastActiveTime:

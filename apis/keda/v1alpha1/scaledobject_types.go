@@ -131,6 +131,8 @@ type AdvancedConfig struct {
 	RestoreToOriginalReplicaCount bool `json:"restoreToOriginalReplicaCount,omitempty"`
 	// +optional
 	ScalingModifiers ScalingModifiers `json:"scalingModifiers,omitempty"`
+	// +optional
+	CooldownOnlyAfterHpaMinReplica bool `json:"cooldownOnlyAfterHpaMinReplica,omitempty"`
 }
 
 // ScalingModifiers describes advanced scaling logic options like formula
@@ -176,6 +178,8 @@ type ScaledObjectStatus struct {
 	OriginalReplicaCount *int32 `json:"originalReplicaCount,omitempty"`
 	// +optional
 	LastActiveTime *metav1.Time `json:"lastActiveTime,omitempty"`
+	// +optional
+	HpaMinReplicaSinceTime *metav1.Time `json:"hpaMinReplicaSinceTime,omitempty"`
 	// +optional
 	ExternalMetricNames []string `json:"externalMetricNames,omitempty"`
 	// +optional
