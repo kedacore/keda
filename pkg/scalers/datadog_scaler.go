@@ -425,6 +425,10 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 // Datadog can return 422 responses for empty time windows; treat matched messages as no data.
 func datadogNoDataMessage(err error) (string, bool) {
 	messages := datadogErrorMessages(err)
+	return findDatadogNoDataMessage(messages)
+}
+
+func findDatadogNoDataMessage(messages []string) (string, bool) {
 	if len(messages) == 0 {
 		return "", false
 	}
@@ -519,6 +523,17 @@ func (s *datadogScaler) getDatadogMetricValue(req *http.Request) (float64, error
 	body, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusUnprocessableEntity {
+			messages := datadogErrorMessagesFromBody(body)
+			if message, ok := findDatadogNoDataMessage(messages); ok {
+				s.logger.V(1).Info("Datadog metric value request returned no data", "message", message)
+				if s.metadata.UseFiller {
+					return *s.metadata.FillValue, nil
+				}
+				return 0, nil
+			}
+		}
+
 		r := gjson.GetBytes(body, "message")
 		if r.Type == gjson.String {
 			return 0, fmt.Errorf("error getting metric value: %s", r.String())

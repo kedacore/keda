@@ -517,3 +517,78 @@ func TestDatadogGetQueryResultHandles422NoData(t *testing.T) {
 		})
 	}
 }
+
+func TestDatadogGetMetricValueHandles422NoData(t *testing.T) {
+	testCases := []struct {
+		name        string
+		body        string
+		useFiller   bool
+		fillValue   float64
+		expectValue float64
+		expectErr   bool
+	}{
+		{
+			name:        "no data without filler",
+			body:        `{"errors":["No data points found within the given time window"]}`,
+			expectValue: 0,
+		},
+		{
+			name:        "no data with filler",
+			body:        `{"errors":["No datapoints found for query"]}`,
+			useFiller:   true,
+			fillValue:   1.5,
+			expectValue: 1.5,
+		},
+		{
+			name:      "unprocessable error remains fatal",
+			body:      `{"errors":["Invalid query"]}`,
+			expectErr: true,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusUnprocessableEntity,
+					Status:     fmt.Sprintf("%d %s", http.StatusUnprocessableEntity, http.StatusText(http.StatusUnprocessableEntity)),
+					Header:     http.Header{"Content-Type": []string{"application/json"}},
+					Body:       io.NopCloser(strings.NewReader(testCase.body)),
+					Request:    req,
+				}, nil
+			})
+
+			meta := &datadogMetadata{
+				DatadogMetricServiceURL: "https://example.com",
+			}
+			if testCase.useFiller {
+				meta.UseFiller = true
+				meta.FillValue = &testCase.fillValue
+			}
+
+			scaler := &datadogScaler{
+				metadata:             meta,
+				httpClient:           &http.Client{Transport: transport},
+				logger:               logr.Discard(),
+				useClusterAgentProxy: true,
+			}
+
+			// We need to create a dummy request because getDatadogMetricValue takes a request
+			req, _ := http.NewRequest("GET", "https://example.com", nil)
+			value, err := scaler.getDatadogMetricValue(req)
+
+			if testCase.expectErr {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if value != testCase.expectValue {
+				t.Fatalf("expected %v, got %v", testCase.expectValue, value)
+			}
+		})
+	}
+}
