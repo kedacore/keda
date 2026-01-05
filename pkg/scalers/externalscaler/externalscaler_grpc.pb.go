@@ -133,7 +133,7 @@ type UnsafeExternalScalerServer interface {
 }
 
 func RegisterExternalScalerServer(s grpc.ServiceRegistrar, srv ExternalScalerServer) {
-	// If the following call pancis, it indicates UnimplementedExternalScalerServer was
+	// If the following call panics, it indicates UnimplementedExternalScalerServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
