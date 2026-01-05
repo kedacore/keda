@@ -175,7 +175,7 @@ type UnsafeLiiklusServiceServer interface {
 }
 
 func RegisterLiiklusServiceServer(s grpc.ServiceRegistrar, srv LiiklusServiceServer) {
-	// If the following call pancis, it indicates UnimplementedLiiklusServiceServer was
+	// If the following call panics, it indicates UnimplementedLiiklusServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
