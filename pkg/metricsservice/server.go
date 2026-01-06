@@ -88,6 +88,7 @@ func (s *GrpcServer) GetRawMetricsStream(request *api.RawMetricsRequest, stream 
 				metrics = append(metrics, &api.RawMetric{
 					Value:     v.Value.AsApproximateFloat64(),
 					Timestamp: timestamppb.New(v.Timestamp.Time),
+					IsActive:  rm.IsActive,
 					Metadata: &api.ScaledObjectRef{
 						Name:       rm.Meta.ScaledObjectName,
 						Namespace:  rm.Meta.Namespace,

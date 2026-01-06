@@ -463,7 +463,7 @@ func (h *scaleHandler) resetScalersCacheKeepMetrics(ctx context.Context, scalabl
 /// --------------------------------------------------------------------------- ///
 
 // processMetricsWithFallback processes metrics with fallback support and handles metric recording
-func (h *scaleHandler) processMetricsWithFallback(ctx context.Context, rawMetrics []external_metrics.ExternalMetricValue, rawErr error, metricName string, triggerName string, triggerIndex int, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, sendRawMetricsCondition bool, logger logr.Logger) ([]external_metrics.ExternalMetricValue, bool, error) {
+func (h *scaleHandler) processMetricsWithFallback(ctx context.Context, rawMetrics []external_metrics.ExternalMetricValue, rawErr error, metricName string, triggerName string, triggerIndex int, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, sendRawMetricsCondition bool, isMetricActive bool, logger logr.Logger) ([]external_metrics.ExternalMetricValue, bool, error) {
 	// check if we need to set a fallback
 	metrics, fallbackActive, err := fallback.GetMetricsWithFallback(ctx, h.client, h.scaleClient, rawMetrics, rawErr, metricName, scaledObject, metricSpec)
 
@@ -478,7 +478,7 @@ func (h *scaleHandler) processMetricsWithFallback(ctx context.Context, rawMetric
 
 		// Send raw metrics if conditions are met
 		if sendRawMetricsCondition {
-			go h.sendWhenSubscribed(scaledObject.Name, scaledObject.Namespace, triggerName, metrics)
+			go h.sendWhenSubscribed(scaledObject.Name, scaledObject.Namespace, triggerName, isMetricActive, metrics)
 		}
 	}
 
@@ -576,6 +576,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 						logger.Error(err, "error pairing triggers & metrics for compositeScaler")
 					}
 					var rawMetrics []external_metrics.ExternalMetricValue
+					var isMetricActive bool
 					var rawErr error
 
 					// if cache is defined for this scaler/metric, let's try to hit it first
@@ -585,13 +586,14 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 						if metricsRecord, metricsFoundInCache = h.scaledObjectsMetricCache.ReadRecord(scaledObjectIdentifier, metricName); metricsFoundInCache {
 							logger.V(1).Info("Reading metrics from cache", "scaler", triggerName, "metricName", metricName, "metricsRecord", metricsRecord)
 							rawMetrics = metricsRecord.Metric
+							isMetricActive = metricsRecord.IsActive
 							rawErr = metricsRecord.ScalerError
 						}
 					}
 
 					if !metricsFoundInCache {
 						var latency time.Duration
-						rawMetrics, _, latency, rawErr = cache.GetMetricsAndActivityForScaler(ctx, triggerIndex, metricName)
+						rawMetrics, isMetricActive, latency, rawErr = cache.GetMetricsAndActivityForScaler(ctx, triggerIndex, metricName)
 						if latency != -1 {
 							metricscollector.RecordScalerLatency(scaledObjectNamespace, scaledObject.Name, triggerName, triggerIndex, metricName, true, latency)
 						}
@@ -599,7 +601,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 					}
 
 					// Use the helper function to process metrics with fallback
-					metrics, fallbackActive, err := h.processMetricsWithFallback(ctx, rawMetrics, rawErr, metricName, triggerName, triggerIndex, scaledObject, spec, shouldSendRawMetrics(RawMetricsHPA), logger)
+					metrics, fallbackActive, err := h.processMetricsWithFallback(ctx, rawMetrics, rawErr, metricName, triggerName, triggerIndex, scaledObject, spec, shouldSendRawMetrics(RawMetricsHPA), isMetricActive, logger)
 
 					result.metricName = metricName
 					result.triggerName = triggerName
@@ -847,7 +849,7 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 		logger.V(1).Info("Getting metrics and activity from scaler", "scaler", result.TriggerName, "metricName", metricName, "metrics", rawMetrics, "activity", isMetricActive, "scalerError", rawErr)
 
 		// Use the helper function to process metrics with fallback
-		metrics, fallbackActive, err := h.processMetricsWithFallback(ctx, rawMetrics, rawErr, metricName, result.TriggerName, triggerIndex, scaledObject, spec, shouldSendRawMetrics(RawMetricsPollingInterval), logger)
+		metrics, fallbackActive, err := h.processMetricsWithFallback(ctx, rawMetrics, rawErr, metricName, result.TriggerName, triggerIndex, scaledObject, spec, shouldSendRawMetrics(RawMetricsPollingInterval), isMetricActive, logger)
 
 		// Store fallback information
 		if fallbackActive {
@@ -952,7 +954,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			}
 			if shouldSendRawMetrics(RawMetricsPollingInterval) {
 				// send the raw metric to all subscribed clients in a non-blocking fashion
-				go h.sendWhenSubscribed(scaledJob.Name, scaledJob.Namespace, scalerName, metrics)
+				go h.sendWhenSubscribed(scaledJob.Name, scaledJob.Namespace, scalerName, isTriggerActive, metrics)
 			}
 			if isTriggerActive {
 				isActive = true

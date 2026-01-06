@@ -77,6 +77,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Added Cached fallback behavior ([#6923](https://github.com/kedacore/keda/pull/6923))
 - **General**: Correct error message when awsSecretAccessKey is missing in credential-based authentication ([#7265](https://github.com/kedacore/keda/pull/7265))
+- **General**: Raw metrics stream - include trigger activity status in response ([#7369](https://github.com/kedacore/keda/issues/7369))
 - **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
 - **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
 ### Fixes
