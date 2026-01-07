@@ -410,6 +410,55 @@ func TestDatadogMetadataValidateUseFiller(t *testing.T) {
 	}
 }
 
+func TestDatadogErrorMessagesFromBody(t *testing.T) {
+	body := []byte(`{"errors":["  no data points found within the given time window ","no data points found within the given time window"],"error":"no data points found within the given time window","message":"other error"}`)
+	messages := datadogErrorMessagesFromBody(body)
+
+	expected := []string{"no data points found within the given time window", "other error"}
+	if !slices.Equal(messages, expected) {
+		t.Fatalf("expected %v, got %v", expected, messages)
+	}
+}
+
+func TestDedupAndTrimMessages(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    []string
+		expected []string
+	}{
+		{
+			name:     "trims and deduplicates",
+			input:    []string{"  foo", "foo", "", " ", "bar", "bar "},
+			expected: []string{"foo", "bar"},
+		},
+		{
+			name:     "preserves first occurrence order",
+			input:    []string{"b", " a", "b", "a"},
+			expected: []string{"b", "a"},
+		},
+		{
+			name:     "empty input returns nil",
+			input:    nil,
+			expected: nil,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			messages := dedupAndTrimMessages(testCase.input)
+			if testCase.expected == nil {
+				if messages != nil {
+					t.Fatalf("expected nil, got %v", messages)
+				}
+				return
+			}
+			if !slices.Equal(messages, testCase.expected) {
+				t.Fatalf("expected %v, got %v", testCase.expected, messages)
+			}
+		})
+	}
+}
+
 func TestDatadogGetQueryResultHandles422NoData(t *testing.T) {
 	testCases := []struct {
 		name        string
