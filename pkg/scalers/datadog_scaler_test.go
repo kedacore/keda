@@ -2,9 +2,10 @@ package scalers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
+	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
@@ -15,12 +16,6 @@ import (
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
-
-type roundTripFunc func(*http.Request) (*http.Response, error)
-
-func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return f(req)
-}
 
 type datadogQueries struct {
 	input   string
@@ -425,9 +420,9 @@ func TestDatadogGetQueryResultHandles422NoData(t *testing.T) {
 		expectErr   bool
 	}{
 		{
-			name:        "no data without filler",
-			body:        `{"errors":["No data points found within the given time window"]}`,
-			expectValue: 0,
+			name:      "no data without filler returns error",
+			body:      `{"errors":["No data points found within the given time window"]}`,
+			expectErr: true,
 		},
 		{
 			name:        "no data with filler",
@@ -437,14 +432,14 @@ func TestDatadogGetQueryResultHandles422NoData(t *testing.T) {
 			expectValue: 1.5,
 		},
 		{
-			name:        "no data from errors string",
-			body:        `{"errors":"No data points found within the given time window"}`,
-			expectValue: 0,
+			name:      "no data from errors string without filler returns error",
+			body:      `{"errors":"No data points found within the given time window"}`,
+			expectErr: true,
 		},
 		{
-			name:        "no data from error field",
-			body:        `{"error":"No data points found for query"}`,
-			expectValue: 0,
+			name:      "no data from error field without filler returns error",
+			body:      `{"error":"No data points found for query"}`,
+			expectErr: true,
 		},
 		{
 			name:      "unprocessable error remains fatal",
@@ -465,22 +460,19 @@ func TestDatadogGetQueryResultHandles422NoData(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
-				if req.URL.Path != "/api/v1/query" {
-					return nil, fmt.Errorf("unexpected path %s", req.URL.Path)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/api/v1/query" {
+					http.NotFound(w, r)
+					return
 				}
-				return &http.Response{
-					StatusCode: http.StatusUnprocessableEntity,
-					Status:     fmt.Sprintf("%d %s", http.StatusUnprocessableEntity, http.StatusText(http.StatusUnprocessableEntity)),
-					Header:     http.Header{"Content-Type": []string{"application/json"}},
-					Body:       io.NopCloser(strings.NewReader(testCase.body)),
-					Request:    req,
-				}, nil
-			})
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				_ = json.NewEncoder(w).Encode(json.RawMessage(testCase.body))
+			}))
+			defer server.Close()
 
 			configuration := datadog.NewConfiguration()
-			configuration.Servers = datadog.ServerConfigurations{{URL: "https://example.com"}}
-			configuration.HTTPClient = &http.Client{Transport: transport}
+			configuration.Servers = datadog.ServerConfigurations{{URL: server.URL}}
 			apiClient := datadog.NewAPIClient(configuration)
 
 			meta := &datadogMetadata{
@@ -528,9 +520,9 @@ func TestDatadogGetMetricValueHandles422NoData(t *testing.T) {
 		expectErr   bool
 	}{
 		{
-			name:        "no data without filler",
-			body:        `{"errors":["No data points found within the given time window"]}`,
-			expectValue: 0,
+			name:      "no data without filler returns error",
+			body:      `{"errors":["No data points found within the given time window"]}`,
+			expectErr: true,
 		},
 		{
 			name:        "no data with filler",
@@ -548,18 +540,15 @@ func TestDatadogGetMetricValueHandles422NoData(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
-				return &http.Response{
-					StatusCode: http.StatusUnprocessableEntity,
-					Status:     fmt.Sprintf("%d %s", http.StatusUnprocessableEntity, http.StatusText(http.StatusUnprocessableEntity)),
-					Header:     http.Header{"Content-Type": []string{"application/json"}},
-					Body:       io.NopCloser(strings.NewReader(testCase.body)),
-					Request:    req,
-				}, nil
-			})
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				_ = json.NewEncoder(w).Encode(json.RawMessage(testCase.body))
+			}))
+			defer server.Close()
 
 			meta := &datadogMetadata{
-				DatadogMetricServiceURL: "https://example.com",
+				DatadogMetricServiceURL: server.URL,
 			}
 			if testCase.useFiller {
 				meta.UseFiller = true
@@ -568,13 +557,12 @@ func TestDatadogGetMetricValueHandles422NoData(t *testing.T) {
 
 			scaler := &datadogScaler{
 				metadata:             meta,
-				httpClient:           &http.Client{Transport: transport},
+				httpClient:           server.Client(),
 				logger:               logr.Discard(),
 				useClusterAgentProxy: true,
 			}
 
-			// We need to create a dummy request because getDatadogMetricValue takes a request
-			req, _ := http.NewRequest("GET", "https://example.com", nil)
+			req, _ := http.NewRequest("GET", server.URL, nil)
 			value, err := scaler.getDatadogMetricValue(req)
 
 			if testCase.expectErr {

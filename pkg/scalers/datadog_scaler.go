@@ -333,7 +333,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 				if s.metadata.UseFiller {
 					return *s.metadata.FillValue, nil
 				}
-				return 0, nil
+				return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 			}
 		}
 
@@ -465,38 +465,53 @@ func datadogErrorMessagesFromBody(body []byte) []string {
 		return nil
 	}
 
-	messages := make([]string, 0, 2)
-	seen := make(map[string]struct{}, 2)
-	addMessage := func(message string) {
-		trimmed := strings.TrimSpace(message)
+	var allMessages []string
+	result := gjson.ParseBytes(body)
+
+	if errors := result.Get("errors"); errors.Exists() {
+		allMessages = append(allMessages, getMessagesFromResult(errors)...)
+	}
+	if err := result.Get("error"); err.Exists() && err.Type == gjson.String {
+		allMessages = append(allMessages, err.String())
+	}
+	if msg := result.Get("message"); msg.Exists() && msg.Type == gjson.String {
+		allMessages = append(allMessages, msg.String())
+	}
+
+	return dedupAndTrimMessages(allMessages)
+}
+
+func getMessagesFromResult(result gjson.Result) []string {
+	if result.Type == gjson.String {
+		return []string{result.String()}
+	}
+	var messages []string
+	for _, entry := range result.Array() {
+		if entry.Type == gjson.String {
+			messages = append(messages, entry.String())
+		}
+	}
+	return messages
+}
+
+func dedupAndTrimMessages(messages []string) []string {
+	if len(messages) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(messages))
+	result := make([]string, 0, len(messages))
+	for _, msg := range messages {
+		trimmed := strings.TrimSpace(msg)
 		if trimmed == "" {
-			return
+			continue
 		}
 		if _, exists := seen[trimmed]; exists {
-			return
+			continue
 		}
 		seen[trimmed] = struct{}{}
-		messages = append(messages, trimmed)
+		result = append(result, trimmed)
 	}
-
-	errorsValue := gjson.GetBytes(body, "errors")
-	if errorsValue.Type == gjson.String {
-		addMessage(errorsValue.String())
-	}
-	for _, entry := range errorsValue.Array() {
-		if entry.Type == gjson.String {
-			addMessage(entry.String())
-		}
-	}
-
-	if message := gjson.GetBytes(body, "error"); message.Type == gjson.String {
-		addMessage(message.String())
-	}
-	if message := gjson.GetBytes(body, "message"); message.Type == gjson.String {
-		addMessage(message.String())
-	}
-
-	return messages
+	return result
 }
 
 func isDatadogNoDataMessage(message string) bool {
@@ -530,7 +545,7 @@ func (s *datadogScaler) getDatadogMetricValue(req *http.Request) (float64, error
 				if s.metadata.UseFiller {
 					return *s.metadata.FillValue, nil
 				}
-				return 0, nil
+				return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 			}
 		}
 
