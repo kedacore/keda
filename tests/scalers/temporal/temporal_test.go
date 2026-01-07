@@ -243,7 +243,7 @@ func TestTemporalScaler(t *testing.T) {
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc, data)
-	testWorkerVersioning(t, kc, data, templates)
+	testWorkerVersioning(t, kc, data)
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
@@ -280,7 +280,7 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	KubectlDeleteWithTemplate(t, data, "jobWorkFlow", jobWorkFlowTemplate)
 }
 
-func testWorkerVersioning(t *testing.T, kc *kubernetes.Clientset, data templateData, templates []Template) {
+func testWorkerVersioning(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing worker versioning ---")
 
 	data.BuildID = "1.1.1"
