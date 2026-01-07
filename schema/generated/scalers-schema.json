@@ -683,6 +683,80 @@
             ]
         },
         {
+            "type": "azure-blob",
+            "parameters": [
+                {
+                    "name": "blobContainerName",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "blobCount",
+                    "type": "string",
+                    "default": "5",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationBlobCount",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "blobDelimiter",
+                    "type": "string",
+                    "default": "/",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "blobPrefix",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "recursive",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "globPattern",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "endpointSuffix",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "connection",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "connectionFromEnv",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "accountName",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "azure-eventhub",
             "parameters": [
                 {
