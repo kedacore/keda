@@ -36,7 +36,9 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/k8s"
+	"github.com/kedacore/keda/v2/pkg/scalers"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 )
 
@@ -58,6 +60,11 @@ func TestAPIs(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
+
+	// Register test-only scalers
+	scaling.RegisterTestScalerBuilder("external-mock", func(_ context.Context, _ client.Client, _ string, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+		return scalers.NewExternalMockScaler(config)
+	})
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{

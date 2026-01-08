@@ -119,8 +119,22 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 	return result, nil
 }
 
+// function type for building test-only scalers
+type testScalerBuilder func(context.Context, client.Client, string, *scalersconfig.ScalerConfig) (scalers.Scaler, error)
+
+var testScalerBuilders = make(map[string]testScalerBuilder)
+
+func RegisterTestScalerBuilder(triggerType string, builder testScalerBuilder) {
+	testScalerBuilders[triggerType] = builder
+}
+
 // buildScaler builds a scaler form input config and trigger type
 func buildScaler(ctx context.Context, client client.Client, triggerType string, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	// Check test scalers first (only populated during tests)
+	if builder, ok := testScalerBuilders[triggerType]; ok {
+		return builder(ctx, client, triggerType, config)
+	}
+
 	// TRIGGERS-START
 	switch triggerType {
 	case "activemq":
@@ -179,9 +193,6 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewEtcdScaler(config)
 	case "external":
 		return scalers.NewExternalScaler(config)
-	// TODO: use other way for test.
-	case "external-mock":
-		return scalers.NewExternalMockScaler(config)
 	case "external-push":
 		return scalers.NewExternalPushScaler(config)
 	case "forgejo-runner":
