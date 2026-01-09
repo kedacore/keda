@@ -21,30 +21,38 @@ var (
 type FunctionsTable map[string]*builtin.Function
 
 type Config struct {
-	EnvObject any
-	Env       nature.Nature
-	Expect    reflect.Kind
-	ExpectAny bool
-	Optimize  bool
-	Strict    bool
-	Profile   bool
-	MaxNodes  uint
-	ConstFns  map[string]reflect.Value
-	Visitors  []ast.Visitor
-	Functions FunctionsTable
-	Builtins  FunctionsTable
-	Disabled  map[string]bool // disabled builtins
+	EnvObject    any
+	Env          nature.Nature
+	Expect       reflect.Kind
+	ExpectAny    bool
+	Optimize     bool
+	Strict       bool
+	ShortCircuit bool
+	Profile      bool
+	MaxNodes     uint
+	ConstFns     map[string]reflect.Value
+	Visitors     []ast.Visitor
+	Functions    FunctionsTable
+	Builtins     FunctionsTable
+	Disabled     map[string]bool // disabled builtins
+	NtCache      nature.Cache
+	// DisableIfOperator disables the built-in `if ... { } else { }` operator syntax
+	// so that users can use a custom function named `if(...)` without conflicts.
+	// When enabled, the lexer treats `if`/`else` as identifiers and the parser
+	// will not parse `if` statements.
+	DisableIfOperator bool
 }
 
 // CreateNew creates new config with default values.
 func CreateNew() *Config {
 	c := &Config{
-		Optimize:  true,
-		MaxNodes:  DefaultMaxNodes,
-		ConstFns:  make(map[string]reflect.Value),
-		Functions: make(map[string]*builtin.Function),
-		Builtins:  make(map[string]*builtin.Function),
-		Disabled:  make(map[string]bool),
+		Optimize:     true,
+		ShortCircuit: true,
+		MaxNodes:     DefaultMaxNodes,
+		ConstFns:     make(map[string]reflect.Value),
+		Functions:    make(map[string]*builtin.Function),
+		Builtins:     make(map[string]*builtin.Function),
+		Disabled:     make(map[string]bool),
 	}
 	for _, f := range builtin.Builtins {
 		c.Builtins[f.Name] = f
@@ -61,7 +69,7 @@ func New(env any) *Config {
 
 func (c *Config) WithEnv(env any) {
 	c.EnvObject = env
-	c.Env = Env(env)
+	c.Env = EnvWithCache(&c.NtCache, env)
 	c.Strict = c.Env.Strict
 }
 
@@ -92,7 +100,7 @@ func (c *Config) IsOverridden(name string) bool {
 	if _, ok := c.Functions[name]; ok {
 		return true
 	}
-	if _, ok := c.Env.Get(name); ok {
+	if _, ok := c.Env.Get(&c.NtCache, name); ok {
 		return true
 	}
 	return false

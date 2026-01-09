@@ -16,9 +16,11 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.18.3](#v2183)
 - [v2.18.2](#v2182)
 - [v2.18.1](#v2181)
 - [v2.18.0](#v2180)
+- [v2.17.3](#v2173)
 - [v2.17.2](#v2172)
 - [v2.17.1](#v2171)
 - [v2.17.0](#v2170)
@@ -75,6 +77,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **General**: Correct error message when awsSecretAccessKey is missing in credential-based authentication ([#7265](https://github.com/kedacore/keda/pull/7265))
 - **General**: Lazy PodSpec resolution to reduce memory usage and k8s API calls ([#7259](https://github.com/kedacore/keda/pull/7259))
+- **General**: Raw metrics stream - include trigger activity status in response ([#7369](https://github.com/kedacore/keda/issues/7369))
 - **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
 - **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
 
@@ -99,6 +102,12 @@ New deprecation(s):
 ### Other
 
 - **CI**: Use GitHub-hosted ARM64 runners ([#7293](https://github.com/kedacore/keda/issues/7293))
+
+## v2.18.3
+
+- **General**: Fix CVE-2025-68476 ([#7334](https://github.com/kedacore/keda/pull/7334))
+
+### Fixes
 
 ## v2.18.2
 
@@ -211,6 +220,10 @@ New deprecation(s):
 - **General**: Fix several typos ([#6909](https://github.com/kedacore/keda/pull/6909))
 - **General**: Replace deprecated `webhook.Validator` with `webhook.CustomValidator` ([#6660](https://github.com/kedacore/keda/issues/6660))
 - **MSSQL Scaler**: Refactor MS SQL e2e test ([#3401](https://github.com/kedacore/keda/issues/3401))
+
+## v2.17.3
+
+- **General**: Fix CVE-2025-68476 ([#7333](https://github.com/kedacore/keda/pull/7333))
 
 ## v2.17.2
 
