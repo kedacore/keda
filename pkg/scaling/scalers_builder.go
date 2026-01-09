@@ -40,19 +40,22 @@ import (
 func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, podTemplateSpec *corev1.PodTemplateSpec, containerName string, asMetricSource bool) ([]cache.ScalerBuilder, error) {
 	logger := log.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
 	var err error
-	resolvedEnv := make(map[string]string)
+	var resolvedEnv map[string]string
+
+	// Resolve container environment once at the beginning, shared by all triggers
+	if podTemplateSpec != nil {
+		resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.authClientSet.SecretLister)
+		if err != nil {
+			return nil, fmt.Errorf("error resolving secrets for ScaleTarget: %w", err)
+		}
+	}
+
 	result := make([]cache.ScalerBuilder, 0, len(withTriggers.Spec.Triggers))
 
 	for i, t := range withTriggers.Spec.Triggers {
 		triggerIndex, trigger := i, t
 
 		factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
-			if podTemplateSpec != nil {
-				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.authClientSet.SecretLister)
-				if err != nil {
-					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %w", err)
-				}
-			}
 			config := &scalersconfig.ScalerConfig{
 				ScalableObjectName:      withTriggers.Name,
 				ScalableObjectNamespace: withTriggers.Namespace,
