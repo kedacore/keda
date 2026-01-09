@@ -184,7 +184,7 @@ func doFallback(ctx context.Context, client runtimeclient.Client, scaleClient sc
 		}
 	case kedav1alpha1.FallbackBehaviorCached:
 		if len(metrics) > 0 {
-			log.Info("Fallback behavior is set to cached, using metrics from cache", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "metricName", metricName)
+			log.V(1).Info("Fallback behavior is set to cached, using metrics from cache", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "metricName", metricName)
 			return metrics
 		}
 		log.Info("Fallback behavior is set to cached, but no metrics were found in the cache", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "metricName", metricName)
