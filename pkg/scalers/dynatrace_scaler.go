@@ -1,14 +1,17 @@
 package scalers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	neturl "net/url"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -20,32 +23,59 @@ import (
 
 const (
 	dynatraceMetricDataPointsAPI = "api/v2/metrics/query"
+	dynatraceDQLAPI              = "platform/storage/query/v1/query"
 )
 
 type dynatraceScaler struct {
-	metricType v2.MetricTargetType
-	metadata   *dynatraceMetadata
-	httpClient *http.Client
-	logger     logr.Logger
+	metricType          v2.MetricTargetType
+	metadata            *dynatraceMetadata
+	httpClient          *http.Client
+	logger              logr.Logger
+	queryRequestPayload []byte
 }
 
 type dynatraceMetadata struct {
 	Host                string  `keda:"name=host, order=triggerMetadata;authParams"`
 	Token               string  `keda:"name=token, order=authParams"`
-	MetricSelector      string  `keda:"name=metricSelector, order=triggerMetadata"`
+	MetricSelector      string  `keda:"name=metricSelector, order=triggerMetadata, optional"`
+	DQLQuery            string  `keda:"name=query, order=triggerMetadata, optional"`
 	FromTimestamp       string  `keda:"name=from, order=triggerMetadata, default=now-2h, optional"`
 	Threshold           float64 `keda:"name=threshold, order=triggerMetadata"`
 	ActivationThreshold float64 `keda:"name=activationThreshold, order=triggerMetadata, optional"`
 	TriggerIndex        int
 }
 
+func (meta *dynatraceMetadata) Validate() error {
+	if meta.DQLQuery == "" && meta.MetricSelector == "" {
+		return errors.New("either 'metricSelector' or 'query' must be provided")
+	}
+	if meta.DQLQuery != "" && meta.MetricSelector != "" {
+		return errors.New("'metricSelector' and 'query' are mutually exclusive; only one can be provided")
+	}
+	return nil
+}
+
 // Model of relevant part of Dynatrace's Metric Data Points API Response
 // as per https://docs.dynatrace.com/docs/dynatrace-api/environment-api/metric-v2/get-data-points#definition--MetricData
-type dynatraceResponse struct {
+type dynatraceMetricsResponse struct {
 	Result []struct {
 		Data []struct {
 			Values []float64 `json:"values"`
 		} `json:"data"`
+	} `json:"result"`
+}
+
+type dynatraceExecuteQueryResponse struct {
+	State        string `json:"state"`
+	RequestToken string `json:"requestToken"`
+}
+
+type dynatraceQueryResponse struct {
+	State  string `json:"state"`
+	Result struct {
+		Records []struct {
+			R float64 `json:"r"`
+		} `json:"records"`
 	} `json:"result"`
 }
 
@@ -62,6 +92,21 @@ func NewDynatraceScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing dynatrace metadata: %w", err)
 	}
 
+	queryRequestPayload := []byte{}
+	if meta.DQLQuery != "" {
+		queryRequest := struct {
+			Query               string `json:"query"`
+			FetchTimeoutSeconds int    `json:"fetchTimeoutSeconds"`
+		}{
+			Query:               meta.DQLQuery,
+			FetchTimeoutSeconds: 10,
+		}
+		queryRequestPayload, err = json.Marshal(queryRequest)
+		if err != nil {
+			return nil, fmt.Errorf("error caqching DQL query: %w", err)
+		}
+	}
+
 	httpClient := kedautil.CreateHTTPClient(config.GlobalHTTPTimeout, false)
 
 	logMsg := fmt.Sprintf("Initializing Dynatrace Scaler (Host: %s)", meta.Host)
@@ -69,10 +114,11 @@ func NewDynatraceScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	logger.Info(logMsg)
 
 	return &dynatraceScaler{
-		metricType: metricType,
-		metadata:   meta,
-		httpClient: httpClient,
-		logger:     logger}, nil
+		metricType:          metricType,
+		metadata:            meta,
+		httpClient:          httpClient,
+		queryRequestPayload: queryRequestPayload,
+		logger:              logger}, nil
 }
 
 func parseDynatraceMetadata(config *scalersconfig.ScalerConfig) (*dynatraceMetadata, error) {
@@ -94,7 +140,7 @@ func (s *dynatraceScaler) Close(context.Context) error {
 
 // Validate that response object contains the minimum expected structure
 // as per https://docs.dynatrace.com/docs/dynatrace-api/environment-api/metric-v2/get-data-points#definition--MetricData
-func validateDynatraceResponse(response *dynatraceResponse) error {
+func validateDynatraceResponse(response *dynatraceMetricsResponse) error {
 	if len(response.Result) == 0 {
 		return errors.New("dynatrace response does not contain any results")
 	}
@@ -154,7 +200,7 @@ func (s *dynatraceScaler) GetMetricValue(ctx context.Context) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	var dynatraceResponse *dynatraceResponse
+	var dynatraceResponse *dynatraceMetricsResponse
 	err = json.Unmarshal(b, &dynatraceResponse)
 	if err != nil {
 		return -1, fmt.Errorf("unable to parse Dynatrace Metric Data Points API response: %w", err)
@@ -168,8 +214,113 @@ func (s *dynatraceScaler) GetMetricValue(ctx context.Context) (float64, error) {
 	return dynatraceResponse.Result[0].Data[0].Values[0], nil
 }
 
+func (s *dynatraceScaler) GetQueryValue(ctx context.Context) (float64, error) {
+	requestToken, err := s.executeDQL(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	dynatraceAPIURLResult := fmt.Sprintf("%s/%s:poll?request-token=%s", strings.TrimRight(s.metadata.Host, "/"), dynatraceDQLAPI, url.QueryEscape(requestToken))
+	const maxAttempts = 5
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		val, retry, err := s.pollDQLResult(ctx, dynatraceAPIURLResult)
+		if err != nil {
+			return 0, err
+		}
+		if !retry {
+			return val, nil
+		}
+		time.Sleep(time.Second)
+	}
+	return 0, errors.New(fmt.Sprintf("DQL query did not complete within %d attempts", maxAttempts))
+}
+
+func (s *dynatraceScaler) executeDQL(ctx context.Context) (string, error) {
+	var req *http.Request
+	var err error
+
+	dynatraceAPIURLExecute := fmt.Sprintf("%s/%s:execute", strings.TrimRight(s.metadata.Host, "/"), dynatraceDQLAPI)
+
+	req, err = http.NewRequestWithContext(ctx, "POST", dynatraceAPIURLExecute, bytes.NewBuffer(s.queryRequestPayload))
+	req.Header.Set("Content-Type", "application/json")
+	if err != nil {
+		return "", err
+	}
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.Token))
+
+	r, err := s.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer r.Body.Close()
+
+	if r.StatusCode != http.StatusAccepted {
+		msg := fmt.Sprintf("%s: api returned %d", r.Request.URL.Path, r.StatusCode)
+		return "", errors.New(msg)
+	}
+
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
+		return "", err
+	}
+	var dynatraceResponse *dynatraceExecuteQueryResponse
+	err = json.Unmarshal(b, &dynatraceResponse)
+	if err != nil {
+		return "", fmt.Errorf("Error starting DQL query: %w", err)
+	}
+	if dynatraceResponse.State == "RUNNING" || dynatraceResponse.State == "SUCCEEDED" {
+		return dynatraceResponse.RequestToken, nil
+	}
+	return "", fmt.Errorf("Error starting DQL query: unknown state %s", dynatraceResponse.State)
+}
+
+func (s *dynatraceScaler) pollDQLResult(ctx context.Context, url string) (float64, bool, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return -1, false, err
+	}
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.Token))
+
+	r, err := s.httpClient.Do(req)
+	if err != nil {
+		return -1, false, err
+	}
+	defer r.Body.Close()
+
+	if r.StatusCode != http.StatusOK {
+		msg := fmt.Sprintf("%s: api returned %d", r.Request.URL.Path, r.StatusCode)
+		return -1, false, errors.New(msg)
+	}
+
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
+		return -1, false, err
+	}
+	var dynatraceResponse *dynatraceQueryResponse
+	err = json.Unmarshal(b, &dynatraceResponse)
+	if err != nil {
+		return -1, false, fmt.Errorf("Error parsing DQL response: %w", err)
+	}
+	if dynatraceResponse.State == "RUNNING" {
+		return -1, true, nil
+	}
+	if dynatraceResponse.State == "SUCCEEDED" {
+		if len(dynatraceResponse.Result.Records) > 0 {
+			return dynatraceResponse.Result.Records[0].R, false, nil
+		}
+		return -1, false, errors.New("Error executing DQL query: empty result")
+	}
+	return -1, false, errors.New(fmt.Sprintf("Error executing DQL query: unknown state: %s", dynatraceResponse.State))
+}
+
 func (s *dynatraceScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	val, err := s.GetMetricValue(ctx)
+	var val float64
+	var err error
+	if s.metadata.MetricSelector != "" {
+		val, err = s.GetMetricValue(ctx)
+	} else {
+		val, err = s.GetQueryValue(ctx)
+	}
 
 	if err != nil {
 		s.logger.Error(err, "error executing Dynatrace query")
