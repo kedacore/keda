@@ -39,303 +39,303 @@ func RegisterScalerBuilder(triggerType string, builder scalerBuilder) {
 
 // Register all production scalers
 func init() {
-	RegisterScalerBuilder("activemq", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("activemq", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewActiveMQScaler(config)
 	})
 
-	RegisterScalerBuilder("apache-kafka", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("apache-kafka", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewApacheKafkaScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("arangodb", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("arangodb", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewArangoDBScaler(config)
 	})
 
-	RegisterScalerBuilder("artemis-queue", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("artemis-queue", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewArtemisQueueScaler(config)
 	})
 
-	RegisterScalerBuilder("aws-cloudwatch", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("aws-cloudwatch", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewAwsCloudwatchScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("aws-dynamodb", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("aws-dynamodb", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewAwsDynamoDBScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("aws-dynamodb-streams", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("aws-dynamodb-streams", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewAwsDynamoDBStreamsScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("aws-kinesis-stream", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("aws-kinesis-stream", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewAwsKinesisStreamScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("aws-sqs-queue", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("aws-sqs-queue", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewAwsSqsQueueScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("azure-app-insights", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("azure-app-insights", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewAzureAppInsightsScaler(config)
 	})
 
-	RegisterScalerBuilder("azure-blob", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("azure-blob", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewAzureBlobScaler(config)
 	})
 
-	RegisterScalerBuilder("azure-data-explorer", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("azure-data-explorer", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewAzureDataExplorerScaler(config)
 	})
 
-	RegisterScalerBuilder("azure-eventhub", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("azure-eventhub", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewAzureEventHubScaler(config)
 	})
 
-	RegisterScalerBuilder("azure-log-analytics", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("azure-log-analytics", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewAzureLogAnalyticsScaler(config)
 	})
 
-	RegisterScalerBuilder("azure-monitor", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("azure-monitor", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewAzureMonitorScaler(config)
 	})
 
-	RegisterScalerBuilder("azure-pipelines", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("azure-pipelines", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewAzurePipelinesScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("azure-queue", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("azure-queue", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewAzureQueueScaler(config)
 	})
 
-	RegisterScalerBuilder("azure-servicebus", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("azure-servicebus", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewAzureServiceBusScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("beanstalkd", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("beanstalkd", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewBeanstalkdScaler(config)
 	})
 
-	RegisterScalerBuilder("cassandra", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("cassandra", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewCassandraScaler(config)
 	})
 
-	RegisterScalerBuilder("couchdb", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("couchdb", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewCouchDBScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("cpu", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("cpu", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewCPUMemoryScaler(corev1.ResourceCPU, config)
 	})
 
-	RegisterScalerBuilder("cron", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("cron", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewCronScaler(config)
 	})
 
-	RegisterScalerBuilder("datadog", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("datadog", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewDatadogScaler(config)
 	})
 
-	RegisterScalerBuilder("dynatrace", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("dynatrace", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewDynatraceScaler(config)
 	})
 
-	RegisterScalerBuilder("elasticsearch", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("elasticsearch", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewElasticsearchScaler(config)
 	})
 
-	RegisterScalerBuilder("etcd", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("etcd", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewEtcdScaler(config)
 	})
 
-	RegisterScalerBuilder("external", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("external", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewExternalScaler(config)
 	})
 
-	RegisterScalerBuilder("external-push", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("external-push", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewExternalPushScaler(config)
 	})
 
-	RegisterScalerBuilder("forgejo-runner", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("forgejo-runner", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewForgejoRunnerScaler(config)
 	})
 
-	RegisterScalerBuilder("gcp-cloudtasks", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("gcp-cloudtasks", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewGcpCloudTasksScaler(config)
 	})
 
-	RegisterScalerBuilder("gcp-pubsub", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("gcp-pubsub", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewPubSubScaler(config)
 	})
 
-	RegisterScalerBuilder("gcp-stackdriver", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("gcp-stackdriver", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewStackdriverScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("gcp-storage", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("gcp-storage", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewGcsScaler(config)
 	})
 
-	RegisterScalerBuilder("github-runner", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("github-runner", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewGitHubRunnerScaler(config)
 	})
 
-	RegisterScalerBuilder("graphite", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("graphite", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewGraphiteScaler(config)
 	})
 
-	RegisterScalerBuilder("huawei-cloudeye", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("huawei-cloudeye", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewHuaweiCloudeyeScaler(config)
 	})
 
-	RegisterScalerBuilder("ibmmq", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("ibmmq", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewIBMMQScaler(config)
 	})
 
-	RegisterScalerBuilder("influxdb", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("influxdb", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewInfluxDBScaler(config)
 	})
 
-	RegisterScalerBuilder("kafka", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("kafka", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewKafkaScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("kubernetes-resource", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("kubernetes-resource", func(_ context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewKubernetesResourceScaler(c, config)
 	})
 
-	RegisterScalerBuilder("kubernetes-workload", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("kubernetes-workload", func(_ context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewKubernetesWorkloadScaler(c, config)
 	})
 
-	RegisterScalerBuilder("liiklus", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("liiklus", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewLiiklusScaler(config)
 	})
 
-	RegisterScalerBuilder("loki", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("loki", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewLokiScaler(config)
 	})
 
-	RegisterScalerBuilder("memory", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("memory", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewCPUMemoryScaler(corev1.ResourceMemory, config)
 	})
 
-	RegisterScalerBuilder("metrics-api", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("metrics-api", func(_ context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewMetricsAPIScaler(config, c)
 	})
 
-	RegisterScalerBuilder("mongodb", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("mongodb", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewMongoDBScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("mssql", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("mssql", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewMSSQLScaler(config)
 	})
 
-	RegisterScalerBuilder("mysql", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("mysql", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewMySQLScaler(config)
 	})
 
-	RegisterScalerBuilder("nats-jetstream", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("nats-jetstream", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewNATSJetStreamScaler(config)
 	})
 
-	RegisterScalerBuilder("new-relic", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("new-relic", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewNewRelicScaler(config)
 	})
 
-	RegisterScalerBuilder("nsq", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("nsq", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewNSQScaler(config)
 	})
 
-	RegisterScalerBuilder("openstack-metric", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("openstack-metric", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewOpenstackMetricScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("openstack-swift", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("openstack-swift", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewOpenstackSwiftScaler(config)
 	})
 
-	RegisterScalerBuilder("postgresql", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("postgresql", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewPostgreSQLScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("predictkube", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("predictkube", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewPredictKubeScaler(ctx, config)
 	})
 
-	RegisterScalerBuilder("prometheus", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("prometheus", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewPrometheusScaler(config)
 	})
 
-	RegisterScalerBuilder("pulsar", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("pulsar", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewPulsarScaler(config)
 	})
 
-	RegisterScalerBuilder("rabbitmq", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("rabbitmq", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewRabbitMQScaler(config)
 	})
 
-	RegisterScalerBuilder("redis", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("redis", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewRedisScaler(ctx, false, false, config)
 	})
 
-	RegisterScalerBuilder("redis-cluster", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("redis-cluster", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewRedisScaler(ctx, true, false, config)
 	})
 
-	RegisterScalerBuilder("redis-cluster-streams", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("redis-cluster-streams", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewRedisStreamsScaler(ctx, true, false, config)
 	})
 
-	RegisterScalerBuilder("redis-sentinel", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("redis-sentinel", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewRedisScaler(ctx, false, true, config)
 	})
 
-	RegisterScalerBuilder("redis-sentinel-streams", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("redis-sentinel-streams", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewRedisStreamsScaler(ctx, false, true, config)
 	})
 
-	RegisterScalerBuilder("redis-streams", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("redis-streams", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewRedisStreamsScaler(ctx, false, false, config)
 	})
 
-	RegisterScalerBuilder("selenium-grid", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("selenium-grid", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewSeleniumGridScaler(config)
 	})
 
-	RegisterScalerBuilder("solace-direct-messaging", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("solace-direct-messaging", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewSolaceDMScaler(config)
 	})
 
-	RegisterScalerBuilder("solace-event-queue", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("solace-event-queue", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewSolaceScaler(config)
 	})
 
-	RegisterScalerBuilder("solarwinds", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("solarwinds", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewSolarWindsScaler(config)
 	})
 
-	RegisterScalerBuilder("solr", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("solr", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewSolrScaler(config)
 	})
 
-	RegisterScalerBuilder("splunk", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("splunk", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewSplunkScaler(config)
 	})
 
-	RegisterScalerBuilder("splunk-observability", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("splunk-observability", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewSplunkObservabilityScaler(config)
 	})
 
-	RegisterScalerBuilder("stan", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("stan", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewStanScaler(config)
 	})
 
-	RegisterScalerBuilder("sumologic", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("sumologic", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewSumologicScaler(config)
 	})
 
-	RegisterScalerBuilder("temporal", func(ctx context.Context, c client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("temporal", func(ctx context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewTemporalScaler(ctx, config)
 	})
 }
