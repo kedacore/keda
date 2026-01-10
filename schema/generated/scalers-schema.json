@@ -1529,7 +1529,6 @@
                     "name": "from",
                     "type": "string",
                     "optional": true,
-                    "default": "now-2h",
                     "metadataVariableReadable": true
                 },
                 {
