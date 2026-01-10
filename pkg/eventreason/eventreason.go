@@ -53,6 +53,12 @@ const (
 	// KEDAScalerFailed is for event when a scaler fails for a ScaledJob or a ScaledObject
 	KEDAScalerFailed = "KEDAScalerFailed"
 
+	// KEDAScalerFailedOver is for event when failover switches from primary to secondary trigger
+	KEDAScalerFailedOver = "KEDAScalerFailedOver"
+
+	// KEDAScalerRecovered is for event when failover returns from secondary to primary trigger
+	KEDAScalerRecovered = "KEDAScalerRecovered"
+
 	// KEDAMetricSourceFailed is for event when a scaler fails as metric source for custom formula
 	KEDAMetricSourceFailed = "KEDAMetricSourceFailed"
 

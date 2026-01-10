@@ -8628,6 +8628,41 @@ spec:
                       required:
                       - name
                       type: object
+                    fallback:
+                      description: Fallback is the spec for fallback options
+                      properties:
+                        behavior:
+                          default: static
+                          enum:
+                          - static
+                          - currentReplicas
+                          - currentReplicasIfHigher
+                          - currentReplicasIfLower
+                          - failover
+                          type: string
+                        failoverThresholds:
+                          description: FailoverThresholds specifies debouncing thresholds
+                            when behavior is "failover"
+                          properties:
+                            failAfter:
+                              format: int32
+                              minimum: 1
+                              type: integer
+                            recoverAfter:
+                              format: int32
+                              minimum: 1
+                              type: integer
+                          required:
+                          - failAfter
+                          - recoverAfter
+                          type: object
+                        failureThreshold:
+                          format: int32
+                          type: integer
+                        replicas:
+                          format: int32
+                          type: integer
+                      type: object
                     metadata:
                       additionalProperties:
                         type: string

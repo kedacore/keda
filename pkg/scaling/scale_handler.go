@@ -264,10 +264,28 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 			log.Error(err, "error getting scaledObject", "object", scalableObject)
 			return
 		}
+
+		// Track previous active trigger to detect changes
+		previousActiveTrigger := int32(0)
+		if obj.Status.ActiveTriggerIndex != nil {
+			previousActiveTrigger = *obj.Status.ActiveTriggerIndex
+		}
+
 		isActive, isError, metricsRecords, activeTriggers, err := h.getScaledObjectState(ctx, obj)
 		if err != nil {
 			log.Error(err, "error getting state of scaledObject", "scaledObject.Namespace", obj.Namespace, "scaledObject.Name", obj.Name)
 			return
+		}
+
+		// Persist status changes (including activeTriggerIndex) to Kubernetes only if changed
+		currentActiveTrigger := int32(0)
+		if obj.Status.ActiveTriggerIndex != nil {
+			currentActiveTrigger = *obj.Status.ActiveTriggerIndex
+		}
+		if previousActiveTrigger != currentActiveTrigger {
+			if err := h.client.Status().Update(ctx, obj); err != nil {
+				log.Error(err, "error updating scaledObject status", "scaledObject.Namespace", obj.Namespace, "scaledObject.Name", obj.Name)
+			}
 		}
 
 		h.scaleExecutor.RequestScale(ctx, obj, isActive, isError, &executor.ScaleExecutorOptions{ActiveTriggers: activeTriggers})
@@ -516,7 +534,24 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	// the matching metrics length has to be the same as required metrics length
 	matchingMetricsChan := make(chan metricResult, len(metricsArray))
 	wg := sync.WaitGroup{}
+	// Determine active trigger index for failover
+	// Returns 0 (primary) or 1 (secondary) based on health status
+	// Pass current active trigger from status so recovery logic works correctly
+	currentActiveTrigger := 0
+	if scaledObject.Status.ActiveTriggerIndex != nil {
+		currentActiveTrigger = int(*scaledObject.Status.ActiveTriggerIndex)
+	}
+	activeTriggerIndex := getActiveTriggerIndex(scaledObject, currentActiveTrigger)
+	if isFailoverEnabled(scaledObject) {
+		logger.V(1).Info("Failover enabled for HPA metrics, active trigger determined", "currentActiveTrigger", currentActiveTrigger, "activeTriggerIndex", activeTriggerIndex)
+	}
 	for triggerIndex := 0; triggerIndex < len(allScalers); triggerIndex++ {
+		// Skip this trigger if failover is enabled and it's not the active trigger
+		if !shouldQueryTrigger(scaledObject, triggerIndex, activeTriggerIndex) {
+			logger.V(1).Info("Skipping inactive trigger for HPA metrics due to failover", "triggerIndex", triggerIndex, "activeTriggerIndex", activeTriggerIndex)
+			continue
+		}
+
 		triggerName := strings.Replace(fmt.Sprintf("%T", allScalers[triggerIndex]), "*scalers.", "", 1)
 		if scalerConfigs[triggerIndex].TriggerName != "" {
 			triggerName = scalerConfigs[triggerIndex].TriggerName
@@ -661,6 +696,8 @@ type scalerState struct {
 // the second return value indicates whether there was any error during querying scalers,
 // the third return value is a map of metrics record - a metric value for each scaler and its metric
 // the fourth return value contains error if is not able to access scalers cache
+//
+//nolint:gocyclo // Complexity is acceptable for coordinating multi-scaler health checks and failover logic
 func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (bool, bool, map[string]metricscache.MetricsRecord, []string, error) {
 	logger := log.WithValues("scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 
@@ -677,6 +714,41 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	metricscollector.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, err)
 	if err != nil {
 		return false, true, map[string]metricscache.MetricsRecord{}, []string{}, fmt.Errorf("error getting scalers cache %w", err)
+	}
+
+	// Track current active trigger for failover state changes
+	previousActiveTrigger := int32(0)
+	if scaledObject.Status.ActiveTriggerIndex != nil {
+		previousActiveTrigger = *scaledObject.Status.ActiveTriggerIndex
+	}
+
+	// Determine active trigger index for failover
+	// Returns 0 (primary) or 1 (secondary) based on health status
+	// Pass previousActiveTrigger so recovery logic knows current state
+	activeTriggerIndex := getActiveTriggerIndex(scaledObject, int(previousActiveTrigger))
+	if isFailoverEnabled(scaledObject) {
+		logger.V(1).Info("Failover enabled, active trigger determined", "previousActiveTrigger", previousActiveTrigger, "activeTriggerIndex", activeTriggerIndex)
+	}
+	currentActiveTrigger := int32(activeTriggerIndex)
+
+	// Update status if active trigger changed
+	if previousActiveTrigger != currentActiveTrigger {
+		scaledObject.Status.ActiveTriggerIndex = &currentActiveTrigger
+
+		// Emit events on failover transitions
+		if isFailoverEnabled(scaledObject) {
+			if currentActiveTrigger == 1 && previousActiveTrigger == 0 {
+				// Failover: primary -> secondary
+				h.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScalerFailedOver,
+					"Failover from trigger %d to trigger %d due to health threshold exceeded", previousActiveTrigger, currentActiveTrigger)
+				logger.Info("Failover triggered", "from", previousActiveTrigger, "to", currentActiveTrigger)
+			} else if currentActiveTrigger == 0 && previousActiveTrigger == 1 {
+				// Recovery: secondary -> primary
+				h.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScalerRecovered,
+					"Recovered from trigger %d to trigger %d as health threshold recovered", previousActiveTrigger, currentActiveTrigger)
+				logger.Info("Failover recovery", "from", previousActiveTrigger, "to", currentActiveTrigger)
+			}
+		}
 	}
 
 	// count the number of non-external triggers (cpu/mem) in order to check for
@@ -696,6 +768,12 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	results := make(chan scalerState, len(allScalers))
 	wg := sync.WaitGroup{}
 	for scalerIndex := 0; scalerIndex < len(allScalers); scalerIndex++ {
+		// Skip this trigger if failover is enabled and it's not the active trigger
+		if !shouldQueryTrigger(scaledObject, scalerIndex, activeTriggerIndex) {
+			logger.V(1).Info("Skipping inactive trigger due to failover", "triggerIndex", scalerIndex, "activeTriggerIndex", activeTriggerIndex)
+			continue
+		}
+
 		wg.Add(1)
 		go func(scaler scalers.Scaler, index int, scalerConfig scalersconfig.ScalerConfig, results chan scalerState, wg *sync.WaitGroup) {
 			results <- h.getScalerState(ctx, scaler, index, scalerConfig, cache, logger, scaledObject)

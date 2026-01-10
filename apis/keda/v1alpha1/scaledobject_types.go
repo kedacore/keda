@@ -115,12 +115,25 @@ type ScaledObjectSpec struct {
 
 // Fallback is the spec for fallback options
 type Fallback struct {
-	FailureThreshold int32 `json:"failureThreshold"`
-	Replicas         int32 `json:"replicas"`
+	// +optional
+	FailureThreshold int32 `json:"failureThreshold,omitempty"`
+	// +optional
+	Replicas int32 `json:"replicas,omitempty"`
 	// +optional
 	// +kubebuilder:default=static
-	// +kubebuilder:validation:Enum=static;currentReplicas;currentReplicasIfHigher;currentReplicasIfLower
+	// +kubebuilder:validation:Enum=static;currentReplicas;currentReplicasIfHigher;currentReplicasIfLower;failover
 	Behavior string `json:"behavior,omitempty"`
+	// +optional
+	// FailoverThresholds specifies debouncing thresholds when behavior is "failover"
+	FailoverThresholds *FailoverThresholds `json:"failoverThresholds,omitempty"`
+}
+
+// FailoverThresholds specifies debouncing thresholds for trigger failover
+type FailoverThresholds struct {
+	// +kubebuilder:validation:Minimum=1
+	FailAfter int32 `json:"failAfter"`
+	// +kubebuilder:validation:Minimum=1
+	RecoverAfter int32 `json:"recoverAfter"`
 }
 
 // AdvancedConfig specifies advance scaling options
@@ -186,6 +199,8 @@ type ScaledObjectStatus struct {
 	Conditions Conditions `json:"conditions,omitempty"`
 	// +optional
 	Health map[string]HealthStatus `json:"health,omitempty"`
+	// +optional
+	ActiveTriggerIndex *int32 `json:"activeTriggerIndex,omitempty"`
 	// +optional
 	PausedReplicaCount *int32 `json:"pausedReplicaCount,omitempty"`
 	// +optional
@@ -328,4 +343,17 @@ func CheckFallbackValid(scaledObject *ScaledObject) error {
 		}
 	}
 	return nil
+}
+
+// GetTriggerMetricName returns the metric name for a specific trigger index.
+// Metric names follow the pattern s{index}-{triggerType} to match scaler metric generation.
+// Returns empty string if triggerIndex is out of bounds.
+func (so *ScaledObject) GetTriggerMetricName(triggerIndex int) string {
+	if triggerIndex < 0 || triggerIndex >= len(so.Spec.Triggers) {
+		return ""
+	}
+	trigger := so.Spec.Triggers[triggerIndex]
+	// Use the same metric name generation as scalers to ensure consistency
+	// Metric names are in format: s{index}-{triggerType}
+	return fmt.Sprintf("s%d-%s", triggerIndex, trigger.Type)
 }
