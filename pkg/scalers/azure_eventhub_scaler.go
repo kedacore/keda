@@ -25,7 +25,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
-	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -117,7 +116,7 @@ func parseAzureEventHubMetadata(logger logr.Logger, config *scalersconfig.Scaler
 }
 
 func parseCommonAzureEventHubMetadata(config *scalersconfig.ScalerConfig, meta *eventHubMetadata) error {
-	serviceBusEndpointSuffixProvider := func(env az.Environment) (string, error) {
+	serviceBusEndpointSuffixProvider := func(env azure.AzEnvironment) (string, error) {
 		return env.ServiceBusEndpointSuffix, nil
 	}
 	serviceBusEndpointSuffix, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, azure.DefaultEndpointSuffixKey, serviceBusEndpointSuffixProvider)
@@ -162,7 +161,7 @@ func parseAzureEventHubAuthenticationMetadata(logger logr.Logger, config *scaler
 		}
 
 		if len(meta.EventHubInfo.StorageAccountName) != 0 {
-			storageEndpointSuffixProvider := func(env az.Environment) (string, error) {
+			storageEndpointSuffixProvider := func(env azure.AzEnvironment) (string, error) {
 				return env.StorageEndpointSuffix, nil
 			}
 			storageEndpointSuffix, err := azure.ParseEnvironmentProperty(config.TriggerMetadata, azure.DefaultStorageSuffixKey, storageEndpointSuffixProvider)

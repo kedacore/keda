@@ -9,7 +9,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	az "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -43,7 +42,7 @@ func TryAndGetAzureManagedPrometheusHTTPRoundTripper(logger logr.Logger, podIden
 			return nil, err
 		}
 
-		azureManagedPrometheusResourceURLProvider := func(env az.Environment) (string, error) {
+		azureManagedPrometheusResourceURLProvider := func(env AzEnvironment) (string, error) {
 			if resource, ok := azureManagedPrometheusResourceURLInCloud[strings.ToUpper(env.Name)]; ok {
 				return resource, nil
 			}
