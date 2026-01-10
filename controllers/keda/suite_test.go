@@ -62,7 +62,7 @@ var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
 
 	// Register test-only scalers
-	scaling.RegisterTestScalerBuilder("external-mock", func(_ context.Context, _ client.Client, _ string, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	scaling.RegisterScalerBuilder("external-mock", func(_ context.Context, _ client.Client, config *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		return scalers.NewExternalMockScaler(config)
 	})
 

@@ -10,9 +10,10 @@ import (
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
-func TestTestScalerRegistry(t *testing.T) {
+func TestScalerRegistry(t *testing.T) {
+	// Test registering a custom scaler
 	called := false
-	RegisterTestScalerBuilder("test-scaler", func(_ context.Context, _ client.Client, _ string, _ *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
+	RegisterScalerBuilder("test-scaler", func(_ context.Context, _ client.Client, _ *scalersconfig.ScalerConfig) (scalers.Scaler, error) {
 		called = true
 		return nil, nil
 	})
@@ -23,15 +24,37 @@ func TestTestScalerRegistry(t *testing.T) {
 		t.Error("Test scaler builder was not called")
 	}
 
-	delete(testScalerBuilders, "test-scaler")
+	// Clean up
+	delete(scalerBuilders, "test-scaler")
 }
 
-func TestProductionScalerStillWorks(t *testing.T) {
-	// Verify that a production scaler like "cron" still returns an error with proper message
-	config := &scalersconfig.ScalerConfig{}
-	_, err := buildScaler(context.Background(), nil, "cron", config)
+func TestProductionScalersRegistered(t *testing.T) {
+	// Verify that production scalers are registered in the init() function
+	testCases := []string{
+		"cron",
+		"prometheus",
+		"kafka",
+		"cpu",
+		"memory",
+	}
 
-	if err != nil && err.Error() == "no scaler found for type: cron" {
-		t.Error("Production scaler 'cron' was not found in buildScaler")
+	for _, scalerType := range testCases {
+		if _, ok := scalerBuilders[scalerType]; !ok {
+			t.Errorf("Production scaler '%s' was not registered", scalerType)
+		}
+	}
+}
+
+func TestUnknownScalerReturnsError(t *testing.T) {
+	config := &scalersconfig.ScalerConfig{}
+	_, err := buildScaler(context.Background(), nil, "non-existent-scaler", config)
+
+	if err == nil {
+		t.Error("Expected error for unknown scaler type, got nil")
+	}
+
+	expectedMsg := "no scaler found for type: non-existent-scaler"
+	if err.Error() != expectedMsg {
+		t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
 	}
 }
