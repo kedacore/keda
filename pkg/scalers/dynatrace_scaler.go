@@ -40,7 +40,7 @@ type dynatraceMetadata struct {
 	Token               string  `keda:"name=token, order=authParams"`
 	MetricSelector      string  `keda:"name=metricSelector, order=triggerMetadata, optional"`
 	DQLQuery            string  `keda:"name=query, order=triggerMetadata, optional"`
-	FromTimestamp       string  `keda:"name=from, order=triggerMetadata, default=now-2h, optional"`
+	FromTimestamp       string  `keda:"name=from, order=triggerMetadata, optional"`
 	Threshold           float64 `keda:"name=threshold, order=triggerMetadata"`
 	ActivationThreshold float64 `keda:"name=activationThreshold, order=triggerMetadata, optional"`
 	TriggerIndex        int
@@ -52,6 +52,12 @@ func (meta *dynatraceMetadata) Validate() error {
 	}
 	if meta.DQLQuery != "" && meta.MetricSelector != "" {
 		return errors.New("'metricSelector' and 'query' are mutually exclusive; only one can be provided")
+	}
+	if meta.MetricSelector != "" && meta.FromTimestamp == "" {
+		meta.FromTimestamp = "now-2h"
+	}
+	if meta.DQLQuery != "" && meta.FromTimestamp != "" {
+		return errors.New("'from' can't be used with query, set time range in the DQL query itself")
 	}
 	return nil
 }
@@ -104,7 +110,7 @@ func NewDynatraceScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		}
 		queryRequestPayload, err = json.Marshal(queryRequest)
 		if err != nil {
-			return nil, fmt.Errorf("error caqching DQL query: %w", err)
+			return nil, fmt.Errorf("error caching DQL query: %w", err)
 		}
 	}
 
