@@ -986,6 +986,11 @@ scalers:
           triggerAuthenticationVariableReadable: true
         - name: metricSelector
           type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: query
+          type: string
+          optional: true
           metadataVariableReadable: true
         - name: from
           type: string

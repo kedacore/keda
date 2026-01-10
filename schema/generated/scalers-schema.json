@@ -1516,6 +1516,13 @@
                 {
                     "name": "metricSelector",
                     "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "query",
+                    "type": "string",
+                    "optional": true,
                     "metadataVariableReadable": true
                 },
                 {
