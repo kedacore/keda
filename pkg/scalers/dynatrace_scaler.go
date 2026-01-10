@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	neturl "net/url"
 	"strings"
 	"time"
 
@@ -24,6 +23,8 @@ import (
 const (
 	dynatraceMetricDataPointsAPI = "api/v2/metrics/query"
 	dynatraceDQLAPI              = "platform/storage/query/v1/query"
+	dynatraceRunningState        = "RUNNING"
+	dynatraceSucceededState      = "SUCCEEDED"
 )
 
 type dynatraceScaler struct {
@@ -165,13 +166,13 @@ func (s *dynatraceScaler) GetMetricValue(ctx context.Context) (float64, error) {
 	dynatraceAPIURL := fmt.Sprintf("%s/%s", strings.TrimRight(s.metadata.Host, "/"), dynatraceMetricDataPointsAPI)
 
 	// Add query parameters to the URL
-	url, _ := neturl.Parse(dynatraceAPIURL)
-	queryString := url.Query()
+	dynatraceURL, _ := url.Parse(dynatraceAPIURL)
+	queryString := dynatraceURL.Query()
 	queryString.Set("metricSelector", s.metadata.MetricSelector)
 	queryString.Set("from", s.metadata.FromTimestamp)
-	url.RawQuery = queryString.Encode()
+	dynatraceURL.RawQuery = queryString.Encode()
 
-	req, err = http.NewRequestWithContext(ctx, "GET", url.String(), nil)
+	req, err = http.NewRequestWithContext(ctx, "GET", dynatraceURL.String(), nil)
 	if err != nil {
 		return 0, err
 	}
@@ -232,7 +233,7 @@ func (s *dynatraceScaler) GetQueryValue(ctx context.Context) (float64, error) {
 		}
 		time.Sleep(time.Second)
 	}
-	return 0, errors.New(fmt.Sprintf("DQL query did not complete within %d attempts", maxAttempts))
+	return 0, fmt.Errorf("DQL query did not complete within %d attempts", maxAttempts)
 }
 
 func (s *dynatraceScaler) executeDQL(ctx context.Context) (string, error) {
@@ -242,10 +243,10 @@ func (s *dynatraceScaler) executeDQL(ctx context.Context) (string, error) {
 	dynatraceAPIURLExecute := fmt.Sprintf("%s/%s:execute", strings.TrimRight(s.metadata.Host, "/"), dynatraceDQLAPI)
 
 	req, err = http.NewRequestWithContext(ctx, "POST", dynatraceAPIURLExecute, bytes.NewBuffer(s.queryRequestPayload))
-	req.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		return "", err
 	}
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.Token))
 
 	r, err := s.httpClient.Do(req)
@@ -266,12 +267,12 @@ func (s *dynatraceScaler) executeDQL(ctx context.Context) (string, error) {
 	var dynatraceResponse *dynatraceExecuteQueryResponse
 	err = json.Unmarshal(b, &dynatraceResponse)
 	if err != nil {
-		return "", fmt.Errorf("Error starting DQL query: %w", err)
+		return "", fmt.Errorf("error starting DQL query: %w", err)
 	}
-	if dynatraceResponse.State == "RUNNING" || dynatraceResponse.State == "SUCCEEDED" {
+	if dynatraceResponse.State == dynatraceRunningState || dynatraceResponse.State == dynatraceSucceededState {
 		return dynatraceResponse.RequestToken, nil
 	}
-	return "", fmt.Errorf("Error starting DQL query: unknown state %s", dynatraceResponse.State)
+	return "", fmt.Errorf("error starting DQL query: unknown state %s", dynatraceResponse.State)
 }
 
 func (s *dynatraceScaler) pollDQLResult(ctx context.Context, url string) (float64, bool, error) {
@@ -299,18 +300,18 @@ func (s *dynatraceScaler) pollDQLResult(ctx context.Context, url string) (float6
 	var dynatraceResponse *dynatraceQueryResponse
 	err = json.Unmarshal(b, &dynatraceResponse)
 	if err != nil {
-		return -1, false, fmt.Errorf("Error parsing DQL response: %w", err)
+		return -1, false, fmt.Errorf("error parsing DQL response: %w", err)
 	}
-	if dynatraceResponse.State == "RUNNING" {
+	if dynatraceResponse.State == dynatraceRunningState {
 		return -1, true, nil
 	}
-	if dynatraceResponse.State == "SUCCEEDED" {
+	if dynatraceResponse.State == dynatraceSucceededState {
 		if len(dynatraceResponse.Result.Records) > 0 {
 			return dynatraceResponse.Result.Records[0].R, false, nil
 		}
-		return -1, false, errors.New("Error executing DQL query: empty result")
+		return -1, false, errors.New("error executing DQL query: empty result")
 	}
-	return -1, false, errors.New(fmt.Sprintf("Error executing DQL query: unknown state: %s", dynatraceResponse.State))
+	return -1, false, fmt.Errorf("error executing DQL query: unknown state: %s", dynatraceResponse.State)
 }
 
 func (s *dynatraceScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
