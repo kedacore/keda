@@ -111,6 +111,13 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 			isError:             false,
 		},
 		{
+			name:                "value not returned during max polls",
+			executeResponseFail: false,
+			pollResponseFail:    false,
+			pollResponseAfter:   3,
+			isError:             true,
+		},
+		{
 			name:                "excute fail",
 			executeResponseFail: true,
 			isError:             true,
@@ -178,7 +185,7 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 				}
 			}))
 
-			metadata := map[string]string{"threshold": "100", "query": "dql-query", "host": apiStub.URL}
+			metadata := map[string]string{"threshold": "100", "query": "dql-query", "host": apiStub.URL, "queryPollingWait": "0s", "queryPollingTries": "2"}
 			auth := map[string]string{"token": "123ws"}
 			scaler, err := NewDynatraceScaler(&scalersconfig.ScalerConfig{TriggerMetadata: metadata, AuthParams: auth, TriggerIndex: 0, GlobalHTTPTimeout: time.Minute})
 			if err != nil {

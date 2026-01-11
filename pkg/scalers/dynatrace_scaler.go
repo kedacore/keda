@@ -36,13 +36,15 @@ type dynatraceScaler struct {
 }
 
 type dynatraceMetadata struct {
-	Host                string  `keda:"name=host, order=triggerMetadata;authParams"`
-	Token               string  `keda:"name=token, order=authParams"`
-	MetricSelector      string  `keda:"name=metricSelector, order=triggerMetadata, optional"`
-	DQLQuery            string  `keda:"name=query, order=triggerMetadata, optional"`
-	FromTimestamp       string  `keda:"name=from, order=triggerMetadata, optional"`
-	Threshold           float64 `keda:"name=threshold, order=triggerMetadata"`
-	ActivationThreshold float64 `keda:"name=activationThreshold, order=triggerMetadata, optional"`
+	Host                string        `keda:"name=host, order=triggerMetadata;authParams"`
+	Token               string        `keda:"name=token, order=authParams"`
+	MetricSelector      string        `keda:"name=metricSelector, order=triggerMetadata, optional"`
+	DQLQuery            string        `keda:"name=query, order=triggerMetadata, optional"`
+	DQLQueryWait        time.Duration `keda:"name=queryPollingWait, order=triggerMetadata, default=1s, optional"`
+	DQLQueryTries       int           `keda:"name=queryPollingTries, order=triggerMetadata, default=5, optional"`
+	FromTimestamp       string        `keda:"name=from, order=triggerMetadata, optional"`
+	Threshold           float64       `keda:"name=threshold, order=triggerMetadata"`
+	ActivationThreshold float64       `keda:"name=activationThreshold, order=triggerMetadata, optional"`
 	TriggerIndex        int
 }
 
@@ -228,8 +230,8 @@ func (s *dynatraceScaler) GetQueryValue(ctx context.Context) (float64, error) {
 	}
 
 	dynatraceAPIURLResult := fmt.Sprintf("%s/%s:poll?request-token=%s", strings.TrimRight(s.metadata.Host, "/"), dynatraceDQLAPI, url.QueryEscape(requestToken))
-	const maxAttempts = 5
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
+
+	for attempt := 0; attempt < s.metadata.DQLQueryTries; attempt++ {
 		val, retry, err := s.pollDQLResult(ctx, dynatraceAPIURLResult)
 		if err != nil {
 			return 0, err
@@ -237,9 +239,9 @@ func (s *dynatraceScaler) GetQueryValue(ctx context.Context) (float64, error) {
 		if !retry {
 			return val, nil
 		}
-		time.Sleep(time.Second)
+		time.Sleep(s.metadata.DQLQueryWait)
 	}
-	return 0, fmt.Errorf("DQL query did not complete within %d attempts", maxAttempts)
+	return 0, fmt.Errorf("DQL query did not complete within %d attempts", s.metadata.DQLQueryTries)
 }
 
 func (s *dynatraceScaler) executeDQL(ctx context.Context) (string, error) {
