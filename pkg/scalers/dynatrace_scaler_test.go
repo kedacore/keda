@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
 
 type dynatraceMetadataTestData struct {
@@ -173,7 +174,6 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 							_, err = w.Write(bytes)
 							assert.NoError(t, err)
 						}
-
 					}
 				}
 			}))
