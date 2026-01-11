@@ -118,12 +118,12 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 			isError:             true,
 		},
 		{
-			name:                "excute fail",
+			name:                "execute fail",
 			executeResponseFail: true,
 			isError:             true,
 		},
 		{
-			name:             "pooling fail",
+			name:             "polling fail",
 			pollResponseFail: true,
 			isError:          true,
 		},
@@ -162,10 +162,10 @@ func TestDynatraceGetMetricByQuery(t *testing.T) {
 								State: "SUCCEEDED",
 								Result: struct {
 									Records []struct {
-										R float64 "json:\"r\""
-									} "json:\"records\""
+										R float64 `json:"r"`
+									} `json:"records"`
 								}{Records: []struct {
-									R float64 "json:\"r\""
+									R float64 `json:"r"`
 								}{{R: tt.metricValue}}},
 							})
 							assert.NoError(t, err)

@@ -37,7 +37,7 @@ var (
 	dynatraceToken      = os.Getenv("DYNATRACE_METRICS_TOKEN")
 	dynatraceGrailHost  = os.Getenv("DYNATRACE_GRAIL_HOST")
 	dynatraceGrailToken = os.Getenv("DYNATRACE_GRAIL_TOKEN")
-	dynatraceInjestHost = fmt.Sprintf("%s/api/v2/metrics/ingest", dynatraceHost)
+	dynatraceIngestHost = fmt.Sprintf("%s/api/v2/metrics/ingest", dynatraceHost)
 	dynatraceMetricName = fmt.Sprintf("metric-%d", GetRandomNumber())
 	minReplicaCount     = 0
 	maxReplicaCount     = 2
@@ -192,8 +192,8 @@ func setMetricValue(t *testing.T, value float64, stopCh <-chan struct{}) {
 			return
 		default:
 			time.Sleep(time.Second)
-			req, err := http.NewRequest("POST", dynatraceInjestHost, bytes.NewBufferString(metric))
-			req.Header.Add("'Content-Type", "text/plain")
+			req, err := http.NewRequest("POST", dynatraceIngestHost, bytes.NewBufferString(metric))
+			req.Header.Add("Content-Type", "text/plain")
 			if err != nil {
 				t.Log("Invalid injection request")
 				continue
@@ -204,11 +204,11 @@ func setMetricValue(t *testing.T, value float64, stopCh <-chan struct{}) {
 				t.Log("Error executing request")
 				continue
 			}
-			defer r.Body.Close()
 			if r.StatusCode != http.StatusAccepted {
 				msg := fmt.Sprintf("%s: api returned %d", r.Request.URL.Path, r.StatusCode)
 				t.Log(msg)
 			}
+			_ = r.Body.Close()
 		}
 	}
 }
