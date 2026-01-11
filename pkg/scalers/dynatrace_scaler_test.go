@@ -31,7 +31,7 @@ var testDynatraceMetadata = []dynatraceMetadataTestData{
 	// all properly formed for metricSelector
 	{map[string]string{"threshold": "100", "from": "now-3d", "metricSelector": "MyCustomEvent:filter(eq(\"someProperty\",\"someValue\")):count:splitBy(\"dt.entity.process_group\"):fold"}, map[string]string{"host": "http://dummy:1234", "token": "dummy"}, false},
 	// all properly formed for query
-	{map[string]string{"threshold": "100", "query": "dql-query"}, map[string]string{"host": "http://dummy:1234", "token": "dummy"}, false},
+	{map[string]string{"threshold": "100", "query": "dql-query", "queryTimeoutSeconds": "300", "queryPollingWait": "30m", "queryPollingTries": "15"}, map[string]string{"host": "http://dummy:1234", "token": "dummy"}, false},
 	// malformed threshold
 	{map[string]string{"threshold": "abc", "from": "now-3d", "metricSelector": "MyCustomEvent:filter(eq(\"someProperty\",\"someValue\")):count:splitBy(\"dt.entity.process_group\"):fold"}, map[string]string{"host": "http://dummy:1234", "token": "dummy"}, true},
 	// malformed activationThreshold

@@ -36,16 +36,17 @@ type dynatraceScaler struct {
 }
 
 type dynatraceMetadata struct {
-	Host                string        `keda:"name=host, order=triggerMetadata;authParams"`
-	Token               string        `keda:"name=token, order=authParams"`
-	MetricSelector      string        `keda:"name=metricSelector, order=triggerMetadata, optional"`
-	DQLQuery            string        `keda:"name=query, order=triggerMetadata, optional"`
-	DQLQueryWait        time.Duration `keda:"name=queryPollingWait, order=triggerMetadata, default=1s, optional"`
-	DQLQueryTries       int           `keda:"name=queryPollingTries, order=triggerMetadata, default=5, optional"`
-	FromTimestamp       string        `keda:"name=from, order=triggerMetadata, optional"`
-	Threshold           float64       `keda:"name=threshold, order=triggerMetadata"`
-	ActivationThreshold float64       `keda:"name=activationThreshold, order=triggerMetadata, optional"`
-	TriggerIndex        int
+	Host                   string        `keda:"name=host, order=triggerMetadata;authParams"`
+	Token                  string        `keda:"name=token, order=authParams"`
+	MetricSelector         string        `keda:"name=metricSelector, order=triggerMetadata, optional"`
+	DQLQuery               string        `keda:"name=query, order=triggerMetadata, optional"`
+	DQLQueryTimeoutSeconds int           `keda:"name=queryTimeoutSeconds, order=triggerMetadata, default=10, optional"`
+	DQLQueryWait           time.Duration `keda:"name=queryPollingWait, order=triggerMetadata, default=1s, optional"`
+	DQLQueryTries          int           `keda:"name=queryPollingTries, order=triggerMetadata, default=5, optional"`
+	FromTimestamp          string        `keda:"name=from, order=triggerMetadata, optional"`
+	Threshold              float64       `keda:"name=threshold, order=triggerMetadata"`
+	ActivationThreshold    float64       `keda:"name=activationThreshold, order=triggerMetadata, optional"`
+	TriggerIndex           int
 }
 
 func (meta *dynatraceMetadata) Validate() error {
@@ -108,7 +109,7 @@ func NewDynatraceScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			FetchTimeoutSeconds int    `json:"fetchTimeoutSeconds"`
 		}{
 			Query:               meta.DQLQuery,
-			FetchTimeoutSeconds: 10,
+			FetchTimeoutSeconds: meta.DQLQueryTimeoutSeconds,
 		}
 		queryRequestPayload, err = json.Marshal(queryRequest)
 		if err != nil {
