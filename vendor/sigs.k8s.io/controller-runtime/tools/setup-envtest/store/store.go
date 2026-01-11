@@ -12,8 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
-	"strings"
+	"sort"
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/afero"
@@ -103,12 +102,11 @@ func (s *Store) List(ctx context.Context, matching Filter) ([]Item, error) {
 		return nil, fmt.Errorf("unable to list version-platform pairs in store: %w", err)
 	}
 
-	slices.SortStableFunc(res, func(i, j Item) int {
-		if !i.Version.Matches(j.Version) {
-			// sort in inverse order so that the newest one is first
-			return j.Version.Compare(i.Version)
+	sort.Slice(res, func(i, j int) bool {
+		if !res[i].Version.Matches(res[j].Version) {
+			return res[i].Version.NewerThan(res[j].Version)
 		}
-		return orderPlatforms(i.Platform, j.Platform)
+		return orderPlatforms(res[i].Platform, res[j].Platform)
 	})
 
 	return res, nil
@@ -298,10 +296,10 @@ func (s *Store) removeItem(itemDir afero.Fs) error {
 }
 
 // orderPlatforms orders platforms by OS then arch.
-func orderPlatforms(first, second versions.Platform) int {
+func orderPlatforms(first, second versions.Platform) bool {
 	// sort by OS, then arch
 	if first.OS != second.OS {
-		return strings.Compare(first.OS, second.OS)
+		return first.OS < second.OS
 	}
-	return strings.Compare(first.Arch, second.Arch)
+	return first.Arch < second.Arch
 }

@@ -27,24 +27,15 @@ func (c Concrete) AsConcrete() *Concrete {
 	return &c
 }
 
-// Compare checks if the given other version is newer than this one.
-func (c Concrete) Compare(other Concrete) int {
-	IntCompare := func(a, b int) int {
-		if a > b {
-			return 1
-		} else if a < b {
-			return -1
-		}
-		return 0
-	}
-
+// NewerThan checks if the given other version is newer than this one.
+func (c Concrete) NewerThan(other Concrete) bool {
 	if c.Major != other.Major {
-		return IntCompare(c.Major, other.Major)
+		return c.Major > other.Major
 	}
 	if c.Minor != other.Minor {
-		return IntCompare(c.Minor, other.Minor)
+		return c.Minor > other.Minor
 	}
-	return IntCompare(c.Patch, other.Patch)
+	return c.Patch > other.Patch
 }
 
 // Matches checks if this version is equal to the other one.
