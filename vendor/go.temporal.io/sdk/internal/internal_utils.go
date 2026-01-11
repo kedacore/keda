@@ -56,7 +56,11 @@ func (cb *grpcContextBuilder) Build() (context.Context, context.CancelFunc) {
 		ctx = context.Background()
 	}
 	if cb.Headers != nil {
-		ctx = metadata.NewOutgoingContext(ctx, cb.Headers)
+		if existingMD, ok := metadata.FromOutgoingContext(ctx); ok {
+			ctx = metadata.NewOutgoingContext(ctx, metadata.Join(existingMD, cb.Headers))
+		} else {
+			ctx = metadata.NewOutgoingContext(ctx, cb.Headers)
+		}
 	}
 	if cb.MetricsHandler != nil {
 		ctx = context.WithValue(ctx, metrics.HandlerContextKey{}, cb.MetricsHandler)

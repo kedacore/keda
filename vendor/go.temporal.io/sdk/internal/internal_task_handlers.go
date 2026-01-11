@@ -24,6 +24,7 @@ import (
 	"go.temporal.io/api/serviceerror"
 	taskqueuepb "go.temporal.io/api/taskqueue/v1"
 	"go.temporal.io/api/workflowservice/v1"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"go.temporal.io/sdk/internal/common/retry"
@@ -213,6 +214,11 @@ type (
 		flags          []sdkFlag
 		sdkVersion     string
 		sdkName        string
+	}
+
+	workflowTaskCompletion struct {
+		rawRequest             proto.Message
+		applyCompletionMetrics func()
 	}
 )
 
@@ -892,7 +898,7 @@ func (wth *workflowTaskHandlerImpl) ProcessWorkflowTask(
 	workflowTask *workflowTask,
 	workflowContext *workflowExecutionContextImpl,
 	heartbeatFunc workflowTaskHeartbeatFunc,
-) (completeRequest interface{}, errRet error) {
+) (taskCompletion *workflowTaskCompletion, errRet error) {
 	if workflowTask == nil || workflowTask.task == nil {
 		return nil, errors.New("nil workflow task provided")
 	}
@@ -922,7 +928,7 @@ func (wth *workflowTaskHandlerImpl) ProcessWorkflowTask(
 	})
 
 	var (
-		response       interface{}
+		response       *workflowTaskCompletion
 		err            error
 		heartbeatTimer *time.Timer
 	)
@@ -1020,11 +1026,11 @@ processWorkflowLoop:
 		}
 	}
 	errRet = err
-	completeRequest = response
+	taskCompletion = response
 	return
 }
 
-func (w *workflowExecutionContextImpl) ProcessWorkflowTask(workflowTask *workflowTask) (interface{}, error) {
+func (w *workflowExecutionContextImpl) ProcessWorkflowTask(workflowTask *workflowTask) (*workflowTaskCompletion, error) {
 	task := workflowTask.task
 	historyIterator := workflowTask.historyIterator
 	if err := w.ResetIfStale(task, historyIterator); err != nil {
@@ -1268,7 +1274,7 @@ ProcessEvents:
 	return w.applyWorkflowPanicPolicy(workflowTask, workflowError)
 }
 
-func (w *workflowExecutionContextImpl) ProcessLocalActivityResult(workflowTask *workflowTask, lar *localActivityResult) (interface{}, error) {
+func (w *workflowExecutionContextImpl) ProcessLocalActivityResult(workflowTask *workflowTask, lar *localActivityResult) (*workflowTaskCompletion, error) {
 	if lar.err != nil && w.retryLocalActivity(lar) {
 		return nil, nil // nothing to do here as we are retrying...
 	}
@@ -1276,7 +1282,7 @@ func (w *workflowExecutionContextImpl) ProcessLocalActivityResult(workflowTask *
 	return w.applyWorkflowPanicPolicy(workflowTask, w.getEventHandler().ProcessLocalActivityResult(lar))
 }
 
-func (w *workflowExecutionContextImpl) applyWorkflowPanicPolicy(workflowTask *workflowTask, workflowError error) (interface{}, error) {
+func (w *workflowExecutionContextImpl) applyWorkflowPanicPolicy(workflowTask *workflowTask, workflowError error) (*workflowTaskCompletion, error) {
 	task := workflowTask.task
 
 	if workflowError == nil && w.err != nil {
@@ -1398,7 +1404,7 @@ func getRetryBackoffWithNowTime(p *RetryPolicy, attempt int32, err error, now, e
 	return backoffInterval
 }
 
-func (w *workflowExecutionContextImpl) CompleteWorkflowTask(workflowTask *workflowTask, waitLocalActivities bool) interface{} {
+func (w *workflowExecutionContextImpl) CompleteWorkflowTask(workflowTask *workflowTask, waitLocalActivities bool) *workflowTaskCompletion {
 	if w.currentWorkflowTask == nil {
 		return nil
 	}
@@ -1442,7 +1448,7 @@ func (w *workflowExecutionContextImpl) CompleteWorkflowTask(workflowTask *workfl
 	completeRequest := w.wth.completeWorkflow(eventHandler, w.currentWorkflowTask, w, w.newCommands, w.newMessages, !waitLocalActivities)
 	w.clearCurrentTask()
 
-	return completeRequest
+	return &completeRequest
 }
 
 func (w *workflowExecutionContextImpl) hasPendingLocalActivityWork() bool {
@@ -1824,7 +1830,7 @@ func (wth *workflowTaskHandlerImpl) completeWorkflow(
 	commands []*commandpb.Command,
 	messages []*protocolpb.Message,
 	forceNewWorkflowTask bool,
-) interface{} {
+) workflowTaskCompletion {
 	// for query task
 	if task.Query != nil {
 		queryCompletedRequest := &workflowservice.RespondQueryTaskCompletedRequest{
@@ -1835,7 +1841,7 @@ func (wth *workflowTaskHandlerImpl) completeWorkflow(
 		if errors.As(workflowContext.err, &panicErr) {
 			queryCompletedRequest.CompletedType = enumspb.QUERY_RESULT_TYPE_FAILED
 			queryCompletedRequest.ErrorMessage = "Workflow panic: " + panicErr.Error()
-			return queryCompletedRequest
+			return workflowTaskCompletion{rawRequest: queryCompletedRequest}
 		}
 
 		result, err := eventHandler.ProcessQuery(task.Query.GetQueryType(), task.Query.QueryArgs, task.Query.Header)
@@ -1847,27 +1853,25 @@ func (wth *workflowTaskHandlerImpl) completeWorkflow(
 			queryCompletedRequest.CompletedType = enumspb.QUERY_RESULT_TYPE_ANSWERED
 			queryCompletedRequest.QueryResult = result
 		}
-		return queryCompletedRequest
+		return workflowTaskCompletion{rawRequest: queryCompletedRequest}
 	}
-
-	metricsHandler := wth.metricsHandler.WithTags(metrics.WorkflowTags(
-		eventHandler.workflowEnvironmentImpl.workflowInfo.WorkflowType.Name))
 
 	// complete workflow task
 	var closeCommand *commandpb.Command
 	var canceledErr *CanceledError
 	var contErr *ContinueAsNewError
+	var metricCounterToIncrement string
 
 	if errors.As(workflowContext.err, &canceledErr) {
 		// Workflow canceled
-		metricsHandler.Counter(metrics.WorkflowCanceledCounter).Inc(1)
+		metricCounterToIncrement = metrics.WorkflowCanceledCounter
 		closeCommand = createNewCommand(enumspb.COMMAND_TYPE_CANCEL_WORKFLOW_EXECUTION)
 		closeCommand.Attributes = &commandpb.Command_CancelWorkflowExecutionCommandAttributes{CancelWorkflowExecutionCommandAttributes: &commandpb.CancelWorkflowExecutionCommandAttributes{
 			Details: convertErrDetailsToPayloads(canceledErr.details, wth.dataConverter),
 		}}
 	} else if errors.As(workflowContext.err, &contErr) {
 		// Continue as new error.
-		metricsHandler.Counter(metrics.WorkflowContinueAsNewCounter).Inc(1)
+		metricCounterToIncrement = metrics.WorkflowContinueAsNewCounter
 		closeCommand = createNewCommand(enumspb.COMMAND_TYPE_CONTINUE_AS_NEW_WORKFLOW_EXECUTION)
 
 		// ContinueAsNewError.RetryPolicy is optional.
@@ -1894,7 +1898,7 @@ func (wth *workflowTaskHandlerImpl) completeWorkflow(
 	} else if workflowContext.err != nil {
 		// Workflow failures
 		if !isBenignApplicationError(workflowContext.err) {
-			metricsHandler.Counter(metrics.WorkflowFailedCounter).Inc(1)
+			metricCounterToIncrement = metrics.WorkflowFailedCounter
 		}
 		closeCommand = createNewCommand(enumspb.COMMAND_TYPE_FAIL_WORKFLOW_EXECUTION)
 		failure := wth.failureConverter.ErrorToFailure(workflowContext.err)
@@ -1903,7 +1907,7 @@ func (wth *workflowTaskHandlerImpl) completeWorkflow(
 		}}
 	} else if workflowContext.isWorkflowCompleted {
 		// Workflow completion
-		metricsHandler.Counter(metrics.WorkflowCompletedCounter).Inc(1)
+		metricCounterToIncrement = metrics.WorkflowCompletedCounter
 		closeCommand = createNewCommand(enumspb.COMMAND_TYPE_COMPLETE_WORKFLOW_EXECUTION)
 		closeCommand.Attributes = &commandpb.Command_CompleteWorkflowExecutionCommandAttributes{CompleteWorkflowExecutionCommandAttributes: &commandpb.CompleteWorkflowExecutionCommandAttributes{
 			Result: workflowContext.result,
@@ -1912,8 +1916,6 @@ func (wth *workflowTaskHandlerImpl) completeWorkflow(
 
 	if closeCommand != nil {
 		commands = append(commands, closeCommand)
-		elapsed := time.Since(workflowContext.workflowInfo.WorkflowStartTime)
-		metricsHandler.Timer(metrics.WorkflowEndToEndLatency).Record(elapsed)
 		forceNewWorkflowTask = false
 	}
 
@@ -1992,7 +1994,22 @@ func (wth *workflowTaskHandlerImpl) completeWorkflow(
 			builtRequest.VersioningBehavior = versioningBehaviorToProto(wth.defaultVersioningBehavior)
 		}
 	}
-	return builtRequest
+
+	// Return request and a function that will update certain metrics
+	metricsHandler := wth.metricsHandler.WithTags(metrics.WorkflowTags(
+		eventHandler.workflowEnvironmentImpl.workflowInfo.WorkflowType.Name))
+	return workflowTaskCompletion{
+		rawRequest: builtRequest,
+		applyCompletionMetrics: func() {
+			if metricCounterToIncrement != "" {
+				metricsHandler.Counter(metricCounterToIncrement).Inc(1)
+			}
+			if closeCommand != nil {
+				elapsed := time.Since(workflowContext.workflowInfo.WorkflowStartTime)
+				metricsHandler.Timer(metrics.WorkflowEndToEndLatency).Record(elapsed)
+			}
+		},
+	}
 }
 
 func (wth *workflowTaskHandlerImpl) executeAnyPressurePoints(event *historypb.HistoryEvent, isInReplay bool) error {
