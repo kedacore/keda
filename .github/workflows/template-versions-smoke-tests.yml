@@ -13,9 +13,10 @@ jobs:
           - AMD64
           - ARM64
         kindVersion:
-          - v1.33.1
-          - v1.32.5
-          - v1.31.9
+          - v1.35.0
+          - v1.34.3
+          - v1.33.7
+          - v1.32.11
         include:
           - arch: AMD64
             runner: ubuntu-latest
