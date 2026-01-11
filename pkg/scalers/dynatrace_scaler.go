@@ -233,6 +233,15 @@ func (s *dynatraceScaler) GetQueryValue(ctx context.Context) (float64, error) {
 	dynatraceAPIURLResult := fmt.Sprintf("%s/%s:poll?request-token=%s", strings.TrimRight(s.metadata.Host, "/"), dynatraceDQLAPI, url.QueryEscape(requestToken))
 
 	for attempt := 0; attempt < s.metadata.DQLQueryTries; attempt++ {
+		// first attempt has no wait
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return 0, ctx.Err()
+			case <-time.After(s.metadata.DQLQueryWait):
+			}
+		}
+
 		val, retry, err := s.pollDQLResult(ctx, dynatraceAPIURLResult)
 		if err != nil {
 			return 0, err
@@ -240,7 +249,6 @@ func (s *dynatraceScaler) GetQueryValue(ctx context.Context) (float64, error) {
 		if !retry {
 			return val, nil
 		}
-		time.Sleep(s.metadata.DQLQueryWait)
 	}
 	return 0, fmt.Errorf("DQL query did not complete within %d attempts", s.metadata.DQLQueryTries)
 }
