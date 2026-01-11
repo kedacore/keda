@@ -40,9 +40,9 @@ type dynatraceMetadata struct {
 	Token                  string        `keda:"name=token, order=authParams"`
 	MetricSelector         string        `keda:"name=metricSelector, order=triggerMetadata, optional"`
 	DQLQuery               string        `keda:"name=query, order=triggerMetadata, optional"`
-	DQLQueryTimeoutSeconds int           `keda:"name=queryTimeoutSeconds, order=triggerMetadata, default=10, optional"`
-	DQLQueryWait           time.Duration `keda:"name=queryPollingWait, order=triggerMetadata, default=1s, optional"`
-	DQLQueryTries          int           `keda:"name=queryPollingTries, order=triggerMetadata, default=5, optional"`
+	DQLQueryTimeoutSeconds int           `keda:"name=queryTimeoutSeconds, order=triggerMetadata, default=10"`
+	DQLQueryWait           time.Duration `keda:"name=queryPollingWait, order=triggerMetadata, default=1s"`
+	DQLQueryTries          int           `keda:"name=queryPollingTries, order=triggerMetadata, default=5"`
 	FromTimestamp          string        `keda:"name=from, order=triggerMetadata, optional"`
 	Threshold              float64       `keda:"name=threshold, order=triggerMetadata"`
 	ActivationThreshold    float64       `keda:"name=activationThreshold, order=triggerMetadata, optional"`

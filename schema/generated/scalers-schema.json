@@ -1528,21 +1528,18 @@
                 {
                     "name": "queryTimeoutSeconds",
                     "type": "string",
-                    "optional": true,
                     "default": "10",
                     "metadataVariableReadable": true
                 },
                 {
                     "name": "queryPollingWait",
                     "type": "string",
-                    "optional": true,
                     "default": "1s",
                     "metadataVariableReadable": true
                 },
                 {
                     "name": "queryPollingTries",
                     "type": "string",
-                    "optional": true,
                     "default": "5",
                     "metadataVariableReadable": true
                 },
