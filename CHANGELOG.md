@@ -96,7 +96,7 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- NATS Streaming scaler: Remove NATS Streaming Server (aka Stan) ([#6366](https://github.com/kedacore/keda/issues/6366))
 
 ### Other
 
