@@ -434,7 +434,7 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 		subsLock:                 &sync.RWMutex{},
 	}
 
-	isActive, isError, _, activeTriggers, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	isActive, isError, _, activeTriggers, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
 	scalerCache.Close(context.Background())
 
 	assert.Equal(t, false, isActive)
@@ -557,7 +557,7 @@ func TestCheckScaledObjectScalersWithTriggerAuthError(t *testing.T) {
 		subsLock:                &sync.RWMutex{},
 	}
 
-	isActive, isError, _, activeTriggers, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	isActive, isError, _, activeTriggers, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
 	scalerCache.Close(context.Background())
 
 	assert.Equal(t, false, isActive)
@@ -640,7 +640,7 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 		subsLock:                 &sync.RWMutex{},
 	}
 
-	isActive, isError, _, activeTriggers, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	isActive, isError, _, activeTriggers, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
 	scalerCache.Close(context.Background())
 
 	assert.Equal(t, true, isActive)
