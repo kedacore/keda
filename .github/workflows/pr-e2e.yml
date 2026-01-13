@@ -181,7 +181,7 @@ jobs:
           registry: ghcr.io
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Publish on GitHub Container Registry
         run: make publish-multiarch
@@ -218,7 +218,7 @@ jobs:
           gh pr checkout ${{ needs.triage.outputs.pr_num }}
           git checkout ${{ needs.triage.outputs.commit_sha }}
 
-      - uses: oNaiPs/secrets-to-env-action@ec46a22bfc9b37e014b627b3208b07eb8909ea0f # v1.5
+      - uses: oNaiPs/secrets-to-env-action@be0f849b5f57bce2c73624f006578c3b16e98e0c # v1.7
         with:
           secrets: ${{ toJSON(secrets) }}
 
@@ -321,8 +321,13 @@ jobs:
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
+      - name: Check out code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 1
+
       - name: Setup Go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: 'go.mod'
 
@@ -333,16 +338,11 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
 
-      - name: Check out code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          fetch-depth: 1
-
       - name: Create k8s ${{ inputs.kubernetesVersion }} Kind Cluster
         uses: helm/kind-action@92086f6be054225fa813e0a4b13787fc9088faab # v1.13.0
         with:
           node_image: kindest/node:v1.32.0@sha256:c48c62eac5da28cdadcf560d1d8616cfa6783b58f0d94cf63ad1bf49600cb027
-          cluster_name: ${{ runner.name }}
+          cluster_name: arm-smoke-test-${{ github.run_id }}
 
       - name: Run smoke test
         continue-on-error: true
@@ -410,8 +410,13 @@ jobs:
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
 
+      - name: Check out code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 1
+
       - name: Setup Go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: 'go.mod'
 
@@ -422,15 +427,10 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
 
-      - name: Check out code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          fetch-depth: 1
-
       - name: Install Kubernetes
         run: |
           go install sigs.k8s.io/kind@v0.29.0
-          kind create cluster --name ${{ runner.name }} --image vishnubijukumar/kindest-node-s390x:v0.29.0
+          kind create cluster --name s390x-smoke-test-${{ github.run_id }} --image vishnubijukumar/kindest-node-s390x:v0.29.0
           kubectl -n kube-system set image daemonset/kindnet kindnet-cni=docker.io/vishnubijukumar/kindnetd:v20250512-s390x
           kubectl -n local-path-storage set image deployment/local-path-provisioner local-path-provisioner=docker.io/vishnubijukumar/local-path-provisioner:v1
 
@@ -486,7 +486,7 @@ jobs:
 
       - name: Remove Kubernetes
         run: |
-          kind delete cluster --name ${{ runner.name }}
+          kind delete cluster --name s390x-smoke-test-${{ github.run_id }}
         if: ${{ always() }}
         env:
           DEBIAN_FRONTEND: noninteractive
