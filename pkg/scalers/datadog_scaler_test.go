@@ -137,6 +137,8 @@ var testDatadogClusterAgentMetadata = []datadogAuthMetadataTestData{
 	// invalid timeout values for cluster agent
 	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "timeout": "invalid"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "authMode": "bearer"}, true},
 	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "timeout": "-10s"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "authMode": "bearer"}, true},
+	// metricUnavailableValue with cluster agent
+	{"", map[string]string{"useClusterAgentProxy": "true", "datadogMetricName": "nginx-hits", "datadogMetricNamespace": "default", "targetValue": "2", "metricUnavailableValue": "5.0"}, map[string]string{"token": "token", "datadogNamespace": "datadog", "datadogMetricsService": "datadog-cluster-agent-metrics-api", "authMode": "bearer"}, false},
 }
 
 var testDatadogAPIMetadata = []datadogAuthMetadataTestData{
@@ -193,6 +195,8 @@ var testDatadogAPIMetadata = []datadogAuthMetadataTestData{
 	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7"}, map[string]string{"apiKey": "apiKey"}, true},
 	// invalid query missing {
 	{"", map[string]string{"query": "sum:trace.redis.command.hits.as_count()", "queryValue": "7"}, map[string]string{}, true},
+	// metricUnavailableValue with API
+	{"", map[string]string{"query": "sum:trace.redis.command.hits{env:none,service:redis}.as_count()", "queryValue": "7", "metricUnavailableValue": "2.5"}, map[string]string{"apiKey": "apiKey", "appKey": "appKey", "datadogSite": "datadogSite"}, false},
 }
 
 // Helper function to create metadata and validate
