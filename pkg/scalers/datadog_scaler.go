@@ -322,6 +322,15 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 			return -1, fmt.Errorf("your Datadog account reached the %s queries per %s seconds rate limit, next limit reset will happen in %s seconds", rateLimit, rateLimitPeriod, rateLimitReset)
 		}
 
+		if r.StatusCode == http.StatusUnprocessableEntity {
+			if s.metadata.UseFiller {
+				s.logger.V(1).Info("Datadog metrics unavailable, using FillValue",
+					"statusCode", r.StatusCode,
+					"fillValue", *s.metadata.FillValue)
+				return *s.metadata.FillValue, nil
+			}
+		}
+
 		if r.StatusCode != 200 {
 			if err != nil {
 				return -1, fmt.Errorf("error when retrieving Datadog metrics: %w", err)
@@ -363,6 +372,8 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		if !s.metadata.UseFiller {
 			return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 		}
+		s.logger.V(1).Info("No Datadog metrics returned, using FillValue",
+			"fillValue", *s.metadata.FillValue)
 		return *s.metadata.FillValue, nil
 	}
 
@@ -392,6 +403,9 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 			if !s.metadata.UseFiller {
 				return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 			}
+			s.logger.V(1).Info("No valid data points returned, using FillValue",
+				"series", i,
+				"fillValue", *s.metadata.FillValue)
 			return *s.metadata.FillValue, nil
 		}
 		// Return the last point from the series
