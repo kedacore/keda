@@ -345,6 +345,7 @@ func TestDatadogScalerDCA(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 	t.Cleanup(func() {
+		uninstallDatadog(t)
 		DeleteKubernetesResources(t, testNamespace, data, templates)
 	})
 
@@ -390,9 +391,9 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 func installDatadog(t *testing.T) {
 	t.Log("--- installing datadog ---")
 	_, err := ExecuteCommand(fmt.Sprintf("helm repo add datadog %s", datadogHelmRepo))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand(fmt.Sprintf(`helm upgrade --install --set datadog.apiKey=%s --set datadog.appKey=%s --set datadog.site=%s --set datadog.clusterName=%s --set datadog.kubelet.tlsVerify=false --set clusterAgent.metricsProvider.enabled=true --set clusterAgent.metricsProvider.registerAPIService=false --set clusterAgent.metricsProvider.useDatadogMetrics=true --namespace %s --wait %s datadog/datadog`,
 		datadogAPIKey,
 		datadogAppKey,
@@ -400,7 +401,14 @@ func installDatadog(t *testing.T) {
 		kuberneteClusterName,
 		testNamespace,
 		testName))
-	assert.NoErrorf(t, err, "cannot execute command - %s", err)
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+
+func uninstallDatadog(t *testing.T) {
+	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall %s --namespace %s`,
+		testName,
+		testNamespace))
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 
 func getTemplateData() (templateData, []Template) {
