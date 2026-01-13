@@ -152,7 +152,7 @@ spec:
         - "--scenario=workflow_with_single_noop_activity"
         - "--dir-name=prepared"
         {{- if ne .BuildID "" }}
-        - "--worker-build-id={{.BuildID}}"
+        - "--build-id={{.BuildID}}"
 	{{- end}}
 `
 
