@@ -78,6 +78,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Correct error message when awsSecretAccessKey is missing in credential-based authentication ([#7265](https://github.com/kedacore/keda/pull/7265))
 - **General**: Raw metrics stream - include trigger activity status in response ([#7369](https://github.com/kedacore/keda/issues/7369))
 - **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
+- **AWS Scalers**: Add support for `externalId` in AssumeRole via TriggerAuthentication annotation `keda.sh/aws-role-external-id` ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 - **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
 
 ### Fixes
