@@ -110,6 +110,11 @@ func (s *GrpcServer) GetRawMetricsStream(request *api.RawMetricsRequest, stream 
 		case val, open := <-doneCh:
 			if open && !val {
 				logger.V(10).Info(fmt.Sprintf("Channel closed for subscriber %s", request.GetSubscriber()))
+				return nil
+			}
+			if !open {
+				logger.V(10).Info(fmt.Sprintf("Done channel closed for subscriber %s", request.GetSubscriber()))
+				return nil
 			}
 		}
 	}
