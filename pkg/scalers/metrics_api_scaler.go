@@ -8,16 +8,23 @@ import (
 	"io"
 	"net/http"
 	neturl "net/url"
+	"slices"
+	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/go-logr/logr"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/tidwall/gjson"
+	"golang.org/x/sync/semaphore"
 	"gopkg.in/yaml.v3"
 	v2 "k8s.io/api/autoscaling/v2"
+	discoveryV1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
@@ -29,16 +36,18 @@ type metricsAPIScaler struct {
 	metadata   *metricsAPIScalerMetadata
 	httpClient *http.Client
 	logger     logr.Logger
+	kubeClient client.Client
 }
 
 type metricsAPIScalerMetadata struct {
-	TargetValue           float64   `keda:"name=targetValue,order=triggerMetadata,optional"`
-	ActivationTargetValue float64   `keda:"name=activationTargetValue,order=triggerMetadata,default=0"`
-	URL                   string    `keda:"name=url,order=triggerMetadata"`
-	Format                APIFormat `keda:"name=format,order=triggerMetadata,default=json,enum=prometheus;json;xml;yaml"`
-	ValueLocation         string    `keda:"name=valueLocation,order=triggerMetadata"`
-	UnsafeSsl             bool      `keda:"name=unsafeSsl,order=triggerMetadata,default=false"`
-
+	TargetValue                       float64         `keda:"name=targetValue,order=triggerMetadata,optional"`
+	ActivationTargetValue             float64         `keda:"name=activationTargetValue,order=triggerMetadata,default=0"`
+	URL                               string          `keda:"name=url,order=triggerMetadata"`
+	Format                            APIFormat       `keda:"name=format,order=triggerMetadata,default=json,enum=prometheus;json;xml;yaml"`
+	ValueLocation                     string          `keda:"name=valueLocation,order=triggerMetadata"`
+	UnsafeSsl                         bool            `keda:"name=unsafeSsl,order=triggerMetadata,default=false"`
+	AggregateFromKubeServiceEndpoints bool            `keda:"name=aggregateFromKubeServiceEndpoints,order=triggerMetadata,default=false"`
+	AggregationType                   AggregationType `keda:"name=aggregationType,order=triggerMetadata,default=average,enum=average;sum;max;min"`
 	// Authentication parameters for connecting to the metrics API
 	MetricsAPIAuth *authentication.Config `keda:"optional"`
 
@@ -50,6 +59,8 @@ const (
 	valueLocationWrongErrorMsg = "valueLocation must point to value of type number or a string representing a Quantity got: '%s'"
 )
 
+const secureHTTPScheme = "https"
+
 type APIFormat string
 
 // Options for APIFormat:
@@ -60,8 +71,18 @@ const (
 	YAMLFormat       APIFormat = "yaml"
 )
 
+type AggregationType string
+
+// Options for APIFormat:
+const (
+	AverageAggregationType AggregationType = "average"
+	SumAggregationType     AggregationType = "sum"
+	MaxAggregationType     AggregationType = "max"
+	MinAggregationType     AggregationType = "min"
+)
+
 // NewMetricsAPIScaler creates a new HTTP scaler
-func NewMetricsAPIScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
+func NewMetricsAPIScaler(config *scalersconfig.ScalerConfig, kubeClient client.Client) (Scaler, error) {
 	metricType, err := GetMetricTargetType(config)
 	if err != nil {
 		return nil, fmt.Errorf("error getting scaler metric type: %w", err)
@@ -87,6 +108,7 @@ func NewMetricsAPIScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		metricType: metricType,
 		metadata:   meta,
 		httpClient: httpClient,
+		kubeClient: kubeClient,
 		logger:     InitializeLogger(config, "metrics_api_scaler"),
 	}, nil
 }
@@ -278,8 +300,162 @@ func getValueFromYAMLResponse(body []byte, valueLocation string) (float64, error
 	}
 }
 
+func (s *metricsAPIScaler) getEndpointsUrlsFromServiceURL(ctx context.Context, serviceURL string) (endpointUrls []string, err error) {
+	// parse service name from s.meta.url
+	url, err := neturl.Parse(serviceURL)
+	if err != nil {
+		s.logger.Error(err, "Failed parsing url for metrics API")
+		return nil, err
+	}
+
+	splittedHost := strings.Split(url.Host, ".")
+	if len(splittedHost) < 2 {
+		return nil, fmt.Errorf("invalid hostname %s : expected at least 2 elements, first being service name and second being the namespace", url.Host)
+	}
+	serviceName := splittedHost[0]
+	namespace := splittedHost[1]
+	podPort := url.Port()
+	// infer port from service scheme when not set explicitly
+	if podPort == "" {
+		if url.Scheme == secureHTTPScheme {
+			podPort = "443"
+		} else {
+			podPort = "80"
+		}
+	}
+	// get service serviceEndpointsSlices
+	serviceEndpointsSlices := &discoveryV1.EndpointSliceList{}
+	serviceNameSelector := labels.NewSelector()
+	serviceNameSelector.Matches(labels.Set(map[string]string{
+		discoveryV1.LabelServiceName: serviceName,
+	}))
+	err = s.kubeClient.List(ctx, serviceEndpointsSlices, &client.ListOptions{
+		LabelSelector: serviceNameSelector,
+		Namespace:     namespace,
+	})
+	if err != nil {
+		return nil, err
+	}
+	var uniqueAddresses []string
+	for _, endpointSlice := range serviceEndpointsSlices.Items {
+		for _, eps := range endpointSlice.Endpoints {
+			// as suggested in https://github.com/kedacore/keda/pull/6565#discussion_r2395073047, make sure we take endpoint into account
+			// only when it's ready
+			if eps.Conditions.Ready != nil && !*eps.Conditions.Ready {
+				continue
+			}
+			for _, address := range eps.Addresses {
+				// deduplicate addresses as suggested in https://github.com/kedacore/keda/pull/6565#discussion_r2395073047
+				// because it's not guaranteed by Kubernetes that an endpoint IP address will have a unique representation
+				// see https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/#duplicate-endpoints
+				if slices.Contains(uniqueAddresses, address) {
+					continue
+				}
+				uniqueAddresses = append(uniqueAddresses, address)
+
+				foundPort := ""
+				for _, port := range endpointSlice.Ports {
+					if port.Port != nil && strconv.Itoa(int(*port.Port)) == podPort {
+						foundPort = fmt.Sprintf(":%d", *port.Port)
+						break
+					}
+				}
+				if foundPort == "" {
+					s.logger.V(1).Info(fmt.Sprintf("Warning : could not find port %s in endpoint slice for service %s.%s definition. Will infer port from %s scheme", podPort, serviceName, namespace, url.Scheme))
+				}
+				endpointUrls = append(endpointUrls, fmt.Sprintf("%s://%s%s%s", url.Scheme, address, foundPort, url.Path))
+			}
+		}
+	}
+	return endpointUrls, err
+}
+
 func (s *metricsAPIScaler) getMetricValue(ctx context.Context) (float64, error) {
-	request, err := getMetricAPIServerRequest(ctx, s.metadata)
+	// if we wish to aggregate metric from a kubernetes service then we need to query each endpoint behind the service
+	if s.metadata.AggregateFromKubeServiceEndpoints {
+		endpointsUrls, err := s.getEndpointsUrlsFromServiceURL(ctx, s.metadata.URL)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get kubernetes endpoints urls from configured service URL")
+		}
+		if len(endpointsUrls) == 0 {
+			return 0, fmt.Errorf("no endpoints URLs were given for the service name")
+		}
+		return s.aggregateMetricsFromMultipleEndpoints(ctx, endpointsUrls)
+	}
+	// get single/unaggregated metric
+	metric, err := s.getMetricValueFromURL(ctx, nil)
+	if err == nil {
+		s.logger.V(1).Info(fmt.Sprintf("fetched single metric from metrics API url : %s. Value is %v\n", s.metadata.URL, metric))
+	}
+	return metric, err
+}
+
+func (s *metricsAPIScaler) aggregateMetricsFromMultipleEndpoints(ctx context.Context, endpointsUrls []string) (float64, error) {
+	// call s.getMetricValueFromURL() for each endpointsUrls in parallel goroutines (maximum 5 at a time) and sum them up
+	const maxGoroutines = 5
+	var mu sync.Mutex
+	sem := semaphore.NewWeighted(maxGoroutines)
+	expectedNbMetrics := len(endpointsUrls)
+	nbErrors := 0
+	var err error
+	var firstMetricEncountered bool
+	var aggregation float64
+	s.logger.V(1).Info(fmt.Sprintf("start iterating %d endpoint urls", len(endpointsUrls)))
+	for _, endpointURL := range endpointsUrls {
+		if err := sem.Acquire(ctx, 1); err != nil {
+			s.logger.Error(err, "Failed to acquire semaphore")
+			continue
+		}
+		go func(url string) {
+			defer sem.Release(1)
+			metric, err := s.getMetricValueFromURL(ctx, &endpointURL)
+
+			if err != nil {
+				s.logger.V(1).Info(fmt.Sprintf("Error fetching metric for %s: %v\n", url, err))
+				// we will ignore metric for computing aggregation when encountering error : decrease expectedNbMetrics
+				mu.Lock()
+				expectedNbMetrics--
+				nbErrors++
+				mu.Unlock()
+			} else {
+				mu.Lock()
+				switch s.metadata.AggregationType {
+				case MinAggregationType:
+					if !firstMetricEncountered || metric < aggregation {
+						firstMetricEncountered = true
+						aggregation = metric
+					}
+				case MaxAggregationType:
+					if !firstMetricEncountered || metric > aggregation {
+						firstMetricEncountered = true
+						aggregation = metric
+					}
+				default:
+					// sum metrics if we are not looking for min or max value
+					aggregation += metric
+				}
+				mu.Unlock()
+			}
+		}(endpointURL)
+	}
+	// Wait that all goroutines have released their semaphore acquisition
+	if err := sem.Acquire(ctx, maxGoroutines); err != nil {
+		s.logger.V(1).Error(err, "final semaphore acquisition failed")
+	}
+	s.logger.V(1).Info(fmt.Sprintf("ENDED iterating %d endpoint urls, aggregation is now %v", len(endpointsUrls), aggregation))
+
+	if nbErrors > 0 && nbErrors == len(endpointsUrls) {
+		err = fmt.Errorf("could not get any metric successfully from the %d provided endpoints", len(endpointsUrls))
+	}
+	if s.metadata.AggregationType == AverageAggregationType {
+		aggregation /= float64(expectedNbMetrics)
+	}
+	s.logger.V(1).Info(fmt.Sprintf("fetched %d metrics out of %d endpoints from kubernetes service : %s is %v\n", expectedNbMetrics, len(endpointsUrls), s.metadata.AggregationType, aggregation))
+	return aggregation, err
+}
+
+func (s *metricsAPIScaler) getMetricValueFromURL(ctx context.Context, url *string) (float64, error) {
+	request, err := getMetricAPIServerRequest(ctx, s.metadata, url)
 	if err != nil {
 		return 0, err
 	}
@@ -340,12 +516,14 @@ func (s *metricsAPIScaler) GetMetricsAndActivity(ctx context.Context, metricName
 	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.ActivationTargetValue, nil
 }
 
-func getMetricAPIServerRequest(ctx context.Context, meta *metricsAPIScalerMetadata) (*http.Request, error) {
+func getMetricAPIServerRequest(ctx context.Context, meta *metricsAPIScalerMetadata, url *string) (*http.Request, error) {
 	var requestURL string
-
+	if url == nil {
+		url = &meta.URL
+	}
 	// Handle API Key as query parameter if needed
 	if meta.MetricsAPIAuth != nil && meta.MetricsAPIAuth.EnabledAPIKeyAuth() && meta.MetricsAPIAuth.Method == methodValueQuery {
-		url, _ := neturl.Parse(meta.URL)
+		url, _ := neturl.Parse(*url)
 		queryString := url.Query()
 		if meta.MetricsAPIAuth.KeyParamName == "" {
 			queryString.Set("api_key", meta.MetricsAPIAuth.APIKey)
@@ -355,7 +533,7 @@ func getMetricAPIServerRequest(ctx context.Context, meta *metricsAPIScalerMetada
 		url.RawQuery = queryString.Encode()
 		requestURL = url.String()
 	} else {
-		requestURL = meta.URL
+		requestURL = *url
 	}
 
 	// Create the request

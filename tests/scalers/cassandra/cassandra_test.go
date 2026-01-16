@@ -110,7 +110,7 @@ spec:
     spec:
       containers:
       - name: client
-        image: "bitnami/cassandra"
+        image: "bitnamilegacy/cassandra"
         imagePullPolicy: Always
         command:
         - sh
@@ -201,7 +201,7 @@ func installCassandra(t *testing.T) {
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 	_, err = ExecuteCommand("helm repo update")
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf("helm install cassandra --set resourcesPreset=none --set persistence.enabled=false --set dbUser.user=%s --set dbUser.password=%s --namespace %s bitnami/cassandra --wait", cassandraUsername, cassandraPassword, testNamespace))
+	_, err = ExecuteCommand(fmt.Sprintf("helm install cassandra --set resourcesPreset=none --set persistence.enabled=false --set dbUser.user=%s --set dbUser.password=%s --set image.repository=bitnamilegacy/cassandra --set image.tag=latest --set global.security.allowInsecureImages=true --namespace %s bitnami/cassandra --wait", cassandraUsername, cassandraPassword, testNamespace))
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 

@@ -16,7 +16,11 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.18.3](#v2183)
+- [v2.18.2](#v2182)
+- [v2.18.1](#v2181)
 - [v2.18.0](#v2180)
+- [v2.17.3](#v2173)
 - [v2.17.2](#v2172)
 - [v2.17.1](#v2171)
 - [v2.17.0](#v2170)
@@ -63,7 +67,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Introduce new Kubernetes Resource Scaler ([#7212](https://github.com/kedacore/keda/issues/7212))
 
 #### Experimental
 
@@ -71,11 +75,17 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
-- *Dynamodb Scaler*: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
+- **General**: Correct error message when awsSecretAccessKey is missing in credential-based authentication ([#7265](https://github.com/kedacore/keda/pull/7265))
+- **General**: Raw metrics stream - include trigger activity status in response ([#7369](https://github.com/kedacore/keda/issues/7369))
+- **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
+- **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
 
 ### Fixes
 
-- **General**: Fix incorrect 'unmatched input property' notification ([#7174](https://github.com/kedacore/keda/issues/7174))
+- **General**: Apply fallback in polling loop to enable scaling from zero ([#7239](https://github.com/kedacore/keda/issues/7239))
+- **General**: Replace deprecated `azure autorest` dependency to `azure sdk for go` ([#7073](https://github.com/kedacore/keda/issues/7073))
+- **IBMMQ Scaler**: Create new HTTP request for each queue query in IBMMQ scaler ([#7202](https://github.com/kedacore/keda/pull/7202))
+- **Temporal Scaler**: Fix TLS RootCAs initialization when using API key authentication with Temporal Cloud ([#7367](https://github.com/kedacore/keda/pull/7367))
 
 ### Deprecations
 
@@ -91,7 +101,39 @@ New deprecation(s):
 
 ### Other
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **CI**: Replace stale bot with official GitHub Actions stale action ([#7321](https://github.com/kedacore/keda/issues/7321))
+- **CI**: Use GitHub-hosted ARM64 runners ([#7293](https://github.com/kedacore/keda/issues/7293))
+
+## v2.18.3
+
+- **General**: Fix CVE-2025-68476 ([#7334](https://github.com/kedacore/keda/pull/7334))
+
+### Fixes
+
+## v2.18.2
+
+### Fixes
+
+- **General**: Fix HPA behavior not restored when paused-scale-in/out annotation is deleted without corresponding custom behavior ([#7291](https://github.com/kedacore/keda/pull/7291))
+- **General**: Fix nil reference panic when transfer-hpa-ownership is set but no hpa name is provided ([#7254](https://github.com/kedacore/keda/issues/7254))
+- **General**: Fix race condition in paused-replicas annotation causing ScaledObject to get stuck ([#7231](https://github.com/kedacore/keda/issues/7231))
+- **General**: Fix ScaledObject controller error handling for requestScaleLoop ([#7273](https://github.com/kedacore/keda/pull/7273))
+- **General**: Remove unnecessary scaledObjectMetricSpecs variable in HPA ([#7292](https://github.com/kedacore/keda/pull/7292))
+- **General**: Use TriggerError when all ScaledJob triggers fail ([#7205](https://github.com/kedacore/keda/pull/7205))
+- **ActiveMQ Scaler**: Correct parse error ActiveMQ ([#7245](https://github.com/kedacore/keda/pull/7245))
+- **Datadog Scaler**: Fix metricUnavailableValue parameter not working ([#7238](https://github.com/kedacore/keda/issues/7238))
+
+## v2.18.1
+
+### Fixes
+
+- **General**: Add feature flag `KEDA_CHECK_UNEXPECTED_SCALERS_PARAMS` for checking unexpected scaler parameters ([#6721](https://github.com/kedacore/keda/issues/6721))
+- **General**: Fix incorrect 'unmatched input property' notification ([#7174](https://github.com/kedacore/keda/issues/7174))
+- **Kafka Scaler**: Fix missing error returns in error handling ([#7182](https://github.com/kedacore/keda/pull/7182))
+
+### Other
+
+- **General**: Raw metrics stream - send also metrics during ScaledObject's interval ([#7197](https://github.com/kedacore/keda/issues/7197))
 
 ## v2.18.0
 
@@ -128,12 +170,14 @@ New deprecation(s):
 - **Github Scaler**: Add support to control unlabeled job/runner matching ([#6900](https://github.com/kedacore/keda/issues/6900))
 - **InfluxDB Scaler**: Add support for InfluxDB v3 ([#6981](https://github.com/kedacore/keda/issues/6981))
 - **Kafka Scaler**: Add support for even distribution of partitions to consumers ([#2581](https://github.com/kedacore/keda/issues/2581))
+- **Metrics API scaler**: Introduce new `aggregateFromKubeServiceEndpoints` and `aggregationType` metadata fields to `metrics-api` so it is able to fetch metrics from all endpoints behind a kubernetes service and aggregate them ([#6565](https://github.com/kedacore/keda/pull/6565))
 - **Metrics API Scaler**: Support AuthParams for authMode ([#6939](https://github.com/kedacore/keda/issues/6939))
 - **Metrics API Scaler**: Support multiple auth methods simultaneously ([#6642](https://github.com/kedacore/keda/issues/6642))
 - **RabbitMQ Scaler**: add `DeliverGetRate`, `PublishedToDeliveredRatio` and `ExpectedQueueConsumptionTime` trigger modes to RabbitMQ scaler ([#7071](https://github.com/kedacore/keda/issues/7071))
 - **Solace Scaler**: Add hostlist support for Solace brokers ([#7090](https://github.com/kedacore/keda/issues/7090))
 - **Temporal Scaler**: Always set `temporal-namespace` header on requests([#7079](https://github.com/kedacore/keda/issues/7079))
 - **Temporal Scaler**: Support custom `tlsServerName` ([#6820](https://github.com/kedacore/keda/pull/6820))
+
 
 ### Fixes
 
@@ -177,6 +221,10 @@ New deprecation(s):
 - **General**: Fix several typos ([#6909](https://github.com/kedacore/keda/pull/6909))
 - **General**: Replace deprecated `webhook.Validator` with `webhook.CustomValidator` ([#6660](https://github.com/kedacore/keda/issues/6660))
 - **MSSQL Scaler**: Refactor MS SQL e2e test ([#3401](https://github.com/kedacore/keda/issues/3401))
+
+## v2.17.3
+
+- **General**: Fix CVE-2025-68476 ([#7333](https://github.com/kedacore/keda/pull/7333))
 
 ## v2.17.2
 

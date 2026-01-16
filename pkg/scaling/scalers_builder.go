@@ -206,6 +206,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewInfluxDBScaler(config)
 	case "kafka":
 		return scalers.NewKafkaScaler(ctx, config)
+	case "kubernetes-resource":
+		return scalers.NewKubernetesResourceScaler(client, config)
 	case "kubernetes-workload":
 		return scalers.NewKubernetesWorkloadScaler(client, config)
 	case "liiklus":
@@ -215,7 +217,7 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 	case "memory":
 		return scalers.NewCPUMemoryScaler(corev1.ResourceMemory, config)
 	case "metrics-api":
-		return scalers.NewMetricsAPIScaler(config)
+		return scalers.NewMetricsAPIScaler(config, client)
 	case "mongodb":
 		return scalers.NewMongoDBScaler(ctx, config)
 	case "mssql":

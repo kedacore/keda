@@ -26,7 +26,7 @@ type solarWindsMetadata struct {
 	APIToken        string  `keda:"name=apiToken,        order=authParams, optional"`
 	Host            string  `keda:"name=host,            order=triggerMetadata"`
 	TargetValue     float64 `keda:"name=targetValue,     order=triggerMetadata"`
-	ActivationValue float64 `keda:"name=activationValue, order=triggerMetadata"`
+	ActivationValue float64 `keda:"name=activationValue, order=triggerMetadata, default=0"`
 	MetricName      string  `keda:"name=metricName,      order=triggerMetadata"`
 	Aggregation     string  `keda:"name=aggregation,     order=triggerMetadata, enum=COUNT;MIN;MAX;AVG;SUM;LAST"`
 	IntervalS       int     `keda:"name=intervalS,       order=triggerMetadata"`
@@ -115,7 +115,7 @@ func (s *solarWindsScaler) getMetricValueViaSDK(ctx context.Context, _ string) (
 		AggregateBy: s.convertAggregation(s.metadata.Aggregation),
 		StartTime:   &startTime,
 		EndTime:     &endTime,
-		SeriesType:  components.MetricSeriesTypeScalar,
+		SeriesType:  components.MetricsMetricSeriesTypeScalar,
 	})
 
 	if err != nil {

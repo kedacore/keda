@@ -99,6 +99,11 @@ type (
 		// LastModifierIdentity - The identity of the last client that modified the
 		// configuration of this Deployment.
 		LastModifierIdentity string
+
+		// ManagerIdentity - When present, clients whose identity does not match `ManagerIdentity` will not
+		// be able to make changes to this Worker Deployment. They can either set their own identity as the
+		// manager or unset the field to proceed. Empty by default.
+		ManagerIdentity string
 	}
 
 	// WorkerDeploymentDescribeResponse is the response type for [WorkerDeploymentHandle.Describe].
@@ -133,12 +138,12 @@ type (
 		// The current token can be obtained with [WorkerDeploymentHandle.Describe],
 		// or returned by other successful Worker Deployment operations.
 		//
-		// Optional: defaulted to empty token, which bypasses conflict detection.
+		// Optional: defaults to empty token, which bypasses conflict detection.
 		ConflictToken []byte
 
-		// Identity: The identity of the client who initiated this request.
+		// Identity - The identity of the client who initiated this request.
 		//
-		// Optional: default to the identity of the underlying workflow client.
+		// Optional: defaults to the identity of the underlying workflow client.
 		Identity string
 
 		// IgnoreMissingTaskQueues - Override protection against accidental removal of Task Queues.
@@ -153,6 +158,15 @@ type (
 		//
 		// Optional: default to reject request when queues are missing.
 		IgnoreMissingTaskQueues bool
+
+		// AllowNoPollers - Override protection against accidentally sending tasks to a version without pollers.
+		// When false this request will be rejected if no pollers have been seen for the proposed Current Version,
+		// in order to protect users from routing tasks to pollers that do not exist, leading to possible timeouts.
+		// Pass `true` here to bypass this protection.
+		// WARNING: setting this flag could lead to tasks being sent to a version that has no pollers.
+		//
+		// Optional: default to reject request when version has never had pollers.
+		AllowNoPollers bool
 	}
 
 	// WorkerDeploymentSetCurrentVersionResponse is the response for
@@ -191,12 +205,12 @@ type (
 		// The current token can be obtained with [WorkerDeploymentHandle.Describe],
 		// or returned by other successful Worker Deployment operations.
 		//
-		// Optional: defaulted to empty token, which bypasses conflict detection.
+		// Optional: defaults to empty token, which bypasses conflict detection.
 		ConflictToken []byte
 
-		// Identity: The identity of the client who initiated this request.
+		// Identity - The identity of the client who initiated this request.
 		//
-		// Optional: default to the identity of the underlying workflow client.
+		// Optional: defaults to the identity of the underlying workflow client.
 		Identity string
 
 		// IgnoreMissingTaskQueues - Override protection against accidental removal of Task Queues.
@@ -211,6 +225,15 @@ type (
 		//
 		// Optional: default to reject request when queues are missing.
 		IgnoreMissingTaskQueues bool
+
+		// AllowNoPollers - Override protection against accidentally sending tasks to a version without pollers.
+		// When false this request will be rejected if no pollers have been seen for the proposed Current Version,
+		// in order to protect users from routing tasks to pollers that do not exist, leading to possible timeouts.
+		// Pass `true` here to bypass this protection.
+		// WARNING: setting this flag could lead to tasks being sent to a version that has no pollers.
+		//
+		// Optional: default to reject request when version has never had pollers.
+		AllowNoPollers bool
 	}
 
 	// WorkerDeploymentSetRampingVersionResponse is the response for
@@ -228,6 +251,54 @@ type (
 
 		// PreviousPercentage - The Ramping Version Percentage before executing this operation.
 		PreviousPercentage float32
+	}
+
+	// WorkerDeploymentSetManagerIdentityOptions provides options for
+	// [WorkerDeploymentHandle.SetManagerIdentity].
+	//
+	// NOTE: Experimental
+	//
+	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentSetManagerIdentityOptions]
+	WorkerDeploymentSetManagerIdentityOptions struct {
+		// ManagerIdentity - string to set as the Worker Deployment's ManagerIdentity.
+		// An empty string will clear the ManagerIdentity field.
+		// It is invalid to set Self=true and ManagerIdentity != "".
+		ManagerIdentity string
+
+		// Self - If true, set the Worker Deployment's ManagerIdentity field to the identity
+		// of the user submitting this request.
+		// It is invalid to set Self=true and ManagerIdentity != "".
+		Self bool
+
+		// ConflictToken - Token to serialize Worker Deployment operations. Passing a non-empty
+		// conflict token will cause this request to fail with
+		// `serviceerror.FailedPrecondition` if the
+		// Deployment's configuration has been modified between the API call that
+		// generated the token and this one.
+		// The current token can be obtained with [WorkerDeploymentHandle.Describe],
+		// or returned by other successful Worker Deployment operations.
+		//
+		// Optional: defaults to empty token, which bypasses conflict detection.
+		ConflictToken []byte
+
+		// Identity - The identity of the client who initiated this request.
+		//
+		// Optional: defaults to the identity of the underlying workflow client.
+		Identity string
+	}
+
+	// WorkerDeploymentSetManagerIdentityResponse is the response for
+	// [WorkerDeploymentHandle.SetManagerIdentity].
+	//
+	// NOTE: Experimental
+	//
+	// Exposed as: [go.temporal.io/sdk/client.WorkerDeploymentSetManagerIdentityResponse]
+	WorkerDeploymentSetManagerIdentityResponse struct {
+		// ConflictToken - Token to serialize Worker Deployment operations.
+		ConflictToken []byte
+
+		// PreviousManagerIdentity - The Manager Identity before executing this operation, if any.
+		PreviousManagerIdentity string
 	}
 
 	// WorkerDeploymentDescribeVersionOptions provides options for
@@ -339,7 +410,7 @@ type (
 
 		// Identity - The identity of the client who initiated this request.
 		//
-		// Optional: default to the identity of the underlying workflow client.
+		// Optional: defaults to the identity of the underlying workflow client.
 		Identity string
 	}
 
@@ -416,6 +487,11 @@ type (
 		//
 		// NOTE: Experimental
 		SetRampingVersion(ctx context.Context, options WorkerDeploymentSetRampingVersionOptions) (WorkerDeploymentSetRampingVersionResponse, error)
+
+		// SetManagerIdentity changes the Manager Identity of this Worker Deployment.
+		//
+		// NOTE: Experimental
+		SetManagerIdentity(ctx context.Context, options WorkerDeploymentSetManagerIdentityOptions) (WorkerDeploymentSetManagerIdentityResponse, error)
 
 		// DescribeVersion gives a description of one the Versions in this Worker Deployment.
 		//
@@ -532,7 +608,7 @@ type (
 
 		// Identity - The identity of the client who initiated this request.
 		//
-		// Optional: default to the identity of the underlying workflow client.
+		// Optional: defaults to the identity of the underlying workflow client.
 		Identity string
 	}
 

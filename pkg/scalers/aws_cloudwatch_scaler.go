@@ -45,8 +45,11 @@ type awsCloudwatchMetadata struct {
 	MetricStatPeriod     int64  `keda:"name=metricStatPeriod,     order=triggerMetadata, default=300"`
 	MetricEndTimeOffset  int64  `keda:"name=metricEndTimeOffset,  order=triggerMetadata, default=0"`
 
-	AwsRegion   string `keda:"name=awsRegion,   order=triggerMetadata;authParams"`
-	AwsEndpoint string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
+	AwsAccountID string `keda:"name=awsAccountId, order=triggerMetadata, optional"`
+	AwsRegion    string `keda:"name=awsRegion,    order=triggerMetadata;authParams"`
+	AwsEndpoint  string `keda:"name=awsEndpoint,  order=triggerMetadata, optional"`
+
+	IdentityOwner string `keda:"name=identityOwner, order=triggerMetadata, optional"`
 }
 
 func (a *awsCloudwatchMetadata) Validate() error {
@@ -178,6 +181,68 @@ func computeQueryWindow(current time.Time, metricPeriodSec, metricEndTimeOffsetS
 	return
 }
 
+func createCloudwatchMetricDataInput(metadata *awsCloudwatchMetadata) cloudwatch.GetMetricDataInput {
+	var input cloudwatch.GetMetricDataInput
+
+	startTime, endTime := computeQueryWindow(time.Now(), metadata.MetricStatPeriod, metadata.MetricEndTimeOffset, metadata.MetricCollectionTime)
+
+	if metadata.Expression != "" {
+		input = cloudwatch.GetMetricDataInput{
+			StartTime: aws.Time(startTime),
+			EndTime:   aws.Time(endTime),
+			ScanBy:    types.ScanByTimestampDescending,
+			MetricDataQueries: []types.MetricDataQuery{
+				{
+					Expression: aws.String(metadata.Expression),
+					Id:         aws.String("q1"),
+					Period:     aws.Int32(int32(metadata.MetricStatPeriod)),
+				},
+			},
+		}
+	} else {
+		var dimensions []types.Dimension
+		for i := range metadata.DimensionName {
+			dimensions = append(dimensions, types.Dimension{
+				Name:  &metadata.DimensionName[i],
+				Value: &metadata.DimensionValue[i],
+			})
+		}
+
+		var metricUnit string
+		if metadata.MetricUnit != "" {
+			metricUnit = metadata.MetricUnit
+		}
+
+		input = cloudwatch.GetMetricDataInput{
+			StartTime: aws.Time(startTime),
+			EndTime:   aws.Time(endTime),
+			ScanBy:    types.ScanByTimestampDescending,
+			MetricDataQueries: []types.MetricDataQuery{
+				{
+					Id: aws.String("c1"),
+					MetricStat: &types.MetricStat{
+						Metric: &types.Metric{
+							Namespace:  aws.String(metadata.Namespace),
+							Dimensions: dimensions,
+							MetricName: aws.String(metadata.MetricsName),
+						},
+						Period: aws.Int32(int32(metadata.MetricStatPeriod)),
+						Stat:   aws.String(metadata.MetricStat),
+						Unit:   types.StandardUnit(metricUnit),
+					},
+					ReturnData: aws.Bool(true),
+				},
+			},
+		}
+	}
+
+	if metadata.AwsAccountID != "" {
+		input.MetricDataQueries[0].AccountId = aws.String(metadata.AwsAccountID)
+	}
+
+	return input
+}
+
 func (s *awsCloudwatchScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
 	metricValue, err := s.GetCloudwatchMetrics(ctx)
 	if err != nil {
@@ -207,60 +272,7 @@ func (s *awsCloudwatchScaler) Close(context.Context) error {
 }
 
 func (s *awsCloudwatchScaler) GetCloudwatchMetrics(ctx context.Context) (float64, error) {
-	var input cloudwatch.GetMetricDataInput
-
-	startTime, endTime := computeQueryWindow(time.Now(), s.metadata.MetricStatPeriod, s.metadata.MetricEndTimeOffset, s.metadata.MetricCollectionTime)
-
-	if s.metadata.Expression != "" {
-		input = cloudwatch.GetMetricDataInput{
-			StartTime: aws.Time(startTime),
-			EndTime:   aws.Time(endTime),
-			ScanBy:    types.ScanByTimestampDescending,
-			MetricDataQueries: []types.MetricDataQuery{
-				{
-					Expression: aws.String(s.metadata.Expression),
-					Id:         aws.String("q1"),
-					Period:     aws.Int32(int32(s.metadata.MetricStatPeriod)),
-				},
-			},
-		}
-	} else {
-		var dimensions []types.Dimension
-		for i := range s.metadata.DimensionName {
-			dimensions = append(dimensions, types.Dimension{
-				Name:  &s.metadata.DimensionName[i],
-				Value: &s.metadata.DimensionValue[i],
-			})
-		}
-
-		var metricUnit string
-		if s.metadata.MetricUnit != "" {
-			metricUnit = s.metadata.MetricUnit
-		}
-
-		input = cloudwatch.GetMetricDataInput{
-			StartTime: aws.Time(startTime),
-			EndTime:   aws.Time(endTime),
-			ScanBy:    types.ScanByTimestampDescending,
-			MetricDataQueries: []types.MetricDataQuery{
-				{
-					Id: aws.String("c1"),
-					MetricStat: &types.MetricStat{
-						Metric: &types.Metric{
-							Namespace:  aws.String(s.metadata.Namespace),
-							Dimensions: dimensions,
-							MetricName: aws.String(s.metadata.MetricsName),
-						},
-						Period: aws.Int32(int32(s.metadata.MetricStatPeriod)),
-						Stat:   aws.String(s.metadata.MetricStat),
-						Unit:   types.StandardUnit(metricUnit),
-					},
-					ReturnData: aws.Bool(true),
-				},
-			},
-		}
-	}
-
+	input := createCloudwatchMetricDataInput(s.metadata)
 	output, err := s.cwClient.GetMetricData(ctx, &input)
 	if err != nil {
 		s.logger.Error(err, "Failed to get output")

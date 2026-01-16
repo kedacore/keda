@@ -809,7 +809,7 @@ type (
 	// history only when the activity completes or "finally" timeouts/fails. And the started event only records the last
 	// started time. Because of that, to check an activity has started or not, you cannot rely on history events. Instead,
 	// you can use CLI to describe the workflow to see the status of the activity:
-	//     tctl --ns <namespace> wf desc -w <wf-id>
+	//     temporal workflow describe --namespace <namespace> --workflow-id <wf-id>
 	//
 	// Exposed as: [go.temporal.io/sdk/temporal.RetryPolicy]
 	RetryPolicy struct {

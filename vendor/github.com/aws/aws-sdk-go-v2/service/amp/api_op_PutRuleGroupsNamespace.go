@@ -15,6 +15,9 @@ import (
 // namespace is associated with exactly one rules file. A workspace can have
 // multiple rule groups namespaces.
 //
+// The combined length of a rule group namespace and a rule group name cannot
+// exceed 721 UTF-8 bytes.
+//
 // Use this operation only to update existing rule groups namespaces. To create a
 // new rule groups namespace, use CreateRuleGroupsNamespace .
 //
@@ -189,40 +192,7 @@ func (c *Client) addOperationPutRuleGroupsNamespaceMiddlewares(stack *middleware
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

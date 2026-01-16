@@ -45,9 +45,9 @@ GO_LDFLAGS="-X=github.com/kedacore/keda/v2/version.GitCommit=$(GIT_COMMIT) -X=gi
 COSIGN_FLAGS ?= -y -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_DATE=${DATE}
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.33
+ENVTEST_K8S_VERSION = 1.34
 
-GOLANGCI_VERSION:=2.5.0
+GOLANGCI_VERSION:=2.7.1
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -59,7 +59,7 @@ SHELL = /usr/bin/env bash -o pipefail
 SCALERS_SCHEMA_SCALERS_BUILDER_FILE ?= pkg/scaling/scalers_builder.go
 SCALERS_SCHEMA_SCALERS_FILES_DIR ?= pkg/scalers
 SCALERS_SCHEMA_OUTPUT_FILE_PATH ?= schema/generated/
-SCALERS_SCHEMA_OUTPUT_FILE_NAME ?= scalers-metadata-schema
+SCALERS_SCHEMA_OUTPUT_FILE_NAME ?= scalers-schema
 
 ifneq '${VERSION}' 'main'
   OUTPUT_FILE_NAME :="${OUTPUT_FILE_NAME}-${VERSION}"
@@ -146,7 +146,7 @@ manifests: controller-gen ## Generate ClusterRole and CustomResourceDefinition o
 	# until this issue is fixed: https://github.com/kubernetes-sigs/controller-tools/issues/398
 	rm config/crd/bases/keda.sh_withtriggers.yaml
 
-generate: controller-gen mockgen-gen proto-gen generate-scalers-schema ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations (API), mocks and proto.
+generate: controller-gen mockgen-gen proto-gen ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations (API), mocks and proto.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 fmt: ## Run go fmt against code.

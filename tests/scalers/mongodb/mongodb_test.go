@@ -154,11 +154,7 @@ func getTemplateData() (templateData, []Template) {
 
 func setupMongo(t *testing.T, kc *kubernetes.Clientset) string {
 	CreateNamespace(t, kc, mongoNamespace)
-	_, err := ExecuteCommand("helm repo add bitnami https://charts.bitnami.com/bitnami")
-	require.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand("helm repo update")
-	require.NoErrorf(t, err, "cannot execute command - %s", err)
-	_, err = ExecuteCommand(fmt.Sprintf("helm install mongodb --set architecture=standalone --set auth.enabled=false --set persistence.enabled=false --namespace %s bitnami/mongodb --wait", mongoNamespace))
+	_, err := ExecuteCommand(fmt.Sprintf("helm install mongodb --set auth.enabled=false --set persistence.enabled=false --namespace %s oci://registry-1.docker.io/cloudpirates/mongodb --wait", mongoNamespace))
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 
 	podList, err := kc.CoreV1().Pods(mongoNamespace).List(context.Background(), metav1.ListOptions{})

@@ -3,8 +3,6 @@ package azure
 import (
 	"fmt"
 	"testing"
-
-	az "github.com/Azure/go-autorest/autorest/azure"
 )
 
 type parseEnvironmentPropertyTestData struct {
@@ -15,8 +13,8 @@ type parseEnvironmentPropertyTestData struct {
 	isError             bool
 }
 
-var testPropertyProvider EnvironmentPropertyProvider = func(env az.Environment) (string, error) {
-	if env == az.USGovernmentCloud {
+var testPropertyProvider EnvironmentPropertyProvider = func(env AzEnvironment) (string, error) {
+	if env == USGovernmentCloud {
 		return "", fmt.Errorf("test endpoint is not available in %s", env.Name)
 	}
 	return fmt.Sprintf("%s.suffix", env.Name), nil
@@ -64,8 +62,8 @@ type parseActiveDirectoryEndpointTestData struct {
 }
 
 var parseActiveDirectoryEndpointTestDataset = []parseActiveDirectoryEndpointTestData{
-	{metadata: map[string]string{}, isError: false, expectedADEndpoint: az.PublicCloud.ActiveDirectoryEndpoint},
-	{metadata: map[string]string{"cloud": "AzureChinaCloud"}, isError: false, expectedADEndpoint: az.ChinaCloud.ActiveDirectoryEndpoint},
+	{metadata: map[string]string{}, isError: false, expectedADEndpoint: PublicCloud.ActiveDirectoryEndpoint},
+	{metadata: map[string]string{"cloud": "AzureChinaCloud"}, isError: false, expectedADEndpoint: ChinaCloud.ActiveDirectoryEndpoint},
 	{metadata: map[string]string{"cloud": "private", "activeDirectoryEndpoint": testADEndpoint}, isError: false,
 		expectedADEndpoint: testADEndpoint},
 	{metadata: map[string]string{"cloud": "private"}, isError: true},

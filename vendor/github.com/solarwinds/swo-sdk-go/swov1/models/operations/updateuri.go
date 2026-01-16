@@ -9,39 +9,39 @@ import (
 type UpdateURIRequest struct {
 	EntityID string `pathParam:"style=simple,explode=false,name=entityId"`
 	// The updated URI monitoring configuration
-	URI components.URI `request:"mediaType=application/json"`
+	DemURI components.DemURI `request:"mediaType=application/json"`
 }
 
-func (o *UpdateURIRequest) GetEntityID() string {
-	if o == nil {
+func (u *UpdateURIRequest) GetEntityID() string {
+	if u == nil {
 		return ""
 	}
-	return o.EntityID
+	return u.EntityID
 }
 
-func (o *UpdateURIRequest) GetURI() components.URI {
-	if o == nil {
-		return components.URI{}
+func (u *UpdateURIRequest) GetDemURI() components.DemURI {
+	if u == nil {
+		return components.DemURI{}
 	}
-	return o.URI
+	return u.DemURI
 }
 
 type UpdateURIResponse struct {
 	HTTPMeta components.HTTPMetadata `json:"-"`
 	// The request has succeeded.
-	EntityID *components.EntityID
+	CommonEntityID *components.CommonEntityID
 }
 
-func (o *UpdateURIResponse) GetHTTPMeta() components.HTTPMetadata {
-	if o == nil {
+func (u *UpdateURIResponse) GetHTTPMeta() components.HTTPMetadata {
+	if u == nil {
 		return components.HTTPMetadata{}
 	}
-	return o.HTTPMeta
+	return u.HTTPMeta
 }
 
-func (o *UpdateURIResponse) GetEntityID() *components.EntityID {
-	if o == nil {
+func (u *UpdateURIResponse) GetCommonEntityID() *components.CommonEntityID {
+	if u == nil {
 		return nil
 	}
-	return o.EntityID
+	return u.CommonEntityID
 }

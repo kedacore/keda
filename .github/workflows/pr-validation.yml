@@ -11,14 +11,14 @@ jobs:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     container:
-      image: ghcr.io/kedacore/keda-tools:1.24.7
+      image: ghcr.io/kedacore/keda-tools:1.25.5
       volumes:
         - /usr:/host/usr
         - /opt:/host/opt
     strategy:
       matrix:
         include:
-          - runner: ARM64
+          - runner: ubuntu-24.04-arm
             name: arm64
           - runner: ubuntu-latest
             name: amd64
@@ -38,7 +38,7 @@ jobs:
           rm -rf /host/opt/ghc
 
       - name: Check out code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 1
 
@@ -60,19 +60,19 @@ jobs:
           echo "build_cache=$(go env GOCACHE)" >> $GITHUB_OUTPUT
 
       - name: Go modules cache
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: ${{ steps.go-paths.outputs.mod_cache }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Go build cache
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: ${{ steps.go-paths.outputs.build_cache }}
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
 
       - name: Go modules sync
-        run: go mod tidy -compat=1.24
+        run: go mod tidy -compat=1.25
 
       - name: Verify generated Clientset is up to date
         run: make clientset-verify
@@ -106,11 +106,11 @@ jobs:
       pull-requests: read # for dorny/paths-filter to read pull requests
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.24.7
+    container: ghcr.io/kedacore/keda-tools:1.25.5
     strategy:
       matrix:
         include:
-          - runner: ARM64
+          - runner: ubuntu-24.04-arm
             name: arm64
           - runner: ubuntu-latest
             name: amd64
@@ -118,7 +118,7 @@ jobs:
             name: s390x
     steps:
       - name: Check out code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 1
 
@@ -142,18 +142,18 @@ jobs:
       pull-requests: read # for dorny/paths-filter to read pull requests
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.24.7
+    container: ghcr.io/kedacore/keda-tools:1.25.5
     strategy:
       matrix:
         include:
-          - runner: ARM64
+          - runner: ubuntu-24.04-arm
             name: arm64
           - runner: ubuntu-latest
             name: amd64
           - runner: s390x
             name: s390x
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -173,13 +173,13 @@ jobs:
     name: Static Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         with:
           python-version: 3.x
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: "1.24"
+          go-version-file: 'go.mod'
       - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
 
   trivy-scan:

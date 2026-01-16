@@ -57,6 +57,7 @@ import (
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledobjects;scaledobjects/finalizers;scaledobjects/status,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs=get;list;watch;update;patch;create;delete
 // +kubebuilder:rbac:groups="",resources=configmaps;configmaps/status,verbs=get;list;watch
+// +kubebuilder:rbac:groups="discovery.k8s.io",resources=endpointslices,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 // +kubebuilder:rbac:groups="",resources=pods;services;services;secrets;external,verbs=get;list;watch
 // +kubebuilder:rbac:groups="*",resources="*/scale",verbs=get;list;watch;update;patch
@@ -238,18 +239,32 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 	// - "autoscaling.keda.sh/paused-scale-out"
 	// we also set the status to paused but we allow the scale loop to continue and do not delete the HPA because these are unidirectional pauses.
 	needsToPause := scaledObject.NeedToBePausedByAnnotation()
+	isPausedInStatus := conditions.GetPausedCondition().Status == metav1.ConditionTrue
+
 	switch {
 	case needsToPause:
 		scaledToPausedCount := true
-		if conditions.GetPausedCondition().Status == metav1.ConditionTrue {
+		if isPausedInStatus {
 			// If scaledobject is in paused condition but replica count is not equal to paused replica count, the following scaling logic needs to be trigger again.
 			scaledToPausedCount = r.checkIfTargetResourceReachPausedCount(ctx, logger, scaledObject)
 			if scaledToPausedCount {
 				return kedav1alpha1.ScaledObjectConditionReadySuccessMessage, nil
 			}
 		}
+
 		if scaledToPausedCount {
 			msg := kedav1alpha1.ScaledObjectConditionPausedMessage
+
+			if !isPausedInStatus {
+				// Write status FIRST before any operations that might trigger new reconciles
+				logger.Info("Setting Paused condition before stopping scale loop")
+				conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, msg)
+				if err := kedastatus.SetStatusConditions(ctx, r.Client, logger, scaledObject, conditions); err != nil {
+					return "failed to update paused status", err
+				}
+			}
+
+			// Now safe to perform operations - any triggered reconcile will see paused status
 			if err := r.stopScaleLoop(ctx, logger, scaledObject); err != nil {
 				msg = "failed to stop the scale loop for paused ScaledObject"
 				return msg, err
@@ -258,12 +273,14 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 				msg = "failed to delete HPA for paused ScaledObject"
 				return msg, err
 			}
+
+			// Condition already set above, just ensure it's still set in conditions object
 			conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, msg)
 			return msg, nil
 		}
 	case scaledObject.NeedToPauseScaleIn() || scaledObject.NeedToPauseScaleOut():
 		conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, kedav1alpha1.ScaledObjectConditionPausedMessage)
-	case conditions.GetPausedCondition().Status == metav1.ConditionTrue:
+	case isPausedInStatus:
 		conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectUnpaused", "pause annotation removed for ScaledObject")
 	}
 
@@ -318,7 +335,7 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 
 	// Notify ScaleHandler if a new HPA was created or if ScaledObject was updated
 	if newHPACreated || scaleObjectSpecChanged {
-		if r.requestScaleLoop(ctx, logger, scaledObject) != nil {
+		if err := r.requestScaleLoop(ctx, logger, scaledObject); err != nil {
 			return "failed to start a new scale loop with scaling logic", err
 		}
 		logger.Info("Initializing Scaling logic according to ScaledObject Specification")
