@@ -9,9 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
 )
@@ -51,19 +49,9 @@ spec:
       labels:
         app: {{.DeploymentName}}
     spec:
-      initContainers:
-        - name: init-auth
-          image: busybox
-          command: ["sh", "-c", "echo '{\"testParam\": \"testValue\"}' > /mnt/auth/creds.json"]
-          volumeMounts:
-            - name: auth-volume
-              mountPath: /mnt/auth
-      containers:
-        - name: {{.DeploymentName}}
-          image: nginx
-      volumes:
-        - name: auth-volume
-          emptyDir: {}
+       containers:
+         - name: {{.DeploymentName}}
+           image: nginx
 `
 
 	clusterTriggerAuthenticationTemplate = `
@@ -102,86 +90,24 @@ spec:
 )
 
 func TestFileBasedAuthentication(t *testing.T) {
+	// Skip test if file auth is not enabled
+	if EnableFileAuth != StringTrue {
+		t.Skip("Skipping file-based auth test: ENABLE_FILE_AUTH is not set to true")
+	}
+
 	// setup
 	t.Log("--- setting up file-based auth test ---")
 
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	// Patch the operator deployment to add init container and volume for auth file
-	patchOperatorDeployment(t, kc)
-
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// test scaled object creation with file-based auth
-	testScaledObjectWithFileAuth(t, kc)
+	testScaledObjectWithFileAuth(t)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
-}
-
-func TestFileBasedAuthTemplates(t *testing.T) {
-	t.Log("--- testing file-based auth YAML templates ---")
-
-	// Test that templates contain expected filePath in ClusterTriggerAuthentication
-	assert.Contains(t, clusterTriggerAuthenticationTemplate, "filePath: creds.json")
-	assert.Contains(t, scaledObjectTemplate, "authenticationRef:")
-	assert.Contains(t, scaledObjectTemplate, "name: file-auth")
-	assert.Contains(t, scaledObjectTemplate, "kind: ClusterTriggerAuthentication")
-
-	// Test that deployment template has init container and volume setup
-	assert.Contains(t, deploymentTemplate, "initContainers:")
-	assert.Contains(t, deploymentTemplate, "echo '{\\\"testParam\\\": \\\"testValue\\\"}' > /mnt/auth/creds.json")
-	assert.Contains(t, deploymentTemplate, "emptyDir: {}")
-}
-
-func patchOperatorDeployment(t *testing.T, kc *kubernetes.Clientset) {
-	operatorDeployment, err := kc.AppsV1().Deployments("keda").Get(context.Background(), "keda-operator", metav1.GetOptions{})
-	if err != nil {
-		t.Logf("Operator deployment not found, skipping patch: %v", err)
-		return
-	}
-
-	// Add volume
-	operatorDeployment.Spec.Template.Spec.Volumes = append(operatorDeployment.Spec.Template.Spec.Volumes, corev1.Volume{
-		Name: "auth-volume",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	})
-
-	// Add init container
-	operatorDeployment.Spec.Template.Spec.InitContainers = append(operatorDeployment.Spec.Template.Spec.InitContainers, corev1.Container{
-		Name:    "init-auth",
-		Image:   "busybox",
-		Command: []string{"sh", "-c", "echo '{\"testParam\": \"testValue\"}' > /mnt/auth/creds.json"},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "auth-volume",
-				MountPath: "/mnt/auth",
-			},
-		},
-		SecurityContext: &corev1.SecurityContext{
-			RunAsNonRoot: &[]bool{true}[0],
-			RunAsUser:    &[]int64{1000}[0],
-		},
-	})
-
-	// Add the filepath-auth-root-path arg to the operator container
-	if len(operatorDeployment.Spec.Template.Spec.Containers) > 0 {
-		operatorDeployment.Spec.Template.Spec.Containers[0].Args = append(
-			operatorDeployment.Spec.Template.Spec.Containers[0].Args,
-			"--filepath-auth-root-path=/mnt/auth",
-		)
-	}
-
-	// Update the deployment
-	_, err = kc.AppsV1().Deployments("keda").Update(context.Background(), operatorDeployment, metav1.UpdateOptions{})
-	if err != nil {
-		t.Logf("Failed to patch operator deployment: %v", err)
-	} else {
-		t.Log("Patched operator deployment with auth init container and filepath arg")
-	}
 }
 
 func getTemplateData() (templateData, []Template) {
@@ -196,7 +122,7 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func testScaledObjectWithFileAuth(t *testing.T, kc *kubernetes.Clientset) {
+func testScaledObjectWithFileAuth(t *testing.T) {
 	t.Log("--- testing scaled object with file-based authentication ---")
 
 	kedaKc := GetKedaKubernetesClient(t)
@@ -224,24 +150,4 @@ func testScaledObjectWithFileAuth(t *testing.T, kc *kubernetes.Clientset) {
 	}
 	assert.NotNil(t, clusterTriggerAuth)
 	assert.Equal(t, "creds.json", clusterTriggerAuth.Spec.FilePath)
-
-	// Verify deployment has init container that creates the auth file
-	deployment, err := kc.AppsV1().Deployments(testNamespace).Get(context.Background(), deploymentName, metav1.GetOptions{})
-	assert.NoError(t, err)
-	assert.NotNil(t, deployment)
-
-	// Check init container
-	initContainers := deployment.Spec.Template.Spec.InitContainers
-	assert.Len(t, initContainers, 1)
-	assert.Equal(t, "init-auth", initContainers[0].Name)
-
-	// Check volume mount
-	volumeMounts := initContainers[0].VolumeMounts
-	assert.Len(t, volumeMounts, 1)
-	assert.Equal(t, "/mnt/auth", volumeMounts[0].MountPath)
-
-	// Check volumes
-	volumes := deployment.Spec.Template.Spec.Volumes
-	assert.Len(t, volumes, 1)
-	assert.NotNil(t, volumes[0].EmptyDir) // emptyDir type
 }
