@@ -320,7 +320,7 @@ func installDatadog(t *testing.T) {
 }
 
 func uninstallDatadog(t *testing.T) {
-	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall %s --namespace %s`,
+	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall %s --namespace %s --wait`,
 		testName,
 		testNamespace))
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
