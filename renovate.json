@@ -1,22 +1,35 @@
 {
-  "branchPrefix":"renovate-",
-  "labels":["dependencies"],
+  "extends": [
+    "config:base",
+    ":gitSignOff",
+    "default:disablePrControls",
+    "docker:pinDigests",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "labels": [
+    "enhancement",
+    "dependency-management"
+  ],
   "packageRules": [
+    ackageRules": [
     {
       "packagePatterns": ["*"],
       "enabled": false
     },
     {
-      "packagePatterns": ["^actions/"],
-      "groupName": "GitHub Actions",
-      "enabled": true
+      "description": "Ensure Go vendor runs even inside the big group",
+      "matchManagers": ["gomod"],
+      "postUpdateOptions": ["gomodTidy", "gomodVendor"]
+    },
+    {
+      "description": "Enable pinning for Docker and Actions within the group",
+      "matchDatasources": ["docker"],
+      "pinDigests": true
+    },
+    {
+      "description": "Enable pinning for Actions within the group",
+      "matchManagers": ["github-actions"],
+      "pinDigests": true
     }
-  ],
-  "commitBodyTable": true,
-  "extends": [
-    "config:base",
-    ":gitSignOff",
-    "default:disablePrControls",
-    "helpers:pinGitHubActionDigests"
   ]
 }
