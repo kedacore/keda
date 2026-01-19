@@ -155,12 +155,12 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
-HAS_GOLANGCI_VERSION:=$(shell $(GOPATH)/bin/golangci-lint version --short)
 .PHONY: golangci
 golangci: ## Run golangci against code.
-ifneq ($(HAS_GOLANGCI_VERSION), $(GOLANGCI_VERSION))
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin v$(GOLANGCI_VERSION)
-endif
+	@HAS_GOLANGCI_VERSION=$$($(GOPATH)/bin/golangci-lint version --short 2>/dev/null || echo ""); \
+	if [ "$$HAS_GOLANGCI_VERSION" != "$(GOLANGCI_VERSION)" ]; then \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin v$(GOLANGCI_VERSION); \
+	fi
 	golangci-lint run
 
 verify-manifests: ## Verify manifests are up to date.
