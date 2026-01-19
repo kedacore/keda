@@ -38,20 +38,21 @@ var (
 )
 
 type templateData struct {
-	TestNamespace               string
-	DeploymentName              string
-	ScaledObject                string
-	TriggerAuthName             string
-	SecretName                  string
-	ServiceName                 string
-	MetricsServerDeploymentName string
-	MetricsServerEndpoint       string
-	MinReplicas                 string
-	MaxReplicas                 string
-	MetricValue                 int
-	PollingInterval             int
-	CooldownPeriod              int
-	CustomHpaName               string
+	TestNamespace                  string
+	DeploymentName                 string
+	ScaledObject                   string
+	TriggerAuthName                string
+	SecretName                     string
+	ServiceName                    string
+	MetricsServerDeploymentName    string
+	MetricsServerEndpoint          string
+	MinReplicas                    string
+	MaxReplicas                    string
+	MetricValue                    int
+	PollingInterval                int
+	CooldownPeriod                 int
+	CustomHpaName                  string
+	CooldownOnlyAfterHpaMinReplica bool
 }
 
 const (
@@ -148,6 +149,10 @@ spec:
   advanced:
     horizontalPodAutoscalerConfig:
       name: {{.CustomHpaName}}
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 15
+    cooldownOnlyAfterHpaMinReplica: {{.CooldownOnlyAfterHpaMinReplica}}
   pollingInterval: {{.PollingInterval}}
   cooldownPeriod: {{.CooldownPeriod}}
   minReplicaCount: {{.MinReplicas}}
@@ -207,6 +212,7 @@ func TestPollingInterval(t *testing.T) {
 	testPollingIntervalUp(t, kc, data)
 	testPollingIntervalDown(t, kc, data)
 	testCooldownPeriod(t, kc, data)
+	testCooldownPeriodOnlyAfterMinHpaReplicas(t, kc, data)
 
 	DeleteKubernetesResources(t, namespace, data, templates)
 }
@@ -305,6 +311,46 @@ func testCooldownPeriod(t *testing.T, kc *kubernetes.Clientset, data templateDat
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 6, 10),
 		"replica count should be %d after 1 minute", minReplicas)
+
+	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+}
+
+func testCooldownPeriodOnlyAfterMinHpaReplicas(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- test Cooldown Period Only After Min HPA Replicas ---")
+
+	maxReplicas = 3
+	data.PollingInterval = 5
+	data.CooldownOnlyAfterHpaMinReplica = true
+	data.MaxReplicas = fmt.Sprintf("%v", maxReplicas)
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	data.MetricValue = 10
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	// wait some seconds to finish the job
+	WaitForJobCount(t, kc, namespace, 0, 15, 2)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, maxReplicas, 18, 10),
+		"replica count should be %d after 3 minutes", 3)
+
+	data.CooldownPeriod = 60
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
+
+	// wait until HPA to ensure that ScaledObject reconciliation loop has happened
+	_, err := WaitForHpaCreation(t, kc, hpaName, namespace, 60, 2)
+	assert.NoError(t, err)
+
+	data.MetricValue = 0
+	KubectlReplaceWithTemplate(t, data, "updateMetricsTemplate", updateMetricsTemplate)
+
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 1, 6, 5),
+		"replica count should be %d after 30 seconds", 1)
+
+	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, namespace, 1, 30)
+
+	// now KEDA cooldown period starts and after this period replicas should be scaled down to 0
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, 0, 6, 10),
+		"replica count should be %d after 60 seconds", 0)
 
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 }

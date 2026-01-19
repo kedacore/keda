@@ -79,6 +79,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Raw metrics stream - include trigger activity status in response ([#7369](https://github.com/kedacore/keda/issues/7369))
 - **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
 - **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
+  - **General**: Add cooldownOnlyAfterHpaMinReplica bool to control cooldown behavior ([#7204](https://github.com/kedacore/keda/issues/7204))
 
 ### Fixes
 
