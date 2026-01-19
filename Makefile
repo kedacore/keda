@@ -56,7 +56,7 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 # Scaler schema generation parameters
-SCALERS_SCHEMA_SCALERS_BUILDER_FILE ?= pkg/scaling/scalers_builder.go
+SCALERS_SCHEMA_SCALERS_BUILDER_FILE ?= pkg/scaling/scalers_registry.go
 SCALERS_SCHEMA_SCALERS_FILES_DIR ?= pkg/scalers
 SCALERS_SCHEMA_OUTPUT_FILE_PATH ?= schema/generated/
 SCALERS_SCHEMA_OUTPUT_FILE_NAME ?= scalers-schema

@@ -391,48 +391,56 @@ func getBuildScalerCalls(fileName string) (map[string]string, error) {
 		return nil, err
 	}
 
-	// Try to find the "triggerType" switch statement and get the trigger names and creator function names
+	// Try to find RegisterScalerBuilder calls in the registry pattern
 	ast.Inspect(f, func(n ast.Node) bool {
-		switch t := n.(type) {
-		case *ast.SwitchStmt:
-			s, ok := t.Tag.(*ast.Ident)
-			if !ok || s.Name != "triggerType" {
-				break
-			}
-			// retrieve the creator function name from each case statement
-			for _, casesAst := range t.Body.List {
-				c, ok := casesAst.(*ast.CaseClause)
-
-				if !ok || len(c.List) == 0 || len(c.Body) == 0 {
-					continue
-				}
-
-				basic, ok := c.List[0].(*ast.BasicLit)
-				if !ok {
-					continue
-				}
-
-				r, ok := c.Body[0].(*ast.ReturnStmt)
-				if !ok {
-					continue
-				}
-
-				if len(r.Results) == 0 {
-					continue
-				}
-				caller, ok := r.Results[0].(*ast.CallExpr)
-				if !ok {
-					continue
-				}
-
-				expr, ok := caller.Fun.(*ast.SelectorExpr)
-				if !ok {
-					continue
-				}
-
-				scalerCallers[strings.Trim(basic.Value, "\"")] = expr.Sel.Name
-			}
+		callExpr, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
 		}
+
+		// Check if it's a call to RegisterScalerBuilder
+		selExpr, ok := callExpr.Fun.(*ast.Ident)
+		if !ok || selExpr.Name != "RegisterScalerBuilder" {
+			return true
+		}
+
+		// Extract the scaler name (first argument)
+		if len(callExpr.Args) < 2 {
+			return true
+		}
+
+		scalerName, ok := callExpr.Args[0].(*ast.BasicLit)
+		if !ok {
+			return true
+		}
+
+		// Extract the creator function from the function literal
+		funcLit, ok := callExpr.Args[1].(*ast.FuncLit)
+		if !ok {
+			return true
+		}
+
+		// Find the return statement with the creator call
+		for _, stmt := range funcLit.Body.List {
+			retStmt, ok := stmt.(*ast.ReturnStmt)
+			if !ok || len(retStmt.Results) == 0 {
+				continue
+			}
+
+			caller, ok := retStmt.Results[0].(*ast.CallExpr)
+			if !ok {
+				continue
+			}
+
+			expr, ok := caller.Fun.(*ast.SelectorExpr)
+			if !ok {
+				continue
+			}
+
+			scalerCallers[strings.Trim(scalerName.Value, "\"")] = expr.Sel.Name
+			break
+		}
+
 		return true
 	})
 	return scalerCallers, nil
@@ -526,7 +534,7 @@ func main() {
 	var outputFilePath string
 	var outputFormat string
 	pflag.StringVar(&kedaVersion, "keda-version", "main", "Set the version of current KEDA in schema.")
-	pflag.StringVar(&builderFilePath, "scalers-builder-file", "../pkg/scaling/scalers_builder.go", "The file that exists `buildScaler` func.")
+	pflag.StringVar(&builderFilePath, "scalers-builder-file", "../pkg/scaling/scalers_registry.go", "The file that contains scaler registrations.")
 	pflag.StringVar(&scalersFilesDirPath, "scalers-files-dir", "../pkg/scalers", "The directory that exists all scalers' files.")
 	pflag.StringVar(&specifyScaler, "specify-scaler", "", "Specify scaler name.")
 	pflag.StringVar(&outputFileName, "output-file-name", "scalers-schema", "Output file name.")
