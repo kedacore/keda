@@ -16,17 +16,14 @@
       "enabled": false
     },
     {
-      "description": "Ensure Go vendor runs even inside the big group",
       "matchManagers": ["gomod"],
       "postUpdateOptions": ["gomodTidy", "gomodVendor"]
     },
     {
-      "description": "Enable pinning for Docker and Actions within the group",
       "matchDatasources": ["docker"],
       "pinDigests": true
     },
     {
-      "description": "Enable pinning for Actions within the group",
       "matchManagers": ["github-actions"],
       "pinDigests": true
     }
