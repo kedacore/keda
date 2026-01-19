@@ -365,7 +365,7 @@ func (r *ScaledObjectReconciler) ensureScaledObjectLabel(ctx context.Context, lo
 
 func (r *ScaledObjectReconciler) checkIfTargetResourceReachPausedCount(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject) bool {
 	pausedReplicaCount, pausedReplicasAnnotationFound := scaledObject.GetAnnotations()[kedav1alpha1.PausedReplicasAnnotation]
-	if !pausedReplicasAnnotationFound {
+	if !pausedReplicasAnnotationFound || pausedReplicaCount == "" {
 		return true
 	}
 	pausedReplicaCountNum, err := strconv.ParseInt(pausedReplicaCount, 10, 32)
