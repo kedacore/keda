@@ -82,6 +82,8 @@ jobs:
           name: ${{ env.E2E_CHECK_NAME }}
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Set status in-progress
         uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
@@ -91,6 +93,8 @@ jobs:
           name: ${{ env.ARM_SMOKE_CHECK_NAME }}
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Set status in-progress
         uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
@@ -100,6 +104,8 @@ jobs:
           name: ${{ env.S390X_SMOKE_CHECK_NAME }}
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
@@ -145,6 +151,8 @@ jobs:
           name: ${{ env.E2E_CHECK_NAME }}
           conclusion: failure
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Set status failure
         uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
@@ -155,6 +163,8 @@ jobs:
           name: ${{ env.ARM_SMOKE_CHECK_NAME }}
           status: failure
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Set status failure
         uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2
@@ -165,6 +175,8 @@ jobs:
           name: ${{ env.S390X_SMOKE_CHECK_NAME }}
           status: failure
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Exit on failure
         if: steps.regex-validation.outcome != 'success'
@@ -204,6 +216,8 @@ jobs:
           name: ${{ env.E2E_CHECK_NAME }}
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
@@ -280,6 +294,8 @@ jobs:
           name: ${{ env.E2E_CHECK_NAME }}
           conclusion: success
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "🟢 Tests Passed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: React to comment with failure
         uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
@@ -298,6 +314,8 @@ jobs:
           name: ${{ env.E2E_CHECK_NAME }}
           conclusion: failure
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Upload test logs
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -320,6 +338,8 @@ jobs:
           name: ${{ env.ARM_SMOKE_CHECK_NAME }}
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Check out code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -369,6 +389,8 @@ jobs:
           name: ${{ env.ARM_SMOKE_CHECK_NAME }}
           conclusion: success
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "🟢 Tests Passed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: React to comment with failure
         uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
@@ -387,6 +409,8 @@ jobs:
           name: ${{ env.ARM_SMOKE_CHECK_NAME }}
           conclusion: failure
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Upload test logs
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -409,6 +433,8 @@ jobs:
           name: ${{ env.S390X_SMOKE_CHECK_NAME }}
           status: in_progress
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Check out code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -465,6 +491,8 @@ jobs:
           name: ${{ env.S390X_SMOKE_CHECK_NAME }}
           conclusion: success
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "🟢 Tests Passed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: React to comment with failure
         uses: dkershner6/reaction-action@97ede302a1b145b3739dec3ca84a489a34ef48b5 # v2
@@ -483,6 +511,8 @@ jobs:
           name: ${{ env.S390X_SMOKE_CHECK_NAME }}
           conclusion: failure
           details_url: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}}
+          output: |
+            {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Remove Kubernetes
         run: |
