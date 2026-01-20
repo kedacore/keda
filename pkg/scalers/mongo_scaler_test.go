@@ -115,7 +115,7 @@ var testMONGODBMetadata = []parseMongoDBMetadataTestData{
 	// TLS enabled with cert only - should fail (key required)
 	{
 		metadata:    map[string]string{"query": `{"name":"John"}`, "collection": "demo", "queryValue": "12", "connectionStringFromEnv": "MongoDB_CONN_STR", "dbName": "test"},
-		authParams:  map[string]string{"tls": "enable", "cert": "-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----"},
+		authParams:  map[string]string{"tls": "enable", "cert": "certvalue"},
 		resolvedEnv: testMongoDBResolvedEnv,
 		raisesError: true,
 	},
