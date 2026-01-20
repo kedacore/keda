@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
-	az "github.com/Azure/go-autorest/autorest/azure"
 )
 
 var AzureClouds = map[string]cloud.Configuration{
@@ -15,8 +14,6 @@ var AzureClouds = map[string]cloud.Configuration{
 }
 
 const (
-	DefaultCloud = "azurePublicCloud"
-
 	// PrivateCloud cloud type
 	PrivateCloud string = "Private"
 
@@ -31,9 +28,9 @@ const (
 )
 
 // EnvironmentPropertyProvider for different types of Azure scalers
-type EnvironmentPropertyProvider func(env az.Environment) (string, error)
+type EnvironmentPropertyProvider func(env AzEnvironment) (string, error)
 
-var activeDirectoryEndpointProvider = func(env az.Environment) (string, error) {
+var activeDirectoryEndpointProvider = func(env AzEnvironment) (string, error) {
 	return env.ActiveDirectoryEndpoint, nil
 }
 
@@ -47,7 +44,7 @@ func ParseEnvironmentProperty(metadata map[string]string, propertyKey string, en
 			return "", fmt.Errorf("%s must be provided for %s cloud type", propertyKey, PrivateCloud)
 		}
 
-		env, err := az.EnvironmentFromName(val)
+		env, err := EnvironmentFromName(val)
 		if err != nil {
 			return "", fmt.Errorf("invalid cloud environment %s", val)
 		}
@@ -56,7 +53,7 @@ func ParseEnvironmentProperty(metadata map[string]string, propertyKey string, en
 	}
 
 	// Use public cloud suffix if `cloud` isn't specified
-	return envPropertyProvider(az.PublicCloud)
+	return envPropertyProvider(PublicCloud)
 }
 
 func ParseActiveDirectoryEndpoint(metadata map[string]string) (string, error) {

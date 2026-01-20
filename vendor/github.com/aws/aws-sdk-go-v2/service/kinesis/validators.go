@@ -510,6 +510,46 @@ func (m *validateOpUntagResource) HandleInitialize(ctx context.Context, in middl
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpUpdateAccountSettings struct {
+}
+
+func (*validateOpUpdateAccountSettings) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpUpdateAccountSettings) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*UpdateAccountSettingsInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpUpdateAccountSettingsInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpUpdateMaxRecordSize struct {
+}
+
+func (*validateOpUpdateMaxRecordSize) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpUpdateMaxRecordSize) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*UpdateMaxRecordSizeInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpUpdateMaxRecordSizeInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpUpdateShardCount struct {
 }
 
@@ -545,6 +585,26 @@ func (m *validateOpUpdateStreamMode) HandleInitialize(ctx context.Context, in mi
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpUpdateStreamModeInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpUpdateStreamWarmThroughput struct {
+}
+
+func (*validateOpUpdateStreamWarmThroughput) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpUpdateStreamWarmThroughput) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*UpdateStreamWarmThroughputInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpUpdateStreamWarmThroughputInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -650,12 +710,39 @@ func addOpUntagResourceValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpUntagResource{}, middleware.After)
 }
 
+func addOpUpdateAccountSettingsValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpUpdateAccountSettings{}, middleware.After)
+}
+
+func addOpUpdateMaxRecordSizeValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpUpdateMaxRecordSize{}, middleware.After)
+}
+
 func addOpUpdateShardCountValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpUpdateShardCount{}, middleware.After)
 }
 
 func addOpUpdateStreamModeValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpUpdateStreamMode{}, middleware.After)
+}
+
+func addOpUpdateStreamWarmThroughputValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpUpdateStreamWarmThroughput{}, middleware.After)
+}
+
+func validateMinimumThroughputBillingCommitmentInput(v *types.MinimumThroughputBillingCommitmentInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "MinimumThroughputBillingCommitmentInput"}
+	if len(v.Status) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("Status"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
 }
 
 func validatePutRecordsRequestEntry(v *types.PutRecordsRequestEntry) error {
@@ -1164,6 +1251,40 @@ func validateOpUntagResourceInput(v *UntagResourceInput) error {
 	}
 }
 
+func validateOpUpdateAccountSettingsInput(v *UpdateAccountSettingsInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "UpdateAccountSettingsInput"}
+	if v.MinimumThroughputBillingCommitment == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("MinimumThroughputBillingCommitment"))
+	} else if v.MinimumThroughputBillingCommitment != nil {
+		if err := validateMinimumThroughputBillingCommitmentInput(v.MinimumThroughputBillingCommitment); err != nil {
+			invalidParams.AddNested("MinimumThroughputBillingCommitment", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpUpdateMaxRecordSizeInput(v *UpdateMaxRecordSizeInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "UpdateMaxRecordSizeInput"}
+	if v.MaxRecordSizeInKiB == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("MaxRecordSizeInKiB"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpUpdateShardCountInput(v *UpdateShardCountInput) error {
 	if v == nil {
 		return nil
@@ -1196,6 +1317,21 @@ func validateOpUpdateStreamModeInput(v *UpdateStreamModeInput) error {
 		if err := validateStreamModeDetails(v.StreamModeDetails); err != nil {
 			invalidParams.AddNested("StreamModeDetails", err.(smithy.InvalidParamsError))
 		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpUpdateStreamWarmThroughputInput(v *UpdateStreamWarmThroughputInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "UpdateStreamWarmThroughputInput"}
+	if v.WarmThroughputMiBps == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("WarmThroughputMiBps"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams

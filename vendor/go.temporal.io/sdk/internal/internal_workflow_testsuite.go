@@ -3492,26 +3492,6 @@ func (r *testNexusHandler) CancelOperation(
 	return r.handler.CancelOperation(ctx, service, operation, token, options)
 }
 
-func (r *testNexusHandler) GetOperationInfo(
-	ctx context.Context,
-	service string,
-	operation string,
-	token string,
-	options nexus.GetOperationInfoOptions,
-) (*nexus.OperationInfo, error) {
-	return r.handler.GetOperationInfo(ctx, service, operation, token, options)
-}
-
-func (r *testNexusHandler) GetOperationResult(
-	ctx context.Context,
-	service string,
-	operation string,
-	token string,
-	options nexus.GetOperationResultOptions,
-) (any, error) {
-	return r.handler.GetOperationResult(ctx, service, operation, token, options)
-}
-
 func (env *testWorkflowEnvironmentImpl) registerNexusOperationReference(
 	service string,
 	opRef testNexusOperationReference,

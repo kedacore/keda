@@ -45,9 +45,9 @@ GO_LDFLAGS="-X=github.com/kedacore/keda/v2/version.GitCommit=$(GIT_COMMIT) -X=gi
 COSIGN_FLAGS ?= -y -a GIT_HASH=${GIT_COMMIT} -a GIT_VERSION=${VERSION} -a BUILD_DATE=${DATE}
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.33
+ENVTEST_K8S_VERSION = 1.34
 
-GOLANGCI_VERSION:=2.5.0
+GOLANGCI_VERSION:=2.7.1
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -155,12 +155,12 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
-HAS_GOLANGCI_VERSION:=$(shell $(GOPATH)/bin/golangci-lint version --short)
 .PHONY: golangci
 golangci: ## Run golangci against code.
-ifneq ($(HAS_GOLANGCI_VERSION), $(GOLANGCI_VERSION))
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin v$(GOLANGCI_VERSION)
-endif
+	@HAS_GOLANGCI_VERSION=$$($(GOPATH)/bin/golangci-lint version --short 2>/dev/null || echo ""); \
+	if [ "$$HAS_GOLANGCI_VERSION" != "$(GOLANGCI_VERSION)" ]; then \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin v$(GOLANGCI_VERSION); \
+	fi
 	golangci-lint run
 
 verify-manifests: ## Verify manifests are up to date.

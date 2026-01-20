@@ -6,8 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
-	kinesiscust "github.com/aws/aws-sdk-go-v2/service/kinesis/internal/customizations"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
@@ -230,9 +228,6 @@ func (c *Client) addOperationGetRecordsMiddlewares(stack *middleware.Stack, opti
 	if err = addResponseErrorMiddleware(stack); err != nil {
 		return err
 	}
-	if err = awshttp.AddResponseReadTimeoutMiddleware(stack, kinesiscust.ReadTimeoutDuration); err != nil {
-		return err
-	}
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
@@ -245,40 +240,7 @@ func (c *Client) addOperationGetRecordsMiddlewares(stack *middleware.Stack, opti
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil
