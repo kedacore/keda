@@ -13,7 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/go-logr/logr"
 	"github.com/jackc/pgx/v5/pgxpool"
-	_ "github.com/jackc/pgx/v5/stdlib" // PostgreSQL drive required for this scaler
+	_ "github.com/jackc/pgx/v5/stdlib" // PostgreSQL driver required for this scaler
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -169,7 +169,7 @@ func buildConnArray(meta *postgreSQLMetadata) []string {
 
 func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*pgxpool.Pool, string, error) {
 	connectionString := meta.Connection
-	poolKey := fmt.Sprintf("%s:%s/%s", meta.Host, meta.Port, meta.DBName)
+	poolKey := fmt.Sprintf("postgres.%s.%s", meta.Host, meta.DBName)
 	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
 		accessToken, err := getAzureAccessToken(ctx, meta, azureDatabasePostgresResource)
 		if err != nil {
@@ -178,7 +178,7 @@ func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity ke
 		newPasswordField := "password=" + escapePostgreConnectionParameter(accessToken)
 		connectionString = passwordConnPattern.ReplaceAllString(meta.Connection, newPasswordField)
 	}
-	maxConns, err := strconv.ParseInt(connectionpool.LookupConfigValue("postgres", fmt.Sprintf("%s.%s", meta.Host, meta.DBName)), 10, 32)
+	maxConns, err := strconv.ParseInt(connectionpool.LookupConfigValue(poolKey), 10, 32)
 	if err != nil {
 		logger.Info("Invalid value in configmap; set default max connection pool", "Server", meta.Host, "dbName", meta.DBName)
 		maxConns = 0
