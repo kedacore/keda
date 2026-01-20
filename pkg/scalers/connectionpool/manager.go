@@ -47,6 +47,7 @@ func GetOrCreate(poolKey string, createFn func() (ResourcePool, error)) (Resourc
 func Release(poolKey string) {
 	val, ok := poolMap.Load(poolKey)
 	if !ok {
+		logger.V(0).Error(nil, "Attempted to release non-existent pool", "poolKey", poolKey)
 		return
 	}
 	entry := val.(*poolEntry)
