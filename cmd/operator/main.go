@@ -21,19 +21,6 @@ import (
 	"os"
 	"time"
 
-	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	eventingcontrollers "github.com/kedacore/keda/v2/controllers/eventing"
-	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
-	"github.com/kedacore/keda/v2/pkg/certificates"
-	"github.com/kedacore/keda/v2/pkg/eventemitter"
-	"github.com/kedacore/keda/v2/pkg/k8s"
-	"github.com/kedacore/keda/v2/pkg/metricscollector"
-	"github.com/kedacore/keda/v2/pkg/metricsservice"
-	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
-	"github.com/kedacore/keda/v2/pkg/scalers/connectionpool"
-	"github.com/kedacore/keda/v2/pkg/scaling"
-	kedautil "github.com/kedacore/keda/v2/pkg/util"
 	"github.com/spf13/pflag"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -49,7 +36,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	//+kubebuilder:scaffold:imports
+
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	eventingcontrollers "github.com/kedacore/keda/v2/controllers/eventing"
+	kedacontrollers "github.com/kedacore/keda/v2/controllers/keda"
+	"github.com/kedacore/keda/v2/pkg/certificates"
+	"github.com/kedacore/keda/v2/pkg/eventemitter"
+	"github.com/kedacore/keda/v2/pkg/k8s"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	"github.com/kedacore/keda/v2/pkg/metricsservice"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/connectionpool"
+	"github.com/kedacore/keda/v2/pkg/scaling"
+	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
 var (
