@@ -120,6 +120,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.39.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.39.0
 	go.opentelemetry.io/otel/metric v1.39.0
+	go.opentelemetry.io/otel/sdk/metric v1.39.0
 	go.temporal.io/sdk v1.39.0
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/mock v0.6.0
@@ -339,7 +340,6 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.39.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.39.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.39.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.39.0
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
 	go.temporal.io/api v1.59.0 // indirect
