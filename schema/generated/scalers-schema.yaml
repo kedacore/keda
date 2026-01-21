@@ -986,11 +986,27 @@ scalers:
           triggerAuthenticationVariableReadable: true
         - name: metricSelector
           type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: query
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: queryTimeoutSeconds
+          type: string
+          default: "10"
+          metadataVariableReadable: true
+        - name: queryPollingWait
+          type: string
+          default: 1s
+          metadataVariableReadable: true
+        - name: queryPollingTries
+          type: string
+          default: "5"
           metadataVariableReadable: true
         - name: from
           type: string
           optional: true
-          default: now-2h
           metadataVariableReadable: true
         - name: threshold
           type: string
