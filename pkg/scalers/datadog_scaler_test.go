@@ -409,3 +409,55 @@ func TestDatadogMetadataValidateUseFiller(t *testing.T) {
 		})
 	}
 }
+
+func TestGetDatadogClusterAgentHTTPRequest(t *testing.T) {
+	testCases := []struct {
+		name               string
+		enableBearerAuth   bool
+		bearerToken        string
+		expectedAuthHeader bool
+	}{
+		{
+			name:               "with bearer auth",
+			enableBearerAuth:   true,
+			bearerToken:        "test-token",
+			expectedAuthHeader: true,
+		},
+		{
+			name:               "without bearer auth",
+			enableBearerAuth:   false,
+			bearerToken:        "",
+			expectedAuthHeader: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			scaler := &datadogScaler{
+				metadata: &datadogMetadata{
+					EnableBearerAuth: tc.enableBearerAuth,
+					BearerToken:      tc.bearerToken,
+				},
+			}
+
+			req, err := scaler.getDatadogClusterAgentHTTPRequest(
+				context.Background(),
+				"https://test.example.com",
+			)
+
+			if req == nil && err == nil {
+				t.Error("Expected request, got nil")
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
+
+			if tc.expectedAuthHeader {
+				if auth := req.Header.Get("Authorization"); auth == "" {
+					t.Error("Expected Authorization header")
+				}
+			}
+		})
+	}
+}

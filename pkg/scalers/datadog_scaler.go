@@ -474,29 +474,16 @@ func (s *datadogScaler) getDatadogMetricValue(req *http.Request) (float64, error
 }
 
 func (s *datadogScaler) getDatadogClusterAgentHTTPRequest(ctx context.Context, url string) (*http.Request, error) {
-	var req *http.Request
-	var err error
-
-	switch {
-	case s.metadata.EnableBearerAuth:
-		req, err = http.NewRequestWithContext(ctx, "GET", url, nil)
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.BearerToken))
-		if err != nil {
-			return nil, err
-		}
-		return req, nil
-
-	default:
-		req, err = http.NewRequestWithContext(ctx, "GET", url, nil)
-		if err != nil {
-			return req, err
-		}
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, nil
+	if s.metadata.EnableBearerAuth {
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.metadata.BearerToken))
+	}
+
+	return req, nil
 }
 
 // GetMetricSpecForScaling returns the MetricSpec for the Horizontal Pod Autoscaler
