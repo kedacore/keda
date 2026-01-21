@@ -322,6 +322,15 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 			return -1, fmt.Errorf("your Datadog account reached the %s queries per %s seconds rate limit, next limit reset will happen in %s seconds", rateLimit, rateLimitPeriod, rateLimitReset)
 		}
 
+		if r.StatusCode == http.StatusUnprocessableEntity {
+			if s.metadata.UseFiller {
+				s.logger.V(1).Info("Datadog metrics unavailable, using FillValue",
+					"statusCode", r.StatusCode,
+					"fillValue", *s.metadata.FillValue)
+				return *s.metadata.FillValue, nil
+			}
+		}
+
 		if r.StatusCode != 200 {
 			if err != nil {
 				return -1, fmt.Errorf("error when retrieving Datadog metrics: %w", err)
@@ -363,6 +372,8 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 		if !s.metadata.UseFiller {
 			return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 		}
+		s.logger.V(1).Info("No Datadog metrics returned, using FillValue",
+			"fillValue", *s.metadata.FillValue)
 		return *s.metadata.FillValue, nil
 	}
 
@@ -392,6 +403,9 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 			if !s.metadata.UseFiller {
 				return 0, fmt.Errorf("no Datadog metrics returned for the given time window")
 			}
+			s.logger.V(1).Info("No valid data points returned, using FillValue",
+				"series", i,
+				"fillValue", *s.metadata.FillValue)
 			return *s.metadata.FillValue, nil
 		}
 		// Return the last point from the series
@@ -407,6 +421,7 @@ func (s *datadogScaler) getQueryResult(ctx context.Context) (float64, error) {
 	}
 }
 
+// getDatadogMetricValue retrieves metric value from Datadog Cluster Agent
 func (s *datadogScaler) getDatadogMetricValue(req *http.Request) (float64, error) {
 	resp, err := s.httpClient.Do(req)
 
@@ -419,9 +434,26 @@ func (s *datadogScaler) getDatadogMetricValue(req *http.Request) (float64, error
 
 	if resp.StatusCode != http.StatusOK {
 		r := gjson.GetBytes(body, "message")
+		errMessage := ""
 		if r.Type == gjson.String {
-			return 0, fmt.Errorf("error getting metric value: %s", r.String())
+			errMessage = r.String()
 		}
+
+		if resp.StatusCode == http.StatusUnprocessableEntity {
+			if s.metadata.UseFiller {
+				s.logger.V(1).Info("Datadog metric unavailable, using FillValue",
+					"statusCode", resp.StatusCode,
+					"fillValue", *s.metadata.FillValue,
+					"message", errMessage)
+				return *s.metadata.FillValue, nil
+			}
+		}
+
+		// Return error if no FillValue configured
+		if errMessage != "" {
+			return 0, fmt.Errorf("error getting metric value (status %d): %s", resp.StatusCode, errMessage)
+		}
+		return 0, fmt.Errorf("error getting metric value: unexpected status code %d", resp.StatusCode)
 	}
 
 	valueLocation := "items.0.value"
