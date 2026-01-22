@@ -152,7 +152,7 @@ spec:
         - "--scenario=workflow_with_single_noop_activity"
         - "--dir-name=prepared"
         {{- if ne .BuildID "" }}
-        - "--worker-build-id={{.BuildID}}"
+        - "--build-id={{.BuildID}}"
 	{{- end}}
 `
 
@@ -223,8 +223,8 @@ func getTemplateData() (templateData, []Template) {
 			ScaledObjectName:       scaledObjectName,
 			DeploymentName:         deploymentName,
 		}, []Template{
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }
 
@@ -237,11 +237,13 @@ func TestTemporalScaler(t *testing.T) {
 	KubectlApplyWithTemplate(t, data, "temporalDeploymentTemplate", temporalDeploymentTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, temporalDeploymentName, testNamespace, 1, 30, 4), "temporal is not in a ready state")
 
-	KubectlApplyMultipleWithTemplate(t, data, templates)
+	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 2), "deployment should exist with 0 replicas")
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	testActivation(t, kc, data)
 	testScaleOut(t, kc, data)
 	testScaleIn(t, kc, data)
-	testWorkerVersioning(t, kc, data, templates)
+	testWorkerVersioning(t, kc, data)
 	DeleteKubernetesResources(t, testNamespace, data, templates)
 }
 
@@ -278,12 +280,14 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	KubectlDeleteWithTemplate(t, data, "jobWorkFlow", jobWorkFlowTemplate)
 }
 
-func testWorkerVersioning(t *testing.T, kc *kubernetes.Clientset, data templateData, templates []Template) {
+func testWorkerVersioning(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing worker versioning ---")
 
 	data.BuildID = "1.1.1"
 	updateWorkerVersion(t, kc, data, 1)
-	KubectlApplyMultipleWithTemplate(t, data, templates)
+	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 30, 2), "deployment should exist with 0 replicas")
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 
 	data.WorkFlowIterations = 0
 	KubectlApplyWithTemplate(t, data, "jobWorkFlow", jobWorkFlowTemplate)
@@ -300,7 +304,9 @@ func testWorkerVersioning(t *testing.T, kc *kubernetes.Clientset, data templateD
 
 	data.DeploymentName = "temporal-worker-latest"
 	data.ScaledObjectName = "temporal-worker-latest"
-	KubectlApplyMultipleWithTemplate(t, data, templates)
+	KubectlApplyWithTemplate(t, data, "deploymentTemplate", deploymentTemplate)
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "temporal-worker-latest", testNamespace, 0, 30, 2), "deployment temporal-worker-latest should exist with 0 replicas")
+	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "temporal-worker-latest", testNamespace, 1, 60, 3),
 		"replica count for build id %s should be %d after 3 minutes", data.BuildID, 1)
 }

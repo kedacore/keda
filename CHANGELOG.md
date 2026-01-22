@@ -76,15 +76,21 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **General**: Correct error message when awsSecretAccessKey is missing in credential-based authentication ([#7265](https://github.com/kedacore/keda/pull/7265))
+- **General**: Raw metrics stream - include trigger activity status in response ([#7369](https://github.com/kedacore/keda/issues/7369))
 - **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
 - **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
+- **Dynatrace Scaler**: Support DQL querying ([#7377](https://github.com/kedacore/keda/issues/7377))
+
 
 ### Fixes
 
 - **General**: Apply fallback in polling loop to enable scaling from zero ([#7239](https://github.com/kedacore/keda/issues/7239))
 - **General**: Replace deprecated `azure autorest` dependency to `azure sdk for go` ([#7073](https://github.com/kedacore/keda/issues/7073))
+- **Datadog Scaler**: Return request in cluster agent proxy without bearer auth ([#7341](https://github.com/kedacore/keda/issues/7341))
+- **Datadog Scaler**: Use metricUnavailableValue for 422 errors in Datadog Cluster Agent ([#7246](https://github.com/kedacore/keda/issues/7246))
 - **GCP PubSub Scaler**: Resolve deprecation in GCP Stackdriver API by migrating from MQL-based QueryTimeSeries to filter-based ListTimeSeries ([#6653](https://github.com/kedacore/keda/issues/6653))
 - **IBMMQ Scaler**: Create new HTTP request for each queue query in IBMMQ scaler ([#7202](https://github.com/kedacore/keda/pull/7202))
+- **Temporal Scaler**: Fix TLS RootCAs initialization when using API key authentication with Temporal Cloud ([#7367](https://github.com/kedacore/keda/pull/7367))
 
 ### Deprecations
 
@@ -100,6 +106,7 @@ New deprecation(s):
 
 ### Other
 
+- **CI**: Replace stale bot with official GitHub Actions stale action ([#7321](https://github.com/kedacore/keda/issues/7321))
 - **CI**: Use GitHub-hosted ARM64 runners ([#7293](https://github.com/kedacore/keda/issues/7293))
 
 ## v2.18.3

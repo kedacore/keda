@@ -256,6 +256,7 @@ func TestDatadogScalerAPI(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 	t.Cleanup(func() {
+		uninstallDatadog(t)
 		DeleteKubernetesResources(t, testNamespace, data, templates)
 	})
 
@@ -315,6 +316,13 @@ func installDatadog(t *testing.T) {
 		kuberneteClusterName,
 		testNamespace,
 		testName))
+	require.NoErrorf(t, err, "cannot execute command - %s", err)
+}
+
+func uninstallDatadog(t *testing.T) {
+	_, err := ExecuteCommand(fmt.Sprintf(`helm uninstall %s --namespace %s --wait`,
+		testName,
+		testNamespace))
 	require.NoErrorf(t, err, "cannot execute command - %s", err)
 }
 

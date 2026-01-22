@@ -986,11 +986,27 @@ scalers:
           triggerAuthenticationVariableReadable: true
         - name: metricSelector
           type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: query
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: queryTimeoutSeconds
+          type: string
+          default: "10"
+          metadataVariableReadable: true
+        - name: queryPollingWait
+          type: string
+          default: 1s
+          metadataVariableReadable: true
+        - name: queryPollingTries
+          type: string
+          default: "5"
           metadataVariableReadable: true
         - name: from
           type: string
           optional: true
-          default: now-2h
           metadataVariableReadable: true
         - name: threshold
           type: string
@@ -1771,6 +1787,29 @@ scalers:
           type: string
           default: "0"
           metadataVariableReadable: true
+        - name: tls
+          type: string
+          default: disable
+          allowedValue:
+            - enable
+            - disable
+          triggerAuthenticationVariableReadable: true
+        - name: cert
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: key
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: keyPassword
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
+        - name: ca
+          type: string
+          optional: true
+          triggerAuthenticationVariableReadable: true
     - type: mysql
       parameters:
         - name: connectionString
