@@ -19,7 +19,7 @@ jobs:
       image_tag: "pr-${{ steps.parser.outputs.pr_num }}-${{ steps.parser.outputs.commit_sha }}"
       commit_sha: ${{ steps.parser.outputs.commit_sha }}
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - uses: tspascoal/get-user-teams-membership@57e9f42acd78f4d0f496b3be4368fc5f62696662 # v3.0.0
         id: checkUserMember
@@ -107,7 +107,7 @@ jobs:
           output: |
             {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -219,7 +219,7 @@ jobs:
           output: |
             {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -342,7 +342,7 @@ jobs:
             {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Check out code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 1
 
@@ -437,7 +437,7 @@ jobs:
             {"summary": "🚧 Tests are running. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Check out code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 1
 
