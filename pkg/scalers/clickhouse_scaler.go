@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net"
 	"net/url"
 
 	_ "github.com/ClickHouse/clickhouse-go/v2" // ClickHouse driver for database/sql
@@ -100,7 +101,7 @@ func buildClickHouseDSN(meta *clickhouseMetadata) string {
 	u := &url.URL{
 		Scheme: "clickhouse",
 		User:   user,
-		Host:   fmt.Sprintf("%s:%s", meta.Host, meta.Port),
+		Host:   net.JoinHostPort(meta.Host, meta.Port),
 		Path:   "/" + meta.Database,
 	}
 	return u.String()
