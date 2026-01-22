@@ -16,6 +16,8 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
+const defaultClickHouseDB = "default"
+
 type clickhouseScaler struct {
 	metricType v2.MetricTargetType
 	metadata   *clickhouseMetadata
@@ -83,10 +85,10 @@ func parseClickHouseMetadata(config *scalersconfig.ScalerConfig) (*clickhouseMet
 			meta.Port = "9000"
 		}
 		if meta.Database == "" {
-			meta.Database = "default"
+			meta.Database = defaultClickHouseDB
 		}
 		if meta.Username == "" {
-			meta.Username = "default"
+			meta.Username = defaultClickHouseDB
 		}
 	}
 

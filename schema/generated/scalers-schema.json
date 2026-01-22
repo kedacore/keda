@@ -1329,6 +1329,70 @@
             ]
         },
         {
+            "type": "clickhouse",
+            "parameters": [
+                {
+                    "name": "connectionString",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "host",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "port",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "username",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "password",
+                    "type": "string",
+                    "optional": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "database",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "query",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "targetQueryValue",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationTargetQueryValue",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "couchdb",
             "parameters": [
                 {
