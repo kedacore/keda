@@ -24,32 +24,32 @@ const (
 )
 
 var (
-	testNamespace           = fmt.Sprintf("%s-ns", testName)
-	deploymentName          = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName        = fmt.Sprintf("%s-so", testName)
-	triggerAuthenticationName = fmt.Sprintf("%s-ta", testName)
-	secretName              = fmt.Sprintf("%s-secret", testName)
-	clickhouseDeploymentName = "clickhouse"
-	clickhouseServiceName   = "clickhouse"
-	clickhouseHostname      = fmt.Sprintf("%s.%s.svc.cluster.local", clickhouseServiceName, testNamespace)
+	testNamespace              = fmt.Sprintf("%s-ns", testName)
+	deploymentName             = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName           = fmt.Sprintf("%s-so", testName)
+	triggerAuthenticationName  = fmt.Sprintf("%s-ta", testName)
+	secretName                 = fmt.Sprintf("%s-secret", testName)
+	clickhouseDeploymentName   = "clickhouse"
+	clickhouseServiceName      = "clickhouse"
+	clickhouseHostname         = fmt.Sprintf("%s.%s.svc.cluster.local", clickhouseServiceName, testNamespace)
 	clickhouseConnectionString = fmt.Sprintf("clickhouse://default@%s:9000/default", clickhouseHostname)
-	minReplicaCount         = 0
-	maxReplicaCount         = 2
+	minReplicaCount            = 0
+	maxReplicaCount            = 2
 )
 
 type templateData struct {
-	TestNamespace             string
-	DeploymentName            string
-	ScaledObjectName          string
-	TriggerAuthenticationName string
-	SecretName                string
-	ClickhouseDeploymentName  string
-	ClickhouseServiceName     string
-	ClickhouseHostname        string
+	TestNamespace                    string
+	DeploymentName                   string
+	ScaledObjectName                 string
+	TriggerAuthenticationName        string
+	SecretName                       string
+	ClickhouseDeploymentName         string
+	ClickhouseServiceName            string
+	ClickhouseHostname               string
 	ClickhouseConnectionStringBase64 string
-	MinReplicaCount           int
-	MaxReplicaCount           int
-	JobCommand                string
+	MinReplicaCount                  int
+	MaxReplicaCount                  int
+	JobCommand                       string
 }
 
 const (
@@ -198,10 +198,12 @@ spec:
 
 func TestClickHouseScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
-	data, _ := getTemplateData()
+	data := getTemplateData()
 	chTemplates := getClickHouseTemplates()
 	testTemplates := getTestTemplates()
-	allTemplates := append(chTemplates, testTemplates...)
+	allTemplates := make([]Template, 0, len(chTemplates)+len(testTemplates))
+	allTemplates = append(allTemplates, chTemplates...)
+	allTemplates = append(allTemplates, testTemplates...)
 	t.Cleanup(func() {
 		DeleteKubernetesResources(t, testNamespace, data, allTemplates)
 	})
@@ -273,20 +275,20 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 		"replica count should be %d", minReplicaCount)
 }
 
-func getTemplateData() (templateData, []Template) {
+func getTemplateData() templateData {
 	return templateData{
-			TestNamespace:                      testNamespace,
-			DeploymentName:                     deploymentName,
-			ScaledObjectName:                   scaledObjectName,
-			TriggerAuthenticationName:          triggerAuthenticationName,
-			SecretName:                         secretName,
-			ClickhouseDeploymentName:           clickhouseDeploymentName,
-			ClickhouseServiceName:              clickhouseServiceName,
-			ClickhouseHostname:                 clickhouseHostname,
-			ClickhouseConnectionStringBase64:   base64.StdEncoding.EncodeToString([]byte(clickhouseConnectionString)),
-			MinReplicaCount:                    minReplicaCount,
-			MaxReplicaCount:                    maxReplicaCount,
-		}, nil
+		TestNamespace:                    testNamespace,
+		DeploymentName:                   deploymentName,
+		ScaledObjectName:                 scaledObjectName,
+		TriggerAuthenticationName:        triggerAuthenticationName,
+		SecretName:                       secretName,
+		ClickhouseDeploymentName:         clickhouseDeploymentName,
+		ClickhouseServiceName:            clickhouseServiceName,
+		ClickhouseHostname:               clickhouseHostname,
+		ClickhouseConnectionStringBase64: base64.StdEncoding.EncodeToString([]byte(clickhouseConnectionString)),
+		MinReplicaCount:                  minReplicaCount,
+		MaxReplicaCount:                  maxReplicaCount,
+	}
 }
 
 func getClickHouseTemplates() []Template {
