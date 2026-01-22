@@ -74,7 +74,7 @@ func parseClickHouseMetadata(config *scalersconfig.ScalerConfig) (*clickhouseMet
 	meta.triggerIndex = config.TriggerIndex
 
 	if !config.AsMetricSource && meta.TargetQueryValue == 0 {
-		return nil, fmt.Errorf("targetQueryValue is required")
+		return nil, fmt.Errorf("targetQueryValue is required when not using scaler as metric source")
 	}
 
 	if meta.ConnectionString == "" {
@@ -113,11 +113,11 @@ func newClickHouseConnection(meta *clickhouseMetadata, logger logr.Logger) (*sql
 	dsn := buildClickHouseDSN(meta)
 	db, err := sql.Open("clickhouse", dsn)
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("Found error when opening ClickHouse connection: %s", err))
+		logger.Error(err, "Found error when opening ClickHouse connection")
 		return nil, err
 	}
 	if err := db.Ping(); err != nil {
-		logger.Error(err, fmt.Sprintf("Found error when pinging ClickHouse database: %s", err))
+		logger.Error(err, "Found error when pinging ClickHouse database")
 		_ = db.Close()
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (s *clickhouseScaler) getQueryResult(ctx context.Context) (float64, error) 
 	var value float64
 	err := s.connection.QueryRowContext(ctx, s.metadata.Query).Scan(&value)
 	if err != nil {
-		s.logger.Error(err, fmt.Sprintf("Could not query ClickHouse database: %s", err))
+		s.logger.Error(err, "Could not query ClickHouse database")
 		return 0, fmt.Errorf("could not query ClickHouse database: %w", err)
 	}
 	return value, nil

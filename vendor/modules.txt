@@ -1586,11 +1586,11 @@ github.com/shopspring/decimal
 ## explicit; go 1.21
 github.com/signalfx/signalflow-client-go/v2/signalflow
 github.com/signalfx/signalflow-client-go/v2/signalflow/messages
-# github.com/signalfx/signalfx-go v1.54.0
-## explicit; go 1.23.0
-github.com/signalfx/signalfx-go/idtool
-# github.com/sirupsen/logrus v1.9.4
+# github.com/signalfx/signalfx-go v1.34.0
 ## explicit; go 1.17
+github.com/signalfx/signalfx-go/idtool
+# github.com/sirupsen/logrus v1.9.3
+## explicit; go 1.13
 github.com/sirupsen/logrus
 # github.com/solarwinds/swo-sdk-go/swov1 v0.13.1
 ## explicit; go 1.22
@@ -1604,8 +1604,8 @@ github.com/solarwinds/swo-sdk-go/swov1/models/operations
 github.com/solarwinds/swo-sdk-go/swov1/optionalnullable
 github.com/solarwinds/swo-sdk-go/swov1/retry
 github.com/solarwinds/swo-sdk-go/swov1/types
-# github.com/spf13/afero v1.15.0
-## explicit; go 1.23.0
+# github.com/spf13/afero v1.12.0
+## explicit; go 1.21
 github.com/spf13/afero
 github.com/spf13/afero/internal/common
 github.com/spf13/afero/mem
