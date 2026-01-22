@@ -1,0 +1,111 @@
+linters-settings:
+  govet:
+    check-shadowing: true
+  gocyclo:
+    min-complexity: 15
+  maligned:
+    suggest-new: true
+  dupl:
+    threshold: 120
+  goconst:
+    min-len: 2
+    min-occurrences: 3
+  misspell:
+    locale: US
+  lll:
+    line-length: 140
+  goimports:
+    local-prefixes: github.com/go-faster/
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - hugeParam
+      - rangeValCopy
+      - exitAfterDefer
+      - whyNoLint
+      - singleCaseSwitch
+      - commentedOutCode
+      - appendAssign
+      - unnecessaryBlock
+      - redundantSprint
+
+linters:
+  disable-all: true
+  enable:
+    - deadcode
+    - depguard
+    - dogsled
+    - errcheck
+    - goconst
+    - gocritic
+    - gofmt
+    - goimports
+    - revive
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - nakedret
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - whitespace
+
+  # Do not enable:
+  # - wsl       (too opinionated about newlines)
+  # - godox     (todos are OK)
+  # - bodyclose (false positives on helper functions)
+  # - prealloc  (not worth it in scope of this project)
+  # - maligned  (same as prealloc)
+  # - funlen    (gocyclo is enough)
+  # - gochecknoglobals (we know when it is ok to use globals)
+
+issues:
+  exclude-use-default: false
+  exclude-rules:
+    # Disable linters that are annoying in tests.
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - funlen
+        - goconst
+        - gocognit
+        - scopelint
+        - lll
+
+    - path: _test\.go
+      text: "Combine"
+      linters:
+        - gocritic
+
+    # Check that equal to self is true
+    - linters: [gocritic]
+      source: '(assert|require).+Equal'
+      text: 'dupArg'
+      path: _test\.go
+
+    # Ignore shadowing of err.
+    - linters: [ govet ]
+      text: 'declaration of "(err|ctx|log|c)"'
+
+    # Ignore linters in main packages.
+    - path: main\.go
+      linters: [ goconst, funlen, gocognit, gocyclo ]
+
+    # Ignore run-once generator
+    - path: citygen
+      linters: [ revive, gosec ]

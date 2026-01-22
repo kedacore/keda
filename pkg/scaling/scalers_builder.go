@@ -165,6 +165,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewCassandraScaler(config)
 	case "couchdb":
 		return scalers.NewCouchDBScaler(ctx, config)
+	case "clickhouse":
+		return scalers.NewClickHouseScaler(config)
 	case "cpu":
 		return scalers.NewCPUMemoryScaler(corev1.ResourceCPU, config)
 	case "cron":

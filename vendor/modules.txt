@@ -222,6 +222,21 @@ github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/shared
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/version
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/managedidentity
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/public
+# github.com/ClickHouse/ch-go v0.61.5
+## explicit; go 1.21
+github.com/ClickHouse/ch-go/compress
+github.com/ClickHouse/ch-go/proto
+# github.com/ClickHouse/clickhouse-go/v2 v2.30.0
+## explicit; go 1.21
+github.com/ClickHouse/clickhouse-go/v2
+github.com/ClickHouse/clickhouse-go/v2/contributors
+github.com/ClickHouse/clickhouse-go/v2/ext
+github.com/ClickHouse/clickhouse-go/v2/lib/binary
+github.com/ClickHouse/clickhouse-go/v2/lib/column
+github.com/ClickHouse/clickhouse-go/v2/lib/driver
+github.com/ClickHouse/clickhouse-go/v2/lib/proto
+github.com/ClickHouse/clickhouse-go/v2/lib/timezone
+github.com/ClickHouse/clickhouse-go/v2/resources
 # github.com/DataDog/datadog-api-client-go v1.16.0
 ## explicit; go 1.17
 github.com/DataDog/datadog-api-client-go
@@ -711,6 +726,12 @@ github.com/gabriel-vasile/mimetype/internal/scan
 # github.com/go-errors/errors v1.5.1
 ## explicit; go 1.14
 github.com/go-errors/errors
+# github.com/go-faster/city v1.0.1
+## explicit; go 1.17
+github.com/go-faster/city
+# github.com/go-faster/errors v0.7.1
+## explicit; go 1.20
+github.com/go-faster/errors
 # github.com/go-jose/go-jose/v4 v4.1.3
 ## explicit; go 1.24.0
 github.com/go-jose/go-jose/v4
@@ -1369,6 +1390,9 @@ github.com/onsi/gomega/types
 # github.com/open-policy-agent/cert-controller v0.15.0
 ## explicit; go 1.24.0
 github.com/open-policy-agent/cert-controller/pkg/rotator
+# github.com/paulmach/orb v0.11.1
+## explicit; go 1.15
+github.com/paulmach/orb
 # github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 ## explicit
 github.com/phayes/freeport
@@ -1488,6 +1512,14 @@ github.com/samber/lo/internal/constraints
 github.com/samber/lo/internal/xrand
 github.com/samber/lo/internal/xtime
 github.com/samber/lo/mutable
+# github.com/segmentio/asm v1.2.0
+## explicit; go 1.18
+github.com/segmentio/asm/bswap
+github.com/segmentio/asm/cpu
+github.com/segmentio/asm/cpu/arm
+github.com/segmentio/asm/cpu/arm64
+github.com/segmentio/asm/cpu/cpuid
+github.com/segmentio/asm/cpu/x86
 # github.com/segmentio/kafka-go v0.4.50
 ## explicit; go 1.23
 github.com/segmentio/kafka-go
