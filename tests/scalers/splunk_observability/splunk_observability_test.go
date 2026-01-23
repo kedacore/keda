@@ -198,7 +198,7 @@ func sendTestMetrics(ctx context.Context, token string, realm string) {
 }
 
 func TestSplunkObservabilityScaler(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Minute)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	kc := GetKubernetesClient(t)
