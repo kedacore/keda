@@ -149,7 +149,7 @@ func sendTestMetrics(ctx context.Context, token string, realm string) {
 		default:
 			tNow := time.Now()
 			var value float64
-			if tNow.Sub(tStart) < 3*time.Minute {
+			if tNow.Sub(tStart) < 4*time.Minute {
 				value = 1000.0
 			} else {
 				value = 100.0
@@ -198,7 +198,7 @@ func sendTestMetrics(ctx context.Context, token string, realm string) {
 }
 
 func TestSplunkObservabilityScaler(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Minute)
 	defer cancel()
 
 	kc := GetKubernetesClient(t)
@@ -211,12 +211,16 @@ func TestSplunkObservabilityScaler(t *testing.T) {
 	// Start sending metrics concurrently
 	go sendTestMetrics(ctx, ingestToken, realm)
 
+	// Wait 30 seconds to ensure initial metrics are in Splunk
+	t.Log("Waiting 30 seconds for initial metrics to populate in Splunk...")
+	time.Sleep(30 * time.Second)
+
 	// Create kubernetes resources
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
 	// Ensure nginx deployment is ready
-	assert.True(t, WaitForAllPodRunningInNamespace(t, kc, testNamespace, minReplicaCount, 120),
-		"replica count should be greater than %d after 2 minutes", minReplicaCount)
+	assert.True(t, WaitForAllPodRunningInNamespace(t, kc, testNamespace, minReplicaCount, 180),
+		"replica count should be greater than %d after 3 minutes", minReplicaCount)
 
 	// test scaling
 	testScaleOut(t, kc)
@@ -225,16 +229,18 @@ func TestSplunkObservabilityScaler(t *testing.T) {
 
 func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale out ---")
-	t.Log("waiting for 3 minutes")
+	t.Log("waiting for 4 minutes for scale out to complete")
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 10, 3, 60), "replica count should be 10 after 3 minutes")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 10, 4, 60),
+		"replica count should be 10 after 4 minutes")
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 	t.Log("--- testing scale in ---")
-	t.Log("waiting for 10 minutes")
+	t.Log("waiting for 10 minutes for scale in to complete")
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 10, 60), "replica count should be 4 after 10 minutes")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 4, 10, 60),
+		"replica count should be 4 after 10 minutes")
 }
 
 func getTemplateData() (templateData, []Template) {
