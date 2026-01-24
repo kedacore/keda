@@ -180,6 +180,32 @@ jobs:
       - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: 'go.mod'
+      - name: Validate PR Template Checkboxes
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            // Only run on pull request events
+            if (context.eventName !== 'pull_request') {
+              console.log('Skipping checkbox validation - not a pull request event');
+              return;
+            }
+            
+            const body = context.payload.pull_request.body || '';
+            console.log('Validating PR description checkboxes...');
+            
+            // Find checkboxes with incorrect spacing around X
+            const invalidCheckboxes = body.match(/- \[\s+[xX]\s*\]/g) || [];
+            
+            if (invalidCheckboxes.length > 0) {
+              const errorMessage = `❌ Invalid checkbox format found: ${invalidCheckboxes.join(', ')}\n\n` +
+                `✅ Correct format: [x] or [X] (no extra spaces around X)\n` +
+                `❌ Incorrect format: [ x], [ X], [x ], [X ] (extra spaces)`;
+              
+              console.log(errorMessage);
+              core.setFailed(errorMessage);
+            } else {
+              console.log('✅ All checkboxes are properly formatted');
+            }
       - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
 
   trivy-scan:
