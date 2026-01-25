@@ -90,6 +90,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Datadog Scaler**: Use metricUnavailableValue for 422 errors in Datadog Cluster Agent ([#7246](https://github.com/kedacore/keda/issues/7246))
 - **IBMMQ Scaler**: Create new HTTP request for each queue query in IBMMQ scaler ([#7202](https://github.com/kedacore/keda/pull/7202))
 - **Temporal Scaler**: Fix TLS RootCAs initialization when using API key authentication with Temporal Cloud ([#7367](https://github.com/kedacore/keda/pull/7367))
+- **Kafka Scaler**: Improve check for missing partition information when calculating lag ([#7324](https://github.com/kedacore/keda/pull/7324))
 
 ### Deprecations
 
