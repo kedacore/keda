@@ -186,6 +186,11 @@ func validateWorkload(so *ScaledObject, action string, dryRun bool) (admission.W
 		}
 	}
 
+	// Validate failover configuration
+	if err := validateFailoverConfiguration(so); err != nil {
+		return nil, err
+	}
+
 	scaledobjectlog.V(1).Info(fmt.Sprintf("scaledobject %s is valid", so.Name))
 	return nil, nil
 }
@@ -534,6 +539,44 @@ func validateScalingModifiersTarget(so *ScaledObject) error {
 	if so.Spec.Advanced.ScalingModifiers.MetricType == autoscalingv2.UtilizationMetricType {
 		err := fmt.Errorf("error trigger type is Utilization, but it needs to be AverageValue or Value for external metrics")
 		return err
+	}
+
+	return nil
+}
+
+// validateFailoverConfiguration validates failover configuration for triggers
+func validateFailoverConfiguration(so *ScaledObject) error {
+	// Check each trigger for failover configuration
+	for i, trigger := range so.Spec.Triggers {
+		if trigger.Fallback == nil || trigger.Fallback.Behavior != "failover" {
+			continue // Failover not enabled for this trigger
+		}
+
+		// Failover enabled - validate configuration
+
+		// 1. Must have at least 2 triggers (need primary + secondary)
+		if len(so.Spec.Triggers) < 2 {
+			return fmt.Errorf("spec.triggers[%d].fallback.behavior is 'failover' but only %d trigger(s) defined - need at least 2 triggers for failover (primary + secondary)", i, len(so.Spec.Triggers))
+		}
+
+		// 2. Must have thresholds configured
+		if trigger.Fallback.FailoverThresholds == nil {
+			return fmt.Errorf("spec.triggers[%d].fallback.behavior is 'failover' but spec.triggers[%d].fallback.failoverThresholds is not configured - both failAfter and recoverAfter are required", i, i)
+		}
+
+		// 3. FailAfter must be positive
+		if trigger.Fallback.FailoverThresholds.FailAfter <= 0 {
+			return fmt.Errorf("spec.triggers[%d].fallback.failoverThresholds.failAfter must be positive integer, got: %d", i, trigger.Fallback.FailoverThresholds.FailAfter)
+		}
+
+		// 4. RecoverAfter must be positive
+		if trigger.Fallback.FailoverThresholds.RecoverAfter <= 0 {
+			return fmt.Errorf("spec.triggers[%d].fallback.failoverThresholds.recoverAfter must be positive integer, got: %d", i, trigger.Fallback.FailoverThresholds.RecoverAfter)
+		}
+
+		// 5. Validate trigger compatibility (must have at least one other trigger besides this one)
+		// More sophisticated checks (like same metric type) would require scaler initialization,
+		// which is expensive at validation time. Runtime checks will catch incompatibilities.
 	}
 
 	return nil

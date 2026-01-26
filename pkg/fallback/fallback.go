@@ -39,7 +39,19 @@ import (
 var log = logf.Log.WithName("fallback")
 
 func isFallbackEnabled(scaledObject *kedav1alpha1.ScaledObject) bool {
-	return scaledObject.Spec.Fallback != nil
+	// Check ScaledObject-level fallback (static fallback behaviors)
+	if scaledObject.Spec.Fallback != nil {
+		return true
+	}
+
+	// Check trigger-level fallback (failover behavior)
+	for _, trigger := range scaledObject.Spec.Triggers {
+		if trigger.Fallback != nil {
+			return true
+		}
+	}
+
+	return false
 }
 
 func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, scaleClient scale.ScalesGetter, metrics []external_metrics.ExternalMetricValue, suppressedError error, metricName string, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec) ([]external_metrics.ExternalMetricValue, bool, error) {
@@ -71,6 +83,17 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, sc
 	case !HasValidFallback(scaledObject):
 		log.Info("Failed to validate ScaledObject Spec. Please check that parameters are positive integers", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 		return nil, false, suppressedError
+	}
+
+	// For trigger-level failover, don't generate fallback metrics
+	// The failover happens by switching active triggers via getActiveTriggerIndex()
+	if scaledObject.Spec.Fallback == nil {
+		// Trigger-level failover - just return error, let failover helper handle it
+		return nil, false, suppressedError
+	}
+
+	// ScaledObject-level fallback - generate synthetic metrics
+	switch {
 	case *healthStatus.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold:
 		var currentReplicas int32
 		var err error
@@ -94,9 +117,30 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, sc
 }
 
 func fallbackExistsInScaledObject(scaledObject *kedav1alpha1.ScaledObject) bool {
-	for _, element := range scaledObject.Status.Health {
-		if element.Status == kedav1alpha1.HealthStatusFailing && *element.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold {
-			return true
+	// Check ScaledObject-level fallback (static behaviors)
+	if scaledObject.Spec.Fallback != nil {
+		for _, element := range scaledObject.Status.Health {
+			if element.Status == kedav1alpha1.HealthStatusFailing && *element.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold {
+				return true
+			}
+		}
+	}
+
+	// Check trigger-level failover
+	if len(scaledObject.Spec.Triggers) >= 2 {
+		primaryTrigger := scaledObject.Spec.Triggers[0]
+		if primaryTrigger.Fallback != nil &&
+			primaryTrigger.Fallback.Behavior == "failover" &&
+			primaryTrigger.Fallback.FailoverThresholds != nil {
+			// Find primary trigger's health by looking for metrics starting with "s0-"
+			for metricName, health := range scaledObject.Status.Health {
+				if len(metricName) >= 3 && metricName[:3] == "s0-" {
+					if health.NumberOfFailures != nil &&
+						*health.NumberOfFailures >= primaryTrigger.Fallback.FailoverThresholds.FailAfter {
+						return true
+					}
+				}
+			}
 		}
 	}
 
@@ -109,9 +153,26 @@ func HasValidFallback(scaledObject *kedav1alpha1.ScaledObject) bool {
 		value, err := strconv.ParseInt(scaledObject.Spec.Advanced.ScalingModifiers.Target, 10, 64)
 		modifierChecking = err == nil && value > 0
 	}
-	return scaledObject.Spec.Fallback.FailureThreshold >= 0 &&
-		scaledObject.Spec.Fallback.Replicas >= 0 &&
-		modifierChecking
+
+	// Check ScaledObject-level fallback (static behaviors)
+	if scaledObject.Spec.Fallback != nil {
+		return scaledObject.Spec.Fallback.FailureThreshold >= 0 &&
+			scaledObject.Spec.Fallback.Replicas >= 0 &&
+			modifierChecking
+	}
+
+	// Check trigger-level failover - at least one trigger has valid failover config
+	for _, trigger := range scaledObject.Spec.Triggers {
+		if trigger.Fallback != nil && trigger.Fallback.Behavior == "failover" {
+			if trigger.Fallback.FailoverThresholds != nil &&
+				trigger.Fallback.FailoverThresholds.FailAfter > 0 &&
+				trigger.Fallback.FailoverThresholds.RecoverAfter > 0 {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // IsPodReady returns true if a pod is ready; false otherwise.

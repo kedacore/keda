@@ -67,6 +67,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
+- **General**: Introduce multi-trigger failover for resilient autoscaling ([#7366](https://github.com/kedacore/keda/discussions/7366))
 - **General**: Introduce new Kubernetes Resource Scaler ([#7212](https://github.com/kedacore/keda/issues/7212))
 
 #### Experimental

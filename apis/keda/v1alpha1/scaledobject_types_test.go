@@ -647,3 +647,175 @@ func TestGetHPAReplicas(t *testing.T) {
 func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
 }
+
+func TestValidateFailoverConfiguration(t *testing.T) {
+	testCases := []struct {
+		name        string
+		spec        ScaledObjectSpec
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "valid failover config with 2 triggers",
+			spec: ScaledObjectSpec{
+				Triggers: []ScaleTriggers{
+					{
+						Type: "prometheus",
+						Fallback: &Fallback{
+							Behavior: "failover",
+							FailoverThresholds: &FailoverThresholds{
+								FailAfter:    3,
+								RecoverAfter: 5,
+							},
+						},
+					},
+					{
+						Type: "prometheus",
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "failover enabled with only 1 trigger",
+			spec: ScaledObjectSpec{
+				Triggers: []ScaleTriggers{
+					{
+						Type: "prometheus",
+						Fallback: &Fallback{
+							Behavior: "failover",
+							FailoverThresholds: &FailoverThresholds{
+								FailAfter:    3,
+								RecoverAfter: 5,
+							},
+						},
+					},
+				},
+			},
+			expectError: true,
+			errorMsg:    "need at least 2 triggers",
+		},
+		{
+			name: "failover enabled without thresholds",
+			spec: ScaledObjectSpec{
+				Triggers: []ScaleTriggers{
+					{
+						Type: "prometheus",
+						Fallback: &Fallback{
+							Behavior: "failover",
+						},
+					},
+					{
+						Type: "prometheus",
+					},
+				},
+			},
+			expectError: true,
+			errorMsg:    "failoverThresholds is not configured",
+		},
+		{
+			name: "zero failAfter threshold",
+			spec: ScaledObjectSpec{
+				Triggers: []ScaleTriggers{
+					{
+						Type: "prometheus",
+						Fallback: &Fallback{
+							Behavior: "failover",
+							FailoverThresholds: &FailoverThresholds{
+								FailAfter:    0,
+								RecoverAfter: 5,
+							},
+						},
+					},
+					{
+						Type: "prometheus",
+					},
+				},
+			},
+			expectError: true,
+			errorMsg:    "failAfter must be positive",
+		},
+		{
+			name: "negative recoverAfter threshold",
+			spec: ScaledObjectSpec{
+				Triggers: []ScaleTriggers{
+					{
+						Type: "prometheus",
+						Fallback: &Fallback{
+							Behavior: "failover",
+							FailoverThresholds: &FailoverThresholds{
+								FailAfter:    3,
+								RecoverAfter: -1,
+							},
+						},
+					},
+					{
+						Type: "prometheus",
+					},
+				},
+			},
+			expectError: true,
+			errorMsg:    "recoverAfter must be positive",
+		},
+		{
+			name: "failover disabled (nil pointer) - valid",
+			spec: ScaledObjectSpec{
+				Triggers: []ScaleTriggers{
+					{
+						Type:     "prometheus",
+						Fallback: &Fallback{
+							// Behavior empty = static fallback (not failover)
+						},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "failover disabled (static behavior) - valid",
+			spec: ScaledObjectSpec{
+				Triggers: []ScaleTriggers{
+					{
+						Type: "prometheus",
+						Fallback: &Fallback{
+							Behavior: "static",
+						},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "no fallback configured - valid",
+			spec: ScaledObjectSpec{
+				Triggers: []ScaleTriggers{
+					{
+						Type: "prometheus",
+					},
+				},
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			so := &ScaledObject{
+				Spec: tc.spec,
+			}
+			err := validateFailoverConfiguration(so)
+
+			if tc.expectError {
+				if err == nil {
+					t.Errorf("expected error containing '%s', got nil", tc.errorMsg)
+				} else if !strings.Contains(err.Error(), tc.errorMsg) {
+					t.Errorf("expected error containing '%s', got: %v", tc.errorMsg, err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+				}
+			}
+		})
+	}
+}

@@ -37,6 +37,8 @@ type ScaleTriggers struct {
 	AuthenticationRef *AuthenticationRef `json:"authenticationRef,omitempty"`
 	// +optional
 	MetricType autoscalingv2.MetricTargetType `json:"metricType,omitempty"`
+	// +optional
+	Fallback *Fallback `json:"fallback,omitempty"`
 }
 
 // AuthenticationRef points to the TriggerAuthentication or ClusterTriggerAuthentication object that
