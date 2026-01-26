@@ -1325,6 +1325,11 @@ scalers:
           default: "false"
           metadataVariableReadable: true
           envVariableReadable: true
+        - name: enableBackoff
+          type: string
+          default: "false"
+          metadataVariableReadable: true
+          envVariableReadable: true
         - name: matchUnlabeledJobsWithUnlabeledRunners
           type: string
           default: "false"
