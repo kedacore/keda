@@ -80,7 +80,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
 - **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
 - **Dynatrace Scaler**: Support DQL querying ([#7377](https://github.com/kedacore/keda/issues/7377))
-
+- **MongoDB Scaler**: Add TLS support ([#6976](https://github.com/kedacore/keda/issues/6976))
 
 ### Fixes
 
