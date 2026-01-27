@@ -8,7 +8,7 @@ The `nrqldroprules` package provides a Go client for managing legacy NRQL Drop R
 
 ## ⚠️ Deprecation & Migration Notice
 
-NRQL Drop Rules are deprecated and scheduled to reach end-of-life on **January 7, 2026**. They are being replaced by **Pipeline Cloud Rules** (see the `pipelinecontrol` package).  
+NRQL Drop Rules are deprecated and scheduled to reach end-of-life on **June 30, 2026**. They are being replaced by **Pipeline Cloud Rules** (see the `pipelinecontrol` package).  
 If you currently:
 - Use this package to create / delete / list drop rules, or
 - Depend on the NRQL-based DROP_DATA or DROP_ATTRIBUTES behaviors,

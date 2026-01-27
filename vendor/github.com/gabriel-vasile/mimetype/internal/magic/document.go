@@ -5,14 +5,31 @@ import (
 	"encoding/binary"
 )
 
-var (
-	// Fdf matches a Forms Data Format file.
-	Fdf = prefix([]byte("%FDF"))
-	// Mobi matches a Mobi file.
-	Mobi = offset([]byte("BOOKMOBI"), 60)
-	// Lit matches a Microsoft Lit file.
-	Lit = prefix([]byte("ITOLITLS"))
-)
+// Pdf matches a Portable Document Format file.
+// https://github.com/file/file/blob/11010cc805546a3e35597e67e1129a481aed40e8/magic/Magdir/pdf
+func Pdf(raw []byte, _ uint32) bool {
+	// usual pdf signature
+	return bytes.HasPrefix(raw, []byte("%PDF-")) ||
+		// new-line prefixed signature
+		bytes.HasPrefix(raw, []byte("\012%PDF-")) ||
+		// UTF-8 BOM prefixed signature
+		bytes.HasPrefix(raw, []byte("\xef\xbb\xbf%PDF-"))
+}
+
+// Fdf matches a Forms Data Format file.
+func Fdf(raw []byte, _ uint32) bool {
+	return bytes.HasPrefix(raw, []byte("%FDF"))
+}
+
+// Mobi matches a Mobi file.
+func Mobi(raw []byte, _ uint32) bool {
+	return offset(raw, []byte("BOOKMOBI"), 60)
+}
+
+// Lit matches a Microsoft Lit file.
+func Lit(raw []byte, _ uint32) bool {
+	return bytes.HasPrefix(raw, []byte("ITOLITLS"))
+}
 
 // PDF matches a Portable Document Format file.
 // The %PDF- header should be the first thing inside the file but many

@@ -404,7 +404,6 @@ func (br *pipelineBatchResults) Close() error {
 
 	if br.err == nil && br.lastRows != nil && br.lastRows.err != nil {
 		br.err = br.lastRows.err
-		return br.err
 	}
 
 	if br.closed {
@@ -449,6 +448,45 @@ func (br *pipelineBatchResults) nextQueryAndArgs() (query string, args []any, er
 	bi := br.b.QueuedQueries[br.qqIdx]
 	br.qqIdx++
 	return bi.SQL, bi.Arguments, nil
+}
+
+type emptyBatchResults struct {
+	conn   *Conn
+	closed bool
+}
+
+// Exec reads the results from the next query in the batch as if the query has been sent with Exec.
+func (br *emptyBatchResults) Exec() (pgconn.CommandTag, error) {
+	if br.closed {
+		return pgconn.CommandTag{}, fmt.Errorf("batch already closed")
+	}
+	return pgconn.CommandTag{}, errors.New("no more results in batch")
+}
+
+// Query reads the results from the next query in the batch as if the query has been sent with Query.
+func (br *emptyBatchResults) Query() (Rows, error) {
+	if br.closed {
+		alreadyClosedErr := fmt.Errorf("batch already closed")
+		return &baseRows{err: alreadyClosedErr, closed: true}, alreadyClosedErr
+	}
+
+	rows := br.conn.getRows(context.Background(), "", nil)
+	rows.err = errors.New("no more results in batch")
+	rows.closed = true
+	return rows, rows.err
+}
+
+// QueryRow reads the results from the next query in the batch as if the query has been sent with QueryRow.
+func (br *emptyBatchResults) QueryRow() Row {
+	rows, _ := br.Query()
+	return (*connRow)(rows.(*baseRows))
+}
+
+// Close closes the batch operation. Any error that occurred during a batch operation may have made it impossible to
+// resyncronize the connection with the server. In this case the underlying connection will have been closed.
+func (br *emptyBatchResults) Close() error {
+	br.closed = true
+	return nil
 }
 
 // invalidates statement and description caches on batch results error

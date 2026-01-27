@@ -197,13 +197,11 @@ type WorkerHostInfo struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Worker host identifier.
 	HostName string `protobuf:"bytes,1,opt,name=host_name,json=hostName,proto3" json:"host_name,omitempty"`
-	// Worker process identifier. This id should be unique for all _processes_
-	// running workers in the namespace, and should be shared by all workers
-	// in the same process.
+	// Worker grouping identifier. A key to group workers that share the same client+namespace+process.
 	// This will be used to build the worker command nexus task queue name:
-	// "temporal-sys/worker-commands/{process_key}"
-	ProcessKey string `protobuf:"bytes,5,opt,name=process_key,json=processKey,proto3" json:"process_key,omitempty"`
-	// Worker process identifier. Unlike process_key, this id only needs to be unique
+	// "temporal-sys/worker-commands/{worker_grouping_key}"
+	WorkerGroupingKey string `protobuf:"bytes,5,opt,name=worker_grouping_key,json=workerGroupingKey,proto3" json:"worker_grouping_key,omitempty"`
+	// Worker process identifier. This id only needs to be unique
 	// within one host (so using e.g. a unix pid would be appropriate).
 	ProcessId string `protobuf:"bytes,2,opt,name=process_id,json=processId,proto3" json:"process_id,omitempty"`
 	// System used CPU as a float in the range [0.0, 1.0] where 1.0 is defined as all
@@ -253,9 +251,9 @@ func (x *WorkerHostInfo) GetHostName() string {
 	return ""
 }
 
-func (x *WorkerHostInfo) GetProcessKey() string {
+func (x *WorkerHostInfo) GetWorkerGroupingKey() string {
 	if x != nil {
-		return x.ProcessKey
+		return x.WorkerGroupingKey
 	}
 	return ""
 }
@@ -636,11 +634,10 @@ const file_temporal_api_worker_v1_message_proto_rawDesc = "" +
 	"\x15total_processed_tasks\x18\x04 \x01(\x05R\x13totalProcessedTasks\x12,\n" +
 	"\x12total_failed_tasks\x18\x05 \x01(\x05R\x10totalFailedTasks\x12A\n" +
 	"\x1dlast_interval_processed_tasks\x18\x06 \x01(\x05R\x1alastIntervalProcessedTasks\x12=\n" +
-	"\x1blast_interval_failure_tasks\x18\a \x01(\x05R\x18lastIntervalFailureTasks\"\xd7\x01\n" +
+	"\x1blast_interval_failure_tasks\x18\a \x01(\x05R\x18lastIntervalFailureTasks\"\xe6\x01\n" +
 	"\x0eWorkerHostInfo\x12\x1b\n" +
-	"\thost_name\x18\x01 \x01(\tR\bhostName\x12\x1f\n" +
-	"\vprocess_key\x18\x05 \x01(\tR\n" +
-	"processKey\x12\x1d\n" +
+	"\thost_name\x18\x01 \x01(\tR\bhostName\x12.\n" +
+	"\x13worker_grouping_key\x18\x05 \x01(\tR\x11workerGroupingKey\x12\x1d\n" +
 	"\n" +
 	"process_id\x18\x02 \x01(\tR\tprocessId\x123\n" +
 	"\x16current_host_cpu_usage\x18\x03 \x01(\x02R\x13currentHostCpuUsage\x123\n" +

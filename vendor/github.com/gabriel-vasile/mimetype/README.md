@@ -70,13 +70,13 @@ If increasing the limit does not help, please
 ## Tests
 In addition to unit tests,
 [mimetype_tests](https://github.com/gabriel-vasile/mimetype_tests) compares the
-library with the [Unix file utility](https://en.wikipedia.org/wiki/File_(command))
+library with [libmagic](https://en.wikipedia.org/wiki/File_(command))
 for around 50 000 sample files. Check the latest comparison results
 [here](https://github.com/gabriel-vasile/mimetype_tests/actions).
 
 ## Benchmarks
-Benchmarks for each file format are performed when a PR is open. The results can
-be seen on the [workflows page](https://github.com/gabriel-vasile/mimetype/actions/workflows/benchmark.yml).
+Benchmarks are performed when a PR is open. The results can be seen on the
+[workflows page](https://github.com/gabriel-vasile/mimetype/actions/workflows/benchmark.yml).
 Performance improvements are welcome but correctness is prioritized.
 
 ## Structure
@@ -97,7 +97,9 @@ or from a [file](https://pkg.go.dev/github.com/gabriel-vasile/mimetype#DetectFil
 </div>
 
 ## Contributing
-Contributions are unexpected but welcome. When submitting a PR for detection of
-a new file format, please make sure to add a record to the list of testcases
-from [mimetype_test.go](mimetype_test.go). For complex files a record can be added
-in the [testdata](testdata) directory.
+Contributions are never expected but very much welcome.
+[mimetype_tests](https://github.com/gabriel-vasile/mimetype_tests/actions/workflows/test.yml)
+shows which file formats are most often misidentified and can help prioritise.
+When submitting a PR for detection of a new file format, please make sure to
+add a record to the list of testcases in [mimetype_test.go](mimetype_test.go).
+For complex files a record can be added in the [testdata](testdata) directory.

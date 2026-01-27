@@ -8,46 +8,48 @@ import (
 	"github.com/gabriel-vasile/mimetype/internal/scan"
 )
 
-func GetAnAttribute(s *scan.Bytes) (name, val string, hasMore bool) {
+// GetAnAttribute assumes we passed over an SGML tag and extracts first
+// attribute and its value.
+//
+// Initially, this code existed inside charset/charset.go, because it was part of
+// implementing the https://html.spec.whatwg.org/multipage/parsing.html#prescan-a-byte-stream-to-determine-its-encoding
+// algorithm. But because extracting an attribute from a tag is the same for
+// both HTML and XML, then the code was moved here.
+func GetAnAttribute(s *scan.Bytes) (name, val []byte, hasMore bool) {
 	for scan.ByteIsWS(s.Peek()) || s.Peek() == '/' {
 		s.Advance(1)
 	}
 	if s.Peek() == '>' {
-		return "", "", false
+		return nil, nil, false
 	}
-	// Allocate 10 to avoid resizes.
-	// Attribute names and values are continuous slices of bytes in input,
-	// so we could do without allocating and returning slices of input.
-	nameB := make([]byte, 0, 10)
+	origS, end := *s, 0
 	// step 4 and 5
 	for {
 		// bap means byte at position in the specification.
 		bap := s.Pop()
 		if bap == 0 {
-			return "", "", false
+			return nil, nil, false
 		}
-		if bap == '=' && len(nameB) > 0 {
+		if bap == '=' && end > 0 {
 			val, hasMore := getAValue(s)
-			return string(nameB), string(val), hasMore
+			return origS[:end], val, hasMore
 		} else if scan.ByteIsWS(bap) {
 			for scan.ByteIsWS(s.Peek()) {
 				s.Advance(1)
 			}
 			if s.Peek() != '=' {
-				return string(nameB), "", true
+				return origS[:end], nil, true
 			}
 			s.Advance(1)
 			for scan.ByteIsWS(s.Peek()) {
 				s.Advance(1)
 			}
 			val, hasMore := getAValue(s)
-			return string(nameB), string(val), hasMore
+			return origS[:end], val, hasMore
 		} else if bap == '/' || bap == '>' {
-			return string(nameB), "", false
-		} else if bap >= 'A' && bap <= 'Z' {
-			nameB = append(nameB, bap+0x20)
-		} else {
-			nameB = append(nameB, bap)
+			return origS[:end], nil, false
+		} else { // for any ASCII, non-ASCII, just advance
+			end++
 		}
 	}
 }

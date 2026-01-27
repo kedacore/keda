@@ -1514,6 +1514,8 @@ func HistoryFromJSON(r io.Reader, options HistoryJSONOptions) (*historypb.Histor
 // Note, this uses a fixed header value for authentication. Many users that want
 // to rotate this value without reconnecting should use
 // [NewAPIKeyDynamicCredentials].
+//
+// Note, TLS is auto-enabled when API key is provided and TLS is not explicitly set/disabled.
 func NewAPIKeyStaticCredentials(apiKey string) Credentials {
 	return internal.NewAPIKeyStaticCredentials(apiKey)
 }
@@ -1528,6 +1530,8 @@ func NewAPIKeyStaticCredentials(apiKey string) Credentials {
 // "Authorization" header with "Bearer " + the given function result. If the
 // resulting string is non-empty, it will overwrite any "Authorization" header
 // that may be on the context or from existing header provider.
+//
+// Note, TLS is auto-enabled when API key is provided and TLS is not explicitly set/disabled.
 func NewAPIKeyDynamicCredentials(apiKeyCallback func(context.Context) (string, error)) Credentials {
 	return internal.NewAPIKeyDynamicCredentials(apiKeyCallback)
 }

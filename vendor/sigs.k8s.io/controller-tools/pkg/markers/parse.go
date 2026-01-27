@@ -208,7 +208,7 @@ func makeSliceType(itemType Argument) (reflect.Type, error) {
 	}
 
 	if itemType.Pointer {
-		itemReflectedType = reflect.PtrTo(itemReflectedType)
+		itemReflectedType = reflect.PointerTo(itemReflectedType)
 	}
 
 	return reflect.SliceOf(itemReflectedType), nil
@@ -248,7 +248,7 @@ func makeMapType(itemType Argument) (reflect.Type, error) {
 	}
 
 	if itemType.Pointer {
-		itemReflectedType = reflect.PtrTo(itemReflectedType)
+		itemReflectedType = reflect.PointerTo(itemReflectedType)
 	}
 
 	return reflect.MapOf(reflect.TypeOf(""), itemReflectedType), nil
@@ -495,7 +495,6 @@ func (a *Argument) parseMap(scanner *sc.Scanner, raw string, out reflect.Value) 
 // parse functions like Parse, except that it allows passing down whether or not we're
 // already in a slice, to avoid duplicate legacy slice detection for AnyType
 func (a *Argument) parse(scanner *sc.Scanner, raw string, out reflect.Value, inSlice bool) {
-	// nolint:gocyclo
 	if a.Type == InvalidType {
 		scanner.Error(scanner, "cannot parse invalid type")
 		return
@@ -757,8 +756,7 @@ func argumentInfo(fieldName string, tag reflect.StructTag) (argName string, opti
 	}
 	optionalOpt = false
 	for _, tagOption := range markerTagParts[1:] {
-		switch tagOption {
-		case "optional":
+		if tagOption == "optional" {
 			optionalOpt = true
 		}
 	}
@@ -870,11 +868,8 @@ func (d *Definition) Parse(rawMarker string) (interface{}, error) {
 		seen[""] = struct{}{} // mark as seen for strict definitions
 	} else if !d.Empty() && scanner.Peek() != sc.EOF {
 		// if we expect *and* actually have arguments passed
-		for {
-			// parse the argument name
-			if !expect(scanner, sc.Ident, "argument name") {
-				break
-			}
+		// parse the argument name
+		for expect(scanner, sc.Ident, "argument name") {
 			argName := scanner.TokenText()
 			if !expect(scanner, '=', "equals") {
 				break

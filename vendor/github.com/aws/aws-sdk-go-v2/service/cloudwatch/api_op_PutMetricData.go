@@ -161,11 +161,11 @@ func (c *Client) addOperationPutMetricDataMiddlewares(stack *middleware.Stack, o
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsquery_serializeOpPutMetricData{}, middleware.After)
+	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpPutMetricData{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsquery_deserializeOpPutMetricData{}, middleware.After)
+	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpPutMetricData{}, middleware.After)
 	if err != nil {
 		return err
 	}
@@ -222,6 +222,9 @@ func (c *Client) addOperationPutMetricDataMiddlewares(stack *middleware.Stack, o
 		return err
 	}
 	if err = addIsRequestCompressionUserAgent(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {

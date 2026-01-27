@@ -65,6 +65,8 @@ var (
 		"WorkflowExecutionOptionsUpdated":                 55,
 		"NexusOperationCancelRequestCompleted":            56,
 		"NexusOperationCancelRequestFailed":               57,
+		"WorkflowExecutionPaused":                         58,
+		"WorkflowExecutionUnpaused":                       59,
 	}
 )
 
