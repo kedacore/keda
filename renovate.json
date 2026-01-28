@@ -1,22 +1,31 @@
 {
-  "branchPrefix":"renovate-",
-  "labels":["dependencies"],
+  "extends": [
+    "config:base",
+    ":gitSignOff",
+    "default:disablePrControls",
+    "docker:pinDigests",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "labels": [
+    "enhancement",
+    "dependency-management"
+  ],
   "packageRules": [
     {
       "packagePatterns": ["*"],
       "enabled": false
     },
     {
-      "packagePatterns": ["^actions/"],
-      "groupName": "GitHub Actions",
-      "enabled": true
+      "matchManagers": ["gomod"],
+      "postUpdateOptions": ["gomodTidy", "gomodVendor"]
+    },
+    {
+      "matchDatasources": ["docker"],
+      "pinDigests": true
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "pinDigests": true
     }
-  ],
-  "commitBodyTable": true,
-  "extends": [
-    "config:base",
-    ":gitSignOff",
-    "default:disablePrControls",
-    "helpers:pinGitHubActionDigests"
   ]
 }
