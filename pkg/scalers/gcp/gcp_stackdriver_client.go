@@ -66,8 +66,7 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 	if err := json.Unmarshal([]byte(credentials), &gcpCredentials); err != nil {
 		return nil, err
 	}
-
-	clientOption := option.WithCredentialsJSON([]byte(credentials))
+	clientOption := option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credentials))
 
 	metricsClient, err := monitoring.NewMetricClient(ctx, clientOption)
 	if err != nil {

@@ -522,6 +522,17 @@ type (
 
 		// If set true, error code labels will not be included on request failure metrics.
 		DisableErrorCodeMetricTags bool
+
+		// Plugins that can configure options and intercept client creation.
+		//
+		// Any plugins here that also implement worker.Plugin will be used as
+		// worker plugins as well.
+		//
+		// Plugins themselves should never mutate this field, the behavior is
+		// undefined.
+		//
+		// NOTE: Experimental
+		Plugins []ClientPlugin
 	}
 
 	// HeadersProvider returns a map of gRPC headers that should be used on every request.
@@ -541,6 +552,12 @@ type (
 	ConnectionOptions struct {
 		// TLS configures connection level security credentials.
 		TLS *tls.Config
+
+		// TLSDisabled explicitly disables TLS. When true, TLS will not be used even
+		// if API key credentials are provided (which would normally auto-enable TLS).
+		// This is not recommended for production use as it sends credentials in plaintext.
+		// This option is mutually exclusive with TLS - an error will be returned if both are set.
+		TLSDisabled bool
 
 		// Authority specifies the value to be used as the :authority pseudo-header.
 		// This value only used when TLS is nil.
@@ -963,14 +980,17 @@ func NewClient(ctx context.Context, options ClientOptions) (Client, error) {
 //
 // Exposed as: [go.temporal.io/sdk/client.NewClientFromExistingWithContext]
 func NewClientFromExisting(ctx context.Context, existingClient Client, options ClientOptions) (Client, error) {
-	existing, _ := existingClient.(*WorkflowClient)
-	if existing == nil {
-		return nil, fmt.Errorf("existing client must have been created directly from a client package call")
-	}
-	return newClient(ctx, options, existing)
+	return newClient(ctx, options, existingClient)
 }
 
-func newClient(ctx context.Context, options ClientOptions, existing *WorkflowClient) (Client, error) {
+func newClient(ctx context.Context, options ClientOptions, existing Client) (Client, error) {
+	// Go over all plugins allowing them to configure the options
+	for _, plugin := range options.Plugins {
+		if err := plugin.ConfigureClient(ctx, ClientPluginConfigureClientOptions{ClientOptions: &options}); err != nil {
+			return nil, err
+		}
+	}
+
 	if options.Namespace == "" {
 		options.Namespace = DefaultNamespace
 	}
@@ -990,26 +1010,62 @@ func newClient(ctx context.Context, options ClientOptions, existing *WorkflowCli
 		options.Logger.Info("No logger configured for temporal client. Created default one.")
 	}
 
+	// Validate mutually exclusive TLS options
+	if options.ConnectionOptions.TLS != nil && options.ConnectionOptions.TLSDisabled {
+		return nil, fmt.Errorf("cannot set both TLS and TLSDisabled in ConnectionOptions")
+	}
+
 	if options.Credentials != nil {
 		if err := options.Credentials.applyToOptions(&options.ConnectionOptions); err != nil {
 			return nil, err
 		}
 	}
 
+	// Go over each plugin in reverse, allowing it to wrap connect
+	var client Client
+	connect := func(ctx context.Context, options ClientPluginNewClientOptions) (err error) {
+		client, err = newClientPluginRoot(ctx, options)
+		return
+	}
+	for i := len(options.Plugins) - 1; i >= 0; i-- {
+		plugin := options.Plugins[i]
+		next := connect
+		connect = func(ctx context.Context, options ClientPluginNewClientOptions) error {
+			return plugin.NewClient(ctx, options, next)
+		}
+	}
+	// Invoke and confirm client was created
+	if err := connect(ctx, ClientPluginNewClientOptions{
+		ClientOptions: options,
+		Lazy:          options.ConnectionOptions.disableEagerConnection,
+		FromExisting:  existing,
+	}); err != nil {
+		return nil, err
+	} else if client == nil {
+		return nil, fmt.Errorf("client plugin did not call next to build the client")
+	}
+	return client, nil
+}
+
+func newClientPluginRoot(ctx context.Context, options ClientPluginNewClientOptions) (Client, error) {
 	// Dial or use existing connection
 	var connection *grpc.ClientConn
 	var err error
-	if existing == nil {
-		options.ConnectionOptions.excludeInternalFromRetry = &atomic.Bool{}
-		connection, err = dial(newDialParameters(&options, options.ConnectionOptions.excludeInternalFromRetry))
+	var existing *WorkflowClient
+	if options.FromExisting == nil {
+		options.ClientOptions.ConnectionOptions.excludeInternalFromRetry = &atomic.Bool{}
+		connection, err = dial(newDialParameters(
+			&options.ClientOptions, options.ClientOptions.ConnectionOptions.excludeInternalFromRetry))
 		if err != nil {
 			return nil, err
 		}
-	} else {
+	} else if existing, _ = options.FromExisting.(*WorkflowClient); existing != nil {
 		connection = existing.conn
+	} else if options.FromExisting != nil {
+		return nil, fmt.Errorf("existing client must have been created directly from a client package call")
 	}
 
-	client := NewServiceClient(workflowservice.NewWorkflowServiceClient(connection), connection, options)
+	client := NewServiceClient(workflowservice.NewWorkflowServiceClient(connection), connection, options.ClientOptions)
 
 	// If using existing connection, always load its capabilities and use them for
 	// the new connection. Otherwise, only load server capabilities eagerly if not
@@ -1020,7 +1076,7 @@ func newClient(ctx context.Context, options ClientOptions, existing *WorkflowCli
 		}
 		client.unclosedClients = existing.unclosedClients
 	} else {
-		if !options.ConnectionOptions.disableEagerConnection {
+		if !options.ClientOptions.ConnectionOptions.disableEagerConnection {
 			if _, err := client.loadCapabilities(ctx); err != nil {
 				client.Close()
 				return nil, err
@@ -1074,7 +1130,13 @@ func NewServiceClient(workflowServiceClient workflowservice.WorkflowServiceClien
 		options.ConnectionOptions.GetSystemInfoTimeout = defaultGetSystemInfoTimeout
 	}
 
-	// Collect set of applicable worker interceptors
+	// Collect set of applicable worker plugins and interceptors
+	var workerPlugins []WorkerPlugin
+	for _, plugin := range options.Plugins {
+		if workerPlugin, _ := plugin.(WorkerPlugin); workerPlugin != nil {
+			workerPlugins = append(workerPlugins, workerPlugin)
+		}
+	}
 	var workerInterceptors []WorkerInterceptor
 	for _, interceptor := range options.Interceptors {
 		if workerInterceptor, _ := interceptor.(WorkerInterceptor); workerInterceptor != nil {
@@ -1093,6 +1155,7 @@ func NewServiceClient(workflowServiceClient workflowservice.WorkflowServiceClien
 		dataConverter:            options.DataConverter,
 		failureConverter:         options.FailureConverter,
 		contextPropagators:       options.ContextPropagators,
+		workerPlugins:            workerPlugins,
 		workerInterceptors:       workerInterceptors,
 		excludeInternalFromRetry: options.ConnectionOptions.excludeInternalFromRetry,
 		eagerDispatcher: &eagerWorkflowDispatcher{
@@ -1210,7 +1273,13 @@ func NewAPIKeyDynamicCredentials(apiKeyCallback func(context.Context) (string, e
 	return apiKeyCredentials(apiKeyCallback)
 }
 
-func (apiKeyCredentials) applyToOptions(*ConnectionOptions) error { return nil }
+func (apiKeyCredentials) applyToOptions(opts *ConnectionOptions) error {
+	// Auto-enable TLS when API key is provided and TLS is not explicitly set/disabled
+	if opts.TLS == nil && !opts.TLSDisabled {
+		opts.TLS = &tls.Config{}
+	}
+	return nil
+}
 
 func (a apiKeyCredentials) gRPCInterceptor() grpc.UnaryClientInterceptor { return a.gRPCIntercept }
 

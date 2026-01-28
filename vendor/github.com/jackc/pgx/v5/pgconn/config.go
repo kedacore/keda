@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"net"
 	"net/url"
@@ -55,6 +56,13 @@ type Config struct {
 
 	SSLNegotiation string // sslnegotiation=postgres or sslnegotiation=direct
 
+	// AfterNetConnect is called after the network connection, including TLS if applicable, is established but before any
+	// PostgreSQL protocol communication. It takes the established net.Conn and returns a net.Conn that will be used in
+	// its place. It can be used to wrap the net.Conn (e.g. for logging, diagnostics, or testing). Its functionality has
+	// some overlap with DialFunc. However, DialFunc takes place before TLS is established and cannot be used to control
+	// the final net.Conn used for PostgreSQL protocol communication while AfterNetConnect can.
+	AfterNetConnect func(ctx context.Context, config *Config, conn net.Conn) (net.Conn, error)
+
 	// ValidateConnect is called during a connection attempt after a successful authentication with the PostgreSQL server.
 	// It can be used to validate that the server is acceptable. If this returns an error the connection is closed and the next
 	// fallback config is tried. This allows implementing high availability behavior such as libpq does with target_session_attrs.
@@ -96,9 +104,7 @@ func (c *Config) Copy() *Config {
 	}
 	if newConf.RuntimeParams != nil {
 		newConf.RuntimeParams = make(map[string]string, len(c.RuntimeParams))
-		for k, v := range c.RuntimeParams {
-			newConf.RuntimeParams[k] = v
-		}
+		maps.Copy(newConf.RuntimeParams, c.RuntimeParams)
 	}
 	if newConf.Fallbacks != nil {
 		newConf.Fallbacks = make([]*FallbackConfig, len(c.Fallbacks))
@@ -431,9 +437,7 @@ func mergeSettings(settingSets ...map[string]string) map[string]string {
 	settings := make(map[string]string)
 
 	for _, s2 := range settingSets {
-		for k, v := range s2 {
-			settings[k] = v
-		}
+		maps.Copy(settings, s2)
 	}
 
 	return settings
@@ -496,7 +500,7 @@ func parseURLSettings(connString string) (map[string]string, error) {
 	// Handle multiple host:port's in url.Host by splitting them into host,host,host and port,port,port.
 	var hosts []string
 	var ports []string
-	for _, host := range strings.Split(parsedURL.Host, ",") {
+	for host := range strings.SplitSeq(parsedURL.Host, ",") {
 		if host == "" {
 			continue
 		}

@@ -43,7 +43,7 @@ type PointValueIterator struct {
 	record arrow.RecordBatch
 }
 
-// NewPointValueIterator returns a new PointValueIterator
+// NewPointValueIterator return a new PointValueIterator instance
 func NewPointValueIterator(reader *flight.Reader) *PointValueIterator {
 	return NewPointValueIteratorFomReader(reader)
 }

@@ -44,17 +44,6 @@ func Ole(raw []byte, limit uint32) bool {
 	return bytes.HasPrefix(raw, []byte{0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1})
 }
 
-// Aaf matches an Advanced Authoring Format file.
-// See: https://pyaaf.readthedocs.io/en/latest/about.html
-// See: https://en.wikipedia.org/wiki/Advanced_Authoring_Format
-func Aaf(raw []byte, limit uint32) bool {
-	if len(raw) < 31 {
-		return false
-	}
-	return bytes.HasPrefix(raw[8:], []byte{0x41, 0x41, 0x46, 0x42, 0x0D, 0x00, 0x4F, 0x4D}) &&
-		(raw[30] == 0x09 || raw[30] == 0x0C)
-}
-
 // Doc matches a Microsoft Word 97-2003 file.
 // See: https://github.com/decalage2/oletools/blob/412ee36ae45e70f42123e835871bac956d958461/oletools/common/clsid.py
 func Doc(raw []byte, _ uint32) bool {
@@ -203,9 +192,21 @@ func matchOleClsid(in []byte, clsid []byte) bool {
 	// Expected offset of CLSID for root storage object.
 	clsidOffset := sectorLength*(1+firstSecID) + 80
 
-	if len(in) <= clsidOffset+16 {
+	// #731 offset is outside in or wrapped around due to integer overflow.
+	if len(in) <= clsidOffset+16 || clsidOffset < 0 {
 		return false
 	}
 
 	return bytes.HasPrefix(in[clsidOffset:], clsid)
+}
+
+// WPD matches a WordPerfect document.
+func WPD(raw []byte, _ uint32) bool {
+	if len(raw) < 10 {
+		return false
+	}
+	if !bytes.HasPrefix(raw, []byte("\xffWPC")) {
+		return false
+	}
+	return raw[8] == 1 && raw[9] == 10
 }

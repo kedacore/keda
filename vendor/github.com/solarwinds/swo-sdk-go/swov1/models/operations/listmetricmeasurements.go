@@ -42,7 +42,7 @@ func (l ListMetricMeasurementsRequest) MarshalJSON() ([]byte, error) {
 }
 
 func (l *ListMetricMeasurementsRequest) UnmarshalJSON(data []byte) error {
-	if err := utils.UnmarshalJSON(data, &l, "", false, []string{"name", "seriesType"}); err != nil {
+	if err := utils.UnmarshalJSON(data, &l, "", false, nil); err != nil {
 		return err
 	}
 	return nil

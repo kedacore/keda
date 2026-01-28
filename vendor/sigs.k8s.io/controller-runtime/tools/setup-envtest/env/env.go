@@ -42,10 +42,6 @@ type Env struct {
 	// contact remote services & re-download.
 	ForceDownload bool
 
-	// UseDeprecatedGCS signals if the GCS client is used.
-	// Note: This will be removed together with remote.GCSClient.
-	UseDeprecatedGCS bool
-
 	// Client is our remote client for contacting remote services.
 	Client remote.Client
 
@@ -291,7 +287,7 @@ func (e *Env) Fetch(ctx context.Context) {
 		}
 	})
 
-	archiveOut, err := e.FS.TempFile("", "*-"+e.Platform.ArchiveName(e.UseDeprecatedGCS, *e.Version.AsConcrete()))
+	archiveOut, err := e.FS.TempFile("", "*-"+e.Platform.ArchiveName(*e.Version.AsConcrete()))
 	if err != nil {
 		ExitCause(2, err, "unable to open file to write downloaded archive to")
 	}

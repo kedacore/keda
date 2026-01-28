@@ -1135,10 +1135,18 @@ func (m *Map) planScan(oid uint32, formatCode int16, target any, depth int) Scan
 		}
 	}
 
-	if dt != nil {
-		if _, ok := target.(*any); ok {
-			return &pointerEmptyInterfaceScanPlan{codec: dt.Codec, m: m, oid: oid, formatCode: formatCode}
+	if _, ok := target.(*any); ok {
+		var codec Codec
+		if dt != nil {
+			codec = dt.Codec
+		} else {
+			if formatCode == TextFormatCode {
+				codec = TextCodec{}
+			} else {
+				codec = ByteaCodec{}
+			}
 		}
+		return &pointerEmptyInterfaceScanPlan{codec: codec, m: m, oid: oid, formatCode: formatCode}
 	}
 
 	return &scanPlanFail{m: m, oid: oid, formatCode: formatCode}
@@ -1999,7 +2007,7 @@ func (w *sqlScannerWrapper) Scan(src any) error {
 		case []byte:
 			bufSrc = src
 		default:
-			bufSrc = []byte(fmt.Sprint(bufSrc))
+			bufSrc = fmt.Append(nil, bufSrc)
 		}
 	}
 

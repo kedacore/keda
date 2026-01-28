@@ -374,7 +374,12 @@ func (s *APIServer) populateAPIServerCerts() error {
 		return err
 	}
 
-	servingCerts, err := ca.NewServingCert()
+	servingAddresses := []string{"localhost"}
+	if s.SecureServing.ListenAddr.Address != "" {
+		servingAddresses = append(servingAddresses, s.SecureServing.ListenAddr.Address)
+	}
+
+	servingCerts, err := ca.NewServingCert(servingAddresses...)
 	if err != nil {
 		return err
 	}

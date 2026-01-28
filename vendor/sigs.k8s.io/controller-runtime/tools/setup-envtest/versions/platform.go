@@ -37,11 +37,7 @@ func (p Platform) BaseName(ver Concrete) string {
 }
 
 // ArchiveName returns the full archive name for this version and platform.
-// useGCS is deprecated and will be removed when the remote.GCSClient is removed.
-func (p Platform) ArchiveName(useGCS bool, ver Concrete) string {
-	if useGCS {
-		return "kubebuilder-tools-" + p.BaseName(ver) + ".tar.gz"
-	}
+func (p Platform) ArchiveName(ver Concrete) string {
 	return "envtest-v" + p.BaseName(ver) + ".tar.gz"
 }
 
@@ -56,11 +52,11 @@ type PlatformItem struct {
 // Hash of an archive with envtest binaries.
 type Hash struct {
 	// Type of the hash.
-	// GCS uses MD5HashType, controller-tools uses SHA512HashType.
+	// controller-tools uses SHA512HashType.
 	Type HashType
 
 	// Encoding of the hash value.
-	// GCS uses Base64HashEncoding, controller-tools uses HexHashEncoding.
+	// controller-tools uses HexHashEncoding.
 	Encoding HashEncoding
 
 	// Value of the hash.
@@ -122,7 +118,6 @@ var (
 	// VersionPlatformRE matches concrete version-platform strings.
 	VersionPlatformRE = regexp.MustCompile(`^` + versionPlatformREBase + `$`)
 	// ArchiveRE matches concrete version-platform.tar.gz strings.
-	// The archives published to GCS by kubebuilder use the "kubebuilder-tools-" prefix (e.g. "kubebuilder-tools-1.30.0-darwin-amd64.tar.gz").
 	// The archives published to GitHub releases by controller-tools use the "envtest-v" prefix (e.g. "envtest-v1.30.0-darwin-amd64.tar.gz").
-	ArchiveRE = regexp.MustCompile(`^(kubebuilder-tools-|envtest-v)` + versionPlatformREBase + `\.tar\.gz$`)
+	ArchiveRE = regexp.MustCompile(`^envtest-v` + versionPlatformREBase + `\.tar\.gz$`)
 )

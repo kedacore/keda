@@ -72,7 +72,7 @@ func (s PatchSelector) AsConcrete() *Concrete {
 	return &Concrete{
 		Major: s.Major,
 		Minor: s.Minor,
-		Patch: int(s.Patch), // safe to cast, we've just checked wilcards above
+		Patch: int(s.Patch), // safe to cast, we've just checked wildcards above
 	}
 }
 

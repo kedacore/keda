@@ -807,6 +807,16 @@ func addIsRequestCompressionUserAgent(stack *middleware.Stack, options Options) 
 	return nil
 }
 
+func addUserAgentFeatureProtocolRPCV2CBOR(stack *middleware.Stack, options Options) error {
+	ua, err := getOrAddRequestUserAgent(stack)
+	if err != nil {
+		return err
+	}
+
+	ua.AddUserAgentFeature(awsmiddleware.UserAgentFeatureProtocolRPCV2CBOR)
+	return nil
+}
+
 type setCredentialSourceMiddleware struct {
 	ua      *awsmiddleware.RequestUserAgent
 	options Options
