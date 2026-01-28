@@ -67,6 +67,7 @@ type azureServiceBusMetadata struct {
 	UseRegex                bool `keda:"name=useRegex,          order=triggerMetadata, optional"`
 	EntityNameRegex         *regexp.Regexp
 	Operation               string `keda:"name=operation,          order=triggerMetadata, enum=sum;max;avg, default=sum"`
+	MaxRetries              int    `keda:"name=maxRetries,          order=triggerMetadata, optional, default=0"`
 	triggerIndex            int
 	timeout                 time.Duration
 }
@@ -215,8 +216,7 @@ func (s *azureServiceBusScaler) GetMetricSpecForScaling(context.Context) []v2.Me
 
 // GetMetricsAndActivity returns the current metrics to be served to the HPA
 func (s *azureServiceBusScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	queuelen, err := s.getAzureServiceBusLength(ctx)
-
+	queuelen, err := s.getAzureServiceBusLengthWithRetry(ctx)
 	if err != nil {
 		s.logger.Error(err, "error getting service bus entity length")
 		return []external_metrics.ExternalMetricValue{}, false, err
@@ -243,6 +243,58 @@ func (s *azureServiceBusScaler) getAzureServiceBusLength(ctx context.Context) (i
 	default:
 		return -1, fmt.Errorf("no entity type")
 	}
+}
+
+// Wraps getAzureServiceBusLength with retry logic and exponential backoff
+func (s *azureServiceBusScaler) getAzureServiceBusLengthWithRetry(ctx context.Context) (int64, error) {
+	if s.metadata.MaxRetries == 0 {
+		return s.getAzureServiceBusLength(ctx)
+	}
+
+	var lastErr error
+	backoff := 2 * time.Second
+	maxBackoff := 1 * time.Minute
+	maxAttempts := s.metadata.MaxRetries + 1
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		length, err := s.getAzureServiceBusLength(ctx)
+		if err == nil {
+			if attempt > 1 {
+				s.logger.Info("successfully retrieved entity length after retry", "attempts", attempt, "length", length)
+			}
+			return length, nil
+		}
+
+		lastErr = err
+
+		if attempt < maxAttempts {
+			// Check if context is cancelled
+			if ctx.Err() != nil {
+				s.logger.Info("context cancelled during retry", "attempt", attempt, "maxRetries", s.metadata.MaxRetries)
+				return -1, lastErr
+			}
+
+			s.logger.Info("retrying after error", "attempt", attempt, "maxRetries", s.metadata.MaxRetries, "backoff", backoff.String(), "error", err)
+
+			// Sleep with backoff
+			select {
+			case <-time.After(backoff):
+				// Continue to next retry
+			case <-ctx.Done():
+				// Context cancelled during backoff
+				return -1, lastErr
+			}
+
+			// Increase backoff exponentially, capped at maxBackoff
+			backoff *= 2
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+		}
+	}
+
+	s.logger.Info("all retries exhausted", "maxRetries", s.metadata.MaxRetries, "lastError", lastErr)
+	return -1, lastErr
 }
 
 // Returns service bus namespace object
