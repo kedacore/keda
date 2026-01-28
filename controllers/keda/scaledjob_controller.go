@@ -247,9 +247,11 @@ func (r *ScaledJobReconciler) checkIfPaused(ctx context.Context, logger logr.Log
 			if err := r.stopScaleLoop(ctx, logger, scaledJob); err != nil {
 				msg = "failed to stop the scale loop for paused ScaledJob"
 				conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledJobStopScaleLoopFailed", msg)
+				r.EventEmitter.Emit(scaledJob, scaledJob.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobFailedType, eventreason.ScaledJobPauseFailed, msg)
 				return false, err
 			}
 			conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledJobConditionPausedReason, msg)
+			r.EventEmitter.Emit(scaledJob, scaledJob.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledJobPausedType, eventreason.ScaledJobPaused, msg)
 		}
 		return true, nil
 	}
@@ -257,6 +259,7 @@ func (r *ScaledJobReconciler) checkIfPaused(ctx context.Context, logger logr.Log
 		logger.Info("Unpausing ScaledJob.")
 		msg := kedav1alpha1.ScaledJobConditionUnpausedMessage
 		conditions.SetPausedCondition(metav1.ConditionFalse, kedav1alpha1.ScaledJobConditionUnpausedReason, msg)
+		r.EventEmitter.Emit(scaledJob, scaledJob.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledJobUnpausedType, eventreason.ScaledJobUnpaused, msg)
 	}
 	return false, nil
 }
@@ -301,6 +304,7 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 			logger.Info("RolloutStrategy: immediate, No jobs owned by the previous version of the scaledJob")
 		} else {
 			logger.Info("RolloutStrategy: immediate, Deleting jobs owned by the previous version of the scaledJob", "numJobsToDelete", len(jobIndexes))
+			r.EventEmitter.Emit(scaledJob, scaledJob.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledJobRolloutCleanupStartedType, eventreason.ScaledJobRolloutCleanupStarted, fmt.Sprintf("Deleting %d jobs owned by the previous version of the scaledJob", len(jobIndexes)))
 			for _, index := range jobIndexes {
 				job := jobs.Items[index]
 
@@ -310,9 +314,11 @@ func (r *ScaledJobReconciler) deletePreviousVersionScaleJobs(ctx context.Context
 				}
 				err = r.Delete(ctx, &job, client.PropagationPolicy(propagationPolicy))
 				if err != nil {
+					r.EventEmitter.Emit(scaledJob, scaledJob.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobRolloutCleanupFailedType, eventreason.ScaledJobRolloutCleanupFailed, fmt.Sprintf("Failed to delete job %s: %v", job.Name, err))
 					return "Not able to delete job: " + job.Name, err
 				}
 			}
+			r.EventEmitter.Emit(scaledJob, scaledJob.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledJobRolloutCleanupCompletedType, eventreason.ScaledJobRolloutCleanupCompleted, fmt.Sprintf("Deleted %d jobs owned by the previous version of the scaledJob", len(jobIndexes)))
 			return fmt.Sprintf("RolloutStrategy: immediate, deleted jobs owned by the previous version of the scaleJob: %d jobs deleted", len(jobIndexes)), nil
 		}
 	}

@@ -31,6 +31,10 @@ const (
 
 	ScaledObjectRemoved = "ScaledObject was deleted"
 
+	ScaledObjectFallbackActivatedMsg = "ScaledObject fallback is active"
+
+	ScaledObjectFallbackDeactivatedMsg = "ScaledObject fallback is no longer active"
+
 	ScaledJobReadyMsg = "ScaledJob is ready for scaling"
 
 	ScaledJobRemoved = "ScaledJob was deleted"
