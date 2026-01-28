@@ -17,7 +17,7 @@ jobs:
   codeQl:
     name: Analyze CodeQL Go
     runs-on: ubuntu-latest
-    container: ghcr.io/kedacore/keda-tools:1.25.5
+    container: ghcr.io/kedacore/keda-tools:1.25.6
     if: (github.actor != 'dependabot[bot]')
     steps:
       - name: Checkout repository
