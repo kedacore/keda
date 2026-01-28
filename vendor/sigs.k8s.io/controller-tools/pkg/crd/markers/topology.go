@@ -19,7 +19,7 @@ package markers
 import (
 	"fmt"
 
-	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"sigs.k8s.io/controller-tools/pkg/markers"
 )
 
@@ -117,7 +117,7 @@ type MapType string
 //     Any changes have to replace the entire struct.
 type StructType string
 
-func (l ListType) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
+func (l ListType) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
 	if schema.Type != string(Array) {
 		return fmt.Errorf("must apply listType to an array, found %s", schema.Type)
 	}
@@ -133,7 +133,7 @@ func (l ListType) ApplyPriority() ApplyPriority {
 	return ApplyPriorityDefault - 1
 }
 
-func (l ListMapKey) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
+func (l ListMapKey) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
 	if schema.Type != string(Array) {
 		return fmt.Errorf("must apply listMapKey to an array, found %s", schema.Type)
 	}
@@ -144,7 +144,7 @@ func (l ListMapKey) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
 	return nil
 }
 
-func (m MapType) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
+func (m MapType) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
 	if schema.Type != string(Object) {
 		return fmt.Errorf("must apply mapType to an object")
 	}
@@ -159,7 +159,7 @@ func (m MapType) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
 	return nil
 }
 
-func (s StructType) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
+func (s StructType) ApplyToSchema(schema *apiextensionsv1.JSONSchemaProps) error {
 	if schema.Type != string(Object) && schema.Type != "" {
 		return fmt.Errorf("must apply structType to an object; either explicitly set or defaulted through an empty schema type")
 	}
