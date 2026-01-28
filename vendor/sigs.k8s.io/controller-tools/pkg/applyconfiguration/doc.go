@@ -14,5 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package applyconfigurations generates types for constructing declarative apply configurations.
+// Package applyconfiguration generates types for constructing declarative apply configurations.
 package applyconfiguration

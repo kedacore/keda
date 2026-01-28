@@ -50,8 +50,8 @@ func peekNoSpace(scanner *sc.Scanner) rune {
 
 var (
 	// interfaceType is a pre-computed reflect.Type representing the empty interface.
-	interfaceType = reflect.TypeOf((*interface{})(nil)).Elem()
-	rawArgsType   = reflect.TypeOf((*RawArguments)(nil)).Elem()
+	interfaceType = reflect.TypeFor[*any]().Elem()
+	rawArgsType   = reflect.TypeFor[*RawArguments]().Elem()
 )
 
 // lowerCamelCase converts PascalCase string to
@@ -69,7 +69,7 @@ func lowerCamelCase(in string) string {
 
 // RawArguments is a special type that can be used for a marker
 // to receive *all* raw, underparsed argument data for a marker.
-// You probably want to use `interface{}` to match any type instead.
+// You probably want to use `any` to match any type instead.
 // Use *only* for legacy markers that don't follow Definition's normal
 // parsing logic.  It should *not* be used as a field in a marker struct.
 type RawArguments []byte
@@ -80,7 +80,7 @@ type RawArguments []byte
 type ArgumentType int
 
 const (
-	// Invalid represents a type that can't be parsed, and should never be used.
+	// InvalidType represents a type that can't be parsed, and should never be used.
 	InvalidType ArgumentType = iota
 	// IntType is an int
 	IntType
@@ -183,13 +183,13 @@ func makeSliceType(itemType Argument) (reflect.Type, error) {
 	var itemReflectedType reflect.Type
 	switch itemType.Type {
 	case IntType:
-		itemReflectedType = reflect.TypeOf(int(0))
+		itemReflectedType = reflect.TypeFor[int]()
 	case NumberType:
-		itemReflectedType = reflect.TypeOf(float64(0))
+		itemReflectedType = reflect.TypeFor[float64]()
 	case StringType:
-		itemReflectedType = reflect.TypeOf("")
+		itemReflectedType = reflect.TypeFor[string]()
 	case BoolType:
-		itemReflectedType = reflect.TypeOf(false)
+		itemReflectedType = reflect.TypeFor[bool]()
 	case SliceType:
 		subItemType, err := makeSliceType(*itemType.ItemType)
 		if err != nil {
@@ -220,13 +220,13 @@ func makeMapType(itemType Argument) (reflect.Type, error) {
 	var itemReflectedType reflect.Type
 	switch itemType.Type {
 	case IntType:
-		itemReflectedType = reflect.TypeOf(int(0))
+		itemReflectedType = reflect.TypeFor[int]()
 	case NumberType:
-		itemReflectedType = reflect.TypeOf(float64(0))
+		itemReflectedType = reflect.TypeFor[float64]()
 	case StringType:
-		itemReflectedType = reflect.TypeOf("")
+		itemReflectedType = reflect.TypeFor[string]()
 	case BoolType:
-		itemReflectedType = reflect.TypeOf(false)
+		itemReflectedType = reflect.TypeFor[bool]()
 	case SliceType:
 		subItemType, err := makeSliceType(*itemType.ItemType)
 		if err != nil {
@@ -251,7 +251,7 @@ func makeMapType(itemType Argument) (reflect.Type, error) {
 		itemReflectedType = reflect.PointerTo(itemReflectedType)
 	}
 
-	return reflect.MapOf(reflect.TypeOf(""), itemReflectedType), nil
+	return reflect.MapOf(reflect.TypeFor[string](), itemReflectedType), nil
 }
 
 // guessType takes an educated guess about the type of the next field.  If allowSlice
@@ -825,7 +825,7 @@ type markerParser interface {
 // Parse uses the type information in this Definition to parse the given
 // raw marker in the form `+a:b:c=arg,d=arg` into an output object of the
 // type specified in the definition.
-func (d *Definition) Parse(rawMarker string) (interface{}, error) {
+func (d *Definition) Parse(rawMarker string) (any, error) {
 	name, anonName, fields := splitMarker(rawMarker)
 
 	outPointer := reflect.New(d.Output)
@@ -929,7 +929,7 @@ func (d *Definition) Parse(rawMarker string) (interface{}, error) {
 // type, its public fields will automatically be populated into Fields (and similar
 // fields in Definition).  Other values will have a single, empty-string-named Fields
 // entry.
-func MakeDefinition(name string, target TargetType, output interface{}) (*Definition, error) {
+func MakeDefinition(name string, target TargetType, output any) (*Definition, error) {
 	def := &Definition{
 		Name:   name,
 		Target: target,
@@ -945,9 +945,9 @@ func MakeDefinition(name string, target TargetType, output interface{}) (*Defini
 }
 
 // MakeAnyTypeDefinition constructs a definition for an output struct with a
-// field named `Value` of type `interface{}`. The argument to the marker will
+// field named `Value` of type `any`. The argument to the marker will
 // be parsed as AnyType and assigned to the field named `Value`.
-func MakeAnyTypeDefinition(name string, target TargetType, output interface{}) (*Definition, error) {
+func MakeAnyTypeDefinition(name string, target TargetType, output any) (*Definition, error) {
 	defn, err := MakeDefinition(name, target, output)
 	if err != nil {
 		return nil, err

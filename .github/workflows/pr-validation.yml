@@ -11,7 +11,7 @@ jobs:
     name: validate - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     container:
-      image: ghcr.io/kedacore/keda-tools:1.25.5
+      image: ghcr.io/kedacore/keda-tools:1.25.6
       volumes:
         - /usr:/host/usr
         - /opt:/host/opt
@@ -106,7 +106,7 @@ jobs:
       pull-requests: read # for dorny/paths-filter to read pull requests
     name: validate-dockerfiles - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.25.5
+    container: ghcr.io/kedacore/keda-tools:1.25.6
     strategy:
       matrix:
         include:
@@ -142,7 +142,7 @@ jobs:
       pull-requests: read # for dorny/paths-filter to read pull requests
     name: Validate dev-container - ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    container: ghcr.io/kedacore/keda-tools:1.25.5
+    container: ghcr.io/kedacore/keda-tools:1.25.6
     strategy:
       matrix:
         include:

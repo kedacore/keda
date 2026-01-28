@@ -27,6 +27,7 @@ import (
 	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/scale"
@@ -264,10 +265,17 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 			log.Error(err, "error getting scaledObject", "object", scalableObject)
 			return
 		}
-		isActive, isError, metricsRecords, activeTriggers, err := h.getScaledObjectState(ctx, obj)
+		fallbackStatus := obj.Status.Conditions.GetFallbackCondition().Status
+		isActive, isError, metricsRecords, activeTriggers, isFallbackActive, err := h.getScaledObjectState(ctx, obj)
 		if err != nil {
 			log.Error(err, "error getting state of scaledObject", "scaledObject.Namespace", obj.Namespace, "scaledObject.Name", obj.Name)
 			return
+		}
+
+		if isFallbackActive && fallbackStatus != metav1.ConditionTrue {
+			h.recorder.Event(obj, corev1.EventTypeNormal, eventreason.ScaledObjectFallbackActivated, message.ScaledObjectFallbackActivatedMsg)
+		} else if !isFallbackActive && fallbackStatus == metav1.ConditionTrue {
+			h.recorder.Event(obj, corev1.EventTypeNormal, eventreason.ScaledObjectFallbackDeactivated, message.ScaledObjectFallbackDeactivatedMsg)
 		}
 
 		h.scaleExecutor.RequestScale(ctx, obj, isActive, isError, &executor.ScaleExecutorOptions{ActiveTriggers: activeTriggers})
@@ -662,8 +670,9 @@ type scalerState struct {
 // is active as the first return value,
 // the second return value indicates whether there was any error during querying scalers,
 // the third return value is a map of metrics record - a metric value for each scaler and its metric
-// the fourth return value contains error if is not able to access scalers cache
-func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (bool, bool, map[string]metricscache.MetricsRecord, []string, error) {
+// the fourth return indicates whether fallback is active
+// the fifth value contains error if is not able to access scalers cache
+func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *kedav1alpha1.ScaledObject) (bool, bool, map[string]metricscache.MetricsRecord, []string, bool, error) {
 	logger := log.WithValues("scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 
 	isScaledObjectActive := false
@@ -678,7 +687,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	cache, err := h.GetScalersCache(ctx, scaledObject)
 	metricscollector.RecordScaledObjectError(scaledObject.Namespace, scaledObject.Name, err)
 	if err != nil {
-		return false, true, map[string]metricscache.MetricsRecord{}, []string{}, fmt.Errorf("error getting scalers cache %w", err)
+		return false, true, map[string]metricscache.MetricsRecord{}, []string{}, false, fmt.Errorf("error getting scalers cache %w", err)
 	}
 
 	// count the number of non-external triggers (cpu/mem) in order to check for
@@ -755,7 +764,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 			if scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget != "" {
 				targetValue, err := strconv.ParseFloat(scaledObject.Spec.Advanced.ScalingModifiers.ActivationTarget, 64)
 				if err != nil {
-					return false, true, metricsRecord, []string{}, fmt.Errorf("scalingModifiers.ActivationTarget parsing error %w", err)
+					return false, true, metricsRecord, []string{}, false, fmt.Errorf("scalingModifiers.ActivationTarget parsing error %w", err)
 				}
 				activationValue = targetValue
 			}
@@ -780,7 +789,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	if len(scaledObject.Spec.Triggers) <= cpuMemCount && !isScaledObjectError {
 		isScaledObjectActive = true
 	}
-	return isScaledObjectActive, isScaledObjectError, metricsRecord, activeTriggers, err
+	return isScaledObjectActive, isScaledObjectError, metricsRecord, activeTriggers, isFallbackActive, err
 }
 
 // getScalerState returns getStateScalerResult with the state

@@ -18,6 +18,7 @@ package genall
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"golang.org/x/tools/go/packages"
@@ -42,7 +43,7 @@ func RegisterOptionsMarkers(into *markers.Registry) error {
 		return err
 	}
 	// NB(directxman12): we make this optional so we don't have a bootstrap problem with helpgen
-	if helpGiver, hasHelp := ((interface{})(InputPaths(nil))).(HasHelp); hasHelp {
+	if helpGiver, hasHelp := ((any)(InputPaths(nil))).(HasHelp); hasHelp {
 		into.AddHelp(InputPathsMarker, helpGiver.Help())
 	}
 	return nil
@@ -100,9 +101,7 @@ func FromOptionsWithConfig(cfg *packages.Config, optionsRegistry *markers.Regist
 	}
 
 	outRules := DirectoryPerGenerator("config", protoRt.GeneratorsByName)
-	for gen, rule := range protoRt.OutputRules.ByGenerator {
-		outRules.ByGenerator[gen] = rule
-	}
+	maps.Copy(outRules.ByGenerator, protoRt.OutputRules.ByGenerator)
 
 	genRuntime.OutputRules = outRules
 	return genRuntime, nil

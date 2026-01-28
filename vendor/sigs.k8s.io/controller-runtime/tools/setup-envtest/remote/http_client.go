@@ -9,7 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"sort"
+	"slices"
 
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/tools/setup-envtest/versions"
@@ -87,9 +87,8 @@ func (c *HTTPClient) ListVersions(ctx context.Context) ([]versions.Set, error) {
 		res = append(res, versions.Set{Version: ver, Platforms: details})
 	}
 	// sort in inverse order so that the newest one is first
-	sort.Slice(res, func(i, j int) bool {
-		first, second := res[i].Version, res[j].Version
-		return first.NewerThan(second)
+	slices.SortStableFunc(res, func(i, j versions.Set) int {
+		return j.Version.Compare(i.Version)
 	})
 
 	return res, nil

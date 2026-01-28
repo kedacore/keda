@@ -24,7 +24,7 @@ package webhook
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	admissionregv1 "k8s.io/api/admissionregistration/v1"
@@ -483,8 +483,8 @@ func (g Generator) Generate(ctx *genall.GenerationContext) error {
 		}
 
 		cfgs := markerSet[ConfigDefinition.Name]
-		sort.SliceStable(cfgs, func(i, j int) bool {
-			return cfgs[i].(Config).Name < cfgs[j].(Config).Name
+		slices.SortStableFunc(cfgs, func(a, b any) int {
+			return strings.Compare(a.(Config).Name, b.(Config).Name)
 		})
 
 		for _, cfg := range cfgs {
@@ -513,9 +513,13 @@ func (g Generator) Generate(ctx *genall.GenerationContext) error {
 		}
 	}
 
-	versionedWebhooks := make(map[string][]interface{}, len(supportedWebhookVersions))
+	versionedWebhooks := make(map[string][]any, len(supportedWebhookVersions))
+	//nolint:dupl
 	for _, version := range supportedWebhookVersions {
 		if cfgs, ok := mutatingCfgs[version]; ok {
+			slices.SortFunc(cfgs, func(a, b admissionregv1.MutatingWebhook) int {
+				return strings.Compare(a.Name, b.Name)
+			})
 			var objRaw *admissionregv1.MutatingWebhookConfiguration
 			if mutatingWebhookCfgs.Name != "" {
 				objRaw = &mutatingWebhookCfgs
@@ -553,6 +557,9 @@ func (g Generator) Generate(ctx *genall.GenerationContext) error {
 		}
 
 		if cfgs, ok := validatingCfgs[version]; ok {
+			slices.SortFunc(cfgs, func(a, b admissionregv1.ValidatingWebhook) int {
+				return strings.Compare(a.Name, b.Name)
+			})
 			var objRaw *admissionregv1.ValidatingWebhookConfiguration
 			if validatingWebhookCfgs.Name != "" {
 				objRaw = &validatingWebhookCfgs

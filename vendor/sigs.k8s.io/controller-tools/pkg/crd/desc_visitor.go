@@ -20,13 +20,13 @@ import (
 	"strings"
 	"unicode"
 
-	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
 // TruncateDescription truncates the description of fields in given schema if it
 // exceeds maxLen.
 // It tries to chop off the description at the closest sentence boundary.
-func TruncateDescription(schema *apiext.JSONSchemaProps, maxLen int) {
+func TruncateDescription(schema *apiextensionsv1.JSONSchemaProps, maxLen int) {
 	EditSchema(schema, descVisitor{maxLen: maxLen})
 }
 
@@ -37,7 +37,7 @@ type descVisitor struct {
 	maxLen int
 }
 
-func (v descVisitor) Visit(schema *apiext.JSONSchemaProps) SchemaVisitor {
+func (v descVisitor) Visit(schema *apiextensionsv1.JSONSchemaProps) SchemaVisitor {
 	if schema == nil {
 		return v
 	}
