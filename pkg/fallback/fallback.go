@@ -82,7 +82,7 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, sc
 			}
 		}
 
-		l := doFallback(ctx, client, scaleClient, scaledObject, metricSpec, metricName, currentReplicas, suppressedError)
+		l := doFallback(ctx, client, scaleClient, scaledObject, metricSpec, metricName, currentReplicas, suppressedError, metrics)
 		if l == nil {
 			return l, false, fmt.Errorf("error performing fallback")
 		}
@@ -158,7 +158,7 @@ func getReadyReplicasCount(ctx context.Context, client runtimeclient.Client, sca
 	return readyPodCount, nil
 }
 
-func doFallback(ctx context.Context, client runtimeclient.Client, scaleClient scale.ScalesGetter, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, currentReplicas int32, suppressedError error) []external_metrics.ExternalMetricValue {
+func doFallback(ctx context.Context, client runtimeclient.Client, scaleClient scale.ScalesGetter, scaledObject *kedav1alpha1.ScaledObject, metricSpec v2.MetricSpec, metricName string, currentReplicas int32, suppressedError error, metrics []external_metrics.ExternalMetricValue) []external_metrics.ExternalMetricValue {
 	fallbackBehavior := scaledObject.Spec.Fallback.Behavior
 	fallbackReplicas := int64(scaledObject.Spec.Fallback.Replicas)
 	var replicas float64
@@ -182,6 +182,13 @@ func doFallback(ctx context.Context, client runtimeclient.Client, scaleClient sc
 		} else {
 			replicas = float64(fallbackReplicas)
 		}
+	case kedav1alpha1.FallbackBehaviorCached:
+		if len(metrics) > 0 {
+			log.V(1).Info("Fallback behavior is set to cached, using metrics from cache", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "metricName", metricName)
+			return metrics
+		}
+		log.Info("Fallback behavior is set to cached, but no metrics were found in the cache", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name, "metricName", metricName)
+		replicas = float64(fallbackReplicas)
 	default:
 		replicas = float64(fallbackReplicas)
 	}

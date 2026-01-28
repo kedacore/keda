@@ -75,6 +75,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
+- **General**: Added Cached fallback behavior ([#6923](https://github.com/kedacore/keda/pull/6923))
 - **General**: Correct error message when awsSecretAccessKey is missing in credential-based authentication ([#7265](https://github.com/kedacore/keda/pull/7265))
 - **General**: Emit more events about what is happening with ScaledObject/ScaledJob ([#7382](https://github.com/kedacore/keda/issues/7382))
 - **General**: Raw metrics stream - include trigger activity status in response ([#7369](https://github.com/kedacore/keda/issues/7369))

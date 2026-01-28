@@ -447,6 +447,27 @@ func (h *scaleHandler) ClearScalersCache(ctx context.Context, scalableObject int
 	return nil
 }
 
+// resetScalersCacheKeepMetrics invalidates only the Scalers cache for the input scalableObject,
+// while preserving the metrics cache. This is useful on scaler errors to force a rebuild of
+// scaler instances but keep last known good metrics available for fallback behavior.
+func (h *scaleHandler) resetScalersCacheKeepMetrics(ctx context.Context, scalableObject interface{}) error {
+	withTriggers, err := kedav1alpha1.AsDuckWithTriggers(scalableObject)
+	if err != nil {
+		return err
+	}
+
+	key := withTriggers.GenerateIdentifier()
+
+	h.scalerCachesLock.Lock()
+	defer h.scalerCachesLock.Unlock()
+	if cache, ok := h.scalerCaches[key]; ok {
+		log.V(1).WithValues("key", key).Info("Removing entry from ScalersCache (keeping metrics cache)")
+		cache.Close(ctx)
+		delete(h.scalerCaches, key)
+	}
+	return nil
+}
+
 /// --------------------------------------------------------------------------- ///
 /// ----------             ScaledObject related methods               --------- ///
 /// --------------------------------------------------------------------------- ///
@@ -629,7 +650,7 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 	// invalidate the cache for the ScaledObject, if we hit an error in any scaler
 	// in this case we try to build all scalers (and resolve all secrets/creds) again in the next call
 	if isScalerError {
-		err := h.ClearScalersCache(ctx, scaledObject)
+		err := h.resetScalersCacheKeepMetrics(ctx, scaledObject)
 		if err != nil {
 			logger.Error(err, "error clearing scalers cache")
 		}
@@ -749,7 +770,7 @@ func (h *scaleHandler) getScaledObjectState(ctx context.Context, scaledObject *k
 	// invalidate the cache for the ScaledObject, if we hit an error in any scaler
 	// in this case we try to build all scalers (and resolve all secrets/creds) again in the next call
 	if isScaledObjectError {
-		err := h.ClearScalersCache(ctx, scaledObject)
+		err := h.resetScalersCacheKeepMetrics(ctx, scaledObject)
 		if err != nil {
 			logger.Error(err, "error clearing scalers cache")
 		}
