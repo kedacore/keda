@@ -576,11 +576,12 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 
 	metricsSpecs := []v2.MetricSpec{createMetricSpec(1, "metric-name")}
+	metricValue := scalers.GenerateMetricInMili("metric-name", float64(10))
 
 	activeFactory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
 		scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
-		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{}, true, nil)
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue}, true, nil)
 		scaler.EXPECT().Close(gomock.Any())
 		return scaler, &scalersconfig.ScalerConfig{}, nil
 	}
@@ -607,6 +608,9 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
 				Name: "test",
 			},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ExternalMetricNames: []string{"metric-name"},
 		},
 	}
 
@@ -645,10 +649,10 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, true, isError)
-	assert.Equal(t, []string{"*mock_scalers.MockScaler"}, activeTriggers)
+	assert.Equal(t, []string{"metric-name"}, activeTriggers)
 }
 
-func TestIsScaledJobActive(t *testing.T) {
+func TestGetScaledJobState(t *testing.T) {
 	metricName := "s0-queueLength"
 	ctrl := gomock.NewController(t)
 	recorder := record.NewFakeRecorder(1)
@@ -680,7 +684,7 @@ func TestIsScaledJobActive(t *testing.T) {
 		subsLock:                 &sync.RWMutex{},
 	}
 	// nosemgrep: context-todo
-	isActive, isError, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
+	isActive, isError, queueLength, maxValue, _ := sh.getScaledJobState(context.TODO(), scaledJobSingle)
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, false, isError)
 	assert.Equal(t, int64(20), queueLength)
@@ -741,7 +745,7 @@ func TestIsScaledJobActive(t *testing.T) {
 		}
 		fmt.Printf("index: %d", index)
 		// nosemgrep: context-todo
-		isActive, isError, queueLength, maxValue = sh.isScaledJobActive(context.TODO(), scaledJob)
+		isActive, isError, queueLength, maxValue, _ := sh.getScaledJobState(context.TODO(), scaledJob)
 		//	assert.Equal(t, 5, index)
 		assert.Equal(t, scalerTestData.ResultIsActive, isActive)
 		assert.Equal(t, scalerTestData.ResultIsError, isError)
@@ -751,7 +755,7 @@ func TestIsScaledJobActive(t *testing.T) {
 	}
 }
 
-func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T) {
+func TestGetScaledJobStateIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T) {
 	metricName := "s0-queueLength"
 	ctrl := gomock.NewController(t)
 	recorder := record.NewFakeRecorder(1)
@@ -786,7 +790,7 @@ func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T
 	}
 
 	// nosemgrep: context-todo
-	isActive, isError, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
+	isActive, isError, queueLength, maxValue, _ := sh.getScaledJobState(context.TODO(), scaledJobSingle)
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, false, isError)
 	assert.Equal(t, int64(0), queueLength)

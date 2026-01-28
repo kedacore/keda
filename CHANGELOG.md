@@ -109,6 +109,7 @@ New deprecation(s):
 
 - **CI**: Replace stale bot with official GitHub Actions stale action ([#7321](https://github.com/kedacore/keda/issues/7321))
 - **CI**: Use GitHub-hosted ARM64 runners ([#7293](https://github.com/kedacore/keda/issues/7293))
+- **ScaledObject/ScaledJob**: Track activity for each trigger in the status ([#7347](https://github.com/kedacore/keda/issues/7347))
 
 ## v2.18.3
 

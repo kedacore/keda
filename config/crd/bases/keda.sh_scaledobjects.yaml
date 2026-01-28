@@ -440,6 +440,15 @@ spec:
                 type: object
               scaleTargetKind:
                 type: string
+              triggersActivity:
+                additionalProperties:
+                  description: TriggerActivityStatus represents the activity status
+                    of an external trigger
+                  properties:
+                    isActive:
+                      type: boolean
+                  type: object
+                type: object
               triggersTypes:
                 type: string
             type: object
