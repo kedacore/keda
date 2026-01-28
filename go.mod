@@ -1,6 +1,6 @@
 module github.com/kedacore/keda/v2
 
-go 1.25.5
+go 1.25.6
 
 replace (
 	// we need a version with a proper license
