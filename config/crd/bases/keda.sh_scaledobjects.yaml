@@ -276,6 +276,7 @@ spec:
                     - currentReplicas
                     - currentReplicasIfHigher
                     - currentReplicasIfLower
+                    - triggerScoped
                     type: string
                   failureThreshold:
                     format: int32

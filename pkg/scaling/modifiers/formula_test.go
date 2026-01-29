@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/expr-lang/expr"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -79,6 +80,148 @@ func TestArrayContainsElement(t *testing.T) {
 			if result != tt.expected {
 				t.Errorf("ArrayContainsElement(%q, %v) = %v, want %v", tt.element, tt.array, result, tt.expected)
 			}
+		})
+	}
+}
+
+func TestShouldTriggerBeNil(t *testing.T) {
+	// Note: metricName in these tests uses simple names like "trigger-a" for clarity,
+	// but in actual usage it would be the HPA-generated metric name (e.g., "s0-trigger-a")
+	tests := []struct {
+		name           string
+		scaledObject   *kedav1alpha1.ScaledObject
+		metricName     string
+		expectedResult bool
+		description    string
+	}{
+		{
+			name: "no fallback configured",
+			scaledObject: &kedav1alpha1.ScaledObject{
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					Fallback: nil,
+				},
+				Status: kedav1alpha1.ScaledObjectStatus{},
+			},
+			metricName:     "trigger-a",
+			expectedResult: false,
+			description:    "should return false when no fallback is configured",
+		},
+		{
+			name: "no health status for trigger",
+			scaledObject: &kedav1alpha1.ScaledObject{
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					Fallback: &kedav1alpha1.Fallback{
+						FailureThreshold: 3,
+						Replicas:         5,
+						Behavior:         kedav1alpha1.FallbackBehaviorTriggerScoped,
+					},
+				},
+				Status: kedav1alpha1.ScaledObjectStatus{
+					Health: map[string]kedav1alpha1.HealthStatus{},
+				},
+			},
+			metricName:     "trigger-a",
+			expectedResult: false,
+			description:    "should return false when trigger has no health status",
+		},
+		{
+			name: "trigger failures below threshold",
+			scaledObject: &kedav1alpha1.ScaledObject{
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					Fallback: &kedav1alpha1.Fallback{
+						FailureThreshold: 3,
+						Replicas:         5,
+						Behavior:         kedav1alpha1.FallbackBehaviorTriggerScoped,
+					},
+				},
+				Status: kedav1alpha1.ScaledObjectStatus{
+					Health: map[string]kedav1alpha1.HealthStatus{
+						"trigger-a": {
+							NumberOfFailures: int32Ptr(2),
+							Status:           kedav1alpha1.HealthStatusFailing,
+						},
+					},
+				},
+			},
+			metricName:     "trigger-a",
+			expectedResult: false,
+			description:    "should return false when failures are below threshold",
+		},
+		{
+			name: "trigger failures at threshold",
+			scaledObject: &kedav1alpha1.ScaledObject{
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					Fallback: &kedav1alpha1.Fallback{
+						FailureThreshold: 3,
+						Replicas:         5,
+						Behavior:         kedav1alpha1.FallbackBehaviorTriggerScoped,
+					},
+				},
+				Status: kedav1alpha1.ScaledObjectStatus{
+					Health: map[string]kedav1alpha1.HealthStatus{
+						"trigger-a": {
+							NumberOfFailures: int32Ptr(3),
+							Status:           kedav1alpha1.HealthStatusFailing,
+						},
+					},
+				},
+			},
+			metricName:     "trigger-a",
+			expectedResult: true,
+			description:    "should return true when failures equal threshold",
+		},
+		{
+			name: "trigger failures exceed threshold",
+			scaledObject: &kedav1alpha1.ScaledObject{
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					Fallback: &kedav1alpha1.Fallback{
+						FailureThreshold: 3,
+						Replicas:         5,
+						Behavior:         kedav1alpha1.FallbackBehaviorTriggerScoped,
+					},
+				},
+				Status: kedav1alpha1.ScaledObjectStatus{
+					Health: map[string]kedav1alpha1.HealthStatus{
+						"trigger-a": {
+							NumberOfFailures: int32Ptr(5),
+							Status:           kedav1alpha1.HealthStatusFailing,
+						},
+					},
+				},
+			},
+			metricName:     "trigger-a",
+			expectedResult: true,
+			description:    "should return true when failures exceed threshold",
+		},
+		{
+			name: "trigger healthy after failures",
+			scaledObject: &kedav1alpha1.ScaledObject{
+				Spec: kedav1alpha1.ScaledObjectSpec{
+					Fallback: &kedav1alpha1.Fallback{
+						FailureThreshold: 3,
+						Replicas:         5,
+						Behavior:         kedav1alpha1.FallbackBehaviorTriggerScoped,
+					},
+				},
+				Status: kedav1alpha1.ScaledObjectStatus{
+					Health: map[string]kedav1alpha1.HealthStatus{
+						"trigger-a": {
+							NumberOfFailures: int32Ptr(0),
+							Status:           kedav1alpha1.HealthStatusHappy,
+						},
+					},
+				},
+			},
+			metricName:     "trigger-a",
+			expectedResult: false,
+			description:    "should return false when trigger is healthy (failures reset to 0)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := shouldTriggerBeNil(tt.scaledObject, tt.metricName)
+			assert.Equal(t, tt.expectedResult, result, tt.description)
 		})
 	}
 }
@@ -195,7 +338,10 @@ func TestCalculateScalingModifiersFormula(t *testing.T) {
 		CompiledFormula: compiledFormula,
 	}
 
+	scaledObject := &kedav1alpha1.ScaledObject{}
+
 	result, err := calculateScalingModifiersFormula(
+		scaledObject,
 		[]external_metrics.ExternalMetricValue{metric1, metric2},
 		cacheObj,
 		pairList,
@@ -222,7 +368,10 @@ func TestCalculateScalingModifiersFormulaNilCompiled(t *testing.T) {
 		CompiledFormula: nil,
 	}
 
+	scaledObject := &kedav1alpha1.ScaledObject{}
+
 	_, err := calculateScalingModifiersFormula(
+		scaledObject,
 		[]external_metrics.ExternalMetricValue{},
 		cacheObj,
 		map[string]string{},
@@ -230,4 +379,8 @@ func TestCalculateScalingModifiersFormulaNilCompiled(t *testing.T) {
 	if err == nil {
 		t.Error("calculateScalingModifiersFormula() with nil compiled formula should return error")
 	}
+}
+
+func int32Ptr(i int32) *int32 {
+	return &i
 }
