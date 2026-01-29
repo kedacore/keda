@@ -1161,6 +1161,83 @@ var _ = It("should validate the so creation with ScalingModifiers.Formula - doub
 	}).ShouldNot(HaveOccurred())
 })
 
+var _ = It("should validate the so creation with triggerScoped fallback behavior", func() {
+	namespaceName := "trigger-scoped-fallback-valid"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	sm := ScalingModifiers{Target: "2", Formula: "trig_one ?? trig_two ?? 5"}
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Name: "trig_one",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+		{
+			Type: "kubernetes-workload",
+			Name: "trig_two",
+			Metadata: map[string]string{
+				"podSelector": "pod=workload-test",
+				"value":       "1",
+			},
+		},
+	}
+
+	so := createScaledObjectScalingModifiers(namespaceName, sm, triggers)
+	so.Spec.Fallback = &Fallback{
+		FailureThreshold: 3,
+		Replicas:         5,
+		Behavior:         FallbackBehaviorTriggerScoped,
+	}
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).ShouldNot(HaveOccurred())
+})
+
+var _ = It("shouldnt validate the so creation with triggerScoped fallback without formula", func() {
+	namespaceName := "trigger-scoped-fallback-no-formula"
+	namespace := createNamespace(namespaceName)
+	workload := createDeployment(namespaceName, false, false)
+
+	triggers := []ScaleTriggers{
+		{
+			Type: "cron",
+			Metadata: map[string]string{
+				"timezone":        "UTC",
+				"start":           "0 * * * *",
+				"end":             "1 * * * *",
+				"desiredReplicas": "1",
+			},
+		},
+	}
+
+	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", false, map[string]string{}, "")
+	so.Spec.Triggers = triggers
+	so.Spec.Fallback = &Fallback{
+		FailureThreshold: 3,
+		Replicas:         5,
+		Behavior:         FallbackBehaviorTriggerScoped,
+	}
+
+	err := k8sClient.Create(context.Background(), namespace)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8sClient.Create(context.Background(), workload)
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(func() error {
+		return k8sClient.Create(context.Background(), so)
+	}).Should(HaveOccurred())
+})
+
 var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
