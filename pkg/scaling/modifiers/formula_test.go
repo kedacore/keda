@@ -26,11 +26,11 @@ import (
 
 func TestShouldTriggerBeNil(t *testing.T) {
 	tests := []struct {
-		name               string
-		scaledObject       *kedav1alpha1.ScaledObject
-		metricName         string
-		expectedResult     bool
-		description        string
+		name           string
+		scaledObject   *kedav1alpha1.ScaledObject
+		metricName     string
+		expectedResult bool
+		description    string
 	}{
 		{
 			name: "no fallback configured",
