@@ -182,17 +182,17 @@ metadata:
   namespace: {{.TestNamespace}}
 spec:
   ttlSecondsAfterFinished: 0
+  backoffLimit: 4
   template:
     spec:
       containers:
       - name: clickhouse-client
         image: clickhouse/clickhouse-client:24.3
         command:
-        - sh
-        - -c
-        - "{{.JobCommand}}"
+          - sh
+          - -c
+          - "{{.JobCommand}}"
       restartPolicy: Never
-  backoffLimit: 4
 `
 )
 
