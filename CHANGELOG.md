@@ -68,7 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **ScaledObject**: Add `triggerScoped` fallback behavior for formula-based multi-trigger failover ([#7366](https://github.com/kedacore/keda/discussions/7366))
 
 #### Experimental
 
