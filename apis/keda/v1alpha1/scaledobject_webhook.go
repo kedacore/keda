@@ -354,6 +354,17 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error 
 			return err
 		}
 	}
+
+	// verify triggerScoped fallback behavior requirements
+	if incomingSo.Spec.Fallback != nil && incomingSo.Spec.Fallback.Behavior == FallbackBehaviorTriggerScoped {
+		err = validateTriggerScopedBehavior(incomingSo)
+		if err != nil {
+			scaledobjectlog.Error(err, "error validating triggerScoped fallback behavior")
+			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "trigger-scoped-fallback")
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -534,6 +545,26 @@ func validateScalingModifiersTarget(so *ScaledObject) error {
 	if so.Spec.Advanced.ScalingModifiers.MetricType == autoscalingv2.UtilizationMetricType {
 		err := fmt.Errorf("error trigger type is Utilization, but it needs to be AverageValue or Value for external metrics")
 		return err
+	}
+
+	return nil
+}
+
+// validateTriggerScopedBehavior validates that triggerScoped behavior has required configuration
+func validateTriggerScopedBehavior(so *ScaledObject) error {
+	// triggerScoped requires formula to be defined
+	if !so.IsUsingModifiers() || so.Spec.Advanced.ScalingModifiers.Formula == "" {
+		return fmt.Errorf("triggerScoped fallback behavior requires scalingModifiers.formula to be defined")
+	}
+
+	// validate failureThreshold is positive
+	if so.Spec.Fallback.FailureThreshold < 0 {
+		return fmt.Errorf("fallback.failureThreshold must be non-negative, got %d", so.Spec.Fallback.FailureThreshold)
+	}
+
+	// validate replicas is non-negative
+	if so.Spec.Fallback.Replicas < 0 {
+		return fmt.Errorf("fallback.replicas must be non-negative, got %d", so.Spec.Fallback.Replicas)
 	}
 
 	return nil
