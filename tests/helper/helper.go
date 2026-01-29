@@ -86,17 +86,18 @@ var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // Env variables required for setup and cleanup.
 var (
-	AzureADMsiID                  = os.Getenv("TF_AZURE_IDENTITY_1_APP_FULL_ID")
+	AwsIdentityTests              = os.Getenv("AWS_RUN_IDENTITY_TESTS")
 	AzureADMsiClientID            = os.Getenv("TF_AZURE_IDENTITY_1_APP_ID")
+	AzureADMsiID                  = os.Getenv("TF_AZURE_IDENTITY_1_APP_FULL_ID")
 	AzureADTenantID               = os.Getenv("TF_AZURE_SP_TENANT")
 	AzureRunWorkloadIdentityTests = os.Getenv("AZURE_RUN_WORKLOAD_IDENTITY_TESTS")
-	AwsIdentityTests              = os.Getenv("AWS_RUN_IDENTITY_TESTS")
-	GcpIdentityTests              = os.Getenv("GCP_RUN_IDENTITY_TESTS")
+	EnableFileAuth                = os.Getenv("ENABLE_FILE_AUTH")
 	EnableOpentelemetry           = os.Getenv("ENABLE_OPENTELEMETRY")
+	GcpIdentityTests              = os.Getenv("GCP_RUN_IDENTITY_TESTS")
 	InstallArgoRollouts           = os.Getenv("E2E_INSTALL_ARGO_ROLLOUTS")
 	InstallCertManager            = AwsIdentityTests == StringTrue || GcpIdentityTests == StringTrue
-	InstallKeda                   = os.Getenv("E2E_INSTALL_KEDA")
 	InstallKafka                  = os.Getenv("E2E_INSTALL_KAFKA")
+	InstallKeda                   = os.Getenv("E2E_INSTALL_KEDA")
 )
 
 func init() {
@@ -1038,7 +1039,7 @@ func generateCA(t *testing.T) {
 	require.NoErrorf(t, err, "error generating custom CA - %s", err)
 
 	// pem encode
-	crtFile, err := os.OpenFile(caCrtPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	crtFile, err := os.OpenFile(caCrtPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	require.NoErrorf(t, err, "error opening custom CA file - %s", err)
 	err = pem.Encode(crtFile, &pem.Block{
 		Type:  "CERTIFICATE",
@@ -1049,7 +1050,7 @@ func generateCA(t *testing.T) {
 		require.NoErrorf(t, err, "error closing custom CA file - %s", err)
 	}
 
-	keyFile, err := os.OpenFile(caKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyFile, err := os.OpenFile(caKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		require.NoErrorf(t, err, "error opening custom CA key file- %s", err)
 	}
