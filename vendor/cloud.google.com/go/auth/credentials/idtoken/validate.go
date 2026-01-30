@@ -76,6 +76,16 @@ type Validator struct {
 	es256URL string
 }
 
+// Payload represents a decoded payload of an ID token.
+type Payload struct {
+	Issuer   string                 `json:"iss"`
+	Audience string                 `json:"aud"`
+	Expires  int64                  `json:"exp"`
+	IssuedAt int64                  `json:"iat"`
+	Subject  string                 `json:"sub,omitempty"`
+	Claims   map[string]interface{} `json:"-"`
+}
+
 // ValidatorOptions provides a way to configure a [Validator].
 type ValidatorOptions struct {
 	// Client used to make requests to the certs URL. Optional.

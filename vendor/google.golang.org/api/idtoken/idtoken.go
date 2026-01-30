@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -20,6 +21,7 @@ import (
 	"cloud.google.com/go/auth/oauth2adapt"
 	"google.golang.org/api/impersonate"
 	"google.golang.org/api/internal"
+	"google.golang.org/api/internal/credentialstype"
 	"google.golang.org/api/option"
 	"google.golang.org/api/option/internaloption"
 	htransport "google.golang.org/api/transport/http"
@@ -30,13 +32,38 @@ import (
 // ClientOption is for configuring a Google API client or transport.
 type ClientOption = option.ClientOption
 
-type credentialsType int
+// CredentialsType specifies the type of JSON credentials being provided
+// to a loading function such as [WithAuthCredentialsFile] or
+// [WithAuthCredentialsJSON].
+type CredentialsType = credentialstype.CredType
 
 const (
-	unknownCredType credentialsType = iota
-	serviceAccount
-	impersonatedServiceAccount
-	externalAccount
+	// ServiceAccount represents a service account file type.
+	ServiceAccount = credentialstype.ServiceAccount
+	// AuthorizedUser represents an authorized user credentials file type.
+	AuthorizedUser = credentialstype.AuthorizedUser
+	// ImpersonatedServiceAccount represents an impersonated service account file type.
+	//
+	// IMPORTANT:
+	// This credential type does not validate the credential configuration. A security
+	// risk occurs when a credential configuration configured with malicious urls
+	// is used.
+	// You should validate credential configurations provided by untrusted sources.
+	// See [Security requirements when using credential configurations from an external
+	// source] https://cloud.google.com/docs/authentication/external/externally-sourced-credentials
+	// for more details.
+	ImpersonatedServiceAccount = credentialstype.ImpersonatedServiceAccount
+	// ExternalAccount represents an external account file type.
+	//
+	// IMPORTANT:
+	// This credential type does not validate the credential configuration. A security
+	// risk occurs when a credential configuration configured with malicious urls
+	// is used.
+	// You should validate credential configurations provided by untrusted sources.
+	// See [Security requirements when using credential configurations from an external
+	// source] https://cloud.google.com/docs/authentication/external/externally-sourced-credentials
+	// for more details.
+	ExternalAccount = credentialstype.ExternalAccount
 )
 
 // NewClient creates a HTTP Client that automatically adds an ID token to each
@@ -68,9 +95,12 @@ func NewClient(ctx context.Context, audience string, opts ...ClientOption) (*htt
 	// Skip DialSettings validation so added TokenSource will not conflict with user
 	// provided credentials.
 	opts = append(opts, option.WithTokenSource(ts), internaloption.SkipDialSettingsValidation())
-	httpTransport := http.DefaultTransport.(*http.Transport).Clone()
-	httpTransport.MaxIdleConnsPerHost = 100
-	t, err := htransport.NewTransport(ctx, httpTransport, opts...)
+	defaultTrans := http.DefaultTransport
+	if trans, ok := defaultTrans.(*http.Transport); ok {
+		defaultTrans = trans.Clone()
+		defaultTrans.(*http.Transport).MaxIdleConnsPerHost = 100
+	}
+	t, err := htransport.NewTransport(ctx, defaultTrans, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -107,11 +137,33 @@ func newTokenSourceNewAuth(ctx context.Context, audience string, ds *internal.Di
 	if ds.AuthCredentials != nil {
 		return nil, fmt.Errorf("idtoken: option.WithTokenProvider not supported")
 	}
+
+	var credsJSON []byte
+	var credsType credentialstype.CredType
+	var err error
+
+	credsFile, fileCredsType := ds.GetAuthCredentialsFile()
+	if credsFile != "" {
+		credsJSON, err = os.ReadFile(credsFile)
+		if err != nil {
+			return nil, fmt.Errorf("idtoken: cannot read credentials file: %v", err)
+		}
+		credsType = fileCredsType
+	} else {
+		credsJSON, credsType = ds.GetAuthCredentialsJSON()
+	}
+
+	if credsType != credentialstype.Unknown {
+		allowed := []credentialstype.CredType{ServiceAccount, ImpersonatedServiceAccount, ExternalAccount}
+		if err := credentialstype.CheckCredentialType(credsJSON, credsType, allowed...); err != nil {
+			return nil, err
+		}
+	}
+
 	creds, err := newidtoken.NewCredentials(&newidtoken.Options{
 		Audience:        audience,
 		CustomClaims:    ds.CustomClaims,
-		CredentialsFile: ds.CredentialsFile,
-		CredentialsJSON: ds.CredentialsJSON,
+		CredentialsJSON: credsJSON, // Pass the bytes to avoid re-reading the file.
 		Client:          oauth2.NewClient(ctx, nil),
 		Logger:          ds.Logger,
 	})
@@ -138,12 +190,12 @@ func newTokenSource(ctx context.Context, audience string, ds *internal.DialSetti
 }
 
 func tokenSourceFromBytes(ctx context.Context, data []byte, audience string, ds *internal.DialSettings) (oauth2.TokenSource, error) {
-	allowedType, err := getAllowedType(data)
+	credType, err := credentialstype.GetCredType(data)
 	if err != nil {
 		return nil, err
 	}
-	switch allowedType {
-	case serviceAccount:
+	switch credType {
+	case ServiceAccount:
 		cfg, err := google.JWTConfigFromJSON(data, ds.GetScopes()...)
 		if err != nil {
 			return nil, err
@@ -163,7 +215,7 @@ func tokenSourceFromBytes(ctx context.Context, data []byte, audience string, ds 
 			return nil, err
 		}
 		return oauth2.ReuseTokenSource(tok, ts), nil
-	case impersonatedServiceAccount, externalAccount:
+	case ImpersonatedServiceAccount, ExternalAccount:
 		type url struct {
 			ServiceAccountImpersonationURL string `json:"service_account_impersonation_url"`
 		}
@@ -179,43 +231,13 @@ func tokenSourceFromBytes(ctx context.Context, data []byte, audience string, ds 
 			TargetPrincipal: account,
 			IncludeEmail:    true,
 		}
-		ts, err := impersonate.IDTokenSource(ctx, config, option.WithCredentialsJSON(data))
+		ts, err := impersonate.IDTokenSource(ctx, config, option.WithAuthCredentialsJSON(credType, data))
 		if err != nil {
 			return nil, err
 		}
 		return ts, nil
 	default:
-		return nil, fmt.Errorf("idtoken: unsupported credentials type")
-	}
-}
-
-// getAllowedType returns the credentials type of type credentialsType, and an error.
-// allowed types are "service_account" and "impersonated_service_account"
-func getAllowedType(data []byte) (credentialsType, error) {
-	var t credentialsType
-	if len(data) == 0 {
-		return t, fmt.Errorf("idtoken: credential provided is 0 bytes")
-	}
-	var f struct {
-		Type string `json:"type"`
-	}
-	if err := json.Unmarshal(data, &f); err != nil {
-		return t, err
-	}
-	t = parseCredType(f.Type)
-	return t, nil
-}
-
-func parseCredType(typeString string) credentialsType {
-	switch typeString {
-	case "service_account":
-		return serviceAccount
-	case "impersonated_service_account":
-		return impersonatedServiceAccount
-	case "external_account":
-		return externalAccount
-	default:
-		return unknownCredType
+		return nil, fmt.Errorf("idtoken: unsupported credentials type: %q", credType)
 	}
 }
 
@@ -233,15 +255,91 @@ func (w withCustomClaims) Apply(o *internal.DialSettings) {
 // WithCredentialsFile returns a ClientOption that authenticates
 // API calls with the given service account or refresh token JSON
 // credentials file.
+//
+// Deprecated:  This function is being deprecated because of a potential security risk.
+//
+// This function does not validate the credential configuration. The security
+// risk occurs when a credential configuration is accepted from a source that
+// is not under your control and used without validation on your side.
+//
+// If you know that you will be loading credential configurations of a
+// specific type, it is recommended to use a credential-type-specific
+// option function.
+// This will ensure that an unexpected credential type with potential for
+// malicious intent is not loaded unintentionally. You might still have to do
+// validation for certain credential types. Please follow the recommendation
+// for that function. For example, if you want to load only service accounts,
+// you can use [WithAuthCredentialsFile] with [ServiceAccount]:
+//
+//	option.WithAuthCredentialsFile(option.ServiceAccount, "/path/to/file.json")
+//
+// If you are loading your credential configuration from an untrusted source and have
+// not mitigated the risks (e.g. by validating the configuration yourself), make
+// these changes as soon as possible to prevent security risks to your environment.
+//
+// Regardless of the function used, it is always your responsibility to validate
+// configurations received from external sources.
 func WithCredentialsFile(filename string) ClientOption {
 	return option.WithCredentialsFile(filename)
+}
+
+// WithAuthCredentialsFile returns a ClientOption that authenticates API calls
+// with the given JSON credentials file and credential type.
+//
+// Important: If you accept a credential configuration (credential
+// JSON/File/Stream) from an external source for authentication to Google
+// Cloud Platform, you must validate it before providing it to any Google
+// API or library. Providing an unvalidated credential configuration to
+// Google APIs can compromise the security of your systems and data. For
+// more information, refer to [Validate credential configurations from
+// external sources](https://cloud.google.com/docs/authentication/external/externally-sourced-credentials).
+func WithAuthCredentialsFile(credType CredentialsType, filename string) ClientOption {
+	return option.WithAuthCredentialsFile(credType, filename)
 }
 
 // WithCredentialsJSON returns a ClientOption that authenticates
 // API calls with the given service account or refresh token JSON
 // credentials.
+//
+// Deprecated:  This function is being deprecated because of a potential security risk.
+//
+// This function does not validate the credential configuration. The security
+// risk occurs when a credential configuration is accepted from a source that
+// is not under your control and used without validation on your side.
+//
+// If you know that you will be loading credential configurations of a
+// specific type, it is recommended to use a credential-type-specific
+// option function.
+// This will ensure that an unexpected credential type with potential for
+// malicious intent is not loaded unintentionally. You might still have to do
+// validation for certain credential types. Please follow the recommendation
+// for that function. For example, if you want to load only service accounts,
+// you can use [WithAuthCredentialsJSON] with [ServiceAccount]:
+//
+//	option.WithAuthCredentialsJSON(option.ServiceAccount, json)
+//
+// If you are loading your credential configuration from an untrusted source and have
+// not mitigated the risks (e.g. by validating the configuration yourself), make
+// these changes as soon as possible to prevent security risks to your environment.
+//
+// Regardless of the function used, it is always your responsibility to validate
+// configurations received from external sources.
 func WithCredentialsJSON(p []byte) ClientOption {
 	return option.WithCredentialsJSON(p)
+}
+
+// WithAuthCredentialsJSON returns a ClientOption that authenticates API calls
+// with the given JSON credentials and credential type.
+//
+// Important: If you accept a credential configuration (credential
+// JSON/File/Stream) from an external source for authentication to Google
+// Cloud Platform, you must validate it before providing it to any Google
+// API or library. Providing an unvalidated credential configuration to
+// Google APIs can compromise the security of your systems and data. For
+// more information, refer to [Validate credential configurations from
+// external sources](https://cloud.google.com/docs/authentication/external/externally-sourced-credentials).
+func WithAuthCredentialsJSON(credType CredentialsType, json []byte) ClientOption {
+	return option.WithAuthCredentialsJSON(credType, json)
 }
 
 // WithHTTPClient returns a ClientOption that specifies the HTTP client to use

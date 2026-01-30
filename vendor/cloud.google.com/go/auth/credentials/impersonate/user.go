@@ -179,6 +179,7 @@ func (u userTokenProvider) exchangeToken(ctx context.Context, signedJWT string) 
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	u.logger.DebugContext(ctx, "impersonated user token exchange request", "request", internallog.HTTPRequest(req, []byte(v.Encode())))
 	resp, body, err := internal.DoRequest(u.client, req)
 	if err != nil {
