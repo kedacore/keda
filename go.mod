@@ -46,6 +46,8 @@ require (
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0
 	github.com/DataDog/datadog-api-client-go v1.16.0
 	github.com/Huawei/gophercloud v1.0.21
+	github.com/akeylesslabs/akeyless-go-cloud-id v0.3.5
+	github.com/akeylesslabs/akeyless-go/v5 v5.0.14
 	github.com/IBM/sarama v1.46.3
 	github.com/InfluxCommunity/influxdb3-go/v2 v2.12.0
 	github.com/arangodb/go-driver v1.6.9
@@ -149,6 +151,11 @@ require (
 	sigs.k8s.io/controller-tools v0.20.0
 	sigs.k8s.io/custom-metrics-apiserver v1.34.0
 	sigs.k8s.io/kustomize/kustomize/v5 v5.8.0
+)
+
+require (
+	github.com/aws/aws-sdk-go v1.55.7 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )
 
 require (
