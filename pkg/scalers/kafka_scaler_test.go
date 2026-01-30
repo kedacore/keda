@@ -874,3 +874,145 @@ func (m *MockClusterAdmin) Close() error {
 func (m *MockClusterAdmin) Coordinator(group string) (*sarama.Broker, error) {
 	return nil, nil
 }
+
+func TestGetLagForPartition_MissingPartition(t *testing.T) {
+	tests := []struct {
+		name                       string
+		consumerOffset             int64
+		topicPartitionOffsets      map[string]map[int32]int64
+		offsetResetPolicy          offsetResetPolicy
+		scaleToZeroOnInvalidOffset bool
+		expectedLag                int64
+		expectedLagWithPersistent  int64
+		expectedError              bool
+		description                string
+	}{
+		{
+			name:           "Scenario 1: scaleToZeroOnInvalidOffset true, invalid consumer offset, missing partition",
+			consumerOffset: invalidOffset,
+			topicPartitionOffsets: map[string]map[int32]int64{
+				"test-topic": {
+					// Partition 0 is missing - simulates Azure Event Hub not returning it
+				},
+			},
+			offsetResetPolicy:          earliest,
+			scaleToZeroOnInvalidOffset: true,
+			expectedLag:                0,
+			expectedLagWithPersistent:  0,
+			expectedError:              false,
+			description:                "With scaleToZeroOnInvalidOffset true, should return 0 lag early without needing latestOffset",
+		},
+		{
+			name:           "Scenario 2: scaleToZeroOnInvalidOffset false, invalid consumer offset, missing partition",
+			consumerOffset: invalidOffset,
+			topicPartitionOffsets: map[string]map[int32]int64{
+				"test-topic": {
+					// Partition 0 is missing
+				},
+			},
+			offsetResetPolicy:          earliest,
+			scaleToZeroOnInvalidOffset: false,
+			expectedLag:                0,
+			expectedLagWithPersistent:  0,
+			expectedError:              false,
+			description:                "With scaleToZeroOnInvalidOffset false, missing partition should be treated as 0 lag instead of error",
+		},
+		{
+			name:           "Scenario 3: Valid consumer offset, missing partition in topicPartitionOffsets",
+			consumerOffset: 100,
+			topicPartitionOffsets: map[string]map[int32]int64{
+				"test-topic": {
+					// Partition 0 is missing - consumer has offset 100 but we can't get latestOffset
+				},
+			},
+			offsetResetPolicy:          earliest,
+			scaleToZeroOnInvalidOffset: false,
+			expectedLag:                0,
+			expectedLagWithPersistent:  0,
+			expectedError:              false,
+			description:                "Valid consumer offset but missing partition should be treated as 0 lag, not cause error",
+		},
+		{
+			name:           "Control: Valid offsets, no missing partition",
+			consumerOffset: 100,
+			topicPartitionOffsets: map[string]map[int32]int64{
+				"test-topic": {
+					0: 150, // Latest offset exists
+				},
+			},
+			offsetResetPolicy:          earliest,
+			scaleToZeroOnInvalidOffset: false,
+			expectedLag:                50, // 150 - 100 = 50
+			expectedLagWithPersistent:  50,
+			expectedError:              false,
+			description:                "Normal case: both offsets exist, lag calculated correctly",
+		},
+		{
+			name:           "Control: Invalid consumer offset with latest policy and scaleToZeroOnInvalidOffset true",
+			consumerOffset: invalidOffset,
+			topicPartitionOffsets: map[string]map[int32]int64{
+				"test-topic": {
+					0: 150,
+				},
+			},
+			offsetResetPolicy:          latest,
+			scaleToZeroOnInvalidOffset: true,
+			expectedLag:                0,
+			expectedLagWithPersistent:  0,
+			expectedError:              false,
+			description:                "Invalid offset with latest policy and scaleToZeroOnInvalidOffset true should return 0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mock OffsetFetchResponse
+			offsetResponse := &sarama.OffsetFetchResponse{
+				Blocks: make(map[string]map[int32]*sarama.OffsetFetchResponseBlock),
+			}
+			offsetResponse.Blocks["test-topic"] = make(map[int32]*sarama.OffsetFetchResponseBlock)
+			offsetResponse.Blocks["test-topic"][0] = &sarama.OffsetFetchResponseBlock{
+				Offset: tt.consumerOffset,
+				Err:    sarama.ErrNoError,
+			}
+
+			// Create scaler with test configuration
+			scaler := &kafkaScaler{
+				metadata: kafkaMetadata{
+					group:                      "test-group",
+					offsetResetPolicy:          tt.offsetResetPolicy,
+					scaleToZeroOnInvalidOffset: tt.scaleToZeroOnInvalidOffset,
+				},
+				logger:          logr.Discard(),
+				previousOffsets: make(map[string]map[int32]int64),
+			}
+
+			lag, lagWithPersistent, err := scaler.getLagForPartition(
+				"test-topic",
+				0,
+				offsetResponse,
+				tt.topicPartitionOffsets,
+			)
+
+			if tt.expectedError {
+				if err == nil {
+					t.Errorf("Expected error but got none. %s", tt.description)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v. %s", err, tt.description)
+				return
+			}
+
+			if lag != tt.expectedLag {
+				t.Errorf("Expected lag %d but got %d. %s", tt.expectedLag, lag, tt.description)
+			}
+
+			if lagWithPersistent != tt.expectedLagWithPersistent {
+				t.Errorf("Expected lagWithPersistent %d but got %d. %s", tt.expectedLagWithPersistent, lagWithPersistent, tt.description)
+			}
+		})
+	}
+}

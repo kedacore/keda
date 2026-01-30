@@ -3,7 +3,7 @@ package nrqldroprules
 
 import "context"
 
-// Deprecated: The method NRQLDropRulesCreate() is deprecated, as NRQL Drop Rules shall reach their end-of-life on January 7, 2026.
+// Deprecated: The method NRQLDropRulesCreate() is deprecated, as NRQL Drop Rules shall reach their end-of-life on June 30, 2026.
 // It will be removed in a future major version. Switch to the new `pipelinecontrol` package to use Pipeline Cloud Rules, the new alternative to Drop Rules.
 // See the README.md of this package for more details.
 func (a *Nrqldroprules) NRQLDropRulesCreate(
@@ -16,7 +16,7 @@ func (a *Nrqldroprules) NRQLDropRulesCreate(
 	)
 }
 
-// Deprecated: The method NRQLDropRulesCreateWithContext() is deprecated, as NRQL Drop Rules shall reach their end-of-life on January 7, 2026.
+// Deprecated: The method NRQLDropRulesCreateWithContext() is deprecated, as NRQL Drop Rules shall reach their end-of-life on June 30, 2026.
 // It will be removed in a future major version. Switch to the new `pipelinecontrol` package to use Pipeline Cloud Rules, the new alternative to Drop Rules.
 // See the README.md of this package for more details.
 func (a *Nrqldroprules) NRQLDropRulesCreateWithContext(
@@ -85,7 +85,7 @@ const NRQLDropRulesCreateMutation = `mutation(
 	}
 } }`
 
-// Deprecated: The method NRQLDropRulesDelete() is deprecated, as NRQL Drop Rules shall reach their end-of-life on January 7, 2026.
+// Deprecated: The method NRQLDropRulesDelete() is deprecated, as NRQL Drop Rules shall reach their end-of-life on June 30, 2026.
 // It will be removed in a future major version. Switch to the new `pipelinecontrol` package to use Pipeline Cloud Rules, the new alternative to Drop Rules.
 // See the README.md of this package for more details.
 func (a *Nrqldroprules) NRQLDropRulesDelete(
@@ -98,7 +98,7 @@ func (a *Nrqldroprules) NRQLDropRulesDelete(
 	)
 }
 
-// Deprecated: The method NRQLDropRulesDeleteWithContext() is deprecated, as NRQL Drop Rules shall reach their end-of-life on January 7, 2026.
+// Deprecated: The method NRQLDropRulesDeleteWithContext() is deprecated, as NRQL Drop Rules shall reach their end-of-life on June 30, 2026.
 // It will be removed in a future major version. Switch to the new `pipelinecontrol` package to use Pipeline Cloud Rules, the new alternative to Drop Rules.
 // See the README.md of this package for more details.
 func (a *Nrqldroprules) NRQLDropRulesDeleteWithContext(

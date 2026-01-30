@@ -216,6 +216,10 @@ func (s *workflowServiceProxyServer) PauseActivity(ctx context.Context, in0 *wor
 	return s.client.PauseActivity(s.reqCtx(ctx), in0)
 }
 
+func (s *workflowServiceProxyServer) PauseWorkflowExecution(ctx context.Context, in0 *workflowservice.PauseWorkflowExecutionRequest) (*workflowservice.PauseWorkflowExecutionResponse, error) {
+	return s.client.PauseWorkflowExecution(s.reqCtx(ctx), in0)
+}
+
 func (s *workflowServiceProxyServer) PollActivityTaskQueue(ctx context.Context, in0 *workflowservice.PollActivityTaskQueueRequest) (*workflowservice.PollActivityTaskQueueResponse, error) {
 	return s.client.PollActivityTaskQueue(s.reqCtx(ctx), in0)
 }
@@ -366,6 +370,10 @@ func (s *workflowServiceProxyServer) TriggerWorkflowRule(ctx context.Context, in
 
 func (s *workflowServiceProxyServer) UnpauseActivity(ctx context.Context, in0 *workflowservice.UnpauseActivityRequest) (*workflowservice.UnpauseActivityResponse, error) {
 	return s.client.UnpauseActivity(s.reqCtx(ctx), in0)
+}
+
+func (s *workflowServiceProxyServer) UnpauseWorkflowExecution(ctx context.Context, in0 *workflowservice.UnpauseWorkflowExecutionRequest) (*workflowservice.UnpauseWorkflowExecutionResponse, error) {
+	return s.client.UnpauseWorkflowExecution(s.reqCtx(ctx), in0)
 }
 
 func (s *workflowServiceProxyServer) UpdateActivityOptions(ctx context.Context, in0 *workflowservice.UpdateActivityOptionsRequest) (*workflowservice.UpdateActivityOptionsResponse, error) {

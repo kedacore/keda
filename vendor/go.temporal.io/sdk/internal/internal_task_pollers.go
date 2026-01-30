@@ -468,13 +468,13 @@ func (wtp *workflowTaskProcessor) processWorkflowTask(task *workflowTask) (retEr
 		task.doneCh = doneCh
 		task.laResultCh = laResultCh
 		task.laRetryCh = laRetryCh
-		var completedRequest interface{}
-		completedRequest, taskErr = wtp.taskHandler.ProcessWorkflowTask(
+		var taskCompletion *workflowTaskCompletion
+		taskCompletion, taskErr = wtp.taskHandler.ProcessWorkflowTask(
 			task,
 			wfctx,
-			func(response interface{}, startTime time.Time) (*workflowTask, error) {
+			func(taskCompletion *workflowTaskCompletion, startTime time.Time) (*workflowTask, error) {
 				wtp.logger.Debug("Force RespondWorkflowTaskCompleted.", "TaskStartedEventID", task.task.GetStartedEventId())
-				heartbeatResponse, err := wtp.RespondTaskCompletedWithMetrics(response, nil, task.task, startTime)
+				heartbeatResponse, err := wtp.RespondTaskCompletedWithMetrics(taskCompletion, nil, task.task, startTime)
 				if err != nil {
 					return nil, err
 				}
@@ -488,13 +488,13 @@ func (wtp *workflowTaskProcessor) processWorkflowTask(task *workflowTask) (retEr
 				return task, nil
 			},
 		)
-		if completedRequest == nil && taskErr == nil {
+		if taskCompletion == nil && taskErr == nil {
 			return nil
 		}
 		if _, ok := taskErr.(workflowTaskHeartbeatError); ok {
 			return taskErr
 		}
-		response, err := wtp.RespondTaskCompletedWithMetrics(completedRequest, taskErr, task.task, startTime)
+		response, err := wtp.RespondTaskCompletedWithMetrics(taskCompletion, taskErr, task.task, startTime)
 		if err != nil {
 			// If we get an error responding to the workflow task we need to evict the execution from the cache.
 			taskErr = err
@@ -515,7 +515,7 @@ func (wtp *workflowTaskProcessor) processWorkflowTask(task *workflowTask) (retEr
 }
 
 func (wtp *workflowTaskProcessor) RespondTaskCompletedWithMetrics(
-	completedRequest interface{},
+	taskCompletion *workflowTaskCompletion,
 	taskErr error,
 	task *workflowservice.PollWorkflowTaskQueueResponse,
 	startTime time.Time,
@@ -537,16 +537,16 @@ func (wtp *workflowTaskProcessor) RespondTaskCompletedWithMetrics(
 		if failWorkflowTask.Cause == enumspb.WORKFLOW_TASK_FAILED_CAUSE_NON_DETERMINISTIC_ERROR {
 			failureReason = "NonDeterminismError"
 		}
-		completedRequest = failWorkflowTask
+		taskCompletion = &workflowTaskCompletion{rawRequest: failWorkflowTask}
 	}
 
 	metricsHandler.Timer(metrics.WorkflowTaskExecutionLatency).Record(time.Since(startTime))
 
-	response, err = wtp.sendTaskCompletedRequest(completedRequest, task)
+	response, err = wtp.sendTaskCompletedRequest(taskCompletion, task)
 
 	var grpcMessageTooLargeErr *retry.GrpcMessageTooLargeError
 	if errors.As(err, &grpcMessageTooLargeErr) {
-		secondEmitFailMetric, secondErr := wtp.reportGrpcMessageTooLarge(completedRequest, task, err)
+		secondEmitFailMetric, secondErr := wtp.reportGrpcMessageTooLarge(taskCompletion, task, err)
 		if secondEmitFailMetric {
 			emitFailMetric = true
 			// Overwriting the original failure reason for metrics purposes
@@ -567,7 +567,7 @@ func (wtp *workflowTaskProcessor) RespondTaskCompletedWithMetrics(
 }
 
 func (wtp *workflowTaskProcessor) sendTaskCompletedRequest(
-	completedRequest interface{},
+	taskCompletion *workflowTaskCompletion,
 	task *workflowservice.PollWorkflowTaskQueueResponse,
 ) (response *workflowservice.RespondWorkflowTaskCompletedResponse, err error) {
 	ctx := context.Background()
@@ -577,7 +577,11 @@ func (wtp *workflowTaskProcessor) sendTaskCompletedRequest(
 			metrics.NoneTagValue, metrics.NoneTagValue))),
 		defaultGrpcRetryParameters(ctx))
 	defer cancel()
-	switch request := completedRequest.(type) {
+	if taskCompletion == nil {
+		// should not happen
+		panic("unknown request type from ProcessWorkflowTask()")
+	}
+	switch request := taskCompletion.rawRequest.(type) {
 	case *workflowservice.RespondWorkflowTaskFailedRequest:
 		// Only fail workflow task on first attempt, subsequent failure on the same workflow task will timeout.
 		// This is to avoid spin on the failed workflow task. Checking Attempt not nil for older server.
@@ -587,6 +591,8 @@ func (wtp *workflowTaskProcessor) sendTaskCompletedRequest(
 				traceLog(func() {
 					wtp.logger.Debug("RespondWorkflowTaskFailed failed.", tagError, err)
 				})
+			} else if taskCompletion.applyCompletionMetrics != nil {
+				taskCompletion.applyCompletionMetrics()
 			}
 		}
 	case *workflowservice.RespondWorkflowTaskCompletedRequest:
@@ -606,6 +612,8 @@ func (wtp *workflowTaskProcessor) sendTaskCompletedRequest(
 			traceLog(func() {
 				wtp.logger.Debug("RespondWorkflowTaskCompleted failed.", tagError, err)
 			})
+		} else if taskCompletion.applyCompletionMetrics != nil {
+			taskCompletion.applyCompletionMetrics()
 		}
 		wtp.eagerActivityExecutor.handleResponse(response, eagerReserved)
 	case *workflowservice.RespondQueryTaskCompletedRequest:
@@ -614,6 +622,8 @@ func (wtp *workflowTaskProcessor) sendTaskCompletedRequest(
 			traceLog(func() {
 				wtp.logger.Debug("RespondQueryTaskCompleted failed.", tagError, err)
 			})
+		} else if taskCompletion.applyCompletionMetrics != nil {
+			taskCompletion.applyCompletionMetrics()
 		}
 	default:
 		// should not happen
@@ -623,16 +633,20 @@ func (wtp *workflowTaskProcessor) sendTaskCompletedRequest(
 }
 
 func (wtp *workflowTaskProcessor) reportGrpcMessageTooLarge(
-	completedRequest interface{},
+	taskCompletion *workflowTaskCompletion,
 	task *workflowservice.PollWorkflowTaskQueueResponse,
 	sendErr error,
 ) (emitFailMetric bool, err error) {
-	switch completedRequest.(type) {
+	if taskCompletion == nil {
+		// should not happen
+		panic("unknown request type from ProcessWorkflowTask()")
+	}
+	switch taskCompletion.rawRequest.(type) {
 	case *workflowservice.RespondWorkflowTaskCompletedRequest, *workflowservice.RespondWorkflowTaskFailedRequest:
 		emitFailMetric = true
 		request := wtp.errorToFailWorkflowTask(task.TaskToken, sendErr)
 		request.Cause = enumspb.WORKFLOW_TASK_FAILED_CAUSE_GRPC_MESSAGE_TOO_LARGE
-		_, err = wtp.sendTaskCompletedRequest(request, task)
+		_, err = wtp.sendTaskCompletedRequest(&workflowTaskCompletion{rawRequest: request}, task)
 	case *workflowservice.RespondQueryTaskCompletedRequest:
 		request := &workflowservice.RespondQueryTaskCompletedRequest{
 			TaskToken:     task.TaskToken,
@@ -642,7 +656,7 @@ func (wtp *workflowTaskProcessor) reportGrpcMessageTooLarge(
 			Failure:       wtp.failureConverter.ErrorToFailure(sendErr),
 			Cause:         enumspb.WORKFLOW_TASK_FAILED_CAUSE_GRPC_MESSAGE_TOO_LARGE,
 		}
-		_, err = wtp.sendTaskCompletedRequest(request, task)
+		_, err = wtp.sendTaskCompletedRequest(&workflowTaskCompletion{rawRequest: request}, task)
 	default:
 		// should not happen
 		panic("unknown request type from ProcessWorkflowTask()")

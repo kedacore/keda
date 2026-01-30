@@ -5,11 +5,13 @@ package workflows
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/go-logr/logr"
 
 	envp "sigs.k8s.io/controller-runtime/tools/setup-envtest/env"
+	"sigs.k8s.io/controller-runtime/tools/setup-envtest/version"
 )
 
 // Use is a workflow that prints out information about stored
@@ -84,4 +86,13 @@ func (f Sideload) Do(env *envp.Env) {
 	env.NoDownload = true
 	env.Sideload(ctx, f.Input)
 	env.PrintInfo(f.PrintFormat)
+}
+
+// Version is the workflow that shows the current binary version
+// of setup-envtest.
+type Version struct{}
+
+// Do executes the workflow.
+func (v Version) Do(env *envp.Env) {
+	fmt.Fprintf(env.Out, "setup-envtest version: %s\n", version.Version())
 }

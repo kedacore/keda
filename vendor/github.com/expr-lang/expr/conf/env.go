@@ -9,35 +9,42 @@ import (
 	"github.com/expr-lang/expr/types"
 )
 
+// Env returns the Nature of the given environment.
+//
+// Deprecated: use EnvWithCache instead.
 func Env(env any) Nature {
+	return EnvWithCache(new(Cache), env)
+}
+
+func EnvWithCache(c *Cache, env any) Nature {
 	if env == nil {
-		return Nature{
-			Type:   reflect.TypeOf(map[string]any{}),
-			Strict: true,
-		}
+		n := c.NatureOf(map[string]any{})
+		n.Strict = true
+		return n
 	}
 
 	switch env := env.(type) {
 	case types.Map:
-		return env.Nature()
+		nt := env.Nature()
+		return nt
 	}
 
 	v := reflect.ValueOf(env)
-	d := deref.Value(v)
+	t := v.Type()
 
-	switch d.Kind() {
+	switch deref.Value(v).Kind() {
 	case reflect.Struct:
-		return Nature{
-			Type:   v.Type(),
-			Strict: true,
-		}
+		n := c.FromType(t)
+		n.Strict = true
+		return n
 
 	case reflect.Map:
-		n := Nature{
-			Type:   v.Type(),
-			Fields: make(map[string]Nature, v.Len()),
-			Strict: true,
+		n := c.FromType(v.Type())
+		if n.TypeData == nil {
+			n.TypeData = new(TypeData)
 		}
+		n.Strict = true
+		n.Fields = make(map[string]Nature, v.Len())
 
 		for _, key := range v.MapKeys() {
 			elem := v.MapIndex(key)
@@ -49,14 +56,15 @@ func Env(env any) Nature {
 
 			switch face := face.(type) {
 			case types.Map:
-				n.Fields[key.String()] = face.Nature()
+				nt := face.Nature()
+				n.Fields[key.String()] = nt
 
 			default:
 				if face == nil {
-					n.Fields[key.String()] = Nature{Nil: true}
+					n.Fields[key.String()] = c.NatureOf(nil)
 					continue
 				}
-				n.Fields[key.String()] = Nature{Type: reflect.TypeOf(face)}
+				n.Fields[key.String()] = c.NatureOf(face)
 			}
 
 		}

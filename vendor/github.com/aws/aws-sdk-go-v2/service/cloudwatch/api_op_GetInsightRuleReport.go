@@ -161,11 +161,11 @@ func (c *Client) addOperationGetInsightRuleReportMiddlewares(stack *middleware.S
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsquery_serializeOpGetInsightRuleReport{}, middleware.After)
+	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpGetInsightRuleReport{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsquery_deserializeOpGetInsightRuleReport{}, middleware.After)
+	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpGetInsightRuleReport{}, middleware.After)
 	if err != nil {
 		return err
 	}
@@ -219,6 +219,9 @@ func (c *Client) addOperationGetInsightRuleReportMiddlewares(stack *middleware.S
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
 		return err
 	}
 	if err = addCredentialSource(stack, options); err != nil {

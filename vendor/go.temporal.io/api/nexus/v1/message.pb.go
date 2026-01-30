@@ -449,7 +449,10 @@ type Request struct {
 	//
 	//	*Request_StartOperation
 	//	*Request_CancelOperation
-	Variant       isRequest_Variant `protobuf_oneof:"variant"`
+	Variant isRequest_Variant `protobuf_oneof:"variant"`
+	// The endpoint this request was addressed to before forwarding to the worker.
+	// Supported from server version 1.30.0.
+	Endpoint      string `protobuf:"bytes,10,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -521,6 +524,13 @@ func (x *Request) GetCancelOperation() *CancelOperationRequest {
 		}
 	}
 	return nil
+}
+
+func (x *Request) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
 }
 
 type isRequest_Variant interface {
@@ -1272,12 +1282,14 @@ const file_temporal_api_nexus_v1_message_proto_rawDesc = "" +
 	"\aservice\x18\x01 \x01(\tR\aservice\x12\x1c\n" +
 	"\toperation\x18\x02 \x01(\tR\toperation\x12%\n" +
 	"\foperation_id\x18\x03 \x01(\tB\x02\x18\x01R\voperationId\x12'\n" +
-	"\x0foperation_token\x18\x04 \x01(\tR\x0eoperationToken\"\x8b\x03\n" +
+	"\x0foperation_token\x18\x04 \x01(\tR\x0eoperationToken\"\xa7\x03\n" +
 	"\aRequest\x12B\n" +
 	"\x06header\x18\x01 \x03(\v2*.temporal.api.nexus.v1.Request.HeaderEntryR\x06header\x12A\n" +
 	"\x0escheduled_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\rscheduledTime\x12W\n" +
 	"\x0fstart_operation\x18\x03 \x01(\v2,.temporal.api.nexus.v1.StartOperationRequestH\x00R\x0estartOperation\x12Z\n" +
-	"\x10cancel_operation\x18\x04 \x01(\v2-.temporal.api.nexus.v1.CancelOperationRequestH\x00R\x0fcancelOperation\x1a9\n" +
+	"\x10cancel_operation\x18\x04 \x01(\v2-.temporal.api.nexus.v1.CancelOperationRequestH\x00R\x0fcancelOperation\x12\x1a\n" +
+	"\bendpoint\x18\n" +
+	" \x01(\tR\bendpoint\x1a9\n" +
 	"\vHeaderEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\t\n" +

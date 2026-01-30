@@ -96,6 +96,7 @@ var (
 		"Terminated":     5,
 		"ContinuedAsNew": 6,
 		"TimedOut":       7,
+		"Paused":         8,
 	}
 )
 

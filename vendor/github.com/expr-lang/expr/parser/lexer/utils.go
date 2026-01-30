@@ -111,6 +111,41 @@ func unescapeChar(s string) (value rune, multibyte bool, tail string, err error)
 
 	// 4. Unicode escape sequences, reproduced from `strconv/quote.go`
 	case 'x', 'X', 'u', 'U':
+		// Support Go/Rust-style variable-length form: \u{XXXXXX}
+		if c == 'u' && len(s) > 0 && s[0] == '{' {
+			// consume '{'
+			s = s[1:]
+			var v rune
+			digits := 0
+			for len(s) > 0 && s[0] != '}' {
+				x, ok := unhex(s[0])
+				if !ok {
+					err = fmt.Errorf("unable to unescape string")
+					return
+				}
+				if digits >= 6 { // at most 6 hex digits
+					err = fmt.Errorf("unable to unescape string")
+					return
+				}
+				v = v<<4 | x
+				s = s[1:]
+				digits++
+			}
+			// require closing '}' and at least 1 digit
+			if len(s) == 0 || s[0] != '}' || digits == 0 {
+				err = fmt.Errorf("unable to unescape string")
+				return
+			}
+			// consume '}'
+			s = s[1:]
+			if v > utf8.MaxRune {
+				err = fmt.Errorf("unable to unescape string")
+				return
+			}
+			value = v
+			multibyte = true
+			break
+		}
 		n := 0
 		switch c {
 		case 'x', 'X':

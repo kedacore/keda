@@ -24,11 +24,12 @@ package influxdb3
 
 import (
 	"context"
-	"crypto/x509"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -43,11 +44,15 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func (c *Client) initializeQueryClient(hostPortURL string, certPool *x509.CertPool, proxyURL *url.URL) error {
+func (c *Client) initializeQueryClient(hostPortURL string, secure bool, proxyURL *url.URL) error {
 	var transport grpc.DialOption
 
-	if certPool != nil {
-		transport = grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(certPool, ""))
+	if secure {
+		var tlsConfig *tls.Config
+		if transport, ok := c.config.HTTPClient.Transport.(*http.Transport); ok {
+			tlsConfig = transport.TLSClientConfig
+		}
+		transport = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
 	} else {
 		transport = grpc.WithTransportCredentials(insecure.NewCredentials())
 	}

@@ -2,6 +2,7 @@ package charset
 
 import (
 	"bytes"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/gabriel-vasile/mimetype/internal/markup"
@@ -141,27 +142,25 @@ func FromXML(content []byte) string {
 	return FromPlain(content)
 }
 func fromXML(s scan.Bytes) string {
-	xml := []byte("<?XML")
+	xml := []byte("<?xml")
 	lxml := len(xml)
 	for {
-		if len(s) == 0 {
-			return ""
-		}
-		for scan.ByteIsWS(s.Peek()) {
-			s.Advance(1)
-		}
+		s.TrimLWS()
 		if len(s) <= lxml {
 			return ""
 		}
-		if !s.Match(xml, scan.IgnoreCase) {
-			s = s[1:] // safe to slice instead of s.Advance(1) because bounds are checked
-			continue
+
+		i, k := s.Search(xml, 0)
+		if i == -1 {
+			return ""
 		}
-		aName, aVal, hasMore := "", "", true
+		s.Advance(i + k)
+		var aName, aVal []byte
+		hasMore := true
 		for hasMore {
 			aName, aVal, hasMore = markup.GetAnAttribute(&s)
-			if aName == "encoding" && aVal != "" {
-				return aVal
+			if scan.Bytes(aName).Match([]byte("encoding"), 0) != -1 && len(aVal) != 0 {
+				return string(aVal)
 			}
 		}
 	}
@@ -198,10 +197,10 @@ func fromHTML(s scan.Bytes) string {
 			return ""
 		}
 		// Abort when <body is reached.
-		if s.Match(body, scan.IgnoreCase) {
+		if s.Match(body, scan.IgnoreCase) != -1 {
 			return ""
 		}
-		if !s.Match(meta, scan.IgnoreCase) {
+		if s.Match(meta, scan.IgnoreCase) == -1 {
 			s = s[1:] // safe to slice instead of s.Advance(1) because bounds are checked
 			continue
 		}
@@ -215,14 +214,16 @@ func fromHTML(s scan.Bytes) string {
 		needPragma := dontKnow
 
 		charset := ""
-		aName, aVal, hasMore := "", "", true
+		var aNameB, aValB []byte
+		hasMore := true
 		for hasMore {
-			aName, aVal, hasMore = markup.GetAnAttribute(&s)
+			aNameB, aValB, hasMore = markup.GetAnAttribute(&s)
+			aName := strings.ToLower(string(aNameB))
 			if attrList[aName] {
 				continue
 			}
 			// processing step
-			if len(aName) == 0 && len(aVal) == 0 {
+			if len(aName) == 0 && len(aValB) == 0 {
 				if needPragma == dontKnow {
 					continue
 				}
@@ -231,15 +232,18 @@ func fromHTML(s scan.Bytes) string {
 				}
 			}
 			attrList[aName] = true
-			if aName == "http-equiv" && scan.Bytes(aVal).Match([]byte("CONTENT-TYPE"), scan.IgnoreCase) {
-				gotPragma = true
-			} else if aName == "content" {
-				charset = string(extractCharsetFromMeta(scan.Bytes(aVal)))
+			switch aName {
+			case "http-equiv":
+				if scan.Bytes(aValB).Match([]byte("CONTENT-TYPE"), scan.IgnoreCase) != -1 {
+					gotPragma = true
+				}
+			case "content":
+				charset = string(extractCharsetFromMeta(scan.Bytes(aValB)))
 				if len(charset) != 0 {
 					needPragma = doNeedPragma
 				}
-			} else if aName == "charset" {
-				charset = aVal
+			case "charset":
+				charset = string(aValB)
 				needPragma = doNotNeedPragma
 			}
 		}
