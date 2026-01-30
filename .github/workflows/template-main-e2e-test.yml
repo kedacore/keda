@@ -8,18 +8,18 @@ jobs:
     name: Run e2e test
     runs-on: ubuntu-24.04-arm
     # keda-tools is built from github.com/test-tools/tools/Dockerfile
-    container: ghcr.io/kedacore/keda-tools:1.25.5
+    container: ghcr.io/kedacore/keda-tools:1.25.6
     concurrency: e2e-tests
     steps:
       - name: Check out code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 1
 
       - name: Register workspace path
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: oNaiPs/secrets-to-env-action@ec46a22bfc9b37e014b627b3208b07eb8909ea0f # v1.5
+      - uses: oNaiPs/secrets-to-env-action@be0f849b5f57bce2c73624f006578c3b16e98e0c # v1.7
         with:
           secrets: ${{ toJSON(secrets) }}
 

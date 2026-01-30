@@ -2740,8 +2740,35 @@ func (env *testWorkflowEnvironmentImpl) makeUniqueNexusOperationToken(
 	return fmt.Sprintf("%s_%s_%s", service, operation, token)
 }
 
-func (env *testWorkflowEnvironmentImpl) SideEffect(f func() (*commonpb.Payloads, error), callback ResultHandler) {
-	callback(f())
+func (env *testWorkflowEnvironmentImpl) SideEffect(f func() (*commonpb.Payloads, error), callback ResultHandler, _ string) {
+	mockMethod := mockMethodForSideEffect
+	if _, ok := env.expectedWorkflowMockCalls[mockMethod]; !ok {
+		callback(f())
+		return
+	}
+
+	mockRet := env.workflowMock.MethodCalled(mockMethod)
+	m := &mockWrapper{env: env, name: mockMethod, fn: mockFnSideEffect}
+	if mockFn := m.getMockFn(mockRet); mockFn != nil {
+		result := mockFn.(func() interface{})()
+		encoded, encodeErr := encodeArg(env.GetDataConverter(), result)
+		if encodeErr != nil {
+			panic(fmt.Sprintf("encode result from mock of %v failed: %v", mockMethod, encodeErr))
+		}
+		callback(encoded, nil)
+		return
+	}
+
+	// SideEffect returns a single value, not (value, error)
+	if len(mockRet) != 1 {
+		panic(fmt.Sprintf("mock of %v has incorrect number of returns, expected 1, but got %d",
+			mockMethod, len(mockRet)))
+	}
+	encoded, encodeErr := encodeArg(env.GetDataConverter(), mockRet[0])
+	if encodeErr != nil {
+		panic(fmt.Sprintf("encode result from mock of %v failed: %v", mockMethod, encodeErr))
+	}
+	callback(encoded, nil)
 }
 
 func (env *testWorkflowEnvironmentImpl) GetVersion(changeID string, minSupported, maxSupported Version) (retVersion Version) {
@@ -2872,8 +2899,33 @@ func (env *testWorkflowEnvironmentImpl) UpsertMemo(memoMap map[string]interface{
 	return err
 }
 
-func (env *testWorkflowEnvironmentImpl) MutableSideEffect(_ string, f func() interface{}, _ func(a, b interface{}) bool) converter.EncodedValue {
-	return newEncodedValue(env.encodeValue(f()), env.GetDataConverter())
+func (env *testWorkflowEnvironmentImpl) MutableSideEffect(id string, f func() interface{}, _ func(a, b interface{}) bool, _ string) converter.EncodedValue {
+	mockMethod := mockMethodForMutableSideEffect
+	if _, ok := env.expectedWorkflowMockCalls[mockMethod]; !ok {
+		return newEncodedValue(env.encodeValue(f()), env.GetDataConverter())
+	}
+
+	mockRet := env.workflowMock.MethodCalled(mockMethod, id)
+	m := &mockWrapper{env: env, name: mockMethod, fn: mockFnMutableSideEffect}
+	if mockFn := m.getMockFn(mockRet); mockFn != nil {
+		result := mockFn.(func(string) interface{})(id)
+		encoded, encodeErr := encodeArg(env.GetDataConverter(), result)
+		if encodeErr != nil {
+			panic(fmt.Sprintf("encode result from mock of %v failed: %v", mockMethod, encodeErr))
+		}
+		return newEncodedValue(encoded, env.GetDataConverter())
+	}
+
+	// MutableSideEffect returns a single value, not (value, error)
+	if len(mockRet) != 1 {
+		panic(fmt.Sprintf("mock of %v has incorrect number of returns, expected 1, but got %d",
+			mockMethod, len(mockRet)))
+	}
+	encoded, encodeErr := encodeArg(env.GetDataConverter(), mockRet[0])
+	if encodeErr != nil {
+		panic(fmt.Sprintf("encode result from mock of %v failed: %v", mockMethod, encodeErr))
+	}
+	return newEncodedValue(encoded, env.GetDataConverter())
 }
 
 func (env *testWorkflowEnvironmentImpl) AddSession(sessionInfo *SessionInfo) {
@@ -3173,6 +3225,16 @@ func mockFnRequestCancelExternalWorkflow(string, string, string) error {
 // function signature for mock GetVersion
 func mockFnGetVersion(string, Version, Version) Version {
 	return DefaultVersion
+}
+
+// function signature for mock SideEffect
+func mockFnSideEffect() interface{} {
+	return nil
+}
+
+// function signature for mock MutableSideEffect
+func mockFnMutableSideEffect(string) interface{} {
+	return nil
 }
 
 // make sure interface is implemented

@@ -64,6 +64,9 @@ const (
 	defaultIdleConnectionTimeout = 90 * time.Second
 	// defaultMaxIdleConnections specifies the default value of ClientConfig.MaxIdleConnections.
 	defaultMaxIdleConnections = 100
+	// HTTP schemes
+	schemeHTTP  = "http"
+	schemeHTTPS = "https"
 )
 
 // ClientConfig holds the parameters for creating a new client.
@@ -167,7 +170,7 @@ func (c *ClientConfig) parse(connectionString string) error {
 		return err
 	}
 
-	if !(u.Scheme == "http" || u.Scheme == "https") {
+	if !(u.Scheme == schemeHTTP || u.Scheme == schemeHTTPS) {
 		return errors.New("only http or https is supported")
 	}
 

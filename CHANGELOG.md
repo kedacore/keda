@@ -16,9 +16,11 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ## History
 
 - [Unreleased](#unreleased)
+- [v2.18.3](#v2183)
 - [v2.18.2](#v2182)
 - [v2.18.1](#v2181)
 - [v2.18.0](#v2180)
+- [v2.17.3](#v2173)
 - [v2.17.2](#v2172)
 - [v2.17.1](#v2171)
 - [v2.17.0](#v2170)
@@ -75,14 +77,22 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Improvements
 
 - **General**: Correct error message when awsSecretAccessKey is missing in credential-based authentication ([#7265](https://github.com/kedacore/keda/pull/7265))
+- **General**: Emit more events about what is happening with ScaledObject/ScaledJob ([#7382](https://github.com/kedacore/keda/issues/7382))
+- **General**: Raw metrics stream - include trigger activity status in response ([#7369](https://github.com/kedacore/keda/issues/7369))
 - **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
 - **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
+- **Dynatrace Scaler**: Support DQL querying ([#7377](https://github.com/kedacore/keda/issues/7377))
+- **MongoDB Scaler**: Add TLS support ([#6976](https://github.com/kedacore/keda/issues/6976))
 
 ### Fixes
 
 - **General**: Apply fallback in polling loop to enable scaling from zero ([#7239](https://github.com/kedacore/keda/issues/7239))
 - **General**: Replace deprecated `azure autorest` dependency to `azure sdk for go` ([#7073](https://github.com/kedacore/keda/issues/7073))
+- **Datadog Scaler**: Return request in cluster agent proxy without bearer auth ([#7341](https://github.com/kedacore/keda/issues/7341))
+- **Datadog Scaler**: Use metricUnavailableValue for 422 errors in Datadog Cluster Agent ([#7246](https://github.com/kedacore/keda/issues/7246))
 - **IBMMQ Scaler**: Create new HTTP request for each queue query in IBMMQ scaler ([#7202](https://github.com/kedacore/keda/pull/7202))
+- **Kafka Scaler**: Improve check for missing partition information when calculating lag ([#7414](https://github.com/kedacore/keda/issues/7414))
+- **Temporal Scaler**: Fix TLS RootCAs initialization when using API key authentication with Temporal Cloud ([#7367](https://github.com/kedacore/keda/pull/7367))
 
 ### Deprecations
 
@@ -94,11 +104,19 @@ New deprecation(s):
 
 ### Breaking Changes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- NATS Streaming scaler: Remove NATS Streaming Server (aka Stan) ([#6366](https://github.com/kedacore/keda/issues/6366))
 
 ### Other
 
+- **CI**: Replace stale bot with official GitHub Actions stale action ([#7321](https://github.com/kedacore/keda/issues/7321))
 - **CI**: Use GitHub-hosted ARM64 runners ([#7293](https://github.com/kedacore/keda/issues/7293))
+- **ScaledObject/ScaledJob**: Track activity for each trigger in the status ([#7347](https://github.com/kedacore/keda/issues/7347))
+
+## v2.18.3
+
+- **General**: Fix CVE-2025-68476 ([#7334](https://github.com/kedacore/keda/pull/7334))
+
+### Fixes
 
 ## v2.18.2
 
@@ -211,6 +229,10 @@ New deprecation(s):
 - **General**: Fix several typos ([#6909](https://github.com/kedacore/keda/pull/6909))
 - **General**: Replace deprecated `webhook.Validator` with `webhook.CustomValidator` ([#6660](https://github.com/kedacore/keda/issues/6660))
 - **MSSQL Scaler**: Refactor MS SQL e2e test ([#3401](https://github.com/kedacore/keda/issues/3401))
+
+## v2.17.3
+
+- **General**: Fix CVE-2025-68476 ([#7333](https://github.com/kedacore/keda/pull/7333))
 
 ## v2.17.2
 

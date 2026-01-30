@@ -102,24 +102,21 @@ func New(config ClientConfig) (*Client, error) {
 
 	// Prepare SSL certificate pool (if host URL is secure)
 	var certPool *x509.CertPool
-	hostPortURL, safe := ReplaceURLProtocolWithPort(c.config.Host)
-	if safe == nil || *safe {
+	hostPortURL, secure := ReplaceURLProtocolWithPort(c.config.Host)
+	if config.SSLRootsFilePath != "" && secure {
 		// Use the system certificate pool
 		certPool, err = x509.SystemCertPool()
 		if err != nil {
 			return nil, fmt.Errorf("x509: %w", err)
 		}
 
-		// Set additional SSL root certificates (if configured)
-		if config.SSLRootsFilePath != "" {
-			certs, err := os.ReadFile(config.SSLRootsFilePath)
-			if err != nil {
-				return nil, fmt.Errorf("error reading %s: %w", config.SSLRootsFilePath, err)
-			}
-			ok := certPool.AppendCertsFromPEM(certs)
-			if !ok {
-				slog.Warn("No valid certificates found in " + config.SSLRootsFilePath)
-			}
+		certs, err := os.ReadFile(config.SSLRootsFilePath)
+		if err != nil {
+			return nil, fmt.Errorf("error reading %s: %w", config.SSLRootsFilePath, err)
+		}
+		ok := certPool.AppendCertsFromPEM(certs)
+		if !ok {
+			slog.Warn("No valid certificates found in " + config.SSLRootsFilePath)
 		}
 	}
 
@@ -153,7 +150,7 @@ func New(config ClientConfig) (*Client, error) {
 	}
 
 	// Init FlightSQL client
-	err = c.initializeQueryClient(hostPortURL, certPool, proxyURL)
+	err = c.initializeQueryClient(hostPortURL, secure, proxyURL)
 	if err != nil {
 		return nil, fmt.Errorf("flight client: %w", err)
 	}
@@ -371,10 +368,12 @@ func (c *Client) resolveHTTPError(r *http.Response) error {
 
 	var httpError struct {
 		ServerError
-		// InfluxDB Edge/OSS error message fields
+		// InfluxDB V3 Core/Ent V3 write error message fields
 		Error string `json:"error"`
-		Data  struct {
+		Data  []struct {
 			ErrorMessage string `json:"error_message"`
+			LineNumber   int    `json:"line_number"`
+			OriginalLine string `json:"original_line"`
 		} `json:"data"`
 	}
 
@@ -396,11 +395,13 @@ func (c *Client) resolveHTTPError(r *http.Response) error {
 		if err != nil && ctype != "" {
 			httpError.Message = fmt.Sprintf("cannot decode error response: %v", err)
 		}
-		if httpError.Message == "" && httpError.Code == "" {
-			if len(httpError.Data.ErrorMessage) > 0 {
-				httpError.Message = httpError.Data.ErrorMessage
-			} else {
-				httpError.Message = httpError.Error
+		if httpError.Error != "" {
+			httpError.Message = httpError.Error
+			for a, b := range httpError.Data {
+				if a == 0 {
+					httpError.Message += ":"
+				}
+				httpError.Message += fmt.Sprintf("\n\tline %d: %s (%s)", b.LineNumber, b.ErrorMessage, b.OriginalLine)
 			}
 		}
 	}

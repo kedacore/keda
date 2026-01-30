@@ -326,6 +326,7 @@ const (
 	WORKFLOW_EXECUTION_STATUS_TERMINATED       WorkflowExecutionStatus = 5
 	WORKFLOW_EXECUTION_STATUS_CONTINUED_AS_NEW WorkflowExecutionStatus = 6
 	WORKFLOW_EXECUTION_STATUS_TIMED_OUT        WorkflowExecutionStatus = 7
+	WORKFLOW_EXECUTION_STATUS_PAUSED           WorkflowExecutionStatus = 8
 )
 
 // Enum value maps for WorkflowExecutionStatus.
@@ -339,6 +340,7 @@ var (
 		5: "WORKFLOW_EXECUTION_STATUS_TERMINATED",
 		6: "WORKFLOW_EXECUTION_STATUS_CONTINUED_AS_NEW",
 		7: "WORKFLOW_EXECUTION_STATUS_TIMED_OUT",
+		8: "WORKFLOW_EXECUTION_STATUS_PAUSED",
 	}
 	WorkflowExecutionStatus_value = map[string]int32{
 		"WORKFLOW_EXECUTION_STATUS_UNSPECIFIED":      0,
@@ -349,6 +351,7 @@ var (
 		"WORKFLOW_EXECUTION_STATUS_TERMINATED":       5,
 		"WORKFLOW_EXECUTION_STATUS_CONTINUED_AS_NEW": 6,
 		"WORKFLOW_EXECUTION_STATUS_TIMED_OUT":        7,
+		"WORKFLOW_EXECUTION_STATUS_PAUSED":           8,
 	}
 )
 
@@ -376,10 +379,12 @@ func (x WorkflowExecutionStatus) String() string {
 		return "ContinuedAsNew"
 	case WORKFLOW_EXECUTION_STATUS_TIMED_OUT:
 		return "TimedOut"
-	default
+	case
 
-	// Deprecated: Use WorkflowExecutionStatus.Descriptor instead.
-	:
+		// Deprecated: Use WorkflowExecutionStatus.Descriptor instead.
+		WORKFLOW_EXECUTION_STATUS_PAUSED:
+		return "Paused"
+	default:
 		return strconv.Itoa(int(x))
 	}
 
@@ -868,7 +873,7 @@ const file_temporal_api_enums_v1_workflow_proto_rawDesc = "" +
 	"%CONTINUE_AS_NEW_INITIATOR_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"CONTINUE_AS_NEW_INITIATOR_WORKFLOW\x10\x01\x12#\n" +
 	"\x1fCONTINUE_AS_NEW_INITIATOR_RETRY\x10\x02\x12+\n" +
-	"'CONTINUE_AS_NEW_INITIATOR_CRON_SCHEDULE\x10\x03*\xe5\x02\n" +
+	"'CONTINUE_AS_NEW_INITIATOR_CRON_SCHEDULE\x10\x03*\x8b\x03\n" +
 	"\x17WorkflowExecutionStatus\x12)\n" +
 	"%WORKFLOW_EXECUTION_STATUS_UNSPECIFIED\x10\x00\x12%\n" +
 	"!WORKFLOW_EXECUTION_STATUS_RUNNING\x10\x01\x12'\n" +
@@ -877,7 +882,8 @@ const file_temporal_api_enums_v1_workflow_proto_rawDesc = "" +
 	"\"WORKFLOW_EXECUTION_STATUS_CANCELED\x10\x04\x12(\n" +
 	"$WORKFLOW_EXECUTION_STATUS_TERMINATED\x10\x05\x12.\n" +
 	"*WORKFLOW_EXECUTION_STATUS_CONTINUED_AS_NEW\x10\x06\x12'\n" +
-	"#WORKFLOW_EXECUTION_STATUS_TIMED_OUT\x10\a*\x84\x02\n" +
+	"#WORKFLOW_EXECUTION_STATUS_TIMED_OUT\x10\a\x12$\n" +
+	" WORKFLOW_EXECUTION_STATUS_PAUSED\x10\b*\x84\x02\n" +
 	"\x14PendingActivityState\x12&\n" +
 	"\"PENDING_ACTIVITY_STATE_UNSPECIFIED\x10\x00\x12$\n" +
 	" PENDING_ACTIVITY_STATE_SCHEDULED\x10\x01\x12\"\n" +

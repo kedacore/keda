@@ -20,6 +20,10 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
+const (
+	mongoDBTLSEnable = "enable"
+)
+
 type mongoDBScaler struct {
 	metricType v2.MetricTargetType
 	metadata   mongoDBMetadata
@@ -39,7 +43,15 @@ type mongoDBMetadata struct {
 	Query                string  `keda:"name=query,                order=triggerMetadata"`
 	QueryValue           float64 `keda:"name=queryValue,           order=triggerMetadata"`
 	ActivationQueryValue float64 `keda:"name=activationQueryValue, order=triggerMetadata,default=0"`
-	TriggerIndex         int
+
+	// TLS
+	TLS         string `keda:"name=tls,         order=authParams, enum=enable;disable, default=disable"`
+	Cert        string `keda:"name=cert,        order=authParams, optional"`
+	Key         string `keda:"name=key,         order=authParams, optional"`
+	KeyPassword string `keda:"name=keyPassword, order=authParams, optional"`
+	CA          string `keda:"name=ca,          order=authParams, optional"`
+
+	TriggerIndex int
 }
 
 func (m *mongoDBMetadata) Validate() error {
@@ -55,6 +67,15 @@ func (m *mongoDBMetadata) Validate() error {
 		}
 		if m.Password == "" {
 			return fmt.Errorf("no password given")
+		}
+	}
+
+	if m.TLS == mongoDBTLSEnable {
+		if m.Cert == "" && m.Key == "" && m.CA == "" {
+			return fmt.Errorf("at least one of cert, key, or ca must be provided when TLS is enabled")
+		}
+		if (m.Cert != "" && m.Key == "") || (m.Cert == "" && m.Key != "") {
+			return fmt.Errorf("both cert and key must be provided when using client certificates")
 		}
 	}
 	return nil
@@ -117,7 +138,17 @@ func createMongoDBClient(ctx context.Context, meta mongoDBMetadata) (*mongo.Clie
 		connString = u.String()
 	}
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(connString))
+	clientOptions := options.Client().ApplyURI(connString)
+
+	if meta.TLS == mongoDBTLSEnable {
+		tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.CA, false)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create TLS config: %w", err)
+		}
+		clientOptions.SetTLSConfig(tlsConfig)
+	}
+
+	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create mongodb client: %w", err)
 	}
