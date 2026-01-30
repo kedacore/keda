@@ -86,6 +86,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Fixes
 
 - **General**: Apply fallback in polling loop to enable scaling from zero ([#7239](https://github.com/kedacore/keda/issues/7239))
+- **General**: Fix accurateScalingStrategy ignoring pendingJobCount in maxReplicaCount check ([#7329](https://github.com/kedacore/keda/issues/7329))
 - **General**: Replace deprecated `azure autorest` dependency to `azure sdk for go` ([#7073](https://github.com/kedacore/keda/issues/7073))
 - **Datadog Scaler**: Return request in cluster agent proxy without bearer auth ([#7341](https://github.com/kedacore/keda/issues/7341))
 - **Datadog Scaler**: Use metricUnavailableValue for 422 errors in Datadog Cluster Agent ([#7246](https://github.com/kedacore/keda/issues/7246))
