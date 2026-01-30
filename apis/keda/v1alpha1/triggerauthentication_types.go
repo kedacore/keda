@@ -131,8 +131,10 @@ const (
 )
 
 // PodIdentityAnnotationEKS specifies aws role arn for aws-eks Identity Provider
+// AwsRoleExternalIdAnnotation specifies the external ID to use when assuming an AWS role
 const (
-	PodIdentityAnnotationEKS = "eks.amazonaws.com/role-arn"
+	PodIdentityAnnotationEKS    = "eks.amazonaws.com/role-arn"
+	AwsRoleExternalIDAnnotation = "keda.sh/aws-role-external-id"
 )
 
 // AuthPodIdentity allows users to select the platform native identity
