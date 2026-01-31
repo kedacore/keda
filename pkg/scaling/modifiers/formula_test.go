@@ -25,6 +25,8 @@ import (
 )
 
 func TestShouldTriggerBeNil(t *testing.T) {
+	// Note: metricName in these tests uses simple names like "trigger-a" for clarity,
+	// but in actual usage it would be the HPA-generated metric name (e.g., "s0-trigger-a")
 	tests := []struct {
 		name           string
 		scaledObject   *kedav1alpha1.ScaledObject

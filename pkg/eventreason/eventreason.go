@@ -50,12 +50,6 @@ const (
 	// ScaledObjectFallbackDeactivated is for event when ScaledObject fallback is deactivated
 	ScaledObjectFallbackDeactivated = "ScaledObjectFallbackDeactivated"
 
-	// ScaledObjectTriggerExcluded is for event when a trigger is excluded from formula evaluation due to failure threshold
-	ScaledObjectTriggerExcluded = "ScaledObjectTriggerExcluded"
-
-	// ScaledObjectTriggerRestored is for event when a previously excluded trigger is restored in formula evaluation
-	ScaledObjectTriggerRestored = "ScaledObjectTriggerRestored"
-
 	// ScaledJobDeleted is for event when ScaledJob is deleted
 	ScaledJobDeleted = "ScaledJobDeleted"
 

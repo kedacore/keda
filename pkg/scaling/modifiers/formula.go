@@ -51,7 +51,7 @@ func HandleScalingModifiers(so *kedav1alpha1.ScaledObject, metrics []external_me
 		sm := so.Spec.Advanced.ScalingModifiers
 
 		// apply formula if defined
-		metrics, err = applyScalingModifiersFormula(so, sm, metrics, metricTriggerList, cacheObj, log)
+		metrics, err = applyScalingModifiersFormula(so, sm, metrics, metricTriggerList, cacheObj)
 		if err != nil {
 			log.Error(err, "error applying custom scalingModifiers.Formula")
 		}
@@ -79,9 +79,9 @@ func ArrayContainsElement(el string, arr []string) bool {
 
 // applyScalingModifiersFormula applies formula if formula is defined, otherwise
 // skip
-func applyScalingModifiersFormula(so *kedav1alpha1.ScaledObject, sm kedav1alpha1.ScalingModifiers, metrics []external_metrics.ExternalMetricValue, pairList map[string]string, cacheObj *cache.ScalersCache, log logr.Logger) ([]external_metrics.ExternalMetricValue, error) {
+func applyScalingModifiersFormula(so *kedav1alpha1.ScaledObject, sm kedav1alpha1.ScalingModifiers, metrics []external_metrics.ExternalMetricValue, pairList map[string]string, cacheObj *cache.ScalersCache) ([]external_metrics.ExternalMetricValue, error) {
 	if sm.Formula != "" {
-		metrics, err := calculateScalingModifiersFormula(so, metrics, cacheObj, pairList, log)
+		metrics, err := calculateScalingModifiersFormula(so, metrics, cacheObj, pairList)
 		return metrics, err
 	}
 	return metrics, nil
@@ -89,39 +89,29 @@ func applyScalingModifiersFormula(so *kedav1alpha1.ScaledObject, sm kedav1alpha1
 
 // calculateScalingModifiersFormula creates custom composite metric & calculates
 // custom formula and returns this finalized metric
-func calculateScalingModifiersFormula(so *kedav1alpha1.ScaledObject, list []external_metrics.ExternalMetricValue, cacheObj *cache.ScalersCache, pairList map[string]string, log logr.Logger) ([]external_metrics.ExternalMetricValue, error) {
+func calculateScalingModifiersFormula(so *kedav1alpha1.ScaledObject, list []external_metrics.ExternalMetricValue, cacheObj *cache.ScalersCache, pairList map[string]string) ([]external_metrics.ExternalMetricValue, error) {
 	var ret external_metrics.ExternalMetricValue
 	var out float64
 	ret.MetricName = kedav1alpha1.CompositeMetricName
 	ret.Timestamp = v1.Now()
 
 	// Check if triggerScoped behavior is enabled
-	isTriggerScoped := so.Spec.Fallback != nil &&
+	isFallbackTriggerScoped := so.Spec.Fallback != nil &&
 		so.Spec.Fallback.Behavior == kedav1alpha1.FallbackBehaviorTriggerScoped
 
 	// using https://github.com/antonmedv/expr to evaluate formula expression
 	// Use interface{} to support both float64 and nil values
 	data := make(map[string]interface{})
-	var excludedTriggers []string
 
 	for _, v := range list {
 		triggerName := pairList[v.MetricName]
 
 		// Check if this trigger should be nil due to failure threshold
-		if isTriggerScoped && shouldTriggerBeNil(so, v.MetricName) {
+		if isFallbackTriggerScoped && shouldTriggerBeNil(so, v.MetricName) {
 			data[triggerName] = nil
-			excludedTriggers = append(excludedTriggers, triggerName)
 		} else {
 			data[triggerName] = v.Value.AsApproximateFloat64()
 		}
-	}
-
-	// Log excluded triggers for observability
-	if len(excludedTriggers) > 0 {
-		log.V(1).Info("triggers excluded from formula due to failure threshold",
-			"excludedTriggers", excludedTriggers,
-			"failureThreshold", so.Spec.Fallback.FailureThreshold,
-			"scaledObject", so.Name)
 	}
 
 	if cacheObj.CompiledFormula == nil {

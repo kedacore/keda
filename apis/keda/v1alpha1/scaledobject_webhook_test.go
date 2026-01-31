@@ -1204,7 +1204,7 @@ var _ = It("should validate the so creation with triggerScoped fallback behavior
 	}).ShouldNot(HaveOccurred())
 })
 
-var _ = It("shouldnt validate the so creation with triggerScoped fallback without formula", func() {
+var _ = It("shouldn't validate the so creation with triggerScoped fallback without formula", func() {
 	namespaceName := "trigger-scoped-fallback-no-formula"
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, false, false)
