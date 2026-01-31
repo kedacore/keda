@@ -349,6 +349,11 @@ spec:
                   - parameter
                   type: object
                 type: array
+              filePath:
+                description: |-
+                  FilePath specifies a file containing auth parameters as JSON map[string]string.
+                  When set, auth params are read directly from this file instead.
+                type: string
               gcpSecretManager:
                 properties:
                   credentials:
