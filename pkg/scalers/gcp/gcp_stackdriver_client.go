@@ -3,11 +3,9 @@ package gcp
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -21,40 +19,30 @@ import (
 )
 
 const (
-	// Although the "common" value could be 1m
-	// before v2.13 it was 2m, so we need to
-	// keep that value to not break the behaviour
-	// We need to revisit this in KEDA v3
-	// https://github.com/kedacore/keda/issues/5429
-	defaultTimeHorizon = 2 * time.Minute
+	// PubSub resource types
+	ResourceTypePubSubSubscription = "subscription"
+	ResourceTypePubSubTopic        = "topic"
 
-	// Visualization of aggregation window:
-	// aggregationTimeHorizon: [- - - - -]
-	// alignmentPeriod:         [- - -][- - -] (may shift slightly left or right arbitrarily)
+	// Default alignment period for PubSub metrics (3 minutes)
+	// PubSub metrics are collected every 60 seconds
+	DefaultPubSubAlignmentPeriod = int64(180)
 
-	// For aggregations, a shorter time horizon may not return any data
-	aggregationTimeHorizon = 5 * time.Minute
-	// To prevent the aggregation window from being too big,
-	// which may result in the data being stale for too long
-	alignmentPeriod = 3 * time.Minute
-
-	// Not all aggregations are meaningful for distribution metrics,
-	// so we only support a subset of them
-	// https://cloud.google.com/monitoring/mql/reference#aggr-function-group
-	aggregationMean       = "mean"
-	aggregationMedian     = "median"
-	aggregationVariance   = "variance"
-	aggregationStddev     = "stddev"
-	aggregationSum        = "sum"
-	aggregationCount      = "count"
-	aggregationPercentile = "percentile"
+	// Aggregation function names
+	AggregationDelta        = "delta"
+	AggregationMean         = "mean"
+	AggregationCount        = "count"
+	AggregationSum          = "sum"
+	AggregationStddev       = "stddev"
+	AggregationPercentile99 = "percentile_99"
+	AggregationPercentile95 = "percentile_95"
+	AggregationPercentile50 = "percentile_50"
+	AggregationPercentile05 = "percentile_05"
 )
 
 // StackDriverClient is a generic client to fetch metrics from Stackdriver. Can be used
 // for a stackdriver scaler in the future
 type StackDriverClient struct {
 	metricsClient *monitoring.MetricClient
-	queryClient   *monitoring.QueryClient
 	credentials   GoogleApplicationCredentials
 	projectID     string
 }
@@ -73,14 +61,8 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 		return nil, err
 	}
 
-	queryClient, err := monitoring.NewQueryClient(ctx, clientOption)
-	if err != nil {
-		return nil, err
-	}
-
 	return &StackDriverClient{
 		metricsClient: metricsClient,
-		queryClient:   queryClient,
 		credentials:   gcpCredentials,
 	}, nil
 }
@@ -88,10 +70,6 @@ func NewStackDriverClient(ctx context.Context, credentials string) (*StackDriver
 // NewStackDriverClientPodIdentity creates a new stackdriver client with the credentials underlying
 func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, error) {
 	metricsClient, err := monitoring.NewMetricClient(ctx)
-	if err != nil {
-		return nil, err
-	}
-	queryClient, err := monitoring.NewQueryClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +86,6 @@ func NewStackDriverClientPodIdentity(ctx context.Context) (*StackDriverClient, e
 
 	return &StackDriverClient{
 		metricsClient: metricsClient,
-		queryClient:   queryClient,
 		projectID:     project,
 	}, nil
 }
@@ -141,7 +118,7 @@ func alignerFromString(aligner string) (monitoringpb.Aggregation_Aligner, error)
 	switch strings.ToLower(aligner) {
 	case "", "none":
 		return monitoringpb.Aggregation_ALIGN_NONE, nil
-	case "delta":
+	case AggregationDelta:
 		return monitoringpb.Aggregation_ALIGN_DELTA, nil
 	case "rate":
 		return monitoringpb.Aggregation_ALIGN_RATE, nil
@@ -153,13 +130,13 @@ func alignerFromString(aligner string) (monitoringpb.Aggregation_Aligner, error)
 		return monitoringpb.Aggregation_ALIGN_MIN, nil
 	case "max":
 		return monitoringpb.Aggregation_ALIGN_MAX, nil
-	case "mean":
+	case AggregationMean:
 		return monitoringpb.Aggregation_ALIGN_MEAN, nil
-	case "count":
+	case AggregationCount:
 		return monitoringpb.Aggregation_ALIGN_COUNT, nil
-	case "sum":
+	case AggregationSum:
 		return monitoringpb.Aggregation_ALIGN_SUM, nil
-	case "stddev":
+	case AggregationStddev:
 		return monitoringpb.Aggregation_ALIGN_STDDEV, nil
 	case "count_true":
 		return monitoringpb.Aggregation_ALIGN_COUNT_TRUE, nil
@@ -167,36 +144,36 @@ func alignerFromString(aligner string) (monitoringpb.Aggregation_Aligner, error)
 		return monitoringpb.Aggregation_ALIGN_COUNT_FALSE, nil
 	case "fraction_true":
 		return monitoringpb.Aggregation_ALIGN_FRACTION_TRUE, nil
-	case "percentile_99":
+	case AggregationPercentile99:
 		return monitoringpb.Aggregation_ALIGN_PERCENTILE_99, nil
-	case "percentile_95":
+	case AggregationPercentile95:
 		return monitoringpb.Aggregation_ALIGN_PERCENTILE_95, nil
-	case "percentile_50":
+	case AggregationPercentile50:
 		return monitoringpb.Aggregation_ALIGN_PERCENTILE_50, nil
-	case "percentile_05":
+	case AggregationPercentile05:
 		return monitoringpb.Aggregation_ALIGN_PERCENTILE_05, nil
 	case "percent_change":
 		return monitoringpb.Aggregation_ALIGN_PERCENT_CHANGE, nil
 	default:
+		return monitoringpb.Aggregation_ALIGN_NONE, fmt.Errorf("unknown aligner: %s", aligner)
 	}
-	return monitoringpb.Aggregation_ALIGN_NONE, fmt.Errorf("unknown aligner: %s", aligner)
 }
 
 func reducerFromString(reducer string) (monitoringpb.Aggregation_Reducer, error) {
 	switch strings.ToLower(reducer) {
 	case "", "none":
 		return monitoringpb.Aggregation_REDUCE_NONE, nil
-	case "mean":
+	case AggregationMean:
 		return monitoringpb.Aggregation_REDUCE_MEAN, nil
 	case "min":
 		return monitoringpb.Aggregation_REDUCE_MIN, nil
 	case "max":
 		return monitoringpb.Aggregation_REDUCE_MAX, nil
-	case "sum":
+	case AggregationSum:
 		return monitoringpb.Aggregation_REDUCE_SUM, nil
-	case "stddev":
+	case AggregationStddev:
 		return monitoringpb.Aggregation_REDUCE_STDDEV, nil
-	case "count":
+	case AggregationCount:
 		return monitoringpb.Aggregation_REDUCE_COUNT, nil
 	case "count_true":
 		return monitoringpb.Aggregation_REDUCE_COUNT_TRUE, nil
@@ -204,17 +181,17 @@ func reducerFromString(reducer string) (monitoringpb.Aggregation_Reducer, error)
 		return monitoringpb.Aggregation_REDUCE_COUNT_FALSE, nil
 	case "fraction_true":
 		return monitoringpb.Aggregation_REDUCE_FRACTION_TRUE, nil
-	case "percentile_99":
+	case AggregationPercentile99:
 		return monitoringpb.Aggregation_REDUCE_PERCENTILE_99, nil
-	case "percentile_95":
+	case AggregationPercentile95:
 		return monitoringpb.Aggregation_REDUCE_PERCENTILE_95, nil
-	case "percentile_50":
+	case AggregationPercentile50:
 		return monitoringpb.Aggregation_REDUCE_PERCENTILE_50, nil
-	case "percentile_05":
+	case AggregationPercentile05:
 		return monitoringpb.Aggregation_REDUCE_PERCENTILE_05, nil
 	default:
+		return monitoringpb.Aggregation_REDUCE_NONE, fmt.Errorf("unknown reducer: %s", reducer)
 	}
-	return monitoringpb.Aggregation_REDUCE_NONE, fmt.Errorf("unknown reducer: %s", reducer)
 }
 
 // GetMetrics fetches metrics from stackdriver for a specific filter for the last minute
@@ -282,47 +259,103 @@ func (s StackDriverClient) GetMetrics(
 	return value, nil
 }
 
-// QueryMetrics fetches metrics from the Cloud Monitoring API
-// for a specific Monitoring Query Language (MQL) query
-//
-// MQL provides a more expressive query language than
-// the current filtering options of GetMetrics
-func (s StackDriverClient) QueryMetrics(ctx context.Context, projectID, query string, valueIfNull *float64) (float64, error) {
-	//nolint:staticcheck
-	req := &monitoringpb.QueryTimeSeriesRequest{
-		Query:    query,
-		PageSize: 1,
+// GetPubSubMetrics fetches PubSub metrics from stackdriver using the filter-based API.
+// This replaces the deprecated MQL-based QueryMetrics method.
+func (s StackDriverClient) GetPubSubMetrics(
+	ctx context.Context,
+	projectID string,
+	resourceType string,
+	resourceName string,
+	metricType string,
+	aggregation string,
+	timeHorizonMinutes int64,
+	valueIfNull *float64,
+) (float64, error) {
+	// Build the filter string for PubSub metrics
+	filter := fmt.Sprintf(`metric.type="%s"`, metricType)
+
+	// Add resource label filter based on resource type
+	switch resourceType {
+	case ResourceTypePubSubSubscription:
+		filter += fmt.Sprintf(` AND resource.labels.subscription_id="%s"`, resourceName)
+	case ResourceTypePubSubTopic:
+		filter += fmt.Sprintf(` AND resource.labels.topic_id="%s"`, resourceName)
 	}
-	req.Name = "projects/" + getActualProjectID(&s, projectID)
-	//nolint:staticcheck
-	it := s.queryClient.QueryTimeSeries(ctx, req)
 
-	var value float64 = -1
-
-	// Get the value from the first metric returned
-	resp, err := it.Next()
-
-	if err == iterator.Done {
-		if valueIfNull == nil {
-			return value, fmt.Errorf("could not find stackdriver metric with query %s", req.Query)
+	// Set default time horizon
+	if timeHorizonMinutes <= 0 {
+		timeHorizonMinutes = 2
+		if aggregation != "" {
+			timeHorizonMinutes = 5
 		}
-		return *valueIfNull, nil
 	}
 
-	if err != nil {
-		return value, err
-	}
-
-	if len(resp.GetPointData()) > 0 {
-		point := resp.GetPointData()[0]
-		value, err = extractValueFromPointData(point)
-
+	// Create aggregation if specified
+	var agg *monitoringpb.Aggregation
+	var err error
+	if aggregation != "" {
+		agg, err = NewPubSubAggregator(aggregation)
 		if err != nil {
 			return -1, err
 		}
 	}
 
-	return value, nil
+	return s.GetMetrics(ctx, filter, projectID, agg, valueIfNull, timeHorizonMinutes)
+}
+
+// NewPubSubAggregator creates an aggregation configuration for PubSub metrics
+// based on the aggregation function name (e.g., "count", "mean", "sum", "percentile99").
+func NewPubSubAggregator(aggregation string) (*monitoringpb.Aggregation, error) {
+	agg := strings.ToLower(aggregation)
+
+	// Map aggregation function to aligner and reducer
+	var aligner string
+	var reducer string
+
+	switch {
+	case agg == AggregationCount:
+		aligner = AggregationDelta
+		reducer = AggregationSum
+	case agg == AggregationSum:
+		aligner = AggregationDelta
+		reducer = AggregationSum
+	case agg == AggregationMean:
+		aligner = AggregationMean
+		reducer = AggregationMean
+	case agg == "median":
+		aligner = AggregationPercentile50
+		reducer = AggregationPercentile50
+	case agg == AggregationStddev:
+		aligner = AggregationStddev
+		reducer = AggregationStddev
+	case agg == "variance":
+		// Variance is not directly supported, use stddev as an approximation
+		aligner = AggregationStddev
+		reducer = AggregationStddev
+	case strings.HasPrefix(agg, "percentile"):
+		// Handle percentileXX format (e.g., percentile99, percentile95)
+		suffix := strings.TrimPrefix(agg, "percentile")
+		switch suffix {
+		case "99":
+			aligner = AggregationPercentile99
+			reducer = AggregationPercentile99
+		case "95":
+			aligner = AggregationPercentile95
+			reducer = AggregationPercentile95
+		case "50":
+			aligner = AggregationPercentile50
+			reducer = AggregationPercentile50
+		case "05", "5":
+			aligner = AggregationPercentile05
+			reducer = AggregationPercentile05
+		default:
+			return nil, fmt.Errorf("unsupported percentile: %s (only 99, 95, 50, 05 are supported)", suffix)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported aggregation function: %s", aggregation)
+	}
+
+	return NewStackdriverAggregator(DefaultPubSubAlignmentPeriod, aligner, reducer)
 }
 
 func getActualProjectID(s *StackDriverClient, projectID string) string {
@@ -335,107 +368,35 @@ func getActualProjectID(s *StackDriverClient, projectID string) string {
 	return s.credentials.ProjectID
 }
 
-// BuildMQLQuery builds a Monitoring Query Language (MQL) query for the last minute (five for aggregations),
-// given a resource type, metric, resource name, and an optional aggregation
-//
-// example:
-// fetch pubsub_topic
-// | metric 'pubsub.googleapis.com/topic/message_sizes'
-// | filter (resource.project_id == 'myproject' && resource.topic_id == 'mytopic')
-// | within 5m
-// | align delta(3m)
-// | every 3m
-// | group_by [], count(value)
-func (s StackDriverClient) BuildMQLQuery(projectID, resourceType, metric, resourceName, aggregation string, timeHorizon time.Duration) (string, error) {
-	th := timeHorizon
-	if time.Duration(0) >= timeHorizon {
-		th = defaultTimeHorizon
-		if aggregation != "" {
-			th = aggregationTimeHorizon
-		}
-	}
-
-	pid := getActualProjectID(&s, projectID)
-	q := fmt.Sprintf(
-		"fetch pubsub_%s | metric '%s' | filter (resource.project_id == '%s' && resource.%s_id == '%s') | within %s",
-		resourceType, metric, pid, resourceType, resourceName, th,
-	)
-	if aggregation != "" {
-		agg, err := buildAggregation(aggregation)
-		if err != nil {
-			return "", err
-		}
-		// Aggregate for every `alignmentPeriod` minutes
-		q += fmt.Sprintf(
-			" | align delta(%s) | every %s | group_by [], %s",
-			alignmentPeriod, alignmentPeriod, agg,
-		)
-	}
-
-	return q, nil
-}
-
 func (s *StackDriverClient) Close() error {
-	var queryClientError error
-	var metricsClientError error
-	if s.queryClient != nil {
-		queryClientError = s.queryClient.Close()
-	}
 	if s.metricsClient != nil {
-		metricsClientError = s.metricsClient.Close()
+		return s.metricsClient.Close()
 	}
-	return errors.Join(queryClientError, metricsClientError)
-}
-
-// buildAggregation builds the aggregation part of a Monitoring Query Language (MQL) query
-func buildAggregation(aggregation string) (string, error) {
-	// Match against "percentileX"
-	if strings.HasPrefix(aggregation, aggregationPercentile) {
-		p, err := parsePercentile(aggregation)
-		if err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("%s(value, %d)", aggregationPercentile, p), nil
-	}
-
-	switch aggregation {
-	case aggregationMedian, aggregationMean, aggregationVariance, aggregationStddev, aggregationSum, aggregationCount:
-		return fmt.Sprintf("%s(value)", aggregation), nil
-	default:
-		return "", fmt.Errorf("unsupported aggregation function: %s", aggregation)
-	}
-}
-
-// parsePercentile returns the percentile value from a string of the form "percentileX"
-func parsePercentile(str string) (int, error) {
-	ps := strings.TrimPrefix(str, aggregationPercentile)
-	p, err := strconv.Atoi(ps)
-	if err != nil || p < 0 || p > 100 {
-		return -1, fmt.Errorf("invalid percentile value: %s", ps)
-	}
-	return p, nil
+	return nil
 }
 
 // extractValueFromPoint attempts to extract a float64 by asserting the point's value type
 func extractValueFromPoint(point *monitoringpb.Point) (float64, error) {
 	typedValue := point.GetValue()
-	switch typedValue.Value.(type) {
+	switch v := typedValue.Value.(type) {
 	case *monitoringpb.TypedValue_DoubleValue:
 		return typedValue.GetDoubleValue(), nil
 	case *monitoringpb.TypedValue_Int64Value:
 		return float64(typedValue.GetInt64Value()), nil
-	}
-	return -1, fmt.Errorf("could not extract value from metric of type %T", typedValue)
-}
-
-// extractValueFromPointData is similar to extractValueFromPoint, but for type *TimeSeriesData_PointData
-func extractValueFromPointData(point *monitoringpb.TimeSeriesData_PointData) (float64, error) {
-	typedValue := point.GetValues()[0]
-	switch typedValue.Value.(type) {
-	case *monitoringpb.TypedValue_DoubleValue:
-		return typedValue.GetDoubleValue(), nil
-	case *monitoringpb.TypedValue_Int64Value:
-		return float64(typedValue.GetInt64Value()), nil
+	case *monitoringpb.TypedValue_DistributionValue:
+		// For distribution metrics, return the count of values
+		// This is useful for metrics like message counts where the underlying
+		// metric is a distribution (e.g., message sizes) but we want the count
+		dist := v.DistributionValue
+		if dist != nil {
+			return float64(dist.GetCount()), nil
+		}
+		return 0, nil
+	case *monitoringpb.TypedValue_BoolValue:
+		if typedValue.GetBoolValue() {
+			return 1, nil
+		}
+		return 0, nil
 	}
 	return -1, fmt.Errorf("could not extract value from metric of type %T", typedValue)
 }

@@ -197,16 +197,23 @@ func (s *pubsubScaler) getMetrics(ctx context.Context, metricType string) (float
 		}
 	}
 	resourceID, projectID := getResourceData(s)
-	query, err := s.client.BuildMQLQuery(
-		projectID, s.metadata.resourceType, metricType, resourceID, s.metadata.Aggregation, s.metadata.TimeHorizon,
-	)
-	if err != nil {
-		return -1, err
+
+	// Convert time horizon to minutes
+	var timeHorizonMinutes int64
+	if s.metadata.TimeHorizon > 0 {
+		timeHorizonMinutes = int64(s.metadata.TimeHorizon.Minutes())
 	}
 
-	// Pubsub metrics are collected every 60 seconds so no need to aggregate them.
-	// See: https://cloud.google.com/monitoring/api/metrics_gcp#gcp-pubsub
-	return s.client.QueryMetrics(ctx, projectID, query, s.metadata.ValueIfNull)
+	return s.client.GetPubSubMetrics(
+		ctx,
+		projectID,
+		s.metadata.resourceType,
+		resourceID,
+		metricType,
+		s.metadata.Aggregation,
+		timeHorizonMinutes,
+		s.metadata.ValueIfNull,
+	)
 }
 
 func getResourceData(s *pubsubScaler) (string, string) {

@@ -90,6 +90,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Replace deprecated `azure autorest` dependency to `azure sdk for go` ([#7073](https://github.com/kedacore/keda/issues/7073))
 - **Datadog Scaler**: Return request in cluster agent proxy without bearer auth ([#7341](https://github.com/kedacore/keda/issues/7341))
 - **Datadog Scaler**: Use metricUnavailableValue for 422 errors in Datadog Cluster Agent ([#7246](https://github.com/kedacore/keda/issues/7246))
+- **GCP PubSub Scaler**: Resolve deprecation in GCP Stackdriver API by migrating from MQL-based QueryTimeSeries to filter-based ListTimeSeries ([#6653](https://github.com/kedacore/keda/issues/6653))
 - **IBMMQ Scaler**: Create new HTTP request for each queue query in IBMMQ scaler ([#7202](https://github.com/kedacore/keda/pull/7202))
 - **Kafka Scaler**: Improve check for missing partition information when calculating lag ([#7414](https://github.com/kedacore/keda/issues/7414))
 - **Temporal Scaler**: Fix TLS RootCAs initialization when using API key authentication with Temporal Cloud ([#7367](https://github.com/kedacore/keda/pull/7367))
