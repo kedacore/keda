@@ -97,7 +97,6 @@ var (
 	InstallCertManager            = AwsIdentityTests == StringTrue || GcpIdentityTests == StringTrue
 	InstallKeda                   = os.Getenv("E2E_INSTALL_KEDA")
 	InstallKafka                  = os.Getenv("E2E_INSTALL_KAFKA")
-	EnableFileAuth                = os.Getenv("ENABLE_FILE_AUTH")
 )
 
 func init() {

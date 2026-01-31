@@ -90,11 +90,6 @@ spec:
 )
 
 func TestFileBasedAuthentication(t *testing.T) {
-	// Skip test if file auth is not enabled
-	if EnableFileAuth != StringTrue {
-		t.Skip("Skipping file-based auth test: ENABLE_FILE_AUTH is not set to true")
-	}
-
 	// setup
 	t.Log("--- setting up file-based auth test ---")
 
