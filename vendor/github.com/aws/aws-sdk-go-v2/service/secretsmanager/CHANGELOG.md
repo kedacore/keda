@@ -1,3 +1,19 @@
+# v1.41.1 (2026-01-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.41.0 (2025-12-11)
+
+* **Feature**: Add SortBy parameter to ListSecrets
+
+# v1.40.5 (2025-12-09)
+
+* No change notes available for this release.
+
+# v1.40.4 (2025-12-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.40.3 (2025-12-02)
 
 * **Dependency Update**: Updated to the latest SDK module versions

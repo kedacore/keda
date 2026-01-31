@@ -6,4822 +6,4272 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws/protocol/query"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	smithy "github.com/aws/smithy-go"
-	"github.com/aws/smithy-go/encoding/httpbinding"
+	smithycbor "github.com/aws/smithy-go/encoding/cbor"
 	"github.com/aws/smithy-go/middleware"
-	smithytime "github.com/aws/smithy-go/time"
 	"github.com/aws/smithy-go/tracing"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
-	"math"
-	"path"
-	"sort"
+	"net/http"
+	"time"
 )
 
-type awsAwsquery_serializeOpDeleteAlarms struct {
+type smithyRpcv2cbor_serializeOpDeleteAlarms struct {
 }
 
-func (*awsAwsquery_serializeOpDeleteAlarms) ID() string {
+func (*smithyRpcv2cbor_serializeOpDeleteAlarms) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpDeleteAlarms) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpDeleteAlarms) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*DeleteAlarmsInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/DeleteAlarms"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("DeleteAlarms")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentDeleteAlarmsInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_DeleteAlarmsInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpDeleteAnomalyDetector struct {
+type smithyRpcv2cbor_serializeOpDeleteAnomalyDetector struct {
 }
 
-func (*awsAwsquery_serializeOpDeleteAnomalyDetector) ID() string {
+func (*smithyRpcv2cbor_serializeOpDeleteAnomalyDetector) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpDeleteAnomalyDetector) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpDeleteAnomalyDetector) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*DeleteAnomalyDetectorInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/DeleteAnomalyDetector"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("DeleteAnomalyDetector")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentDeleteAnomalyDetectorInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_DeleteAnomalyDetectorInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpDeleteDashboards struct {
+type smithyRpcv2cbor_serializeOpDeleteDashboards struct {
 }
 
-func (*awsAwsquery_serializeOpDeleteDashboards) ID() string {
+func (*smithyRpcv2cbor_serializeOpDeleteDashboards) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpDeleteDashboards) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpDeleteDashboards) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*DeleteDashboardsInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/DeleteDashboards"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("DeleteDashboards")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentDeleteDashboardsInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_DeleteDashboardsInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpDeleteInsightRules struct {
+type smithyRpcv2cbor_serializeOpDeleteInsightRules struct {
 }
 
-func (*awsAwsquery_serializeOpDeleteInsightRules) ID() string {
+func (*smithyRpcv2cbor_serializeOpDeleteInsightRules) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpDeleteInsightRules) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpDeleteInsightRules) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*DeleteInsightRulesInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/DeleteInsightRules"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("DeleteInsightRules")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentDeleteInsightRulesInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_DeleteInsightRulesInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpDeleteMetricStream struct {
+type smithyRpcv2cbor_serializeOpDeleteMetricStream struct {
 }
 
-func (*awsAwsquery_serializeOpDeleteMetricStream) ID() string {
+func (*smithyRpcv2cbor_serializeOpDeleteMetricStream) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpDeleteMetricStream) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpDeleteMetricStream) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*DeleteMetricStreamInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/DeleteMetricStream"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("DeleteMetricStream")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentDeleteMetricStreamInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_DeleteMetricStreamInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpDescribeAlarmContributors struct {
+type smithyRpcv2cbor_serializeOpDescribeAlarmContributors struct {
 }
 
-func (*awsAwsquery_serializeOpDescribeAlarmContributors) ID() string {
+func (*smithyRpcv2cbor_serializeOpDescribeAlarmContributors) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpDescribeAlarmContributors) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpDescribeAlarmContributors) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*DescribeAlarmContributorsInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/DescribeAlarmContributors"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("DescribeAlarmContributors")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentDescribeAlarmContributorsInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_DescribeAlarmContributorsInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpDescribeAlarmHistory struct {
+type smithyRpcv2cbor_serializeOpDescribeAlarmHistory struct {
 }
 
-func (*awsAwsquery_serializeOpDescribeAlarmHistory) ID() string {
+func (*smithyRpcv2cbor_serializeOpDescribeAlarmHistory) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpDescribeAlarmHistory) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpDescribeAlarmHistory) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*DescribeAlarmHistoryInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/DescribeAlarmHistory"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("DescribeAlarmHistory")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentDescribeAlarmHistoryInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_DescribeAlarmHistoryInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpDescribeAlarms struct {
+type smithyRpcv2cbor_serializeOpDescribeAlarms struct {
 }
 
-func (*awsAwsquery_serializeOpDescribeAlarms) ID() string {
+func (*smithyRpcv2cbor_serializeOpDescribeAlarms) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpDescribeAlarms) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpDescribeAlarms) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*DescribeAlarmsInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/DescribeAlarms"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("DescribeAlarms")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentDescribeAlarmsInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_DescribeAlarmsInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpDescribeAlarmsForMetric struct {
+type smithyRpcv2cbor_serializeOpDescribeAlarmsForMetric struct {
 }
 
-func (*awsAwsquery_serializeOpDescribeAlarmsForMetric) ID() string {
+func (*smithyRpcv2cbor_serializeOpDescribeAlarmsForMetric) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpDescribeAlarmsForMetric) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpDescribeAlarmsForMetric) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*DescribeAlarmsForMetricInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/DescribeAlarmsForMetric"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("DescribeAlarmsForMetric")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentDescribeAlarmsForMetricInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_DescribeAlarmsForMetricInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpDescribeAnomalyDetectors struct {
+type smithyRpcv2cbor_serializeOpDescribeAnomalyDetectors struct {
 }
 
-func (*awsAwsquery_serializeOpDescribeAnomalyDetectors) ID() string {
+func (*smithyRpcv2cbor_serializeOpDescribeAnomalyDetectors) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpDescribeAnomalyDetectors) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpDescribeAnomalyDetectors) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*DescribeAnomalyDetectorsInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/DescribeAnomalyDetectors"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("DescribeAnomalyDetectors")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentDescribeAnomalyDetectorsInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_DescribeAnomalyDetectorsInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpDescribeInsightRules struct {
+type smithyRpcv2cbor_serializeOpDescribeInsightRules struct {
 }
 
-func (*awsAwsquery_serializeOpDescribeInsightRules) ID() string {
+func (*smithyRpcv2cbor_serializeOpDescribeInsightRules) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpDescribeInsightRules) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpDescribeInsightRules) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*DescribeInsightRulesInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/DescribeInsightRules"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("DescribeInsightRules")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentDescribeInsightRulesInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_DescribeInsightRulesInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpDisableAlarmActions struct {
+type smithyRpcv2cbor_serializeOpDisableAlarmActions struct {
 }
 
-func (*awsAwsquery_serializeOpDisableAlarmActions) ID() string {
+func (*smithyRpcv2cbor_serializeOpDisableAlarmActions) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpDisableAlarmActions) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpDisableAlarmActions) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*DisableAlarmActionsInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/DisableAlarmActions"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("DisableAlarmActions")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentDisableAlarmActionsInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_DisableAlarmActionsInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpDisableInsightRules struct {
+type smithyRpcv2cbor_serializeOpDisableInsightRules struct {
 }
 
-func (*awsAwsquery_serializeOpDisableInsightRules) ID() string {
+func (*smithyRpcv2cbor_serializeOpDisableInsightRules) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpDisableInsightRules) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpDisableInsightRules) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*DisableInsightRulesInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/DisableInsightRules"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("DisableInsightRules")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentDisableInsightRulesInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_DisableInsightRulesInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpEnableAlarmActions struct {
+type smithyRpcv2cbor_serializeOpEnableAlarmActions struct {
 }
 
-func (*awsAwsquery_serializeOpEnableAlarmActions) ID() string {
+func (*smithyRpcv2cbor_serializeOpEnableAlarmActions) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpEnableAlarmActions) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpEnableAlarmActions) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*EnableAlarmActionsInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/EnableAlarmActions"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("EnableAlarmActions")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentEnableAlarmActionsInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_EnableAlarmActionsInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpEnableInsightRules struct {
+type smithyRpcv2cbor_serializeOpEnableInsightRules struct {
 }
 
-func (*awsAwsquery_serializeOpEnableInsightRules) ID() string {
+func (*smithyRpcv2cbor_serializeOpEnableInsightRules) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpEnableInsightRules) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpEnableInsightRules) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*EnableInsightRulesInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/EnableInsightRules"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("EnableInsightRules")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentEnableInsightRulesInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_EnableInsightRulesInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpGetDashboard struct {
+type smithyRpcv2cbor_serializeOpGetDashboard struct {
 }
 
-func (*awsAwsquery_serializeOpGetDashboard) ID() string {
+func (*smithyRpcv2cbor_serializeOpGetDashboard) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpGetDashboard) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpGetDashboard) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*GetDashboardInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/GetDashboard"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("GetDashboard")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentGetDashboardInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_GetDashboardInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpGetInsightRuleReport struct {
+type smithyRpcv2cbor_serializeOpGetInsightRuleReport struct {
 }
 
-func (*awsAwsquery_serializeOpGetInsightRuleReport) ID() string {
+func (*smithyRpcv2cbor_serializeOpGetInsightRuleReport) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpGetInsightRuleReport) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpGetInsightRuleReport) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*GetInsightRuleReportInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/GetInsightRuleReport"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("GetInsightRuleReport")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentGetInsightRuleReportInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_GetInsightRuleReportInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpGetMetricData struct {
+type smithyRpcv2cbor_serializeOpGetMetricData struct {
 }
 
-func (*awsAwsquery_serializeOpGetMetricData) ID() string {
+func (*smithyRpcv2cbor_serializeOpGetMetricData) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpGetMetricData) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpGetMetricData) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*GetMetricDataInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/GetMetricData"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("GetMetricData")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentGetMetricDataInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_GetMetricDataInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpGetMetricStatistics struct {
+type smithyRpcv2cbor_serializeOpGetMetricStatistics struct {
 }
 
-func (*awsAwsquery_serializeOpGetMetricStatistics) ID() string {
+func (*smithyRpcv2cbor_serializeOpGetMetricStatistics) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpGetMetricStatistics) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpGetMetricStatistics) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*GetMetricStatisticsInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/GetMetricStatistics"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("GetMetricStatistics")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentGetMetricStatisticsInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_GetMetricStatisticsInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpGetMetricStream struct {
+type smithyRpcv2cbor_serializeOpGetMetricStream struct {
 }
 
-func (*awsAwsquery_serializeOpGetMetricStream) ID() string {
+func (*smithyRpcv2cbor_serializeOpGetMetricStream) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpGetMetricStream) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpGetMetricStream) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*GetMetricStreamInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/GetMetricStream"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("GetMetricStream")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentGetMetricStreamInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_GetMetricStreamInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpGetMetricWidgetImage struct {
+type smithyRpcv2cbor_serializeOpGetMetricWidgetImage struct {
 }
 
-func (*awsAwsquery_serializeOpGetMetricWidgetImage) ID() string {
+func (*smithyRpcv2cbor_serializeOpGetMetricWidgetImage) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpGetMetricWidgetImage) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpGetMetricWidgetImage) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*GetMetricWidgetImageInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/GetMetricWidgetImage"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("GetMetricWidgetImage")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentGetMetricWidgetImageInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_GetMetricWidgetImageInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpListDashboards struct {
+type smithyRpcv2cbor_serializeOpListDashboards struct {
 }
 
-func (*awsAwsquery_serializeOpListDashboards) ID() string {
+func (*smithyRpcv2cbor_serializeOpListDashboards) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpListDashboards) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpListDashboards) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*ListDashboardsInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/ListDashboards"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("ListDashboards")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentListDashboardsInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_ListDashboardsInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpListManagedInsightRules struct {
+type smithyRpcv2cbor_serializeOpListManagedInsightRules struct {
 }
 
-func (*awsAwsquery_serializeOpListManagedInsightRules) ID() string {
+func (*smithyRpcv2cbor_serializeOpListManagedInsightRules) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpListManagedInsightRules) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpListManagedInsightRules) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*ListManagedInsightRulesInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/ListManagedInsightRules"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("ListManagedInsightRules")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentListManagedInsightRulesInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_ListManagedInsightRulesInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpListMetrics struct {
+type smithyRpcv2cbor_serializeOpListMetrics struct {
 }
 
-func (*awsAwsquery_serializeOpListMetrics) ID() string {
+func (*smithyRpcv2cbor_serializeOpListMetrics) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpListMetrics) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpListMetrics) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*ListMetricsInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/ListMetrics"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("ListMetrics")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentListMetricsInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_ListMetricsInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpListMetricStreams struct {
+type smithyRpcv2cbor_serializeOpListMetricStreams struct {
 }
 
-func (*awsAwsquery_serializeOpListMetricStreams) ID() string {
+func (*smithyRpcv2cbor_serializeOpListMetricStreams) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpListMetricStreams) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpListMetricStreams) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*ListMetricStreamsInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/ListMetricStreams"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("ListMetricStreams")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentListMetricStreamsInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_ListMetricStreamsInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpListTagsForResource struct {
+type smithyRpcv2cbor_serializeOpListTagsForResource struct {
 }
 
-func (*awsAwsquery_serializeOpListTagsForResource) ID() string {
+func (*smithyRpcv2cbor_serializeOpListTagsForResource) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpListTagsForResource) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpListTagsForResource) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*ListTagsForResourceInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/ListTagsForResource"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("ListTagsForResource")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentListTagsForResourceInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_ListTagsForResourceInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpPutAnomalyDetector struct {
+type smithyRpcv2cbor_serializeOpPutAnomalyDetector struct {
 }
 
-func (*awsAwsquery_serializeOpPutAnomalyDetector) ID() string {
+func (*smithyRpcv2cbor_serializeOpPutAnomalyDetector) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpPutAnomalyDetector) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpPutAnomalyDetector) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*PutAnomalyDetectorInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/PutAnomalyDetector"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("PutAnomalyDetector")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentPutAnomalyDetectorInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_PutAnomalyDetectorInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpPutCompositeAlarm struct {
+type smithyRpcv2cbor_serializeOpPutCompositeAlarm struct {
 }
 
-func (*awsAwsquery_serializeOpPutCompositeAlarm) ID() string {
+func (*smithyRpcv2cbor_serializeOpPutCompositeAlarm) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpPutCompositeAlarm) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpPutCompositeAlarm) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*PutCompositeAlarmInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/PutCompositeAlarm"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("PutCompositeAlarm")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentPutCompositeAlarmInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_PutCompositeAlarmInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpPutDashboard struct {
+type smithyRpcv2cbor_serializeOpPutDashboard struct {
 }
 
-func (*awsAwsquery_serializeOpPutDashboard) ID() string {
+func (*smithyRpcv2cbor_serializeOpPutDashboard) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpPutDashboard) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpPutDashboard) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*PutDashboardInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/PutDashboard"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("PutDashboard")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentPutDashboardInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_PutDashboardInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpPutInsightRule struct {
+type smithyRpcv2cbor_serializeOpPutInsightRule struct {
 }
 
-func (*awsAwsquery_serializeOpPutInsightRule) ID() string {
+func (*smithyRpcv2cbor_serializeOpPutInsightRule) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpPutInsightRule) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpPutInsightRule) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*PutInsightRuleInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/PutInsightRule"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("PutInsightRule")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentPutInsightRuleInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_PutInsightRuleInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpPutManagedInsightRules struct {
+type smithyRpcv2cbor_serializeOpPutManagedInsightRules struct {
 }
 
-func (*awsAwsquery_serializeOpPutManagedInsightRules) ID() string {
+func (*smithyRpcv2cbor_serializeOpPutManagedInsightRules) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpPutManagedInsightRules) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpPutManagedInsightRules) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*PutManagedInsightRulesInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/PutManagedInsightRules"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("PutManagedInsightRules")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentPutManagedInsightRulesInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_PutManagedInsightRulesInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpPutMetricAlarm struct {
+type smithyRpcv2cbor_serializeOpPutMetricAlarm struct {
 }
 
-func (*awsAwsquery_serializeOpPutMetricAlarm) ID() string {
+func (*smithyRpcv2cbor_serializeOpPutMetricAlarm) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpPutMetricAlarm) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpPutMetricAlarm) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*PutMetricAlarmInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/PutMetricAlarm"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("PutMetricAlarm")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentPutMetricAlarmInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_PutMetricAlarmInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpPutMetricData struct {
+type smithyRpcv2cbor_serializeOpPutMetricData struct {
 }
 
-func (*awsAwsquery_serializeOpPutMetricData) ID() string {
+func (*smithyRpcv2cbor_serializeOpPutMetricData) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpPutMetricData) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpPutMetricData) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*PutMetricDataInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/PutMetricData"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("PutMetricData")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentPutMetricDataInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_PutMetricDataInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpPutMetricStream struct {
+type smithyRpcv2cbor_serializeOpPutMetricStream struct {
 }
 
-func (*awsAwsquery_serializeOpPutMetricStream) ID() string {
+func (*smithyRpcv2cbor_serializeOpPutMetricStream) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpPutMetricStream) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpPutMetricStream) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*PutMetricStreamInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/PutMetricStream"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("PutMetricStream")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentPutMetricStreamInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_PutMetricStreamInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpSetAlarmState struct {
+type smithyRpcv2cbor_serializeOpSetAlarmState struct {
 }
 
-func (*awsAwsquery_serializeOpSetAlarmState) ID() string {
+func (*smithyRpcv2cbor_serializeOpSetAlarmState) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpSetAlarmState) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpSetAlarmState) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*SetAlarmStateInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/SetAlarmState"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("SetAlarmState")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentSetAlarmStateInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_SetAlarmStateInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpStartMetricStreams struct {
+type smithyRpcv2cbor_serializeOpStartMetricStreams struct {
 }
 
-func (*awsAwsquery_serializeOpStartMetricStreams) ID() string {
+func (*smithyRpcv2cbor_serializeOpStartMetricStreams) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpStartMetricStreams) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpStartMetricStreams) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*StartMetricStreamsInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/StartMetricStreams"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("StartMetricStreams")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentStartMetricStreamsInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_StartMetricStreamsInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpStopMetricStreams struct {
+type smithyRpcv2cbor_serializeOpStopMetricStreams struct {
 }
 
-func (*awsAwsquery_serializeOpStopMetricStreams) ID() string {
+func (*smithyRpcv2cbor_serializeOpStopMetricStreams) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpStopMetricStreams) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpStopMetricStreams) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*StopMetricStreamsInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/StopMetricStreams"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("StopMetricStreams")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentStopMetricStreamsInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_StopMetricStreamsInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpTagResource struct {
+type smithyRpcv2cbor_serializeOpTagResource struct {
 }
 
-func (*awsAwsquery_serializeOpTagResource) ID() string {
+func (*smithyRpcv2cbor_serializeOpTagResource) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpTagResource) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpTagResource) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*TagResourceInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/TagResource"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("TagResource")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentTagResourceInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_TagResourceInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
 
-type awsAwsquery_serializeOpUntagResource struct {
+type smithyRpcv2cbor_serializeOpUntagResource struct {
 }
 
-func (*awsAwsquery_serializeOpUntagResource) ID() string {
+func (*smithyRpcv2cbor_serializeOpUntagResource) ID() string {
 	return "OperationSerializer"
 }
 
-func (m *awsAwsquery_serializeOpUntagResource) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
+func (m *smithyRpcv2cbor_serializeOpUntagResource) HandleSerialize(ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler) (
 	out middleware.SerializeOutput, metadata middleware.Metadata, err error,
 ) {
 	_, span := tracing.StartSpan(ctx, "OperationSerializer")
 	endTimer := startMetricTimer(ctx, "client.call.serialization_duration")
 	defer endTimer()
 	defer span.End()
-	request, ok := in.Request.(*smithyhttp.Request)
-	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown transport type %T", in.Request)}
-	}
-
 	input, ok := in.Parameters.(*UntagResourceInput)
-	_ = input
 	if !ok {
-		return out, metadata, &smithy.SerializationError{Err: fmt.Errorf("unknown input parameters type %T", in.Parameters)}
+		return out, metadata, fmt.Errorf("unexpected input type %T", in.Parameters)
+	}
+	_ = input
+
+	req, ok := in.Request.(*smithyhttp.Request)
+	if !ok {
+		return out, metadata, fmt.Errorf("unexpected transport type %T", in.Request)
 	}
 
-	operationPath := "/"
-	if len(request.Request.URL.Path) == 0 {
-		request.Request.URL.Path = operationPath
-	} else {
-		request.Request.URL.Path = path.Join(request.Request.URL.Path, operationPath)
-		if request.Request.URL.Path != "/" && operationPath[len(operationPath)-1] == '/' {
-			request.Request.URL.Path += "/"
-		}
-	}
-	request.Request.Method = "POST"
-	httpBindingEncoder, err := httpbinding.NewEncoder(request.URL.Path, request.URL.RawQuery, request.Header)
-	if err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	httpBindingEncoder.SetHeader("Content-Type").String("application/x-www-form-urlencoded")
+	req.Method = http.MethodPost
+	req.URL.Path = "/service/GraniteServiceVersion20100801/operation/UntagResource"
+	req.Header.Set("smithy-protocol", "rpc-v2-cbor")
 
-	bodyWriter := bytes.NewBuffer(nil)
-	bodyEncoder := query.NewEncoder(bodyWriter)
-	body := bodyEncoder.Object()
-	body.Key("Action").String("UntagResource")
-	body.Key("Version").String("2010-08-01")
+	req.Header.Set("Content-Type", "application/cbor")
+	req.Header.Set("Accept", "application/cbor")
+	req.Header.Set("X-Amzn-Query-Mode", "true")
 
-	if err := awsAwsquery_serializeOpDocumentUntagResourceInput(input, bodyEncoder.Value); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-
-	err = bodyEncoder.Encode()
+	cv, err := serializeCBOR_UntagResourceInput(input)
 	if err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request, err = request.SetStream(bytes.NewReader(bodyWriter.Bytes())); err != nil {
+	payload := bytes.NewReader(smithycbor.Encode(cv))
+	if req, err = req.SetStream(payload); err != nil {
 		return out, metadata, &smithy.SerializationError{Err: err}
 	}
 
-	if request.Request, err = httpBindingEncoder.Encode(request.Request); err != nil {
-		return out, metadata, &smithy.SerializationError{Err: err}
-	}
-	in.Request = request
+	in.Request = req
 
 	endTimer()
 	span.End()
+
 	return next.HandleSerialize(ctx, in)
 }
-func awsAwsquery_serializeDocumentAlarmNames(v []string, value query.Value) error {
-	array := value.Array("member")
-
+func serializeCBOR_AlarmNames(v []string) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
 	for i := range v {
-		av := array.Value()
-		av.String(v[i])
+
+		ser, err := serializeCBOR_String(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
 	}
-	return nil
+	return vl, nil
 }
 
-func awsAwsquery_serializeDocumentAlarmTypes(v []types.AlarmType, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		av.String(string(v[i]))
-	}
-	return nil
+func serializeCBOR_AlarmType(v types.AlarmType) (smithycbor.Value, error) {
+	return smithycbor.String(string(v)), nil
 }
 
-func awsAwsquery_serializeDocumentAnomalyDetectorConfiguration(v *types.AnomalyDetectorConfiguration, value query.Value) error {
-	object := value.Object()
-	_ = object
+func serializeCBOR_AlarmTypes(v []types.AlarmType) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
 
+		ser, err := serializeCBOR_AlarmType(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
+	}
+	return vl, nil
+}
+
+func serializeCBOR_AnomalyDetectorConfiguration(v *types.AnomalyDetectorConfiguration) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.ExcludedTimeRanges != nil {
-		objectKey := object.Key("ExcludedTimeRanges")
-		if err := awsAwsquery_serializeDocumentAnomalyDetectorExcludedTimeRanges(v.ExcludedTimeRanges, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_AnomalyDetectorExcludedTimeRanges(v.ExcludedTimeRanges)
+		if err != nil {
+			return nil, err
 		}
+		vm["ExcludedTimeRanges"] = ser
 	}
-
 	if v.MetricTimezone != nil {
-		objectKey := object.Key("MetricTimezone")
-		objectKey.String(*v.MetricTimezone)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeDocumentAnomalyDetectorExcludedTimeRanges(v []types.Range, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		if err := awsAwsquery_serializeDocumentRange(&v[i], av); err != nil {
-			return err
+		ser, err := serializeCBOR_String(*v.MetricTimezone)
+		if err != nil {
+			return nil, err
 		}
+		vm["MetricTimezone"] = ser
 	}
-	return nil
+	return vm, nil
 }
 
-func awsAwsquery_serializeDocumentAnomalyDetectorTypes(v []types.AnomalyDetectorType, value query.Value) error {
-	array := value.Array("member")
-
+func serializeCBOR_AnomalyDetectorExcludedTimeRanges(v []types.Range) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
 	for i := range v {
-		av := array.Value()
-		av.String(string(v[i]))
-	}
-	return nil
-}
 
-func awsAwsquery_serializeDocumentCounts(v []float64, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		switch {
-		case math.IsNaN(v[i]):
-			av.String("NaN")
-
-		case math.IsInf(v[i], 1):
-			av.String("Infinity")
-
-		case math.IsInf(v[i], -1):
-			av.String("-Infinity")
-
-		default:
-			av.Double(v[i])
-
+		ser, err := serializeCBOR_Range(&v[i])
+		if err != nil {
+			return nil, err
 		}
+		vl = append(vl, ser)
 	}
-	return nil
+	return vl, nil
 }
 
-func awsAwsquery_serializeDocumentDashboardNames(v []string, value query.Value) error {
-	array := value.Array("member")
+func serializeCBOR_AnomalyDetectorType(v types.AnomalyDetectorType) (smithycbor.Value, error) {
+	return smithycbor.String(string(v)), nil
+}
 
+func serializeCBOR_AnomalyDetectorTypes(v []types.AnomalyDetectorType) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
 	for i := range v {
-		av := array.Value()
-		av.String(v[i])
+
+		ser, err := serializeCBOR_AnomalyDetectorType(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
 	}
-	return nil
+	return vl, nil
 }
 
-func awsAwsquery_serializeDocumentDimension(v *types.Dimension, value query.Value) error {
-	object := value.Object()
-	_ = object
+func serializeCBOR_ComparisonOperator(v types.ComparisonOperator) (smithycbor.Value, error) {
+	return smithycbor.String(string(v)), nil
+}
 
+func serializeCBOR_Counts(v []float64) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
+
+		ser, err := serializeCBOR_Float64(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
+	}
+	return vl, nil
+}
+
+func serializeCBOR_DashboardNames(v []string) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
+
+		ser, err := serializeCBOR_String(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
+	}
+	return vl, nil
+}
+
+func serializeCBOR_Dimension(v *types.Dimension) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.Name != nil {
-		objectKey := object.Key("Name")
-		objectKey.String(*v.Name)
+		ser, err := serializeCBOR_String(*v.Name)
+		if err != nil {
+			return nil, err
+		}
+		vm["Name"] = ser
 	}
-
 	if v.Value != nil {
-		objectKey := object.Key("Value")
-		objectKey.String(*v.Value)
+		ser, err := serializeCBOR_String(*v.Value)
+		if err != nil {
+			return nil, err
+		}
+		vm["Value"] = ser
 	}
-
-	return nil
+	return vm, nil
 }
 
-func awsAwsquery_serializeDocumentDimensionFilter(v *types.DimensionFilter, value query.Value) error {
-	object := value.Object()
-	_ = object
-
+func serializeCBOR_DimensionFilter(v *types.DimensionFilter) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.Name != nil {
-		objectKey := object.Key("Name")
-		objectKey.String(*v.Name)
+		ser, err := serializeCBOR_String(*v.Name)
+		if err != nil {
+			return nil, err
+		}
+		vm["Name"] = ser
 	}
-
 	if v.Value != nil {
-		objectKey := object.Key("Value")
-		objectKey.String(*v.Value)
+		ser, err := serializeCBOR_String(*v.Value)
+		if err != nil {
+			return nil, err
+		}
+		vm["Value"] = ser
 	}
-
-	return nil
+	return vm, nil
 }
 
-func awsAwsquery_serializeDocumentDimensionFilters(v []types.DimensionFilter, value query.Value) error {
-	array := value.Array("member")
-
+func serializeCBOR_DimensionFilters(v []types.DimensionFilter) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
 	for i := range v {
-		av := array.Value()
-		if err := awsAwsquery_serializeDocumentDimensionFilter(&v[i], av); err != nil {
-			return err
+
+		ser, err := serializeCBOR_DimensionFilter(&v[i])
+		if err != nil {
+			return nil, err
 		}
+		vl = append(vl, ser)
 	}
-	return nil
+	return vl, nil
 }
 
-func awsAwsquery_serializeDocumentDimensions(v []types.Dimension, value query.Value) error {
-	array := value.Array("member")
-
+func serializeCBOR_Dimensions(v []types.Dimension) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
 	for i := range v {
-		av := array.Value()
-		if err := awsAwsquery_serializeDocumentDimension(&v[i], av); err != nil {
-			return err
+
+		ser, err := serializeCBOR_Dimension(&v[i])
+		if err != nil {
+			return nil, err
 		}
+		vl = append(vl, ser)
 	}
-	return nil
+	return vl, nil
 }
 
-func awsAwsquery_serializeDocumentEntity(v *types.Entity, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Attributes != nil {
-		objectKey := object.Key("Attributes")
-		if err := awsAwsquery_serializeDocumentEntityAttributesMap(v.Attributes, objectKey); err != nil {
-			return err
-		}
-	}
-
+func serializeCBOR_Entity(v *types.Entity) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.KeyAttributes != nil {
-		objectKey := object.Key("KeyAttributes")
-		if err := awsAwsquery_serializeDocumentEntityKeyAttributesMap(v.KeyAttributes, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_EntityKeyAttributesMap(v.KeyAttributes)
+		if err != nil {
+			return nil, err
 		}
+		vm["KeyAttributes"] = ser
 	}
-
-	return nil
+	if v.Attributes != nil {
+		ser, err := serializeCBOR_EntityAttributesMap(v.Attributes)
+		if err != nil {
+			return nil, err
+		}
+		vm["Attributes"] = ser
+	}
+	return vm, nil
 }
 
-func awsAwsquery_serializeDocumentEntityAttributesMap(v map[string]string, value query.Value) error {
-	if len(v) == 0 {
-		return nil
-	}
-	object := value.Map("key", "value")
+func serializeCBOR_EntityAttributesMap(v map[string]string) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	for k, vv := range v {
 
-	keys := make([]string, 0, len(v))
-	for key := range v {
-		keys = append(keys, key)
+		ser, err := serializeCBOR_String(vv)
+		if err != nil {
+			return nil, err
+		}
+		vm[k] = ser
 	}
-	sort.Strings(keys)
-
-	for _, key := range keys {
-		om := object.Key(key)
-		om.String(v[key])
-	}
-	return nil
+	return vm, nil
 }
 
-func awsAwsquery_serializeDocumentEntityKeyAttributesMap(v map[string]string, value query.Value) error {
-	if len(v) == 0 {
-		return nil
-	}
-	object := value.Map("key", "value")
+func serializeCBOR_EntityKeyAttributesMap(v map[string]string) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	for k, vv := range v {
 
-	keys := make([]string, 0, len(v))
-	for key := range v {
-		keys = append(keys, key)
+		ser, err := serializeCBOR_String(vv)
+		if err != nil {
+			return nil, err
+		}
+		vm[k] = ser
 	}
-	sort.Strings(keys)
-
-	for _, key := range keys {
-		om := object.Key(key)
-		om.String(v[key])
-	}
-	return nil
+	return vm, nil
 }
 
-func awsAwsquery_serializeDocumentEntityMetricData(v *types.EntityMetricData, value query.Value) error {
-	object := value.Object()
-	_ = object
-
+func serializeCBOR_EntityMetricData(v *types.EntityMetricData) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.Entity != nil {
-		objectKey := object.Key("Entity")
-		if err := awsAwsquery_serializeDocumentEntity(v.Entity, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_Entity(v.Entity)
+		if err != nil {
+			return nil, err
 		}
+		vm["Entity"] = ser
 	}
-
 	if v.MetricData != nil {
-		objectKey := object.Key("MetricData")
-		if err := awsAwsquery_serializeDocumentMetricData(v.MetricData, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_MetricData(v.MetricData)
+		if err != nil {
+			return nil, err
 		}
+		vm["MetricData"] = ser
 	}
-
-	return nil
+	return vm, nil
 }
 
-func awsAwsquery_serializeDocumentEntityMetricDataList(v []types.EntityMetricData, value query.Value) error {
-	array := value.Array("member")
-
+func serializeCBOR_EntityMetricDataList(v []types.EntityMetricData) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
 	for i := range v {
-		av := array.Value()
-		if err := awsAwsquery_serializeDocumentEntityMetricData(&v[i], av); err != nil {
-			return err
+
+		ser, err := serializeCBOR_EntityMetricData(&v[i])
+		if err != nil {
+			return nil, err
 		}
+		vl = append(vl, ser)
 	}
-	return nil
+	return vl, nil
 }
 
-func awsAwsquery_serializeDocumentExtendedStatistics(v []string, value query.Value) error {
-	array := value.Array("member")
-
+func serializeCBOR_ExtendedStatistics(v []string) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
 	for i := range v {
-		av := array.Value()
-		av.String(v[i])
+
+		ser, err := serializeCBOR_String(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
 	}
-	return nil
+	return vl, nil
 }
 
-func awsAwsquery_serializeDocumentInsightRuleMetricList(v []string, value query.Value) error {
-	array := value.Array("member")
+func serializeCBOR_HistoryItemType(v types.HistoryItemType) (smithycbor.Value, error) {
+	return smithycbor.String(string(v)), nil
+}
 
+func serializeCBOR_InsightRuleMetricList(v []string) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
 	for i := range v {
-		av := array.Value()
-		av.String(v[i])
+
+		ser, err := serializeCBOR_String(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
 	}
-	return nil
+	return vl, nil
 }
 
-func awsAwsquery_serializeDocumentInsightRuleNames(v []string, value query.Value) error {
-	array := value.Array("member")
-
+func serializeCBOR_InsightRuleNames(v []string) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
 	for i := range v {
-		av := array.Value()
-		av.String(v[i])
+
+		ser, err := serializeCBOR_String(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
 	}
-	return nil
+	return vl, nil
 }
 
-func awsAwsquery_serializeDocumentLabelOptions(v *types.LabelOptions, value query.Value) error {
-	object := value.Object()
-	_ = object
-
+func serializeCBOR_LabelOptions(v *types.LabelOptions) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.Timezone != nil {
-		objectKey := object.Key("Timezone")
-		objectKey.String(*v.Timezone)
+		ser, err := serializeCBOR_String(*v.Timezone)
+		if err != nil {
+			return nil, err
+		}
+		vm["Timezone"] = ser
 	}
-
-	return nil
+	return vm, nil
 }
 
-func awsAwsquery_serializeDocumentManagedRule(v *types.ManagedRule, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.ResourceARN != nil {
-		objectKey := object.Key("ResourceARN")
-		objectKey.String(*v.ResourceARN)
-	}
-
-	if v.Tags != nil {
-		objectKey := object.Key("Tags")
-		if err := awsAwsquery_serializeDocumentTagList(v.Tags, objectKey); err != nil {
-			return err
-		}
-	}
-
+func serializeCBOR_ManagedRule(v *types.ManagedRule) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.TemplateName != nil {
-		objectKey := object.Key("TemplateName")
-		objectKey.String(*v.TemplateName)
+		ser, err := serializeCBOR_String(*v.TemplateName)
+		if err != nil {
+			return nil, err
+		}
+		vm["TemplateName"] = ser
 	}
-
-	return nil
+	if v.ResourceARN != nil {
+		ser, err := serializeCBOR_String(*v.ResourceARN)
+		if err != nil {
+			return nil, err
+		}
+		vm["ResourceARN"] = ser
+	}
+	if v.Tags != nil {
+		ser, err := serializeCBOR_TagList(v.Tags)
+		if err != nil {
+			return nil, err
+		}
+		vm["Tags"] = ser
+	}
+	return vm, nil
 }
 
-func awsAwsquery_serializeDocumentManagedRules(v []types.ManagedRule, value query.Value) error {
-	array := value.Array("member")
-
+func serializeCBOR_ManagedRules(v []types.ManagedRule) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
 	for i := range v {
-		av := array.Value()
-		if err := awsAwsquery_serializeDocumentManagedRule(&v[i], av); err != nil {
-			return err
+
+		ser, err := serializeCBOR_ManagedRule(&v[i])
+		if err != nil {
+			return nil, err
 		}
+		vl = append(vl, ser)
 	}
-	return nil
+	return vl, nil
 }
 
-func awsAwsquery_serializeDocumentMetric(v *types.Metric, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Dimensions != nil {
-		objectKey := object.Key("Dimensions")
-		if err := awsAwsquery_serializeDocumentDimensions(v.Dimensions, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.MetricName != nil {
-		objectKey := object.Key("MetricName")
-		objectKey.String(*v.MetricName)
-	}
-
+func serializeCBOR_Metric(v *types.Metric) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.Namespace != nil {
-		objectKey := object.Key("Namespace")
-		objectKey.String(*v.Namespace)
+		ser, err := serializeCBOR_String(*v.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		vm["Namespace"] = ser
 	}
-
-	return nil
+	if v.MetricName != nil {
+		ser, err := serializeCBOR_String(*v.MetricName)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricName"] = ser
+	}
+	if v.Dimensions != nil {
+		ser, err := serializeCBOR_Dimensions(v.Dimensions)
+		if err != nil {
+			return nil, err
+		}
+		vm["Dimensions"] = ser
+	}
+	return vm, nil
 }
 
-func awsAwsquery_serializeDocumentMetricCharacteristics(v *types.MetricCharacteristics, value query.Value) error {
-	object := value.Object()
-	_ = object
-
+func serializeCBOR_MetricCharacteristics(v *types.MetricCharacteristics) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.PeriodicSpikes != nil {
-		objectKey := object.Key("PeriodicSpikes")
-		objectKey.Boolean(*v.PeriodicSpikes)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeDocumentMetricData(v []types.MetricDatum, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		if err := awsAwsquery_serializeDocumentMetricDatum(&v[i], av); err != nil {
-			return err
+		ser, err := serializeCBOR_Bool(*v.PeriodicSpikes)
+		if err != nil {
+			return nil, err
 		}
+		vm["PeriodicSpikes"] = ser
 	}
-	return nil
+	return vm, nil
 }
 
-func awsAwsquery_serializeDocumentMetricDataQueries(v []types.MetricDataQuery, value query.Value) error {
-	array := value.Array("member")
-
+func serializeCBOR_MetricData(v []types.MetricDatum) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
 	for i := range v {
-		av := array.Value()
-		if err := awsAwsquery_serializeDocumentMetricDataQuery(&v[i], av); err != nil {
-			return err
+
+		ser, err := serializeCBOR_MetricDatum(&v[i])
+		if err != nil {
+			return nil, err
 		}
+		vl = append(vl, ser)
 	}
-	return nil
+	return vl, nil
 }
 
-func awsAwsquery_serializeDocumentMetricDataQuery(v *types.MetricDataQuery, value query.Value) error {
-	object := value.Object()
-	_ = object
+func serializeCBOR_MetricDataQueries(v []types.MetricDataQuery) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
 
-	if v.AccountId != nil {
-		objectKey := object.Key("AccountId")
-		objectKey.String(*v.AccountId)
+		ser, err := serializeCBOR_MetricDataQuery(&v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
 	}
+	return vl, nil
+}
 
-	if v.Expression != nil {
-		objectKey := object.Key("Expression")
-		objectKey.String(*v.Expression)
-	}
-
+func serializeCBOR_MetricDataQuery(v *types.MetricDataQuery) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.Id != nil {
-		objectKey := object.Key("Id")
-		objectKey.String(*v.Id)
+		ser, err := serializeCBOR_String(*v.Id)
+		if err != nil {
+			return nil, err
+		}
+		vm["Id"] = ser
 	}
-
-	if v.Label != nil {
-		objectKey := object.Key("Label")
-		objectKey.String(*v.Label)
-	}
-
 	if v.MetricStat != nil {
-		objectKey := object.Key("MetricStat")
-		if err := awsAwsquery_serializeDocumentMetricStat(v.MetricStat, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_MetricStat(v.MetricStat)
+		if err != nil {
+			return nil, err
 		}
+		vm["MetricStat"] = ser
 	}
-
-	if v.Period != nil {
-		objectKey := object.Key("Period")
-		objectKey.Integer(*v.Period)
+	if v.Expression != nil {
+		ser, err := serializeCBOR_String(*v.Expression)
+		if err != nil {
+			return nil, err
+		}
+		vm["Expression"] = ser
 	}
-
+	if v.Label != nil {
+		ser, err := serializeCBOR_String(*v.Label)
+		if err != nil {
+			return nil, err
+		}
+		vm["Label"] = ser
+	}
 	if v.ReturnData != nil {
-		objectKey := object.Key("ReturnData")
-		objectKey.Boolean(*v.ReturnData)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeDocumentMetricDatum(v *types.MetricDatum, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Counts != nil {
-		objectKey := object.Key("Counts")
-		if err := awsAwsquery_serializeDocumentCounts(v.Counts, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_Bool(*v.ReturnData)
+		if err != nil {
+			return nil, err
 		}
+		vm["ReturnData"] = ser
 	}
-
-	if v.Dimensions != nil {
-		objectKey := object.Key("Dimensions")
-		if err := awsAwsquery_serializeDocumentDimensions(v.Dimensions, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.MetricName != nil {
-		objectKey := object.Key("MetricName")
-		objectKey.String(*v.MetricName)
-	}
-
-	if v.StatisticValues != nil {
-		objectKey := object.Key("StatisticValues")
-		if err := awsAwsquery_serializeDocumentStatisticSet(v.StatisticValues, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.StorageResolution != nil {
-		objectKey := object.Key("StorageResolution")
-		objectKey.Integer(*v.StorageResolution)
-	}
-
-	if v.Timestamp != nil {
-		objectKey := object.Key("Timestamp")
-		objectKey.String(smithytime.FormatDateTime(*v.Timestamp))
-	}
-
-	if len(v.Unit) > 0 {
-		objectKey := object.Key("Unit")
-		objectKey.String(string(v.Unit))
-	}
-
-	if v.Value != nil {
-		objectKey := object.Key("Value")
-		switch {
-		case math.IsNaN(*v.Value):
-			objectKey.String("NaN")
-
-		case math.IsInf(*v.Value, 1):
-			objectKey.String("Infinity")
-
-		case math.IsInf(*v.Value, -1):
-			objectKey.String("-Infinity")
-
-		default:
-			objectKey.Double(*v.Value)
-
-		}
-	}
-
-	if v.Values != nil {
-		objectKey := object.Key("Values")
-		if err := awsAwsquery_serializeDocumentValues(v.Values, objectKey); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeDocumentMetricMathAnomalyDetector(v *types.MetricMathAnomalyDetector, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.MetricDataQueries != nil {
-		objectKey := object.Key("MetricDataQueries")
-		if err := awsAwsquery_serializeDocumentMetricDataQueries(v.MetricDataQueries, objectKey); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeDocumentMetricStat(v *types.MetricStat, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Metric != nil {
-		objectKey := object.Key("Metric")
-		if err := awsAwsquery_serializeDocumentMetric(v.Metric, objectKey); err != nil {
-			return err
-		}
-	}
-
 	if v.Period != nil {
-		objectKey := object.Key("Period")
-		objectKey.Integer(*v.Period)
-	}
-
-	if v.Stat != nil {
-		objectKey := object.Key("Stat")
-		objectKey.String(*v.Stat)
-	}
-
-	if len(v.Unit) > 0 {
-		objectKey := object.Key("Unit")
-		objectKey.String(string(v.Unit))
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeDocumentMetricStreamFilter(v *types.MetricStreamFilter, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.MetricNames != nil {
-		objectKey := object.Key("MetricNames")
-		if err := awsAwsquery_serializeDocumentMetricStreamFilterMetricNames(v.MetricNames, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_Int32(*v.Period)
+		if err != nil {
+			return nil, err
 		}
+		vm["Period"] = ser
 	}
-
-	if v.Namespace != nil {
-		objectKey := object.Key("Namespace")
-		objectKey.String(*v.Namespace)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeDocumentMetricStreamFilterMetricNames(v []string, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		av.String(v[i])
-	}
-	return nil
-}
-
-func awsAwsquery_serializeDocumentMetricStreamFilters(v []types.MetricStreamFilter, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		if err := awsAwsquery_serializeDocumentMetricStreamFilter(&v[i], av); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func awsAwsquery_serializeDocumentMetricStreamNames(v []string, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		av.String(v[i])
-	}
-	return nil
-}
-
-func awsAwsquery_serializeDocumentMetricStreamStatisticsAdditionalStatistics(v []string, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		av.String(v[i])
-	}
-	return nil
-}
-
-func awsAwsquery_serializeDocumentMetricStreamStatisticsConfiguration(v *types.MetricStreamStatisticsConfiguration, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.AdditionalStatistics != nil {
-		objectKey := object.Key("AdditionalStatistics")
-		if err := awsAwsquery_serializeDocumentMetricStreamStatisticsAdditionalStatistics(v.AdditionalStatistics, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.IncludeMetrics != nil {
-		objectKey := object.Key("IncludeMetrics")
-		if err := awsAwsquery_serializeDocumentMetricStreamStatisticsIncludeMetrics(v.IncludeMetrics, objectKey); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeDocumentMetricStreamStatisticsConfigurations(v []types.MetricStreamStatisticsConfiguration, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		if err := awsAwsquery_serializeDocumentMetricStreamStatisticsConfiguration(&v[i], av); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func awsAwsquery_serializeDocumentMetricStreamStatisticsIncludeMetrics(v []types.MetricStreamStatisticsMetric, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		if err := awsAwsquery_serializeDocumentMetricStreamStatisticsMetric(&v[i], av); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func awsAwsquery_serializeDocumentMetricStreamStatisticsMetric(v *types.MetricStreamStatisticsMetric, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.MetricName != nil {
-		objectKey := object.Key("MetricName")
-		objectKey.String(*v.MetricName)
-	}
-
-	if v.Namespace != nil {
-		objectKey := object.Key("Namespace")
-		objectKey.String(*v.Namespace)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeDocumentRange(v *types.Range, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.EndTime != nil {
-		objectKey := object.Key("EndTime")
-		objectKey.String(smithytime.FormatDateTime(*v.EndTime))
-	}
-
-	if v.StartTime != nil {
-		objectKey := object.Key("StartTime")
-		objectKey.String(smithytime.FormatDateTime(*v.StartTime))
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeDocumentResourceList(v []string, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		av.String(v[i])
-	}
-	return nil
-}
-
-func awsAwsquery_serializeDocumentSingleMetricAnomalyDetector(v *types.SingleMetricAnomalyDetector, value query.Value) error {
-	object := value.Object()
-	_ = object
-
 	if v.AccountId != nil {
-		objectKey := object.Key("AccountId")
-		objectKey.String(*v.AccountId)
-	}
-
-	if v.Dimensions != nil {
-		objectKey := object.Key("Dimensions")
-		if err := awsAwsquery_serializeDocumentDimensions(v.Dimensions, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_String(*v.AccountId)
+		if err != nil {
+			return nil, err
 		}
+		vm["AccountId"] = ser
 	}
+	return vm, nil
+}
 
+func serializeCBOR_MetricDatum(v *types.MetricDatum) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.MetricName != nil {
-		objectKey := object.Key("MetricName")
-		objectKey.String(*v.MetricName)
-	}
-
-	if v.Namespace != nil {
-		objectKey := object.Key("Namespace")
-		objectKey.String(*v.Namespace)
-	}
-
-	if v.Stat != nil {
-		objectKey := object.Key("Stat")
-		objectKey.String(*v.Stat)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeDocumentStatistics(v []types.Statistic, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		av.String(string(v[i]))
-	}
-	return nil
-}
-
-func awsAwsquery_serializeDocumentStatisticSet(v *types.StatisticSet, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Maximum != nil {
-		objectKey := object.Key("Maximum")
-		switch {
-		case math.IsNaN(*v.Maximum):
-			objectKey.String("NaN")
-
-		case math.IsInf(*v.Maximum, 1):
-			objectKey.String("Infinity")
-
-		case math.IsInf(*v.Maximum, -1):
-			objectKey.String("-Infinity")
-
-		default:
-			objectKey.Double(*v.Maximum)
-
+		ser, err := serializeCBOR_String(*v.MetricName)
+		if err != nil {
+			return nil, err
 		}
+		vm["MetricName"] = ser
 	}
-
-	if v.Minimum != nil {
-		objectKey := object.Key("Minimum")
-		switch {
-		case math.IsNaN(*v.Minimum):
-			objectKey.String("NaN")
-
-		case math.IsInf(*v.Minimum, 1):
-			objectKey.String("Infinity")
-
-		case math.IsInf(*v.Minimum, -1):
-			objectKey.String("-Infinity")
-
-		default:
-			objectKey.Double(*v.Minimum)
-
+	if v.Dimensions != nil {
+		ser, err := serializeCBOR_Dimensions(v.Dimensions)
+		if err != nil {
+			return nil, err
 		}
+		vm["Dimensions"] = ser
 	}
-
-	if v.SampleCount != nil {
-		objectKey := object.Key("SampleCount")
-		switch {
-		case math.IsNaN(*v.SampleCount):
-			objectKey.String("NaN")
-
-		case math.IsInf(*v.SampleCount, 1):
-			objectKey.String("Infinity")
-
-		case math.IsInf(*v.SampleCount, -1):
-			objectKey.String("-Infinity")
-
-		default:
-			objectKey.Double(*v.SampleCount)
-
+	if v.Timestamp != nil {
+		ser, err := serializeCBOR_Time(*v.Timestamp)
+		if err != nil {
+			return nil, err
 		}
+		vm["Timestamp"] = ser
 	}
-
-	if v.Sum != nil {
-		objectKey := object.Key("Sum")
-		switch {
-		case math.IsNaN(*v.Sum):
-			objectKey.String("NaN")
-
-		case math.IsInf(*v.Sum, 1):
-			objectKey.String("Infinity")
-
-		case math.IsInf(*v.Sum, -1):
-			objectKey.String("-Infinity")
-
-		default:
-			objectKey.Double(*v.Sum)
-
-		}
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeDocumentTag(v *types.Tag, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Key != nil {
-		objectKey := object.Key("Key")
-		objectKey.String(*v.Key)
-	}
-
 	if v.Value != nil {
-		objectKey := object.Key("Value")
-		objectKey.String(*v.Value)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeDocumentTagKeyList(v []string, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		av.String(v[i])
-	}
-	return nil
-}
-
-func awsAwsquery_serializeDocumentTagList(v []types.Tag, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		if err := awsAwsquery_serializeDocumentTag(&v[i], av); err != nil {
-			return err
+		ser, err := serializeCBOR_Float64(*v.Value)
+		if err != nil {
+			return nil, err
 		}
+		vm["Value"] = ser
 	}
-	return nil
-}
-
-func awsAwsquery_serializeDocumentValues(v []float64, value query.Value) error {
-	array := value.Array("member")
-
-	for i := range v {
-		av := array.Value()
-		switch {
-		case math.IsNaN(v[i]):
-			av.String("NaN")
-
-		case math.IsInf(v[i], 1):
-			av.String("Infinity")
-
-		case math.IsInf(v[i], -1):
-			av.String("-Infinity")
-
-		default:
-			av.Double(v[i])
-
+	if v.StatisticValues != nil {
+		ser, err := serializeCBOR_StatisticSet(v.StatisticValues)
+		if err != nil {
+			return nil, err
 		}
+		vm["StatisticValues"] = ser
 	}
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentDeleteAlarmsInput(v *DeleteAlarmsInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.AlarmNames != nil {
-		objectKey := object.Key("AlarmNames")
-		if err := awsAwsquery_serializeDocumentAlarmNames(v.AlarmNames, objectKey); err != nil {
-			return err
+	if v.Values != nil {
+		ser, err := serializeCBOR_Values(v.Values)
+		if err != nil {
+			return nil, err
 		}
+		vm["Values"] = ser
 	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentDeleteAnomalyDetectorInput(v *DeleteAnomalyDetectorInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Dimensions != nil {
-		objectKey := object.Key("Dimensions")
-		if err := awsAwsquery_serializeDocumentDimensions(v.Dimensions, objectKey); err != nil {
-			return err
+	if v.Counts != nil {
+		ser, err := serializeCBOR_Counts(v.Counts)
+		if err != nil {
+			return nil, err
 		}
+		vm["Counts"] = ser
 	}
-
-	if v.MetricMathAnomalyDetector != nil {
-		objectKey := object.Key("MetricMathAnomalyDetector")
-		if err := awsAwsquery_serializeDocumentMetricMathAnomalyDetector(v.MetricMathAnomalyDetector, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.MetricName != nil {
-		objectKey := object.Key("MetricName")
-		objectKey.String(*v.MetricName)
-	}
-
-	if v.Namespace != nil {
-		objectKey := object.Key("Namespace")
-		objectKey.String(*v.Namespace)
-	}
-
-	if v.SingleMetricAnomalyDetector != nil {
-		objectKey := object.Key("SingleMetricAnomalyDetector")
-		if err := awsAwsquery_serializeDocumentSingleMetricAnomalyDetector(v.SingleMetricAnomalyDetector, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.Stat != nil {
-		objectKey := object.Key("Stat")
-		objectKey.String(*v.Stat)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentDeleteDashboardsInput(v *DeleteDashboardsInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.DashboardNames != nil {
-		objectKey := object.Key("DashboardNames")
-		if err := awsAwsquery_serializeDocumentDashboardNames(v.DashboardNames, objectKey); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentDeleteInsightRulesInput(v *DeleteInsightRulesInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.RuleNames != nil {
-		objectKey := object.Key("RuleNames")
-		if err := awsAwsquery_serializeDocumentInsightRuleNames(v.RuleNames, objectKey); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentDeleteMetricStreamInput(v *DeleteMetricStreamInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Name != nil {
-		objectKey := object.Key("Name")
-		objectKey.String(*v.Name)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentDescribeAlarmContributorsInput(v *DescribeAlarmContributorsInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.AlarmName != nil {
-		objectKey := object.Key("AlarmName")
-		objectKey.String(*v.AlarmName)
-	}
-
-	if v.NextToken != nil {
-		objectKey := object.Key("NextToken")
-		objectKey.String(*v.NextToken)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentDescribeAlarmHistoryInput(v *DescribeAlarmHistoryInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.AlarmContributorId != nil {
-		objectKey := object.Key("AlarmContributorId")
-		objectKey.String(*v.AlarmContributorId)
-	}
-
-	if v.AlarmName != nil {
-		objectKey := object.Key("AlarmName")
-		objectKey.String(*v.AlarmName)
-	}
-
-	if v.AlarmTypes != nil {
-		objectKey := object.Key("AlarmTypes")
-		if err := awsAwsquery_serializeDocumentAlarmTypes(v.AlarmTypes, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.EndDate != nil {
-		objectKey := object.Key("EndDate")
-		objectKey.String(smithytime.FormatDateTime(*v.EndDate))
-	}
-
-	if len(v.HistoryItemType) > 0 {
-		objectKey := object.Key("HistoryItemType")
-		objectKey.String(string(v.HistoryItemType))
-	}
-
-	if v.MaxRecords != nil {
-		objectKey := object.Key("MaxRecords")
-		objectKey.Integer(*v.MaxRecords)
-	}
-
-	if v.NextToken != nil {
-		objectKey := object.Key("NextToken")
-		objectKey.String(*v.NextToken)
-	}
-
-	if len(v.ScanBy) > 0 {
-		objectKey := object.Key("ScanBy")
-		objectKey.String(string(v.ScanBy))
-	}
-
-	if v.StartDate != nil {
-		objectKey := object.Key("StartDate")
-		objectKey.String(smithytime.FormatDateTime(*v.StartDate))
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentDescribeAlarmsForMetricInput(v *DescribeAlarmsForMetricInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Dimensions != nil {
-		objectKey := object.Key("Dimensions")
-		if err := awsAwsquery_serializeDocumentDimensions(v.Dimensions, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.ExtendedStatistic != nil {
-		objectKey := object.Key("ExtendedStatistic")
-		objectKey.String(*v.ExtendedStatistic)
-	}
-
-	if v.MetricName != nil {
-		objectKey := object.Key("MetricName")
-		objectKey.String(*v.MetricName)
-	}
-
-	if v.Namespace != nil {
-		objectKey := object.Key("Namespace")
-		objectKey.String(*v.Namespace)
-	}
-
-	if v.Period != nil {
-		objectKey := object.Key("Period")
-		objectKey.Integer(*v.Period)
-	}
-
-	if len(v.Statistic) > 0 {
-		objectKey := object.Key("Statistic")
-		objectKey.String(string(v.Statistic))
-	}
-
 	if len(v.Unit) > 0 {
-		objectKey := object.Key("Unit")
-		objectKey.String(string(v.Unit))
+		ser, err := serializeCBOR_StandardUnit(v.Unit)
+		if err != nil {
+			return nil, err
+		}
+		vm["Unit"] = ser
 	}
-
-	return nil
+	if v.StorageResolution != nil {
+		ser, err := serializeCBOR_Int32(*v.StorageResolution)
+		if err != nil {
+			return nil, err
+		}
+		vm["StorageResolution"] = ser
+	}
+	return vm, nil
 }
 
-func awsAwsquery_serializeOpDocumentDescribeAlarmsInput(v *DescribeAlarmsInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.ActionPrefix != nil {
-		objectKey := object.Key("ActionPrefix")
-		objectKey.String(*v.ActionPrefix)
-	}
-
-	if v.AlarmNamePrefix != nil {
-		objectKey := object.Key("AlarmNamePrefix")
-		objectKey.String(*v.AlarmNamePrefix)
-	}
-
-	if v.AlarmNames != nil {
-		objectKey := object.Key("AlarmNames")
-		if err := awsAwsquery_serializeDocumentAlarmNames(v.AlarmNames, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.AlarmTypes != nil {
-		objectKey := object.Key("AlarmTypes")
-		if err := awsAwsquery_serializeDocumentAlarmTypes(v.AlarmTypes, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.ChildrenOfAlarmName != nil {
-		objectKey := object.Key("ChildrenOfAlarmName")
-		objectKey.String(*v.ChildrenOfAlarmName)
-	}
-
-	if v.MaxRecords != nil {
-		objectKey := object.Key("MaxRecords")
-		objectKey.Integer(*v.MaxRecords)
-	}
-
-	if v.NextToken != nil {
-		objectKey := object.Key("NextToken")
-		objectKey.String(*v.NextToken)
-	}
-
-	if v.ParentsOfAlarmName != nil {
-		objectKey := object.Key("ParentsOfAlarmName")
-		objectKey.String(*v.ParentsOfAlarmName)
-	}
-
-	if len(v.StateValue) > 0 {
-		objectKey := object.Key("StateValue")
-		objectKey.String(string(v.StateValue))
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentDescribeAnomalyDetectorsInput(v *DescribeAnomalyDetectorsInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.AnomalyDetectorTypes != nil {
-		objectKey := object.Key("AnomalyDetectorTypes")
-		if err := awsAwsquery_serializeDocumentAnomalyDetectorTypes(v.AnomalyDetectorTypes, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.Dimensions != nil {
-		objectKey := object.Key("Dimensions")
-		if err := awsAwsquery_serializeDocumentDimensions(v.Dimensions, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.MaxResults != nil {
-		objectKey := object.Key("MaxResults")
-		objectKey.Integer(*v.MaxResults)
-	}
-
-	if v.MetricName != nil {
-		objectKey := object.Key("MetricName")
-		objectKey.String(*v.MetricName)
-	}
-
-	if v.Namespace != nil {
-		objectKey := object.Key("Namespace")
-		objectKey.String(*v.Namespace)
-	}
-
-	if v.NextToken != nil {
-		objectKey := object.Key("NextToken")
-		objectKey.String(*v.NextToken)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentDescribeInsightRulesInput(v *DescribeInsightRulesInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.MaxResults != nil {
-		objectKey := object.Key("MaxResults")
-		objectKey.Integer(*v.MaxResults)
-	}
-
-	if v.NextToken != nil {
-		objectKey := object.Key("NextToken")
-		objectKey.String(*v.NextToken)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentDisableAlarmActionsInput(v *DisableAlarmActionsInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.AlarmNames != nil {
-		objectKey := object.Key("AlarmNames")
-		if err := awsAwsquery_serializeDocumentAlarmNames(v.AlarmNames, objectKey); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentDisableInsightRulesInput(v *DisableInsightRulesInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.RuleNames != nil {
-		objectKey := object.Key("RuleNames")
-		if err := awsAwsquery_serializeDocumentInsightRuleNames(v.RuleNames, objectKey); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentEnableAlarmActionsInput(v *EnableAlarmActionsInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.AlarmNames != nil {
-		objectKey := object.Key("AlarmNames")
-		if err := awsAwsquery_serializeDocumentAlarmNames(v.AlarmNames, objectKey); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentEnableInsightRulesInput(v *EnableInsightRulesInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.RuleNames != nil {
-		objectKey := object.Key("RuleNames")
-		if err := awsAwsquery_serializeDocumentInsightRuleNames(v.RuleNames, objectKey); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentGetDashboardInput(v *GetDashboardInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.DashboardName != nil {
-		objectKey := object.Key("DashboardName")
-		objectKey.String(*v.DashboardName)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentGetInsightRuleReportInput(v *GetInsightRuleReportInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.EndTime != nil {
-		objectKey := object.Key("EndTime")
-		objectKey.String(smithytime.FormatDateTime(*v.EndTime))
-	}
-
-	if v.MaxContributorCount != nil {
-		objectKey := object.Key("MaxContributorCount")
-		objectKey.Integer(*v.MaxContributorCount)
-	}
-
-	if v.Metrics != nil {
-		objectKey := object.Key("Metrics")
-		if err := awsAwsquery_serializeDocumentInsightRuleMetricList(v.Metrics, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.OrderBy != nil {
-		objectKey := object.Key("OrderBy")
-		objectKey.String(*v.OrderBy)
-	}
-
-	if v.Period != nil {
-		objectKey := object.Key("Period")
-		objectKey.Integer(*v.Period)
-	}
-
-	if v.RuleName != nil {
-		objectKey := object.Key("RuleName")
-		objectKey.String(*v.RuleName)
-	}
-
-	if v.StartTime != nil {
-		objectKey := object.Key("StartTime")
-		objectKey.String(smithytime.FormatDateTime(*v.StartTime))
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentGetMetricDataInput(v *GetMetricDataInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.EndTime != nil {
-		objectKey := object.Key("EndTime")
-		objectKey.String(smithytime.FormatDateTime(*v.EndTime))
-	}
-
-	if v.LabelOptions != nil {
-		objectKey := object.Key("LabelOptions")
-		if err := awsAwsquery_serializeDocumentLabelOptions(v.LabelOptions, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.MaxDatapoints != nil {
-		objectKey := object.Key("MaxDatapoints")
-		objectKey.Integer(*v.MaxDatapoints)
-	}
-
+func serializeCBOR_MetricMathAnomalyDetector(v *types.MetricMathAnomalyDetector) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.MetricDataQueries != nil {
-		objectKey := object.Key("MetricDataQueries")
-		if err := awsAwsquery_serializeDocumentMetricDataQueries(v.MetricDataQueries, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_MetricDataQueries(v.MetricDataQueries)
+		if err != nil {
+			return nil, err
 		}
+		vm["MetricDataQueries"] = ser
 	}
-
-	if v.NextToken != nil {
-		objectKey := object.Key("NextToken")
-		objectKey.String(*v.NextToken)
-	}
-
-	if len(v.ScanBy) > 0 {
-		objectKey := object.Key("ScanBy")
-		objectKey.String(string(v.ScanBy))
-	}
-
-	if v.StartTime != nil {
-		objectKey := object.Key("StartTime")
-		objectKey.String(smithytime.FormatDateTime(*v.StartTime))
-	}
-
-	return nil
+	return vm, nil
 }
 
-func awsAwsquery_serializeOpDocumentGetMetricStatisticsInput(v *GetMetricStatisticsInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Dimensions != nil {
-		objectKey := object.Key("Dimensions")
-		if err := awsAwsquery_serializeDocumentDimensions(v.Dimensions, objectKey); err != nil {
-			return err
+func serializeCBOR_MetricStat(v *types.MetricStat) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Metric != nil {
+		ser, err := serializeCBOR_Metric(v.Metric)
+		if err != nil {
+			return nil, err
 		}
+		vm["Metric"] = ser
 	}
-
-	if v.EndTime != nil {
-		objectKey := object.Key("EndTime")
-		objectKey.String(smithytime.FormatDateTime(*v.EndTime))
-	}
-
-	if v.ExtendedStatistics != nil {
-		objectKey := object.Key("ExtendedStatistics")
-		if err := awsAwsquery_serializeDocumentExtendedStatistics(v.ExtendedStatistics, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.MetricName != nil {
-		objectKey := object.Key("MetricName")
-		objectKey.String(*v.MetricName)
-	}
-
-	if v.Namespace != nil {
-		objectKey := object.Key("Namespace")
-		objectKey.String(*v.Namespace)
-	}
-
 	if v.Period != nil {
-		objectKey := object.Key("Period")
-		objectKey.Integer(*v.Period)
-	}
-
-	if v.StartTime != nil {
-		objectKey := object.Key("StartTime")
-		objectKey.String(smithytime.FormatDateTime(*v.StartTime))
-	}
-
-	if v.Statistics != nil {
-		objectKey := object.Key("Statistics")
-		if err := awsAwsquery_serializeDocumentStatistics(v.Statistics, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_Int32(*v.Period)
+		if err != nil {
+			return nil, err
 		}
+		vm["Period"] = ser
 	}
-
-	if len(v.Unit) > 0 {
-		objectKey := object.Key("Unit")
-		objectKey.String(string(v.Unit))
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentGetMetricStreamInput(v *GetMetricStreamInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Name != nil {
-		objectKey := object.Key("Name")
-		objectKey.String(*v.Name)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentGetMetricWidgetImageInput(v *GetMetricWidgetImageInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.MetricWidget != nil {
-		objectKey := object.Key("MetricWidget")
-		objectKey.String(*v.MetricWidget)
-	}
-
-	if v.OutputFormat != nil {
-		objectKey := object.Key("OutputFormat")
-		objectKey.String(*v.OutputFormat)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentListDashboardsInput(v *ListDashboardsInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.DashboardNamePrefix != nil {
-		objectKey := object.Key("DashboardNamePrefix")
-		objectKey.String(*v.DashboardNamePrefix)
-	}
-
-	if v.NextToken != nil {
-		objectKey := object.Key("NextToken")
-		objectKey.String(*v.NextToken)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentListManagedInsightRulesInput(v *ListManagedInsightRulesInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.MaxResults != nil {
-		objectKey := object.Key("MaxResults")
-		objectKey.Integer(*v.MaxResults)
-	}
-
-	if v.NextToken != nil {
-		objectKey := object.Key("NextToken")
-		objectKey.String(*v.NextToken)
-	}
-
-	if v.ResourceARN != nil {
-		objectKey := object.Key("ResourceARN")
-		objectKey.String(*v.ResourceARN)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentListMetricsInput(v *ListMetricsInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Dimensions != nil {
-		objectKey := object.Key("Dimensions")
-		if err := awsAwsquery_serializeDocumentDimensionFilters(v.Dimensions, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.IncludeLinkedAccounts != nil {
-		objectKey := object.Key("IncludeLinkedAccounts")
-		objectKey.Boolean(*v.IncludeLinkedAccounts)
-	}
-
-	if v.MetricName != nil {
-		objectKey := object.Key("MetricName")
-		objectKey.String(*v.MetricName)
-	}
-
-	if v.Namespace != nil {
-		objectKey := object.Key("Namespace")
-		objectKey.String(*v.Namespace)
-	}
-
-	if v.NextToken != nil {
-		objectKey := object.Key("NextToken")
-		objectKey.String(*v.NextToken)
-	}
-
-	if v.OwningAccount != nil {
-		objectKey := object.Key("OwningAccount")
-		objectKey.String(*v.OwningAccount)
-	}
-
-	if len(v.RecentlyActive) > 0 {
-		objectKey := object.Key("RecentlyActive")
-		objectKey.String(string(v.RecentlyActive))
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentListMetricStreamsInput(v *ListMetricStreamsInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.MaxResults != nil {
-		objectKey := object.Key("MaxResults")
-		objectKey.Integer(*v.MaxResults)
-	}
-
-	if v.NextToken != nil {
-		objectKey := object.Key("NextToken")
-		objectKey.String(*v.NextToken)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentListTagsForResourceInput(v *ListTagsForResourceInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.ResourceARN != nil {
-		objectKey := object.Key("ResourceARN")
-		objectKey.String(*v.ResourceARN)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentPutAnomalyDetectorInput(v *PutAnomalyDetectorInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Configuration != nil {
-		objectKey := object.Key("Configuration")
-		if err := awsAwsquery_serializeDocumentAnomalyDetectorConfiguration(v.Configuration, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.Dimensions != nil {
-		objectKey := object.Key("Dimensions")
-		if err := awsAwsquery_serializeDocumentDimensions(v.Dimensions, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.MetricCharacteristics != nil {
-		objectKey := object.Key("MetricCharacteristics")
-		if err := awsAwsquery_serializeDocumentMetricCharacteristics(v.MetricCharacteristics, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.MetricMathAnomalyDetector != nil {
-		objectKey := object.Key("MetricMathAnomalyDetector")
-		if err := awsAwsquery_serializeDocumentMetricMathAnomalyDetector(v.MetricMathAnomalyDetector, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.MetricName != nil {
-		objectKey := object.Key("MetricName")
-		objectKey.String(*v.MetricName)
-	}
-
-	if v.Namespace != nil {
-		objectKey := object.Key("Namespace")
-		objectKey.String(*v.Namespace)
-	}
-
-	if v.SingleMetricAnomalyDetector != nil {
-		objectKey := object.Key("SingleMetricAnomalyDetector")
-		if err := awsAwsquery_serializeDocumentSingleMetricAnomalyDetector(v.SingleMetricAnomalyDetector, objectKey); err != nil {
-			return err
-		}
-	}
-
 	if v.Stat != nil {
-		objectKey := object.Key("Stat")
-		objectKey.String(*v.Stat)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentPutCompositeAlarmInput(v *PutCompositeAlarmInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.ActionsEnabled != nil {
-		objectKey := object.Key("ActionsEnabled")
-		objectKey.Boolean(*v.ActionsEnabled)
-	}
-
-	if v.ActionsSuppressor != nil {
-		objectKey := object.Key("ActionsSuppressor")
-		objectKey.String(*v.ActionsSuppressor)
-	}
-
-	if v.ActionsSuppressorExtensionPeriod != nil {
-		objectKey := object.Key("ActionsSuppressorExtensionPeriod")
-		objectKey.Integer(*v.ActionsSuppressorExtensionPeriod)
-	}
-
-	if v.ActionsSuppressorWaitPeriod != nil {
-		objectKey := object.Key("ActionsSuppressorWaitPeriod")
-		objectKey.Integer(*v.ActionsSuppressorWaitPeriod)
-	}
-
-	if v.AlarmActions != nil {
-		objectKey := object.Key("AlarmActions")
-		if err := awsAwsquery_serializeDocumentResourceList(v.AlarmActions, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_String(*v.Stat)
+		if err != nil {
+			return nil, err
 		}
+		vm["Stat"] = ser
 	}
-
-	if v.AlarmDescription != nil {
-		objectKey := object.Key("AlarmDescription")
-		objectKey.String(*v.AlarmDescription)
-	}
-
-	if v.AlarmName != nil {
-		objectKey := object.Key("AlarmName")
-		objectKey.String(*v.AlarmName)
-	}
-
-	if v.AlarmRule != nil {
-		objectKey := object.Key("AlarmRule")
-		objectKey.String(*v.AlarmRule)
-	}
-
-	if v.InsufficientDataActions != nil {
-		objectKey := object.Key("InsufficientDataActions")
-		if err := awsAwsquery_serializeDocumentResourceList(v.InsufficientDataActions, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.OKActions != nil {
-		objectKey := object.Key("OKActions")
-		if err := awsAwsquery_serializeDocumentResourceList(v.OKActions, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.Tags != nil {
-		objectKey := object.Key("Tags")
-		if err := awsAwsquery_serializeDocumentTagList(v.Tags, objectKey); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentPutDashboardInput(v *PutDashboardInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.DashboardBody != nil {
-		objectKey := object.Key("DashboardBody")
-		objectKey.String(*v.DashboardBody)
-	}
-
-	if v.DashboardName != nil {
-		objectKey := object.Key("DashboardName")
-		objectKey.String(*v.DashboardName)
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentPutInsightRuleInput(v *PutInsightRuleInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.ApplyOnTransformedLogs != nil {
-		objectKey := object.Key("ApplyOnTransformedLogs")
-		objectKey.Boolean(*v.ApplyOnTransformedLogs)
-	}
-
-	if v.RuleDefinition != nil {
-		objectKey := object.Key("RuleDefinition")
-		objectKey.String(*v.RuleDefinition)
-	}
-
-	if v.RuleName != nil {
-		objectKey := object.Key("RuleName")
-		objectKey.String(*v.RuleName)
-	}
-
-	if v.RuleState != nil {
-		objectKey := object.Key("RuleState")
-		objectKey.String(*v.RuleState)
-	}
-
-	if v.Tags != nil {
-		objectKey := object.Key("Tags")
-		if err := awsAwsquery_serializeDocumentTagList(v.Tags, objectKey); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentPutManagedInsightRulesInput(v *PutManagedInsightRulesInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.ManagedRules != nil {
-		objectKey := object.Key("ManagedRules")
-		if err := awsAwsquery_serializeDocumentManagedRules(v.ManagedRules, objectKey); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentPutMetricAlarmInput(v *PutMetricAlarmInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.ActionsEnabled != nil {
-		objectKey := object.Key("ActionsEnabled")
-		objectKey.Boolean(*v.ActionsEnabled)
-	}
-
-	if v.AlarmActions != nil {
-		objectKey := object.Key("AlarmActions")
-		if err := awsAwsquery_serializeDocumentResourceList(v.AlarmActions, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.AlarmDescription != nil {
-		objectKey := object.Key("AlarmDescription")
-		objectKey.String(*v.AlarmDescription)
-	}
-
-	if v.AlarmName != nil {
-		objectKey := object.Key("AlarmName")
-		objectKey.String(*v.AlarmName)
-	}
-
-	if len(v.ComparisonOperator) > 0 {
-		objectKey := object.Key("ComparisonOperator")
-		objectKey.String(string(v.ComparisonOperator))
-	}
-
-	if v.DatapointsToAlarm != nil {
-		objectKey := object.Key("DatapointsToAlarm")
-		objectKey.Integer(*v.DatapointsToAlarm)
-	}
-
-	if v.Dimensions != nil {
-		objectKey := object.Key("Dimensions")
-		if err := awsAwsquery_serializeDocumentDimensions(v.Dimensions, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.EvaluateLowSampleCountPercentile != nil {
-		objectKey := object.Key("EvaluateLowSampleCountPercentile")
-		objectKey.String(*v.EvaluateLowSampleCountPercentile)
-	}
-
-	if v.EvaluationPeriods != nil {
-		objectKey := object.Key("EvaluationPeriods")
-		objectKey.Integer(*v.EvaluationPeriods)
-	}
-
-	if v.ExtendedStatistic != nil {
-		objectKey := object.Key("ExtendedStatistic")
-		objectKey.String(*v.ExtendedStatistic)
-	}
-
-	if v.InsufficientDataActions != nil {
-		objectKey := object.Key("InsufficientDataActions")
-		if err := awsAwsquery_serializeDocumentResourceList(v.InsufficientDataActions, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.MetricName != nil {
-		objectKey := object.Key("MetricName")
-		objectKey.String(*v.MetricName)
-	}
-
-	if v.Metrics != nil {
-		objectKey := object.Key("Metrics")
-		if err := awsAwsquery_serializeDocumentMetricDataQueries(v.Metrics, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.Namespace != nil {
-		objectKey := object.Key("Namespace")
-		objectKey.String(*v.Namespace)
-	}
-
-	if v.OKActions != nil {
-		objectKey := object.Key("OKActions")
-		if err := awsAwsquery_serializeDocumentResourceList(v.OKActions, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.Period != nil {
-		objectKey := object.Key("Period")
-		objectKey.Integer(*v.Period)
-	}
-
-	if len(v.Statistic) > 0 {
-		objectKey := object.Key("Statistic")
-		objectKey.String(string(v.Statistic))
-	}
-
-	if v.Tags != nil {
-		objectKey := object.Key("Tags")
-		if err := awsAwsquery_serializeDocumentTagList(v.Tags, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.Threshold != nil {
-		objectKey := object.Key("Threshold")
-		switch {
-		case math.IsNaN(*v.Threshold):
-			objectKey.String("NaN")
-
-		case math.IsInf(*v.Threshold, 1):
-			objectKey.String("Infinity")
-
-		case math.IsInf(*v.Threshold, -1):
-			objectKey.String("-Infinity")
-
-		default:
-			objectKey.Double(*v.Threshold)
-
-		}
-	}
-
-	if v.ThresholdMetricId != nil {
-		objectKey := object.Key("ThresholdMetricId")
-		objectKey.String(*v.ThresholdMetricId)
-	}
-
-	if v.TreatMissingData != nil {
-		objectKey := object.Key("TreatMissingData")
-		objectKey.String(*v.TreatMissingData)
-	}
-
 	if len(v.Unit) > 0 {
-		objectKey := object.Key("Unit")
-		objectKey.String(string(v.Unit))
+		ser, err := serializeCBOR_StandardUnit(v.Unit)
+		if err != nil {
+			return nil, err
+		}
+		vm["Unit"] = ser
 	}
-
-	return nil
+	return vm, nil
 }
 
-func awsAwsquery_serializeOpDocumentPutMetricDataInput(v *PutMetricDataInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.EntityMetricData != nil {
-		objectKey := object.Key("EntityMetricData")
-		if err := awsAwsquery_serializeDocumentEntityMetricDataList(v.EntityMetricData, objectKey); err != nil {
-			return err
-		}
-	}
-
-	if v.MetricData != nil {
-		objectKey := object.Key("MetricData")
-		if err := awsAwsquery_serializeDocumentMetricData(v.MetricData, objectKey); err != nil {
-			return err
-		}
-	}
-
+func serializeCBOR_MetricStreamFilter(v *types.MetricStreamFilter) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.Namespace != nil {
-		objectKey := object.Key("Namespace")
-		objectKey.String(*v.Namespace)
+		ser, err := serializeCBOR_String(*v.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		vm["Namespace"] = ser
 	}
-
-	if v.StrictEntityValidation != nil {
-		objectKey := object.Key("StrictEntityValidation")
-		objectKey.Boolean(*v.StrictEntityValidation)
+	if v.MetricNames != nil {
+		ser, err := serializeCBOR_MetricStreamFilterMetricNames(v.MetricNames)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricNames"] = ser
 	}
-
-	return nil
+	return vm, nil
 }
 
-func awsAwsquery_serializeOpDocumentPutMetricStreamInput(v *PutMetricStreamInput, value query.Value) error {
-	object := value.Object()
-	_ = object
+func serializeCBOR_MetricStreamFilterMetricNames(v []string) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
 
-	if v.ExcludeFilters != nil {
-		objectKey := object.Key("ExcludeFilters")
-		if err := awsAwsquery_serializeDocumentMetricStreamFilters(v.ExcludeFilters, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_String(v[i])
+		if err != nil {
+			return nil, err
 		}
+		vl = append(vl, ser)
 	}
+	return vl, nil
+}
 
-	if v.FirehoseArn != nil {
-		objectKey := object.Key("FirehoseArn")
-		objectKey.String(*v.FirehoseArn)
-	}
+func serializeCBOR_MetricStreamFilters(v []types.MetricStreamFilter) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
 
-	if v.IncludeFilters != nil {
-		objectKey := object.Key("IncludeFilters")
-		if err := awsAwsquery_serializeDocumentMetricStreamFilters(v.IncludeFilters, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_MetricStreamFilter(&v[i])
+		if err != nil {
+			return nil, err
 		}
+		vl = append(vl, ser)
 	}
+	return vl, nil
+}
 
-	if v.IncludeLinkedAccountsMetrics != nil {
-		objectKey := object.Key("IncludeLinkedAccountsMetrics")
-		objectKey.Boolean(*v.IncludeLinkedAccountsMetrics)
+func serializeCBOR_MetricStreamNames(v []string) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
+
+		ser, err := serializeCBOR_String(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
 	}
+	return vl, nil
+}
 
+func serializeCBOR_MetricStreamOutputFormat(v types.MetricStreamOutputFormat) (smithycbor.Value, error) {
+	return smithycbor.String(string(v)), nil
+}
+
+func serializeCBOR_MetricStreamStatisticsAdditionalStatistics(v []string) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
+
+		ser, err := serializeCBOR_String(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
+	}
+	return vl, nil
+}
+
+func serializeCBOR_MetricStreamStatisticsConfiguration(v *types.MetricStreamStatisticsConfiguration) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.IncludeMetrics != nil {
+		ser, err := serializeCBOR_MetricStreamStatisticsIncludeMetrics(v.IncludeMetrics)
+		if err != nil {
+			return nil, err
+		}
+		vm["IncludeMetrics"] = ser
+	}
+	if v.AdditionalStatistics != nil {
+		ser, err := serializeCBOR_MetricStreamStatisticsAdditionalStatistics(v.AdditionalStatistics)
+		if err != nil {
+			return nil, err
+		}
+		vm["AdditionalStatistics"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_MetricStreamStatisticsConfigurations(v []types.MetricStreamStatisticsConfiguration) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
+
+		ser, err := serializeCBOR_MetricStreamStatisticsConfiguration(&v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
+	}
+	return vl, nil
+}
+
+func serializeCBOR_MetricStreamStatisticsIncludeMetrics(v []types.MetricStreamStatisticsMetric) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
+
+		ser, err := serializeCBOR_MetricStreamStatisticsMetric(&v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
+	}
+	return vl, nil
+}
+
+func serializeCBOR_MetricStreamStatisticsMetric(v *types.MetricStreamStatisticsMetric) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Namespace != nil {
+		ser, err := serializeCBOR_String(*v.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		vm["Namespace"] = ser
+	}
+	if v.MetricName != nil {
+		ser, err := serializeCBOR_String(*v.MetricName)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricName"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_Range(v *types.Range) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.StartTime != nil {
+		ser, err := serializeCBOR_Time(*v.StartTime)
+		if err != nil {
+			return nil, err
+		}
+		vm["StartTime"] = ser
+	}
+	if v.EndTime != nil {
+		ser, err := serializeCBOR_Time(*v.EndTime)
+		if err != nil {
+			return nil, err
+		}
+		vm["EndTime"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_RecentlyActive(v types.RecentlyActive) (smithycbor.Value, error) {
+	return smithycbor.String(string(v)), nil
+}
+
+func serializeCBOR_ResourceList(v []string) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
+
+		ser, err := serializeCBOR_String(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
+	}
+	return vl, nil
+}
+
+func serializeCBOR_ScanBy(v types.ScanBy) (smithycbor.Value, error) {
+	return smithycbor.String(string(v)), nil
+}
+
+func serializeCBOR_SingleMetricAnomalyDetector(v *types.SingleMetricAnomalyDetector) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.AccountId != nil {
+		ser, err := serializeCBOR_String(*v.AccountId)
+		if err != nil {
+			return nil, err
+		}
+		vm["AccountId"] = ser
+	}
+	if v.Namespace != nil {
+		ser, err := serializeCBOR_String(*v.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		vm["Namespace"] = ser
+	}
+	if v.MetricName != nil {
+		ser, err := serializeCBOR_String(*v.MetricName)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricName"] = ser
+	}
+	if v.Dimensions != nil {
+		ser, err := serializeCBOR_Dimensions(v.Dimensions)
+		if err != nil {
+			return nil, err
+		}
+		vm["Dimensions"] = ser
+	}
+	if v.Stat != nil {
+		ser, err := serializeCBOR_String(*v.Stat)
+		if err != nil {
+			return nil, err
+		}
+		vm["Stat"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_StandardUnit(v types.StandardUnit) (smithycbor.Value, error) {
+	return smithycbor.String(string(v)), nil
+}
+
+func serializeCBOR_StateValue(v types.StateValue) (smithycbor.Value, error) {
+	return smithycbor.String(string(v)), nil
+}
+
+func serializeCBOR_Statistic(v types.Statistic) (smithycbor.Value, error) {
+	return smithycbor.String(string(v)), nil
+}
+
+func serializeCBOR_Statistics(v []types.Statistic) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
+
+		ser, err := serializeCBOR_Statistic(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
+	}
+	return vl, nil
+}
+
+func serializeCBOR_StatisticSet(v *types.StatisticSet) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.SampleCount != nil {
+		ser, err := serializeCBOR_Float64(*v.SampleCount)
+		if err != nil {
+			return nil, err
+		}
+		vm["SampleCount"] = ser
+	}
+	if v.Sum != nil {
+		ser, err := serializeCBOR_Float64(*v.Sum)
+		if err != nil {
+			return nil, err
+		}
+		vm["Sum"] = ser
+	}
+	if v.Minimum != nil {
+		ser, err := serializeCBOR_Float64(*v.Minimum)
+		if err != nil {
+			return nil, err
+		}
+		vm["Minimum"] = ser
+	}
+	if v.Maximum != nil {
+		ser, err := serializeCBOR_Float64(*v.Maximum)
+		if err != nil {
+			return nil, err
+		}
+		vm["Maximum"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_Tag(v *types.Tag) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Key != nil {
+		ser, err := serializeCBOR_String(*v.Key)
+		if err != nil {
+			return nil, err
+		}
+		vm["Key"] = ser
+	}
+	if v.Value != nil {
+		ser, err := serializeCBOR_String(*v.Value)
+		if err != nil {
+			return nil, err
+		}
+		vm["Value"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_TagKeyList(v []string) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
+
+		ser, err := serializeCBOR_String(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
+	}
+	return vl, nil
+}
+
+func serializeCBOR_TagList(v []types.Tag) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
+
+		ser, err := serializeCBOR_Tag(&v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
+	}
+	return vl, nil
+}
+
+func serializeCBOR_Values(v []float64) (smithycbor.Value, error) {
+	vl := smithycbor.List{}
+	for i := range v {
+
+		ser, err := serializeCBOR_Float64(v[i])
+		if err != nil {
+			return nil, err
+		}
+		vl = append(vl, ser)
+	}
+	return vl, nil
+}
+
+func serializeCBOR_Bool(v bool) (smithycbor.Value, error) {
+	return smithycbor.Bool(v), nil
+}
+
+func serializeCBOR_Float64(v float64) (smithycbor.Value, error) {
+	return smithycbor.Float64(v), nil
+}
+
+func serializeCBOR_Int32(v int32) (smithycbor.Value, error) {
+	if v < 0 {
+		return smithycbor.NegInt(uint64(-v)), nil
+	}
+	return smithycbor.Uint(uint64(v)), nil
+}
+
+func serializeCBOR_String(v string) (smithycbor.Value, error) {
+	return smithycbor.String(v), nil
+}
+
+func serializeCBOR_Time(v time.Time) (smithycbor.Value, error) {
+	return &smithycbor.Tag{
+		ID:    1,
+		Value: smithycbor.Float64(float64(v.UnixMilli()) / 1000),
+	}, nil
+}
+
+func serializeCBOR_DeleteAlarmsInput(v *DeleteAlarmsInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.AlarmNames != nil {
+		ser, err := serializeCBOR_AlarmNames(v.AlarmNames)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmNames"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_DeleteAnomalyDetectorInput(v *DeleteAnomalyDetectorInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Namespace != nil {
+		ser, err := serializeCBOR_String(*v.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		vm["Namespace"] = ser
+	}
+	if v.MetricName != nil {
+		ser, err := serializeCBOR_String(*v.MetricName)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricName"] = ser
+	}
+	if v.Dimensions != nil {
+		ser, err := serializeCBOR_Dimensions(v.Dimensions)
+		if err != nil {
+			return nil, err
+		}
+		vm["Dimensions"] = ser
+	}
+	if v.Stat != nil {
+		ser, err := serializeCBOR_String(*v.Stat)
+		if err != nil {
+			return nil, err
+		}
+		vm["Stat"] = ser
+	}
+	if v.SingleMetricAnomalyDetector != nil {
+		ser, err := serializeCBOR_SingleMetricAnomalyDetector(v.SingleMetricAnomalyDetector)
+		if err != nil {
+			return nil, err
+		}
+		vm["SingleMetricAnomalyDetector"] = ser
+	}
+	if v.MetricMathAnomalyDetector != nil {
+		ser, err := serializeCBOR_MetricMathAnomalyDetector(v.MetricMathAnomalyDetector)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricMathAnomalyDetector"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_DeleteDashboardsInput(v *DeleteDashboardsInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.DashboardNames != nil {
+		ser, err := serializeCBOR_DashboardNames(v.DashboardNames)
+		if err != nil {
+			return nil, err
+		}
+		vm["DashboardNames"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_DeleteInsightRulesInput(v *DeleteInsightRulesInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.RuleNames != nil {
+		ser, err := serializeCBOR_InsightRuleNames(v.RuleNames)
+		if err != nil {
+			return nil, err
+		}
+		vm["RuleNames"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_DeleteMetricStreamInput(v *DeleteMetricStreamInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.Name != nil {
-		objectKey := object.Key("Name")
-		objectKey.String(*v.Name)
-	}
-
-	if len(v.OutputFormat) > 0 {
-		objectKey := object.Key("OutputFormat")
-		objectKey.String(string(v.OutputFormat))
-	}
-
-	if v.RoleArn != nil {
-		objectKey := object.Key("RoleArn")
-		objectKey.String(*v.RoleArn)
-	}
-
-	if v.StatisticsConfigurations != nil {
-		objectKey := object.Key("StatisticsConfigurations")
-		if err := awsAwsquery_serializeDocumentMetricStreamStatisticsConfigurations(v.StatisticsConfigurations, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_String(*v.Name)
+		if err != nil {
+			return nil, err
 		}
+		vm["Name"] = ser
 	}
-
-	if v.Tags != nil {
-		objectKey := object.Key("Tags")
-		if err := awsAwsquery_serializeDocumentTagList(v.Tags, objectKey); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return vm, nil
 }
 
-func awsAwsquery_serializeOpDocumentSetAlarmStateInput(v *SetAlarmStateInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
+func serializeCBOR_DescribeAlarmContributorsInput(v *DescribeAlarmContributorsInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.AlarmName != nil {
-		objectKey := object.Key("AlarmName")
-		objectKey.String(*v.AlarmName)
+		ser, err := serializeCBOR_String(*v.AlarmName)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmName"] = ser
 	}
-
-	if v.StateReason != nil {
-		objectKey := object.Key("StateReason")
-		objectKey.String(*v.StateReason)
+	if v.NextToken != nil {
+		ser, err := serializeCBOR_String(*v.NextToken)
+		if err != nil {
+			return nil, err
+		}
+		vm["NextToken"] = ser
 	}
+	return vm, nil
+}
 
-	if v.StateReasonData != nil {
-		objectKey := object.Key("StateReasonData")
-		objectKey.String(*v.StateReasonData)
+func serializeCBOR_DescribeAlarmHistoryInput(v *DescribeAlarmHistoryInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.AlarmName != nil {
+		ser, err := serializeCBOR_String(*v.AlarmName)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmName"] = ser
 	}
+	if v.AlarmContributorId != nil {
+		ser, err := serializeCBOR_String(*v.AlarmContributorId)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmContributorId"] = ser
+	}
+	if v.AlarmTypes != nil {
+		ser, err := serializeCBOR_AlarmTypes(v.AlarmTypes)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmTypes"] = ser
+	}
+	if len(v.HistoryItemType) > 0 {
+		ser, err := serializeCBOR_HistoryItemType(v.HistoryItemType)
+		if err != nil {
+			return nil, err
+		}
+		vm["HistoryItemType"] = ser
+	}
+	if v.StartDate != nil {
+		ser, err := serializeCBOR_Time(*v.StartDate)
+		if err != nil {
+			return nil, err
+		}
+		vm["StartDate"] = ser
+	}
+	if v.EndDate != nil {
+		ser, err := serializeCBOR_Time(*v.EndDate)
+		if err != nil {
+			return nil, err
+		}
+		vm["EndDate"] = ser
+	}
+	if v.MaxRecords != nil {
+		ser, err := serializeCBOR_Int32(*v.MaxRecords)
+		if err != nil {
+			return nil, err
+		}
+		vm["MaxRecords"] = ser
+	}
+	if v.NextToken != nil {
+		ser, err := serializeCBOR_String(*v.NextToken)
+		if err != nil {
+			return nil, err
+		}
+		vm["NextToken"] = ser
+	}
+	if len(v.ScanBy) > 0 {
+		ser, err := serializeCBOR_ScanBy(v.ScanBy)
+		if err != nil {
+			return nil, err
+		}
+		vm["ScanBy"] = ser
+	}
+	return vm, nil
+}
 
+func serializeCBOR_DescribeAlarmsForMetricInput(v *DescribeAlarmsForMetricInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.MetricName != nil {
+		ser, err := serializeCBOR_String(*v.MetricName)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricName"] = ser
+	}
+	if v.Namespace != nil {
+		ser, err := serializeCBOR_String(*v.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		vm["Namespace"] = ser
+	}
+	if len(v.Statistic) > 0 {
+		ser, err := serializeCBOR_Statistic(v.Statistic)
+		if err != nil {
+			return nil, err
+		}
+		vm["Statistic"] = ser
+	}
+	if v.ExtendedStatistic != nil {
+		ser, err := serializeCBOR_String(*v.ExtendedStatistic)
+		if err != nil {
+			return nil, err
+		}
+		vm["ExtendedStatistic"] = ser
+	}
+	if v.Dimensions != nil {
+		ser, err := serializeCBOR_Dimensions(v.Dimensions)
+		if err != nil {
+			return nil, err
+		}
+		vm["Dimensions"] = ser
+	}
+	if v.Period != nil {
+		ser, err := serializeCBOR_Int32(*v.Period)
+		if err != nil {
+			return nil, err
+		}
+		vm["Period"] = ser
+	}
+	if len(v.Unit) > 0 {
+		ser, err := serializeCBOR_StandardUnit(v.Unit)
+		if err != nil {
+			return nil, err
+		}
+		vm["Unit"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_DescribeAlarmsInput(v *DescribeAlarmsInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.AlarmNames != nil {
+		ser, err := serializeCBOR_AlarmNames(v.AlarmNames)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmNames"] = ser
+	}
+	if v.AlarmNamePrefix != nil {
+		ser, err := serializeCBOR_String(*v.AlarmNamePrefix)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmNamePrefix"] = ser
+	}
+	if v.AlarmTypes != nil {
+		ser, err := serializeCBOR_AlarmTypes(v.AlarmTypes)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmTypes"] = ser
+	}
+	if v.ChildrenOfAlarmName != nil {
+		ser, err := serializeCBOR_String(*v.ChildrenOfAlarmName)
+		if err != nil {
+			return nil, err
+		}
+		vm["ChildrenOfAlarmName"] = ser
+	}
+	if v.ParentsOfAlarmName != nil {
+		ser, err := serializeCBOR_String(*v.ParentsOfAlarmName)
+		if err != nil {
+			return nil, err
+		}
+		vm["ParentsOfAlarmName"] = ser
+	}
 	if len(v.StateValue) > 0 {
-		objectKey := object.Key("StateValue")
-		objectKey.String(string(v.StateValue))
-	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentStartMetricStreamsInput(v *StartMetricStreamsInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Names != nil {
-		objectKey := object.Key("Names")
-		if err := awsAwsquery_serializeDocumentMetricStreamNames(v.Names, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_StateValue(v.StateValue)
+		if err != nil {
+			return nil, err
 		}
+		vm["StateValue"] = ser
 	}
-
-	return nil
-}
-
-func awsAwsquery_serializeOpDocumentStopMetricStreamsInput(v *StopMetricStreamsInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.Names != nil {
-		objectKey := object.Key("Names")
-		if err := awsAwsquery_serializeDocumentMetricStreamNames(v.Names, objectKey); err != nil {
-			return err
+	if v.ActionPrefix != nil {
+		ser, err := serializeCBOR_String(*v.ActionPrefix)
+		if err != nil {
+			return nil, err
 		}
+		vm["ActionPrefix"] = ser
 	}
-
-	return nil
+	if v.MaxRecords != nil {
+		ser, err := serializeCBOR_Int32(*v.MaxRecords)
+		if err != nil {
+			return nil, err
+		}
+		vm["MaxRecords"] = ser
+	}
+	if v.NextToken != nil {
+		ser, err := serializeCBOR_String(*v.NextToken)
+		if err != nil {
+			return nil, err
+		}
+		vm["NextToken"] = ser
+	}
+	return vm, nil
 }
 
-func awsAwsquery_serializeOpDocumentTagResourceInput(v *TagResourceInput, value query.Value) error {
-	object := value.Object()
-	_ = object
+func serializeCBOR_DescribeAnomalyDetectorsInput(v *DescribeAnomalyDetectorsInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.NextToken != nil {
+		ser, err := serializeCBOR_String(*v.NextToken)
+		if err != nil {
+			return nil, err
+		}
+		vm["NextToken"] = ser
+	}
+	if v.MaxResults != nil {
+		ser, err := serializeCBOR_Int32(*v.MaxResults)
+		if err != nil {
+			return nil, err
+		}
+		vm["MaxResults"] = ser
+	}
+	if v.Namespace != nil {
+		ser, err := serializeCBOR_String(*v.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		vm["Namespace"] = ser
+	}
+	if v.MetricName != nil {
+		ser, err := serializeCBOR_String(*v.MetricName)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricName"] = ser
+	}
+	if v.Dimensions != nil {
+		ser, err := serializeCBOR_Dimensions(v.Dimensions)
+		if err != nil {
+			return nil, err
+		}
+		vm["Dimensions"] = ser
+	}
+	if v.AnomalyDetectorTypes != nil {
+		ser, err := serializeCBOR_AnomalyDetectorTypes(v.AnomalyDetectorTypes)
+		if err != nil {
+			return nil, err
+		}
+		vm["AnomalyDetectorTypes"] = ser
+	}
+	return vm, nil
+}
 
+func serializeCBOR_DescribeInsightRulesInput(v *DescribeInsightRulesInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.NextToken != nil {
+		ser, err := serializeCBOR_String(*v.NextToken)
+		if err != nil {
+			return nil, err
+		}
+		vm["NextToken"] = ser
+	}
+	if v.MaxResults != nil {
+		ser, err := serializeCBOR_Int32(*v.MaxResults)
+		if err != nil {
+			return nil, err
+		}
+		vm["MaxResults"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_DisableAlarmActionsInput(v *DisableAlarmActionsInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.AlarmNames != nil {
+		ser, err := serializeCBOR_AlarmNames(v.AlarmNames)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmNames"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_DisableInsightRulesInput(v *DisableInsightRulesInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.RuleNames != nil {
+		ser, err := serializeCBOR_InsightRuleNames(v.RuleNames)
+		if err != nil {
+			return nil, err
+		}
+		vm["RuleNames"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_EnableAlarmActionsInput(v *EnableAlarmActionsInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.AlarmNames != nil {
+		ser, err := serializeCBOR_AlarmNames(v.AlarmNames)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmNames"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_EnableInsightRulesInput(v *EnableInsightRulesInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.RuleNames != nil {
+		ser, err := serializeCBOR_InsightRuleNames(v.RuleNames)
+		if err != nil {
+			return nil, err
+		}
+		vm["RuleNames"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_GetDashboardInput(v *GetDashboardInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.DashboardName != nil {
+		ser, err := serializeCBOR_String(*v.DashboardName)
+		if err != nil {
+			return nil, err
+		}
+		vm["DashboardName"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_GetInsightRuleReportInput(v *GetInsightRuleReportInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.RuleName != nil {
+		ser, err := serializeCBOR_String(*v.RuleName)
+		if err != nil {
+			return nil, err
+		}
+		vm["RuleName"] = ser
+	}
+	if v.StartTime != nil {
+		ser, err := serializeCBOR_Time(*v.StartTime)
+		if err != nil {
+			return nil, err
+		}
+		vm["StartTime"] = ser
+	}
+	if v.EndTime != nil {
+		ser, err := serializeCBOR_Time(*v.EndTime)
+		if err != nil {
+			return nil, err
+		}
+		vm["EndTime"] = ser
+	}
+	if v.Period != nil {
+		ser, err := serializeCBOR_Int32(*v.Period)
+		if err != nil {
+			return nil, err
+		}
+		vm["Period"] = ser
+	}
+	if v.MaxContributorCount != nil {
+		ser, err := serializeCBOR_Int32(*v.MaxContributorCount)
+		if err != nil {
+			return nil, err
+		}
+		vm["MaxContributorCount"] = ser
+	}
+	if v.Metrics != nil {
+		ser, err := serializeCBOR_InsightRuleMetricList(v.Metrics)
+		if err != nil {
+			return nil, err
+		}
+		vm["Metrics"] = ser
+	}
+	if v.OrderBy != nil {
+		ser, err := serializeCBOR_String(*v.OrderBy)
+		if err != nil {
+			return nil, err
+		}
+		vm["OrderBy"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_GetMetricDataInput(v *GetMetricDataInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.MetricDataQueries != nil {
+		ser, err := serializeCBOR_MetricDataQueries(v.MetricDataQueries)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricDataQueries"] = ser
+	}
+	if v.StartTime != nil {
+		ser, err := serializeCBOR_Time(*v.StartTime)
+		if err != nil {
+			return nil, err
+		}
+		vm["StartTime"] = ser
+	}
+	if v.EndTime != nil {
+		ser, err := serializeCBOR_Time(*v.EndTime)
+		if err != nil {
+			return nil, err
+		}
+		vm["EndTime"] = ser
+	}
+	if v.NextToken != nil {
+		ser, err := serializeCBOR_String(*v.NextToken)
+		if err != nil {
+			return nil, err
+		}
+		vm["NextToken"] = ser
+	}
+	if len(v.ScanBy) > 0 {
+		ser, err := serializeCBOR_ScanBy(v.ScanBy)
+		if err != nil {
+			return nil, err
+		}
+		vm["ScanBy"] = ser
+	}
+	if v.MaxDatapoints != nil {
+		ser, err := serializeCBOR_Int32(*v.MaxDatapoints)
+		if err != nil {
+			return nil, err
+		}
+		vm["MaxDatapoints"] = ser
+	}
+	if v.LabelOptions != nil {
+		ser, err := serializeCBOR_LabelOptions(v.LabelOptions)
+		if err != nil {
+			return nil, err
+		}
+		vm["LabelOptions"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_GetMetricStatisticsInput(v *GetMetricStatisticsInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Namespace != nil {
+		ser, err := serializeCBOR_String(*v.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		vm["Namespace"] = ser
+	}
+	if v.MetricName != nil {
+		ser, err := serializeCBOR_String(*v.MetricName)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricName"] = ser
+	}
+	if v.Dimensions != nil {
+		ser, err := serializeCBOR_Dimensions(v.Dimensions)
+		if err != nil {
+			return nil, err
+		}
+		vm["Dimensions"] = ser
+	}
+	if v.StartTime != nil {
+		ser, err := serializeCBOR_Time(*v.StartTime)
+		if err != nil {
+			return nil, err
+		}
+		vm["StartTime"] = ser
+	}
+	if v.EndTime != nil {
+		ser, err := serializeCBOR_Time(*v.EndTime)
+		if err != nil {
+			return nil, err
+		}
+		vm["EndTime"] = ser
+	}
+	if v.Period != nil {
+		ser, err := serializeCBOR_Int32(*v.Period)
+		if err != nil {
+			return nil, err
+		}
+		vm["Period"] = ser
+	}
+	if v.Statistics != nil {
+		ser, err := serializeCBOR_Statistics(v.Statistics)
+		if err != nil {
+			return nil, err
+		}
+		vm["Statistics"] = ser
+	}
+	if v.ExtendedStatistics != nil {
+		ser, err := serializeCBOR_ExtendedStatistics(v.ExtendedStatistics)
+		if err != nil {
+			return nil, err
+		}
+		vm["ExtendedStatistics"] = ser
+	}
+	if len(v.Unit) > 0 {
+		ser, err := serializeCBOR_StandardUnit(v.Unit)
+		if err != nil {
+			return nil, err
+		}
+		vm["Unit"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_GetMetricStreamInput(v *GetMetricStreamInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Name != nil {
+		ser, err := serializeCBOR_String(*v.Name)
+		if err != nil {
+			return nil, err
+		}
+		vm["Name"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_GetMetricWidgetImageInput(v *GetMetricWidgetImageInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.MetricWidget != nil {
+		ser, err := serializeCBOR_String(*v.MetricWidget)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricWidget"] = ser
+	}
+	if v.OutputFormat != nil {
+		ser, err := serializeCBOR_String(*v.OutputFormat)
+		if err != nil {
+			return nil, err
+		}
+		vm["OutputFormat"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_ListDashboardsInput(v *ListDashboardsInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.DashboardNamePrefix != nil {
+		ser, err := serializeCBOR_String(*v.DashboardNamePrefix)
+		if err != nil {
+			return nil, err
+		}
+		vm["DashboardNamePrefix"] = ser
+	}
+	if v.NextToken != nil {
+		ser, err := serializeCBOR_String(*v.NextToken)
+		if err != nil {
+			return nil, err
+		}
+		vm["NextToken"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_ListManagedInsightRulesInput(v *ListManagedInsightRulesInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
 	if v.ResourceARN != nil {
-		objectKey := object.Key("ResourceARN")
-		objectKey.String(*v.ResourceARN)
+		ser, err := serializeCBOR_String(*v.ResourceARN)
+		if err != nil {
+			return nil, err
+		}
+		vm["ResourceARN"] = ser
 	}
+	if v.NextToken != nil {
+		ser, err := serializeCBOR_String(*v.NextToken)
+		if err != nil {
+			return nil, err
+		}
+		vm["NextToken"] = ser
+	}
+	if v.MaxResults != nil {
+		ser, err := serializeCBOR_Int32(*v.MaxResults)
+		if err != nil {
+			return nil, err
+		}
+		vm["MaxResults"] = ser
+	}
+	return vm, nil
+}
 
+func serializeCBOR_ListMetricsInput(v *ListMetricsInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Namespace != nil {
+		ser, err := serializeCBOR_String(*v.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		vm["Namespace"] = ser
+	}
+	if v.MetricName != nil {
+		ser, err := serializeCBOR_String(*v.MetricName)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricName"] = ser
+	}
+	if v.Dimensions != nil {
+		ser, err := serializeCBOR_DimensionFilters(v.Dimensions)
+		if err != nil {
+			return nil, err
+		}
+		vm["Dimensions"] = ser
+	}
+	if v.NextToken != nil {
+		ser, err := serializeCBOR_String(*v.NextToken)
+		if err != nil {
+			return nil, err
+		}
+		vm["NextToken"] = ser
+	}
+	if len(v.RecentlyActive) > 0 {
+		ser, err := serializeCBOR_RecentlyActive(v.RecentlyActive)
+		if err != nil {
+			return nil, err
+		}
+		vm["RecentlyActive"] = ser
+	}
+	if v.IncludeLinkedAccounts != nil {
+		ser, err := serializeCBOR_Bool(*v.IncludeLinkedAccounts)
+		if err != nil {
+			return nil, err
+		}
+		vm["IncludeLinkedAccounts"] = ser
+	}
+	if v.OwningAccount != nil {
+		ser, err := serializeCBOR_String(*v.OwningAccount)
+		if err != nil {
+			return nil, err
+		}
+		vm["OwningAccount"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_ListMetricStreamsInput(v *ListMetricStreamsInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.NextToken != nil {
+		ser, err := serializeCBOR_String(*v.NextToken)
+		if err != nil {
+			return nil, err
+		}
+		vm["NextToken"] = ser
+	}
+	if v.MaxResults != nil {
+		ser, err := serializeCBOR_Int32(*v.MaxResults)
+		if err != nil {
+			return nil, err
+		}
+		vm["MaxResults"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_ListTagsForResourceInput(v *ListTagsForResourceInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.ResourceARN != nil {
+		ser, err := serializeCBOR_String(*v.ResourceARN)
+		if err != nil {
+			return nil, err
+		}
+		vm["ResourceARN"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_PutAnomalyDetectorInput(v *PutAnomalyDetectorInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Namespace != nil {
+		ser, err := serializeCBOR_String(*v.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		vm["Namespace"] = ser
+	}
+	if v.MetricName != nil {
+		ser, err := serializeCBOR_String(*v.MetricName)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricName"] = ser
+	}
+	if v.Dimensions != nil {
+		ser, err := serializeCBOR_Dimensions(v.Dimensions)
+		if err != nil {
+			return nil, err
+		}
+		vm["Dimensions"] = ser
+	}
+	if v.Stat != nil {
+		ser, err := serializeCBOR_String(*v.Stat)
+		if err != nil {
+			return nil, err
+		}
+		vm["Stat"] = ser
+	}
+	if v.Configuration != nil {
+		ser, err := serializeCBOR_AnomalyDetectorConfiguration(v.Configuration)
+		if err != nil {
+			return nil, err
+		}
+		vm["Configuration"] = ser
+	}
+	if v.MetricCharacteristics != nil {
+		ser, err := serializeCBOR_MetricCharacteristics(v.MetricCharacteristics)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricCharacteristics"] = ser
+	}
+	if v.SingleMetricAnomalyDetector != nil {
+		ser, err := serializeCBOR_SingleMetricAnomalyDetector(v.SingleMetricAnomalyDetector)
+		if err != nil {
+			return nil, err
+		}
+		vm["SingleMetricAnomalyDetector"] = ser
+	}
+	if v.MetricMathAnomalyDetector != nil {
+		ser, err := serializeCBOR_MetricMathAnomalyDetector(v.MetricMathAnomalyDetector)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricMathAnomalyDetector"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_PutCompositeAlarmInput(v *PutCompositeAlarmInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.ActionsEnabled != nil {
+		ser, err := serializeCBOR_Bool(*v.ActionsEnabled)
+		if err != nil {
+			return nil, err
+		}
+		vm["ActionsEnabled"] = ser
+	}
+	if v.AlarmActions != nil {
+		ser, err := serializeCBOR_ResourceList(v.AlarmActions)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmActions"] = ser
+	}
+	if v.AlarmDescription != nil {
+		ser, err := serializeCBOR_String(*v.AlarmDescription)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmDescription"] = ser
+	}
+	if v.AlarmName != nil {
+		ser, err := serializeCBOR_String(*v.AlarmName)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmName"] = ser
+	}
+	if v.AlarmRule != nil {
+		ser, err := serializeCBOR_String(*v.AlarmRule)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmRule"] = ser
+	}
+	if v.InsufficientDataActions != nil {
+		ser, err := serializeCBOR_ResourceList(v.InsufficientDataActions)
+		if err != nil {
+			return nil, err
+		}
+		vm["InsufficientDataActions"] = ser
+	}
+	if v.OKActions != nil {
+		ser, err := serializeCBOR_ResourceList(v.OKActions)
+		if err != nil {
+			return nil, err
+		}
+		vm["OKActions"] = ser
+	}
 	if v.Tags != nil {
-		objectKey := object.Key("Tags")
-		if err := awsAwsquery_serializeDocumentTagList(v.Tags, objectKey); err != nil {
-			return err
+		ser, err := serializeCBOR_TagList(v.Tags)
+		if err != nil {
+			return nil, err
 		}
+		vm["Tags"] = ser
 	}
-
-	return nil
+	if v.ActionsSuppressor != nil {
+		ser, err := serializeCBOR_String(*v.ActionsSuppressor)
+		if err != nil {
+			return nil, err
+		}
+		vm["ActionsSuppressor"] = ser
+	}
+	if v.ActionsSuppressorWaitPeriod != nil {
+		ser, err := serializeCBOR_Int32(*v.ActionsSuppressorWaitPeriod)
+		if err != nil {
+			return nil, err
+		}
+		vm["ActionsSuppressorWaitPeriod"] = ser
+	}
+	if v.ActionsSuppressorExtensionPeriod != nil {
+		ser, err := serializeCBOR_Int32(*v.ActionsSuppressorExtensionPeriod)
+		if err != nil {
+			return nil, err
+		}
+		vm["ActionsSuppressorExtensionPeriod"] = ser
+	}
+	return vm, nil
 }
 
-func awsAwsquery_serializeOpDocumentUntagResourceInput(v *UntagResourceInput, value query.Value) error {
-	object := value.Object()
-	_ = object
-
-	if v.ResourceARN != nil {
-		objectKey := object.Key("ResourceARN")
-		objectKey.String(*v.ResourceARN)
-	}
-
-	if v.TagKeys != nil {
-		objectKey := object.Key("TagKeys")
-		if err := awsAwsquery_serializeDocumentTagKeyList(v.TagKeys, objectKey); err != nil {
-			return err
+func serializeCBOR_PutDashboardInput(v *PutDashboardInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.DashboardName != nil {
+		ser, err := serializeCBOR_String(*v.DashboardName)
+		if err != nil {
+			return nil, err
 		}
+		vm["DashboardName"] = ser
 	}
+	if v.DashboardBody != nil {
+		ser, err := serializeCBOR_String(*v.DashboardBody)
+		if err != nil {
+			return nil, err
+		}
+		vm["DashboardBody"] = ser
+	}
+	return vm, nil
+}
 
-	return nil
+func serializeCBOR_PutInsightRuleInput(v *PutInsightRuleInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.RuleName != nil {
+		ser, err := serializeCBOR_String(*v.RuleName)
+		if err != nil {
+			return nil, err
+		}
+		vm["RuleName"] = ser
+	}
+	if v.RuleState != nil {
+		ser, err := serializeCBOR_String(*v.RuleState)
+		if err != nil {
+			return nil, err
+		}
+		vm["RuleState"] = ser
+	}
+	if v.RuleDefinition != nil {
+		ser, err := serializeCBOR_String(*v.RuleDefinition)
+		if err != nil {
+			return nil, err
+		}
+		vm["RuleDefinition"] = ser
+	}
+	if v.Tags != nil {
+		ser, err := serializeCBOR_TagList(v.Tags)
+		if err != nil {
+			return nil, err
+		}
+		vm["Tags"] = ser
+	}
+	if v.ApplyOnTransformedLogs != nil {
+		ser, err := serializeCBOR_Bool(*v.ApplyOnTransformedLogs)
+		if err != nil {
+			return nil, err
+		}
+		vm["ApplyOnTransformedLogs"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_PutManagedInsightRulesInput(v *PutManagedInsightRulesInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.ManagedRules != nil {
+		ser, err := serializeCBOR_ManagedRules(v.ManagedRules)
+		if err != nil {
+			return nil, err
+		}
+		vm["ManagedRules"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_PutMetricAlarmInput(v *PutMetricAlarmInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.AlarmName != nil {
+		ser, err := serializeCBOR_String(*v.AlarmName)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmName"] = ser
+	}
+	if v.AlarmDescription != nil {
+		ser, err := serializeCBOR_String(*v.AlarmDescription)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmDescription"] = ser
+	}
+	if v.ActionsEnabled != nil {
+		ser, err := serializeCBOR_Bool(*v.ActionsEnabled)
+		if err != nil {
+			return nil, err
+		}
+		vm["ActionsEnabled"] = ser
+	}
+	if v.OKActions != nil {
+		ser, err := serializeCBOR_ResourceList(v.OKActions)
+		if err != nil {
+			return nil, err
+		}
+		vm["OKActions"] = ser
+	}
+	if v.AlarmActions != nil {
+		ser, err := serializeCBOR_ResourceList(v.AlarmActions)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmActions"] = ser
+	}
+	if v.InsufficientDataActions != nil {
+		ser, err := serializeCBOR_ResourceList(v.InsufficientDataActions)
+		if err != nil {
+			return nil, err
+		}
+		vm["InsufficientDataActions"] = ser
+	}
+	if v.MetricName != nil {
+		ser, err := serializeCBOR_String(*v.MetricName)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricName"] = ser
+	}
+	if v.Namespace != nil {
+		ser, err := serializeCBOR_String(*v.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		vm["Namespace"] = ser
+	}
+	if len(v.Statistic) > 0 {
+		ser, err := serializeCBOR_Statistic(v.Statistic)
+		if err != nil {
+			return nil, err
+		}
+		vm["Statistic"] = ser
+	}
+	if v.ExtendedStatistic != nil {
+		ser, err := serializeCBOR_String(*v.ExtendedStatistic)
+		if err != nil {
+			return nil, err
+		}
+		vm["ExtendedStatistic"] = ser
+	}
+	if v.Dimensions != nil {
+		ser, err := serializeCBOR_Dimensions(v.Dimensions)
+		if err != nil {
+			return nil, err
+		}
+		vm["Dimensions"] = ser
+	}
+	if v.Period != nil {
+		ser, err := serializeCBOR_Int32(*v.Period)
+		if err != nil {
+			return nil, err
+		}
+		vm["Period"] = ser
+	}
+	if len(v.Unit) > 0 {
+		ser, err := serializeCBOR_StandardUnit(v.Unit)
+		if err != nil {
+			return nil, err
+		}
+		vm["Unit"] = ser
+	}
+	if v.EvaluationPeriods != nil {
+		ser, err := serializeCBOR_Int32(*v.EvaluationPeriods)
+		if err != nil {
+			return nil, err
+		}
+		vm["EvaluationPeriods"] = ser
+	}
+	if v.DatapointsToAlarm != nil {
+		ser, err := serializeCBOR_Int32(*v.DatapointsToAlarm)
+		if err != nil {
+			return nil, err
+		}
+		vm["DatapointsToAlarm"] = ser
+	}
+	if v.Threshold != nil {
+		ser, err := serializeCBOR_Float64(*v.Threshold)
+		if err != nil {
+			return nil, err
+		}
+		vm["Threshold"] = ser
+	}
+	if len(v.ComparisonOperator) > 0 {
+		ser, err := serializeCBOR_ComparisonOperator(v.ComparisonOperator)
+		if err != nil {
+			return nil, err
+		}
+		vm["ComparisonOperator"] = ser
+	}
+	if v.TreatMissingData != nil {
+		ser, err := serializeCBOR_String(*v.TreatMissingData)
+		if err != nil {
+			return nil, err
+		}
+		vm["TreatMissingData"] = ser
+	}
+	if v.EvaluateLowSampleCountPercentile != nil {
+		ser, err := serializeCBOR_String(*v.EvaluateLowSampleCountPercentile)
+		if err != nil {
+			return nil, err
+		}
+		vm["EvaluateLowSampleCountPercentile"] = ser
+	}
+	if v.Metrics != nil {
+		ser, err := serializeCBOR_MetricDataQueries(v.Metrics)
+		if err != nil {
+			return nil, err
+		}
+		vm["Metrics"] = ser
+	}
+	if v.Tags != nil {
+		ser, err := serializeCBOR_TagList(v.Tags)
+		if err != nil {
+			return nil, err
+		}
+		vm["Tags"] = ser
+	}
+	if v.ThresholdMetricId != nil {
+		ser, err := serializeCBOR_String(*v.ThresholdMetricId)
+		if err != nil {
+			return nil, err
+		}
+		vm["ThresholdMetricId"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_PutMetricDataInput(v *PutMetricDataInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Namespace != nil {
+		ser, err := serializeCBOR_String(*v.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		vm["Namespace"] = ser
+	}
+	if v.MetricData != nil {
+		ser, err := serializeCBOR_MetricData(v.MetricData)
+		if err != nil {
+			return nil, err
+		}
+		vm["MetricData"] = ser
+	}
+	if v.EntityMetricData != nil {
+		ser, err := serializeCBOR_EntityMetricDataList(v.EntityMetricData)
+		if err != nil {
+			return nil, err
+		}
+		vm["EntityMetricData"] = ser
+	}
+	if v.StrictEntityValidation != nil {
+		ser, err := serializeCBOR_Bool(*v.StrictEntityValidation)
+		if err != nil {
+			return nil, err
+		}
+		vm["StrictEntityValidation"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_PutMetricStreamInput(v *PutMetricStreamInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Name != nil {
+		ser, err := serializeCBOR_String(*v.Name)
+		if err != nil {
+			return nil, err
+		}
+		vm["Name"] = ser
+	}
+	if v.IncludeFilters != nil {
+		ser, err := serializeCBOR_MetricStreamFilters(v.IncludeFilters)
+		if err != nil {
+			return nil, err
+		}
+		vm["IncludeFilters"] = ser
+	}
+	if v.ExcludeFilters != nil {
+		ser, err := serializeCBOR_MetricStreamFilters(v.ExcludeFilters)
+		if err != nil {
+			return nil, err
+		}
+		vm["ExcludeFilters"] = ser
+	}
+	if v.FirehoseArn != nil {
+		ser, err := serializeCBOR_String(*v.FirehoseArn)
+		if err != nil {
+			return nil, err
+		}
+		vm["FirehoseArn"] = ser
+	}
+	if v.RoleArn != nil {
+		ser, err := serializeCBOR_String(*v.RoleArn)
+		if err != nil {
+			return nil, err
+		}
+		vm["RoleArn"] = ser
+	}
+	if len(v.OutputFormat) > 0 {
+		ser, err := serializeCBOR_MetricStreamOutputFormat(v.OutputFormat)
+		if err != nil {
+			return nil, err
+		}
+		vm["OutputFormat"] = ser
+	}
+	if v.Tags != nil {
+		ser, err := serializeCBOR_TagList(v.Tags)
+		if err != nil {
+			return nil, err
+		}
+		vm["Tags"] = ser
+	}
+	if v.StatisticsConfigurations != nil {
+		ser, err := serializeCBOR_MetricStreamStatisticsConfigurations(v.StatisticsConfigurations)
+		if err != nil {
+			return nil, err
+		}
+		vm["StatisticsConfigurations"] = ser
+	}
+	if v.IncludeLinkedAccountsMetrics != nil {
+		ser, err := serializeCBOR_Bool(*v.IncludeLinkedAccountsMetrics)
+		if err != nil {
+			return nil, err
+		}
+		vm["IncludeLinkedAccountsMetrics"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_SetAlarmStateInput(v *SetAlarmStateInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.AlarmName != nil {
+		ser, err := serializeCBOR_String(*v.AlarmName)
+		if err != nil {
+			return nil, err
+		}
+		vm["AlarmName"] = ser
+	}
+	if len(v.StateValue) > 0 {
+		ser, err := serializeCBOR_StateValue(v.StateValue)
+		if err != nil {
+			return nil, err
+		}
+		vm["StateValue"] = ser
+	}
+	if v.StateReason != nil {
+		ser, err := serializeCBOR_String(*v.StateReason)
+		if err != nil {
+			return nil, err
+		}
+		vm["StateReason"] = ser
+	}
+	if v.StateReasonData != nil {
+		ser, err := serializeCBOR_String(*v.StateReasonData)
+		if err != nil {
+			return nil, err
+		}
+		vm["StateReasonData"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_StartMetricStreamsInput(v *StartMetricStreamsInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Names != nil {
+		ser, err := serializeCBOR_MetricStreamNames(v.Names)
+		if err != nil {
+			return nil, err
+		}
+		vm["Names"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_StopMetricStreamsInput(v *StopMetricStreamsInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.Names != nil {
+		ser, err := serializeCBOR_MetricStreamNames(v.Names)
+		if err != nil {
+			return nil, err
+		}
+		vm["Names"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_TagResourceInput(v *TagResourceInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.ResourceARN != nil {
+		ser, err := serializeCBOR_String(*v.ResourceARN)
+		if err != nil {
+			return nil, err
+		}
+		vm["ResourceARN"] = ser
+	}
+	if v.Tags != nil {
+		ser, err := serializeCBOR_TagList(v.Tags)
+		if err != nil {
+			return nil, err
+		}
+		vm["Tags"] = ser
+	}
+	return vm, nil
+}
+
+func serializeCBOR_UntagResourceInput(v *UntagResourceInput) (smithycbor.Value, error) {
+	vm := smithycbor.Map{}
+	if v.ResourceARN != nil {
+		ser, err := serializeCBOR_String(*v.ResourceARN)
+		if err != nil {
+			return nil, err
+		}
+		vm["ResourceARN"] = ser
+	}
+	if v.TagKeys != nil {
+		ser, err := serializeCBOR_TagKeyList(v.TagKeys)
+		if err != nil {
+			return nil, err
+		}
+		vm["TagKeys"] = ser
+	}
+	return vm, nil
 }

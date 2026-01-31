@@ -413,7 +413,7 @@ func (d DemGetWebsiteResponse) MarshalJSON() ([]byte, error) {
 }
 
 func (d *DemGetWebsiteResponse) UnmarshalJSON(data []byte) error {
-	if err := utils.UnmarshalJSON(data, &d, "", false, []string{"id", "type", "status", "name", "url", "monitoringOptions"}); err != nil {
+	if err := utils.UnmarshalJSON(data, &d, "", false, nil); err != nil {
 		return err
 	}
 	return nil

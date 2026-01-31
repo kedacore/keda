@@ -69,6 +69,7 @@ type (
 		dataConverter            converter.DataConverter
 		failureConverter         converter.FailureConverter
 		contextPropagators       []ContextPropagator
+		workerPlugins            []WorkerPlugin
 		workerInterceptors       []WorkerInterceptor
 		interceptor              ClientOutboundInterceptor
 		excludeInternalFromRetry *atomic.Bool

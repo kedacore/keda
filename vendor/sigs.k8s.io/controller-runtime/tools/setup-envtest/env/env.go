@@ -10,7 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"text/tabwriter"
 
@@ -41,10 +41,6 @@ type Env struct {
 	// ForceDownload forces us to ignore local files and always
 	// contact remote services & re-download.
 	ForceDownload bool
-
-	// UseDeprecatedGCS signals if the GCS client is used.
-	// Note: This will be removed together with remote.GCSClient.
-	UseDeprecatedGCS bool
 
 	// Client is our remote client for contacting remote services.
 	Client remote.Client
@@ -125,9 +121,10 @@ func (e *Env) ListVersions(ctx context.Context) {
 		if !e.Version.Matches(set.Version) {
 			continue
 		}
-		sort.Slice(set.Platforms, func(i, j int) bool {
-			return orderPlatforms(set.Platforms[i].Platform, set.Platforms[j].Platform)
+		slices.SortStableFunc(set.Platforms, func(i, j versions.PlatformItem) int {
+			return orderPlatforms(i.Platform, j.Platform)
 		})
+
 		for _, plat := range set.Platforms {
 			if e.Platform.Matches(plat.Platform) {
 				fmt.Fprintf(out, "(available)\tv%s\t%s\n", set.Version, plat)
@@ -250,7 +247,7 @@ func (e *Env) EnsureVersionIsSet(ctx context.Context) {
 	serverVer, platform := e.LatestVersion(ctx)
 
 	// if we're not forcing a download, and we have a newer local version, just use that
-	if !e.ForceDownload && localVer != nil && localVer.NewerThan(serverVer) {
+	if !e.ForceDownload && localVer != nil && localVer.Compare(serverVer) > 0 {
 		e.Platform.Platform = localPlat // update our data with hash
 		e.Version.MakeConcrete(*localVer)
 		return
@@ -291,7 +288,7 @@ func (e *Env) Fetch(ctx context.Context) {
 		}
 	})
 
-	archiveOut, err := e.FS.TempFile("", "*-"+e.Platform.ArchiveName(e.UseDeprecatedGCS, *e.Version.AsConcrete()))
+	archiveOut, err := e.FS.TempFile("", "*-"+e.Platform.ArchiveName(*e.Version.AsConcrete()))
 	if err != nil {
 		ExitCause(2, err, "unable to open file to write downloaded archive to")
 	}

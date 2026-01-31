@@ -19,9 +19,9 @@ package scalers
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 	"github.com/go-logr/logr"
 	"github.com/gobwas/glob"
 	v2 "k8s.io/api/autoscaling/v2"
@@ -33,20 +33,54 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-const (
-	blobCountMetricName           = "blobCount"
-	activationBlobCountMetricName = "activationBlobCount"
-	defaultTargetBlobCount        = 5
-	defaultBlobDelimiter          = "/"
-	defaultBlobPrefix             = ""
-)
-
 type azureBlobScaler struct {
 	metricType  v2.MetricTargetType
-	metadata    *azure.BlobMetadata
+	metadata    *azureBlobMetadata
 	podIdentity kedav1alpha1.AuthPodIdentity
 	blobClient  *azblob.Client
 	logger      logr.Logger
+}
+
+type azureBlobMetadata struct {
+	triggerIndex int
+
+	BlobContainerName         string `keda:"name=blobContainerName,   order=triggerMetadata"`
+	TargetBlobCount           int64  `keda:"name=blobCount,           order=triggerMetadata, default=5"`
+	ActivationTargetBlobCount int64  `keda:"name=activationBlobCount, order=triggerMetadata, default=0"`
+	BlobDelimiter             string `keda:"name=blobDelimiter,       order=triggerMetadata, default=/"`
+	BlobPrefix                string `keda:"name=blobPrefix,          order=triggerMetadata, optional"`
+	Recursive                 bool   `keda:"name=recursive,           order=triggerMetadata, default=false"`
+	GlobPattern               string `keda:"name=globPattern,         order=triggerMetadata, optional"`
+	EndpointSuffix            string `keda:"name=endpointSuffix,      order=triggerMetadata, optional"`
+
+	Connection  string `keda:"name=connection;connectionFromEnv, order=authParams;resolvedEnv;triggerMetadata, optional"`
+	AccountName string `keda:"name=accountName,                  order=triggerMetadata,                        optional"`
+
+	// Internal fields
+	compiledGlobPattern glob.Glob
+}
+
+func (m *azureBlobMetadata) Validate() error {
+	// Handle recursive flag, when true, disable delimiter
+	if m.Recursive {
+		m.BlobDelimiter = ""
+	}
+
+	// Compile glob pattern if provided
+	if m.GlobPattern != "" {
+		compiled, err := glob.Compile(m.GlobPattern)
+		if err != nil {
+			return fmt.Errorf("invalid glob pattern %q: %w", m.GlobPattern, err)
+		}
+		m.compiledGlobPattern = compiled
+	}
+
+	// Add delimiter to prefix, if prefix is set and we have a delimiter
+	if m.BlobPrefix != "" && m.BlobDelimiter != "" {
+		m.BlobPrefix += m.BlobDelimiter
+	}
+
+	return nil
 }
 
 // NewAzureBlobScaler creates a new azureBlobScaler
@@ -58,12 +92,19 @@ func NewAzureBlobScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 
 	logger := InitializeLogger(config, "azure_blob_scaler")
 
-	meta, podIdentity, err := parseAzureBlobMetadata(config, logger)
+	meta, err := parseAzureBlobMetadata(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing azure blob metadata: %w", err)
 	}
 
-	blobClient, err := azure.GetStorageBlobClient(logger, podIdentity, meta.Connection, meta.AccountName, meta.EndpointSuffix, config.GlobalHTTPTimeout)
+	blobClient, err := azure.GetStorageBlobClient(
+		logger,
+		config.PodIdentity,
+		meta.Connection,
+		meta.AccountName,
+		meta.EndpointSuffix,
+		config.GlobalHTTPTimeout,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating azure blob client: %w", err)
 	}
@@ -72,117 +113,129 @@ func NewAzureBlobScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		metricType:  metricType,
 		metadata:    meta,
 		blobClient:  blobClient,
-		podIdentity: podIdentity,
+		podIdentity: config.PodIdentity,
 		logger:      logger,
 	}, nil
 }
 
-func parseAzureBlobMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azure.BlobMetadata, kedav1alpha1.AuthPodIdentity, error) {
-	meta := azure.BlobMetadata{}
-	meta.TargetBlobCount = defaultTargetBlobCount
-	meta.BlobDelimiter = defaultBlobDelimiter
+func parseAzureBlobMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) (*azureBlobMetadata, error) {
+	meta := &azureBlobMetadata{}
+	meta.triggerIndex = config.TriggerIndex
 
-	if val, ok := config.TriggerMetadata[blobCountMetricName]; ok {
-		blobCount, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			logger.Error(err, "Error parsing azure blob metadata", "blobCountMetricName", blobCountMetricName)
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure blob metadata %s: %w", blobCountMetricName, err)
-		}
-
-		meta.TargetBlobCount = blobCount
-	}
-
-	meta.ActivationTargetBlobCount = 0
-	if val, ok := config.TriggerMetadata[activationBlobCountMetricName]; ok {
-		activationBlobCount, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			logger.Error(err, "Error parsing azure blob metadata", activationBlobCountMetricName, activationBlobCountMetricName)
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("error parsing azure blob metadata %s: %w", activationBlobCountMetricName, err)
-		}
-
-		meta.ActivationTargetBlobCount = activationBlobCount
-	}
-
-	if val, ok := config.TriggerMetadata["blobContainerName"]; ok && val != "" {
-		meta.BlobContainerName = val
-	} else {
-		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no blobContainerName given")
-	}
-
-	if val, ok := config.TriggerMetadata["blobDelimiter"]; ok && val != "" {
-		meta.BlobDelimiter = val
-	}
-
-	if val, ok := config.TriggerMetadata["recursive"]; ok && val != "" {
-		recursive, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, kedav1alpha1.AuthPodIdentity{}, err
-		}
-
-		if recursive {
-			meta.BlobDelimiter = ""
-		}
-	}
-
-	if val, ok := config.TriggerMetadata["globPattern"]; ok && val != "" {
-		glob, err := glob.Compile(val)
-		if err != nil {
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("invalid glob pattern - %w", err)
-		}
-		meta.GlobPattern = &glob
-	}
-
-	if val, ok := config.TriggerMetadata["blobPrefix"]; ok && val != "" {
-		prefix := val + meta.BlobDelimiter
-		meta.BlobPrefix = &prefix
+	if err := config.TypedConfig(meta); err != nil {
+		return nil, fmt.Errorf("error parsing azure blob metadata: %w", err)
 	}
 
 	endpointSuffix, err := azure.ParseAzureStorageEndpointSuffix(config.TriggerMetadata, azure.BlobEndpoint)
 	if err != nil {
-		return nil, kedav1alpha1.AuthPodIdentity{}, err
+		return nil, err
 	}
-
 	meta.EndpointSuffix = endpointSuffix
 
-	// If the Use AAD Pod Identity is not present, or set to "none"
-	// then check for connection string
 	switch config.PodIdentity.Provider {
 	case "", kedav1alpha1.PodIdentityProviderNone:
-		// Azure Blob Scaler expects a "connection" parameter in the metadata
-		// of the scaler or in a TriggerAuthentication object
-		if config.AuthParams["connection"] != "" {
-			meta.Connection = config.AuthParams["connection"]
-		} else if config.TriggerMetadata["connectionFromEnv"] != "" {
-			meta.Connection = config.ResolvedEnv[config.TriggerMetadata["connectionFromEnv"]]
+		if meta.Connection == "" {
+			return nil, fmt.Errorf("connection string is required when not using pod identity)")
+		}
+		if meta.AccountName != "" {
+			logger.Info("accountName is ignored when using connection string authentication")
 		}
 
-		if len(meta.Connection) == 0 {
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no connection setting given")
-		}
 	case kedav1alpha1.PodIdentityProviderAzureWorkload:
-		// If the Use AAD Pod Identity / Workload Identity is present then check account name
-		if val, ok := config.TriggerMetadata["accountName"]; ok && val != "" {
-			meta.AccountName = val
-		} else {
-			return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("no accountName given")
+		if meta.AccountName == "" {
+			return nil, fmt.Errorf("accountName is required when using Azure Workload Identity")
 		}
+		if meta.Connection != "" {
+			logger.Info("connection string is ignored when using Azure Workload Identity")
+		}
+
 	default:
-		return nil, kedav1alpha1.AuthPodIdentity{}, fmt.Errorf("pod identity %s not supported for azure storage blobs", config.PodIdentity.Provider)
+		return nil, fmt.Errorf("pod identity provider %q is not supported for Azure Storage Blobs (supported: none, azure-workload)", config.PodIdentity.Provider)
 	}
 
-	meta.TriggerIndex = config.TriggerIndex
-
-	return &meta, config.PodIdentity, nil
+	return meta, nil
 }
 
 func (s *azureBlobScaler) Close(context.Context) error {
 	return nil
 }
 
+// getAzureBlobListLength returns the count of the blobs in blob container
+func (s *azureBlobScaler) getAzureBlobListLength(ctx context.Context) (int64, error) {
+	containerClient := s.blobClient.ServiceClient().NewContainerClient(s.metadata.BlobContainerName)
+
+	// If glob pattern is specified, use flat listing to match against all blob names
+	if s.metadata.compiledGlobPattern != nil {
+		return s.countBlobsWithGlobPattern(ctx, containerClient)
+	}
+
+	// Otherwise use hierarchical listing with delimiter support
+	return s.countBlobsHierarchical(ctx, containerClient)
+}
+
+// countBlobsWithGlobPattern counts blobs matching a glob pattern using flat listing
+func (s *azureBlobScaler) countBlobsWithGlobPattern(ctx context.Context, containerClient *container.Client) (int64, error) {
+	var count int64
+
+	var prefix *string
+	if s.metadata.BlobPrefix != "" {
+		prefix = &s.metadata.BlobPrefix
+	}
+
+	flatPager := containerClient.NewListBlobsFlatPager(&azblob.ListBlobsFlatOptions{
+		Prefix: prefix,
+	})
+
+	for flatPager.More() {
+		resp, err := flatPager.NextPage(ctx)
+		if err != nil {
+			return -1, fmt.Errorf("error listing blobs: %w", err)
+		}
+
+		for _, blobItem := range resp.Segment.BlobItems {
+			if blobItem.Name != nil && s.metadata.compiledGlobPattern.Match(*blobItem.Name) {
+				count++
+			}
+		}
+	}
+
+	return count, nil
+}
+
+// countBlobsHierarchical counts blobs using hierarchical listing with delimiter support
+func (s *azureBlobScaler) countBlobsHierarchical(ctx context.Context, containerClient *container.Client) (int64, error) {
+	var count int64
+
+	var prefix *string
+	if s.metadata.BlobPrefix != "" {
+		prefix = &s.metadata.BlobPrefix
+	}
+
+	hierarchyPager := containerClient.NewListBlobsHierarchyPager(
+		s.metadata.BlobDelimiter,
+		&container.ListBlobsHierarchyOptions{
+			Prefix: prefix,
+		},
+	)
+
+	for hierarchyPager.More() {
+		resp, err := hierarchyPager.NextPage(ctx)
+		if err != nil {
+			return -1, fmt.Errorf("error listing blobs hierarchically: %w", err)
+		}
+		count += int64(len(resp.Segment.BlobItems))
+	}
+
+	return count, nil
+}
+
 func (s *azureBlobScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("azure-blob-%s", s.metadata.BlobContainerName))),
+			Name: GenerateMetricNameWithIndex(
+				s.metadata.triggerIndex,
+				kedautil.NormalizeString(fmt.Sprintf("azure-blob-%s", s.metadata.BlobContainerName)),
+			),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.TargetBlobCount),
 	}
@@ -192,18 +245,13 @@ func (s *azureBlobScaler) GetMetricSpecForScaling(context.Context) []v2.MetricSp
 
 // GetMetricsAndActivity returns value for a supported metric and an error if there is a problem getting the metric
 func (s *azureBlobScaler) GetMetricsAndActivity(ctx context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	bloblen, err := azure.GetAzureBlobListLength(
-		ctx,
-		s.blobClient,
-		s.metadata,
-	)
-
+	blobCount, err := s.getAzureBlobListLength(ctx)
 	if err != nil {
 		s.logger.Error(err, "error getting blob list length")
 		return []external_metrics.ExternalMetricValue{}, false, err
 	}
 
-	metric := GenerateMetricInMili(metricName, float64(bloblen))
+	metric := GenerateMetricInMili(metricName, float64(blobCount))
 
-	return []external_metrics.ExternalMetricValue{metric}, bloblen > s.metadata.ActivationTargetBlobCount, nil
+	return []external_metrics.ExternalMetricValue{metric}, blobCount > s.metadata.ActivationTargetBlobCount, nil
 }

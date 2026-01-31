@@ -27,24 +27,24 @@ repos:
           - "3"
   - repo: local
     hooks:
-    - id: language-matters
-      language: pygrep
-      name: Check for language that we do not accept as community
-      description: Please use "deny_list" or "allow_list"  instead.
-      entry: "(?i)(black|white)[_-]?(list|List)"
-      pass_filenames: true
-    - id: sort-scalers
-      name: Check if scalers are sorted in scale_handler.go
-      language: system
-      entry: "bash tools/sort_scalers.sh"
-      files: .*scale_handler\.go$
-    - id: validate-changelog
-      name: Validate Changelog
-      language: system
-      entry: "bash hack/validate-changelog.sh"
-      pass_filenames: false
-    - id: golangci-lint
-      language: system
-      name: Run golangci against the code
-      entry: make golangci
-      pass_filenames: false
+      - id: language-matters
+        language: pygrep
+        name: Check for language that we do not accept as community
+        description: Please use "deny_list" or "allow_list"  instead.
+        entry: "(?i)(black|white)[_-]?(list|List)"
+        pass_filenames: true
+      - id: sort-scalers
+        name: Check if scalers are sorted in scalers_builder.go
+        language: system
+        entry: "bash tools/sort_scalers.sh"
+        files: .*scalers_builder\.go$
+      - id: validate-changelog
+        name: Validate Changelog
+        language: system
+        entry: "bash hack/validate-changelog.sh"
+        pass_filenames: false
+      - id: golangci-lint
+        language: system
+        name: Run golangci against the code
+        entry: make golangci
+        pass_filenames: false

@@ -276,12 +276,20 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 
 			// Condition already set above, just ensure it's still set in conditions object
 			conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, msg)
+			if !isPausedInStatus {
+				r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectPausedType, eventreason.ScaledObjectPaused, kedav1alpha1.ScaledObjectConditionPausedMessage)
+			}
 			return msg, nil
 		}
 	case scaledObject.NeedToPauseScaleIn() || scaledObject.NeedToPauseScaleOut():
 		conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, kedav1alpha1.ScaledObjectConditionPausedMessage)
+		if !isPausedInStatus {
+			r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectPausedType, eventreason.ScaledObjectPaused, kedav1alpha1.ScaledObjectConditionPausedMessage)
+		}
 	case isPausedInStatus:
-		conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectUnpaused", "pause annotation removed for ScaledObject")
+		unpausedMessage := "pause annotation removed for ScaledObject"
+		conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectUnpaused", unpausedMessage)
+		r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectUnpausedType, eventreason.ScaledObjectUnpaused, unpausedMessage)
 	}
 
 	// Check scale target Name is specified

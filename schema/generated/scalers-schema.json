@@ -683,6 +683,80 @@
             ]
         },
         {
+            "type": "azure-blob",
+            "parameters": [
+                {
+                    "name": "blobContainerName",
+                    "type": "string",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "blobCount",
+                    "type": "string",
+                    "default": "5",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "activationBlobCount",
+                    "type": "string",
+                    "default": "0",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "blobDelimiter",
+                    "type": "string",
+                    "default": "/",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "blobPrefix",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "recursive",
+                    "type": "string",
+                    "default": "false",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "globPattern",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "endpointSuffix",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "connection",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "connectionFromEnv",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true,
+                    "envVariableReadable": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "accountName",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                }
+            ]
+        },
+        {
             "type": "azure-eventhub",
             "parameters": [
                 {
@@ -1516,13 +1590,37 @@
                 {
                     "name": "metricSelector",
                     "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "query",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "queryTimeoutSeconds",
+                    "type": "string",
+                    "default": "10",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "queryPollingWait",
+                    "type": "string",
+                    "default": "1s",
+                    "metadataVariableReadable": true
+                },
+                {
+                    "name": "queryPollingTries",
+                    "type": "string",
+                    "default": "5",
                     "metadataVariableReadable": true
                 },
                 {
                     "name": "from",
                     "type": "string",
                     "optional": true,
-                    "default": "now-2h",
                     "metadataVariableReadable": true
                 },
                 {
@@ -2716,6 +2814,40 @@
                     "type": "string",
                     "default": "0",
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "tls",
+                    "type": "string",
+                    "default": "disable",
+                    "allowedValue": [
+                        "enable",
+                        "disable"
+                    ],
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "cert",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "key",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "keyPassword",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "ca",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },

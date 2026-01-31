@@ -24,6 +24,28 @@ import (
 	"sigs.k8s.io/controller-tools/pkg/markers"
 )
 
+func (AtLeastOneOf) Help() *markers.DefinitionHelp {
+	return &markers.DefinitionHelp{
+		Category: "CRD validation",
+		DetailedHelp: markers.DetailedHelp{
+			Summary: "adds a validation constraint that allows at least one of the specified fields.",
+			Details: "This marker may be repeated to specify multiple AtLeastOneOf constraints that are mutually exclusive.",
+		},
+		FieldHelp: map[string]markers.DetailedHelp{},
+	}
+}
+
+func (AtMostOneOf) Help() *markers.DefinitionHelp {
+	return &markers.DefinitionHelp{
+		Category: "CRD validation",
+		DetailedHelp: markers.DetailedHelp{
+			Summary: "adds a validation constraint that allows at most one of the specified fields.",
+			Details: "This marker may be repeated to specify multiple AtMostOneOf constraints that are mutually exclusive.",
+		},
+		FieldHelp: map[string]markers.DetailedHelp{},
+	}
+}
+
 func (Default) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "CRD validation",
@@ -62,6 +84,17 @@ func (Enum) Help() *markers.DefinitionHelp {
 		DetailedHelp: markers.DetailedHelp{
 			Summary: "specifies that this (scalar) field is restricted to the *exact* values specified here.",
 			Details: "",
+		},
+		FieldHelp: map[string]markers.DetailedHelp{},
+	}
+}
+
+func (ExactlyOneOf) Help() *markers.DefinitionHelp {
+	return &markers.DefinitionHelp{
+		Category: "CRD validation",
+		DetailedHelp: markers.DetailedHelp{
+			Summary: "adds a validation constraint that allows at exactly one of the specified fields.",
+			Details: "This marker may be repeated to specify multiple ExactlyOneOf constraints that are mutually exclusive.",
 		},
 		FieldHelp: map[string]markers.DetailedHelp{},
 	}
@@ -120,7 +153,7 @@ func (KubernetesDefault) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "CRD validation",
 		DetailedHelp: markers.DetailedHelp{
-			Summary: "Default sets the default value for this field.",
+			Summary: "sets the default value for this field.",
 			Details: "A default value will be accepted as any value valid for the field.\nOnly JSON-formatted values are accepted. `ref(...)` values are ignored.\nFormatting for common types include: boolean: `true`, string:\n`\"Cluster\"`, numerical: `1.24`, array: `[1,2]`, object: `{\"policy\":\n\"delete\"}`). Defaults should be defined in pruned form, and only best-effort\nvalidation will be performed. Full validation of a default requires\nsubmission of the containing CRD to an apiserver.",
 		},
 		FieldHelp: map[string]markers.DetailedHelp{
@@ -469,6 +502,22 @@ func (SubresourceStatus) Help() *markers.DefinitionHelp {
 	}
 }
 
+func (Title) Help() *markers.DefinitionHelp {
+	return &markers.DefinitionHelp{
+		Category: "CRD validation",
+		DetailedHelp: markers.DetailedHelp{
+			Summary: "sets the title for this field.",
+			Details: "The title is metadata that makes the OpenAPI documentation more user-friendly,\nmaking the schema more understandable when viewed in documentation tools.\nIt's a metadata field that doesn't affect validation but provides\nimportant context about what the schema represents.",
+		},
+		FieldHelp: map[string]markers.DetailedHelp{
+			"Value": {
+				Summary: "",
+				Details: "",
+			},
+		},
+	}
+}
+
 func (Type) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "CRD validation",
@@ -506,7 +555,7 @@ func (XEmbeddedResource) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "CRD validation",
 		DetailedHelp: markers.DetailedHelp{
-			Summary: "EmbeddedResource marks a fields as an embedded resource with apiVersion, kind and metadata fields.",
+			Summary: "marks a fields as an embedded resource with apiVersion, kind and metadata fields.",
 			Details: "An embedded resource is a value that has apiVersion, kind and metadata fields.\nThey are validated implicitly according to the semantics of the currently\nrunning apiserver. It is not necessary to add any additional schema for these\nfield, yet it is possible. This can be combined with PreserveUnknownFields.",
 		},
 		FieldHelp: map[string]markers.DetailedHelp{},
@@ -517,7 +566,7 @@ func (XIntOrString) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "CRD validation",
 		DetailedHelp: markers.DetailedHelp{
-			Summary: "IntOrString marks a fields as an IntOrString.",
+			Summary: "marks a fields as an IntOrString.",
 			Details: "This is required when applying patterns or other validations to an IntOrString\nfield. Known information about the type is applied during the collapse phase\nand as such is not normally available during marker application.",
 		},
 		FieldHelp: map[string]markers.DetailedHelp{},
@@ -528,7 +577,7 @@ func (XPreserveUnknownFields) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "CRD processing",
 		DetailedHelp: markers.DetailedHelp{
-			Summary: "PreserveUnknownFields stops the apiserver from pruning fields which are not specified.",
+			Summary: "stops the apiserver from pruning fields which are not specified.",
 			Details: "By default the apiserver drops unknown fields from the request payload\nduring the decoding step. This marker stops the API server from doing so.\nIt affects fields recursively, but switches back to normal pruning behaviour\nif nested  properties or additionalProperties are specified in the schema.\nThis can either be true or undefined. False\nis forbidden.\n\nNB: The kubebuilder:validation:XPreserveUnknownFields variant is deprecated\nin favor of the kubebuilder:pruning:PreserveUnknownFields variant.  They function\nidentically.",
 		},
 		FieldHelp: map[string]markers.DetailedHelp{},
@@ -560,6 +609,10 @@ func (XValidation) Help() *markers.DefinitionHelp {
 				Details: "",
 			},
 			"FieldPath": {
+				Summary: "",
+				Details: "",
+			},
+			"OptionalOldSelf": {
 				Summary: "",
 				Details: "",
 			},

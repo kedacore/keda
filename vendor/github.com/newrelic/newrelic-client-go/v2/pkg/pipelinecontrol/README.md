@@ -9,7 +9,7 @@ The `pipelinecontrol` package is a collection of functions in Go, used to manage
 
 ## ⚠️ Important: NRQL Drop Rules Deprecation Notice and Upcoming EOL
 
-NRQL Drop Rules are being deprecated and will reach their end-of-life on January 7, 2026; these shall be replaced by Pipeline Cloud Rules. If you manage your droprules via the New Relic Go Client `nrqldroprules` package, we recommend migrating your scripts using functions in `nrqldroprules` to the functions described in this package as soon as possible to ensure uninterrupted service and to take advantage of the new capabilities. These new Pipeline Cloud Rules provide enhanced functionality for managing telemetry data processing with improved performance and reliability.
+NRQL Drop Rules are being deprecated and will reach their end-of-life on June 30, 2026; these shall be replaced by Pipeline Cloud Rules. If you manage your droprules via the New Relic Go Client `nrqldroprules` package, we recommend migrating your scripts using functions in `nrqldroprules` to the functions described in this package as soon as possible to ensure uninterrupted service and to take advantage of the new capabilities. These new Pipeline Cloud Rules provide enhanced functionality for managing telemetry data processing with improved performance and reliability.
 
 ## Install
 

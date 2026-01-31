@@ -20,8 +20,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
-	"k8s.io/api/admissionregistration/v1alpha1"
+	"k8s.io/api/admissionregistration/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -35,6 +36,7 @@ import (
 	"k8s.io/apiserver/pkg/admission/plugin/cel"
 	"k8s.io/apiserver/pkg/admission/plugin/policy/generic"
 	"k8s.io/apiserver/pkg/admission/plugin/policy/matching"
+	celmetrics "k8s.io/apiserver/pkg/admission/plugin/policy/mutating/metrics"
 	"k8s.io/apiserver/pkg/admission/plugin/policy/mutating/patch"
 	webhookgeneric "k8s.io/apiserver/pkg/admission/plugin/webhook/generic"
 	celconfig "k8s.io/apiserver/pkg/apis/cel"
@@ -120,8 +122,12 @@ func (d *dispatcher) dispatchInvocations(
 	// if it is cluster scoped, namespaceName will be empty
 	// Otherwise, get the Namespace resource.
 	if namespaceName != "" {
-		namespace, err = d.matcher.GetNamespace(namespaceName)
+		namespace, err = d.matcher.GetNamespace(ctx, namespaceName)
 		if err != nil {
+			var statusError *k8serrors.StatusError
+			if errors.As(err, &statusError) {
+				return nil, statusError
+			}
 			return nil, k8serrors.NewNotFound(schema.GroupResource{Group: "", Resource: "namespaces"}, namespaceName)
 		}
 	}
@@ -182,8 +188,12 @@ func (d *dispatcher) dispatchInvocations(
 
 			patcher := invocation.Evaluator.Mutators[mutationIndex]
 			optionalVariables := cel.OptionalVariableBindings{VersionedParams: invocation.Param, Authorizer: authz}
+			startTime := time.Now()
 			err = d.dispatchOne(ctx, patcher, o, versionedAttr, namespace, invocation.Resource, optionalVariables)
+			elapsed := time.Since(startTime)
+
 			if err != nil {
+				celmetrics.Metrics.ObserveRejection(ctx, elapsed, invocation.Policy.Name, invocation.Binding.Name, ErrorType(err))
 				var statusError *k8serrors.StatusError
 				if errors.As(err, &statusError) {
 					return nil, statusError
@@ -191,6 +201,8 @@ func (d *dispatcher) dispatchInvocations(
 
 				addConfigError(err, invocation, metav1.StatusReasonInvalid)
 				continue
+			} else {
+				celmetrics.Metrics.ObserveAdmission(ctx, elapsed, invocation.Policy.Name, invocation.Binding.Name, celmetrics.MutationNoError)
 			}
 		}
 		if !apiequality.Semantic.DeepEqual(objectBeforeMutations, versionedAttr.VersionedObject) {
@@ -198,7 +210,7 @@ func (d *dispatcher) dispatchInvocations(
 			policyReinvokeCtx.RequireReinvokingPreviouslyInvokedPlugins()
 			reinvokeCtx.SetShouldReinvoke()
 		}
-		if invocation.Policy.Spec.ReinvocationPolicy == v1alpha1.IfNeededReinvocationPolicy {
+		if invocation.Policy.Spec.ReinvocationPolicy == v1beta1.IfNeededReinvocationPolicy {
 			policyReinvokeCtx.AddReinvocablePolicyToPreviouslyInvoked(invocationKey)
 		}
 	}

@@ -1322,7 +1322,7 @@ func (h *commandsHelper) handleVersionMarker(eventID int64, changeID string, sea
 	}
 }
 
-func (h *commandsHelper) recordSideEffectMarker(sideEffectID int64, data *commonpb.Payloads, dc converter.DataConverter) commandStateMachine {
+func (h *commandsHelper) recordSideEffectMarker(sideEffectID int64, data *commonpb.Payloads, dc converter.DataConverter, userMetadata *sdk.UserMetadata) commandStateMachine {
 	markerID := fmt.Sprintf("%v_%v", sideEffectMarkerName, sideEffectID)
 	sideEffectIDPayload, err := dc.ToPayloads(sideEffectID)
 	if err != nil {
@@ -1336,7 +1336,7 @@ func (h *commandsHelper) recordSideEffectMarker(sideEffectID int64, data *common
 			sideEffectMarkerDataName: data,
 		},
 	}
-	command := h.newMarkerCommandStateMachine(markerID, attributes, nil)
+	command := h.newMarkerCommandStateMachine(markerID, attributes, userMetadata)
 	h.addCommand(command)
 	return command
 }
@@ -1359,7 +1359,7 @@ func (h *commandsHelper) recordLocalActivityMarker(activityID string, details ma
 	return command
 }
 
-func (h *commandsHelper) recordMutableSideEffectMarker(mutableSideEffectID string, callCountHint int, data *commonpb.Payloads, dc converter.DataConverter) commandStateMachine {
+func (h *commandsHelper) recordMutableSideEffectMarker(mutableSideEffectID string, callCountHint int, data *commonpb.Payloads, dc converter.DataConverter, userMetadata *sdk.UserMetadata) commandStateMachine {
 	// In order to avoid duplicate marker IDs, we must append the counter to the
 	// user-provided ID
 	mutableSideEffectID = fmt.Sprintf("%v_%v", mutableSideEffectID, h.getNextID())
@@ -1383,7 +1383,7 @@ func (h *commandsHelper) recordMutableSideEffectMarker(mutableSideEffectID strin
 			mutableSideEffectCallCounterName: mutableSideEffectCounterPayload,
 		},
 	}
-	command := h.newMarkerCommandStateMachine(markerID, attributes, nil)
+	command := h.newMarkerCommandStateMachine(markerID, attributes, userMetadata)
 	h.addCommand(command)
 	return command
 }
