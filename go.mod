@@ -329,7 +329,7 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/signalfx/signalfx-go v1.54.0 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
-	github.com/spf13/afero v1.12.0 // indirect
+	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
 	github.com/spyzhov/ajson v0.9.6 // indirect
