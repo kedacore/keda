@@ -12,6 +12,8 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/microsoft/go-mssqldb/msdsn"
 )
 
 const (
@@ -62,7 +64,7 @@ func (tvp TVP) check() error {
 	return nil
 }
 
-func (tvp TVP) encode(schema, name string, columnStr []columnStruct, tvpFieldIndexes []int) ([]byte, error) {
+func (tvp TVP) encode(schema, name string, columnStr []columnStruct, tvpFieldIndexes []int, encoding msdsn.EncodeParameters) ([]byte, error) {
 	if len(columnStr) != len(tvpFieldIndexes) {
 		return nil, ErrorWrongTyping
 	}
@@ -80,7 +82,7 @@ func (tvp TVP) encode(schema, name string, columnStr []columnStruct, tvpFieldInd
 	for i, column := range columnStr {
 		binary.Write(buf, binary.LittleEndian, column.UserType)
 		binary.Write(buf, binary.LittleEndian, column.Flags)
-		writeTypeInfo(buf, &columnStr[i].ti, false)
+		writeTypeInfo(buf, &columnStr[i].ti, false, encoding)
 		writeBVarChar(buf, "")
 	}
 	// The returned error is always nil
@@ -132,7 +134,7 @@ func (tvp TVP) encode(schema, name string, columnStr []columnStruct, tvpFieldInd
 			if err != nil {
 				return nil, fmt.Errorf("failed to make tvp parameter row col: %s", err)
 			}
-			columnStr[columnStrIdx].ti.Writer(buf, param.ti, param.buffer)
+			columnStr[columnStrIdx].ti.Writer(buf, param.ti, param.buffer, encoding)
 		}
 	}
 	buf.WriteByte(_TVP_END_TOKEN)

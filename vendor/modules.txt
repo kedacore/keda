@@ -1178,8 +1178,8 @@ github.com/microsoft/azure-devops-go-api/azuredevops/system
 github.com/microsoft/azure-devops-go-api/azuredevops/taskagent
 github.com/microsoft/azure-devops-go-api/azuredevops/test
 github.com/microsoft/azure-devops-go-api/azuredevops/webapi
-# github.com/microsoft/go-mssqldb v1.8.0
-## explicit; go 1.18
+# github.com/microsoft/go-mssqldb v1.9.6
+## explicit; go 1.24.0
 github.com/microsoft/go-mssqldb
 github.com/microsoft/go-mssqldb/aecmk
 github.com/microsoft/go-mssqldb/integratedauth
@@ -1507,8 +1507,8 @@ github.com/segmentio/kafka-go/sasl/aws_msk_iam_v2
 # github.com/sergi/go-diff v1.4.0
 ## explicit; go 1.13
 github.com/sergi/go-diff/diffmatchpatch
-# github.com/shopspring/decimal v1.3.1
-## explicit; go 1.13
+# github.com/shopspring/decimal v1.4.0
+## explicit; go 1.10
 github.com/shopspring/decimal
 # github.com/signalfx/signalflow-client-go/v2 v2.3.0
 ## explicit; go 1.21
