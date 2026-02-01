@@ -26,6 +26,11 @@ const (
 type TaskQueueKind int32
 
 const (
+	// Tasks from any non workflow task may be unspecified.
+	//
+	// Task queue kind is used to differentiate whether a workflow task queue is sticky or
+	// normal. If a task is not a workflow task, Task queue kind will sometimes be
+	// unspecified.
 	TASK_QUEUE_KIND_UNSPECIFIED TaskQueueKind = 0
 	// Tasks from a normal workflow task queue always include complete workflow history
 	//
@@ -449,6 +454,69 @@ func (RateLimitSource) EnumDescriptor() ([]byte, []int) {
 	return file_temporal_api_enums_v1_task_queue_proto_rawDescGZIP(), []int{5}
 }
 
+// Indicates whether a change to the Routing Config has been
+// propagated to all relevant Task Queues and their partitions.
+type RoutingConfigUpdateState int32
+
+const (
+	ROUTING_CONFIG_UPDATE_STATE_UNSPECIFIED RoutingConfigUpdateState = 0
+	// Update to the RoutingConfig is currently in progress.
+	ROUTING_CONFIG_UPDATE_STATE_IN_PROGRESS RoutingConfigUpdateState = 1
+	// Update to the RoutingConfig has completed successfully.
+	ROUTING_CONFIG_UPDATE_STATE_COMPLETED RoutingConfigUpdateState = 2
+)
+
+// Enum value maps for RoutingConfigUpdateState.
+var (
+	RoutingConfigUpdateState_name = map[int32]string{
+		0: "ROUTING_CONFIG_UPDATE_STATE_UNSPECIFIED",
+		1: "ROUTING_CONFIG_UPDATE_STATE_IN_PROGRESS",
+		2: "ROUTING_CONFIG_UPDATE_STATE_COMPLETED",
+	}
+	RoutingConfigUpdateState_value = map[string]int32{
+		"ROUTING_CONFIG_UPDATE_STATE_UNSPECIFIED": 0,
+		"ROUTING_CONFIG_UPDATE_STATE_IN_PROGRESS": 1,
+		"ROUTING_CONFIG_UPDATE_STATE_COMPLETED":   2,
+	}
+)
+
+func (x RoutingConfigUpdateState) Enum() *RoutingConfigUpdateState {
+	p := new(RoutingConfigUpdateState)
+	*p = x
+	return p
+}
+
+func (x RoutingConfigUpdateState) String() string {
+	switch x {
+	case ROUTING_CONFIG_UPDATE_STATE_UNSPECIFIED:
+		return "Unspecified"
+	case ROUTING_CONFIG_UPDATE_STATE_IN_PROGRESS:
+		return "InProgress"
+	case ROUTING_CONFIG_UPDATE_STATE_COMPLETED:
+		return "Completed"
+	default:
+		return strconv.Itoa(int(x))
+	}
+
+}
+
+func (RoutingConfigUpdateState) Descriptor() protoreflect.EnumDescriptor {
+	return file_temporal_api_enums_v1_task_queue_proto_enumTypes[6].Descriptor()
+}
+
+func (RoutingConfigUpdateState) Type() protoreflect.EnumType {
+	return &file_temporal_api_enums_v1_task_queue_proto_enumTypes[6]
+}
+
+func (x RoutingConfigUpdateState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RoutingConfigUpdateState.Descriptor instead.
+func (RoutingConfigUpdateState) EnumDescriptor() ([]byte, []int) {
+	return file_temporal_api_enums_v1_task_queue_proto_rawDescGZIP(), []int{6}
+}
+
 var File_temporal_api_enums_v1_task_queue_proto protoreflect.FileDescriptor
 
 const file_temporal_api_enums_v1_task_queue_proto_rawDesc = "" +
@@ -481,7 +549,11 @@ const file_temporal_api_enums_v1_task_queue_proto_rawDesc = "" +
 	"\x1dRATE_LIMIT_SOURCE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15RATE_LIMIT_SOURCE_API\x10\x01\x12\x1c\n" +
 	"\x18RATE_LIMIT_SOURCE_WORKER\x10\x02\x12\x1c\n" +
-	"\x18RATE_LIMIT_SOURCE_SYSTEM\x10\x03B\x86\x01\n" +
+	"\x18RATE_LIMIT_SOURCE_SYSTEM\x10\x03*\x9f\x01\n" +
+	"\x18RoutingConfigUpdateState\x12+\n" +
+	"'ROUTING_CONFIG_UPDATE_STATE_UNSPECIFIED\x10\x00\x12+\n" +
+	"'ROUTING_CONFIG_UPDATE_STATE_IN_PROGRESS\x10\x01\x12)\n" +
+	"%ROUTING_CONFIG_UPDATE_STATE_COMPLETED\x10\x02B\x86\x01\n" +
 	"\x18io.temporal.api.enums.v1B\x0eTaskQueueProtoP\x01Z!go.temporal.io/api/enums/v1;enums\xaa\x02\x17Temporalio.Api.Enums.V1\xea\x02\x1aTemporalio::Api::Enums::V1b\x06proto3"
 
 var (
@@ -496,14 +568,15 @@ func file_temporal_api_enums_v1_task_queue_proto_rawDescGZIP() []byte {
 	return file_temporal_api_enums_v1_task_queue_proto_rawDescData
 }
 
-var file_temporal_api_enums_v1_task_queue_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_temporal_api_enums_v1_task_queue_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
 var file_temporal_api_enums_v1_task_queue_proto_goTypes = []any{
-	(TaskQueueKind)(0),           // 0: temporal.api.enums.v1.TaskQueueKind
-	(TaskQueueType)(0),           // 1: temporal.api.enums.v1.TaskQueueType
-	(TaskReachability)(0),        // 2: temporal.api.enums.v1.TaskReachability
-	(BuildIdTaskReachability)(0), // 3: temporal.api.enums.v1.BuildIdTaskReachability
-	(DescribeTaskQueueMode)(0),   // 4: temporal.api.enums.v1.DescribeTaskQueueMode
-	(RateLimitSource)(0),         // 5: temporal.api.enums.v1.RateLimitSource
+	(TaskQueueKind)(0),            // 0: temporal.api.enums.v1.TaskQueueKind
+	(TaskQueueType)(0),            // 1: temporal.api.enums.v1.TaskQueueType
+	(TaskReachability)(0),         // 2: temporal.api.enums.v1.TaskReachability
+	(BuildIdTaskReachability)(0),  // 3: temporal.api.enums.v1.BuildIdTaskReachability
+	(DescribeTaskQueueMode)(0),    // 4: temporal.api.enums.v1.DescribeTaskQueueMode
+	(RateLimitSource)(0),          // 5: temporal.api.enums.v1.RateLimitSource
+	(RoutingConfigUpdateState)(0), // 6: temporal.api.enums.v1.RoutingConfigUpdateState
 }
 var file_temporal_api_enums_v1_task_queue_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -523,7 +596,7 @@ func file_temporal_api_enums_v1_task_queue_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_temporal_api_enums_v1_task_queue_proto_rawDesc), len(file_temporal_api_enums_v1_task_queue_proto_rawDesc)),
-			NumEnums:      6,
+			NumEnums:      7,
 			NumMessages:   0,
 			NumExtensions: 0,
 			NumServices:   0,

@@ -114,6 +114,8 @@ const (
 	WorkflowService_FetchWorkerConfig_FullMethodName                     = "/temporal.api.workflowservice.v1.WorkflowService/FetchWorkerConfig"
 	WorkflowService_UpdateWorkerConfig_FullMethodName                    = "/temporal.api.workflowservice.v1.WorkflowService/UpdateWorkerConfig"
 	WorkflowService_DescribeWorker_FullMethodName                        = "/temporal.api.workflowservice.v1.WorkflowService/DescribeWorker"
+	WorkflowService_PauseWorkflowExecution_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/PauseWorkflowExecution"
+	WorkflowService_UnpauseWorkflowExecution_FullMethodName              = "/temporal.api.workflowservice.v1.WorkflowService/UnpauseWorkflowExecution"
 )
 
 // WorkflowServiceClient is the client API for WorkflowService service.
@@ -314,8 +316,9 @@ type WorkflowServiceClient interface {
 	SignalWithStartWorkflowExecution(ctx context.Context, in *SignalWithStartWorkflowExecutionRequest, opts ...grpc.CallOption) (*SignalWithStartWorkflowExecutionResponse, error)
 	// ResetWorkflowExecution will reset an existing workflow execution to a specified
 	// `WORKFLOW_TASK_COMPLETED` event (exclusive). It will immediately terminate the current
-	// execution instance.
-	// TODO: Does exclusive here mean *just* the completed event, or also WFT started? Otherwise the task is doomed to time out?
+	// execution instance. "Exclusive" means the identified completed event itself is not replayed
+	// in the reset history; the preceding `WORKFLOW_TASK_STARTED` event remains and will be marked as failed
+	// immediately, and a new workflow task will be scheduled to retry it.
 	ResetWorkflowExecution(ctx context.Context, in *ResetWorkflowExecutionRequest, opts ...grpc.CallOption) (*ResetWorkflowExecutionResponse, error)
 	// TerminateWorkflowExecution terminates an existing workflow execution by recording a
 	// `WORKFLOW_EXECUTION_TERMINATED` event in the history and immediately terminating the
@@ -688,6 +691,22 @@ type WorkflowServiceClient interface {
 	UpdateWorkerConfig(ctx context.Context, in *UpdateWorkerConfigRequest, opts ...grpc.CallOption) (*UpdateWorkerConfigResponse, error)
 	// DescribeWorker returns information about the specified worker.
 	DescribeWorker(ctx context.Context, in *DescribeWorkerRequest, opts ...grpc.CallOption) (*DescribeWorkerResponse, error)
+	// Note: This is an experimental API and the behavior may change in a future release.
+	// PauseWorkflowExecution pauses the workflow execution specified in the request. Pausing a workflow execution results in
+	// - The workflow execution status changes to `PAUSED` and a new WORKFLOW_EXECUTION_PAUSED event is added to the history
+	// - No new workflow tasks or activity tasks are dispatched.
+	//   - Any workflow task currently executing on the worker will be allowed to complete.
+	//   - Any activity task currently executing will be paused.
+	//
+	// - All server-side events will continue to be processed by the server.
+	// - Queries & Updates on a paused workflow will be rejected.
+	PauseWorkflowExecution(ctx context.Context, in *PauseWorkflowExecutionRequest, opts ...grpc.CallOption) (*PauseWorkflowExecutionResponse, error)
+	// Note: This is an experimental API and the behavior may change in a future release.
+	// UnpauseWorkflowExecution unpauses a previously paused workflow execution specified in the request.
+	// Unpausing a workflow execution results in
+	// - The workflow execution status changes to `RUNNING` and a new WORKFLOW_EXECUTION_UNPAUSED event is added to the history
+	// - Workflow tasks and activity tasks are resumed.
+	UnpauseWorkflowExecution(ctx context.Context, in *UnpauseWorkflowExecutionRequest, opts ...grpc.CallOption) (*UnpauseWorkflowExecutionResponse, error)
 }
 
 type workflowServiceClient struct {
@@ -1638,6 +1657,26 @@ func (c *workflowServiceClient) DescribeWorker(ctx context.Context, in *Describe
 	return out, nil
 }
 
+func (c *workflowServiceClient) PauseWorkflowExecution(ctx context.Context, in *PauseWorkflowExecutionRequest, opts ...grpc.CallOption) (*PauseWorkflowExecutionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PauseWorkflowExecutionResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_PauseWorkflowExecution_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) UnpauseWorkflowExecution(ctx context.Context, in *UnpauseWorkflowExecutionRequest, opts ...grpc.CallOption) (*UnpauseWorkflowExecutionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnpauseWorkflowExecutionResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_UnpauseWorkflowExecution_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkflowServiceServer is the server API for WorkflowService service.
 // All implementations must embed UnimplementedWorkflowServiceServer
 // for forward compatibility.
@@ -1836,8 +1875,9 @@ type WorkflowServiceServer interface {
 	SignalWithStartWorkflowExecution(context.Context, *SignalWithStartWorkflowExecutionRequest) (*SignalWithStartWorkflowExecutionResponse, error)
 	// ResetWorkflowExecution will reset an existing workflow execution to a specified
 	// `WORKFLOW_TASK_COMPLETED` event (exclusive). It will immediately terminate the current
-	// execution instance.
-	// TODO: Does exclusive here mean *just* the completed event, or also WFT started? Otherwise the task is doomed to time out?
+	// execution instance. "Exclusive" means the identified completed event itself is not replayed
+	// in the reset history; the preceding `WORKFLOW_TASK_STARTED` event remains and will be marked as failed
+	// immediately, and a new workflow task will be scheduled to retry it.
 	ResetWorkflowExecution(context.Context, *ResetWorkflowExecutionRequest) (*ResetWorkflowExecutionResponse, error)
 	// TerminateWorkflowExecution terminates an existing workflow execution by recording a
 	// `WORKFLOW_EXECUTION_TERMINATED` event in the history and immediately terminating the
@@ -2210,6 +2250,22 @@ type WorkflowServiceServer interface {
 	UpdateWorkerConfig(context.Context, *UpdateWorkerConfigRequest) (*UpdateWorkerConfigResponse, error)
 	// DescribeWorker returns information about the specified worker.
 	DescribeWorker(context.Context, *DescribeWorkerRequest) (*DescribeWorkerResponse, error)
+	// Note: This is an experimental API and the behavior may change in a future release.
+	// PauseWorkflowExecution pauses the workflow execution specified in the request. Pausing a workflow execution results in
+	// - The workflow execution status changes to `PAUSED` and a new WORKFLOW_EXECUTION_PAUSED event is added to the history
+	// - No new workflow tasks or activity tasks are dispatched.
+	//   - Any workflow task currently executing on the worker will be allowed to complete.
+	//   - Any activity task currently executing will be paused.
+	//
+	// - All server-side events will continue to be processed by the server.
+	// - Queries & Updates on a paused workflow will be rejected.
+	PauseWorkflowExecution(context.Context, *PauseWorkflowExecutionRequest) (*PauseWorkflowExecutionResponse, error)
+	// Note: This is an experimental API and the behavior may change in a future release.
+	// UnpauseWorkflowExecution unpauses a previously paused workflow execution specified in the request.
+	// Unpausing a workflow execution results in
+	// - The workflow execution status changes to `RUNNING` and a new WORKFLOW_EXECUTION_UNPAUSED event is added to the history
+	// - Workflow tasks and activity tasks are resumed.
+	UnpauseWorkflowExecution(context.Context, *UnpauseWorkflowExecutionRequest) (*UnpauseWorkflowExecutionResponse, error)
 	mustEmbedUnimplementedWorkflowServiceServer()
 }
 
@@ -2501,6 +2557,12 @@ func (UnimplementedWorkflowServiceServer) UpdateWorkerConfig(context.Context, *U
 }
 func (UnimplementedWorkflowServiceServer) DescribeWorker(context.Context, *DescribeWorkerRequest) (*DescribeWorkerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DescribeWorker not implemented")
+}
+func (UnimplementedWorkflowServiceServer) PauseWorkflowExecution(context.Context, *PauseWorkflowExecutionRequest) (*PauseWorkflowExecutionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PauseWorkflowExecution not implemented")
+}
+func (UnimplementedWorkflowServiceServer) UnpauseWorkflowExecution(context.Context, *UnpauseWorkflowExecutionRequest) (*UnpauseWorkflowExecutionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnpauseWorkflowExecution not implemented")
 }
 func (UnimplementedWorkflowServiceServer) mustEmbedUnimplementedWorkflowServiceServer() {}
 func (UnimplementedWorkflowServiceServer) testEmbeddedByValue()                         {}
@@ -4215,6 +4277,42 @@ func _WorkflowService_DescribeWorker_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkflowService_PauseWorkflowExecution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PauseWorkflowExecutionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).PauseWorkflowExecution(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_PauseWorkflowExecution_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).PauseWorkflowExecution(ctx, req.(*PauseWorkflowExecutionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_UnpauseWorkflowExecution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnpauseWorkflowExecutionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).UnpauseWorkflowExecution(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_UnpauseWorkflowExecution_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).UnpauseWorkflowExecution(ctx, req.(*UnpauseWorkflowExecutionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkflowService_ServiceDesc is the grpc.ServiceDesc for WorkflowService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -4597,6 +4695,14 @@ var WorkflowService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DescribeWorker",
 			Handler:    _WorkflowService_DescribeWorker_Handler,
+		},
+		{
+			MethodName: "PauseWorkflowExecution",
+			Handler:    _WorkflowService_PauseWorkflowExecution_Handler,
+		},
+		{
+			MethodName: "UnpauseWorkflowExecution",
+			Handler:    _WorkflowService_UnpauseWorkflowExecution_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

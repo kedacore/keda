@@ -128,6 +128,7 @@ var (
 		"PersistenceStorageLimit": 7,
 		"CircuitBreakerOpen":      8,
 		"OpsLimit":                9,
+		"WorkerDeploymentLimits":  10,
 	}
 )
 

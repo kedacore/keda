@@ -73,6 +73,12 @@ type HealthStatus struct {
 	Status HealthStatusType `json:"status,omitempty"`
 }
 
+// TriggerActivityStatus represents the activity status of an external trigger
+type TriggerActivityStatus struct {
+	// +optional
+	IsActive bool `json:"isActive"`
+}
+
 // HealthStatusType is an indication of whether the health status is happy or failing
 type HealthStatusType string
 
@@ -186,6 +192,8 @@ type ScaledObjectStatus struct {
 	Conditions Conditions `json:"conditions,omitempty"`
 	// +optional
 	Health map[string]HealthStatus `json:"health,omitempty"`
+	// +optional
+	TriggersActivity map[string]TriggerActivityStatus `json:"triggersActivity,omitempty"`
 	// +optional
 	PausedReplicaCount *int32 `json:"pausedReplicaCount,omitempty"`
 	// +optional

@@ -74,7 +74,7 @@ func (d DemGetURIResponse) MarshalJSON() ([]byte, error) {
 }
 
 func (d *DemGetURIResponse) UnmarshalJSON(data []byte) error {
-	if err := utils.UnmarshalJSON(data, &d, "", false, []string{"id", "type", "status", "name", "ipOrDomain", "availabilityCheckSettings"}); err != nil {
+	if err := utils.UnmarshalJSON(data, &d, "", false, nil); err != nil {
 		return err
 	}
 	return nil

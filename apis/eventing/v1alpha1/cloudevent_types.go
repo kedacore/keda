@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 // CloudEventType contains the list of cloudevent types
-// +kubebuilder:validation:Enum=keda.scaledobject.ready.v1;keda.scaledobject.failed.v1;keda.scaledobject.removed.v1;keda.scaledjob.ready.v1;keda.scaledjob.failed.v1;keda.scaledjob.removed.v1;keda.authentication.triggerauthentication.created.v1;keda.authentication.triggerauthentication.updated.v1;keda.authentication.triggerauthentication.removed.v1;keda.authentication.clustertriggerauthentication.created.v1;keda.authentication.clustertriggerauthentication.updated.v1;keda.authentication.clustertriggerauthentication.removed.v1
+// +kubebuilder:validation:Enum=keda.scaledobject.ready.v1;keda.scaledobject.failed.v1;keda.scaledobject.removed.v1;keda.scaledobject.paused.v1;keda.scaledobject.unpaused.v1;keda.scaledjob.ready.v1;keda.scaledjob.failed.v1;keda.scaledjob.removed.v1;keda.scaledjob.paused.v1;keda.scaledjob.unpaused.v1;keda.scaledjob.rolloutcleanup.started.v1;keda.scaledjob.rolloutcleanup.completed.v1;keda.scaledjob.rolloutcleanup.failed.v1;keda.authentication.triggerauthentication.created.v1;keda.authentication.triggerauthentication.updated.v1;keda.authentication.triggerauthentication.removed.v1;keda.authentication.clustertriggerauthentication.created.v1;keda.authentication.clustertriggerauthentication.updated.v1;keda.authentication.clustertriggerauthentication.removed.v1
 
 type CloudEventType string
 
@@ -31,6 +31,12 @@ const (
 	// ScaledObjectRemovedType is for event when removed ScaledObject
 	ScaledObjectRemovedType CloudEventType = "keda.scaledobject.removed.v1"
 
+	// ScaledObjectPausedType is for event when ScaledObject is paused
+	ScaledObjectPausedType CloudEventType = "keda.scaledobject.paused.v1"
+
+	// ScaledObjectUnpausedType is for event when ScaledObject is unpaused
+	ScaledObjectUnpausedType CloudEventType = "keda.scaledobject.unpaused.v1"
+
 	// ScaledJobReadyType is for event when a new ScaledJob is ready
 	ScaledJobReadyType CloudEventType = "keda.scaledjob.ready.v1"
 
@@ -39,6 +45,21 @@ const (
 
 	// ScaledJobRemovedType is for event when removed ScaledJob
 	ScaledJobRemovedType CloudEventType = "keda.scaledjob.removed.v1"
+
+	// ScaledJobPausedType is for event when ScaledJob is paused
+	ScaledJobPausedType CloudEventType = "keda.scaledjob.paused.v1"
+
+	// ScaledJobUnpausedType is for event when ScaledJob is unpaused
+	ScaledJobUnpausedType CloudEventType = "keda.scaledjob.unpaused.v1"
+
+	// ScaledJobRolloutCleanupStartedType is for event when ScaledJob rollout cleanup starts
+	ScaledJobRolloutCleanupStartedType CloudEventType = "keda.scaledjob.rolloutcleanup.started.v1"
+
+	// ScaledJobRolloutCleanupCompletedType is for event when ScaledJob rollout cleanup completes
+	ScaledJobRolloutCleanupCompletedType CloudEventType = "keda.scaledjob.rolloutcleanup.completed.v1"
+
+	// ScaledJobRolloutCleanupFailedType is for event when ScaledJob rollout cleanup fails
+	ScaledJobRolloutCleanupFailedType CloudEventType = "keda.scaledjob.rolloutcleanup.failed.v1"
 
 	// TriggerAuthenticationCreatedType is for event when a new TriggerAuthentication is created
 	TriggerAuthenticationCreatedType CloudEventType = "keda.authentication.triggerauthentication.created.v1"
@@ -60,6 +81,6 @@ const (
 )
 
 var AllEventTypes = []CloudEventType{
-	ScaledObjectFailedType, ScaledObjectReadyType, ScaledObjectRemovedType,
-	ScaledJobFailedType, ScaledJobReadyType, ScaledJobRemovedType,
+	ScaledObjectFailedType, ScaledObjectReadyType, ScaledObjectRemovedType, ScaledObjectPausedType, ScaledObjectUnpausedType,
+	ScaledJobFailedType, ScaledJobReadyType, ScaledJobRemovedType, ScaledJobPausedType, ScaledJobUnpausedType, ScaledJobRolloutCleanupStartedType, ScaledJobRolloutCleanupCompletedType, ScaledJobRolloutCleanupFailedType,
 }

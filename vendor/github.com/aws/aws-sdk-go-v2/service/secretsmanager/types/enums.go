@@ -31,6 +31,29 @@ func (FilterNameStringType) Values() []FilterNameStringType {
 	}
 }
 
+type SortByType string
+
+// Enum values for SortByType
+const (
+	SortByTypeCreatedDate      SortByType = "created-date"
+	SortByTypeLastAccessedDate SortByType = "last-accessed-date"
+	SortByTypeLastChangedDate  SortByType = "last-changed-date"
+	SortByTypeName             SortByType = "name"
+)
+
+// Values returns all known values for SortByType. Note that this can be expanded
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (SortByType) Values() []SortByType {
+	return []SortByType{
+		"created-date",
+		"last-accessed-date",
+		"last-changed-date",
+		"name",
+	}
+}
+
 type SortOrderType string
 
 // Enum values for SortOrderType

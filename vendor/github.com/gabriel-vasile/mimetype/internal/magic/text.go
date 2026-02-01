@@ -10,9 +10,9 @@ import (
 	"github.com/gabriel-vasile/mimetype/internal/scan"
 )
 
-var (
-	// HTML matches a Hypertext Markup Language file.
-	HTML = markup(
+// HTML matches a Hypertext Markup Language file.
+func HTML(raw []byte, _ uint32) bool {
+	return markup(raw,
 		[]byte("<!DOCTYPE HTML"),
 		[]byte("<HTML"),
 		[]byte("<HEAD"),
@@ -31,138 +31,259 @@ var (
 		[]byte("<P"),
 		[]byte("<!--"),
 	)
-	// XML matches an Extensible Markup Language file.
-	XML = markup([]byte("<?XML"))
-	// Owl2 matches an Owl ontology file.
-	Owl2 = xml(newXMLSig("Ontology", `xmlns="http://www.w3.org/2002/07/owl#"`))
-	// Rss matches a Rich Site Summary file.
-	Rss = xml(newXMLSig("rss", ""))
-	// Atom matches an Atom Syndication Format file.
-	Atom = xml(newXMLSig("feed", `xmlns="http://www.w3.org/2005/Atom"`))
-	// Kml matches a Keyhole Markup Language file.
-	Kml = xml(
-		newXMLSig("kml", `xmlns="http://www.opengis.net/kml/2.2"`),
-		newXMLSig("kml", `xmlns="http://earth.google.com/kml/2.0"`),
-		newXMLSig("kml", `xmlns="http://earth.google.com/kml/2.1"`),
-		newXMLSig("kml", `xmlns="http://earth.google.com/kml/2.2"`),
+}
+
+// XML matches an Extensible Markup Language file.
+func XML(raw []byte, _ uint32) bool {
+	return markup(raw, []byte("<?XML"))
+}
+
+// Owl2 matches an Owl ontology file.
+func Owl2(raw []byte, _ uint32) bool {
+	return xml(raw,
+		xmlSig{[]byte("<Ontology"), []byte(`xmlns="http://www.w3.org/2002/07/owl#"`)},
 	)
-	// Xliff matches a XML Localization Interchange File Format file.
-	Xliff = xml(newXMLSig("xliff", `xmlns="urn:oasis:names:tc:xliff:document:1.2"`))
-	// Collada matches a COLLAborative Design Activity file.
-	Collada = xml(newXMLSig("COLLADA", `xmlns="http://www.collada.org/2005/11/COLLADASchema"`))
-	// Gml matches a Geography Markup Language file.
-	Gml = xml(
-		newXMLSig("", `xmlns:gml="http://www.opengis.net/gml"`),
-		newXMLSig("", `xmlns:gml="http://www.opengis.net/gml/3.2"`),
-		newXMLSig("", `xmlns:gml="http://www.opengis.net/gml/3.3/exr"`),
+}
+
+// Rss matches a Rich Site Summary file.
+func Rss(raw []byte, _ uint32) bool {
+	return xml(raw,
+		xmlSig{[]byte("<rss"), []byte{}},
 	)
-	// Gpx matches a GPS Exchange Format file.
-	Gpx = xml(newXMLSig("gpx", `xmlns="http://www.topografix.com/GPX/1/1"`))
-	// Tcx matches a Training Center XML file.
-	Tcx = xml(newXMLSig("TrainingCenterDatabase", `xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"`))
-	// X3d matches an Extensible 3D Graphics file.
-	X3d = xml(newXMLSig("X3D", `xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance"`))
-	// Amf matches an Additive Manufacturing XML file.
-	Amf = xml(newXMLSig("amf", ""))
-	// Threemf matches a 3D Manufacturing Format file.
-	Threemf = xml(newXMLSig("model", `xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"`))
-	// Xfdf matches a XML Forms Data Format file.
-	Xfdf = xml(newXMLSig("xfdf", `xmlns="http://ns.adobe.com/xfdf/"`))
-	// VCard matches a Virtual Contact File.
-	VCard = ciPrefix([]byte("BEGIN:VCARD\n"), []byte("BEGIN:VCARD\r\n"))
-	// ICalendar matches a iCalendar file.
-	ICalendar = ciPrefix([]byte("BEGIN:VCALENDAR\n"), []byte("BEGIN:VCALENDAR\r\n"))
-	phpPageF  = ciPrefix(
+}
+
+// Atom matches an Atom Syndication Format file.
+func Atom(raw []byte, _ uint32) bool {
+	return xml(raw,
+		xmlSig{[]byte("<feed"), []byte(`xmlns="http://www.w3.org/2005/Atom"`)},
+	)
+}
+
+// Kml matches a Keyhole Markup Language file.
+func Kml(raw []byte, _ uint32) bool {
+	return xml(raw,
+		xmlSig{[]byte("<kml"), []byte(`xmlns="http://www.opengis.net/kml/2.2"`)},
+		xmlSig{[]byte("<kml"), []byte(`xmlns="http://earth.google.com/kml/2.0"`)},
+		xmlSig{[]byte("<kml"), []byte(`xmlns="http://earth.google.com/kml/2.1"`)},
+		xmlSig{[]byte("<kml"), []byte(`xmlns="http://earth.google.com/kml/2.2"`)},
+	)
+}
+
+// Xliff matches a XML Localization Interchange File Format file.
+func Xliff(raw []byte, _ uint32) bool {
+	return xml(raw,
+		xmlSig{[]byte("<xliff"), []byte(`xmlns="urn:oasis:names:tc:xliff:document:1.2"`)},
+	)
+}
+
+// Collada matches a COLLAborative Design Activity file.
+func Collada(raw []byte, _ uint32) bool {
+	return xml(raw,
+		xmlSig{[]byte("<COLLADA"), []byte(`xmlns="http://www.collada.org/2005/11/COLLADASchema"`)},
+	)
+}
+
+// Gml matches a Geography Markup Language file.
+func Gml(raw []byte, _ uint32) bool {
+	return xml(raw,
+		xmlSig{[]byte{}, []byte(`xmlns:gml="http://www.opengis.net/gml"`)},
+		xmlSig{[]byte{}, []byte(`xmlns:gml="http://www.opengis.net/gml/3.2"`)},
+		xmlSig{[]byte{}, []byte(`xmlns:gml="http://www.opengis.net/gml/3.3/exr"`)},
+	)
+}
+
+// Gpx matches a GPS Exchange Format file.
+func Gpx(raw []byte, _ uint32) bool {
+	return xml(raw,
+		xmlSig{[]byte("<gpx"), []byte(`xmlns="http://www.topografix.com/GPX/1/1"`)},
+	)
+}
+
+// Tcx matches a Training Center XML file.
+func Tcx(raw []byte, _ uint32) bool {
+	return xml(raw,
+		xmlSig{[]byte("<TrainingCenterDatabase"), []byte(`xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"`)},
+	)
+}
+
+// X3d matches an Extensible 3D Graphics file.
+func X3d(raw []byte, _ uint32) bool {
+	return xml(raw,
+		xmlSig{[]byte("<X3D"), []byte(`xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance"`)},
+	)
+}
+
+// Amf matches an Additive Manufacturing XML file.
+func Amf(raw []byte, _ uint32) bool {
+	return xml(raw, xmlSig{[]byte("<amf"), []byte{}})
+}
+
+// Threemf matches a 3D Manufacturing Format file.
+func Threemf(raw []byte, _ uint32) bool {
+	return xml(raw,
+		xmlSig{[]byte("<model"), []byte(`xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"`)},
+	)
+}
+
+// Xfdf matches a XML Forms Data Format file.
+func Xfdf(raw []byte, _ uint32) bool {
+	return xml(raw, xmlSig{[]byte("<xfdf"), []byte(`xmlns="http://ns.adobe.com/xfdf/"`)})
+}
+
+// VCard matches a Virtual Contact File.
+func VCard(raw []byte, _ uint32) bool {
+	return ciPrefix(raw, []byte("BEGIN:VCARD\n"), []byte("BEGIN:VCARD\r\n"))
+}
+
+// ICalendar matches a iCalendar file.
+func ICalendar(raw []byte, _ uint32) bool {
+	return ciPrefix(raw, []byte("BEGIN:VCALENDAR\n"), []byte("BEGIN:VCALENDAR\r\n"))
+}
+func phpPageF(raw []byte, _ uint32) bool {
+	return ciPrefix(raw,
 		[]byte("<?PHP"),
 		[]byte("<?\n"),
 		[]byte("<?\r"),
 		[]byte("<? "),
 	)
-	phpScriptF = shebang(
+}
+func phpScriptF(raw []byte, _ uint32) bool {
+	return shebang(raw,
+		scan.CompactWS,
 		[]byte("/usr/local/bin/php"),
 		[]byte("/usr/bin/php"),
 		[]byte("/usr/bin/env php"),
+		[]byte("/usr/bin/env -S php"),
 	)
-	// Js matches a Javascript file.
-	Js = shebang(
+}
+
+// Js matches a Javascript file.
+func Js(raw []byte, _ uint32) bool {
+	return shebang(raw,
+		scan.CompactWS,
 		[]byte("/bin/node"),
 		[]byte("/usr/bin/node"),
 		[]byte("/bin/nodejs"),
 		[]byte("/usr/bin/nodejs"),
 		[]byte("/usr/bin/env node"),
+		[]byte("/usr/bin/env -S node"),
 		[]byte("/usr/bin/env nodejs"),
+		[]byte("/usr/bin/env -S nodejs"),
 	)
-	// Lua matches a Lua programming language file.
-	Lua = shebang(
+}
+
+// Lua matches a Lua programming language file.
+func Lua(raw []byte, _ uint32) bool {
+	return shebang(raw,
+		scan.CompactWS|scan.FullWord,
 		[]byte("/usr/bin/lua"),
 		[]byte("/usr/local/bin/lua"),
 		[]byte("/usr/bin/env lua"),
+		[]byte("/usr/bin/env -S lua"),
 	)
-	// Perl matches a Perl programming language file.
-	Perl = shebang(
+}
+
+// Perl matches a Perl programming language file.
+func Perl(raw []byte, _ uint32) bool {
+	return shebang(raw,
+		scan.CompactWS|scan.FullWord,
 		[]byte("/usr/bin/perl"),
 		[]byte("/usr/bin/env perl"),
+		[]byte("/usr/bin/env -S perl"),
 	)
-	// Python matches a Python programming language file.
-	Python = shebang(
+}
+
+// Python matches a Python programming language file.
+func Python(raw []byte, _ uint32) bool {
+	return shebang(raw,
+		scan.CompactWS,
 		[]byte("/usr/bin/python"),
 		[]byte("/usr/local/bin/python"),
 		[]byte("/usr/bin/env python"),
+		[]byte("/usr/bin/env -S python"),
 		[]byte("/usr/bin/python2"),
 		[]byte("/usr/local/bin/python2"),
 		[]byte("/usr/bin/env python2"),
+		[]byte("/usr/bin/env -S python2"),
 		[]byte("/usr/bin/python3"),
 		[]byte("/usr/local/bin/python3"),
 		[]byte("/usr/bin/env python3"),
+		[]byte("/usr/bin/env -S python3"),
 	)
-	// Ruby matches a Ruby programming language file.
-	Ruby = shebang(
+
+}
+
+// Ruby matches a Ruby programming language file.
+func Ruby(raw []byte, _ uint32) bool {
+	return shebang(raw,
+		scan.CompactWS,
 		[]byte("/usr/bin/ruby"),
 		[]byte("/usr/local/bin/ruby"),
 		[]byte("/usr/bin/env ruby"),
+		[]byte("/usr/bin/env -S ruby"),
 	)
-	// Tcl matches a Tcl programming language file.
-	Tcl = shebang(
+}
+
+// Tcl matches a Tcl programming language file.
+func Tcl(raw []byte, _ uint32) bool {
+	return shebang(raw,
+		scan.CompactWS,
 		[]byte("/usr/bin/tcl"),
 		[]byte("/usr/local/bin/tcl"),
 		[]byte("/usr/bin/env tcl"),
+		[]byte("/usr/bin/env -S tcl"),
 		[]byte("/usr/bin/tclsh"),
 		[]byte("/usr/local/bin/tclsh"),
 		[]byte("/usr/bin/env tclsh"),
+		[]byte("/usr/bin/env -S tclsh"),
 		[]byte("/usr/bin/wish"),
 		[]byte("/usr/local/bin/wish"),
 		[]byte("/usr/bin/env wish"),
+		[]byte("/usr/bin/env -S wish"),
 	)
-	// Rtf matches a Rich Text Format file.
-	Rtf = prefix([]byte("{\\rtf"))
-	// Shell matches a shell script file.
-	Shell = shebang(
+}
+
+// Rtf matches a Rich Text Format file.
+func Rtf(raw []byte, _ uint32) bool {
+	return bytes.HasPrefix(raw, []byte("{\\rtf"))
+}
+
+// Shell matches a shell script file.
+func Shell(raw []byte, _ uint32) bool {
+	return shebang(raw,
+		scan.CompactWS|scan.FullWord,
 		[]byte("/bin/sh"),
 		[]byte("/bin/bash"),
 		[]byte("/usr/local/bin/bash"),
 		[]byte("/usr/bin/env bash"),
+		[]byte("/usr/bin/env -S bash"),
 		[]byte("/bin/csh"),
 		[]byte("/usr/local/bin/csh"),
 		[]byte("/usr/bin/env csh"),
+		[]byte("/usr/bin/env -S csh"),
 		[]byte("/bin/dash"),
 		[]byte("/usr/local/bin/dash"),
 		[]byte("/usr/bin/env dash"),
+		[]byte("/usr/bin/env -S dash"),
 		[]byte("/bin/ksh"),
 		[]byte("/usr/local/bin/ksh"),
 		[]byte("/usr/bin/env ksh"),
+		[]byte("/usr/bin/env -S ksh"),
 		[]byte("/bin/tcsh"),
 		[]byte("/usr/local/bin/tcsh"),
 		[]byte("/usr/bin/env tcsh"),
+		[]byte("/usr/bin/env -S tcsh"),
 		[]byte("/bin/zsh"),
 		[]byte("/usr/local/bin/zsh"),
 		[]byte("/usr/bin/env zsh"),
+		[]byte("/usr/bin/env -S zsh"),
 	)
-)
+}
 
 // Text matches a plain text file.
 //
 // TODO: This function does not parse BOM-less UTF16 and UTF32 files. Not really
-// sure it should. Linux file utility also requires a BOM for UTF16 and UTF32.
+// sure it should. libmagic also requires a BOM for UTF16 and UTF32.
 func Text(raw []byte, _ uint32) bool {
 	// First look for BOM.
 	if cset := charset.FromBOM(raw); cset != "" {
@@ -183,10 +304,14 @@ func Text(raw []byte, _ uint32) bool {
 
 // XHTML matches an XHTML file. This check depends on the XML check to have passed.
 func XHTML(raw []byte, limit uint32) bool {
-	raw = raw[:min(len(raw), 4096)]
+	raw = raw[:min(len(raw), 1024)]
 	b := scan.Bytes(raw)
-	return b.Search([]byte("<!DOCTYPE HTML"), scan.CompactWS|scan.IgnoreCase) != -1 ||
-		b.Search([]byte("<HTML XMLNS="), scan.CompactWS|scan.IgnoreCase) != -1
+	i, _ := b.Search([]byte("<!DOCTYPE HTML"), scan.CompactWS|scan.IgnoreCase)
+	if i != -1 {
+		return true
+	}
+	i, _ = b.Search([]byte("<HTML XMLNS="), scan.CompactWS|scan.IgnoreCase)
+	return i != -1
 }
 
 // Php matches a PHP: Hypertext Preprocessor file.
@@ -227,13 +352,20 @@ func GLTF(raw []byte, limit uint32) bool {
 	return jsonHelper(raw, limit, json.QueryGLTF, json.TokObject)
 }
 
-func jsonHelper(raw []byte, limit uint32, q string, wantTok int) bool {
-	if !json.LooksLikeObjectOrArray(raw) {
+func jsonHelper(raw scan.Bytes, limit uint32, q string, wantToks ...int) bool {
+	firstNonWS := raw.FirstNonWS()
+
+	hasTargetTok := false
+	for _, t := range wantToks {
+		hasTargetTok = hasTargetTok || (t&json.TokArray > 0 && firstNonWS == '[')
+		hasTargetTok = hasTargetTok || (t&json.TokObject > 0 && firstNonWS == '{')
+	}
+	if !hasTargetTok {
 		return false
 	}
 	lraw := len(raw)
-	parsed, inspected, firstToken, querySatisfied := json.Parse(q, raw)
-	if !querySatisfied || firstToken&wantTok == 0 {
+	parsed, inspected, _, querySatisfied := json.Parse(q, raw)
+	if !querySatisfied {
 		return false
 	}
 
@@ -244,7 +376,7 @@ func jsonHelper(raw []byte, limit uint32, q string, wantTok int) bool {
 
 	// If a section of the file was provided, check if all of it was inspected.
 	// In other words, check that if there was a problem parsing, that problem
-	// occured at the last byte in the input.
+	// occurred at the last byte in the input.
 	return inspected == lraw && lraw > 0
 }
 
@@ -294,11 +426,12 @@ func svgWithoutXMLDeclaration(s scan.Bytes) bool {
 		return false
 	}
 
-	targetName, targetVal := "xmlns", "http://www.w3.org/2000/svg"
-	aName, aVal, hasMore := "", "", true
+	targetName, targetVal := []byte("xmlns"), []byte("http://www.w3.org/2000/svg")
+	var aName, aVal []byte
+	hasMore := true
 	for hasMore {
 		aName, aVal, hasMore = mkup.GetAnAttribute(&s)
-		if aName == targetName && aVal == targetVal {
+		if bytes.Equal(aName, targetName) && bytes.Equal(aVal, targetVal) {
 			return true
 		}
 		if !hasMore {
@@ -325,10 +458,11 @@ func svgWithXMLDeclaration(s scan.Bytes) bool {
 
 	// version is a required attribute for XML.
 	hasVersion := false
-	aName, hasMore := "", true
+	var aName []byte
+	hasMore := true
 	for hasMore {
 		aName, _, hasMore = mkup.GetAnAttribute(&s)
-		if aName == "version" {
+		if bytes.Equal(aName, []byte("version")) {
 			hasVersion = true
 			break
 		}
@@ -408,4 +542,58 @@ func Vtt(raw []byte, limit uint32) bool {
 	// Exact match.
 	return bytes.Equal(raw, []byte{0xEF, 0xBB, 0xBF, 0x57, 0x45, 0x42, 0x56, 0x54, 0x54}) || // UTF-8 BOM and "WEBVTT"
 		bytes.Equal(raw, []byte{0x57, 0x45, 0x42, 0x56, 0x54, 0x54}) // "WEBVTT"
+}
+
+type rfc822Hint struct {
+	h          []byte
+	matchFlags scan.Flags
+}
+
+// The hints come from libmagic, but the implementation is bit different. libmagic
+// only checks if the file starts with the hint, while we additionally look for
+// a secondary hint in the first few lines of input.
+func RFC822(raw []byte, limit uint32) bool {
+	b := scan.Bytes(raw)
+
+	// Keep hints here to avoid instantiating them several times in lineHasRFC822Hint.
+	// The alternative is to make them a package level var, but then they'd go
+	// on the heap.
+	// Some of the hints are IgnoreCase, some not. I selected based on what libmagic
+	// does and based on personal observations from sample files.
+	hints := []rfc822Hint{
+		{[]byte("From: "), 0},
+		{[]byte("To: "), 0},
+		{[]byte("CC: "), scan.IgnoreCase},
+		{[]byte("Date: "), 0},
+		{[]byte("Subject: "), 0},
+		{[]byte("Received: "), 0},
+		{[]byte("Relay-Version: "), 0},
+		{[]byte("#! rnews"), 0},
+		{[]byte("N#! rnews"), 0},
+		{[]byte("Forward to"), 0},
+		{[]byte("Pipe to"), 0},
+		{[]byte("DELIVERED-TO: "), scan.IgnoreCase},
+		{[]byte("RETURN-PATH: "), scan.IgnoreCase},
+		{[]byte("Content-Type: "), 0},
+		{[]byte("Content-Transfer-Encoding: "), 0},
+	}
+	if !lineHasRFC822Hint(b.Line(), hints) {
+		return false
+	}
+	for i := 0; i < 20; i++ {
+		if lineHasRFC822Hint(b.Line(), hints) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func lineHasRFC822Hint(b scan.Bytes, hints []rfc822Hint) bool {
+	for _, h := range hints {
+		if b.Match(h.h, h.matchFlags) > -1 {
+			return true
+		}
+	}
+	return false
 }

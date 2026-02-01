@@ -78,10 +78,10 @@ func NewGcsScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		client, err = storage.NewClient(ctx)
 	case meta.gcpAuthorization.GoogleApplicationCredentialsFile != "":
 		client, err = storage.NewClient(
-			ctx, option.WithCredentialsFile(meta.gcpAuthorization.GoogleApplicationCredentialsFile))
+			ctx, option.WithAuthCredentialsFile(option.ServiceAccount, meta.gcpAuthorization.GoogleApplicationCredentialsFile))
 	default:
 		client, err = storage.NewClient(
-			ctx, option.WithCredentialsJSON([]byte(meta.gcpAuthorization.GoogleApplicationCredentials)))
+			ctx, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(meta.gcpAuthorization.GoogleApplicationCredentials)))
 	}
 
 	if err != nil {
