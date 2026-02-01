@@ -262,12 +262,31 @@ func (m mapAnyAny) Marshal(wr *buffer.Buffer) error {
 	return writeMap(wr, map[any]any(m))
 }
 
+func (m *mapAnyAny) unmarshalMap8(r *buffer.Buffer) error {
+	count, err := readMap8Header(r)
+	if err != nil {
+		return err
+	}
+	return m.unmarshalMapItems(r, count)
+}
+
+func (m *mapAnyAny) unmarshalMap32(r *buffer.Buffer) error {
+	count, err := readMap32Header(r)
+	if err != nil {
+		return err
+	}
+	return m.unmarshalMapItems(r, count)
+}
+
 func (m *mapAnyAny) Unmarshal(r *buffer.Buffer) error {
 	count, err := readMapHeader(r)
 	if err != nil {
 		return err
 	}
+	return m.unmarshalMapItems(r, count)
+}
 
+func (m *mapAnyAny) unmarshalMapItems(r *buffer.Buffer, count uint32) error {
 	mm := make(mapAnyAny, count/2)
 	for i := uint32(0); i < count; i += 2 {
 		key, err := ReadAny(r)
@@ -1562,4 +1581,85 @@ func (ms *MultiSymbol) Unmarshal(r *buffer.Buffer) error {
 	}
 
 	return Unmarshal(r, (*[]Symbol)(ms))
+}
+
+type arrayMap []map[any]any
+
+func (a arrayMap) Marshal(wr *buffer.Buffer) error {
+	// type
+	wr.AppendByte(byte(TypeCodeArray32))
+
+	// array size placeholder
+	sizeIdx := wr.Len()
+	wr.Append([]byte{0, 0, 0, 0})
+
+	// count
+	wr.AppendUint32(uint32(len(a)))
+
+	// array element type
+	wr.AppendByte(byte(TypeCodeMap32))
+
+	// marshal each map (without the type code)
+	for _, element := range a {
+		if err := writeMap32(wr, element); err != nil {
+			return err
+		}
+	}
+
+	// overwrite array size
+	binary.BigEndian.PutUint32(wr.Bytes()[sizeIdx:], uint32(wr.Len()-(sizeIdx+4)))
+
+	return nil
+}
+
+func (a *arrayMap) Unmarshal(r *buffer.Buffer) error {
+	length, err := readArrayHeader(r)
+	if err != nil {
+		return err
+	}
+
+	type_, err := readType(r)
+	if err != nil {
+		return err
+	}
+	if type_ != TypeCodeMap8 && type_ != TypeCodeMap32 {
+		return fmt.Errorf("invalid type for []map[any]any %02x", type_)
+	}
+
+	aa := (*a)[:0]
+	if int64(cap(aa)) < length {
+		aa = make([]map[any]any, length)
+	} else {
+		aa = aa[:length]
+	}
+
+	for i := range aa {
+		var value any
+		switch type_ {
+		case TypeCodeMap8:
+			value, err = readMap8(r)
+		case TypeCodeMap32:
+			value, err = readMap32(r)
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if m, ok := value.(map[any]any); ok {
+			aa[i] = m
+		} else if m, ok := value.(map[string]any); ok {
+			// convert to map[any]any
+			anyMap := make(map[any]any, len(m))
+			for k, v := range m {
+				anyMap[k] = v
+			}
+			aa[i] = anyMap
+		} else {
+			return fmt.Errorf("unexpected map type: %T", value)
+		}
+	}
+
+	*a = aa
+	return nil
 }

@@ -5,6 +5,7 @@ package retry
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -213,7 +214,7 @@ func (s *serverStreamingRetryingStream) RecvMsg(m any) error {
 
 func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m any) (bool, error) {
 	err := s.getStream().RecvMsg(m)
-	if err == nil || err == io.EOF {
+	if err == nil || errors.Is(err, io.EOF) {
 		return false, err
 	}
 	if isContextError(err) {
@@ -308,10 +309,10 @@ func perStreamContext(parentCtx context.Context, callOpts *options, attempt uint
 }
 
 func contextErrToGrpcErr(err error) error {
-	switch err {
-	case context.DeadlineExceeded:
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
 		return status.Error(codes.DeadlineExceeded, err.Error())
-	case context.Canceled:
+	case errors.Is(err, context.Canceled):
 		return status.Error(codes.Canceled, err.Error())
 	default:
 		return status.Error(codes.Unknown, err.Error())
