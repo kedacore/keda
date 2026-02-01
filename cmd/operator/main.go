@@ -47,6 +47,7 @@ import (
 	"github.com/kedacore/keda/v2/pkg/metricscollector"
 	"github.com/kedacore/keda/v2/pkg/metricsservice"
 	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scalers/connectionpool"
 	"github.com/kedacore/keda/v2/pkg/scaling"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
@@ -86,6 +87,7 @@ func main() {
 	var validatingWebhookName string
 	var caDirs []string
 	var enableWebhookPatching bool
+	var connectionPoolConfigPath string
 	pflag.BoolVar(&enablePrometheusMetrics, "enable-prometheus-metrics", true, "Enable the prometheus metric of keda-operator.")
 	pflag.BoolVar(&enableOpenTelemetryMetrics, "enable-opentelemetry-metrics", false, "Enable the opentelemetry metric of keda-operator.")
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the prometheus metric endpoint binds to.")
@@ -109,6 +111,7 @@ func main() {
 	pflag.StringVar(&validatingWebhookName, "validating-webhook-name", "keda-admission", "ValidatingWebhookConfiguration name. Defaults to keda-admission")
 	pflag.StringArrayVar(&caDirs, "ca-dir", []string{"/custom/ca"}, "Directory with CA certificates for scalers to authenticate TLS connections. Can be specified multiple times. Defaults to /custom/ca")
 	pflag.BoolVar(&enableWebhookPatching, "enable-webhook-patching", true, "Enable patching of webhook resources. Defaults to true.")
+	pflag.StringVar(&connectionPoolConfigPath, "pool-config-path", "", "Path to the global KEDA pool configuration file (optional)")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -156,7 +159,12 @@ func main() {
 		metricsAddr = "0"
 	}
 	metricscollector.NewMetricsCollectors(enablePrometheusMetrics, enableOpenTelemetryMetrics)
-
+	if connectionPoolConfigPath != "" {
+		setupLog.Info("Initializing global pool configuration", "path", connectionPoolConfigPath)
+		connectionpool.InitGlobalPoolConfig(ctx, connectionPoolConfigPath)
+	} else {
+		setupLog.Info("No pool configuration file found, continuing with defaults")
+	}
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme,
 		Metrics: server.Options{
