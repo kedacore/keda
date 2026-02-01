@@ -514,9 +514,6 @@ github.com/cenkalti/backoff/v5
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/clipperhouse/displaywidth v0.9.0
-## explicit; go 1.18
-github.com/clipperhouse/displaywidth
 # github.com/clipperhouse/stringish v0.1.1
 ## explicit; go 1.18
 github.com/clipperhouse/stringish
@@ -582,8 +579,8 @@ github.com/dgryski/go-rendezvous
 # github.com/dnephin/pflag v1.0.7
 ## explicit; go 1.12
 github.com/dnephin/pflag
-# github.com/dysnix/predictkube-libs v0.0.4-0.20230109175007-5a82fccd31c7
-## explicit; go 1.17
+# github.com/dysnix/predictkube-libs v0.0.4-0.20250415003622-40081ddd4983
+## explicit; go 1.23.8
 github.com/dysnix/predictkube-libs/external/configs
 github.com/dysnix/predictkube-libs/external/enums
 github.com/dysnix/predictkube-libs/external/grpc
@@ -1329,25 +1326,9 @@ github.com/nexus-rpc/sdk-go/nexus
 ## explicit; go 1.20
 github.com/oapi-codegen/runtime
 github.com/oapi-codegen/runtime/types
-# github.com/olekukonko/cat v0.0.0-20250911104152-50322a0618f6
-## explicit; go 1.21
-github.com/olekukonko/cat
-# github.com/olekukonko/errors v1.2.0
-## explicit; go 1.21
-github.com/olekukonko/errors
-# github.com/olekukonko/ll v0.1.4
-## explicit; go 1.21
-github.com/olekukonko/ll
-github.com/olekukonko/ll/lh
-github.com/olekukonko/ll/lx
-# github.com/olekukonko/tablewriter v1.1.3
-## explicit; go 1.21
+# github.com/olekukonko/tablewriter v0.0.5
+## explicit; go 1.12
 github.com/olekukonko/tablewriter
-github.com/olekukonko/tablewriter/pkg/twcache
-github.com/olekukonko/tablewriter/pkg/twwarp
-github.com/olekukonko/tablewriter/pkg/twwidth
-github.com/olekukonko/tablewriter/renderer
-github.com/olekukonko/tablewriter/tw
 # github.com/onsi/ginkgo/v2 v2.28.1
 ## explicit; go 1.24.0
 github.com/onsi/ginkgo/v2
