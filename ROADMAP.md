@@ -16,14 +16,15 @@ Here is an overview of our current release estimations:
 
 | Version | Estimated Release Date                               |
 |:--------|:-----------------------------------------------------|
-| v2.19   | 2nd week of January 2026                            |
 | v2.20   | 2nd week of May 2026                                |
 | v2.21   | 2nd week of September 2026                          |
+| v2.22   | 2nd week of January 2027                            |
 
 Here is an overview of our previous releases:
 
 | Version | Release Date      | Links                                                                  |
 |:--------|:------------------|:-----------------------------------------------------------------------|
+| v2.19   | Feb 2nd, 2025     | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.19.0) |
 | v2.18   | Oct 19th, 2025    | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.18.0) |
 | v2.17   | Apr 7th, 2025     | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.17.0) |
 | v2.16   | Nov 7th, 2024     | [Release Notes](https://github.com/kedacore/keda/releases/tag/v2.16.0) |
