@@ -39,10 +39,14 @@ const (
 	// Do not permit re-use of the workflow id for this workflow. Future start workflow requests
 	// could potentially change the policy, allowing re-use of the workflow id.
 	WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE WorkflowIdReusePolicy = 3
-	// This option belongs in WorkflowIdConflictPolicy but is here for backwards compatibility.
-	// If specified, it acts like ALLOW_DUPLICATE, but also the WorkflowId*Conflict*Policy on
-	// the request is treated as WORKFLOW_ID_CONFLICT_POLICY_TERMINATE_EXISTING.
-	// If no running workflow, then the behavior is the same as ALLOW_DUPLICATE.
+	// Terminate the current Workflow if one is already running; otherwise allow reusing the
+	// Workflow ID. When using this option, `WorkflowIdConflictPolicy` must be left unspecified.
+	//
+	// Deprecated. Instead, set `WorkflowIdReusePolicy` to `ALLOW_DUPLICATE` and
+	// `WorkflowIdConflictPolicy` to `TERMINATE_EXISTING`. Note that `WorkflowIdConflictPolicy`
+	// requires Temporal Server v1.24.0 or later.
+	//
+	// Deprecated: Marked as deprecated in temporal/api/enums/v1/workflow.proto.
 	WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING WorkflowIdReusePolicy = 4
 )
 
@@ -768,9 +772,15 @@ const (
 	// User needs to use Patching to keep the new code compatible with prior versions when dealing
 	// with Unversioned workflows.
 	VERSIONING_BEHAVIOR_UNSPECIFIED VersioningBehavior = 0
-	// Workflow will start on the Current Deployment Version of its Task Queue, and then
-	// will be pinned to that same Deployment Version until completion (the Version that
-	// this Workflow is pinned to is specified in `versioning_info.version`).
+	// Workflow will start on its Target Version and then will be pinned to that same Deployment
+	// Version until completion (the Version that this Workflow is pinned to is specified in
+	// `versioning_info.version` and is the Pinned Version of the Workflow).
+	//
+	// The workflow's Target Version is the Current Version of its Task Queue, or, if the
+	// Task Queue has a Ramping Version with non-zero Ramp Percentage `P`, the workflow's Target
+	// Version has a P% chance of being the Ramping Version. Whether a workflow falls into the
+	// Ramping group depends on its Workflow ID and and the Ramp Percentage.
+	//
 	// This behavior eliminates most of compatibility concerns users face when changing their code.
 	// Patching is not needed when pinned workflows code change.
 	// Can be overridden explicitly via `UpdateWorkflowExecutionOptions` API to move the
@@ -780,8 +790,13 @@ const (
 	// Version, in which case the activity will be sent to the Current Deployment Version of its own
 	// task queue.
 	VERSIONING_BEHAVIOR_PINNED VersioningBehavior = 1
-	// Workflow will automatically move to the Current Deployment Version of its Task Queue when the
-	// next workflow task is dispatched.
+	// Workflow will automatically move to its Target Version when the next workflow task is dispatched.
+	//
+	// The workflow's Target Version is the Current Version of its Task Queue, or, if the
+	// Task Queue has a Ramping Version with non-zero Ramp Percentage `P`, the workflow's Target
+	// Version has a P% chance of being the Ramping Version. Whether a workflow falls into the
+	// Ramping group depends on its Workflow ID and and the Ramp Percentage.
+	//
 	// AutoUpgrade behavior is suitable for long-running workflows as it allows them to move to the
 	// latest Deployment Version, but the user still needs to use Patching to keep the new code
 	// compatible with prior versions for changed workflow types.
@@ -789,11 +804,10 @@ const (
 	// execution (as specified in versioning_info.version based on the last completed
 	// workflow task). Exception to this would be when the activity Task Queue workers are not
 	// present in the workflow's Deployment Version, in which case, the activity will be sent to a
-	// different Deployment Version according to the Current Deployment Version of its own task
-	// queue.
-	// Workflows stuck on a backlogged activity will still auto-upgrade if the Current Deployment
-	// Version of their Task Queue changes, without having to wait for the backlogged activity to
-	// complete on the old Version.
+	// different Deployment Version according to the Current or Ramping Deployment Version of its own
+	// Task Queue.
+	// Workflows stuck on a backlogged activity will still auto-upgrade if their Target Version
+	// changes, without having to wait for the backlogged activity to complete on the old Version.
 	VERSIONING_BEHAVIOR_AUTO_UPGRADE VersioningBehavior = 2
 )
 
@@ -848,17 +862,156 @@ func (VersioningBehavior) EnumDescriptor() ([]byte, []int) {
 	return file_temporal_api_enums_v1_workflow_proto_rawDescGZIP(), []int{10}
 }
 
+// Experimental. Defines the versioning behavior to be used by the first task of a new workflow run in a continue-as-new chain.
+type ContinueAsNewVersioningBehavior int32
+
+const (
+	CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_UNSPECIFIED ContinueAsNewVersioningBehavior = 0
+	// Start the new run with AutoUpgrade behavior. Use the Target Version of the workflow's task queue at
+	// start-time, as AutoUpgrade workflows do. After the first workflow task completes, use whatever
+	// Versioning Behavior the workflow is annotated with in the workflow code.
+	//
+	// Note that if the previous workflow had a Pinned override, that override will be inherited by the
+	// new workflow run regardless of the ContinueAsNewVersioningBehavior specified in the continue-as-new
+	// command. If a Pinned override is inherited by the new run, and the new run starts with AutoUpgrade
+	// behavior, the base version of the new run will be the Target Version as described above, but the
+	// effective version will be whatever is specified by the Versioning Override until the override is removed.
+	CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_AUTO_UPGRADE ContinueAsNewVersioningBehavior = 1
+)
+
+// Enum value maps for ContinueAsNewVersioningBehavior.
+var (
+	ContinueAsNewVersioningBehavior_name = map[int32]string{
+		0: "CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_UNSPECIFIED",
+		1: "CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_AUTO_UPGRADE",
+	}
+	ContinueAsNewVersioningBehavior_value = map[string]int32{
+		"CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_UNSPECIFIED":  0,
+		"CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_AUTO_UPGRADE": 1,
+	}
+)
+
+func (x ContinueAsNewVersioningBehavior) Enum() *ContinueAsNewVersioningBehavior {
+	p := new(ContinueAsNewVersioningBehavior)
+	*p = x
+	return p
+}
+
+func (x ContinueAsNewVersioningBehavior) String() string {
+	switch x {
+	case CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_UNSPECIFIED:
+		return "Unspecified"
+	case CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_AUTO_UPGRADE:
+		return "AutoUpgrade"
+	default:
+		return strconv.Itoa(int(x))
+	}
+
+}
+
+func (ContinueAsNewVersioningBehavior) Descriptor() protoreflect.EnumDescriptor {
+	return file_temporal_api_enums_v1_workflow_proto_enumTypes[11].Descriptor()
+}
+
+func (ContinueAsNewVersioningBehavior) Type() protoreflect.EnumType {
+	return &file_temporal_api_enums_v1_workflow_proto_enumTypes[11]
+}
+
+func (x ContinueAsNewVersioningBehavior) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ContinueAsNewVersioningBehavior.Descriptor instead.
+func (ContinueAsNewVersioningBehavior) EnumDescriptor() ([]byte, []int) {
+	return file_temporal_api_enums_v1_workflow_proto_rawDescGZIP(), []int{11}
+}
+
+// SuggestContinueAsNewReason specifies why SuggestContinueAsNew is true.
+type SuggestContinueAsNewReason int32
+
+const (
+	SUGGEST_CONTINUE_AS_NEW_REASON_UNSPECIFIED SuggestContinueAsNewReason = 0
+	// Workflow History size is getting too large.
+	SUGGEST_CONTINUE_AS_NEW_REASON_HISTORY_SIZE_TOO_LARGE SuggestContinueAsNewReason = 1
+	// Workflow History event count is getting too large.
+	SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_HISTORY_EVENTS SuggestContinueAsNewReason = 2
+	// Workflow's count of completed plus in-flight updates is too large.
+	SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_UPDATES SuggestContinueAsNewReason = 3
+	// Workflow's Target Worker Deployment Version is different from its
+	// Current Version and the workflow is versioned.
+	SUGGEST_CONTINUE_AS_NEW_REASON_TARGET_WORKER_DEPLOYMENT_VERSION_CHANGED SuggestContinueAsNewReason = 4
+)
+
+// Enum value maps for SuggestContinueAsNewReason.
+var (
+	SuggestContinueAsNewReason_name = map[int32]string{
+		0: "SUGGEST_CONTINUE_AS_NEW_REASON_UNSPECIFIED",
+		1: "SUGGEST_CONTINUE_AS_NEW_REASON_HISTORY_SIZE_TOO_LARGE",
+		2: "SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_HISTORY_EVENTS",
+		3: "SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_UPDATES",
+		4: "SUGGEST_CONTINUE_AS_NEW_REASON_TARGET_WORKER_DEPLOYMENT_VERSION_CHANGED",
+	}
+	SuggestContinueAsNewReason_value = map[string]int32{
+		"SUGGEST_CONTINUE_AS_NEW_REASON_UNSPECIFIED":                              0,
+		"SUGGEST_CONTINUE_AS_NEW_REASON_HISTORY_SIZE_TOO_LARGE":                   1,
+		"SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_HISTORY_EVENTS":                  2,
+		"SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_UPDATES":                         3,
+		"SUGGEST_CONTINUE_AS_NEW_REASON_TARGET_WORKER_DEPLOYMENT_VERSION_CHANGED": 4,
+	}
+)
+
+func (x SuggestContinueAsNewReason) Enum() *SuggestContinueAsNewReason {
+	p := new(SuggestContinueAsNewReason)
+	*p = x
+	return p
+}
+
+func (x SuggestContinueAsNewReason) String() string {
+	switch x {
+	case SUGGEST_CONTINUE_AS_NEW_REASON_UNSPECIFIED:
+		return "Unspecified"
+	case SUGGEST_CONTINUE_AS_NEW_REASON_HISTORY_SIZE_TOO_LARGE:
+		return "HistorySizeTooLarge"
+	case SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_HISTORY_EVENTS:
+		return "TooManyHistoryEvents"
+	case SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_UPDATES:
+		return "TooManyUpdates"
+	case SUGGEST_CONTINUE_AS_NEW_REASON_TARGET_WORKER_DEPLOYMENT_VERSION_CHANGED:
+		return "TargetWorkerDeploymentVersionChanged"
+	default:
+		return strconv.Itoa(int(x))
+	}
+
+}
+
+func (SuggestContinueAsNewReason) Descriptor() protoreflect.EnumDescriptor {
+	return file_temporal_api_enums_v1_workflow_proto_enumTypes[12].Descriptor()
+}
+
+func (SuggestContinueAsNewReason) Type() protoreflect.EnumType {
+	return &file_temporal_api_enums_v1_workflow_proto_enumTypes[12]
+}
+
+func (x SuggestContinueAsNewReason) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SuggestContinueAsNewReason.Descriptor instead.
+func (SuggestContinueAsNewReason) EnumDescriptor() ([]byte, []int) {
+	return file_temporal_api_enums_v1_workflow_proto_rawDescGZIP(), []int{12}
+}
+
 var File_temporal_api_enums_v1_workflow_proto protoreflect.FileDescriptor
 
 const file_temporal_api_enums_v1_workflow_proto_rawDesc = "" +
 	"\n" +
-	"$temporal/api/enums/v1/workflow.proto\x12\x15temporal.api.enums.v1*\x8b\x02\n" +
+	"$temporal/api/enums/v1/workflow.proto\x12\x15temporal.api.enums.v1*\x8f\x02\n" +
 	"\x15WorkflowIdReusePolicy\x12(\n" +
 	"$WORKFLOW_ID_REUSE_POLICY_UNSPECIFIED\x10\x00\x12,\n" +
 	"(WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE\x10\x01\x128\n" +
 	"4WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY\x10\x02\x12-\n" +
-	")WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE\x10\x03\x121\n" +
-	"-WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING\x10\x04*\xcf\x01\n" +
+	")WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE\x10\x03\x125\n" +
+	"-WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING\x10\x04\x1a\x02\b\x01*\xcf\x01\n" +
 	"\x18WorkflowIdConflictPolicy\x12+\n" +
 	"'WORKFLOW_ID_CONFLICT_POLICY_UNSPECIFIED\x10\x00\x12$\n" +
 	" WORKFLOW_ID_CONFLICT_POLICY_FAIL\x10\x01\x12,\n" +
@@ -918,7 +1071,16 @@ const file_temporal_api_enums_v1_workflow_proto_rawDesc = "" +
 	"\x12VersioningBehavior\x12#\n" +
 	"\x1fVERSIONING_BEHAVIOR_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aVERSIONING_BEHAVIOR_PINNED\x10\x01\x12$\n" +
-	" VERSIONING_BEHAVIOR_AUTO_UPGRADE\x10\x02B\x85\x01\n" +
+	" VERSIONING_BEHAVIOR_AUTO_UPGRADE\x10\x02*\x8c\x01\n" +
+	"\x1fContinueAsNewVersioningBehavior\x123\n" +
+	"/CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_UNSPECIFIED\x10\x00\x124\n" +
+	"0CONTINUE_AS_NEW_VERSIONING_BEHAVIOR_AUTO_UPGRADE\x10\x01*\xc5\x02\n" +
+	"\x1aSuggestContinueAsNewReason\x12.\n" +
+	"*SUGGEST_CONTINUE_AS_NEW_REASON_UNSPECIFIED\x10\x00\x129\n" +
+	"5SUGGEST_CONTINUE_AS_NEW_REASON_HISTORY_SIZE_TOO_LARGE\x10\x01\x12:\n" +
+	"6SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_HISTORY_EVENTS\x10\x02\x123\n" +
+	"/SUGGEST_CONTINUE_AS_NEW_REASON_TOO_MANY_UPDATES\x10\x03\x12K\n" +
+	"GSUGGEST_CONTINUE_AS_NEW_REASON_TARGET_WORKER_DEPLOYMENT_VERSION_CHANGED\x10\x04B\x85\x01\n" +
 	"\x18io.temporal.api.enums.v1B\rWorkflowProtoP\x01Z!go.temporal.io/api/enums/v1;enums\xaa\x02\x17Temporalio.Api.Enums.V1\xea\x02\x1aTemporalio::Api::Enums::V1b\x06proto3"
 
 var (
@@ -933,19 +1095,21 @@ func file_temporal_api_enums_v1_workflow_proto_rawDescGZIP() []byte {
 	return file_temporal_api_enums_v1_workflow_proto_rawDescData
 }
 
-var file_temporal_api_enums_v1_workflow_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
+var file_temporal_api_enums_v1_workflow_proto_enumTypes = make([]protoimpl.EnumInfo, 13)
 var file_temporal_api_enums_v1_workflow_proto_goTypes = []any{
-	(WorkflowIdReusePolicy)(0),    // 0: temporal.api.enums.v1.WorkflowIdReusePolicy
-	(WorkflowIdConflictPolicy)(0), // 1: temporal.api.enums.v1.WorkflowIdConflictPolicy
-	(ParentClosePolicy)(0),        // 2: temporal.api.enums.v1.ParentClosePolicy
-	(ContinueAsNewInitiator)(0),   // 3: temporal.api.enums.v1.ContinueAsNewInitiator
-	(WorkflowExecutionStatus)(0),  // 4: temporal.api.enums.v1.WorkflowExecutionStatus
-	(PendingActivityState)(0),     // 5: temporal.api.enums.v1.PendingActivityState
-	(PendingWorkflowTaskState)(0), // 6: temporal.api.enums.v1.PendingWorkflowTaskState
-	(HistoryEventFilterType)(0),   // 7: temporal.api.enums.v1.HistoryEventFilterType
-	(RetryState)(0),               // 8: temporal.api.enums.v1.RetryState
-	(TimeoutType)(0),              // 9: temporal.api.enums.v1.TimeoutType
-	(VersioningBehavior)(0),       // 10: temporal.api.enums.v1.VersioningBehavior
+	(WorkflowIdReusePolicy)(0),           // 0: temporal.api.enums.v1.WorkflowIdReusePolicy
+	(WorkflowIdConflictPolicy)(0),        // 1: temporal.api.enums.v1.WorkflowIdConflictPolicy
+	(ParentClosePolicy)(0),               // 2: temporal.api.enums.v1.ParentClosePolicy
+	(ContinueAsNewInitiator)(0),          // 3: temporal.api.enums.v1.ContinueAsNewInitiator
+	(WorkflowExecutionStatus)(0),         // 4: temporal.api.enums.v1.WorkflowExecutionStatus
+	(PendingActivityState)(0),            // 5: temporal.api.enums.v1.PendingActivityState
+	(PendingWorkflowTaskState)(0),        // 6: temporal.api.enums.v1.PendingWorkflowTaskState
+	(HistoryEventFilterType)(0),          // 7: temporal.api.enums.v1.HistoryEventFilterType
+	(RetryState)(0),                      // 8: temporal.api.enums.v1.RetryState
+	(TimeoutType)(0),                     // 9: temporal.api.enums.v1.TimeoutType
+	(VersioningBehavior)(0),              // 10: temporal.api.enums.v1.VersioningBehavior
+	(ContinueAsNewVersioningBehavior)(0), // 11: temporal.api.enums.v1.ContinueAsNewVersioningBehavior
+	(SuggestContinueAsNewReason)(0),      // 12: temporal.api.enums.v1.SuggestContinueAsNewReason
 }
 var file_temporal_api_enums_v1_workflow_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -965,7 +1129,7 @@ func file_temporal_api_enums_v1_workflow_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_temporal_api_enums_v1_workflow_proto_rawDesc), len(file_temporal_api_enums_v1_workflow_proto_rawDesc)),
-			NumEnums:      11,
+			NumEnums:      13,
 			NumMessages:   0,
 			NumExtensions: 0,
 			NumServices:   0,

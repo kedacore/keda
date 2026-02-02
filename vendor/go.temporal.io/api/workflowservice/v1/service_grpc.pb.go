@@ -70,6 +70,7 @@ const (
 	WorkflowService_ListScheduleMatchingTimes_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/ListScheduleMatchingTimes"
 	WorkflowService_DeleteSchedule_FullMethodName                        = "/temporal.api.workflowservice.v1.WorkflowService/DeleteSchedule"
 	WorkflowService_ListSchedules_FullMethodName                         = "/temporal.api.workflowservice.v1.WorkflowService/ListSchedules"
+	WorkflowService_CountSchedules_FullMethodName                        = "/temporal.api.workflowservice.v1.WorkflowService/CountSchedules"
 	WorkflowService_UpdateWorkerBuildIdCompatibility_FullMethodName      = "/temporal.api.workflowservice.v1.WorkflowService/UpdateWorkerBuildIdCompatibility"
 	WorkflowService_GetWorkerBuildIdCompatibility_FullMethodName         = "/temporal.api.workflowservice.v1.WorkflowService/GetWorkerBuildIdCompatibility"
 	WorkflowService_UpdateWorkerVersioningRules_FullMethodName           = "/temporal.api.workflowservice.v1.WorkflowService/UpdateWorkerVersioningRules"
@@ -116,6 +117,14 @@ const (
 	WorkflowService_DescribeWorker_FullMethodName                        = "/temporal.api.workflowservice.v1.WorkflowService/DescribeWorker"
 	WorkflowService_PauseWorkflowExecution_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/PauseWorkflowExecution"
 	WorkflowService_UnpauseWorkflowExecution_FullMethodName              = "/temporal.api.workflowservice.v1.WorkflowService/UnpauseWorkflowExecution"
+	WorkflowService_StartActivityExecution_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/StartActivityExecution"
+	WorkflowService_DescribeActivityExecution_FullMethodName             = "/temporal.api.workflowservice.v1.WorkflowService/DescribeActivityExecution"
+	WorkflowService_PollActivityExecution_FullMethodName                 = "/temporal.api.workflowservice.v1.WorkflowService/PollActivityExecution"
+	WorkflowService_ListActivityExecutions_FullMethodName                = "/temporal.api.workflowservice.v1.WorkflowService/ListActivityExecutions"
+	WorkflowService_CountActivityExecutions_FullMethodName               = "/temporal.api.workflowservice.v1.WorkflowService/CountActivityExecutions"
+	WorkflowService_RequestCancelActivityExecution_FullMethodName        = "/temporal.api.workflowservice.v1.WorkflowService/RequestCancelActivityExecution"
+	WorkflowService_TerminateActivityExecution_FullMethodName            = "/temporal.api.workflowservice.v1.WorkflowService/TerminateActivityExecution"
+	WorkflowService_DeleteActivityExecution_FullMethodName               = "/temporal.api.workflowservice.v1.WorkflowService/DeleteActivityExecution"
 )
 
 // WorkflowServiceClient is the client API for WorkflowService service.
@@ -236,10 +245,17 @@ type WorkflowServiceClient interface {
 	PollActivityTaskQueue(ctx context.Context, in *PollActivityTaskQueueRequest, opts ...grpc.CallOption) (*PollActivityTaskQueueResponse, error)
 	// RecordActivityTaskHeartbeat is optionally called by workers while they execute activities.
 	//
-	// If worker fails to heartbeat within the `heartbeat_timeout` interval for the activity task,
-	// then it will be marked as timed out and an `ACTIVITY_TASK_TIMED_OUT` event will be written to
-	// the workflow history. Calling `RecordActivityTaskHeartbeat` will fail with `NotFound` in
-	// such situations, in that event, the SDK should request cancellation of the activity.
+	// If a worker fails to heartbeat within the `heartbeat_timeout` interval for the activity task,
+	// then the current attempt times out. Depending on RetryPolicy, this may trigger a retry or
+	// time out the activity.
+	//
+	// For workflow activities, an `ACTIVITY_TASK_TIMED_OUT` event will be written to the workflow
+	// history. Calling `RecordActivityTaskHeartbeat` will fail with `NotFound` in such situations,
+	// in that event, the SDK should request cancellation of the activity.
+	//
+	// The request may contain response `details` which will be persisted by the server and may be
+	// used by the activity to checkpoint progress. The `cancel_requested` field in the response
+	// indicates whether cancellation has been requested for the activity.
 	RecordActivityTaskHeartbeat(ctx context.Context, in *RecordActivityTaskHeartbeatRequest, opts ...grpc.CallOption) (*RecordActivityTaskHeartbeatResponse, error)
 	// See `RecordActivityTaskHeartbeat`. This version allows clients to record heartbeats by
 	// namespace/workflow id/activity id instead of task token.
@@ -251,11 +267,11 @@ type WorkflowServiceClient interface {
 	// RespondActivityTaskCompleted is called by workers when they successfully complete an activity
 	// task.
 	//
-	// This results in a new `ACTIVITY_TASK_COMPLETED` event being written to the workflow history
+	// For workflow activities, this results in a new `ACTIVITY_TASK_COMPLETED` event being written to the workflow history
 	// and a new workflow task created for the workflow. Fails with `NotFound` if the task token is
 	// no longer valid due to activity timeout, already being completed, or never having existed.
 	RespondActivityTaskCompleted(ctx context.Context, in *RespondActivityTaskCompletedRequest, opts ...grpc.CallOption) (*RespondActivityTaskCompletedResponse, error)
-	// See `RecordActivityTaskCompleted`. This version allows clients to record completions by
+	// See `RespondActivityTaskCompleted`. This version allows clients to record completions by
 	// namespace/workflow id/activity id instead of task token.
 	//
 	// (-- api-linter: core::0136::prepositions=disabled
@@ -277,11 +293,11 @@ type WorkflowServiceClient interface {
 	RespondActivityTaskFailedById(ctx context.Context, in *RespondActivityTaskFailedByIdRequest, opts ...grpc.CallOption) (*RespondActivityTaskFailedByIdResponse, error)
 	// RespondActivityTaskFailed is called by workers when processing an activity task fails.
 	//
-	// This results in a new `ACTIVITY_TASK_CANCELED` event being written to the workflow history
+	// For workflow activities, this results in a new `ACTIVITY_TASK_CANCELED` event being written to the workflow history
 	// and a new workflow task created for the workflow. Fails with `NotFound` if the task token is
 	// no longer valid due to activity timeout, already being completed, or never having existed.
 	RespondActivityTaskCanceled(ctx context.Context, in *RespondActivityTaskCanceledRequest, opts ...grpc.CallOption) (*RespondActivityTaskCanceledResponse, error)
-	// See `RecordActivityTaskCanceled`. This version allows clients to record failures by
+	// See `RespondActivityTaskCanceled`. This version allows clients to record failures by
 	// namespace/workflow id/activity id instead of task token.
 	//
 	// (-- api-linter: core::0136::prepositions=disabled
@@ -437,6 +453,8 @@ type WorkflowServiceClient interface {
 	DeleteSchedule(ctx context.Context, in *DeleteScheduleRequest, opts ...grpc.CallOption) (*DeleteScheduleResponse, error)
 	// List all schedules in a namespace.
 	ListSchedules(ctx context.Context, in *ListSchedulesRequest, opts ...grpc.CallOption) (*ListSchedulesResponse, error)
+	// CountSchedules is a visibility API to count schedules in a specific namespace.
+	CountSchedules(ctx context.Context, in *CountSchedulesRequest, opts ...grpc.CallOption) (*CountSchedulesResponse, error)
 	// Deprecated. Use `UpdateWorkerVersioningRules`.
 	//
 	// Allows users to specify sets of worker build id versions on a per task queue basis. Versions
@@ -602,6 +620,8 @@ type WorkflowServiceClient interface {
 	RespondNexusTaskFailed(ctx context.Context, in *RespondNexusTaskFailedRequest, opts ...grpc.CallOption) (*RespondNexusTaskFailedResponse, error)
 	// UpdateActivityOptions is called by the client to update the options of an activity by its ID or type.
 	// If there are multiple pending activities of the provided type - all of them will be updated.
+	// This API will be deprecated soon and replaced with a newer UpdateActivityExecutionOptions that is better named and
+	// structured to work well for standalone activities.
 	UpdateActivityOptions(ctx context.Context, in *UpdateActivityOptionsRequest, opts ...grpc.CallOption) (*UpdateActivityOptionsResponse, error)
 	// UpdateWorkflowExecutionOptions partially updates the WorkflowExecutionOptions of an existing workflow execution.
 	UpdateWorkflowExecutionOptions(ctx context.Context, in *UpdateWorkflowExecutionOptionsRequest, opts ...grpc.CallOption) (*UpdateWorkflowExecutionOptionsResponse, error)
@@ -622,6 +642,8 @@ type WorkflowServiceClient interface {
 	// - The activity should respond to the cancellation accordingly.
 	//
 	// Returns a `NotFound` error if there is no pending activity with the provided ID or type
+	// This API will be deprecated soon and replaced with a newer PauseActivityExecution that is better named and
+	// structured to work well for standalone activities.
 	PauseActivity(ctx context.Context, in *PauseActivityRequest, opts ...grpc.CallOption) (*PauseActivityResponse, error)
 	// UnpauseActivity unpauses the execution of an activity specified by its ID or type.
 	// If there are multiple pending activities of the provided type - all of them will be unpaused.
@@ -636,6 +658,8 @@ type WorkflowServiceClient interface {
 	// 'reset_heartbeat': the activity heartbeat timer and heartbeats will be reset.
 	//
 	// Returns a `NotFound` error if there is no pending activity with the provided ID or type
+	// This API will be deprecated soon and replaced with a newer UnpauseActivityExecution that is better named and
+	// structured to work well for standalone activities.
 	UnpauseActivity(ctx context.Context, in *UnpauseActivityRequest, opts ...grpc.CallOption) (*UnpauseActivityResponse, error)
 	// ResetActivity resets the execution of an activity specified by its ID or type.
 	// If there are multiple pending activities of the provided type - all of them will be reset.
@@ -654,6 +678,8 @@ type WorkflowServiceClient interface {
 	// 'keep_paused': if the activity is paused, it will remain paused.
 	//
 	// Returns a `NotFound` error if there is no pending activity with the provided ID or type.
+	// This API will be deprecated soon and replaced with a newer ResetActivityExecution that is better named and
+	// structured to work well for standalone activities.
 	ResetActivity(ctx context.Context, in *ResetActivityRequest, opts ...grpc.CallOption) (*ResetActivityResponse, error)
 	// Create a new workflow rule. The rules are used to control the workflow execution.
 	// The rule will be applied to all running and new workflows in the namespace.
@@ -707,6 +733,45 @@ type WorkflowServiceClient interface {
 	// - The workflow execution status changes to `RUNNING` and a new WORKFLOW_EXECUTION_UNPAUSED event is added to the history
 	// - Workflow tasks and activity tasks are resumed.
 	UnpauseWorkflowExecution(ctx context.Context, in *UnpauseWorkflowExecutionRequest, opts ...grpc.CallOption) (*UnpauseWorkflowExecutionResponse, error)
+	// StartActivityExecution starts a new activity execution.
+	//
+	// Returns an `ActivityExecutionAlreadyStarted` error if an instance already exists with same activity ID in this namespace
+	// unless permitted by the specified ID conflict policy.
+	StartActivityExecution(ctx context.Context, in *StartActivityExecutionRequest, opts ...grpc.CallOption) (*StartActivityExecutionResponse, error)
+	// DescribeActivityExecution returns information about an activity execution.
+	// It can be used to:
+	// - Get current activity info without waiting
+	// - Long-poll for next state change and return new activity info
+	// Response can optionally include activity input or outcome (if the activity has completed).
+	DescribeActivityExecution(ctx context.Context, in *DescribeActivityExecutionRequest, opts ...grpc.CallOption) (*DescribeActivityExecutionResponse, error)
+	// PollActivityExecution long-polls for an activity execution to complete and returns the
+	// outcome (result or failure).
+	PollActivityExecution(ctx context.Context, in *PollActivityExecutionRequest, opts ...grpc.CallOption) (*PollActivityExecutionResponse, error)
+	// ListActivityExecutions is a visibility API to list activity executions in a specific namespace.
+	ListActivityExecutions(ctx context.Context, in *ListActivityExecutionsRequest, opts ...grpc.CallOption) (*ListActivityExecutionsResponse, error)
+	// CountActivityExecutions is a visibility API to count activity executions in a specific namespace.
+	CountActivityExecutions(ctx context.Context, in *CountActivityExecutionsRequest, opts ...grpc.CallOption) (*CountActivityExecutionsResponse, error)
+	// RequestCancelActivityExecution requests cancellation of an activity execution.
+	//
+	// Cancellation is cooperative: this call records the request, but the activity must detect and
+	// acknowledge it for the activity to reach CANCELED status. The cancellation signal is
+	// delivered via `cancel_requested` in the heartbeat response; SDKs surface this via
+	// language-idiomatic mechanisms (context cancellation, exceptions, abort signals).
+	RequestCancelActivityExecution(ctx context.Context, in *RequestCancelActivityExecutionRequest, opts ...grpc.CallOption) (*RequestCancelActivityExecutionResponse, error)
+	// TerminateActivityExecution terminates an existing activity execution immediately.
+	//
+	// Termination does not reach the worker and the activity code cannot react to it. A terminated activity may have a
+	// running attempt.
+	TerminateActivityExecution(ctx context.Context, in *TerminateActivityExecutionRequest, opts ...grpc.CallOption) (*TerminateActivityExecutionResponse, error)
+	// DeleteActivityExecution asynchronously deletes a specific activity execution (when
+	// ActivityExecution.run_id is provided) or the latest activity execution (when
+	// ActivityExecution.run_id is not provided). If the activity Execution is running, it will be
+	// terminated before deletion.
+	//
+	// (-- api-linter: core::0127::http-annotation=disabled
+	//
+	//	aip.dev/not-precedent: Activity deletion not exposed to HTTP, users should use cancel or terminate. --)
+	DeleteActivityExecution(ctx context.Context, in *DeleteActivityExecutionRequest, opts ...grpc.CallOption) (*DeleteActivityExecutionResponse, error)
 }
 
 type workflowServiceClient struct {
@@ -1217,6 +1282,16 @@ func (c *workflowServiceClient) ListSchedules(ctx context.Context, in *ListSched
 	return out, nil
 }
 
+func (c *workflowServiceClient) CountSchedules(ctx context.Context, in *CountSchedulesRequest, opts ...grpc.CallOption) (*CountSchedulesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CountSchedulesResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_CountSchedules_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *workflowServiceClient) UpdateWorkerBuildIdCompatibility(ctx context.Context, in *UpdateWorkerBuildIdCompatibilityRequest, opts ...grpc.CallOption) (*UpdateWorkerBuildIdCompatibilityResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UpdateWorkerBuildIdCompatibilityResponse)
@@ -1677,6 +1752,86 @@ func (c *workflowServiceClient) UnpauseWorkflowExecution(ctx context.Context, in
 	return out, nil
 }
 
+func (c *workflowServiceClient) StartActivityExecution(ctx context.Context, in *StartActivityExecutionRequest, opts ...grpc.CallOption) (*StartActivityExecutionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StartActivityExecutionResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_StartActivityExecution_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) DescribeActivityExecution(ctx context.Context, in *DescribeActivityExecutionRequest, opts ...grpc.CallOption) (*DescribeActivityExecutionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DescribeActivityExecutionResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_DescribeActivityExecution_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) PollActivityExecution(ctx context.Context, in *PollActivityExecutionRequest, opts ...grpc.CallOption) (*PollActivityExecutionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PollActivityExecutionResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_PollActivityExecution_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) ListActivityExecutions(ctx context.Context, in *ListActivityExecutionsRequest, opts ...grpc.CallOption) (*ListActivityExecutionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListActivityExecutionsResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_ListActivityExecutions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) CountActivityExecutions(ctx context.Context, in *CountActivityExecutionsRequest, opts ...grpc.CallOption) (*CountActivityExecutionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CountActivityExecutionsResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_CountActivityExecutions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) RequestCancelActivityExecution(ctx context.Context, in *RequestCancelActivityExecutionRequest, opts ...grpc.CallOption) (*RequestCancelActivityExecutionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RequestCancelActivityExecutionResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_RequestCancelActivityExecution_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) TerminateActivityExecution(ctx context.Context, in *TerminateActivityExecutionRequest, opts ...grpc.CallOption) (*TerminateActivityExecutionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TerminateActivityExecutionResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_TerminateActivityExecution_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowServiceClient) DeleteActivityExecution(ctx context.Context, in *DeleteActivityExecutionRequest, opts ...grpc.CallOption) (*DeleteActivityExecutionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteActivityExecutionResponse)
+	err := c.cc.Invoke(ctx, WorkflowService_DeleteActivityExecution_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkflowServiceServer is the server API for WorkflowService service.
 // All implementations must embed UnimplementedWorkflowServiceServer
 // for forward compatibility.
@@ -1795,10 +1950,17 @@ type WorkflowServiceServer interface {
 	PollActivityTaskQueue(context.Context, *PollActivityTaskQueueRequest) (*PollActivityTaskQueueResponse, error)
 	// RecordActivityTaskHeartbeat is optionally called by workers while they execute activities.
 	//
-	// If worker fails to heartbeat within the `heartbeat_timeout` interval for the activity task,
-	// then it will be marked as timed out and an `ACTIVITY_TASK_TIMED_OUT` event will be written to
-	// the workflow history. Calling `RecordActivityTaskHeartbeat` will fail with `NotFound` in
-	// such situations, in that event, the SDK should request cancellation of the activity.
+	// If a worker fails to heartbeat within the `heartbeat_timeout` interval for the activity task,
+	// then the current attempt times out. Depending on RetryPolicy, this may trigger a retry or
+	// time out the activity.
+	//
+	// For workflow activities, an `ACTIVITY_TASK_TIMED_OUT` event will be written to the workflow
+	// history. Calling `RecordActivityTaskHeartbeat` will fail with `NotFound` in such situations,
+	// in that event, the SDK should request cancellation of the activity.
+	//
+	// The request may contain response `details` which will be persisted by the server and may be
+	// used by the activity to checkpoint progress. The `cancel_requested` field in the response
+	// indicates whether cancellation has been requested for the activity.
 	RecordActivityTaskHeartbeat(context.Context, *RecordActivityTaskHeartbeatRequest) (*RecordActivityTaskHeartbeatResponse, error)
 	// See `RecordActivityTaskHeartbeat`. This version allows clients to record heartbeats by
 	// namespace/workflow id/activity id instead of task token.
@@ -1810,11 +1972,11 @@ type WorkflowServiceServer interface {
 	// RespondActivityTaskCompleted is called by workers when they successfully complete an activity
 	// task.
 	//
-	// This results in a new `ACTIVITY_TASK_COMPLETED` event being written to the workflow history
+	// For workflow activities, this results in a new `ACTIVITY_TASK_COMPLETED` event being written to the workflow history
 	// and a new workflow task created for the workflow. Fails with `NotFound` if the task token is
 	// no longer valid due to activity timeout, already being completed, or never having existed.
 	RespondActivityTaskCompleted(context.Context, *RespondActivityTaskCompletedRequest) (*RespondActivityTaskCompletedResponse, error)
-	// See `RecordActivityTaskCompleted`. This version allows clients to record completions by
+	// See `RespondActivityTaskCompleted`. This version allows clients to record completions by
 	// namespace/workflow id/activity id instead of task token.
 	//
 	// (-- api-linter: core::0136::prepositions=disabled
@@ -1836,11 +1998,11 @@ type WorkflowServiceServer interface {
 	RespondActivityTaskFailedById(context.Context, *RespondActivityTaskFailedByIdRequest) (*RespondActivityTaskFailedByIdResponse, error)
 	// RespondActivityTaskFailed is called by workers when processing an activity task fails.
 	//
-	// This results in a new `ACTIVITY_TASK_CANCELED` event being written to the workflow history
+	// For workflow activities, this results in a new `ACTIVITY_TASK_CANCELED` event being written to the workflow history
 	// and a new workflow task created for the workflow. Fails with `NotFound` if the task token is
 	// no longer valid due to activity timeout, already being completed, or never having existed.
 	RespondActivityTaskCanceled(context.Context, *RespondActivityTaskCanceledRequest) (*RespondActivityTaskCanceledResponse, error)
-	// See `RecordActivityTaskCanceled`. This version allows clients to record failures by
+	// See `RespondActivityTaskCanceled`. This version allows clients to record failures by
 	// namespace/workflow id/activity id instead of task token.
 	//
 	// (-- api-linter: core::0136::prepositions=disabled
@@ -1996,6 +2158,8 @@ type WorkflowServiceServer interface {
 	DeleteSchedule(context.Context, *DeleteScheduleRequest) (*DeleteScheduleResponse, error)
 	// List all schedules in a namespace.
 	ListSchedules(context.Context, *ListSchedulesRequest) (*ListSchedulesResponse, error)
+	// CountSchedules is a visibility API to count schedules in a specific namespace.
+	CountSchedules(context.Context, *CountSchedulesRequest) (*CountSchedulesResponse, error)
 	// Deprecated. Use `UpdateWorkerVersioningRules`.
 	//
 	// Allows users to specify sets of worker build id versions on a per task queue basis. Versions
@@ -2161,6 +2325,8 @@ type WorkflowServiceServer interface {
 	RespondNexusTaskFailed(context.Context, *RespondNexusTaskFailedRequest) (*RespondNexusTaskFailedResponse, error)
 	// UpdateActivityOptions is called by the client to update the options of an activity by its ID or type.
 	// If there are multiple pending activities of the provided type - all of them will be updated.
+	// This API will be deprecated soon and replaced with a newer UpdateActivityExecutionOptions that is better named and
+	// structured to work well for standalone activities.
 	UpdateActivityOptions(context.Context, *UpdateActivityOptionsRequest) (*UpdateActivityOptionsResponse, error)
 	// UpdateWorkflowExecutionOptions partially updates the WorkflowExecutionOptions of an existing workflow execution.
 	UpdateWorkflowExecutionOptions(context.Context, *UpdateWorkflowExecutionOptionsRequest) (*UpdateWorkflowExecutionOptionsResponse, error)
@@ -2181,6 +2347,8 @@ type WorkflowServiceServer interface {
 	// - The activity should respond to the cancellation accordingly.
 	//
 	// Returns a `NotFound` error if there is no pending activity with the provided ID or type
+	// This API will be deprecated soon and replaced with a newer PauseActivityExecution that is better named and
+	// structured to work well for standalone activities.
 	PauseActivity(context.Context, *PauseActivityRequest) (*PauseActivityResponse, error)
 	// UnpauseActivity unpauses the execution of an activity specified by its ID or type.
 	// If there are multiple pending activities of the provided type - all of them will be unpaused.
@@ -2195,6 +2363,8 @@ type WorkflowServiceServer interface {
 	// 'reset_heartbeat': the activity heartbeat timer and heartbeats will be reset.
 	//
 	// Returns a `NotFound` error if there is no pending activity with the provided ID or type
+	// This API will be deprecated soon and replaced with a newer UnpauseActivityExecution that is better named and
+	// structured to work well for standalone activities.
 	UnpauseActivity(context.Context, *UnpauseActivityRequest) (*UnpauseActivityResponse, error)
 	// ResetActivity resets the execution of an activity specified by its ID or type.
 	// If there are multiple pending activities of the provided type - all of them will be reset.
@@ -2213,6 +2383,8 @@ type WorkflowServiceServer interface {
 	// 'keep_paused': if the activity is paused, it will remain paused.
 	//
 	// Returns a `NotFound` error if there is no pending activity with the provided ID or type.
+	// This API will be deprecated soon and replaced with a newer ResetActivityExecution that is better named and
+	// structured to work well for standalone activities.
 	ResetActivity(context.Context, *ResetActivityRequest) (*ResetActivityResponse, error)
 	// Create a new workflow rule. The rules are used to control the workflow execution.
 	// The rule will be applied to all running and new workflows in the namespace.
@@ -2266,6 +2438,45 @@ type WorkflowServiceServer interface {
 	// - The workflow execution status changes to `RUNNING` and a new WORKFLOW_EXECUTION_UNPAUSED event is added to the history
 	// - Workflow tasks and activity tasks are resumed.
 	UnpauseWorkflowExecution(context.Context, *UnpauseWorkflowExecutionRequest) (*UnpauseWorkflowExecutionResponse, error)
+	// StartActivityExecution starts a new activity execution.
+	//
+	// Returns an `ActivityExecutionAlreadyStarted` error if an instance already exists with same activity ID in this namespace
+	// unless permitted by the specified ID conflict policy.
+	StartActivityExecution(context.Context, *StartActivityExecutionRequest) (*StartActivityExecutionResponse, error)
+	// DescribeActivityExecution returns information about an activity execution.
+	// It can be used to:
+	// - Get current activity info without waiting
+	// - Long-poll for next state change and return new activity info
+	// Response can optionally include activity input or outcome (if the activity has completed).
+	DescribeActivityExecution(context.Context, *DescribeActivityExecutionRequest) (*DescribeActivityExecutionResponse, error)
+	// PollActivityExecution long-polls for an activity execution to complete and returns the
+	// outcome (result or failure).
+	PollActivityExecution(context.Context, *PollActivityExecutionRequest) (*PollActivityExecutionResponse, error)
+	// ListActivityExecutions is a visibility API to list activity executions in a specific namespace.
+	ListActivityExecutions(context.Context, *ListActivityExecutionsRequest) (*ListActivityExecutionsResponse, error)
+	// CountActivityExecutions is a visibility API to count activity executions in a specific namespace.
+	CountActivityExecutions(context.Context, *CountActivityExecutionsRequest) (*CountActivityExecutionsResponse, error)
+	// RequestCancelActivityExecution requests cancellation of an activity execution.
+	//
+	// Cancellation is cooperative: this call records the request, but the activity must detect and
+	// acknowledge it for the activity to reach CANCELED status. The cancellation signal is
+	// delivered via `cancel_requested` in the heartbeat response; SDKs surface this via
+	// language-idiomatic mechanisms (context cancellation, exceptions, abort signals).
+	RequestCancelActivityExecution(context.Context, *RequestCancelActivityExecutionRequest) (*RequestCancelActivityExecutionResponse, error)
+	// TerminateActivityExecution terminates an existing activity execution immediately.
+	//
+	// Termination does not reach the worker and the activity code cannot react to it. A terminated activity may have a
+	// running attempt.
+	TerminateActivityExecution(context.Context, *TerminateActivityExecutionRequest) (*TerminateActivityExecutionResponse, error)
+	// DeleteActivityExecution asynchronously deletes a specific activity execution (when
+	// ActivityExecution.run_id is provided) or the latest activity execution (when
+	// ActivityExecution.run_id is not provided). If the activity Execution is running, it will be
+	// terminated before deletion.
+	//
+	// (-- api-linter: core::0127::http-annotation=disabled
+	//
+	//	aip.dev/not-precedent: Activity deletion not exposed to HTTP, users should use cancel or terminate. --)
+	DeleteActivityExecution(context.Context, *DeleteActivityExecutionRequest) (*DeleteActivityExecutionResponse, error)
 	mustEmbedUnimplementedWorkflowServiceServer()
 }
 
@@ -2277,292 +2488,319 @@ type WorkflowServiceServer interface {
 type UnimplementedWorkflowServiceServer struct{}
 
 func (UnimplementedWorkflowServiceServer) RegisterNamespace(context.Context, *RegisterNamespaceRequest) (*RegisterNamespaceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RegisterNamespace not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RegisterNamespace not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DescribeNamespace(context.Context, *DescribeNamespaceRequest) (*DescribeNamespaceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DescribeNamespace not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DescribeNamespace not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ListNamespaces(context.Context, *ListNamespacesRequest) (*ListNamespacesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListNamespaces not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListNamespaces not implemented")
 }
 func (UnimplementedWorkflowServiceServer) UpdateNamespace(context.Context, *UpdateNamespaceRequest) (*UpdateNamespaceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateNamespace not implemented")
+	return nil, status.Error(codes.Unimplemented, "method UpdateNamespace not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DeprecateNamespace(context.Context, *DeprecateNamespaceRequest) (*DeprecateNamespaceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeprecateNamespace not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DeprecateNamespace not implemented")
 }
 func (UnimplementedWorkflowServiceServer) StartWorkflowExecution(context.Context, *StartWorkflowExecutionRequest) (*StartWorkflowExecutionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method StartWorkflowExecution not implemented")
+	return nil, status.Error(codes.Unimplemented, "method StartWorkflowExecution not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ExecuteMultiOperation(context.Context, *ExecuteMultiOperationRequest) (*ExecuteMultiOperationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ExecuteMultiOperation not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ExecuteMultiOperation not implemented")
 }
 func (UnimplementedWorkflowServiceServer) GetWorkflowExecutionHistory(context.Context, *GetWorkflowExecutionHistoryRequest) (*GetWorkflowExecutionHistoryResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetWorkflowExecutionHistory not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetWorkflowExecutionHistory not implemented")
 }
 func (UnimplementedWorkflowServiceServer) GetWorkflowExecutionHistoryReverse(context.Context, *GetWorkflowExecutionHistoryReverseRequest) (*GetWorkflowExecutionHistoryReverseResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetWorkflowExecutionHistoryReverse not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetWorkflowExecutionHistoryReverse not implemented")
 }
 func (UnimplementedWorkflowServiceServer) PollWorkflowTaskQueue(context.Context, *PollWorkflowTaskQueueRequest) (*PollWorkflowTaskQueueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PollWorkflowTaskQueue not implemented")
+	return nil, status.Error(codes.Unimplemented, "method PollWorkflowTaskQueue not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RespondWorkflowTaskCompleted(context.Context, *RespondWorkflowTaskCompletedRequest) (*RespondWorkflowTaskCompletedResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RespondWorkflowTaskCompleted not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RespondWorkflowTaskCompleted not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RespondWorkflowTaskFailed(context.Context, *RespondWorkflowTaskFailedRequest) (*RespondWorkflowTaskFailedResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RespondWorkflowTaskFailed not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RespondWorkflowTaskFailed not implemented")
 }
 func (UnimplementedWorkflowServiceServer) PollActivityTaskQueue(context.Context, *PollActivityTaskQueueRequest) (*PollActivityTaskQueueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PollActivityTaskQueue not implemented")
+	return nil, status.Error(codes.Unimplemented, "method PollActivityTaskQueue not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RecordActivityTaskHeartbeat(context.Context, *RecordActivityTaskHeartbeatRequest) (*RecordActivityTaskHeartbeatResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RecordActivityTaskHeartbeat not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RecordActivityTaskHeartbeat not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RecordActivityTaskHeartbeatById(context.Context, *RecordActivityTaskHeartbeatByIdRequest) (*RecordActivityTaskHeartbeatByIdResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RecordActivityTaskHeartbeatById not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RecordActivityTaskHeartbeatById not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RespondActivityTaskCompleted(context.Context, *RespondActivityTaskCompletedRequest) (*RespondActivityTaskCompletedResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RespondActivityTaskCompleted not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RespondActivityTaskCompleted not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RespondActivityTaskCompletedById(context.Context, *RespondActivityTaskCompletedByIdRequest) (*RespondActivityTaskCompletedByIdResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RespondActivityTaskCompletedById not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RespondActivityTaskCompletedById not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RespondActivityTaskFailed(context.Context, *RespondActivityTaskFailedRequest) (*RespondActivityTaskFailedResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RespondActivityTaskFailed not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RespondActivityTaskFailed not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RespondActivityTaskFailedById(context.Context, *RespondActivityTaskFailedByIdRequest) (*RespondActivityTaskFailedByIdResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RespondActivityTaskFailedById not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RespondActivityTaskFailedById not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RespondActivityTaskCanceled(context.Context, *RespondActivityTaskCanceledRequest) (*RespondActivityTaskCanceledResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RespondActivityTaskCanceled not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RespondActivityTaskCanceled not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RespondActivityTaskCanceledById(context.Context, *RespondActivityTaskCanceledByIdRequest) (*RespondActivityTaskCanceledByIdResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RespondActivityTaskCanceledById not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RespondActivityTaskCanceledById not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RequestCancelWorkflowExecution(context.Context, *RequestCancelWorkflowExecutionRequest) (*RequestCancelWorkflowExecutionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RequestCancelWorkflowExecution not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RequestCancelWorkflowExecution not implemented")
 }
 func (UnimplementedWorkflowServiceServer) SignalWorkflowExecution(context.Context, *SignalWorkflowExecutionRequest) (*SignalWorkflowExecutionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SignalWorkflowExecution not implemented")
+	return nil, status.Error(codes.Unimplemented, "method SignalWorkflowExecution not implemented")
 }
 func (UnimplementedWorkflowServiceServer) SignalWithStartWorkflowExecution(context.Context, *SignalWithStartWorkflowExecutionRequest) (*SignalWithStartWorkflowExecutionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SignalWithStartWorkflowExecution not implemented")
+	return nil, status.Error(codes.Unimplemented, "method SignalWithStartWorkflowExecution not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ResetWorkflowExecution(context.Context, *ResetWorkflowExecutionRequest) (*ResetWorkflowExecutionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ResetWorkflowExecution not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ResetWorkflowExecution not implemented")
 }
 func (UnimplementedWorkflowServiceServer) TerminateWorkflowExecution(context.Context, *TerminateWorkflowExecutionRequest) (*TerminateWorkflowExecutionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TerminateWorkflowExecution not implemented")
+	return nil, status.Error(codes.Unimplemented, "method TerminateWorkflowExecution not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DeleteWorkflowExecution(context.Context, *DeleteWorkflowExecutionRequest) (*DeleteWorkflowExecutionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteWorkflowExecution not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DeleteWorkflowExecution not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ListOpenWorkflowExecutions(context.Context, *ListOpenWorkflowExecutionsRequest) (*ListOpenWorkflowExecutionsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListOpenWorkflowExecutions not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListOpenWorkflowExecutions not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ListClosedWorkflowExecutions(context.Context, *ListClosedWorkflowExecutionsRequest) (*ListClosedWorkflowExecutionsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListClosedWorkflowExecutions not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListClosedWorkflowExecutions not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ListWorkflowExecutions(context.Context, *ListWorkflowExecutionsRequest) (*ListWorkflowExecutionsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListWorkflowExecutions not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListWorkflowExecutions not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ListArchivedWorkflowExecutions(context.Context, *ListArchivedWorkflowExecutionsRequest) (*ListArchivedWorkflowExecutionsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListArchivedWorkflowExecutions not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListArchivedWorkflowExecutions not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ScanWorkflowExecutions(context.Context, *ScanWorkflowExecutionsRequest) (*ScanWorkflowExecutionsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ScanWorkflowExecutions not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ScanWorkflowExecutions not implemented")
 }
 func (UnimplementedWorkflowServiceServer) CountWorkflowExecutions(context.Context, *CountWorkflowExecutionsRequest) (*CountWorkflowExecutionsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CountWorkflowExecutions not implemented")
+	return nil, status.Error(codes.Unimplemented, "method CountWorkflowExecutions not implemented")
 }
 func (UnimplementedWorkflowServiceServer) GetSearchAttributes(context.Context, *GetSearchAttributesRequest) (*GetSearchAttributesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSearchAttributes not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetSearchAttributes not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RespondQueryTaskCompleted(context.Context, *RespondQueryTaskCompletedRequest) (*RespondQueryTaskCompletedResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RespondQueryTaskCompleted not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RespondQueryTaskCompleted not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ResetStickyTaskQueue(context.Context, *ResetStickyTaskQueueRequest) (*ResetStickyTaskQueueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ResetStickyTaskQueue not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ResetStickyTaskQueue not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ShutdownWorker(context.Context, *ShutdownWorkerRequest) (*ShutdownWorkerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShutdownWorker not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ShutdownWorker not implemented")
 }
 func (UnimplementedWorkflowServiceServer) QueryWorkflow(context.Context, *QueryWorkflowRequest) (*QueryWorkflowResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method QueryWorkflow not implemented")
+	return nil, status.Error(codes.Unimplemented, "method QueryWorkflow not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DescribeWorkflowExecution(context.Context, *DescribeWorkflowExecutionRequest) (*DescribeWorkflowExecutionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DescribeWorkflowExecution not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DescribeWorkflowExecution not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DescribeTaskQueue(context.Context, *DescribeTaskQueueRequest) (*DescribeTaskQueueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DescribeTaskQueue not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DescribeTaskQueue not implemented")
 }
 func (UnimplementedWorkflowServiceServer) GetClusterInfo(context.Context, *GetClusterInfoRequest) (*GetClusterInfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetClusterInfo not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetClusterInfo not implemented")
 }
 func (UnimplementedWorkflowServiceServer) GetSystemInfo(context.Context, *GetSystemInfoRequest) (*GetSystemInfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSystemInfo not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetSystemInfo not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ListTaskQueuePartitions(context.Context, *ListTaskQueuePartitionsRequest) (*ListTaskQueuePartitionsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListTaskQueuePartitions not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListTaskQueuePartitions not implemented")
 }
 func (UnimplementedWorkflowServiceServer) CreateSchedule(context.Context, *CreateScheduleRequest) (*CreateScheduleResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateSchedule not implemented")
+	return nil, status.Error(codes.Unimplemented, "method CreateSchedule not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DescribeSchedule(context.Context, *DescribeScheduleRequest) (*DescribeScheduleResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DescribeSchedule not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DescribeSchedule not implemented")
 }
 func (UnimplementedWorkflowServiceServer) UpdateSchedule(context.Context, *UpdateScheduleRequest) (*UpdateScheduleResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateSchedule not implemented")
+	return nil, status.Error(codes.Unimplemented, "method UpdateSchedule not implemented")
 }
 func (UnimplementedWorkflowServiceServer) PatchSchedule(context.Context, *PatchScheduleRequest) (*PatchScheduleResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PatchSchedule not implemented")
+	return nil, status.Error(codes.Unimplemented, "method PatchSchedule not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ListScheduleMatchingTimes(context.Context, *ListScheduleMatchingTimesRequest) (*ListScheduleMatchingTimesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListScheduleMatchingTimes not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListScheduleMatchingTimes not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DeleteSchedule(context.Context, *DeleteScheduleRequest) (*DeleteScheduleResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteSchedule not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DeleteSchedule not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ListSchedules(context.Context, *ListSchedulesRequest) (*ListSchedulesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListSchedules not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListSchedules not implemented")
+}
+func (UnimplementedWorkflowServiceServer) CountSchedules(context.Context, *CountSchedulesRequest) (*CountSchedulesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CountSchedules not implemented")
 }
 func (UnimplementedWorkflowServiceServer) UpdateWorkerBuildIdCompatibility(context.Context, *UpdateWorkerBuildIdCompatibilityRequest) (*UpdateWorkerBuildIdCompatibilityResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateWorkerBuildIdCompatibility not implemented")
+	return nil, status.Error(codes.Unimplemented, "method UpdateWorkerBuildIdCompatibility not implemented")
 }
 func (UnimplementedWorkflowServiceServer) GetWorkerBuildIdCompatibility(context.Context, *GetWorkerBuildIdCompatibilityRequest) (*GetWorkerBuildIdCompatibilityResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetWorkerBuildIdCompatibility not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetWorkerBuildIdCompatibility not implemented")
 }
 func (UnimplementedWorkflowServiceServer) UpdateWorkerVersioningRules(context.Context, *UpdateWorkerVersioningRulesRequest) (*UpdateWorkerVersioningRulesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateWorkerVersioningRules not implemented")
+	return nil, status.Error(codes.Unimplemented, "method UpdateWorkerVersioningRules not implemented")
 }
 func (UnimplementedWorkflowServiceServer) GetWorkerVersioningRules(context.Context, *GetWorkerVersioningRulesRequest) (*GetWorkerVersioningRulesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetWorkerVersioningRules not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetWorkerVersioningRules not implemented")
 }
 func (UnimplementedWorkflowServiceServer) GetWorkerTaskReachability(context.Context, *GetWorkerTaskReachabilityRequest) (*GetWorkerTaskReachabilityResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetWorkerTaskReachability not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetWorkerTaskReachability not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DescribeDeployment(context.Context, *DescribeDeploymentRequest) (*DescribeDeploymentResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DescribeDeployment not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DescribeDeployment not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DescribeWorkerDeploymentVersion(context.Context, *DescribeWorkerDeploymentVersionRequest) (*DescribeWorkerDeploymentVersionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DescribeWorkerDeploymentVersion not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DescribeWorkerDeploymentVersion not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ListDeployments(context.Context, *ListDeploymentsRequest) (*ListDeploymentsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListDeployments not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListDeployments not implemented")
 }
 func (UnimplementedWorkflowServiceServer) GetDeploymentReachability(context.Context, *GetDeploymentReachabilityRequest) (*GetDeploymentReachabilityResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetDeploymentReachability not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetDeploymentReachability not implemented")
 }
 func (UnimplementedWorkflowServiceServer) GetCurrentDeployment(context.Context, *GetCurrentDeploymentRequest) (*GetCurrentDeploymentResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetCurrentDeployment not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetCurrentDeployment not implemented")
 }
 func (UnimplementedWorkflowServiceServer) SetCurrentDeployment(context.Context, *SetCurrentDeploymentRequest) (*SetCurrentDeploymentResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetCurrentDeployment not implemented")
+	return nil, status.Error(codes.Unimplemented, "method SetCurrentDeployment not implemented")
 }
 func (UnimplementedWorkflowServiceServer) SetWorkerDeploymentCurrentVersion(context.Context, *SetWorkerDeploymentCurrentVersionRequest) (*SetWorkerDeploymentCurrentVersionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetWorkerDeploymentCurrentVersion not implemented")
+	return nil, status.Error(codes.Unimplemented, "method SetWorkerDeploymentCurrentVersion not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DescribeWorkerDeployment(context.Context, *DescribeWorkerDeploymentRequest) (*DescribeWorkerDeploymentResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DescribeWorkerDeployment not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DescribeWorkerDeployment not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DeleteWorkerDeployment(context.Context, *DeleteWorkerDeploymentRequest) (*DeleteWorkerDeploymentResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteWorkerDeployment not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DeleteWorkerDeployment not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DeleteWorkerDeploymentVersion(context.Context, *DeleteWorkerDeploymentVersionRequest) (*DeleteWorkerDeploymentVersionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteWorkerDeploymentVersion not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DeleteWorkerDeploymentVersion not implemented")
 }
 func (UnimplementedWorkflowServiceServer) SetWorkerDeploymentRampingVersion(context.Context, *SetWorkerDeploymentRampingVersionRequest) (*SetWorkerDeploymentRampingVersionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetWorkerDeploymentRampingVersion not implemented")
+	return nil, status.Error(codes.Unimplemented, "method SetWorkerDeploymentRampingVersion not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ListWorkerDeployments(context.Context, *ListWorkerDeploymentsRequest) (*ListWorkerDeploymentsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListWorkerDeployments not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListWorkerDeployments not implemented")
 }
 func (UnimplementedWorkflowServiceServer) UpdateWorkerDeploymentVersionMetadata(context.Context, *UpdateWorkerDeploymentVersionMetadataRequest) (*UpdateWorkerDeploymentVersionMetadataResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateWorkerDeploymentVersionMetadata not implemented")
+	return nil, status.Error(codes.Unimplemented, "method UpdateWorkerDeploymentVersionMetadata not implemented")
 }
 func (UnimplementedWorkflowServiceServer) SetWorkerDeploymentManager(context.Context, *SetWorkerDeploymentManagerRequest) (*SetWorkerDeploymentManagerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetWorkerDeploymentManager not implemented")
+	return nil, status.Error(codes.Unimplemented, "method SetWorkerDeploymentManager not implemented")
 }
 func (UnimplementedWorkflowServiceServer) UpdateWorkflowExecution(context.Context, *UpdateWorkflowExecutionRequest) (*UpdateWorkflowExecutionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateWorkflowExecution not implemented")
+	return nil, status.Error(codes.Unimplemented, "method UpdateWorkflowExecution not implemented")
 }
 func (UnimplementedWorkflowServiceServer) PollWorkflowExecutionUpdate(context.Context, *PollWorkflowExecutionUpdateRequest) (*PollWorkflowExecutionUpdateResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PollWorkflowExecutionUpdate not implemented")
+	return nil, status.Error(codes.Unimplemented, "method PollWorkflowExecutionUpdate not implemented")
 }
 func (UnimplementedWorkflowServiceServer) StartBatchOperation(context.Context, *StartBatchOperationRequest) (*StartBatchOperationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method StartBatchOperation not implemented")
+	return nil, status.Error(codes.Unimplemented, "method StartBatchOperation not implemented")
 }
 func (UnimplementedWorkflowServiceServer) StopBatchOperation(context.Context, *StopBatchOperationRequest) (*StopBatchOperationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method StopBatchOperation not implemented")
+	return nil, status.Error(codes.Unimplemented, "method StopBatchOperation not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DescribeBatchOperation(context.Context, *DescribeBatchOperationRequest) (*DescribeBatchOperationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DescribeBatchOperation not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DescribeBatchOperation not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ListBatchOperations(context.Context, *ListBatchOperationsRequest) (*ListBatchOperationsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListBatchOperations not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListBatchOperations not implemented")
 }
 func (UnimplementedWorkflowServiceServer) PollNexusTaskQueue(context.Context, *PollNexusTaskQueueRequest) (*PollNexusTaskQueueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PollNexusTaskQueue not implemented")
+	return nil, status.Error(codes.Unimplemented, "method PollNexusTaskQueue not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RespondNexusTaskCompleted(context.Context, *RespondNexusTaskCompletedRequest) (*RespondNexusTaskCompletedResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RespondNexusTaskCompleted not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RespondNexusTaskCompleted not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RespondNexusTaskFailed(context.Context, *RespondNexusTaskFailedRequest) (*RespondNexusTaskFailedResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RespondNexusTaskFailed not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RespondNexusTaskFailed not implemented")
 }
 func (UnimplementedWorkflowServiceServer) UpdateActivityOptions(context.Context, *UpdateActivityOptionsRequest) (*UpdateActivityOptionsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateActivityOptions not implemented")
+	return nil, status.Error(codes.Unimplemented, "method UpdateActivityOptions not implemented")
 }
 func (UnimplementedWorkflowServiceServer) UpdateWorkflowExecutionOptions(context.Context, *UpdateWorkflowExecutionOptionsRequest) (*UpdateWorkflowExecutionOptionsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateWorkflowExecutionOptions not implemented")
+	return nil, status.Error(codes.Unimplemented, "method UpdateWorkflowExecutionOptions not implemented")
 }
 func (UnimplementedWorkflowServiceServer) PauseActivity(context.Context, *PauseActivityRequest) (*PauseActivityResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PauseActivity not implemented")
+	return nil, status.Error(codes.Unimplemented, "method PauseActivity not implemented")
 }
 func (UnimplementedWorkflowServiceServer) UnpauseActivity(context.Context, *UnpauseActivityRequest) (*UnpauseActivityResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UnpauseActivity not implemented")
+	return nil, status.Error(codes.Unimplemented, "method UnpauseActivity not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ResetActivity(context.Context, *ResetActivityRequest) (*ResetActivityResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ResetActivity not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ResetActivity not implemented")
 }
 func (UnimplementedWorkflowServiceServer) CreateWorkflowRule(context.Context, *CreateWorkflowRuleRequest) (*CreateWorkflowRuleResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateWorkflowRule not implemented")
+	return nil, status.Error(codes.Unimplemented, "method CreateWorkflowRule not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DescribeWorkflowRule(context.Context, *DescribeWorkflowRuleRequest) (*DescribeWorkflowRuleResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DescribeWorkflowRule not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DescribeWorkflowRule not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DeleteWorkflowRule(context.Context, *DeleteWorkflowRuleRequest) (*DeleteWorkflowRuleResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteWorkflowRule not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DeleteWorkflowRule not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ListWorkflowRules(context.Context, *ListWorkflowRulesRequest) (*ListWorkflowRulesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListWorkflowRules not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListWorkflowRules not implemented")
 }
 func (UnimplementedWorkflowServiceServer) TriggerWorkflowRule(context.Context, *TriggerWorkflowRuleRequest) (*TriggerWorkflowRuleResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TriggerWorkflowRule not implemented")
+	return nil, status.Error(codes.Unimplemented, "method TriggerWorkflowRule not implemented")
 }
 func (UnimplementedWorkflowServiceServer) RecordWorkerHeartbeat(context.Context, *RecordWorkerHeartbeatRequest) (*RecordWorkerHeartbeatResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RecordWorkerHeartbeat not implemented")
+	return nil, status.Error(codes.Unimplemented, "method RecordWorkerHeartbeat not implemented")
 }
 func (UnimplementedWorkflowServiceServer) ListWorkers(context.Context, *ListWorkersRequest) (*ListWorkersResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListWorkers not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ListWorkers not implemented")
 }
 func (UnimplementedWorkflowServiceServer) UpdateTaskQueueConfig(context.Context, *UpdateTaskQueueConfigRequest) (*UpdateTaskQueueConfigResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateTaskQueueConfig not implemented")
+	return nil, status.Error(codes.Unimplemented, "method UpdateTaskQueueConfig not implemented")
 }
 func (UnimplementedWorkflowServiceServer) FetchWorkerConfig(context.Context, *FetchWorkerConfigRequest) (*FetchWorkerConfigResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FetchWorkerConfig not implemented")
+	return nil, status.Error(codes.Unimplemented, "method FetchWorkerConfig not implemented")
 }
 func (UnimplementedWorkflowServiceServer) UpdateWorkerConfig(context.Context, *UpdateWorkerConfigRequest) (*UpdateWorkerConfigResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateWorkerConfig not implemented")
+	return nil, status.Error(codes.Unimplemented, "method UpdateWorkerConfig not implemented")
 }
 func (UnimplementedWorkflowServiceServer) DescribeWorker(context.Context, *DescribeWorkerRequest) (*DescribeWorkerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DescribeWorker not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DescribeWorker not implemented")
 }
 func (UnimplementedWorkflowServiceServer) PauseWorkflowExecution(context.Context, *PauseWorkflowExecutionRequest) (*PauseWorkflowExecutionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PauseWorkflowExecution not implemented")
+	return nil, status.Error(codes.Unimplemented, "method PauseWorkflowExecution not implemented")
 }
 func (UnimplementedWorkflowServiceServer) UnpauseWorkflowExecution(context.Context, *UnpauseWorkflowExecutionRequest) (*UnpauseWorkflowExecutionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UnpauseWorkflowExecution not implemented")
+	return nil, status.Error(codes.Unimplemented, "method UnpauseWorkflowExecution not implemented")
+}
+func (UnimplementedWorkflowServiceServer) StartActivityExecution(context.Context, *StartActivityExecutionRequest) (*StartActivityExecutionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method StartActivityExecution not implemented")
+}
+func (UnimplementedWorkflowServiceServer) DescribeActivityExecution(context.Context, *DescribeActivityExecutionRequest) (*DescribeActivityExecutionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DescribeActivityExecution not implemented")
+}
+func (UnimplementedWorkflowServiceServer) PollActivityExecution(context.Context, *PollActivityExecutionRequest) (*PollActivityExecutionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PollActivityExecution not implemented")
+}
+func (UnimplementedWorkflowServiceServer) ListActivityExecutions(context.Context, *ListActivityExecutionsRequest) (*ListActivityExecutionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListActivityExecutions not implemented")
+}
+func (UnimplementedWorkflowServiceServer) CountActivityExecutions(context.Context, *CountActivityExecutionsRequest) (*CountActivityExecutionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CountActivityExecutions not implemented")
+}
+func (UnimplementedWorkflowServiceServer) RequestCancelActivityExecution(context.Context, *RequestCancelActivityExecutionRequest) (*RequestCancelActivityExecutionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RequestCancelActivityExecution not implemented")
+}
+func (UnimplementedWorkflowServiceServer) TerminateActivityExecution(context.Context, *TerminateActivityExecutionRequest) (*TerminateActivityExecutionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method TerminateActivityExecution not implemented")
+}
+func (UnimplementedWorkflowServiceServer) DeleteActivityExecution(context.Context, *DeleteActivityExecutionRequest) (*DeleteActivityExecutionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteActivityExecution not implemented")
 }
 func (UnimplementedWorkflowServiceServer) mustEmbedUnimplementedWorkflowServiceServer() {}
 func (UnimplementedWorkflowServiceServer) testEmbeddedByValue()                         {}
@@ -2575,7 +2813,7 @@ type UnsafeWorkflowServiceServer interface {
 }
 
 func RegisterWorkflowServiceServer(s grpc.ServiceRegistrar, srv WorkflowServiceServer) {
-	// If the following call pancis, it indicates UnimplementedWorkflowServiceServer was
+	// If the following call panics, it indicates UnimplementedWorkflowServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
@@ -3485,6 +3723,24 @@ func _WorkflowService_ListSchedules_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkflowService_CountSchedules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CountSchedulesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).CountSchedules(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_CountSchedules_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).CountSchedules(ctx, req.(*CountSchedulesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WorkflowService_UpdateWorkerBuildIdCompatibility_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateWorkerBuildIdCompatibilityRequest)
 	if err := dec(in); err != nil {
@@ -4313,6 +4569,150 @@ func _WorkflowService_UnpauseWorkflowExecution_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkflowService_StartActivityExecution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartActivityExecutionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).StartActivityExecution(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_StartActivityExecution_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).StartActivityExecution(ctx, req.(*StartActivityExecutionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_DescribeActivityExecution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DescribeActivityExecutionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).DescribeActivityExecution(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_DescribeActivityExecution_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).DescribeActivityExecution(ctx, req.(*DescribeActivityExecutionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_PollActivityExecution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PollActivityExecutionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).PollActivityExecution(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_PollActivityExecution_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).PollActivityExecution(ctx, req.(*PollActivityExecutionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_ListActivityExecutions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListActivityExecutionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).ListActivityExecutions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_ListActivityExecutions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).ListActivityExecutions(ctx, req.(*ListActivityExecutionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_CountActivityExecutions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CountActivityExecutionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).CountActivityExecutions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_CountActivityExecutions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).CountActivityExecutions(ctx, req.(*CountActivityExecutionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_RequestCancelActivityExecution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestCancelActivityExecutionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).RequestCancelActivityExecution(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_RequestCancelActivityExecution_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).RequestCancelActivityExecution(ctx, req.(*RequestCancelActivityExecutionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_TerminateActivityExecution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TerminateActivityExecutionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).TerminateActivityExecution(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_TerminateActivityExecution_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).TerminateActivityExecution(ctx, req.(*TerminateActivityExecutionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowService_DeleteActivityExecution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteActivityExecutionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowServiceServer).DeleteActivityExecution(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowService_DeleteActivityExecution_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowServiceServer).DeleteActivityExecution(ctx, req.(*DeleteActivityExecutionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkflowService_ServiceDesc is the grpc.ServiceDesc for WorkflowService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -4521,6 +4921,10 @@ var WorkflowService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WorkflowService_ListSchedules_Handler,
 		},
 		{
+			MethodName: "CountSchedules",
+			Handler:    _WorkflowService_CountSchedules_Handler,
+		},
+		{
 			MethodName: "UpdateWorkerBuildIdCompatibility",
 			Handler:    _WorkflowService_UpdateWorkerBuildIdCompatibility_Handler,
 		},
@@ -4703,6 +5107,38 @@ var WorkflowService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnpauseWorkflowExecution",
 			Handler:    _WorkflowService_UnpauseWorkflowExecution_Handler,
+		},
+		{
+			MethodName: "StartActivityExecution",
+			Handler:    _WorkflowService_StartActivityExecution_Handler,
+		},
+		{
+			MethodName: "DescribeActivityExecution",
+			Handler:    _WorkflowService_DescribeActivityExecution_Handler,
+		},
+		{
+			MethodName: "PollActivityExecution",
+			Handler:    _WorkflowService_PollActivityExecution_Handler,
+		},
+		{
+			MethodName: "ListActivityExecutions",
+			Handler:    _WorkflowService_ListActivityExecutions_Handler,
+		},
+		{
+			MethodName: "CountActivityExecutions",
+			Handler:    _WorkflowService_CountActivityExecutions_Handler,
+		},
+		{
+			MethodName: "RequestCancelActivityExecution",
+			Handler:    _WorkflowService_RequestCancelActivityExecution_Handler,
+		},
+		{
+			MethodName: "TerminateActivityExecution",
+			Handler:    _WorkflowService_TerminateActivityExecution_Handler,
+		},
+		{
+			MethodName: "DeleteActivityExecution",
+			Handler:    _WorkflowService_DeleteActivityExecution_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

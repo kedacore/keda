@@ -36,6 +36,8 @@ type NamespaceInfo struct {
 	Id   string            `protobuf:"bytes,6,opt,name=id,proto3" json:"id,omitempty"`
 	// All capabilities the namespace supports.
 	Capabilities *NamespaceInfo_Capabilities `protobuf:"bytes,7,opt,name=capabilities,proto3" json:"capabilities,omitempty"`
+	// Namespace configured limits
+	Limits *NamespaceInfo_Limits `protobuf:"bytes,8,opt,name=limits,proto3" json:"limits,omitempty"`
 	// Whether scheduled workflows are supported on this namespace. This is only needed
 	// temporarily while the feature is experimental, so we can give it a high tag.
 	SupportsSchedules bool `protobuf:"varint,100,opt,name=supports_schedules,json=supportsSchedules,proto3" json:"supports_schedules,omitempty"`
@@ -118,6 +120,13 @@ func (x *NamespaceInfo) GetId() string {
 func (x *NamespaceInfo) GetCapabilities() *NamespaceInfo_Capabilities {
 	if x != nil {
 		return x.Capabilities
+	}
+	return nil
+}
+
+func (x *NamespaceInfo) GetLimits() *NamespaceInfo_Limits {
+	if x != nil {
+		return x.Limits
 	}
 	return nil
 }
@@ -466,8 +475,12 @@ type NamespaceInfo_Capabilities struct {
 	WorkerHeartbeats bool `protobuf:"varint,4,opt,name=worker_heartbeats,json=workerHeartbeats,proto3" json:"worker_heartbeats,omitempty"`
 	// True if the namespace supports reported problems search attribute
 	ReportedProblemsSearchAttribute bool `protobuf:"varint,5,opt,name=reported_problems_search_attribute,json=reportedProblemsSearchAttribute,proto3" json:"reported_problems_search_attribute,omitempty"`
-	unknownFields                   protoimpl.UnknownFields
-	sizeCache                       protoimpl.SizeCache
+	// True if the namespace supports pausing workflows
+	WorkflowPause bool `protobuf:"varint,6,opt,name=workflow_pause,json=workflowPause,proto3" json:"workflow_pause,omitempty"`
+	// True if the namespace supports standalone activities
+	StandaloneActivities bool `protobuf:"varint,7,opt,name=standalone_activities,json=standaloneActivities,proto3" json:"standalone_activities,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *NamespaceInfo_Capabilities) Reset() {
@@ -535,11 +548,81 @@ func (x *NamespaceInfo_Capabilities) GetReportedProblemsSearchAttribute() bool {
 	return false
 }
 
+func (x *NamespaceInfo_Capabilities) GetWorkflowPause() bool {
+	if x != nil {
+		return x.WorkflowPause
+	}
+	return false
+}
+
+func (x *NamespaceInfo_Capabilities) GetStandaloneActivities() bool {
+	if x != nil {
+		return x.StandaloneActivities
+	}
+	return false
+}
+
+type NamespaceInfo_Limits struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Maximum size in bytes for payload fields in workflow history events
+	// (e.g., workflow/activity inputs and results, failure details, signal payloads).
+	// When exceeded, the server will reject the operation with an error.
+	BlobSizeLimitError int64 `protobuf:"varint,1,opt,name=blob_size_limit_error,json=blobSizeLimitError,proto3" json:"blob_size_limit_error,omitempty"`
+	// Maximum total memo size in bytes per workflow execution.
+	MemoSizeLimitError int64 `protobuf:"varint,2,opt,name=memo_size_limit_error,json=memoSizeLimitError,proto3" json:"memo_size_limit_error,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *NamespaceInfo_Limits) Reset() {
+	*x = NamespaceInfo_Limits{}
+	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NamespaceInfo_Limits) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NamespaceInfo_Limits) ProtoMessage() {}
+
+func (x *NamespaceInfo_Limits) ProtoReflect() protoreflect.Message {
+	mi := &file_temporal_api_namespace_v1_message_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NamespaceInfo_Limits.ProtoReflect.Descriptor instead.
+func (*NamespaceInfo_Limits) Descriptor() ([]byte, []int) {
+	return file_temporal_api_namespace_v1_message_proto_rawDescGZIP(), []int{0, 2}
+}
+
+func (x *NamespaceInfo_Limits) GetBlobSizeLimitError() int64 {
+	if x != nil {
+		return x.BlobSizeLimitError
+	}
+	return 0
+}
+
+func (x *NamespaceInfo_Limits) GetMemoSizeLimitError() int64 {
+	if x != nil {
+		return x.MemoSizeLimitError
+	}
+	return 0
+}
+
 var File_temporal_api_namespace_v1_message_proto protoreflect.FileDescriptor
 
 const file_temporal_api_namespace_v1_message_proto_rawDesc = "" +
 	"\n" +
-	"'temporal/api/namespace/v1/message.proto\x12\x19temporal.api.namespace.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a%temporal/api/enums/v1/namespace.proto\"\xbf\x05\n" +
+	"'temporal/api/namespace/v1/message.proto\x12\x19temporal.api.namespace.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a%temporal/api/enums/v1/namespace.proto\"\xd4\a\n" +
 	"\rNamespaceInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12;\n" +
 	"\x05state\x18\x02 \x01(\x0e2%.temporal.api.enums.v1.NamespaceStateR\x05state\x12 \n" +
@@ -548,18 +631,24 @@ const file_temporal_api_namespace_v1_message_proto_rawDesc = "" +
 	"ownerEmail\x12F\n" +
 	"\x04data\x18\x05 \x03(\v22.temporal.api.namespace.v1.NamespaceInfo.DataEntryR\x04data\x12\x0e\n" +
 	"\x02id\x18\x06 \x01(\tR\x02id\x12Y\n" +
-	"\fcapabilities\x18\a \x01(\v25.temporal.api.namespace.v1.NamespaceInfo.CapabilitiesR\fcapabilities\x12-\n" +
+	"\fcapabilities\x18\a \x01(\v25.temporal.api.namespace.v1.NamespaceInfo.CapabilitiesR\fcapabilities\x12G\n" +
+	"\x06limits\x18\b \x01(\v2/.temporal.api.namespace.v1.NamespaceInfo.LimitsR\x06limits\x12-\n" +
 	"\x12supports_schedules\x18d \x01(\bR\x11supportsSchedules\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\xfe\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\xda\x02\n" +
 	"\fCapabilities\x120\n" +
 	"\x14eager_workflow_start\x18\x01 \x01(\bR\x12eagerWorkflowStart\x12\x1f\n" +
 	"\vsync_update\x18\x02 \x01(\bR\n" +
 	"syncUpdate\x12!\n" +
 	"\fasync_update\x18\x03 \x01(\bR\vasyncUpdate\x12+\n" +
 	"\x11worker_heartbeats\x18\x04 \x01(\bR\x10workerHeartbeats\x12K\n" +
-	"\"reported_problems_search_attribute\x18\x05 \x01(\bR\x1freportedProblemsSearchAttribute\"\xcf\x05\n" +
+	"\"reported_problems_search_attribute\x18\x05 \x01(\bR\x1freportedProblemsSearchAttribute\x12%\n" +
+	"\x0eworkflow_pause\x18\x06 \x01(\bR\rworkflowPause\x123\n" +
+	"\x15standalone_activities\x18\a \x01(\bR\x14standaloneActivities\x1an\n" +
+	"\x06Limits\x121\n" +
+	"\x15blob_size_limit_error\x18\x01 \x01(\x03R\x12blobSizeLimitError\x121\n" +
+	"\x15memo_size_limit_error\x18\x02 \x01(\x03R\x12memoSizeLimitError\"\xcf\x05\n" +
 	"\x0fNamespaceConfig\x12b\n" +
 	" workflow_execution_retention_ttl\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\x1dworkflowExecutionRetentionTtl\x12I\n" +
 	"\fbad_binaries\x18\x02 \x01(\v2&.temporal.api.namespace.v1.BadBinariesR\vbadBinaries\x12Z\n" +
@@ -606,7 +695,7 @@ func file_temporal_api_namespace_v1_message_proto_rawDescGZIP() []byte {
 	return file_temporal_api_namespace_v1_message_proto_rawDescData
 }
 
-var file_temporal_api_namespace_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_temporal_api_namespace_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_temporal_api_namespace_v1_message_proto_goTypes = []any{
 	(*NamespaceInfo)(nil),              // 0: temporal.api.namespace.v1.NamespaceInfo
 	(*NamespaceConfig)(nil),            // 1: temporal.api.namespace.v1.NamespaceConfig
@@ -616,33 +705,35 @@ var file_temporal_api_namespace_v1_message_proto_goTypes = []any{
 	(*NamespaceFilter)(nil),            // 5: temporal.api.namespace.v1.NamespaceFilter
 	nil,                                // 6: temporal.api.namespace.v1.NamespaceInfo.DataEntry
 	(*NamespaceInfo_Capabilities)(nil), // 7: temporal.api.namespace.v1.NamespaceInfo.Capabilities
-	nil,                                // 8: temporal.api.namespace.v1.NamespaceConfig.CustomSearchAttributeAliasesEntry
-	nil,                                // 9: temporal.api.namespace.v1.BadBinaries.BinariesEntry
-	nil,                                // 10: temporal.api.namespace.v1.UpdateNamespaceInfo.DataEntry
-	(v1.NamespaceState)(0),             // 11: temporal.api.enums.v1.NamespaceState
-	(*durationpb.Duration)(nil),        // 12: google.protobuf.Duration
-	(v1.ArchivalState)(0),              // 13: temporal.api.enums.v1.ArchivalState
-	(*timestamppb.Timestamp)(nil),      // 14: google.protobuf.Timestamp
+	(*NamespaceInfo_Limits)(nil),       // 8: temporal.api.namespace.v1.NamespaceInfo.Limits
+	nil,                                // 9: temporal.api.namespace.v1.NamespaceConfig.CustomSearchAttributeAliasesEntry
+	nil,                                // 10: temporal.api.namespace.v1.BadBinaries.BinariesEntry
+	nil,                                // 11: temporal.api.namespace.v1.UpdateNamespaceInfo.DataEntry
+	(v1.NamespaceState)(0),             // 12: temporal.api.enums.v1.NamespaceState
+	(*durationpb.Duration)(nil),        // 13: google.protobuf.Duration
+	(v1.ArchivalState)(0),              // 14: temporal.api.enums.v1.ArchivalState
+	(*timestamppb.Timestamp)(nil),      // 15: google.protobuf.Timestamp
 }
 var file_temporal_api_namespace_v1_message_proto_depIdxs = []int32{
-	11, // 0: temporal.api.namespace.v1.NamespaceInfo.state:type_name -> temporal.api.enums.v1.NamespaceState
+	12, // 0: temporal.api.namespace.v1.NamespaceInfo.state:type_name -> temporal.api.enums.v1.NamespaceState
 	6,  // 1: temporal.api.namespace.v1.NamespaceInfo.data:type_name -> temporal.api.namespace.v1.NamespaceInfo.DataEntry
 	7,  // 2: temporal.api.namespace.v1.NamespaceInfo.capabilities:type_name -> temporal.api.namespace.v1.NamespaceInfo.Capabilities
-	12, // 3: temporal.api.namespace.v1.NamespaceConfig.workflow_execution_retention_ttl:type_name -> google.protobuf.Duration
-	2,  // 4: temporal.api.namespace.v1.NamespaceConfig.bad_binaries:type_name -> temporal.api.namespace.v1.BadBinaries
-	13, // 5: temporal.api.namespace.v1.NamespaceConfig.history_archival_state:type_name -> temporal.api.enums.v1.ArchivalState
-	13, // 6: temporal.api.namespace.v1.NamespaceConfig.visibility_archival_state:type_name -> temporal.api.enums.v1.ArchivalState
-	8,  // 7: temporal.api.namespace.v1.NamespaceConfig.custom_search_attribute_aliases:type_name -> temporal.api.namespace.v1.NamespaceConfig.CustomSearchAttributeAliasesEntry
-	9,  // 8: temporal.api.namespace.v1.BadBinaries.binaries:type_name -> temporal.api.namespace.v1.BadBinaries.BinariesEntry
-	14, // 9: temporal.api.namespace.v1.BadBinaryInfo.create_time:type_name -> google.protobuf.Timestamp
-	10, // 10: temporal.api.namespace.v1.UpdateNamespaceInfo.data:type_name -> temporal.api.namespace.v1.UpdateNamespaceInfo.DataEntry
-	11, // 11: temporal.api.namespace.v1.UpdateNamespaceInfo.state:type_name -> temporal.api.enums.v1.NamespaceState
-	3,  // 12: temporal.api.namespace.v1.BadBinaries.BinariesEntry.value:type_name -> temporal.api.namespace.v1.BadBinaryInfo
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	8,  // 3: temporal.api.namespace.v1.NamespaceInfo.limits:type_name -> temporal.api.namespace.v1.NamespaceInfo.Limits
+	13, // 4: temporal.api.namespace.v1.NamespaceConfig.workflow_execution_retention_ttl:type_name -> google.protobuf.Duration
+	2,  // 5: temporal.api.namespace.v1.NamespaceConfig.bad_binaries:type_name -> temporal.api.namespace.v1.BadBinaries
+	14, // 6: temporal.api.namespace.v1.NamespaceConfig.history_archival_state:type_name -> temporal.api.enums.v1.ArchivalState
+	14, // 7: temporal.api.namespace.v1.NamespaceConfig.visibility_archival_state:type_name -> temporal.api.enums.v1.ArchivalState
+	9,  // 8: temporal.api.namespace.v1.NamespaceConfig.custom_search_attribute_aliases:type_name -> temporal.api.namespace.v1.NamespaceConfig.CustomSearchAttributeAliasesEntry
+	10, // 9: temporal.api.namespace.v1.BadBinaries.binaries:type_name -> temporal.api.namespace.v1.BadBinaries.BinariesEntry
+	15, // 10: temporal.api.namespace.v1.BadBinaryInfo.create_time:type_name -> google.protobuf.Timestamp
+	11, // 11: temporal.api.namespace.v1.UpdateNamespaceInfo.data:type_name -> temporal.api.namespace.v1.UpdateNamespaceInfo.DataEntry
+	12, // 12: temporal.api.namespace.v1.UpdateNamespaceInfo.state:type_name -> temporal.api.enums.v1.NamespaceState
+	3,  // 13: temporal.api.namespace.v1.BadBinaries.BinariesEntry.value:type_name -> temporal.api.namespace.v1.BadBinaryInfo
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_temporal_api_namespace_v1_message_proto_init() }
@@ -656,7 +747,7 @@ func file_temporal_api_namespace_v1_message_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_temporal_api_namespace_v1_message_proto_rawDesc), len(file_temporal_api_namespace_v1_message_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -18,6 +18,7 @@ package flight
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -212,24 +213,38 @@ type haserr interface {
 
 // StreamChunksFromReader is a convenience function to populate a channel
 // from a record reader. It is intended to be run using a separate goroutine
-// by calling `go flight.StreamChunksFromReader(rdr, ch)`.
+// by calling `go flight.StreamChunksFromReader(ctx, rdr, ch)`.
 //
 // If the record reader panics, an error chunk will get sent on the channel.
 //
 // This will close the channel and release the reader when it completes.
-func StreamChunksFromReader(rdr array.RecordReader, ch chan<- StreamChunk) {
+func StreamChunksFromReader(ctx context.Context, rdr array.RecordReader, ch chan<- StreamChunk) {
 	defer close(ch)
 	defer func() {
 		if err := recover(); err != nil {
-			ch <- StreamChunk{Err: utils.FormatRecoveredError("panic while reading", err)}
+			select {
+			case ch <- StreamChunk{Err: utils.FormatRecoveredError("panic while reading", err)}:
+			case <-ctx.Done():
+			}
 		}
 	}()
 
 	defer rdr.Release()
 	for rdr.Next() {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		rec := rdr.RecordBatch()
 		rec.Retain()
-		ch <- StreamChunk{Data: rec}
+		select {
+		case ch <- StreamChunk{Data: rec}:
+		case <-ctx.Done():
+			rec.Release()
+			return
+		}
 	}
 
 	if e, ok := rdr.(haserr); ok {
