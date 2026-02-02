@@ -258,7 +258,7 @@ func assignPathValues(dst interface{}, pathValues fieldOrValue) error {
 				// TODO: why is this marked as an ineffassign?
 				tm, err = time.Parse(types.DateFormat, pathValues.value) //nolint:ineffassign,staticcheck
 				if err != nil {
-					return fmt.Errorf("error parsing '%s' as RFC3339 or 2006-01-02 time: %s", pathValues.value, err)
+					return fmt.Errorf("error parsing '%s' as RFC3339 or 2006-01-02 time: %w", pathValues.value, err)
 				}
 				return fmt.Errorf("invalid date format: %w", err)
 			}

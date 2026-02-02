@@ -44,6 +44,7 @@ var (
 		"BadRequestCancelNexusOperationAttributes":            34,
 		"FeatureDisabled":                                     35,
 		"GrpcMessageTooLarge":                                 36,
+		"PayloadsTooLarge":                                    37,
 	}
 )
 

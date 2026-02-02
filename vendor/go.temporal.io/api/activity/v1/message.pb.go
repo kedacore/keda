@@ -11,11 +11,16 @@ import (
 	sync "sync"
 	unsafe "unsafe"
 
-	v11 "go.temporal.io/api/common/v1"
-	v1 "go.temporal.io/api/taskqueue/v1"
+	v1 "go.temporal.io/api/common/v1"
+	v14 "go.temporal.io/api/deployment/v1"
+	v13 "go.temporal.io/api/enums/v1"
+	v11 "go.temporal.io/api/failure/v1"
+	v15 "go.temporal.io/api/sdk/v1"
+	v12 "go.temporal.io/api/taskqueue/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -25,9 +30,94 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// The outcome of a completed activity execution: either a successful result or a failure.
+type ActivityExecutionOutcome struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Value:
+	//
+	//	*ActivityExecutionOutcome_Result
+	//	*ActivityExecutionOutcome_Failure
+	Value         isActivityExecutionOutcome_Value `protobuf_oneof:"value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ActivityExecutionOutcome) Reset() {
+	*x = ActivityExecutionOutcome{}
+	mi := &file_temporal_api_activity_v1_message_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ActivityExecutionOutcome) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ActivityExecutionOutcome) ProtoMessage() {}
+
+func (x *ActivityExecutionOutcome) ProtoReflect() protoreflect.Message {
+	mi := &file_temporal_api_activity_v1_message_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ActivityExecutionOutcome.ProtoReflect.Descriptor instead.
+func (*ActivityExecutionOutcome) Descriptor() ([]byte, []int) {
+	return file_temporal_api_activity_v1_message_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ActivityExecutionOutcome) GetValue() isActivityExecutionOutcome_Value {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
+func (x *ActivityExecutionOutcome) GetResult() *v1.Payloads {
+	if x != nil {
+		if x, ok := x.Value.(*ActivityExecutionOutcome_Result); ok {
+			return x.Result
+		}
+	}
+	return nil
+}
+
+func (x *ActivityExecutionOutcome) GetFailure() *v11.Failure {
+	if x != nil {
+		if x, ok := x.Value.(*ActivityExecutionOutcome_Failure); ok {
+			return x.Failure
+		}
+	}
+	return nil
+}
+
+type isActivityExecutionOutcome_Value interface {
+	isActivityExecutionOutcome_Value()
+}
+
+type ActivityExecutionOutcome_Result struct {
+	// The result if the activity completed successfully.
+	Result *v1.Payloads `protobuf:"bytes,1,opt,name=result,proto3,oneof"`
+}
+
+type ActivityExecutionOutcome_Failure struct {
+	// The failure if the activity completed unsuccessfully.
+	Failure *v11.Failure `protobuf:"bytes,2,opt,name=failure,proto3,oneof"`
+}
+
+func (*ActivityExecutionOutcome_Result) isActivityExecutionOutcome_Value() {}
+
+func (*ActivityExecutionOutcome_Failure) isActivityExecutionOutcome_Value() {}
+
 type ActivityOptions struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
-	TaskQueue *v1.TaskQueue          `protobuf:"bytes,1,opt,name=task_queue,json=taskQueue,proto3" json:"task_queue,omitempty"`
+	TaskQueue *v12.TaskQueue         `protobuf:"bytes,1,opt,name=task_queue,json=taskQueue,proto3" json:"task_queue,omitempty"`
 	// Indicates how long the caller is willing to wait for an activity completion. Limits how long
 	// retries will be attempted. Either this or `start_to_close_timeout` must be specified.
 	//
@@ -54,14 +144,18 @@ type ActivityOptions struct {
 	StartToCloseTimeout *durationpb.Duration `protobuf:"bytes,4,opt,name=start_to_close_timeout,json=startToCloseTimeout,proto3" json:"start_to_close_timeout,omitempty"`
 	// Maximum permitted time between successful worker heartbeats.
 	HeartbeatTimeout *durationpb.Duration `protobuf:"bytes,5,opt,name=heartbeat_timeout,json=heartbeatTimeout,proto3" json:"heartbeat_timeout,omitempty"`
-	RetryPolicy      *v11.RetryPolicy     `protobuf:"bytes,6,opt,name=retry_policy,json=retryPolicy,proto3" json:"retry_policy,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The retry policy for the activity. Will never exceed `schedule_to_close_timeout`.
+	RetryPolicy *v1.RetryPolicy `protobuf:"bytes,6,opt,name=retry_policy,json=retryPolicy,proto3" json:"retry_policy,omitempty"`
+	// Priority metadata. If this message is not present, or any fields are not
+	// present, they inherit the values from the workflow.
+	Priority      *v1.Priority `protobuf:"bytes,7,opt,name=priority,proto3" json:"priority,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ActivityOptions) Reset() {
 	*x = ActivityOptions{}
-	mi := &file_temporal_api_activity_v1_message_proto_msgTypes[0]
+	mi := &file_temporal_api_activity_v1_message_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -73,7 +167,7 @@ func (x *ActivityOptions) String() string {
 func (*ActivityOptions) ProtoMessage() {}
 
 func (x *ActivityOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_temporal_api_activity_v1_message_proto_msgTypes[0]
+	mi := &file_temporal_api_activity_v1_message_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -86,10 +180,10 @@ func (x *ActivityOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ActivityOptions.ProtoReflect.Descriptor instead.
 func (*ActivityOptions) Descriptor() ([]byte, []int) {
-	return file_temporal_api_activity_v1_message_proto_rawDescGZIP(), []int{0}
+	return file_temporal_api_activity_v1_message_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ActivityOptions) GetTaskQueue() *v1.TaskQueue {
+func (x *ActivityOptions) GetTaskQueue() *v12.TaskQueue {
 	if x != nil {
 		return x.TaskQueue
 	}
@@ -124,9 +218,499 @@ func (x *ActivityOptions) GetHeartbeatTimeout() *durationpb.Duration {
 	return nil
 }
 
-func (x *ActivityOptions) GetRetryPolicy() *v11.RetryPolicy {
+func (x *ActivityOptions) GetRetryPolicy() *v1.RetryPolicy {
 	if x != nil {
 		return x.RetryPolicy
+	}
+	return nil
+}
+
+func (x *ActivityOptions) GetPriority() *v1.Priority {
+	if x != nil {
+		return x.Priority
+	}
+	return nil
+}
+
+// Information about a standalone activity.
+type ActivityExecutionInfo struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Unique identifier of this activity within its namespace along with run ID (below).
+	ActivityId string `protobuf:"bytes,1,opt,name=activity_id,json=activityId,proto3" json:"activity_id,omitempty"`
+	RunId      string `protobuf:"bytes,2,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	// The type of the activity, a string that maps to a registered activity on a worker.
+	ActivityType *v1.ActivityType `protobuf:"bytes,3,opt,name=activity_type,json=activityType,proto3" json:"activity_type,omitempty"`
+	// A general status for this activity, indicates whether it is currently running or in one of the terminal statuses.
+	Status v13.ActivityExecutionStatus `protobuf:"varint,4,opt,name=status,proto3,enum=temporal.api.enums.v1.ActivityExecutionStatus" json:"status,omitempty"`
+	// More detailed breakdown of ACTIVITY_EXECUTION_STATUS_RUNNING.
+	RunState  v13.PendingActivityState `protobuf:"varint,5,opt,name=run_state,json=runState,proto3,enum=temporal.api.enums.v1.PendingActivityState" json:"run_state,omitempty"`
+	TaskQueue string                   `protobuf:"bytes,6,opt,name=task_queue,json=taskQueue,proto3" json:"task_queue,omitempty"`
+	// Indicates how long the caller is willing to wait for an activity completion. Limits how long
+	// retries will be attempted.
+	//
+	// (-- api-linter: core::0140::prepositions=disabled
+	//
+	//	aip.dev/not-precedent: "to" is used to indicate interval. --)
+	ScheduleToCloseTimeout *durationpb.Duration `protobuf:"bytes,7,opt,name=schedule_to_close_timeout,json=scheduleToCloseTimeout,proto3" json:"schedule_to_close_timeout,omitempty"`
+	// Limits time an activity task can stay in a task queue before a worker picks it up. This
+	// timeout is always non retryable, as all a retry would achieve is to put it back into the same
+	// queue. Defaults to `schedule_to_close_timeout`.
+	//
+	// (-- api-linter: core::0140::prepositions=disabled
+	//
+	//	aip.dev/not-precedent: "to" is used to indicate interval. --)
+	ScheduleToStartTimeout *durationpb.Duration `protobuf:"bytes,8,opt,name=schedule_to_start_timeout,json=scheduleToStartTimeout,proto3" json:"schedule_to_start_timeout,omitempty"`
+	// Maximum time a single activity attempt is allowed to execute after being picked up by a worker. This
+	// timeout is always retryable.
+	//
+	// (-- api-linter: core::0140::prepositions=disabled
+	//
+	//	aip.dev/not-precedent: "to" is used to indicate interval. --)
+	StartToCloseTimeout *durationpb.Duration `protobuf:"bytes,9,opt,name=start_to_close_timeout,json=startToCloseTimeout,proto3" json:"start_to_close_timeout,omitempty"`
+	// Maximum permitted time between successful worker heartbeats.
+	HeartbeatTimeout *durationpb.Duration `protobuf:"bytes,10,opt,name=heartbeat_timeout,json=heartbeatTimeout,proto3" json:"heartbeat_timeout,omitempty"`
+	// The retry policy for the activity. Will never exceed `schedule_to_close_timeout`.
+	RetryPolicy *v1.RetryPolicy `protobuf:"bytes,11,opt,name=retry_policy,json=retryPolicy,proto3" json:"retry_policy,omitempty"`
+	// Details provided in the last recorded activity heartbeat.
+	HeartbeatDetails *v1.Payloads `protobuf:"bytes,12,opt,name=heartbeat_details,json=heartbeatDetails,proto3" json:"heartbeat_details,omitempty"`
+	// Time the last heartbeat was recorded.
+	LastHeartbeatTime *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=last_heartbeat_time,json=lastHeartbeatTime,proto3" json:"last_heartbeat_time,omitempty"`
+	// Time the last attempt was started.
+	LastStartedTime *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=last_started_time,json=lastStartedTime,proto3" json:"last_started_time,omitempty"`
+	// The attempt this activity is currently on. Incremented each time a new attempt is scheduled.
+	Attempt int32 `protobuf:"varint,15,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	// How long this activity has been running for, including all attempts and backoff between attempts.
+	ExecutionDuration *durationpb.Duration `protobuf:"bytes,16,opt,name=execution_duration,json=executionDuration,proto3" json:"execution_duration,omitempty"`
+	// Time the activity was originally scheduled via a StartActivityExecution request.
+	ScheduleTime *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=schedule_time,json=scheduleTime,proto3" json:"schedule_time,omitempty"`
+	// Scheduled time + schedule to close timeout.
+	ExpirationTime *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=expiration_time,json=expirationTime,proto3" json:"expiration_time,omitempty"`
+	// Time when the activity transitioned to a closed state.
+	CloseTime *timestamppb.Timestamp `protobuf:"bytes,19,opt,name=close_time,json=closeTime,proto3" json:"close_time,omitempty"`
+	// Failure details from the last failed attempt.
+	LastFailure        *v11.Failure `protobuf:"bytes,20,opt,name=last_failure,json=lastFailure,proto3" json:"last_failure,omitempty"`
+	LastWorkerIdentity string       `protobuf:"bytes,21,opt,name=last_worker_identity,json=lastWorkerIdentity,proto3" json:"last_worker_identity,omitempty"`
+	// Time from the last attempt failure to the next activity retry.
+	// If the activity is currently running, this represents the next retry interval in case the attempt fails.
+	// If activity is currently backing off between attempt, this represents the current retry interval.
+	// If there is no next retry allowed, this field will be null.
+	// This interval is typically calculated from the specified retry policy, but may be modified if an activity fails
+	// with a retryable application failure specifying a retry delay.
+	CurrentRetryInterval *durationpb.Duration `protobuf:"bytes,22,opt,name=current_retry_interval,json=currentRetryInterval,proto3" json:"current_retry_interval,omitempty"`
+	// The time when the last activity attempt completed. If activity has not been completed yet, it will be null.
+	LastAttemptCompleteTime *timestamppb.Timestamp `protobuf:"bytes,23,opt,name=last_attempt_complete_time,json=lastAttemptCompleteTime,proto3" json:"last_attempt_complete_time,omitempty"`
+	// The time when the next activity attempt will be scheduled.
+	// If activity is currently scheduled or started, this field will be null.
+	NextAttemptScheduleTime *timestamppb.Timestamp `protobuf:"bytes,24,opt,name=next_attempt_schedule_time,json=nextAttemptScheduleTime,proto3" json:"next_attempt_schedule_time,omitempty"`
+	// The Worker Deployment Version this activity was dispatched to most recently.
+	// If nil, the activity has not yet been dispatched or was last dispatched to an unversioned worker.
+	LastDeploymentVersion *v14.WorkerDeploymentVersion `protobuf:"bytes,25,opt,name=last_deployment_version,json=lastDeploymentVersion,proto3" json:"last_deployment_version,omitempty"`
+	// Priority metadata.
+	Priority *v1.Priority `protobuf:"bytes,26,opt,name=priority,proto3" json:"priority,omitempty"`
+	// Incremented each time the activity's state is mutated in persistence.
+	StateTransitionCount int64 `protobuf:"varint,27,opt,name=state_transition_count,json=stateTransitionCount,proto3" json:"state_transition_count,omitempty"`
+	// Updated once on scheduled and once on terminal status.
+	StateSizeBytes   int64                `protobuf:"varint,28,opt,name=state_size_bytes,json=stateSizeBytes,proto3" json:"state_size_bytes,omitempty"`
+	SearchAttributes *v1.SearchAttributes `protobuf:"bytes,29,opt,name=search_attributes,json=searchAttributes,proto3" json:"search_attributes,omitempty"`
+	Header           *v1.Header           `protobuf:"bytes,30,opt,name=header,proto3" json:"header,omitempty"`
+	// Metadata for use by user interfaces to display the fixed as-of-start summary and details of the activity.
+	UserMetadata *v15.UserMetadata `protobuf:"bytes,31,opt,name=user_metadata,json=userMetadata,proto3" json:"user_metadata,omitempty"`
+	// Set if activity cancelation was requested.
+	CanceledReason string `protobuf:"bytes,32,opt,name=canceled_reason,json=canceledReason,proto3" json:"canceled_reason,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ActivityExecutionInfo) Reset() {
+	*x = ActivityExecutionInfo{}
+	mi := &file_temporal_api_activity_v1_message_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ActivityExecutionInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ActivityExecutionInfo) ProtoMessage() {}
+
+func (x *ActivityExecutionInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_temporal_api_activity_v1_message_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ActivityExecutionInfo.ProtoReflect.Descriptor instead.
+func (*ActivityExecutionInfo) Descriptor() ([]byte, []int) {
+	return file_temporal_api_activity_v1_message_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ActivityExecutionInfo) GetActivityId() string {
+	if x != nil {
+		return x.ActivityId
+	}
+	return ""
+}
+
+func (x *ActivityExecutionInfo) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ActivityExecutionInfo) GetActivityType() *v1.ActivityType {
+	if x != nil {
+		return x.ActivityType
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetStatus() v13.ActivityExecutionStatus {
+	if x != nil {
+		return x.Status
+	}
+	return v13.ActivityExecutionStatus(0)
+}
+
+func (x *ActivityExecutionInfo) GetRunState() v13.PendingActivityState {
+	if x != nil {
+		return x.RunState
+	}
+	return v13.PendingActivityState(0)
+}
+
+func (x *ActivityExecutionInfo) GetTaskQueue() string {
+	if x != nil {
+		return x.TaskQueue
+	}
+	return ""
+}
+
+func (x *ActivityExecutionInfo) GetScheduleToCloseTimeout() *durationpb.Duration {
+	if x != nil {
+		return x.ScheduleToCloseTimeout
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetScheduleToStartTimeout() *durationpb.Duration {
+	if x != nil {
+		return x.ScheduleToStartTimeout
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetStartToCloseTimeout() *durationpb.Duration {
+	if x != nil {
+		return x.StartToCloseTimeout
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetHeartbeatTimeout() *durationpb.Duration {
+	if x != nil {
+		return x.HeartbeatTimeout
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetRetryPolicy() *v1.RetryPolicy {
+	if x != nil {
+		return x.RetryPolicy
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetHeartbeatDetails() *v1.Payloads {
+	if x != nil {
+		return x.HeartbeatDetails
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetLastHeartbeatTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastHeartbeatTime
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetLastStartedTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastStartedTime
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetAttempt() int32 {
+	if x != nil {
+		return x.Attempt
+	}
+	return 0
+}
+
+func (x *ActivityExecutionInfo) GetExecutionDuration() *durationpb.Duration {
+	if x != nil {
+		return x.ExecutionDuration
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetScheduleTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ScheduleTime
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetExpirationTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpirationTime
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetCloseTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CloseTime
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetLastFailure() *v11.Failure {
+	if x != nil {
+		return x.LastFailure
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetLastWorkerIdentity() string {
+	if x != nil {
+		return x.LastWorkerIdentity
+	}
+	return ""
+}
+
+func (x *ActivityExecutionInfo) GetCurrentRetryInterval() *durationpb.Duration {
+	if x != nil {
+		return x.CurrentRetryInterval
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetLastAttemptCompleteTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastAttemptCompleteTime
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetNextAttemptScheduleTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.NextAttemptScheduleTime
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetLastDeploymentVersion() *v14.WorkerDeploymentVersion {
+	if x != nil {
+		return x.LastDeploymentVersion
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetPriority() *v1.Priority {
+	if x != nil {
+		return x.Priority
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetStateTransitionCount() int64 {
+	if x != nil {
+		return x.StateTransitionCount
+	}
+	return 0
+}
+
+func (x *ActivityExecutionInfo) GetStateSizeBytes() int64 {
+	if x != nil {
+		return x.StateSizeBytes
+	}
+	return 0
+}
+
+func (x *ActivityExecutionInfo) GetSearchAttributes() *v1.SearchAttributes {
+	if x != nil {
+		return x.SearchAttributes
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetHeader() *v1.Header {
+	if x != nil {
+		return x.Header
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetUserMetadata() *v15.UserMetadata {
+	if x != nil {
+		return x.UserMetadata
+	}
+	return nil
+}
+
+func (x *ActivityExecutionInfo) GetCanceledReason() string {
+	if x != nil {
+		return x.CanceledReason
+	}
+	return ""
+}
+
+// Limited activity information returned in the list response.
+// When adding fields here, ensure that it is also present in ActivityExecutionInfo (note that it
+// may already be present in ActivityExecutionInfo but not at the top-level).
+type ActivityExecutionListInfo struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A unique identifier of this activity within its namespace along with run ID (below).
+	ActivityId string `protobuf:"bytes,1,opt,name=activity_id,json=activityId,proto3" json:"activity_id,omitempty"`
+	// The run ID of the standalone activity.
+	RunId string `protobuf:"bytes,2,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	// The type of the activity, a string that maps to a registered activity on a worker.
+	ActivityType *v1.ActivityType `protobuf:"bytes,3,opt,name=activity_type,json=activityType,proto3" json:"activity_type,omitempty"`
+	// Time the activity was originally scheduled via a StartActivityExecution request.
+	ScheduleTime *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=schedule_time,json=scheduleTime,proto3" json:"schedule_time,omitempty"`
+	// If the activity is in a terminal status, this field represents the time the activity transitioned to that status.
+	CloseTime *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=close_time,json=closeTime,proto3" json:"close_time,omitempty"`
+	// Only scheduled and terminal statuses appear here. More detailed information in PendingActivityInfo but not
+	// available in the list response.
+	Status v13.ActivityExecutionStatus `protobuf:"varint,6,opt,name=status,proto3,enum=temporal.api.enums.v1.ActivityExecutionStatus" json:"status,omitempty"`
+	// Search attributes from the start request.
+	SearchAttributes *v1.SearchAttributes `protobuf:"bytes,7,opt,name=search_attributes,json=searchAttributes,proto3" json:"search_attributes,omitempty"`
+	// The task queue this activity was scheduled on when it was originally started, updated on activity options update.
+	TaskQueue string `protobuf:"bytes,8,opt,name=task_queue,json=taskQueue,proto3" json:"task_queue,omitempty"`
+	// Updated on terminal status.
+	StateTransitionCount int64 `protobuf:"varint,9,opt,name=state_transition_count,json=stateTransitionCount,proto3" json:"state_transition_count,omitempty"`
+	// Updated once on scheduled and once on terminal status.
+	StateSizeBytes int64 `protobuf:"varint,10,opt,name=state_size_bytes,json=stateSizeBytes,proto3" json:"state_size_bytes,omitempty"`
+	// The difference between close time and scheduled time.
+	// This field is only populated if the activity is closed.
+	ExecutionDuration *durationpb.Duration `protobuf:"bytes,11,opt,name=execution_duration,json=executionDuration,proto3" json:"execution_duration,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *ActivityExecutionListInfo) Reset() {
+	*x = ActivityExecutionListInfo{}
+	mi := &file_temporal_api_activity_v1_message_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ActivityExecutionListInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ActivityExecutionListInfo) ProtoMessage() {}
+
+func (x *ActivityExecutionListInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_temporal_api_activity_v1_message_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ActivityExecutionListInfo.ProtoReflect.Descriptor instead.
+func (*ActivityExecutionListInfo) Descriptor() ([]byte, []int) {
+	return file_temporal_api_activity_v1_message_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ActivityExecutionListInfo) GetActivityId() string {
+	if x != nil {
+		return x.ActivityId
+	}
+	return ""
+}
+
+func (x *ActivityExecutionListInfo) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ActivityExecutionListInfo) GetActivityType() *v1.ActivityType {
+	if x != nil {
+		return x.ActivityType
+	}
+	return nil
+}
+
+func (x *ActivityExecutionListInfo) GetScheduleTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ScheduleTime
+	}
+	return nil
+}
+
+func (x *ActivityExecutionListInfo) GetCloseTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CloseTime
+	}
+	return nil
+}
+
+func (x *ActivityExecutionListInfo) GetStatus() v13.ActivityExecutionStatus {
+	if x != nil {
+		return x.Status
+	}
+	return v13.ActivityExecutionStatus(0)
+}
+
+func (x *ActivityExecutionListInfo) GetSearchAttributes() *v1.SearchAttributes {
+	if x != nil {
+		return x.SearchAttributes
+	}
+	return nil
+}
+
+func (x *ActivityExecutionListInfo) GetTaskQueue() string {
+	if x != nil {
+		return x.TaskQueue
+	}
+	return ""
+}
+
+func (x *ActivityExecutionListInfo) GetStateTransitionCount() int64 {
+	if x != nil {
+		return x.StateTransitionCount
+	}
+	return 0
+}
+
+func (x *ActivityExecutionListInfo) GetStateSizeBytes() int64 {
+	if x != nil {
+		return x.StateSizeBytes
+	}
+	return 0
+}
+
+func (x *ActivityExecutionListInfo) GetExecutionDuration() *durationpb.Duration {
+	if x != nil {
+		return x.ExecutionDuration
 	}
 	return nil
 }
@@ -135,7 +719,11 @@ var File_temporal_api_activity_v1_message_proto protoreflect.FileDescriptor
 
 const file_temporal_api_activity_v1_message_proto_rawDesc = "" +
 	"\n" +
-	"&temporal/api/activity/v1/message.proto\x12\x18temporal.api.activity.v1\x1a$temporal/api/common/v1/message.proto\x1a'temporal/api/taskqueue/v1/message.proto\x1a\x1egoogle/protobuf/duration.proto\"\xe2\x03\n" +
+	"&temporal/api/activity/v1/message.proto\x12\x18temporal.api.activity.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a$temporal/api/common/v1/message.proto\x1a(temporal/api/deployment/v1/message.proto\x1a$temporal/api/enums/v1/activity.proto\x1a$temporal/api/enums/v1/workflow.proto\x1a%temporal/api/failure/v1/message.proto\x1a'temporal/api/taskqueue/v1/message.proto\x1a'temporal/api/sdk/v1/user_metadata.proto\"\x9d\x01\n" +
+	"\x18ActivityExecutionOutcome\x12:\n" +
+	"\x06result\x18\x01 \x01(\v2 .temporal.api.common.v1.PayloadsH\x00R\x06result\x12<\n" +
+	"\afailure\x18\x02 \x01(\v2 .temporal.api.failure.v1.FailureH\x00R\afailureB\a\n" +
+	"\x05value\"\xa0\x04\n" +
 	"\x0fActivityOptions\x12C\n" +
 	"\n" +
 	"task_queue\x18\x01 \x01(\v2$.temporal.api.taskqueue.v1.TaskQueueR\ttaskQueue\x12T\n" +
@@ -143,7 +731,61 @@ const file_temporal_api_activity_v1_message_proto_rawDesc = "" +
 	"\x19schedule_to_start_timeout\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\x16scheduleToStartTimeout\x12N\n" +
 	"\x16start_to_close_timeout\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x13startToCloseTimeout\x12F\n" +
 	"\x11heartbeat_timeout\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\x10heartbeatTimeout\x12F\n" +
-	"\fretry_policy\x18\x06 \x01(\v2#.temporal.api.common.v1.RetryPolicyR\vretryPolicyB\x93\x01\n" +
+	"\fretry_policy\x18\x06 \x01(\v2#.temporal.api.common.v1.RetryPolicyR\vretryPolicy\x12<\n" +
+	"\bpriority\x18\a \x01(\v2 .temporal.api.common.v1.PriorityR\bpriority\"\xe4\x10\n" +
+	"\x15ActivityExecutionInfo\x12\x1f\n" +
+	"\vactivity_id\x18\x01 \x01(\tR\n" +
+	"activityId\x12\x15\n" +
+	"\x06run_id\x18\x02 \x01(\tR\x05runId\x12I\n" +
+	"\ractivity_type\x18\x03 \x01(\v2$.temporal.api.common.v1.ActivityTypeR\factivityType\x12F\n" +
+	"\x06status\x18\x04 \x01(\x0e2..temporal.api.enums.v1.ActivityExecutionStatusR\x06status\x12H\n" +
+	"\trun_state\x18\x05 \x01(\x0e2+.temporal.api.enums.v1.PendingActivityStateR\brunState\x12\x1d\n" +
+	"\n" +
+	"task_queue\x18\x06 \x01(\tR\ttaskQueue\x12T\n" +
+	"\x19schedule_to_close_timeout\x18\a \x01(\v2\x19.google.protobuf.DurationR\x16scheduleToCloseTimeout\x12T\n" +
+	"\x19schedule_to_start_timeout\x18\b \x01(\v2\x19.google.protobuf.DurationR\x16scheduleToStartTimeout\x12N\n" +
+	"\x16start_to_close_timeout\x18\t \x01(\v2\x19.google.protobuf.DurationR\x13startToCloseTimeout\x12F\n" +
+	"\x11heartbeat_timeout\x18\n" +
+	" \x01(\v2\x19.google.protobuf.DurationR\x10heartbeatTimeout\x12F\n" +
+	"\fretry_policy\x18\v \x01(\v2#.temporal.api.common.v1.RetryPolicyR\vretryPolicy\x12M\n" +
+	"\x11heartbeat_details\x18\f \x01(\v2 .temporal.api.common.v1.PayloadsR\x10heartbeatDetails\x12J\n" +
+	"\x13last_heartbeat_time\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\x11lastHeartbeatTime\x12F\n" +
+	"\x11last_started_time\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\x0flastStartedTime\x12\x18\n" +
+	"\aattempt\x18\x0f \x01(\x05R\aattempt\x12H\n" +
+	"\x12execution_duration\x18\x10 \x01(\v2\x19.google.protobuf.DurationR\x11executionDuration\x12?\n" +
+	"\rschedule_time\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\fscheduleTime\x12C\n" +
+	"\x0fexpiration_time\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\x0eexpirationTime\x129\n" +
+	"\n" +
+	"close_time\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\tcloseTime\x12C\n" +
+	"\flast_failure\x18\x14 \x01(\v2 .temporal.api.failure.v1.FailureR\vlastFailure\x120\n" +
+	"\x14last_worker_identity\x18\x15 \x01(\tR\x12lastWorkerIdentity\x12O\n" +
+	"\x16current_retry_interval\x18\x16 \x01(\v2\x19.google.protobuf.DurationR\x14currentRetryInterval\x12W\n" +
+	"\x1alast_attempt_complete_time\x18\x17 \x01(\v2\x1a.google.protobuf.TimestampR\x17lastAttemptCompleteTime\x12W\n" +
+	"\x1anext_attempt_schedule_time\x18\x18 \x01(\v2\x1a.google.protobuf.TimestampR\x17nextAttemptScheduleTime\x12k\n" +
+	"\x17last_deployment_version\x18\x19 \x01(\v23.temporal.api.deployment.v1.WorkerDeploymentVersionR\x15lastDeploymentVersion\x12<\n" +
+	"\bpriority\x18\x1a \x01(\v2 .temporal.api.common.v1.PriorityR\bpriority\x124\n" +
+	"\x16state_transition_count\x18\x1b \x01(\x03R\x14stateTransitionCount\x12(\n" +
+	"\x10state_size_bytes\x18\x1c \x01(\x03R\x0estateSizeBytes\x12U\n" +
+	"\x11search_attributes\x18\x1d \x01(\v2(.temporal.api.common.v1.SearchAttributesR\x10searchAttributes\x126\n" +
+	"\x06header\x18\x1e \x01(\v2\x1e.temporal.api.common.v1.HeaderR\x06header\x12F\n" +
+	"\ruser_metadata\x18\x1f \x01(\v2!.temporal.api.sdk.v1.UserMetadataR\fuserMetadata\x12'\n" +
+	"\x0fcanceled_reason\x18  \x01(\tR\x0ecanceledReason\"\x82\x05\n" +
+	"\x19ActivityExecutionListInfo\x12\x1f\n" +
+	"\vactivity_id\x18\x01 \x01(\tR\n" +
+	"activityId\x12\x15\n" +
+	"\x06run_id\x18\x02 \x01(\tR\x05runId\x12I\n" +
+	"\ractivity_type\x18\x03 \x01(\v2$.temporal.api.common.v1.ActivityTypeR\factivityType\x12?\n" +
+	"\rschedule_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\fscheduleTime\x129\n" +
+	"\n" +
+	"close_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcloseTime\x12F\n" +
+	"\x06status\x18\x06 \x01(\x0e2..temporal.api.enums.v1.ActivityExecutionStatusR\x06status\x12U\n" +
+	"\x11search_attributes\x18\a \x01(\v2(.temporal.api.common.v1.SearchAttributesR\x10searchAttributes\x12\x1d\n" +
+	"\n" +
+	"task_queue\x18\b \x01(\tR\ttaskQueue\x124\n" +
+	"\x16state_transition_count\x18\t \x01(\x03R\x14stateTransitionCount\x12(\n" +
+	"\x10state_size_bytes\x18\n" +
+	" \x01(\x03R\x0estateSizeBytes\x12H\n" +
+	"\x12execution_duration\x18\v \x01(\v2\x19.google.protobuf.DurationR\x11executionDurationB\x93\x01\n" +
 	"\x1bio.temporal.api.activity.v1B\fMessageProtoP\x01Z'go.temporal.io/api/activity/v1;activity\xaa\x02\x1aTemporalio.Api.Activity.V1\xea\x02\x1dTemporalio::Api::Activity::V1b\x06proto3"
 
 var (
@@ -158,25 +800,72 @@ func file_temporal_api_activity_v1_message_proto_rawDescGZIP() []byte {
 	return file_temporal_api_activity_v1_message_proto_rawDescData
 }
 
-var file_temporal_api_activity_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_temporal_api_activity_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_temporal_api_activity_v1_message_proto_goTypes = []any{
-	(*ActivityOptions)(nil),     // 0: temporal.api.activity.v1.ActivityOptions
-	(*v1.TaskQueue)(nil),        // 1: temporal.api.taskqueue.v1.TaskQueue
-	(*durationpb.Duration)(nil), // 2: google.protobuf.Duration
-	(*v11.RetryPolicy)(nil),     // 3: temporal.api.common.v1.RetryPolicy
+	(*ActivityExecutionOutcome)(nil),    // 0: temporal.api.activity.v1.ActivityExecutionOutcome
+	(*ActivityOptions)(nil),             // 1: temporal.api.activity.v1.ActivityOptions
+	(*ActivityExecutionInfo)(nil),       // 2: temporal.api.activity.v1.ActivityExecutionInfo
+	(*ActivityExecutionListInfo)(nil),   // 3: temporal.api.activity.v1.ActivityExecutionListInfo
+	(*v1.Payloads)(nil),                 // 4: temporal.api.common.v1.Payloads
+	(*v11.Failure)(nil),                 // 5: temporal.api.failure.v1.Failure
+	(*v12.TaskQueue)(nil),               // 6: temporal.api.taskqueue.v1.TaskQueue
+	(*durationpb.Duration)(nil),         // 7: google.protobuf.Duration
+	(*v1.RetryPolicy)(nil),              // 8: temporal.api.common.v1.RetryPolicy
+	(*v1.Priority)(nil),                 // 9: temporal.api.common.v1.Priority
+	(*v1.ActivityType)(nil),             // 10: temporal.api.common.v1.ActivityType
+	(v13.ActivityExecutionStatus)(0),    // 11: temporal.api.enums.v1.ActivityExecutionStatus
+	(v13.PendingActivityState)(0),       // 12: temporal.api.enums.v1.PendingActivityState
+	(*timestamppb.Timestamp)(nil),       // 13: google.protobuf.Timestamp
+	(*v14.WorkerDeploymentVersion)(nil), // 14: temporal.api.deployment.v1.WorkerDeploymentVersion
+	(*v1.SearchAttributes)(nil),         // 15: temporal.api.common.v1.SearchAttributes
+	(*v1.Header)(nil),                   // 16: temporal.api.common.v1.Header
+	(*v15.UserMetadata)(nil),            // 17: temporal.api.sdk.v1.UserMetadata
 }
 var file_temporal_api_activity_v1_message_proto_depIdxs = []int32{
-	1, // 0: temporal.api.activity.v1.ActivityOptions.task_queue:type_name -> temporal.api.taskqueue.v1.TaskQueue
-	2, // 1: temporal.api.activity.v1.ActivityOptions.schedule_to_close_timeout:type_name -> google.protobuf.Duration
-	2, // 2: temporal.api.activity.v1.ActivityOptions.schedule_to_start_timeout:type_name -> google.protobuf.Duration
-	2, // 3: temporal.api.activity.v1.ActivityOptions.start_to_close_timeout:type_name -> google.protobuf.Duration
-	2, // 4: temporal.api.activity.v1.ActivityOptions.heartbeat_timeout:type_name -> google.protobuf.Duration
-	3, // 5: temporal.api.activity.v1.ActivityOptions.retry_policy:type_name -> temporal.api.common.v1.RetryPolicy
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	4,  // 0: temporal.api.activity.v1.ActivityExecutionOutcome.result:type_name -> temporal.api.common.v1.Payloads
+	5,  // 1: temporal.api.activity.v1.ActivityExecutionOutcome.failure:type_name -> temporal.api.failure.v1.Failure
+	6,  // 2: temporal.api.activity.v1.ActivityOptions.task_queue:type_name -> temporal.api.taskqueue.v1.TaskQueue
+	7,  // 3: temporal.api.activity.v1.ActivityOptions.schedule_to_close_timeout:type_name -> google.protobuf.Duration
+	7,  // 4: temporal.api.activity.v1.ActivityOptions.schedule_to_start_timeout:type_name -> google.protobuf.Duration
+	7,  // 5: temporal.api.activity.v1.ActivityOptions.start_to_close_timeout:type_name -> google.protobuf.Duration
+	7,  // 6: temporal.api.activity.v1.ActivityOptions.heartbeat_timeout:type_name -> google.protobuf.Duration
+	8,  // 7: temporal.api.activity.v1.ActivityOptions.retry_policy:type_name -> temporal.api.common.v1.RetryPolicy
+	9,  // 8: temporal.api.activity.v1.ActivityOptions.priority:type_name -> temporal.api.common.v1.Priority
+	10, // 9: temporal.api.activity.v1.ActivityExecutionInfo.activity_type:type_name -> temporal.api.common.v1.ActivityType
+	11, // 10: temporal.api.activity.v1.ActivityExecutionInfo.status:type_name -> temporal.api.enums.v1.ActivityExecutionStatus
+	12, // 11: temporal.api.activity.v1.ActivityExecutionInfo.run_state:type_name -> temporal.api.enums.v1.PendingActivityState
+	7,  // 12: temporal.api.activity.v1.ActivityExecutionInfo.schedule_to_close_timeout:type_name -> google.protobuf.Duration
+	7,  // 13: temporal.api.activity.v1.ActivityExecutionInfo.schedule_to_start_timeout:type_name -> google.protobuf.Duration
+	7,  // 14: temporal.api.activity.v1.ActivityExecutionInfo.start_to_close_timeout:type_name -> google.protobuf.Duration
+	7,  // 15: temporal.api.activity.v1.ActivityExecutionInfo.heartbeat_timeout:type_name -> google.protobuf.Duration
+	8,  // 16: temporal.api.activity.v1.ActivityExecutionInfo.retry_policy:type_name -> temporal.api.common.v1.RetryPolicy
+	4,  // 17: temporal.api.activity.v1.ActivityExecutionInfo.heartbeat_details:type_name -> temporal.api.common.v1.Payloads
+	13, // 18: temporal.api.activity.v1.ActivityExecutionInfo.last_heartbeat_time:type_name -> google.protobuf.Timestamp
+	13, // 19: temporal.api.activity.v1.ActivityExecutionInfo.last_started_time:type_name -> google.protobuf.Timestamp
+	7,  // 20: temporal.api.activity.v1.ActivityExecutionInfo.execution_duration:type_name -> google.protobuf.Duration
+	13, // 21: temporal.api.activity.v1.ActivityExecutionInfo.schedule_time:type_name -> google.protobuf.Timestamp
+	13, // 22: temporal.api.activity.v1.ActivityExecutionInfo.expiration_time:type_name -> google.protobuf.Timestamp
+	13, // 23: temporal.api.activity.v1.ActivityExecutionInfo.close_time:type_name -> google.protobuf.Timestamp
+	5,  // 24: temporal.api.activity.v1.ActivityExecutionInfo.last_failure:type_name -> temporal.api.failure.v1.Failure
+	7,  // 25: temporal.api.activity.v1.ActivityExecutionInfo.current_retry_interval:type_name -> google.protobuf.Duration
+	13, // 26: temporal.api.activity.v1.ActivityExecutionInfo.last_attempt_complete_time:type_name -> google.protobuf.Timestamp
+	13, // 27: temporal.api.activity.v1.ActivityExecutionInfo.next_attempt_schedule_time:type_name -> google.protobuf.Timestamp
+	14, // 28: temporal.api.activity.v1.ActivityExecutionInfo.last_deployment_version:type_name -> temporal.api.deployment.v1.WorkerDeploymentVersion
+	9,  // 29: temporal.api.activity.v1.ActivityExecutionInfo.priority:type_name -> temporal.api.common.v1.Priority
+	15, // 30: temporal.api.activity.v1.ActivityExecutionInfo.search_attributes:type_name -> temporal.api.common.v1.SearchAttributes
+	16, // 31: temporal.api.activity.v1.ActivityExecutionInfo.header:type_name -> temporal.api.common.v1.Header
+	17, // 32: temporal.api.activity.v1.ActivityExecutionInfo.user_metadata:type_name -> temporal.api.sdk.v1.UserMetadata
+	10, // 33: temporal.api.activity.v1.ActivityExecutionListInfo.activity_type:type_name -> temporal.api.common.v1.ActivityType
+	13, // 34: temporal.api.activity.v1.ActivityExecutionListInfo.schedule_time:type_name -> google.protobuf.Timestamp
+	13, // 35: temporal.api.activity.v1.ActivityExecutionListInfo.close_time:type_name -> google.protobuf.Timestamp
+	11, // 36: temporal.api.activity.v1.ActivityExecutionListInfo.status:type_name -> temporal.api.enums.v1.ActivityExecutionStatus
+	15, // 37: temporal.api.activity.v1.ActivityExecutionListInfo.search_attributes:type_name -> temporal.api.common.v1.SearchAttributes
+	7,  // 38: temporal.api.activity.v1.ActivityExecutionListInfo.execution_duration:type_name -> google.protobuf.Duration
+	39, // [39:39] is the sub-list for method output_type
+	39, // [39:39] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_temporal_api_activity_v1_message_proto_init() }
@@ -184,13 +873,17 @@ func file_temporal_api_activity_v1_message_proto_init() {
 	if File_temporal_api_activity_v1_message_proto != nil {
 		return
 	}
+	file_temporal_api_activity_v1_message_proto_msgTypes[0].OneofWrappers = []any{
+		(*ActivityExecutionOutcome_Result)(nil),
+		(*ActivityExecutionOutcome_Failure)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_temporal_api_activity_v1_message_proto_rawDesc), len(file_temporal_api_activity_v1_message_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

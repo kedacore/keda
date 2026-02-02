@@ -11,29 +11,26 @@ environment:
   SQLUSER: sa
   SQLPASSWORD: Password12!
   DATABASE: test
-  GOVERSION: 118
+  GOVERSION: 124
   COLUMNENCRYPTION:
   APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-  RACE: -race -cpu 4
+
   TAGS:
   matrix:
     - SQLINSTANCE: SQL2017
-    - GOVERSION: 118
+    - GOVERSION: 124
       SQLINSTANCE: SQL2017
-    - GOVERSION: 120
-      RACE:
+    - GOVERSION: 124
       SQLINSTANCE: SQL2019
       COLUMNENCRYPTION: 1
       # Cover 32bit and named pipes protocol
-    - GOVERSION: 119-x86
+    - GOVERSION: 123-x86
       SQLINSTANCE: SQL2017
       GOARCH: 386
-      RACE:
       PROTOCOL: np
       TAGS: -tags np
       # Cover SSPI and lpc protocol
-    - GOVERSION: 120
-      RACE:
+    - GOVERSION: 124
       SQLINSTANCE: SQL2019
       PROTOCOL: lpc
       TAGS: -tags sm
@@ -70,5 +67,5 @@ before_test:
   - pip install codecov
 
 test_script:
-  - go test %RACE% -coverprofile=coverage.txt -covermode=atomic %TAGS%
+  - go test -coverprofile=coverage.txt -covermode=atomic %TAGS%
   - codecov -f coverage.txt

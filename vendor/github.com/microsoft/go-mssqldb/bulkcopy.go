@@ -14,6 +14,7 @@ import (
 
 	"github.com/microsoft/go-mssqldb/internal/decimal"
 	"github.com/microsoft/go-mssqldb/msdsn"
+	shopspring "github.com/shopspring/decimal"
 )
 
 type Bulk struct {
@@ -52,14 +53,14 @@ const (
 	sqlTimeFormat     = "15:04:05.9999999"
 )
 
-func (cn *Conn) CreateBulk(table string, columns []string) (_ *Bulk) {
-	b := Bulk{ctx: context.Background(), cn: cn, tablename: table, headerSent: false, columnsName: columns}
+func (c *Conn) CreateBulk(table string, columns []string) (_ *Bulk) {
+	b := Bulk{ctx: context.Background(), cn: c, tablename: table, headerSent: false, columnsName: columns}
 	b.Debug = false
 	return &b
 }
 
-func (cn *Conn) CreateBulkContext(ctx context.Context, table string, columns []string) (_ *Bulk) {
-	b := Bulk{ctx: ctx, cn: cn, tablename: table, headerSent: false, columnsName: columns}
+func (c *Conn) CreateBulkContext(ctx context.Context, table string, columns []string) (_ *Bulk) {
+	b := Bulk{ctx: ctx, cn: c, tablename: table, headerSent: false, columnsName: columns}
 	b.Debug = false
 	return &b
 }
@@ -140,7 +141,7 @@ func (b *Bulk) sendBulkCommand(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("Prepare failed: %s", err.Error())
 	}
-	b.dlogf(ctx, query)
+	b.dlogf(ctx, "%s", query)
 
 	_, err = stmt.(*Stmt).ExecContext(ctx, nil)
 	if err != nil {
@@ -207,7 +208,7 @@ func (b *Bulk) makeRowData(row []interface{}) ([]byte, error) {
 			return nil, fmt.Errorf("no writer for column: %s, TypeId: %#x",
 				col.ColName, col.ti.TypeId)
 		}
-		err = col.ti.Writer(buf, param.ti, param.buffer)
+		err = col.ti.Writer(buf, param.ti, param.buffer, b.cn.sess.encoding)
 		if err != nil {
 			return nil, fmt.Errorf("bulkcopy: %s", err.Error())
 		}
@@ -264,7 +265,7 @@ func (b *Bulk) createColMetadata() []byte {
 		}
 		binary.Write(buf, binary.LittleEndian, uint16(col.Flags))
 
-		writeTypeInfo(buf, &b.bulkColumns[i].ti, false)
+		writeTypeInfo(buf, &b.bulkColumns[i].ti, false, b.cn.sess.encoding)
 
 		if col.ti.TypeId == typeNText ||
 			col.ti.TypeId == typeText ||
@@ -293,6 +294,30 @@ func (b *Bulk) getMetadata(ctx context.Context) (err error) {
 		return
 	}
 
+	// Ensure we always SET FMTONLY OFF even if the next statement fails
+	resetFmtonly := true
+	defer func() {
+		if !resetFmtonly {
+			return
+		}
+
+		// Don't let resetErr shadow the "real" error, since this should
+		// generally only happen if one of the calls below failed
+		stmt, resetErr := b.cn.prepareContext(ctx, "SET FMTONLY OFF")
+		if resetErr != nil {
+			// This _should_ be infallible as prepareContext doesn't
+			// actually contact the server
+			b.cn.sess.logger.Log(ctx, msdsn.LogErrors, fmt.Sprintf("Could not reset FMTONLY: %v", resetErr))
+			return
+		}
+		// stmt.Close is a no-op so ignore it
+		_, resetErr = stmt.ExecContext(ctx, nil)
+		if resetErr != nil {
+			b.cn.sess.logger.Log(ctx, msdsn.LogErrors, fmt.Sprintf("Could not reset FMTONLY: %v", resetErr))
+			return
+		}
+	}()
+
 	// Get columns info.
 	stmt, err = b.cn.prepareContext(ctx, fmt.Sprintf("select * from %s SET FMTONLY OFF", b.tablename))
 	if err != nil {
@@ -302,6 +327,7 @@ func (b *Bulk) getMetadata(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("get columns info failed: %v", err)
 	}
+	resetFmtonly = false
 	b.metadata = rows.(*Rows).cols
 
 	if b.Debug {
@@ -318,8 +344,13 @@ func (b *Bulk) getMetadata(ctx context.Context) (err error) {
 func (b *Bulk) makeParam(val DataValue, col columnStruct) (res param, err error) {
 	res.ti.Size = col.ti.Size
 	res.ti.TypeId = col.ti.TypeId
+	loc := getTimezone(b.cn)
 
 	switch valuer := val.(type) {
+	case Money[shopspring.Decimal]:
+		return b.makeParam(valuer.Decimal, col)
+	case Money[shopspring.NullDecimal]:
+		return b.makeParam(valuer.Decimal, col)
 	case driver.Valuer:
 		var e error
 		val, e = driver.DefaultParameterConverter.ConvertValue(valuer)
@@ -487,7 +518,7 @@ func (b *Bulk) makeParam(val DataValue, col columnStruct) (res param, err error)
 			res.ti.Size = len(res.buffer)
 		case string:
 			var t time.Time
-			if t, err = time.ParseInLocation(sqlDateFormat, val, time.UTC); err != nil {
+			if t, err = time.ParseInLocation(sqlDateFormat, val, loc); err != nil {
 				return res, fmt.Errorf("bulk: unable to convert string to date: %v", err)
 			}
 			res.buffer = encodeDate(t)
@@ -511,7 +542,7 @@ func (b *Bulk) makeParam(val DataValue, col columnStruct) (res param, err error)
 		}
 
 		if col.ti.Size == 4 {
-			res.buffer = encodeDateTim4(t)
+			res.buffer = encodeDateTim4(t, loc)
 			res.ti.Size = len(res.buffer)
 		} else if col.ti.Size == 8 {
 			res.buffer = encodeDateTime(t)
@@ -535,7 +566,37 @@ func (b *Bulk) makeParam(val DataValue, col columnStruct) (res param, err error)
 			err = fmt.Errorf("mssql: invalid type for time column: %T %s", val, val)
 			return
 		}
-	// case typeMoney, typeMoney4, typeMoneyN:
+	case typeMoney, typeMoney4, typeMoneyN:
+		switch v := val.(type) {
+		case string:
+			money, err := decimal.StringToDecimalScale(v, 4)
+			if err != nil {
+				return res, err
+			}
+
+			buf := make([]byte, col.ti.Size)
+
+			integer0 := money.GetInteger(0)
+			if col.ti.Size == 4 {
+				if money.IsPositive() {
+					binary.LittleEndian.PutUint32(buf, integer0)
+				} else {
+					binary.LittleEndian.PutUint32(buf, ^integer0+1)
+				}
+			} else {
+				integer := (uint64(money.GetInteger(1)) << 32) | uint64(integer0)
+				if !money.IsPositive() {
+					integer = ^integer + 1
+				}
+
+				binary.LittleEndian.PutUint32(buf, uint32(integer>>32))
+				binary.LittleEndian.PutUint32(buf[4:], uint32(integer))
+			}
+
+			res.buffer = buf
+		default:
+			return res, fmt.Errorf("unknown value for money: %T %#v", v, v)
+		}
 	case typeDecimal, typeDecimalN, typeNumeric, typeNumericN:
 		prec := col.ti.Prec
 		scale := col.ti.Scale
