@@ -27,6 +27,9 @@ spec:
     - jsonPath: .spec.env[*].name
       name: Env
       type: string
+    - jsonPath: .spec.filePath
+      name: FilePath
+      type: string
     - jsonPath: .spec.hashiCorpVault.address
       name: VaultAddress
       type: string
@@ -474,6 +477,11 @@ spec:
                   - parameter
                   type: object
                 type: array
+              filePath:
+                description: |-
+                  FilePath specifies a file containing auth parameters as JSON map[string]string.
+                  When set, auth params are read directly from this file instead.
+                type: string
               gcpSecretManager:
                 properties:
                   credentials:

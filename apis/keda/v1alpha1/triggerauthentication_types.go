@@ -30,6 +30,7 @@ import (
 // +kubebuilder:printcolumn:name="PodIdentity",type="string",JSONPath=".spec.podIdentity.provider"
 // +kubebuilder:printcolumn:name="Secret",type="string",JSONPath=".spec.secretTargetRef[*].name"
 // +kubebuilder:printcolumn:name="Env",type="string",JSONPath=".spec.env[*].name"
+// +kubebuilder:printcolumn:name="FilePath",type="string",JSONPath=".spec.filePath"
 // +kubebuilder:printcolumn:name="VaultAddress",type="string",JSONPath=".spec.hashiCorpVault.address"
 // +kubebuilder:printcolumn:name="AkeylessGatewayUrl",type="string",JSONPath=".spec.akeyless.gatewayUrl"
 // +kubebuilder:printcolumn:name="AkeylessAccessId",type="string",JSONPath=".spec.akeyless.accessId"
@@ -89,6 +90,11 @@ type TriggerAuthenticationSpec struct {
 
 	// +optional
 	Env []AuthEnvironment `json:"env,omitempty"`
+
+	// FilePath specifies a file containing auth parameters as JSON map[string]string.
+	// When set, auth params are read directly from this file instead.
+	// +optional
+	FilePath string `json:"filePath,omitempty"`
 
 	// +optional
 	HashiCorpVault *HashiCorpVault `json:"hashiCorpVault,omitempty"`

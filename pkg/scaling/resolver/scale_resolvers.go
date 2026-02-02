@@ -19,7 +19,10 @@ package resolver
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -56,11 +59,23 @@ const (
 )
 
 var (
+	globalConfig                      = Config{}
 	kedaNamespace, _                  = util.GetClusterObjectNamespace()
 	restrictSecretAccess              = util.GetRestrictSecretAccess()
 	boundServiceAccountTokenExpiry, _ = util.GetBoundServiceAccountTokenExpiry()
 	log                               = logf.Log.WithName("scale_resolvers")
 )
+
+type Config struct {
+	FilePathAuthRootPath string
+}
+
+// SetConfig sets the global configuration for the resolver package.
+// This avoids updating the callstack to pass in the config.
+// It's distinct from the env-based approach (env_resolver) to avoid external modification at runtime.
+func SetConfig(cfg *Config) {
+	globalConfig = *cfg
+}
 
 // isSecretAccessRestricted returns whether secret access need to be restricted in KEDA namespace
 func isSecretAccessRestricted(logger logr.Logger) bool {
@@ -78,7 +93,7 @@ func isSecretAccessRestricted(logger logr.Logger) bool {
 // which could be almost any k8s resource (Deployment, StatefulSet, CustomResource...)
 // and for the given resource returns *corev1.PodTemplateSpec and a name of the container
 // which is being used for referencing environment variables
-func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, scalableObject interface{}) (*corev1.PodTemplateSpec, string, error) {
+func ResolveScaleTargetPodSpec(ctx context.Context, kubeClient client.Client, scalableObject any) (*corev1.PodTemplateSpec, string, error) {
 	switch obj := scalableObject.(type) {
 	case *kedav1alpha1.ScaledObject:
 		// Try to get a real object instance for better cache usage, but fall back to an Unstructured if needed.
@@ -187,10 +202,10 @@ func ResolveContainerEnv(ctx context.Context, client client.Client, logger logr.
 // ResolveAuthRefAndPodIdentity provides authentication parameters and pod identity needed authenticate scaler with the environment.
 func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, logger logr.Logger,
 	triggerAuthRef *kedav1alpha1.AuthenticationRef, podTemplateSpec *corev1.PodTemplateSpec,
-	namespace string, authClientSet *authentication.AuthClientSet) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
+	namespace string, authClientSet *authentication.AuthClientSet,
+) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
 	if podTemplateSpec != nil {
 		authParams, podIdentity, err := resolveAuthRef(ctx, client, logger, triggerAuthRef, &podTemplateSpec.Spec, namespace, authClientSet)
-
 		if err != nil {
 			return authParams, podIdentity, err
 		}
@@ -236,7 +251,8 @@ func ResolveAuthRefAndPodIdentity(ctx context.Context, client client.Client, log
 // based on authentication method defined in TriggerAuthentication, authParams and podIdentity is returned
 func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logger,
 	triggerAuthRef *kedav1alpha1.AuthenticationRef, podSpec *corev1.PodSpec,
-	namespace string, authClientSet *authentication.AuthClientSet) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
+	namespace string, authClientSet *authentication.AuthClientSet,
+) (map[string]string, kedav1alpha1.AuthPodIdentity, error) {
 	result := make(map[string]string)
 	podIdentity := kedav1alpha1.AuthPodIdentity{Provider: kedav1alpha1.PodIdentityProviderNone}
 	var err error
@@ -263,6 +279,19 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 					}
 				}
 			}
+			if triggerAuthSpec.FilePath != "" {
+				if triggerAuthRef.Kind != "ClusterTriggerAuthentication" {
+					return nil, podIdentity,
+						fmt.Errorf("filePath is only supported for ClusterTriggerAuthentication, got kind: %s", triggerAuthRef.Kind)
+				}
+				result, err := readAuthParamsFromFile(triggerAuthSpec.FilePath)
+				if err != nil {
+					logger.Error(err, "error reading auth params from file", "filePath", triggerAuthSpec.FilePath)
+					return nil, podIdentity, err
+				}
+				return result, podIdentity, nil
+			}
+
 			if triggerAuthSpec.ConfigMapTargetRef != nil {
 				for _, e := range triggerAuthSpec.ConfigMapTargetRef {
 					result[e.Parameter] = resolveAuthConfigMap(ctx, client, logger, e.Name, triggerNamespace, e.Key)
@@ -629,6 +658,25 @@ func resolveAuthSecret(ctx context.Context, client client.Client, logger logr.Lo
 	}
 
 	return string(result)
+}
+
+func readAuthParamsFromFile(relativeFilePath string) (map[string]string, error) {
+	if globalConfig.FilePathAuthRootPath == "" {
+		return nil, fmt.Errorf("filepath-auth-root-path not configured")
+	}
+	if filepath.IsAbs(relativeFilePath) || strings.Contains(relativeFilePath, "..") {
+		return nil, fmt.Errorf("filePath must be relative and not contain '..'")
+	}
+	fullPath := filepath.Join(globalConfig.FilePathAuthRootPath, relativeFilePath)
+	data, err := os.ReadFile(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read auth file %s: %w", fullPath, err)
+	}
+	var params map[string]string
+	if err := json.Unmarshal(data, &params); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal auth params from %s: %w", fullPath, err)
+	}
+	return params, nil
 }
 
 func resolveBoundServiceAccountToken(ctx context.Context, client client.Client, logger logr.Logger, namespace string, bsat *kedav1alpha1.BoundServiceAccountToken, acs *authentication.AuthClientSet) string {

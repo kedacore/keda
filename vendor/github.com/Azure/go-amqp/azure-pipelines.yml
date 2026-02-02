@@ -9,21 +9,21 @@ jobs:
     strategy:
       matrix:
         Linux_Go118:
-          pool.name: 'azsdk-pool-mms-ubuntu-2004-general'
-          vm.image: 'ubuntu-20.04'
+          pool.name: 'azsdk-pool'
+          vm.image: 'ubuntu-24.04'
           go.version: '1.18.10'
-        Linux_Go122:
-          pool.name: 'azsdk-pool-mms-ubuntu-2004-general'
-          vm.image: 'ubuntu-20.04'
-          go.version: '1.22.7'
         Linux_Go123:
-          pool.name: 'azsdk-pool-mms-ubuntu-2004-general'
-          vm.image: 'ubuntu-20.04'
-          go.version: '1.23.1'
+          pool.name: 'azsdk-pool'
+          vm.image: 'ubuntu-24.04'
+          go.version: '1.23.7'
+        Linux_Go124:
+          pool.name: 'azsdk-pool'
+          vm.image: 'ubuntu-24.04'
+          go.version: '1.24.1'
 
     pool:
       name: '$(pool.name)'
-      vmImage: '$(vm.image)'
+      demands: ImageOverride -equals $(vm.image)
 
     steps:
       - task: GoTool@0
@@ -42,7 +42,7 @@ jobs:
         displayName: 'Install Dependencies'
 
       - script: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.61.0
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.64.6
           golangci-lint --version
           golangci-lint run
         displayName: 'Install and Run GoLintCLI.'
@@ -59,7 +59,7 @@ jobs:
         displayName: 'Use .NET sdk'
         inputs:
           packageType: sdk
-          version: 6.0.x
+          version: 8.0.x
           installationPath: $(Agent.ToolsDirectory)/dotnet
 
       - script: |
@@ -68,14 +68,13 @@ jobs:
           pushd $(Pipeline.Workspace)/azure-amqp/test/TestAmqpBroker
           dotnet restore
           dotnet build
-          chmod +x $(Pipeline.Workspace)/azure-amqp/bin/Debug/TestAmqpBroker/net462/TestAmqpBroker.exe
         displayName: 'Clone and Build Broker'
 
       - script: |
           set -e
           export TEST_CORPUS=1
           echo '##[command]Starting broker at $(AMQP_BROKER_ADDR)'
-          $(Pipeline.Workspace)/azure-amqp/bin/Debug/TestAmqpBroker/net462/TestAmqpBroker.exe $AMQP_BROKER_ADDR /headless &
+          dotnet $(Pipeline.Workspace)/azure-amqp/bin/Debug/TestAmqpBroker/net8.0/TestAmqpBroker.dll $AMQP_BROKER_ADDR /headless &
           brokerPID=$!
           echo '##[section]Starting tests'
           go test -race -v -coverprofile=coverage.txt -covermode atomic ./... 2>&1 | tee gotestoutput.log 
