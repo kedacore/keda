@@ -72,10 +72,19 @@ func GetMetricsWithFallback(ctx context.Context, client runtimeclient.Client, sc
 		log.Info("Failed to validate ScaledObject Spec. Please check that parameters are positive integers", "scaledObject.Namespace", scaledObject.Namespace, "scaledObject.Name", scaledObject.Name)
 		return nil, false, suppressedError
 	case *healthStatus.NumberOfFailures > scaledObject.Spec.Fallback.FailureThreshold:
-		// For triggerScoped behavior, update health but don't trigger global fallback
-		// Individual triggers will be set to nil in the formula evaluation
+		// For triggerScoped behavior, return metrics (or placeholder) so formula can handle nil values
 		if scaledObject.Spec.Fallback.Behavior == kedav1alpha1.FallbackBehaviorTriggerScoped {
-			return nil, false, suppressedError
+			// Return existing metrics if available, otherwise create a placeholder
+			if len(metrics) > 0 {
+				return metrics, false, suppressedError
+			}
+			// Create placeholder metric with zero value for formula evaluation
+			placeholderMetric := external_metrics.ExternalMetricValue{
+				MetricName: metricName,
+				Value:      *resource.NewQuantity(0, resource.DecimalSI),
+				Timestamp:  metav1.Now(),
+			}
+			return []external_metrics.ExternalMetricValue{placeholderMetric}, false, suppressedError
 		}
 
 		var currentReplicas int32
@@ -189,8 +198,8 @@ func doFallback(ctx context.Context, client runtimeclient.Client, scaleClient sc
 			replicas = float64(fallbackReplicas)
 		}
 	case kedav1alpha1.FallbackBehaviorTriggerScoped:
-		// Don't generate fallback metrics - let the formula handle nil values
-		// The formula evaluation will use nil for failed triggers with the ?? operator
+		// This case should not be reached as triggerScoped returns early in GetMetricsWithFallback
+		// But keep as safety check
 		return nil
 	default:
 		replicas = float64(fallbackReplicas)

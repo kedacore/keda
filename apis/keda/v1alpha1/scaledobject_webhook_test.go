@@ -181,12 +181,18 @@ var _ = It("shouldn't validate the so creation when the fallback is configured a
 	namespace := createNamespace(namespaceName)
 	workload := createDeployment(namespaceName, true, true)
 	so := createScaledObject(soName, namespaceName, workloadName, "apps/v1", "Deployment", true, map[string]string{}, "")
+	// Remove non-cpu/memory triggers to test the scenario with ONLY cpu and memory
+	cpuMemoryTriggers := []ScaleTriggers{}
+	for _, trigger := range so.Spec.Triggers {
+		if trigger.Type == "cpu" || trigger.Type == "memory" {
+			trigger.MetricType = "AverageValue"
+			cpuMemoryTriggers = append(cpuMemoryTriggers, trigger)
+		}
+	}
+	so.Spec.Triggers = cpuMemoryTriggers
 	so.Spec.Fallback = &Fallback{
 		FailureThreshold: 3,
 		Replicas:         6,
-	}
-	for index := range so.Spec.Triggers {
-		so.Spec.Triggers[index].MetricType = "AverageValue"
 	}
 	err := k8sClient.Create(context.Background(), namespace)
 	Expect(err).ToNot(HaveOccurred())
