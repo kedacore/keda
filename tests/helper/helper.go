@@ -540,8 +540,13 @@ func WaitForPodReady(t *testing.T, kc *kubernetes.Clientset, podName, namespace 
 	for i := 0; i < iterations; i++ {
 		pod, _ := kc.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
 		t.Logf("Waiting for pod to be in ready state. Pod - %s, Current Phase - %s", podName, pod.Status.Phase)
-		if pod.Status.Phase == corev1.PodRunning {
-			return true
+
+		// A pod can be in the Running phase without all containers being ready.
+		// Check the Ready condition to ensure the pod is actually ready.
+		for _, cond := range pod.Status.Conditions {
+			if cond.Type == corev1.PodReady && cond.Status == corev1.ConditionTrue {
+				return true
+			}
 		}
 		time.Sleep(time.Duration(intervalSeconds) * time.Second)
 	}

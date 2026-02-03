@@ -187,11 +187,11 @@ func getTemplateData() (templateData, []Template) {
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "clusterTriggerAuthenticationTemplate", Config: clusterTriggerAuthenticationTemplate},
-			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
+			{Name: "metricsApiSecret", Config: metricsApiSecret},
 			{Name: "metricsApiDeployment", Config: metricsApiDeployment},
 			{Name: "metricsApiService", Config: metricsApiService},
-			{Name: "metricsApiSecret", Config: metricsApiSecret},
 			{Name: "curlDeployment", Config: curlDeployment},
+			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }
 
@@ -225,12 +225,14 @@ func testScaledObjectWithFileAuth(t *testing.T) {
 	assert.Equal(t, "creds.json", clusterTriggerAuth.Spec.FilePath)
 
 	// Check app is scaled to 0
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "metrics-api", testNamespace, 1, 10, 12),
+		"metrics-api deployment should have 1 ready replica within 2 minutes")
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 10, 6),
 		"replica count should be 0 after 1 minute")
 
 	// Set the metric value in metrics-api deployment to 10 to trigger scaling
 	assert.True(t, WaitForPodReady(t, kc, "curl", testNamespace, 10, 12), "curl pod should be ready within 2 minutes")
-	setMetricToTenCmd := fmt.Sprintf(`curl -X POST http://metrics-api.%s.svc.cluster.local/api/value/10`, testNamespace)
+	setMetricToTenCmd := fmt.Sprintf(`curl --retry 20 --retry-delay 2 --retry-connrefused --fail -X POST http://metrics-api.%s.svc/api/value/10`, testNamespace)
 	stdout, stderr, err := ExecCommandOnSpecificPod(t, "curl", testNamespace, setMetricToTenCmd)
 	if err != nil {
 		t.Fatalf("failed to set metric to 10, stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
