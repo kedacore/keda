@@ -21,6 +21,7 @@ jobs:
 
       - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
         id: filter
+        if: github.event_name == 'pull_request'
         with:
           filters: |
             go:
@@ -32,11 +33,11 @@ jobs:
               - 'hack/*.sh'
 
       - name: Register workspace path
-        if: steps.filter.outputs.go == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.go == 'true'
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Initialize CodeQL
-        if: steps.filter.outputs.go == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.go == 'true'
         uses: github/codeql-action/init@b20883b0cd1f46c72ae0ba6d1090936928f9fa30 # v4.32.0
         with:
           languages: go
@@ -44,11 +45,11 @@ jobs:
           queries: +security-and-quality
 
       - name: Autobuild
-        if: steps.filter.outputs.go == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.go == 'true'
         uses: github/codeql-action/autobuild@b20883b0cd1f46c72ae0ba6d1090936928f9fa30 # v4.32.0
 
       - name: Perform CodeQL Analysis
-        if: steps.filter.outputs.go == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.go == 'true'
         uses: github/codeql-action/analyze@b20883b0cd1f46c72ae0ba6d1090936928f9fa30 # v4.32.0
         with:
           category: "/language:go"
