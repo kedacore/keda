@@ -51,6 +51,8 @@ jobs:
               - 'go.mod'
               - 'go.sum'
               - 'Makefile'
+              - '**/*.proto'
+              - 'hack/*.sh'
 
       - name: Register workspace path
         if: steps.filter.outputs.go == 'true'
