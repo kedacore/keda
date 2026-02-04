@@ -31,6 +31,74 @@ type templateData struct {
 }
 
 const (
+	curlDeployment = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: curl
+  namespace: {{.TestNamespace}}
+spec:
+  terminationGracePeriodSeconds: 1
+  containers:
+  - name: curl
+    image: curlimages/curl:latest
+    command: [ "/bin/sleep", "infinity" ]
+`
+
+	metricsApiDeployment = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-api
+  namespace: {{.TestNamespace}}
+spec:
+  selector:
+    matchLabels:
+      app: metrics-api
+  template:
+    metadata:
+      labels:
+        app: metrics-api
+    spec:
+      terminationGracePeriodSeconds: 1
+      containers:
+        - name: metrics-api
+          image: ghcr.io/kedacore/tests-metrics-api:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: bearer-secret
+                  key: token
+`
+	metricsApiService = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-api
+  namespace: {{.TestNamespace}}
+spec:
+  selector:
+    app: metrics-api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+`
+
+	metricsApiSecret = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bearer-secret
+  namespace: {{.TestNamespace}}
+type: Opaque
+stringData:
+  token: e2e-mock-test-bearer-token   # as configured in ../config/e2e/file_auth/patch_operator.yml
+`
+
 	deploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
@@ -49,9 +117,10 @@ spec:
       labels:
         app: {{.DeploymentName}}
     spec:
-       containers:
-         - name: {{.DeploymentName}}
-           image: nginx
+      terminationGracePeriodSeconds: 1
+      containers:
+      - name: {{.DeploymentName}}
+        image: nginx
 `
 
 	clusterTriggerAuthenticationTemplate = `
@@ -75,14 +144,19 @@ spec:
   pollingInterval: 5
   minReplicaCount: 0
   maxReplicaCount: 1
-  cooldownPeriod: 10
+  cooldownPeriod: 5
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 5
   triggers:
-    - type: cron
+    - type: metrics-api
       metadata:
-        timezone: Etc/UTC
-        start: 0 * * * *
-        end: 59 * * * *
-        desiredReplicas: "1"
+        targetValue: "10"
+        url: "http://metrics-api.{{.TestNamespace}}.svc.cluster.local/api/token/value"
+        valueLocation: 'value'
+        authMode: "bearer"
       authenticationRef:
         name: file-auth
         kind: ClusterTriggerAuthentication
@@ -113,6 +187,10 @@ func getTemplateData() (templateData, []Template) {
 		}, []Template{
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "clusterTriggerAuthenticationTemplate", Config: clusterTriggerAuthenticationTemplate},
+			{Name: "metricsApiSecret", Config: metricsApiSecret},
+			{Name: "metricsApiDeployment", Config: metricsApiDeployment},
+			{Name: "metricsApiService", Config: metricsApiService},
+			{Name: "curlDeployment", Config: curlDeployment},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
 }
@@ -120,6 +198,7 @@ func getTemplateData() (templateData, []Template) {
 func testScaledObjectWithFileAuth(t *testing.T) {
 	t.Log("--- testing scaled object with file-based authentication ---")
 
+	kc := GetKubernetesClient(t)
 	kedaKc := GetKedaKubernetesClient(t)
 
 	// Verify ScaledObject was created successfully
@@ -140,9 +219,26 @@ func testScaledObjectWithFileAuth(t *testing.T) {
 	// Verify ClusterTriggerAuthentication has the filePath
 	clusterTriggerAuth, err := kedaKc.ClusterTriggerAuthentications().Get(context.Background(), "file-auth", metav1.GetOptions{})
 	if err != nil {
-		t.Logf("ClusterTriggerAuthentication not found: %v", err)
-		return
+		t.Fatalf("ClusterTriggerAuthentication not found: %v", err)
 	}
 	assert.NotNil(t, clusterTriggerAuth)
 	assert.Equal(t, "creds.json", clusterTriggerAuth.Spec.FilePath)
+
+	// Check app is scaled to 0
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, "metrics-api", testNamespace, 1, 10, 12),
+		"metrics-api deployment should have 1 ready replica within 2 minutes")
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 10, 6),
+		"replica count should be 0 after 1 minute")
+
+	// Set the metric value in metrics-api deployment to 10 to trigger scaling
+	assert.True(t, WaitForPodReady(t, kc, "curl", testNamespace, 10, 12), "curl pod should be ready within 2 minutes")
+	setMetricToTenCmd := fmt.Sprintf(`curl --retry 20 --retry-delay 2 --retry-connrefused --fail -X POST http://metrics-api.%s.svc/api/value/10`, testNamespace)
+	stdout, stderr, err := ExecCommandOnSpecificPod(t, "curl", testNamespace, setMetricToTenCmd)
+	if err != nil {
+		t.Fatalf("failed to set metric to 10, stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
+	}
+
+	// Check app is scaled to 1
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 10, 6),
+		"replica count should be 1 after 1 minute")
 }
