@@ -9,7 +9,7 @@
   value:
     - name: init-auth
       image: busybox
-      command: [sh, -c, "echo '{\"testParam\": \"testValue\"}' > /mnt/auth/creds.json"]
+      command: [sh, -c, "echo '{\"authMode\":\"bearer\",\"token\":\"e2e-mock-test-bearer-token\"}' > /mnt/auth/creds.json"]
       volumeMounts:
         - name: auth-volume
           mountPath: /mnt/auth
@@ -19,3 +19,9 @@
 - op: add
   path: /spec/template/spec/containers/0/args/-
   value: --filepath-auth-root-path=/mnt/auth
+- op: add
+  path: /spec/template/spec/containers/0/volumeMounts/-
+  value:
+    name: auth-volume
+    mountPath: /mnt/auth
+    readOnly: true
