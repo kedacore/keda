@@ -34,7 +34,6 @@ type ibmmqMetadata struct {
 	Username             string   `keda:"name=username,             order=authParams;resolvedEnv;triggerMetadata"`
 	Password             string   `keda:"name=password,             order=authParams;resolvedEnv;triggerMetadata"`
 	UnsafeSsl            bool     `keda:"name=unsafeSsl,            order=triggerMetadata, default=false"`
-	TLS                  bool     `keda:"name=tls,                  order=triggerMetadata, default=false, deprecated=The 'tls' setting is DEPRECATED and is removed in v2.18 - Use 'unsafeSsl' instead"`
 	CA                   string   `keda:"name=ca,                   order=authParams, optional"`
 	Cert                 string   `keda:"name=cert,                 order=authParams, optional"`
 	Key                  string   `keda:"name=key,                  order=authParams, optional"`

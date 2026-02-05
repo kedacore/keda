@@ -2325,13 +2325,6 @@
                     "metadataVariableReadable": true
                 },
                 {
-                    "name": "tls",
-                    "type": "string",
-                    "default": "false",
-                    "deprecated": "The 'tls' setting is DEPRECATED and is removed in v2.18 - Use 'unsafeSsl' instead",
-                    "metadataVariableReadable": true
-                },
-                {
                     "name": "ca",
                     "type": "string",
                     "optional": true,
