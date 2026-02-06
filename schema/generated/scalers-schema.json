@@ -2234,7 +2234,7 @@
                     "name": "minMetricValue",
                     "type": "string",
                     "optional": true,
-                    "deprecatedAnnounce": "The 'minMetricValue' setting is DEPRECATED and will be removed in v2.20 - Use 'activationTargetMetricValue' instead",
+                    "deprecated": "The 'minMetricValue' setting is DEPRECATED and is removed in v2.20 - Use 'activationTargetMetricValue' instead",
                     "metadataVariableReadable": true
                 },
                 {
