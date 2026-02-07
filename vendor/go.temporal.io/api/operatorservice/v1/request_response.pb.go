@@ -428,8 +428,10 @@ type AddOrUpdateRemoteClusterRequest struct {
 	//
 	//	on update, the existing HTTP address will be removed.
 	FrontendHttpAddress string `protobuf:"bytes,3,opt,name=frontend_http_address,json=frontendHttpAddress,proto3" json:"frontend_http_address,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Controls whether replication streams are active.
+	EnableReplication bool `protobuf:"varint,4,opt,name=enable_replication,json=enableReplication,proto3" json:"enable_replication,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *AddOrUpdateRemoteClusterRequest) Reset() {
@@ -481,6 +483,13 @@ func (x *AddOrUpdateRemoteClusterRequest) GetFrontendHttpAddress() string {
 		return x.FrontendHttpAddress
 	}
 	return ""
+}
+
+func (x *AddOrUpdateRemoteClusterRequest) GetEnableReplication() bool {
+	if x != nil {
+		return x.EnableReplication
+	}
+	return false
 }
 
 type AddOrUpdateRemoteClusterResponse struct {
@@ -721,8 +730,10 @@ type ClusterMetadata struct {
 	HistoryShardCount int32 `protobuf:"varint,5,opt,name=history_shard_count,json=historyShardCount,proto3" json:"history_shard_count,omitempty"`
 	// A flag to indicate if a connection is active.
 	IsConnectionEnabled bool `protobuf:"varint,6,opt,name=is_connection_enabled,json=isConnectionEnabled,proto3" json:"is_connection_enabled,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// A flag to indicate if replication is enabled.
+	IsReplicationEnabled bool `protobuf:"varint,8,opt,name=is_replication_enabled,json=isReplicationEnabled,proto3" json:"is_replication_enabled,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *ClusterMetadata) Reset() {
@@ -800,6 +811,13 @@ func (x *ClusterMetadata) GetHistoryShardCount() int32 {
 func (x *ClusterMetadata) GetIsConnectionEnabled() bool {
 	if x != nil {
 		return x.IsConnectionEnabled
+	}
+	return false
+}
+
+func (x *ClusterMetadata) GetIsReplicationEnabled() bool {
+	if x != nil {
+		return x.IsReplicationEnabled
 	}
 	return false
 }
@@ -1336,11 +1354,12 @@ const file_temporal_api_operatorservice_v1_request_response_proto_rawDesc = "" +
 	"\fnamespace_id\x18\x02 \x01(\tR\vnamespaceId\x12O\n" +
 	"\x16namespace_delete_delay\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\x14namespaceDeleteDelay\"F\n" +
 	"\x17DeleteNamespaceResponse\x12+\n" +
-	"\x11deleted_namespace\x18\x01 \x01(\tR\x10deletedNamespace\"\xc9\x01\n" +
+	"\x11deleted_namespace\x18\x01 \x01(\tR\x10deletedNamespace\"\xf8\x01\n" +
 	"\x1fAddOrUpdateRemoteClusterRequest\x12)\n" +
 	"\x10frontend_address\x18\x01 \x01(\tR\x0ffrontendAddress\x12G\n" +
 	" enable_remote_cluster_connection\x18\x02 \x01(\bR\x1denableRemoteClusterConnection\x122\n" +
-	"\x15frontend_http_address\x18\x03 \x01(\tR\x13frontendHttpAddress\"\"\n" +
+	"\x15frontend_http_address\x18\x03 \x01(\tR\x13frontendHttpAddress\x12-\n" +
+	"\x12enable_replication\x18\x04 \x01(\bR\x11enableReplication\"\"\n" +
 	" AddOrUpdateRemoteClusterResponse\"?\n" +
 	"\x1aRemoveRemoteClusterRequest\x12!\n" +
 	"\fcluster_name\x18\x01 \x01(\tR\vclusterName\"\x1d\n" +
@@ -1350,7 +1369,7 @@ const file_temporal_api_operatorservice_v1_request_response_proto_rawDesc = "" +
 	"\x0fnext_page_token\x18\x02 \x01(\fR\rnextPageToken\"\x8c\x01\n" +
 	"\x14ListClustersResponse\x12L\n" +
 	"\bclusters\x18\x01 \x03(\v20.temporal.api.operatorservice.v1.ClusterMetadataR\bclusters\x12&\n" +
-	"\x0fnext_page_token\x18\x04 \x01(\fR\rnextPageToken\"\xae\x02\n" +
+	"\x0fnext_page_token\x18\x04 \x01(\fR\rnextPageToken\"\xe4\x02\n" +
 	"\x0fClusterMetadata\x12!\n" +
 	"\fcluster_name\x18\x01 \x01(\tR\vclusterName\x12\x1d\n" +
 	"\n" +
@@ -1359,7 +1378,8 @@ const file_temporal_api_operatorservice_v1_request_response_proto_rawDesc = "" +
 	"\fhttp_address\x18\a \x01(\tR\vhttpAddress\x128\n" +
 	"\x18initial_failover_version\x18\x04 \x01(\x03R\x16initialFailoverVersion\x12.\n" +
 	"\x13history_shard_count\x18\x05 \x01(\x05R\x11historyShardCount\x122\n" +
-	"\x15is_connection_enabled\x18\x06 \x01(\bR\x13isConnectionEnabled\")\n" +
+	"\x15is_connection_enabled\x18\x06 \x01(\bR\x13isConnectionEnabled\x124\n" +
+	"\x16is_replication_enabled\x18\b \x01(\bR\x14isReplicationEnabled\")\n" +
 	"\x17GetNexusEndpointRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"W\n" +
 	"\x18GetNexusEndpointResponse\x12;\n" +

@@ -535,6 +535,24 @@ func WaitForDeploymentReplicaReadyCount(t *testing.T, kc *kubernetes.Clientset, 
 	return false
 }
 
+// Waits until pod is in ready state or number of iterations are done.
+func WaitForPodReady(t *testing.T, kc *kubernetes.Clientset, podName, namespace string, iterations, intervalSeconds int) bool {
+	for i := 0; i < iterations; i++ {
+		pod, _ := kc.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+		t.Logf("Waiting for pod to be in ready state. Pod - %s, Current Phase - %s", podName, pod.Status.Phase)
+
+		// A pod can be in the Running phase without all containers being ready.
+		// Check the Ready condition to ensure the pod is actually ready.
+		for _, cond := range pod.Status.Conditions {
+			if cond.Type == corev1.PodReady && cond.Status == corev1.ConditionTrue {
+				return true
+			}
+		}
+		time.Sleep(time.Duration(intervalSeconds) * time.Second)
+	}
+	return false
+}
+
 // Waits until rollout ready replica count hits target or number of iterations are done.
 func WaitForArgoRolloutReplicaReadyCount(t *testing.T, _ *kubernetes.Clientset, name, namespace string, target, iterations, intervalSeconds int) bool {
 	for i := 0; i < iterations; i++ {
@@ -1038,7 +1056,7 @@ func generateCA(t *testing.T) {
 	require.NoErrorf(t, err, "error generating custom CA - %s", err)
 
 	// pem encode
-	crtFile, err := os.OpenFile(caCrtPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	crtFile, err := os.OpenFile(caCrtPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	require.NoErrorf(t, err, "error opening custom CA file - %s", err)
 	err = pem.Encode(crtFile, &pem.Block{
 		Type:  "CERTIFICATE",
@@ -1049,7 +1067,7 @@ func generateCA(t *testing.T) {
 		require.NoErrorf(t, err, "error closing custom CA file - %s", err)
 	}
 
-	keyFile, err := os.OpenFile(caKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyFile, err := os.OpenFile(caKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		require.NoErrorf(t, err, "error opening custom CA key file- %s", err)
 	}

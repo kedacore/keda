@@ -100,7 +100,7 @@ func BindStringToObject(src string, dst interface{}) error {
 	case reflect.Array:
 		if tu, ok := dst.(encoding.TextUnmarshaler); ok {
 			if err := tu.UnmarshalText([]byte(src)); err != nil {
-				return fmt.Errorf("error unmarshaling '%s' text as %T: %s", src, dst, err)
+				return fmt.Errorf("error unmarshaling '%s' text as %T: %w", src, dst, err)
 			}
 
 			return nil
@@ -122,7 +122,7 @@ func BindStringToObject(src string, dst interface{}) error {
 			if err != nil {
 				parsedTime, err = time.Parse(types.DateFormat, src)
 				if err != nil {
-					return fmt.Errorf("error parsing '%s' as RFC3339 or 2006-01-02 time: %s", src, err)
+					return fmt.Errorf("error parsing '%s' as RFC3339 or 2006-01-02 time: %w", src, err)
 				}
 			}
 			// So, assigning this gets a little fun. We have a value to the
@@ -145,7 +145,7 @@ func BindStringToObject(src string, dst interface{}) error {
 			}
 			parsedTime, err := time.Parse(types.DateFormat, src)
 			if err != nil {
-				return fmt.Errorf("error parsing '%s' as date: %s", src, err)
+				return fmt.Errorf("error parsing '%s' as date: %w", src, err)
 			}
 			parsedDate := types.Date{Time: parsedTime}
 
