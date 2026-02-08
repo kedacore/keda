@@ -61,7 +61,7 @@ var testClickHouseMetadata = []parseClickHouseMetadataTestData{
 	},
 	// Host/Port/Username/Password/Database provided separately
 	{
-		metadata:    map[string]string{"query": "SELECT COUNT(*) FROM table", "targetQueryValue": "5", "host": "test_host", "port": "8123", "username": "test_user", "password": "test_pass", "database": "test_db"},
+		metadata:    map[string]string{"query": "SELECT COUNT(*) FROM table", "targetQueryValue": "5", "host": "test_host", "port": "9000", "username": "test_user", "password": "test_pass", "database": "test_db"},
 		authParams:  map[string]string{},
 		resolvedEnv: map[string]string{},
 		raisesError: false,
