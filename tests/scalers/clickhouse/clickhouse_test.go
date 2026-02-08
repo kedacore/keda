@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -74,6 +75,7 @@ spec:
       containers:
       - name: clickhouse
         image: clickhouse/clickhouse-server:24.3
+        imagePullPolicy: Always
         ports:
         - containerPort: 9000
           name: native
@@ -188,6 +190,7 @@ spec:
       containers:
       - name: clickhouse-client
         image: clickhouse/clickhouse-client:24.3
+        imagePullPolicy: Always
         command:
           - sh
           - -c
@@ -210,8 +213,12 @@ func TestClickHouseScaler(t *testing.T) {
 
 	CreateKubernetesResources(t, kc, testNamespace, data, chTemplates)
 
-	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, clickhouseDeploymentName, testNamespace, 1, 90, 3),
+	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, clickhouseDeploymentName, testNamespace, 1, 120, 3),
 		"ClickHouse should be ready")
+
+	// Allow ClickHouse to fully accept connections after port is open
+	t.Log("Waiting for ClickHouse to accept connections...")
+	time.Sleep(15 * time.Second)
 
 	setupClickHouseTable(t, kc, data)
 

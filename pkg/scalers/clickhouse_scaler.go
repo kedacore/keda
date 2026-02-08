@@ -126,9 +126,11 @@ func newClickHouseConnection(meta *clickhouseMetadata, logger logr.Logger) (*sql
 
 // Close disposes of ClickHouse connections
 func (s *clickhouseScaler) Close(context.Context) error {
-	if err := s.connection.Close(); err != nil {
-		s.logger.Error(err, "Error closing clickhouse connection")
-		return err
+	if s.connection != nil {
+		if err := s.connection.Close(); err != nil {
+			s.logger.Error(err, "Error closing clickhouse connection")
+			return err
+		}
 	}
 	return nil
 }
