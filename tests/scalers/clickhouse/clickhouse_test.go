@@ -194,7 +194,7 @@ spec:
         command:
           - sh
           - -c
-          - "{{.JobCommand}}"
+          - {{.JobCommand}}
       restartPolicy: Never
 `
 )
