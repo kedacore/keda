@@ -4,14 +4,15 @@
 package clickhouse_test
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -216,11 +217,7 @@ func TestClickHouseScaler(t *testing.T) {
 	require.True(t, WaitForDeploymentReplicaReadyCount(t, kc, clickhouseDeploymentName, testNamespace, 1, 120, 3),
 		"ClickHouse should be ready")
 
-	// Allow ClickHouse to fully accept connections after port is open
-	t.Log("Waiting for ClickHouse to accept connections...")
-	time.Sleep(15 * time.Second)
-
-	setupClickHouseTable(t, kc, data)
+	setupClickHouseTable(t, kc)
 
 	KubectlApplyMultipleWithTemplate(t, data, testTemplates)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
@@ -231,14 +228,19 @@ func TestClickHouseScaler(t *testing.T) {
 	testScaleIn(t, kc, data)
 }
 
-func setupClickHouseTable(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	data.JobCommand = fmt.Sprintf(
-		"clickhouse-client --host %s --port 9000 -q \"CREATE TABLE default.task_instance (id UInt64) ENGINE = MergeTree() ORDER BY id\"",
-		clickhouseHostname,
-	)
-	KubectlApplyWithTemplate(t, data, "jobTemplate", jobTemplate)
-	require.True(t, WaitForJobSuccess(t, kc, "clickhouse-job", testNamespace, 60, 3), "create table job failed")
-	KubectlDeleteWithTemplate(t, data, "jobTemplate", jobTemplate)
+func setupClickHouseTable(t *testing.T, kc *kubernetes.Clientset) {
+	// Get ClickHouse pod name
+	pods, err := kc.CoreV1().Pods(testNamespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: "app=clickhouse",
+	})
+	require.NoError(t, err, "failed to list ClickHouse pods")
+	require.NotEmpty(t, pods.Items, "no ClickHouse pods found")
+	clickhousePodName := pods.Items[0].Name
+
+	createTableSQL := "CREATE TABLE default.task_instance (id UInt64) ENGINE = MergeTree() ORDER BY id"
+	command := fmt.Sprintf("clickhouse-client -q '%s'", createTableSQL)
+	ok, out, errOut, err := WaitForSuccessfulExecCommandOnSpecificPod(t, clickhousePodName, testNamespace, command, 60, 3)
+	require.True(t, ok, "executing CREATE TABLE command on ClickHouse pod should work; Output: %s, ErrorOutput: %s, Error: %v", out, errOut, err)
 }
 
 func testActivation(t *testing.T, kc *kubernetes.Clientset, data templateData) {
