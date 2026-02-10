@@ -1,0 +1,71 @@
+run:
+  tests: false
+  skip-dirs:
+  - benchmark
+  - tests
+  - internal/cmd
+
+linters-settings:
+  gocritic:
+    disabled-checks:
+    - singleCaseSwitch
+    - commentFormatting
+
+  decorder:
+    dec-order:
+    - type
+    - const
+    - var
+    - func
+    disable-dec-order-check: false
+
+  revive:
+    enable-all-rules: true
+    rules:
+    - name:     cyclomatic
+      disabled: true
+    - name:     argument-limit
+      disabled: true
+    - name:     function-length
+      disabled: true
+    - name:     function-result-limit
+      disabled: true
+    - name:     line-length-limit
+      disabled: true
+    - name:     file-header
+      disabled: true
+    - name:     cognitive-complexity
+      disabled: true
+    - name:     banned-characters
+      disabled: true
+    - name:     max-public-structs
+      disabled: true
+    - name:     add-constant
+      disabled: true
+    - name:     unhandled-error
+      disabled: true
+    - name:     deep-exit
+      disabled: true
+    - name:     nested-structs
+      disabled: true
+
+  gofmt:
+    rewrite-rules:
+    - pattern:     'interface{}'
+      replacement: 'any'
+    - pattern:     'a[b:len(a)]'
+      replacement: 'a[b:]'
+
+linters:
+  disable-all: true
+  enable:
+  - asciicheck
+  - bodyclose
+  - depguard
+  - gocritic
+  - gofmt
+  - govet
+  - ineffassign
+  - importas
+  - misspell
+  - staticcheck
