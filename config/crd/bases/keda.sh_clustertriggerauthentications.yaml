@@ -142,9 +142,9 @@ spec:
                       mechanism
                     properties:
                       externalID:
-                        description: externalID sets the AWS External ID to be
-                          used when assuming a role. This is only applicable when
-                          using AWS pod identity with a RoleArn
+                        description: 'ExternalID sets the External ID to be used when
+                          assuming an identity. eg: This is only applicable when using
+                          AWS pod identity with a RoleArn'
                         type: string
                       identityAuthorityHost:
                         description: Set identityAuthorityHost to override the default
@@ -257,9 +257,9 @@ spec:
                       mechanism
                     properties:
                       externalID:
-                        description: externalID sets the AWS External ID to be
-                          used when assuming a role. This is only applicable when
-                          using AWS pod identity with a RoleArn
+                        description: 'ExternalID sets the External ID to be used when
+                          assuming an identity. eg: This is only applicable when using
+                          AWS pod identity with a RoleArn'
                         type: string
                       identityAuthorityHost:
                         description: Set identityAuthorityHost to override the default
@@ -401,9 +401,9 @@ spec:
                       mechanism
                     properties:
                       externalID:
-                        description: externalID sets the AWS External ID to be
-                          used when assuming a role. This is only applicable when
-                          using AWS pod identity with a RoleArn
+                        description: 'ExternalID sets the External ID to be used when
+                          assuming an identity. eg: This is only applicable when using
+                          AWS pod identity with a RoleArn'
                         type: string
                       identityAuthorityHost:
                         description: Set identityAuthorityHost to override the default
@@ -533,9 +533,9 @@ spec:
                   mechanism
                 properties:
                   externalID:
-                    description: externalID sets the AWS External ID to be used
-                      when assuming a role. This is only applicable when using AWS
-                      pod identity with a RoleArn
+                    description: 'ExternalID sets the External ID to be used when
+                      assuming an identity. eg: This is only applicable when using
+                      AWS pod identity with a RoleArn'
                     type: string
                   identityAuthorityHost:
                     description: Set identityAuthorityHost to override the default
