@@ -162,6 +162,10 @@ type AuthPodIdentity struct {
 	// RoleArn sets the AWS RoleArn to be used. Mutually exclusive with IdentityOwner
 	RoleArn *string `json:"roleArn,omitempty"`
 
+	// +kubebuilder:validation:Optional
+	// ExternalID sets the External ID to be used when assuming an identity. This is only applicable when using AWS pod identity with a RoleArn.
+	ExternalID *string `json:"externalID,omitempty"`
+
 	// +kubebuilder:validation:Enum=keda;workload
 	// +optional
 	// IdentityOwner configures which identity has to be used during auto discovery, keda or the scaled workload. Mutually exclusive with roleArn
