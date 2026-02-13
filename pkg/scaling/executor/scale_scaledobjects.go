@@ -18,6 +18,7 @@ package executor
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -97,7 +98,8 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		minReplicas = *scaledObject.Spec.MinReplicaCount
 	}
 
-	if isActive {
+	if isActive || scaledObject.NeedToForceActivation() {
+		// A scale target is active if triggers are active or if activation is being forced via annotation
 		switch {
 		case scaledObject.Spec.IdleReplicaCount != nil && currentReplicas < minReplicas,
 			// triggers are active, Idle Replicas mode is enabled
@@ -189,25 +191,50 @@ func (e *scaleExecutor) RequestScale(ctx context.Context, scaledObject *kedav1al
 		}
 	}
 
+	activeTriggers := []string{}
+	if options != nil {
+		activeTriggers = options.ActiveTriggers
+	}
+
 	condition := scaledObject.Status.Conditions.GetActiveCondition()
-	if condition.IsUnknown() || condition.IsTrue() != isActive {
-		if isActive {
+	if condition.IsUnknown() || condition.IsTrue() != (isActive || scaledObject.NeedToForceActivation()) {
+		switch {
+		case isActive:
+			// Scaler is active because of metrics
 			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active"); err != nil {
 				logger.Error(err, "Error setting active condition when triggers are active")
 				return
 			}
-		} else {
+		case scaledObject.NeedToForceActivation():
+			// Annotation is set to force scaler to activate
+			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because activation is being forced by annotation"); err != nil {
+				logger.Error(err, "Error setting active condition when activation is forced")
+				return
+			}
+		default:
 			if err := e.setActiveCondition(ctx, logger, scaledObject, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
 				logger.Error(err, "Error setting active condition when triggers are not active")
 				return
 			}
 		}
 	}
+
+	// Update triggers activity if individual trigger states have changed
+	if err := e.updateTriggersActivity(ctx, logger, scaledObject, activeTriggers); err != nil {
+		logger.Error(err, "Error updating triggers activity")
+		return
+	}
 }
 
 // An object will be scaled down to 0 only if it's passed its cooldown period
-// or if LastActiveTime is nil
+// or if LastActiveTime is nil and scale in is not paused
 func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale) {
+	if scaledObject.NeedToPauseScaleIn() {
+		// The Pause Scale Down annotation is set so we should not scale down this target
+		logger.Info("Pause Scale Down annotation set on ScaledObject, no scaling down on inactive trigger")
+		return
+	}
+
 	var initialCooldownPeriod, cooldownPeriod time.Duration
 
 	if scaledObject.Spec.InitialCooldownPeriod != nil {
@@ -223,13 +250,13 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 	}
 
 	// If the ScaledObject was just created,CreationTimestamp is zero, set the CreationTimestamp to now
-	if scaledObject.ObjectMeta.CreationTimestamp.IsZero() {
-		scaledObject.ObjectMeta.CreationTimestamp = metav1.NewTime(time.Now())
+	if scaledObject.CreationTimestamp.IsZero() {
+		scaledObject.CreationTimestamp = metav1.NewTime(time.Now())
 	}
 
 	// LastActiveTime can be nil if the ScaleTarget was scaled outside of KEDA.
 	// In this case we will ignore the cooldown period and scale it down
-	if (scaledObject.Status.LastActiveTime == nil && scaledObject.ObjectMeta.CreationTimestamp.Add(initialCooldownPeriod).Before(time.Now())) || (scaledObject.Status.LastActiveTime != nil &&
+	if (scaledObject.Status.LastActiveTime == nil && scaledObject.CreationTimestamp.Add(initialCooldownPeriod).Before(time.Now())) || (scaledObject.Status.LastActiveTime != nil &&
 		scaledObject.Status.LastActiveTime.Add(cooldownPeriod).Before(time.Now())) {
 		// or last time a trigger was active was > cooldown period, so scale in.
 		idleValue, scaleToReplicas := getIdleOrMinimumReplicaCount(scaledObject)
@@ -270,6 +297,12 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 }
 
 func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Logger, scaledObject *kedav1alpha1.ScaledObject, scale *autoscalingv1.Scale, activeTriggers []string) {
+	if scaledObject.NeedToPauseScaleOut() {
+		// The Pause Scale Out annotation is set so we should not scale up (out) this target
+		logger.Info("Pause Scale Out annotation set on ScaledObject, no scaling out on active trigger")
+		return
+	}
+
 	var replicas int32
 	if scaledObject.Spec.MinReplicaCount != nil && *scaledObject.Spec.MinReplicaCount > 0 {
 		replicas = *scaledObject.Spec.MinReplicaCount
@@ -283,7 +316,35 @@ func (e *scaleExecutor) scaleFromZeroOrIdle(ctx context.Context, logger logr.Log
 		logger.Info("Successfully updated ScaleTarget",
 			"Original Replicas Count", currentReplicas,
 			"New Replicas Count", replicas)
-		e.recorder.Eventf(scaledObject, corev1.EventTypeNormal, eventreason.KEDAScaleTargetActivated, "Scaled %s %s/%s from %d to %d, triggered by %s", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, replicas, strings.Join(activeTriggers, ";"))
+
+		eventMessage := fmt.Sprintf(
+			"Scaled %s %s/%s from %d to %d, triggered by %s",
+			scaledObject.Status.ScaleTargetKind,
+			scaledObject.Namespace,
+			scaledObject.Spec.ScaleTargetRef.Name,
+			currentReplicas,
+			replicas,
+			strings.Join(activeTriggers, ";"),
+		)
+
+		if scaledObject.NeedToForceActivation() {
+			// If activation is caused by the force annotation, record a different event message
+			eventMessage = fmt.Sprintf(
+				"Scaled %s %s/%s from %d to %d, caused by forced activation annotation",
+				scaledObject.Status.ScaleTargetKind,
+				scaledObject.Namespace,
+				scaledObject.Spec.ScaleTargetRef.Name,
+				currentReplicas,
+				replicas,
+			)
+		}
+
+		e.recorder.Event(
+			scaledObject,
+			corev1.EventTypeNormal,
+			eventreason.KEDAScaleTargetActivated,
+			eventMessage,
+		)
 
 		// Scale was successful. Update lastScaleTime and lastActiveTime on the scaledObject
 		if err := e.updateLastActiveTime(ctx, logger, scaledObject); err != nil {

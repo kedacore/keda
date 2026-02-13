@@ -24,12 +24,11 @@ package rbac
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"sigs.k8s.io/controller-tools/pkg/genall"
 	"sigs.k8s.io/controller-tools/pkg/markers"
 )
@@ -74,13 +73,6 @@ type ruleKey struct {
 func (key ruleKey) String() string {
 	return fmt.Sprintf("%s + %s + %s + %s", key.Groups, key.Resources, key.ResourceNames, key.URLs)
 }
-
-// ruleKeys implements sort.Interface
-type ruleKeys []ruleKey
-
-func (keys ruleKeys) Len() int           { return len(keys) }
-func (keys ruleKeys) Swap(i, j int)      { keys[i], keys[j] = keys[j], keys[i] }
-func (keys ruleKeys) Less(i, j int) bool { return keys[i].String() < keys[j].String() }
 
 // key normalizes the Rule and returns a ruleKey object.
 func (r *Rule) key() ruleKey {
@@ -140,7 +132,7 @@ func removeDupAndSort(strs []string) []string {
 	for str := range set {
 		result = append(result, str)
 	}
-	sort.Strings(result)
+	slices.Sort(result)
 	return result
 }
 
@@ -162,6 +154,9 @@ type Generator struct {
 	// RoleName sets the name of the generated ClusterRole.
 	RoleName string
 
+	// FileName sets the file name for the generated manifest(s). If not set, defaults to "role.yaml".
+	FileName string `marker:",optional"`
+
 	// HeaderFile specifies the header text (e.g. license) to prepend to generated files.
 	HeaderFile string `marker:",optional"`
 
@@ -179,7 +174,7 @@ func (Generator) RegisterMarkers(into *markers.Registry) error {
 
 // GenerateRoles generate a slice of objs representing either a ClusterRole or a Role object
 // The order of the objs in the returned slice is stable and determined by their namespaces.
-func GenerateRoles(ctx *genall.GenerationContext, roleName string) ([]interface{}, error) {
+func GenerateRoles(ctx *genall.GenerationContext, roleName string) ([]any, error) {
 	rulesByNSResource := make(map[string][]*Rule)
 	for _, root := range ctx.Roots {
 		markerSet, err := markers.PackageMarkers(ctx.Collector, root)
@@ -302,8 +297,16 @@ func GenerateRoles(ctx *genall.GenerationContext, roleName string) ([]interface{
 		for key := range ruleMap {
 			keys = append(keys, key)
 		}
-		sort.Sort(ruleKeys(keys))
+		slices.SortStableFunc(keys, func(a, b ruleKey) int {
+			return strings.Compare(a.String(), b.String())
+		})
 
+		// Normalize rule verbs to "*" if any verb in the rule is an asterisk
+		for _, rule := range ruleMap {
+			if slices.Contains(rule.Verbs, "*") {
+				rule.Verbs = []string{"*"}
+			}
+		}
 		var policyRules []rbacv1.PolicyRule
 		for _, key := range keys {
 			policyRules = append(policyRules, ruleMap[key].ToRule())
@@ -316,10 +319,10 @@ func GenerateRoles(ctx *genall.GenerationContext, roleName string) ([]interface{
 	for ns := range rulesByNSResource {
 		namespaces = append(namespaces, ns)
 	}
-	sort.Strings(namespaces)
+	slices.Sort(namespaces)
 
 	// process the items in rulesByNS by the order specified in `namespaces` to make sure that the Role order is stable
-	var objs []interface{}
+	var objs []any
 	for _, ns := range namespaces {
 		rules := rulesByNSResource[ns]
 		policyRules := NormalizeRules(rules)
@@ -375,5 +378,10 @@ func (g Generator) Generate(ctx *genall.GenerationContext) error {
 	}
 	headerText = strings.ReplaceAll(headerText, " YEAR", " "+g.Year)
 
-	return ctx.WriteYAML("role.yaml", headerText, objs, genall.WithTransform(genall.TransformRemoveCreationTimestamp))
+	fileName := "role.yaml"
+	if g.FileName != "" {
+		fileName = g.FileName
+	}
+
+	return ctx.WriteYAML(fileName, headerText, objs, genall.WithTransform(genall.TransformRemoveCreationTimestamp))
 }

@@ -1,25 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2024 Temporal Technologies Inc.  All rights reserved.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 import (
@@ -42,6 +20,16 @@ import (
 	"go.temporal.io/sdk/log"
 )
 
+// NexusOperationInfo contains information about a currently executing Nexus operation.
+//
+// Exposed as: [go.temporal.io/sdk/temporalnexus.OperationInfo]
+type NexusOperationInfo struct {
+	// The namespace of the worker handling this Nexus operation.
+	Namespace string
+	// The task queue of the worker handling this Nexus operation.
+	TaskQueue string
+}
+
 // NexusOperationContext is an internal only struct that holds fields used by the temporalnexus functions.
 type NexusOperationContext struct {
 	client         Client
@@ -58,6 +46,17 @@ func (nc *NexusOperationContext) ResolveWorkflowName(wf any) (string, error) {
 
 type nexusOperationEnvironment struct {
 	NexusOperationOutboundInterceptorBase
+}
+
+func (nc *nexusOperationEnvironment) GetOperationInfo(ctx context.Context) NexusOperationInfo {
+	nctx, ok := NexusOperationContextFromGoContext(ctx)
+	if !ok {
+		panic("temporalnexus GetInfo: Not a valid Nexus context")
+	}
+	return NexusOperationInfo{
+		Namespace: nctx.Namespace,
+		TaskQueue: nctx.TaskQueue,
+	}
 }
 
 func (nc *nexusOperationEnvironment) GetMetricsHandler(ctx context.Context) metrics.Handler {
@@ -96,6 +95,25 @@ var nexusOperationOutboundInterceptorKey = nexusOperationOutboundInterceptorKeyT
 func nexusOperationOutboundInterceptorFromGoContext(ctx context.Context) (nctx NexusOperationOutboundInterceptor, ok bool) {
 	nctx, ok = ctx.Value(nexusOperationOutboundInterceptorKey).(NexusOperationOutboundInterceptor)
 	return
+}
+
+// IsNexusOperation checks if the provided context is a Nexus operation context.
+//
+// Exposed as: [go.temporal.io/sdk/temporalnexus.IsNexusOperation]
+func IsNexusOperation(ctx context.Context) bool {
+	_, ok := NexusOperationContextFromGoContext(ctx)
+	return ok
+}
+
+// GetNexusOperationInfo returns information about the currently executing Nexus operation.
+//
+// Exposed as: [go.temporal.io/sdk/temporalnexus.GetOperationInfo]
+func GetNexusOperationInfo(ctx context.Context) NexusOperationInfo {
+	interceptor, ok := nexusOperationOutboundInterceptorFromGoContext(ctx)
+	if !ok {
+		panic("temporalnexus GetOperationInfo: Not a valid Nexus context")
+	}
+	return interceptor.GetOperationInfo(ctx)
 }
 
 // GetNexusOperationMetricsHandler returns a metrics handler to be used in a Nexus operation's context.
@@ -249,7 +267,7 @@ func nexusOperationFailure(params executeNexusOperationParams, token string, cau
 				Service:        params.client.Service(),
 				Operation:      params.operation,
 				OperationToken: token,
-				OperationId:    token, // Also populate ID for backwards compatiblity.
+				OperationId:    token, // Also populate ID for backwards compatibility.
 			},
 		},
 		Cause: cause,
@@ -390,6 +408,11 @@ type testSuiteClientForNexusOperations struct {
 	env *testWorkflowEnvironmentImpl
 }
 
+// DescribeWorkflow implements Client.
+func (t *testSuiteClientForNexusOperations) DescribeWorkflow(ctx context.Context, workflowID string, runID string) (*WorkflowExecutionDescription, error) {
+	panic("not implemented in the test environment")
+}
+
 // CancelWorkflow implements Client.
 func (t *testSuiteClientForNexusOperations) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
 	if set, ok := ctx.Value(IsWorkflowRunOpContextKey).(bool); !ok || !set {
@@ -486,6 +509,7 @@ func (t *testSuiteClientForNexusOperations) ExecuteWorkflow(ctx context.Context,
 				Memo:                     options.Memo,
 				CronSchedule:             options.CronSchedule,
 				RetryPolicy:              convertToPBRetryPolicy(options.RetryPolicy),
+				Priority:                 convertToPBPriority(options.Priority),
 			},
 		}, func(result *commonpb.Payloads, wfErr error) {
 			// This callback handles async completion of Nexus operations. If there was an error when

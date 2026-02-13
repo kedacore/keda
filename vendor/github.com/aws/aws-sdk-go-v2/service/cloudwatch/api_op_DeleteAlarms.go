@@ -15,9 +15,10 @@ import (
 // you could delete 99 metric alarms and one composite alarms with one operation,
 // but you can't delete two composite alarms with one operation.
 //
-// If you specify an incorrect alarm name or make any other error in the
-// operation, no alarms are deleted. To confirm that alarms were deleted
-// successfully, you can use the [DescribeAlarms]operation after using DeleteAlarms .
+// If you specify any incorrect alarm names, the alarms you specify with correct
+// names are still deleted. Other syntax errors might result in no alarms being
+// deleted. To confirm that alarms were deleted successfully, you can use the [DescribeAlarms]
+// operation after using DeleteAlarms .
 //
 // It is possible to create a loop or cycle of composite alarms, where composite
 // alarm A depends on composite alarm B, and composite alarm B also depends on
@@ -70,11 +71,11 @@ func (c *Client) addOperationDeleteAlarmsMiddlewares(stack *middleware.Stack, op
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsquery_serializeOpDeleteAlarms{}, middleware.After)
+	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpDeleteAlarms{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsquery_deserializeOpDeleteAlarms{}, middleware.After)
+	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpDeleteAlarms{}, middleware.After)
 	if err != nil {
 		return err
 	}
@@ -130,6 +131,9 @@ func (c *Client) addOperationDeleteAlarmsMiddlewares(stack *middleware.Stack, op
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
+		return err
+	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
@@ -154,16 +158,13 @@ func (c *Client) addOperationDeleteAlarmsMiddlewares(stack *middleware.Stack, op
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

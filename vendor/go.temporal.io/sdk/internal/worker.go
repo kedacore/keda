@@ -1,42 +1,76 @@
-// The MIT License
-//
-// Copyright (c) 2020 Temporal Technologies Inc.  All rights reserved.
-//
-// Copyright (c) 2020 Uber Technologies, Inc.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	deploymentpb "go.temporal.io/api/deployment/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 )
 
+var (
+	_ PollerBehavior = (*pollerBehaviorSimpleMaximum)(nil)
+	_ PollerBehavior = (*pollerBehaviorAutoscaling)(nil)
+)
+
 type (
+	pollerBehaviorSimpleMaximum struct {
+		// maximumNumberOfPollers is the maximum number of pollers the worker is allowed to start.
+		maximumNumberOfPollers int
+	}
+
+	pollerBehaviorAutoscaling struct {
+		// initialNumberOfPollers is the initial number of pollers to start.
+		initialNumberOfPollers int
+		// maximumNumberOfPollers is the maximum number of pollers the worker is allowed scale up to.
+		maximumNumberOfPollers int
+		// minimumNumberOfPollers is the minimum number of pollers the worker is allowed scale down to.
+		minimumNumberOfPollers int
+	}
+
+	// PollerBehavior is used to configure the behavior of the poller.
+	//
+	// Exposed as: [go.temporal.io/sdk/worker.PollerBehavior]
+	PollerBehavior interface {
+		isPollerBehavior()
+	}
+
+	// PollerBehaviorAutoscalingOptions is the options for NewPollerBehaviorAutoscaling.
+	//
+	// Exposed as: [go.temporal.io/sdk/worker.PollerBehaviorAutoscalingOptions]
+	PollerBehaviorAutoscalingOptions struct {
+		// InitialNumberOfPollers is the initial number of pollers to start.
+		//
+		// Default: 5
+		InitialNumberOfPollers int
+
+		// MinimumNumberOfPollers is the minimum number of pollers the worker is allowed scale down to.
+		//
+		// Default: 1
+		MinimumNumberOfPollers int
+
+		// MaximumNumberOfPollers is the maximum number of pollers the worker is allowed scale up to.
+		//
+		// Default: 100
+		MaximumNumberOfPollers int
+	}
+
+	// PollerBehaviorSimpleMaximumOptions is the options for NewPollerBehaviorSimpleMaximum.
+	//
+	// Exposed as: [go.temporal.io/sdk/worker.PollerBehaviorSimpleMaximumOptions]
+	PollerBehaviorSimpleMaximumOptions struct {
+		// MaximumNumberOfPollers is the maximum number of pollers the worker is allowed
+		// to start.
+		//
+		// Default: 2
+		MaximumNumberOfPollers int
+	}
+
 	// WorkerDeploymentOptions provides configuration for Worker Deployment Versioning.
-	// NOTE: Both [WorkerDeploymentOptions.Version] and [WorkerDeploymentOptions.UseVersioning]
-	// need to be set for enabling Worker Deployment Versioning.
+	//
+	// NOTE: [WorkerDeploymentOptions.UseVersioning] must be set to enable Worker Deployment
+	// Versioning.
+	//
 	// NOTE: Experimental
 	//
 	// Exposed as: [go.temporal.io/sdk/worker.DeploymentOptions]
@@ -44,27 +78,26 @@ type (
 		// If set, opts this worker into the Worker Deployment Versioning feature. It will only
 		// operate on workflows it claims to be compatible with. You must set [Version] if this flag
 		// is true.
+		//
 		// NOTE: Experimental
+		//
 		// NOTE: Cannot be enabled at the same time as [WorkerOptions.EnableSessionWorker]
 		UseVersioning bool
 
-		// Assign a Deployment Version identifier to this worker. The format of this identifier
-		// is "<deployment_name>.<build_id>". If [Version] is set both [WorkerOptions.BuildID] and
-		// [DeploymentSeriesName] will be ignored.
-		// NOTE: Experimental
-		Version string
-
-		// Assign a deployment series name to this worker. Different versions of the same worker
-		// service/application are linked together by sharing a series name.
+		// Assign a Deployment Version identifier to this worker. If [Version] is set
+		// [WorkerOptions.BuildID] will be ignored.
 		//
-		// Deprecated: Use [Version].
-		DeploymentSeriesName string
+		// NOTE: Experimental
+		Version WorkerDeploymentVersion
 
-		// Optional: Provides a default Versioning Behavior to workflows that do not set one with the
-		// registration option [RegisterWorkflowOptions.VersioningBehavior].
-		// NOTE: When the new Deployment-based Worker Versioning feature is on,
-		// and [DefaultVersioningBehavior] is unspecified,
-		// workflows that do not set the Versioning Behavior will fail at registration time.
+		// Optional: Provides a default Versioning Behavior to workflows that do not set one with
+		// the registration option [RegisterWorkflowOptions.VersioningBehavior]. It is an error to
+		// set this without [UseVersioning] being true.
+		//
+		// NOTE: When the new Deployment-based Worker Versioning feature is on, and
+		// [DefaultVersioningBehavior] is unspecified, workflows that do not set the Versioning
+		// Behavior will fail at registration time.
+		//
 		// NOTE: Experimental
 		DefaultVersioningBehavior VersioningBehavior
 	}
@@ -77,6 +110,7 @@ type (
 	WorkerOptions struct {
 		// Optional: To set the maximum concurrent activity executions this worker can have.
 		// The zero value of this uses the default value.
+		//
 		// default: defaultMaxConcurrentActivityExecutionSize(1k)
 		MaxConcurrentActivityExecutionSize int
 
@@ -86,11 +120,13 @@ type (
 		// 1 if needed. For example, set the number to 0.1 means you want your activity to be executed
 		// once for every 10 seconds. This can be used to protect down stream services from flooding.
 		// The zero value of this uses the default value
+		//
 		// default: 100k
 		WorkerActivitiesPerSecond float64
 
 		// Optional: To set the maximum concurrent local activity executions this worker can have.
 		// The zero value of this uses the default value.
+		//
 		// default: 1k
 		MaxConcurrentLocalActivityExecutionSize int
 
@@ -100,6 +136,7 @@ type (
 		// 1 if needed. For example, set the number to 0.1 means you want your local activity to be executed
 		// once for every 10 seconds. This can be used to protect down stream services from flooding.
 		// The zero value of this uses the default value
+		//
 		// default: 100k
 		WorkerLocalActivitiesPerSecond float64
 
@@ -110,6 +147,7 @@ type (
 		// 1 if needed. For example, set the number to 0.1 means you want your activity to be executed
 		// once for every 10 seconds. This can be used to protect down stream services from flooding.
 		// The zero value of this uses the default value.
+		//
 		// default: 100k
 		//
 		// NOTE: Setting this to a non zero value will also disable eager activities.
@@ -118,6 +156,9 @@ type (
 		// Optional: Sets the maximum number of goroutines that will concurrently poll the
 		// temporal-server to retrieve activity tasks. Changing this value will affect the
 		// rate at which the worker is able to consume tasks from a task queue.
+		//
+		// NOTE: This option is mutually exclusive with WorkflowTaskPollerBehavior.
+		//
 		// default: 2
 		MaxConcurrentActivityTaskPollers int
 
@@ -125,6 +166,7 @@ type (
 		// The zero value of this uses the default value. Due to internal logic where pollers
 		// alternate between stick and non-sticky queues, this
 		// value cannot be 1 and will panic if set to that value.
+		//
 		// default: defaultMaxConcurrentTaskExecutionSize(1k)
 		MaxConcurrentWorkflowTaskExecutionSize int
 
@@ -133,17 +175,24 @@ type (
 		// rate at which the worker is able to consume tasks from a task queue. Due to
 		// internal logic where pollers alternate between stick and non-sticky queues, this
 		// value cannot be 1 and will panic if set to that value.
+		//
+		// NOTE: This option is mutually exclusive with WorkflowTaskPollerBehavior.
+		//
 		// default: 2
 		MaxConcurrentWorkflowTaskPollers int
 
 		// Optional: Sets the maximum concurrent nexus task executions this worker can have.
 		// The zero value of this uses the default value.
+		//
 		// default: defaultMaxConcurrentTaskExecutionSize(1k)
 		MaxConcurrentNexusTaskExecutionSize int
 
 		// Optional: Sets the maximum number of goroutines that will concurrently poll the
 		// temporal-server to retrieve nexus tasks. Changing this value will affect the
 		// rate at which the worker is able to consume tasks from a task queue.
+		//
+		// NOTE: This option is mutually exclusive with NexusTaskPollerBehavior.
+		//
 		// default: 2
 		MaxConcurrentNexusTaskPollers int
 
@@ -151,6 +200,7 @@ type (
 		// In the workflow code you can use workflow.GetLogger(ctx) to write logs. By default, the logger will skip log
 		// entry during replay mode so you won't see duplicate logs. This option will enable the logging in replay mode.
 		// This is only useful for debugging purpose.
+		//
 		// default: false
 		EnableLoggingInReplay bool
 
@@ -177,16 +227,19 @@ type (
 		// Optional: Sets how workflow worker deals with non-deterministic history events
 		// (presumably arising from non-deterministic workflow definitions or non-backward compatible workflow
 		// definition changes) and other panics raised from workflow code.
+		//
 		// default: BlockWorkflow, which just logs error but doesn't fail workflow.
 		WorkflowPanicPolicy WorkflowPanicPolicy
 
 		// Optional: worker graceful stop timeout
+		//
 		// default: 0s
 		WorkerStopTimeout time.Duration
 
 		// Optional: Enable running session workers.
 		// Session workers is for activities within a session.
 		// Enable this option to allow worker to process sessions.
+		//
 		// default: false
 		EnableSessionWorker bool
 
@@ -197,21 +250,25 @@ type (
 		// SessionResourceID string
 
 		// Optional: Sets the maximum number of concurrently running sessions the resource supports.
+		//
 		// default: 1000
 		MaxConcurrentSessionExecutionSize int
 
 		// Optional: If set to true, a workflow worker is not started for this
 		// worker and workflows cannot be registered with this worker. Use this if
 		// you only want your worker to execute activities.
+		//
 		// default: false
 		DisableWorkflowWorker bool
 
 		// Optional: If set to true worker will only handle workflow tasks and local activities.
 		// Non-local activities will not be executed by this worker.
+		//
 		// default: false
 		LocalActivityWorkerOnly bool
 
 		// Optional: If set overwrites the client level Identity value.
+		//
 		// default: client identity
 		Identity string
 
@@ -221,12 +278,14 @@ type (
 		// Optional: The maximum amount of time between sending each pending heartbeat to the server. Regardless of
 		// heartbeat timeout, no pending heartbeat will wait longer than this amount of time to send. To effectively disable
 		// heartbeat throttling, this can be set to something like 1 nanosecond, but it is not recommended.
+		//
 		// default: 60 seconds
 		MaxHeartbeatThrottleInterval time.Duration
 
 		// Optional: The default amount of time between sending each pending heartbeat to the server. This is used if the
 		// ActivityOptions do not provide a HeartbeatTimeout. Otherwise, the interval becomes a value a bit smaller than the
 		// given HeartbeatTimeout.
+		//
 		// default: 30 seconds
 		DefaultHeartbeatThrottleInterval time.Duration
 
@@ -291,19 +350,58 @@ type (
 		// is true.
 		//
 		// Deprecated: Use [WorkerDeploymentOptions.UseVersioning]
+		//
 		// NOTE: Cannot be enabled at the same time as [WorkerOptions.EnableSessionWorker]
 		UseBuildIDForVersioning bool
 
 		// Optional: If set it configures Worker Versioning for this worker. See [WorkerDeploymentOptions]
 		// for more.
+		//
 		// NOTE: Experimental
 		DeploymentOptions WorkerDeploymentOptions
 
 		// Optional: If set, use a custom tuner for this worker. See WorkerTuner for more.
 		// Mutually exclusive with MaxConcurrentWorkflowTaskExecutionSize,
 		// MaxConcurrentActivityExecutionSize, and MaxConcurrentLocalActivityExecutionSize.
+		//
 		// NOTE: Experimental
 		Tuner WorkerTuner
+
+		// Optional: If set, the worker will use the provided poller behavior when polling for workflow tasks.
+		// This is mutually exclusive with MaxConcurrentWorkflowTaskPollers.
+		//
+		// NOTE: This option is mutually exclusive with MaxConcurrentWorkflowTaskPollers.
+		//
+		// NOTE: Experimental
+		WorkflowTaskPollerBehavior PollerBehavior
+
+		// Optional: If set, the worker will use the provided poller behavior when polling for activity tasks.
+		// This is mutually exclusive with MaxConcurrentActivityTaskPollers.
+		//
+		// NOTE: This option is mutually exclusive with MaxConcurrentActivityTaskPollers.
+		//
+		// NOTE: Experimental
+		ActivityTaskPollerBehavior PollerBehavior
+
+		// Optional: If set, the worker will use the provided poller behavior when polling for nexus tasks.
+		// This is mutually exclusive with MaxConcurrentNexusTaskPollers.
+		//
+		// NOTE: This option is mutually exclusive with MaxConcurrentNexusTaskPollers.
+		//
+		// NOTE: Experimental
+		NexusTaskPollerBehavior PollerBehavior
+
+		// Plugins that can configure options and intercept start/stop worker.
+		//
+		// Any plugins that were part of client options and implement
+		// worker.Plugin are automatically applied as worker plugins and should
+		// not also be set here.
+		//
+		// Plugins themselves should never mutate this field, the behavior is
+		// undefined.
+		//
+		// NOTE: Experimental
+		Plugins []WorkerPlugin
 	}
 )
 
@@ -360,12 +458,8 @@ func NewWorker(
 	return NewAggregatedWorker(workflowClient, taskQueue, options)
 }
 
-func workerDeploymentOptionsToProto(useVersioning bool, version string) *deploymentpb.WorkerDeploymentOptions {
-	if version != "" {
-		splitVersion := strings.SplitN(version, ".", 2)
-		if len(splitVersion) != 2 {
-			panic("invalid format for worker deployment version, not \"<deployment_name>.<build_id>\"")
-		}
+func workerDeploymentOptionsToProto(useVersioning bool, version WorkerDeploymentVersion) *deploymentpb.WorkerDeploymentOptions {
+	if (version != WorkerDeploymentVersion{}) {
 		var workerVersioningMode enumspb.WorkerVersioningMode
 		if useVersioning {
 			workerVersioningMode = enumspb.WORKER_VERSIONING_MODE_VERSIONED
@@ -373,10 +467,58 @@ func workerDeploymentOptionsToProto(useVersioning bool, version string) *deploym
 			workerVersioningMode = enumspb.WORKER_VERSIONING_MODE_UNVERSIONED
 		}
 		return &deploymentpb.WorkerDeploymentOptions{
-			DeploymentName:       splitVersion[0],
-			BuildId:              splitVersion[1],
+			DeploymentName:       version.DeploymentName,
+			BuildId:              version.BuildID,
 			WorkerVersioningMode: workerVersioningMode,
 		}
 	}
 	return nil
+}
+
+// isPollerBehavior implements PollerBehavior.
+func (p *pollerBehaviorSimpleMaximum) isPollerBehavior() {
+}
+
+// isPollerBehavior implements PollerBehavior.
+func (p *pollerBehaviorAutoscaling) isPollerBehavior() {
+}
+
+// NewPollerBehaviorSimpleMaximum creates a PollerBehavior that allows the worker to start up to a maximum number of pollers.
+//
+// Exposed as: [go.temporal.io/sdk/worker.NewPollerBehaviorSimpleMaximum]
+func NewPollerBehaviorSimpleMaximum(
+	options PollerBehaviorSimpleMaximumOptions,
+) PollerBehavior {
+	if options.MaximumNumberOfPollers <= 0 {
+		options.MaximumNumberOfPollers = defaultConcurrentPollRoutineSize // Default maximum number of pollers.
+	}
+	return &pollerBehaviorSimpleMaximum{
+		maximumNumberOfPollers: options.MaximumNumberOfPollers,
+	}
+}
+
+// NewPollerBehaviorAutoscaling creates a PollerBehavior that allows the worker to scale the number of pollers within a given range.
+// based on the workflow and feedback from the server.
+//
+// Exposed as: [go.temporal.io/sdk/worker.NewPollerBehaviorAutoscaling]
+func NewPollerBehaviorAutoscaling(
+	options PollerBehaviorAutoscalingOptions,
+) PollerBehavior {
+	initialNumberOfPollers := options.InitialNumberOfPollers
+	if initialNumberOfPollers <= 0 {
+		initialNumberOfPollers = defaultAutoscalingInitialNumberOfPollers // Default initial number of pollers.
+	}
+	minimumNumberOfPollers := options.MinimumNumberOfPollers
+	if minimumNumberOfPollers <= 0 {
+		minimumNumberOfPollers = defaultAutoscalingMinimumNumberOfPollers // Default minimum number of pollers.
+	}
+	maximumNumberOfPollers := options.MaximumNumberOfPollers
+	if maximumNumberOfPollers <= 0 {
+		maximumNumberOfPollers = defaultAutoscalingMaximumNumberOfPollers // Default maximum number of pollers.
+	}
+	return &pollerBehaviorAutoscaling{
+		initialNumberOfPollers: initialNumberOfPollers,
+		minimumNumberOfPollers: minimumNumberOfPollers,
+		maximumNumberOfPollers: maximumNumberOfPollers,
+	}
 }

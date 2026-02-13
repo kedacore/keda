@@ -14,25 +14,7 @@ type PausedReplicasPredicate struct {
 }
 
 func (PausedReplicasPredicate) Update(e event.UpdateEvent) bool {
-	if e.ObjectOld == nil || e.ObjectNew == nil {
-		return false
-	}
-
-	newAnnotations := e.ObjectNew.GetAnnotations()
-	oldAnnotations := e.ObjectOld.GetAnnotations()
-
-	newPausedValue := ""
-	oldPausedValue := ""
-
-	if newAnnotations != nil {
-		newPausedValue = newAnnotations[kedav1alpha1.PausedReplicasAnnotation]
-	}
-
-	if oldAnnotations != nil {
-		oldPausedValue = oldAnnotations[kedav1alpha1.PausedReplicasAnnotation]
-	}
-
-	return newPausedValue != oldPausedValue
+	return checkAnnotation(e, kedav1alpha1.PausedReplicasAnnotation)
 }
 
 type ScaleObjectReadyConditionPredicate struct {
@@ -71,6 +53,34 @@ type PausedPredicate struct {
 }
 
 func (PausedPredicate) Update(e event.UpdateEvent) bool {
+	return checkAnnotation(e, kedav1alpha1.PausedAnnotation)
+}
+
+type PausedScaleInPredicate struct {
+	predicate.Funcs
+}
+
+func (PausedScaleInPredicate) Update(e event.UpdateEvent) bool {
+	return checkAnnotation(e, kedav1alpha1.PausedScaleInAnnotation)
+}
+
+type ForceActivationPredicate struct {
+	predicate.Funcs
+}
+
+func (ForceActivationPredicate) Update(e event.UpdateEvent) bool {
+	return checkAnnotation(e, kedav1alpha1.ForceActivationAnnotation)
+}
+
+type PausedScaleOutPredicate struct {
+	predicate.Funcs
+}
+
+func (PausedScaleOutPredicate) Update(e event.UpdateEvent) bool {
+	return checkAnnotation(e, kedav1alpha1.PausedScaleOutAnnotation)
+}
+
+func checkAnnotation(e event.UpdateEvent, annotation string) bool {
 	if e.ObjectOld == nil || e.ObjectNew == nil {
 		return false
 	}
@@ -78,18 +88,18 @@ func (PausedPredicate) Update(e event.UpdateEvent) bool {
 	newAnnotations := e.ObjectNew.GetAnnotations()
 	oldAnnotations := e.ObjectOld.GetAnnotations()
 
-	newPausedValue := ""
-	oldPausedValue := ""
+	newValue := ""
+	oldValue := ""
 
 	if newAnnotations != nil {
-		newPausedValue = newAnnotations[kedav1alpha1.PausedAnnotation]
+		newValue = newAnnotations[annotation]
 	}
 
 	if oldAnnotations != nil {
-		oldPausedValue = oldAnnotations[kedav1alpha1.PausedAnnotation]
+		oldValue = oldAnnotations[annotation]
 	}
 
-	return newPausedValue != oldPausedValue
+	return newValue != oldValue
 }
 
 type HPASpecChangedPredicate struct {

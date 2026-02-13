@@ -11,9 +11,11 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// The CreateLoggingConfiguration operation creates a logging configuration for
-// the workspace. Use this operation to set the CloudWatch log group to which the
-// logs will be published to.
+// The CreateLoggingConfiguration operation creates rules and alerting logging
+// configuration for the workspace. Use this operation to set the CloudWatch log
+// group to which the logs will be published to.
+//
+// These logging configurations are only for rules and alerting logs.
 func (c *Client) CreateLoggingConfiguration(ctx context.Context, params *CreateLoggingConfigurationInput, optFns ...func(*Options)) (*CreateLoggingConfigurationOutput, error) {
 	if params == nil {
 		params = &CreateLoggingConfigurationInput{}
@@ -155,16 +157,13 @@ func (c *Client) addOperationCreateLoggingConfigurationMiddlewares(stack *middle
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

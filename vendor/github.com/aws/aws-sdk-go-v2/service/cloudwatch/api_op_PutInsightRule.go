@@ -49,6 +49,22 @@ type PutInsightRuleInput struct {
 	// This member is required.
 	RuleName *string
 
+	// Specify true to have this rule evaluate log events after they have been
+	// transformed by [Log transformation]. If you specify true , then the log events in log groups that
+	// have transformers will be evaluated by Contributor Insights after being
+	// transformed. Log groups that don't have transformers will still have their
+	// original log events evaluated by Contributor Insights.
+	//
+	// The default is false
+	//
+	// If a log group has a transformer, and transformation fails for some log events,
+	// those log events won't be evaluated by Contributor Insights. For information
+	// about investigating log transformation failures, see [Transformation metrics and errors].
+	//
+	// [Transformation metrics and errors]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/Transformation-Errors-Metrics.html
+	// [Log transformation]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatch-Logs-Transformation.html
+	ApplyOnTransformedLogs *bool
+
 	// The state of the rule. Valid values are ENABLED and DISABLED.
 	RuleState *string
 
@@ -84,11 +100,11 @@ func (c *Client) addOperationPutInsightRuleMiddlewares(stack *middleware.Stack, 
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsquery_serializeOpPutInsightRule{}, middleware.After)
+	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpPutInsightRule{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsquery_deserializeOpPutInsightRule{}, middleware.After)
+	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpPutInsightRule{}, middleware.After)
 	if err != nil {
 		return err
 	}
@@ -144,6 +160,9 @@ func (c *Client) addOperationPutInsightRuleMiddlewares(stack *middleware.Stack, 
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
+		return err
+	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
@@ -168,16 +187,13 @@ func (c *Client) addOperationPutInsightRuleMiddlewares(stack *middleware.Stack, 
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

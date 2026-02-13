@@ -1,6 +1,3 @@
-//go:build go1.18
-// +build go1.18
-
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
@@ -82,6 +79,9 @@ type UploadBlobFromURLOptions struct {
 	// Only Bearer type is supported. Credentials should be a valid OAuth access token to copy source.
 	CopySourceAuthorization *string
 
+	// Valid value is backup
+	FileRequestIntent *blob.FileRequestIntentType
+
 	// Optional, default is true. Indicates if properties from the source blob should be copied.
 	CopySourceBlobProperties *bool
 
@@ -115,6 +115,7 @@ func (o *UploadBlobFromURLOptions) format() (*generated.BlockBlobClientPutBlobFr
 	options := generated.BlockBlobClientPutBlobFromURLOptions{
 		BlobTagsString:           shared.SerializeBlobTagsToStrPtr(o.Tags),
 		CopySourceAuthorization:  o.CopySourceAuthorization,
+		FileRequestIntent:        o.FileRequestIntent,
 		CopySourceBlobProperties: o.CopySourceBlobProperties,
 		CopySourceTags:           o.CopySourceTags,
 		Metadata:                 o.Metadata,
@@ -164,6 +165,9 @@ type StageBlockFromURLOptions struct {
 	// SourceContentValidation contains the validation mechanism used on the range of bytes read from the source.
 	SourceContentValidation blob.SourceContentValidationType
 
+	// File request Intent. Valid value is backup.
+	FileRequestIntent *blob.FileRequestIntentType
+
 	// Range specifies a range of bytes.  The default value is all bytes.
 	Range blob.HTTPRange
 
@@ -180,6 +184,7 @@ func (o *StageBlockFromURLOptions) format() (*generated.BlockBlobClientStageBloc
 	options := &generated.BlockBlobClientStageBlockFromURLOptions{
 		CopySourceAuthorization: o.CopySourceAuthorization,
 		SourceRange:             exported.FormatHTTPRange(o.Range),
+		FileRequestIntent:       o.FileRequestIntent,
 	}
 
 	if o.SourceContentValidation != nil {

@@ -33,7 +33,7 @@ var (
 	secretName                = fmt.Sprintf("%s-secret", testName)
 	redisPassword             = "admin"
 	redisStreamName           = "stream"
-	redisAddress              = fmt.Sprintf("redis.%s.svc.cluster.local:6379", redisNamespace)
+	redisAddress              = fmt.Sprintf("%s.%s.svc.cluster.local:6379", testName, redisNamespace)
 	minReplicaCount           = 0
 	maxReplicaCount           = 2
 )
@@ -177,8 +177,8 @@ func TestScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 	t.Cleanup(func() {
-		redis.RemoveStandalone(t, testName, redisNamespace)
 		DeleteKubernetesResources(t, testNamespace, data, templates)
+		redis.RemoveStandalone(t, testName, redisNamespace)
 	})
 
 	// Create Redis Standalone
@@ -208,12 +208,12 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData, num
 	KubectlReplaceWithTemplate(t, data, "insertJobTemplate", insertJobTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicas, 60, 1),
-		"replica count should be %d after 3 minutes", maxReplicaCount)
+		"replica count should be %d after 1 minute", maxReplicaCount)
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, minReplicas int) {
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicas, 60, 1),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+		"replica count should be %d after 1 minute", minReplicaCount)
 }
 
 func testActivationValue(t *testing.T, kc *kubernetes.Clientset, data templateData, numMessages int) {

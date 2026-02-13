@@ -64,6 +64,179 @@ type AmpConfiguration struct {
 	noSmithyDocumentSerde
 }
 
+// The configuration for the anomaly detection algorithm.
+//
+// The following types satisfy this interface:
+//
+//	AnomalyDetectorConfigurationMemberRandomCutForest
+type AnomalyDetectorConfiguration interface {
+	isAnomalyDetectorConfiguration()
+}
+
+// The Random Cut Forest algorithm configuration for anomaly detection.
+type AnomalyDetectorConfigurationMemberRandomCutForest struct {
+	Value RandomCutForestConfiguration
+
+	noSmithyDocumentSerde
+}
+
+func (*AnomalyDetectorConfigurationMemberRandomCutForest) isAnomalyDetectorConfiguration() {}
+
+// Detailed information about an anomaly detector.
+type AnomalyDetectorDescription struct {
+
+	// The user-friendly name of the anomaly detector.
+	//
+	// This member is required.
+	Alias *string
+
+	// The unique identifier of the anomaly detector.
+	//
+	// This member is required.
+	AnomalyDetectorId *string
+
+	// The Amazon Resource Name (ARN) of the anomaly detector.
+	//
+	// This member is required.
+	Arn *string
+
+	// The timestamp when the anomaly detector was created.
+	//
+	// This member is required.
+	CreatedAt *time.Time
+
+	// The timestamp when the anomaly detector was last modified.
+	//
+	// This member is required.
+	ModifiedAt *time.Time
+
+	// The current status of the anomaly detector.
+	//
+	// This member is required.
+	Status *AnomalyDetectorStatus
+
+	// The algorithm configuration of the anomaly detector.
+	Configuration AnomalyDetectorConfiguration
+
+	// The frequency, in seconds, at which the anomaly detector evaluates metrics.
+	EvaluationIntervalInSeconds *int32
+
+	// The Amazon Managed Service for Prometheus metric labels associated with the
+	// anomaly detector.
+	Labels map[string]string
+
+	// The action taken when data is missing during evaluation.
+	MissingDataAction AnomalyDetectorMissingDataAction
+
+	// The tags applied to the anomaly detector.
+	Tags map[string]string
+
+	noSmithyDocumentSerde
+}
+
+// Specifies the action to take when data is missing during anomaly detection
+// evaluation.
+//
+// The following types satisfy this interface:
+//
+//	AnomalyDetectorMissingDataActionMemberMarkAsAnomaly
+//	AnomalyDetectorMissingDataActionMemberSkip
+type AnomalyDetectorMissingDataAction interface {
+	isAnomalyDetectorMissingDataAction()
+}
+
+// Marks missing data points as anomalies.
+type AnomalyDetectorMissingDataActionMemberMarkAsAnomaly struct {
+	Value bool
+
+	noSmithyDocumentSerde
+}
+
+func (*AnomalyDetectorMissingDataActionMemberMarkAsAnomaly) isAnomalyDetectorMissingDataAction() {}
+
+// Skips evaluation when data is missing.
+type AnomalyDetectorMissingDataActionMemberSkip struct {
+	Value bool
+
+	noSmithyDocumentSerde
+}
+
+func (*AnomalyDetectorMissingDataActionMemberSkip) isAnomalyDetectorMissingDataAction() {}
+
+// The status information of an anomaly detector.
+type AnomalyDetectorStatus struct {
+
+	// The status code of the anomaly detector.
+	//
+	// This member is required.
+	StatusCode AnomalyDetectorStatusCode
+
+	// A description of the current status of the anomaly detector.
+	StatusReason *string
+
+	noSmithyDocumentSerde
+}
+
+// Summary information about an anomaly detector for list operations.
+type AnomalyDetectorSummary struct {
+
+	// The user-friendly name of the anomaly detector.
+	//
+	// This member is required.
+	Alias *string
+
+	// The unique identifier of the anomaly detector.
+	//
+	// This member is required.
+	AnomalyDetectorId *string
+
+	// The Amazon Resource Name (ARN) of the anomaly detector.
+	//
+	// This member is required.
+	Arn *string
+
+	// The timestamp when the anomaly detector was created.
+	//
+	// This member is required.
+	CreatedAt *time.Time
+
+	// The timestamp when the anomaly detector was last modified.
+	//
+	// This member is required.
+	ModifiedAt *time.Time
+
+	// The current status of the anomaly detector.
+	//
+	// This member is required.
+	Status *AnomalyDetectorStatus
+
+	// The tags applied to the anomaly detector.
+	Tags map[string]string
+
+	noSmithyDocumentSerde
+}
+
+// Configuration details for logging to CloudWatch Logs.
+type CloudWatchLogDestination struct {
+
+	// The ARN of the CloudWatch log group to which the vended log data will be
+	// published. This log group must exist prior to calling this operation.
+	//
+	// This member is required.
+	LogGroupArn *string
+
+	noSmithyDocumentSerde
+}
+
+// Configuration settings for a scraper component.
+type ComponentConfig struct {
+
+	// Configuration options for the scraper component.
+	Options map[string]string
+
+	noSmithyDocumentSerde
+}
+
 // Where to send the metrics from a scraper.
 //
 // The following types satisfy this interface:
@@ -102,7 +275,82 @@ type EksConfiguration struct {
 	noSmithyDocumentSerde
 }
 
-// Contains information about the logging configuration for the workspace.
+// Configuration for threshold settings that determine when values near expected
+// values should be ignored during anomaly detection.
+//
+// The following types satisfy this interface:
+//
+//	IgnoreNearExpectedMemberAmount
+//	IgnoreNearExpectedMemberRatio
+type IgnoreNearExpected interface {
+	isIgnoreNearExpected()
+}
+
+// The absolute amount by which values can differ from expected values before
+// being considered anomalous.
+type IgnoreNearExpectedMemberAmount struct {
+	Value float64
+
+	noSmithyDocumentSerde
+}
+
+func (*IgnoreNearExpectedMemberAmount) isIgnoreNearExpected() {}
+
+// The ratio by which values can differ from expected values before being
+// considered anomalous.
+type IgnoreNearExpectedMemberRatio struct {
+	Value float64
+
+	noSmithyDocumentSerde
+}
+
+func (*IgnoreNearExpectedMemberRatio) isIgnoreNearExpected() {}
+
+// This structure defines one label set used to enforce active time series limits
+// for the workspace, and defines the limit for that label set.
+//
+// A label set is a unique combination of label-value pairs. Use them to control
+// time series limits and to monitor usage by specific label groups. Example label
+// sets might be team:finance or env:prod
+type LimitsPerLabelSet struct {
+
+	// This defines one label set that will have an enforced active time series limit.
+	//
+	// Label values accept ASCII characters and must contain at least one character
+	// that isn't whitespace. ASCII control characters are not accepted. If the label
+	// name is metric name label __name__ , then the metric part of the name must
+	// conform to the following pattern: [a-zA-Z_:][a-zA-Z0-9_:]*
+	//
+	// This member is required.
+	LabelSet map[string]string
+
+	// This structure contains the information about the limits that apply to time
+	// series that match this label set.
+	//
+	// This member is required.
+	Limits *LimitsPerLabelSetEntry
+
+	noSmithyDocumentSerde
+}
+
+// This structure contains the information about the limits that apply to time
+// series that match one label set.
+type LimitsPerLabelSetEntry struct {
+
+	// The maximum number of active series that can be ingested that match this label
+	// set.
+	//
+	// Setting this to 0 causes no label set limit to be enforced, but it does cause
+	// Amazon Managed Service for Prometheus to vend label set metrics to CloudWatch
+	MaxSeries *int64
+
+	noSmithyDocumentSerde
+}
+
+// Contains information about the current rules and alerting logging configuration
+// for the workspace.
+//
+// These logging configurations are only for rules and alerting logs.
 type LoggingConfigurationMetadata struct {
 
 	// The date and time that the logging configuration was created.
@@ -137,7 +385,9 @@ type LoggingConfigurationMetadata struct {
 // The status of the logging configuration.
 type LoggingConfigurationStatus struct {
 
-	// The current status of the logging configuration.
+	// The current status of the current rules and alerting logging configuration.
+	//
+	// These logging configurations are only for rules and alerting logs.
 	//
 	// This member is required.
 	StatusCode LoggingConfigurationStatusCode
@@ -148,14 +398,130 @@ type LoggingConfigurationStatus struct {
 	noSmithyDocumentSerde
 }
 
-// To configure roles that allows users to write to an Amazon Managed Service for
-// Prometheus workspace in a different account.
+// Defines a destination and its associated filtering criteria for query logging.
+type LoggingDestination struct {
+
+	// Configuration details for logging to CloudWatch Logs.
+	//
+	// This member is required.
+	CloudWatchLogs *CloudWatchLogDestination
+
+	// Filtering criteria that determine which queries are logged.
+	//
+	// This member is required.
+	Filters *LoggingFilter
+
+	noSmithyDocumentSerde
+}
+
+// Filtering criteria that determine which queries are logged.
+type LoggingFilter struct {
+
+	// The Query Samples Processed (QSP) threshold above which queries will be logged.
+	// Queries processing more samples than this threshold will be captured in logs.
+	//
+	// This member is required.
+	QspThreshold *int64
+
+	noSmithyDocumentSerde
+}
+
+// The metadata for a query logging configuration.
+type QueryLoggingConfigurationMetadata struct {
+
+	// The date and time when the query logging configuration was created.
+	//
+	// This member is required.
+	CreatedAt *time.Time
+
+	// The configured destinations for the query logging configuration.
+	//
+	// This member is required.
+	Destinations []LoggingDestination
+
+	// The date and time when the query logging configuration was last modified.
+	//
+	// This member is required.
+	ModifiedAt *time.Time
+
+	// The current status of the query logging configuration.
+	//
+	// This member is required.
+	Status *QueryLoggingConfigurationStatus
+
+	// The ID of the workspace associated with this query logging configuration.
+	//
+	// This member is required.
+	Workspace *string
+
+	noSmithyDocumentSerde
+}
+
+// The status information for a query logging configuration.
+type QueryLoggingConfigurationStatus struct {
+
+	// The current status of the query logging configuration.
+	//
+	// This member is required.
+	StatusCode QueryLoggingConfigurationStatusCode
+
+	// If there is a failure, the reason for the failure.
+	StatusReason *string
+
+	noSmithyDocumentSerde
+}
+
+// Configuration for the Random Cut Forest algorithm used for anomaly detection in
+// time-series data.
+type RandomCutForestConfiguration struct {
+
+	// The Prometheus query used to retrieve the time-series data for anomaly
+	// detection.
+	//
+	// Random Cut Forest queries must be wrapped by a supported PromQL aggregation
+	// operator. For more information, see [Aggregation operators]on the Prometheus docs website.
+	//
+	// Supported PromQL aggregation operators: avg , count , group , max , min ,
+	// quantile , stddev , stdvar , and sum .
+	//
+	// [Aggregation operators]: https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators
+	//
+	// This member is required.
+	Query *string
+
+	// Configuration for ignoring values that are near expected values from above
+	// during anomaly detection.
+	IgnoreNearExpectedFromAbove IgnoreNearExpected
+
+	// Configuration for ignoring values that are near expected values from below
+	// during anomaly detection.
+	IgnoreNearExpectedFromBelow IgnoreNearExpected
+
+	// The number of data points sampled from the input stream for the Random Cut
+	// Forest algorithm. The default number is 256 consecutive data points.
+	SampleSize *int32
+
+	// The number of consecutive data points used to create a shingle for the Random
+	// Cut Forest algorithm. The default number is 8 consecutive data points.
+	ShingleSize *int32
+
+	noSmithyDocumentSerde
+}
+
+// Use this structure to enable cross-account access, so that you can use a target
+// account to access Prometheus metrics from source accounts.
 type RoleConfiguration struct {
 
-	// A ARN identifying the source role configuration.
+	// The Amazon Resource Name (ARN) of the role used in the source account to enable
+	// cross-account scraping. For information about the contents of this policy, see [Cross-account setup].
+	//
+	// [Cross-account setup]: https://docs.aws.amazon.com/prometheus/latest/userguide/AMP-collector-how-to.html#cross-account-remote-write
 	SourceRoleArn *string
 
-	// A ARN identifying the target role configuration.
+	// The Amazon Resource Name (ARN) of the role used in the target account to enable
+	// cross-account scraping. For information about the contents of this policy, see [Cross-account setup].
+	//
+	// [Cross-account setup]: https://docs.aws.amazon.com/prometheus/latest/userguide/AMP-collector-how-to.html#cross-account-remote-write
 	TargetRoleArn *string
 
 	noSmithyDocumentSerde
@@ -278,6 +644,21 @@ type ScrapeConfigurationMemberConfigurationBlob struct {
 
 func (*ScrapeConfigurationMemberConfigurationBlob) isScrapeConfiguration() {}
 
+// A component of a Amazon Managed Service for Prometheus scraper that can be
+// configured for logging.
+type ScraperComponent struct {
+
+	// The type of the scraper component.
+	//
+	// This member is required.
+	Type ScraperComponentType
+
+	// The configuration settings for the scraper component.
+	Config *ComponentConfig
+
+	noSmithyDocumentSerde
+}
+
 // The ScraperDescription structure contains the full details about one scraper in
 // your account.
 type ScraperDescription struct {
@@ -337,8 +718,8 @@ type ScraperDescription struct {
 	// (Optional) A name associated with the scraper.
 	Alias *string
 
-	// To configure roles that allows users to write to an Amazon Managed Service for
-	// Prometheus workspace in a different account.
+	// This structure displays information about the IAM roles used for cross-account
+	// scraping configuration.
 	RoleConfiguration *RoleConfiguration
 
 	// If there is a failure, the reason for the failure.
@@ -349,6 +730,38 @@ type ScraperDescription struct {
 
 	noSmithyDocumentSerde
 }
+
+// The status of a scraper logging configuration.
+type ScraperLoggingConfigurationStatus struct {
+
+	// The status code of the scraper logging configuration.
+	//
+	// This member is required.
+	StatusCode ScraperLoggingConfigurationStatusCode
+
+	// The reason for the current status of the scraper logging configuration.
+	StatusReason *string
+
+	noSmithyDocumentSerde
+}
+
+// The destination where scraper logs are sent.
+//
+// The following types satisfy this interface:
+//
+//	ScraperLoggingDestinationMemberCloudWatchLogs
+type ScraperLoggingDestination interface {
+	isScraperLoggingDestination()
+}
+
+// The CloudWatch Logs configuration for the scraper logging destination.
+type ScraperLoggingDestinationMemberCloudWatchLogs struct {
+	Value CloudWatchLogDestination
+
+	noSmithyDocumentSerde
+}
+
+func (*ScraperLoggingDestinationMemberCloudWatchLogs) isScraperLoggingDestination() {}
 
 // The ScraperStatus structure contains status information about the scraper.
 type ScraperStatus struct {
@@ -410,8 +823,8 @@ type ScraperSummary struct {
 	// (Optional) A name associated with the scraper.
 	Alias *string
 
-	// To configure roles that allows users to write to an Amazon Managed Service for
-	// Prometheus workspace in a different account.
+	// This structure displays information about the IAM roles used for cross-account
+	// scraping configuration.
 	RoleConfiguration *RoleConfiguration
 
 	// If there is a failure, the reason for the failure.
@@ -428,6 +841,7 @@ type ScraperSummary struct {
 // The following types satisfy this interface:
 //
 //	SourceMemberEksConfiguration
+//	SourceMemberVpcConfiguration
 type Source interface {
 	isSource()
 }
@@ -441,6 +855,18 @@ type SourceMemberEksConfiguration struct {
 
 func (*SourceMemberEksConfiguration) isSource() {}
 
+// The Amazon VPC configuration for the Prometheus collector when connecting to
+// Amazon MSK clusters. This configuration enables secure, private network
+// connectivity between the collector and your Amazon MSK cluster within your
+// Amazon VPC.
+type SourceMemberVpcConfiguration struct {
+	Value VpcConfiguration
+
+	noSmithyDocumentSerde
+}
+
+func (*SourceMemberVpcConfiguration) isSource() {}
+
 // Information about a field passed into a request that resulted in an exception.
 type ValidationExceptionField struct {
 
@@ -453,6 +879,63 @@ type ValidationExceptionField struct {
 	//
 	// This member is required.
 	Name *string
+
+	noSmithyDocumentSerde
+}
+
+// The Amazon VPC configuration that specifies the network settings for a
+// Prometheus collector to securely connect to Amazon MSK clusters. This
+// configuration includes the security groups and subnets that control network
+// access and placement for the collector.
+type VpcConfiguration struct {
+
+	// The security group IDs that control network access for the Prometheus
+	// collector. These security groups must allow the collector to communicate with
+	// your Amazon MSK cluster on the required ports.
+	//
+	// This member is required.
+	SecurityGroupIds []string
+
+	// The subnet IDs where the Prometheus collector will be deployed. The subnets
+	// must be in the same Amazon VPC as your Amazon MSK cluster and have network
+	// connectivity to the cluster.
+	//
+	// This member is required.
+	SubnetIds []string
+
+	noSmithyDocumentSerde
+}
+
+// This structure contains the description of the workspace configuration.
+type WorkspaceConfigurationDescription struct {
+
+	// This structure displays the current status of the workspace configuration, and
+	// might also contain a reason for that status.
+	//
+	// This member is required.
+	Status *WorkspaceConfigurationStatus
+
+	// This is an array of structures, where each structure displays one label sets
+	// for the workspace and the limits for that label set.
+	LimitsPerLabelSet []LimitsPerLabelSet
+
+	// This field displays how many days that metrics are retained in the workspace.
+	RetentionPeriodInDays *int32
+
+	noSmithyDocumentSerde
+}
+
+// This structure displays the current status of the workspace configuration, and
+// might also contain a reason for that status.
+type WorkspaceConfigurationStatus struct {
+
+	// The current status of the workspace configuration.
+	//
+	// This member is required.
+	StatusCode WorkspaceConfigurationStatusCode
+
+	// The reason for the current status, if a reason is available.
+	StatusReason *string
 
 	noSmithyDocumentSerde
 }
@@ -563,6 +1046,10 @@ type UnknownUnionMember struct {
 	noSmithyDocumentSerde
 }
 
-func (*UnknownUnionMember) isDestination()         {}
-func (*UnknownUnionMember) isScrapeConfiguration() {}
-func (*UnknownUnionMember) isSource()              {}
+func (*UnknownUnionMember) isAnomalyDetectorConfiguration()     {}
+func (*UnknownUnionMember) isAnomalyDetectorMissingDataAction() {}
+func (*UnknownUnionMember) isDestination()                      {}
+func (*UnknownUnionMember) isIgnoreNearExpected()               {}
+func (*UnknownUnionMember) isScrapeConfiguration()              {}
+func (*UnknownUnionMember) isScraperLoggingDestination()        {}
+func (*UnknownUnionMember) isSource()                           {}

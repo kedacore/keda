@@ -39,10 +39,19 @@ var validCronMetadata2 = map[string]string{
 	"desiredReplicas": "10",
 }
 
+// A valid metadata example using comma-separated values
+var validCronMetadata3 = map[string]string{
+	"timezone":        "Etc/UTC",
+	"start":           "0,30 * * * *",  // Every hour at minute 0 and 30
+	"end":             "15,45 * * * *", // Every hour at minute 15 and 45
+	"desiredReplicas": "10",
+}
+
 var testCronMetadata = []parseCronMetadataTestData{
 	{map[string]string{}, true},
 	{validCronMetadata, false},
 	{validCronMetadata2, false},
+	{validCronMetadata3, false},
 	{map[string]string{"timezone": "Asia/Kolkata", "start": "30 * * * *", "end": "45 * * * *"}, true},
 	{map[string]string{"start": "30 * * * *", "end": "45 * * * *", "desiredReplicas": "10"}, true},
 	{map[string]string{"timezone": "Asia/Kolkata", "start": "30-33 * * * *", "end": "45 * * * *", "desiredReplicas": "10"}, false},
@@ -56,6 +65,7 @@ var testCronMetadata = []parseCronMetadataTestData{
 var cronMetricIdentifiers = []cronMetricIdentifier{
 	{&testCronMetadata[1], 0, "s0-cron-Etc-UTC-00xxThu-5923xxThu"},
 	{&testCronMetadata[2], 1, "s1-cron-Etc-UTC-0xSl2xxx-01-23Sl2xxx"},
+	{&testCronMetadata[3], 2, "s2-cron-Etc-UTC-0Cm30xxxx-15Cm45xxxx"},
 }
 
 var tz, _ = time.LoadLocation(validCronMetadata2["timezone"])
@@ -101,7 +111,7 @@ func TestGetMetrics(t *testing.T) {
 	if currentDay == "Thursday" {
 		assert.Equal(t, metrics[0].Value.Value(), int64(10))
 	} else {
-		assert.Equal(t, metrics[0].Value.Value(), int64(1))
+		assert.Equal(t, metrics[0].Value.Value(), int64(0))
 	}
 }
 
@@ -112,7 +122,7 @@ func TestGetMetricsRange(t *testing.T) {
 	if currentHour%2 == 0 {
 		assert.Equal(t, metrics[0].Value.Value(), int64(10))
 	} else {
-		assert.Equal(t, metrics[0].Value.Value(), int64(1))
+		assert.Equal(t, metrics[0].Value.Value(), int64(0))
 	}
 }
 

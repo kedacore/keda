@@ -16,17 +16,47 @@ limitations under the License.
 
 package features
 
+// Every feature gate should have an entry here following this template:
+//
+// // owner: @username
+// // alpha: v1.4
+// MyFeature featuregate.Feature = "MyFeature"
+//
+// Feature gates should be listed in alphabetical, case-sensitive
+// (upper before any lower case character) order. This reduces the risk
+// of code conflicts because changes are more likely to be scattered
+// across the file.
 const (
-	// Every feature gate should add method here following this template:
+	// owner: @benluddy
+	// kep: https://kep.k8s.io/4222
+	// alpha: 1.32
 	//
-	// // owner: @username
-	// // alpha: v1.4
-	// MyFeature featuregate.Feature = "MyFeature"
+	// If disabled, clients configured to accept "application/cbor" will instead accept
+	// "application/json" with the same relative preference, and clients configured to write
+	// "application/cbor" or "application/apply-patch+cbor" will instead write
+	// "application/json" or "application/apply-patch+yaml", respectively.
+	ClientsAllowCBOR Feature = "ClientsAllowCBOR"
+
+	// owner: @benluddy
+	// kep: https://kep.k8s.io/4222
+	// alpha: 1.32
 	//
-	// Feature gates should be listed in alphabetical, case-sensitive
-	// (upper before any lower case character) order. This reduces the risk
-	// of code conflicts because changes are more likely to be scattered
-	// across the file.
+	// If enabled, and only if ClientsAllowCBOR is also enabled, the default request content
+	// type (if not explicitly configured) and the dynamic client's request content type both
+	// become "application/cbor" instead of "application/json". The default content type for
+	// apply patch requests becomes "application/apply-patch+cbor" instead of
+	// "application/apply-patch+yaml".
+	ClientsPreferCBOR Feature = "ClientsPreferCBOR"
+
+	// owner: @deads2k
+	// beta: v1.33
+	//
+	// Refactor informers to deliver watch stream events in order instead of out of order.
+	InOrderInformers Feature = "InOrderInformers"
+
+	// owner: @nilekhc
+	// alpha: v1.30
+	InformerResourceVersion Feature = "InformerResourceVersion"
 
 	// owner: @p0lyn0mial
 	// beta: v1.30
@@ -37,10 +67,6 @@ const (
 	//  The feature is disabled in Beta by default because
 	//  it will only be turned on for selected control plane component(s).
 	WatchListClient Feature = "WatchListClient"
-
-	// owner: @nilekhc
-	// alpha: v1.30
-	InformerResourceVersion Feature = "InformerResourceVersion"
 )
 
 // defaultKubernetesFeatureGates consists of all known Kubernetes-specific feature keys.
@@ -49,6 +75,9 @@ const (
 // After registering with the binary, the features are, by default, controllable using environment variables.
 // For more details, please see envVarFeatureGates implementation.
 var defaultKubernetesFeatureGates = map[Feature]FeatureSpec{
-	WatchListClient:         {Default: false, PreRelease: Beta},
+	ClientsAllowCBOR:        {Default: false, PreRelease: Alpha},
+	ClientsPreferCBOR:       {Default: false, PreRelease: Alpha},
+	InOrderInformers:        {Default: true, PreRelease: Beta},
 	InformerResourceVersion: {Default: false, PreRelease: Alpha},
+	WatchListClient:         {Default: false, PreRelease: Beta},
 }

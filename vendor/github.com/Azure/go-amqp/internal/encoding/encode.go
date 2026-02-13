@@ -187,6 +187,10 @@ func Marshal(wr *buffer.Buffer, i any) error {
 		return list(t).Marshal(wr)
 	case *[]any:
 		return list(*t).Marshal(wr)
+	case []map[any]any:
+		return arrayMap(t).Marshal(wr)
+	case *[]map[any]any:
+		return arrayMap(*t).Marshal(wr)
 	case marshaler:
 		return t.Marshal(wr)
 	default:
@@ -269,7 +273,7 @@ func writeDouble(wr *buffer.Buffer, f float64) {
 
 func writeTimestamp(wr *buffer.Buffer, t time.Time) {
 	wr.AppendByte(byte(TypeCodeTimestamp))
-	ms := t.UnixNano() / int64(time.Millisecond)
+	ms := t.UnixMilli()
 	wr.AppendUint64(uint64(ms))
 }
 
@@ -405,10 +409,15 @@ func WriteBinary(wr *buffer.Buffer, bin []byte) error {
 }
 
 func writeMap(wr *buffer.Buffer, m any) error {
-	startIdx := wr.Len()
+	wr.AppendByte(byte(TypeCodeMap32))
+	return writeMap32(wr, m)
+}
+
+func writeMap32(wr *buffer.Buffer, m any) error {
+	startIdx := wr.Len() - 1
 	wr.Append([]byte{
-		byte(TypeCodeMap32), // type
-		0, 0, 0, 0,          // size placeholder
+		// type was already appened if it was needed
+		0, 0, 0, 0, // size placeholder
 		0, 0, 0, 0, // length placeholder
 	})
 
@@ -538,7 +547,7 @@ func writeArrayHeader(wr *buffer.Buffer, length, typeSize int, type_ AMQPType) {
 			byte(type_),               // element type
 		})
 	} else {
-		wr.AppendByte(byte(TypeCodeArray32))          //type
+		wr.AppendByte(byte(TypeCodeArray32))          // type
 		wr.AppendUint32(uint32(size + array32TLSize)) // size
 		wr.AppendUint32(uint32(length))               // length
 		wr.AppendByte(byte(type_))                    // element type

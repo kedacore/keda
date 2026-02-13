@@ -20,9 +20,6 @@ import (
 // returns a ResourceNotFoundException . If table is already in the DELETING
 // state, no error is returned.
 //
-// For global tables, this operation only applies to global tables using Version
-// 2019.11.21 (Current version).
-//
 // DynamoDB might continue to accept data read and write operations, such as
 // GetItem and PutItem , on a table in the DELETING state until the table deletion
 // is complete. For the full list of table states, see [TableStatus].
@@ -181,16 +178,13 @@ func (c *Client) addOperationDeleteTableMiddlewares(stack *middleware.Stack, opt
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

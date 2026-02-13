@@ -122,6 +122,9 @@ func TestGetScaledObjectMetrics_DirectCall(t *testing.T) {
 		scalerCaches:             caches,
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
@@ -211,6 +214,9 @@ func TestGetScaledObjectMetrics_FromCache(t *testing.T) {
 		scalerCaches:             caches,
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
@@ -333,6 +339,9 @@ func TestGetScaledObjectMetrics_InParallel(t *testing.T) {
 		scalerCaches:             caches,
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
@@ -420,9 +429,12 @@ func TestCheckScaledObjectScalersWithError(t *testing.T) {
 		scalerCaches:             caches,
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
 	}
 
-	isActive, isError, _, activeTriggers, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	isActive, isError, _, activeTriggers, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
 	scalerCache.Close(context.Background())
 
 	assert.Equal(t, false, isActive)
@@ -540,9 +552,12 @@ func TestCheckScaledObjectScalersWithTriggerAuthError(t *testing.T) {
 		authClientSet: &authentication.AuthClientSet{
 			SecretLister: nil,
 		},
+		rawMetricsSubscriptions: map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:   map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                &sync.RWMutex{},
 	}
 
-	isActive, isError, _, activeTriggers, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	isActive, isError, _, activeTriggers, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
 	scalerCache.Close(context.Background())
 
 	assert.Equal(t, false, isActive)
@@ -561,11 +576,12 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 	recorder := record.NewFakeRecorder(1)
 
 	metricsSpecs := []v2.MetricSpec{createMetricSpec(1, "metric-name")}
+	metricValue := scalers.GenerateMetricInMili("metric-name", float64(10))
 
 	activeFactory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
 		scaler := mock_scalers.NewMockScaler(ctrl)
 		scaler.EXPECT().GetMetricSpecForScaling(gomock.Any()).Return(metricsSpecs)
-		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{}, true, nil)
+		scaler.EXPECT().GetMetricsAndActivity(gomock.Any(), gomock.Any()).Return([]external_metrics.ExternalMetricValue{metricValue}, true, nil)
 		scaler.EXPECT().Close(gomock.Any())
 		return scaler, &scalersconfig.ScalerConfig{}, nil
 	}
@@ -592,6 +608,9 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
 				Name: "test",
 			},
+		},
+		Status: kedav1alpha1.ScaledObjectStatus{
+			ExternalMetricNames: []string{"metric-name"},
 		},
 	}
 
@@ -620,17 +639,20 @@ func TestCheckScaledObjectFindFirstActiveNotIgnoreOthers(t *testing.T) {
 		scalerCaches:             caches,
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
 	}
 
-	isActive, isError, _, activeTriggers, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
+	isActive, isError, _, activeTriggers, _, _ := sh.getScaledObjectState(context.TODO(), &scaledObject)
 	scalerCache.Close(context.Background())
 
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, true, isError)
-	assert.Equal(t, []string{"*mock_scalers.MockScaler"}, activeTriggers)
+	assert.Equal(t, []string{"metric-name"}, activeTriggers)
 }
 
-func TestIsScaledJobActive(t *testing.T) {
+func TestGetScaledJobState(t *testing.T) {
 	metricName := "s0-queueLength"
 	ctrl := gomock.NewController(t)
 	recorder := record.NewFakeRecorder(1)
@@ -657,9 +679,12 @@ func TestIsScaledJobActive(t *testing.T) {
 		scalerCaches:             caches,
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
 	}
 	// nosemgrep: context-todo
-	isActive, isError, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
+	isActive, isError, queueLength, maxValue, _ := sh.getScaledJobState(context.TODO(), scaledJobSingle)
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, false, isError)
 	assert.Equal(t, int64(20), queueLength)
@@ -714,10 +739,13 @@ func TestIsScaledJobActive(t *testing.T) {
 			scalerCaches:             caches,
 			scalerCachesLock:         &sync.RWMutex{},
 			scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+			rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+			metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+			subsLock:                 &sync.RWMutex{},
 		}
 		fmt.Printf("index: %d", index)
 		// nosemgrep: context-todo
-		isActive, isError, queueLength, maxValue = sh.isScaledJobActive(context.TODO(), scaledJob)
+		isActive, isError, queueLength, maxValue, _ := sh.getScaledJobState(context.TODO(), scaledJob)
 		//	assert.Equal(t, 5, index)
 		assert.Equal(t, scalerTestData.ResultIsActive, isActive)
 		assert.Equal(t, scalerTestData.ResultIsError, isError)
@@ -727,7 +755,7 @@ func TestIsScaledJobActive(t *testing.T) {
 	}
 }
 
-func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T) {
+func TestGetScaledJobStateIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T) {
 	metricName := "s0-queueLength"
 	ctrl := gomock.NewController(t)
 	recorder := record.NewFakeRecorder(1)
@@ -756,10 +784,13 @@ func TestIsScaledJobActiveIfQueueEmptyButMinReplicaCountGreaterZero(t *testing.T
 		scalerCaches:             caches,
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
 	}
 
 	// nosemgrep: context-todo
-	isActive, isError, queueLength, maxValue := sh.isScaledJobActive(context.TODO(), scaledJobSingle)
+	isActive, isError, queueLength, maxValue, _ := sh.getScaledJobState(context.TODO(), scaledJobSingle)
 	assert.Equal(t, true, isActive)
 	assert.Equal(t, false, isError)
 	assert.Equal(t, int64(0), queueLength)
@@ -771,20 +802,20 @@ func newScalerTestData(
 	metricName string,
 	maxReplicaCount int,
 	multipleScalersCalculation string,
-	scaler1QueueLength, //nolint:golint,unparam
-	scaler1AverageValue int, //nolint:golint,unparam
-	scaler1IsActive bool, //nolint:golint,unparam
-	scaler2QueueLength, //nolint:golint,unparam
-	scaler2AverageValue int, //nolint:golint,unparam
-	scaler2IsActive bool, //nolint:golint,unparam
-	scaler3QueueLength, //nolint:golint,unparam
-	scaler3AverageValue int, //nolint:golint,unparam
-	scaler3IsActive bool, //nolint:golint,unparam
-	scaler4QueueLength, //nolint:golint,unparam
-	scaler4AverageValue int, //nolint:golint,unparam
-	scaler4IsActive bool, //nolint:golint,unparam
-	resultIsActive bool, //nolint:golint,unparam
-	resultIsError bool, //nolint:golint,unparam
+	scaler1QueueLength, //nolint:unparam
+	scaler1AverageValue int, //nolint:unparam
+	scaler1IsActive bool, //nolint:unparam
+	scaler2QueueLength, //nolint:unparam
+	scaler2AverageValue int, //nolint:unparam
+	scaler2IsActive bool, //nolint:unparam
+	scaler3QueueLength, //nolint:unparam
+	scaler3AverageValue int, //nolint:unparam
+	scaler3IsActive bool, //nolint:unparam
+	scaler4QueueLength, //nolint:unparam
+	scaler4AverageValue int, //nolint:unparam
+	scaler4IsActive bool, //nolint:unparam
+	resultIsActive bool, //nolint:unparam
+	resultIsError bool, //nolint:unparam
 	resultQueueLength,
 	resultMaxLength int) scalerTestData {
 	return scalerTestData{
@@ -993,6 +1024,9 @@ func TestScalingModifiersFormula(t *testing.T) {
 		scalerCaches:             caches,
 		scalerCachesLock:         &sync.RWMutex{},
 		scaledObjectsMetricCache: metricscache.NewMetricsCache(),
+		rawMetricsSubscriptions:  map[string]*RawMetricSubscriptions{},
+		metricToSubscriptions:    map[metricMeta][]*RawMetricSubscriptions{},
+		subsLock:                 &sync.RWMutex{},
 	}
 
 	mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)

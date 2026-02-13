@@ -48,7 +48,8 @@ type UpdateScraperInput struct {
 	// The new Amazon Managed Service for Prometheus workspace to send metrics to.
 	Destination types.Destination
 
-	// The scraper role configuration for the workspace.
+	// Use this structure to enable cross-account access, so that you can use a target
+	// account to access Prometheus metrics from source accounts.
 	RoleConfiguration *types.RoleConfiguration
 
 	// Contains the base-64 encoded YAML configuration for the scraper.
@@ -179,16 +180,13 @@ func (c *Client) addOperationUpdateScraperMiddlewares(stack *middleware.Stack, o
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

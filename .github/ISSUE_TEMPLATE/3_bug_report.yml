@@ -57,6 +57,12 @@ body:
     label: KEDA Version
     description: What version of KEDA that are you running?
     options:
+    - "2.19.0"
+    - "2.18.3"
+    - "2.18.2"
+    - "2.18.1"
+    - "2.18.0"
+    - "2.17.3"
     - "2.17.2"
     - "2.17.1"
     - "2.17.0"
@@ -73,6 +79,8 @@ body:
     label: Kubernetes Version
     description: What version of Kubernetes that are you running?
     options:
+    - "1.34"
+    - "1.33"
     - "1.32"
     - "1.31"
     - "1.30"
@@ -99,6 +107,15 @@ body:
     label: Scaler Details
     description: What scaler are you using?
     placeholder: ie. Azure Service Bus, Kafka, ...
+  validations:
+    required: false
+- type: dropdown
+  attributes:
+    label: Would you be open to contributing a fix?
+    options:
+      - "Yes"
+      - "No"
+      - "Maybe"
   validations:
     required: false
 - type: textarea

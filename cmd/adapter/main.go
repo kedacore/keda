@@ -109,7 +109,8 @@ func (a *Adapter) makeProvider(ctx context.Context) (provider.ExternalMetricsPro
 	}
 
 	setupLog.Info("Connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
-	grpcClient, err := metricsservice.NewGrpcClient(ctx, metricsServiceAddr, a.SecureServing.ServerCert.CertDirectory, metricsServiceGRPCAuthority, clientMetrics)
+	defaultConnectionCfg := ""
+	grpcClient, err := metricsservice.NewGrpcClient(ctx, metricsServiceAddr, a.SecureServing.ServerCert.CertDirectory, metricsServiceGRPCAuthority, defaultConnectionCfg, clientMetrics, false)
 	if err != nil {
 		setupLog.Error(err, "error connecting Metrics Service gRPC client to the server", "address", metricsServiceAddr)
 		return nil, err
@@ -270,6 +271,17 @@ func main() {
 	}
 
 	ctrl.SetLogger(zap.New(zapOpts...))
+
+	// Warn about deprecated logging flags
+	if cmd.Flags().Changed("v") {
+		setupLog.Info("DEPRECATION WARNING: The '-v' flag is deprecated and will be removed in a future release. Please use '--zap-log-level' instead (e.g., '--zap-log-level=-1' for info, '--zap-log-level=-2' for debug)")
+	}
+	if cmd.Flags().Changed("logtostderr") {
+		setupLog.Info("DEPRECATION WARNING: The '--logtostderr' flag is deprecated and will be removed in a future release. Please use '--zap-encoder=console' instead")
+	}
+	if cmd.Flags().Changed("stderrthreshold") {
+		setupLog.Info("DEPRECATION WARNING: The '--stderrthreshold' flag is deprecated and has no equivalent in the new logging system. This flag is a no-op and will be removed in a future release")
+	}
 
 	err = printWelcomeMsg(cmd)
 	if err != nil {

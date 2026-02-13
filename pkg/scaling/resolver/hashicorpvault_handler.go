@@ -17,29 +17,37 @@ limitations under the License.
 package resolver
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/go-logr/logr"
 	vaultapi "github.com/hashicorp/vault/api"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
 )
 
-// HashicorpVaultHandler is specification of Hashi Corp Vault
+const (
+	serviceAccountTokenFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+)
+
+// HashicorpVaultHandler is a specification of HashiCorp Vault
 type HashicorpVaultHandler struct {
-	vault  *kedav1alpha1.HashiCorpVault
-	client *vaultapi.Client
-	stopCh chan struct{}
+	vault     *kedav1alpha1.HashiCorpVault
+	client    *vaultapi.Client
+	acs       *authentication.AuthClientSet
+	namespace string
+	stopCh    chan struct{}
 }
 
 // NewHashicorpVaultHandler creates a HashicorpVaultHandler object
-func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault) *HashicorpVaultHandler {
+func NewHashicorpVaultHandler(v *kedav1alpha1.HashiCorpVault, acs *authentication.AuthClientSet, namespace string) *HashicorpVaultHandler {
 	return &HashicorpVaultHandler{
-		vault: v,
+		vault:     v,
+		acs:       acs,
+		namespace: namespace,
 	}
 }
 
@@ -88,6 +96,8 @@ func (vh *HashicorpVaultHandler) Initialize(logger logr.Logger) error {
 // token Extract a vault token from the Authentication method
 func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) {
 	var token string
+	var jwt []byte
+	var err error
 
 	switch vh.vault.Authentication {
 	case kedav1alpha1.VaultAuthenticationToken:
@@ -111,19 +121,23 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 
 		if vh.vault.Credential == nil {
 			defaultCred := kedav1alpha1.Credential{
-				ServiceAccount: "/var/run/secrets/kubernetes.io/serviceaccount/token",
+				ServiceAccount: serviceAccountTokenFile,
 			}
 			vh.vault.Credential = &defaultCred
 		}
 
-		if len(vh.vault.Credential.ServiceAccount) == 0 {
-			return token, errors.New("k8s SA file not in config")
+		if vh.vault.Credential.ServiceAccountName == "" && vh.vault.Credential.ServiceAccount == "" {
+			return token, errors.New("k8s SA file not in config or serviceAccountName not supplied")
 		}
 
-		// Get the JWT from POD
-		jwt, err := os.ReadFile(vh.vault.Credential.ServiceAccount)
-		if err != nil {
-			return token, err
+		if vh.vault.Credential.ServiceAccountName != "" {
+			jwt = []byte(GenerateBoundServiceAccountToken(context.Background(), vh.vault.Credential.ServiceAccountName, vh.namespace, vh.acs))
+		} else if len(vh.vault.Credential.ServiceAccount) != 0 {
+			// Get the JWT from POD
+			jwt, err = readKubernetesServiceAccountProjectedToken(vh.vault.Credential.ServiceAccount)
+			if err != nil {
+				return token, err
+			}
 		}
 
 		data := map[string]interface{}{"jwt": string(jwt), "role": vh.vault.Role}
@@ -131,8 +145,8 @@ func (vh *HashicorpVaultHandler) token(client *vaultapi.Client) (string, error) 
 		if err != nil {
 			return token, err
 		}
-
 		token = secret.Auth.ClientToken
+
 	default:
 		return token, fmt.Errorf("vault auth method %s is not supported", vh.vault.Authentication)
 	}
@@ -149,7 +163,7 @@ func (vh *HashicorpVaultHandler) renewToken(logger logr.Logger) {
 
 	renewer, err := vh.client.NewLifetimeWatcher(&vaultapi.RenewerInput{
 		Secret: secret,
-		//Grace:  time.Duration(15 * time.Second),
+		//Grace: time.Duration(15 * time.Second),
 		//Increment: 60,
 	})
 	if err != nil {
@@ -176,12 +190,12 @@ RenewWatcherLoop:
 	}
 }
 
-// Read is used to get a secret from vault Read api. (e.g. secret)
+// Read is used to get a secret from vault Read api. (e.g., secret)
 func (vh *HashicorpVaultHandler) Read(path string) (*vaultapi.Secret, error) {
 	return vh.client.Logical().Read(path)
 }
 
-// Write is used to get a secret from vault that needs to pass along data and uses the vault Write api. (e.g. pki)
+// Write is used to get a secret from vault that needs to pass along data and uses the vault Write api. (e.g., pki)
 func (vh *HashicorpVaultHandler) Write(path string, data map[string]interface{}) (*vaultapi.Secret, error) {
 	return vh.client.Logical().Write(path, data)
 }
@@ -194,17 +208,31 @@ func (vh *HashicorpVaultHandler) Stop() {
 }
 
 // getPkiRequest format the pkiData in a format that the vault sdk understands.
-func (vh *HashicorpVaultHandler) getPkiRequest(pkiData *kedav1alpha1.VaultPkiData) (map[string]interface{}, error) {
-	var data map[string]interface{}
-	a, err := json.Marshal(pkiData)
-	if err != nil {
-		return nil, err
+func (vh *HashicorpVaultHandler) getPkiRequest(pkiData *kedav1alpha1.VaultPkiData) map[string]interface{} {
+	data := make(map[string]interface{})
+	if pkiData.CommonName != "" {
+		data["common_name"] = pkiData.CommonName
 	}
-	err = json.Unmarshal(a, &data)
-	if err != nil {
-		return nil, err
+	if pkiData.AltNames != "" {
+		data["alt_names"] = pkiData.AltNames
 	}
-	return data, nil
+	if pkiData.IPSans != "" {
+		data["ip_sans"] = pkiData.IPSans
+	}
+	if pkiData.URISans != "" {
+		data["uri_sans"] = pkiData.URISans
+	}
+	if pkiData.OtherSans != "" {
+		data["other_sans"] = pkiData.OtherSans
+	}
+	if pkiData.TTL != "" {
+		data["ttl"] = pkiData.TTL
+	}
+	if pkiData.Format != "" {
+		data["format"] = pkiData.Format
+	}
+
+	return data
 }
 
 // getSecretValue extract the secret value from the vault api response. As the vault api returns us a map[string]interface{},
@@ -287,10 +315,7 @@ func (vh *HashicorpVaultHandler) fetchSecret(secretType kedav1alpha1.VaultSecret
 	var err error
 	switch secretType {
 	case kedav1alpha1.VaultSecretTypePki:
-		data, err := vh.getPkiRequest(vaultPkiData)
-		if err != nil {
-			return nil, err
-		}
+		data := vh.getPkiRequest(vaultPkiData)
 		vaultSecret, err = vh.Write(path, data)
 		if err != nil {
 			return nil, err
@@ -307,8 +332,8 @@ func (vh *HashicorpVaultHandler) fetchSecret(secretType kedav1alpha1.VaultSecret
 	return vaultSecret, nil
 }
 
-// ResolveSecrets allows to resolve a slice of secrets by vault. The function returns the list of secrets with the value updated.
-// If multiple secret refers to the same SecretGroup, the secret will be fetched only once.
+// ResolveSecrets allows resolving a slice of secrets by vault. The function returns the list of secrets with the value updated.
+// If multiple secrets refer to the same SecretGroup, the secret will be fetched only once.
 func (vh *HashicorpVaultHandler) ResolveSecrets(secrets []kedav1alpha1.VaultSecret) ([]kedav1alpha1.VaultSecret, error) {
 	// Group secret by path and type, this allows to fetch a path only once. This is useful for dynamic credentials
 	grouped := make(map[SecretGroup][]kedav1alpha1.VaultSecret)

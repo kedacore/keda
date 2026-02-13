@@ -84,8 +84,8 @@ type VolumeAttachmentSpec struct {
 }
 
 // VolumeAttachmentSource represents a volume that should be attached.
-// Right now only PersistenVolumes can be attached via external attacher,
-// in future we may allow also inline volumes in pods.
+// Right now only PersistentVolumes can be attached via external attacher,
+// in the future we may allow also inline volumes in pods.
 // Exactly one member can be set.
 type VolumeAttachmentSource struct {
 	// persistentVolumeName represents the name of the persistent volume to attach.
@@ -141,6 +141,14 @@ type VolumeError struct {
 	// information.
 	// +optional
 	Message string `json:"message,omitempty" protobuf:"bytes,2,opt,name=message"`
+
+	// errorCode is a numeric gRPC code representing the error encountered during Attach or Detach operations.
+	//
+	// This is an optional, alpha field that requires the MutableCSINodeAllocatableCount feature gate being enabled to be set.
+	//
+	// +featureGate=MutableCSINodeAllocatableCount
+	// +optional
+	ErrorCode *int32 `json:"errorCode,omitempty" protobuf:"varint,3,opt,name=errorCode"`
 }
 
 // +genclient
@@ -253,6 +261,8 @@ type CSIStorageCapacityList struct {
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:prerelease-lifecycle-gen:introduced=1.29
+// +k8s:prerelease-lifecycle-gen:deprecated=1.32
+// +k8s:prerelease-lifecycle-gen:replacement=storage.k8s.io,v1,VolumeAttributesClass
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // VolumeAttributesClass represents a specification of mutable volume attributes
@@ -287,6 +297,8 @@ type VolumeAttributesClass struct {
 }
 
 // +k8s:prerelease-lifecycle-gen:introduced=1.29
+// +k8s:prerelease-lifecycle-gen:deprecated=1.32
+// +k8s:prerelease-lifecycle-gen:replacement=storage.k8s.io,v1,VolumeAttributesClassList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // VolumeAttributesClassList is a collection of VolumeAttributesClass objects.

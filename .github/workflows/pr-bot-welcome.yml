@@ -1,0 +1,28 @@
+name: PR Welcome Bot
+
+on:
+  pull_request_target:
+    types: [opened]
+    branches:
+    - 'main'
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  pr_bot:
+    name: PR Bot
+    runs-on: ubuntu-slim
+    steps:
+      - name: 'Comment on PR'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ github.event.number }},
+              body: 'Thank you for your contribution! 🙏\n\nPlease understand that we will do our best to review your PR and give you feedback as soon as possible, but please bear with us if it takes a little longer as expected.\n\nWhile you are waiting, make sure to:\n\n- Add an entry in our changelog in alphabetical order and link related issue\n- Update the documentation, if needed\n- Add unit & e2e tests for your changes\n- GitHub checks are passing\n- Is the DCO check failing? Here is how you can [fix DCO issues](https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md#i-didnt-sign-my-commit-now-what)\n\nOnce the initial tests are successful, a KEDA member will ensure that the e2e tests are run. Once the e2e tests have been successfully completed, the PR may be merged at a later date. Please be patient.\n\nLearn more about our [contribution guide](https://github.com/kedacore/keda-docs/blob/main/CONTRIBUTING.md).'
+            });

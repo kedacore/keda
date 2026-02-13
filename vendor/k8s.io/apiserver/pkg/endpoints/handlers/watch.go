@@ -76,40 +76,62 @@ func serveWatchHandler(watcher watch.Interface, scope *RequestScope, mediaTypeOp
 		return nil, err
 	}
 	framer := serializer.StreamSerializer.Framer
-	streamSerializer := serializer.StreamSerializer.Serializer
-	encoder := scope.Serializer.EncoderForVersion(streamSerializer, scope.Kind.GroupVersion())
+	var encoder runtime.Encoder
+	if utilfeature.DefaultFeatureGate.Enabled(features.CBORServingAndStorage) {
+		encoder = scope.Serializer.EncoderForVersion(runtime.UseNondeterministicEncoding(serializer.StreamSerializer.Serializer), scope.Kind.GroupVersion())
+	} else {
+		encoder = scope.Serializer.EncoderForVersion(serializer.StreamSerializer.Serializer, scope.Kind.GroupVersion())
+	}
 	useTextFraming := serializer.EncodesAsText
 	if framer == nil {
 		return nil, fmt.Errorf("no framer defined for %q available for embedded encoding", serializer.MediaType)
 	}
 	// TODO: next step, get back mediaTypeOptions from negotiate and return the exact value here
 	mediaType := serializer.MediaType
-	if mediaType != runtime.ContentTypeJSON {
+	switch mediaType {
+	case runtime.ContentTypeJSON:
+		// as-is
+	case runtime.ContentTypeCBOR:
+		// If a client indicated it accepts application/cbor (exactly one data item) on a
+		// watch request, set the conformant application/cbor-seq media type the watch
+		// response. RFC 9110 allows an origin server to deviate from the indicated
+		// preference rather than send a 406 (Not Acceptable) response (see
+		// https://www.rfc-editor.org/rfc/rfc9110.html#section-12.1-5).
+		mediaType = runtime.ContentTypeCBORSequence
+	default:
 		mediaType += ";stream=watch"
 	}
 
 	ctx := req.Context()
 
 	// locate the appropriate embedded encoder based on the transform
-	var embeddedEncoder runtime.Encoder
+	var negotiatedEncoder runtime.Encoder
 	contentKind, contentSerializer, transform := targetEncodingForTransform(scope, mediaTypeOptions, req)
 	if transform {
 		info, ok := runtime.SerializerInfoForMediaType(contentSerializer.SupportedMediaTypes(), serializer.MediaType)
 		if !ok {
 			return nil, fmt.Errorf("no encoder for %q exists in the requested target %#v", serializer.MediaType, contentSerializer)
 		}
-		embeddedEncoder = contentSerializer.EncoderForVersion(info.Serializer, contentKind.GroupVersion())
+		if utilfeature.DefaultFeatureGate.Enabled(features.CBORServingAndStorage) {
+			negotiatedEncoder = contentSerializer.EncoderForVersion(runtime.UseNondeterministicEncoding(info.Serializer), contentKind.GroupVersion())
+		} else {
+			negotiatedEncoder = contentSerializer.EncoderForVersion(info.Serializer, contentKind.GroupVersion())
+		}
 	} else {
-		embeddedEncoder = scope.Serializer.EncoderForVersion(serializer.Serializer, contentKind.GroupVersion())
+		if utilfeature.DefaultFeatureGate.Enabled(features.CBORServingAndStorage) {
+			negotiatedEncoder = scope.Serializer.EncoderForVersion(runtime.UseNondeterministicEncoding(serializer.Serializer), contentKind.GroupVersion())
+		} else {
+			negotiatedEncoder = scope.Serializer.EncoderForVersion(serializer.Serializer, contentKind.GroupVersion())
+		}
 	}
 
 	var memoryAllocator runtime.MemoryAllocator
 
-	if encoderWithAllocator, supportsAllocator := embeddedEncoder.(runtime.EncoderWithAllocator); supportsAllocator {
+	if encoderWithAllocator, supportsAllocator := negotiatedEncoder.(runtime.EncoderWithAllocator); supportsAllocator {
 		// don't put the allocator inside the embeddedEncodeFn as that would allocate memory on every call.
 		// instead, we allocate the buffer for the entire watch session and release it when we close the connection.
 		memoryAllocator = runtime.AllocatorPool.Get().(*runtime.Allocator)
-		embeddedEncoder = runtime.NewEncoderWithAllocator(encoderWithAllocator, memoryAllocator)
+		negotiatedEncoder = runtime.NewEncoderWithAllocator(encoderWithAllocator, memoryAllocator)
 	}
 	var tableOptions *metav1.TableOptions
 	if options != nil {
@@ -119,7 +141,7 @@ func serveWatchHandler(watcher watch.Interface, scope *RequestScope, mediaTypeOp
 			return nil, fmt.Errorf("unexpected options type: %T", options)
 		}
 	}
-	embeddedEncoder = newWatchEmbeddedEncoder(ctx, embeddedEncoder, mediaTypeOptions.Convert, tableOptions, scope)
+	embeddedEncoder := newWatchEmbeddedEncoder(ctx, negotiatedEncoder, mediaTypeOptions.Convert, tableOptions, scope)
 
 	if encoderWithAllocator, supportsAllocator := encoder.(runtime.EncoderWithAllocator); supportsAllocator {
 		if memoryAllocator == nil {
@@ -218,8 +240,8 @@ func (s *WatchServer) HandleHTTP(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 
-	kind := s.Scope.Kind
-	watchEncoder := newWatchEncoder(req.Context(), kind, s.EmbeddedEncoder, s.Encoder, framer)
+	gvr := s.Scope.Resource
+	watchEncoder := newWatchEncoder(req.Context(), gvr, s.EmbeddedEncoder, s.Encoder, framer)
 	ch := s.Watching.ResultChan()
 	done := req.Context().Done()
 
@@ -243,7 +265,7 @@ func (s *WatchServer) HandleHTTP(w http.ResponseWriter, req *http.Request) {
 				// End of results.
 				return
 			}
-			metrics.WatchEvents.WithContext(req.Context()).WithLabelValues(kind.Group, kind.Version, kind.Kind).Inc()
+			metrics.WatchEvents.WithContext(req.Context()).WithLabelValues(gvr.Group, gvr.Version, gvr.Resource).Inc()
 			isWatchListLatencyRecordingRequired := shouldRecordWatchListLatency(event)
 
 			if err := watchEncoder.Encode(event); err != nil {
@@ -287,8 +309,8 @@ func (s *WatchServer) HandleWS(ws *websocket.Conn) {
 
 	framer := newWebsocketFramer(ws, s.UseTextFraming)
 
-	kind := s.Scope.Kind
-	watchEncoder := newWatchEncoder(context.TODO(), kind, s.EmbeddedEncoder, s.Encoder, framer)
+	gvr := s.Scope.Resource
+	watchEncoder := newWatchEncoder(context.TODO(), gvr, s.EmbeddedEncoder, s.Encoder, framer)
 	ch := s.Watching.ResultChan()
 
 	for {

@@ -40,6 +40,35 @@ func (AlertManagerDefinitionStatusCode) Values() []AlertManagerDefinitionStatusC
 	}
 }
 
+type AnomalyDetectorStatusCode string
+
+// Enum values for AnomalyDetectorStatusCode
+const (
+	AnomalyDetectorStatusCodeCreating       AnomalyDetectorStatusCode = "CREATING"
+	AnomalyDetectorStatusCodeActive         AnomalyDetectorStatusCode = "ACTIVE"
+	AnomalyDetectorStatusCodeUpdating       AnomalyDetectorStatusCode = "UPDATING"
+	AnomalyDetectorStatusCodeDeleting       AnomalyDetectorStatusCode = "DELETING"
+	AnomalyDetectorStatusCodeCreationFailed AnomalyDetectorStatusCode = "CREATION_FAILED"
+	AnomalyDetectorStatusCodeUpdateFailed   AnomalyDetectorStatusCode = "UPDATE_FAILED"
+	AnomalyDetectorStatusCodeDeletionFailed AnomalyDetectorStatusCode = "DELETION_FAILED"
+)
+
+// Values returns all known values for AnomalyDetectorStatusCode. Note that this
+// can be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (AnomalyDetectorStatusCode) Values() []AnomalyDetectorStatusCode {
+	return []AnomalyDetectorStatusCode{
+		"CREATING",
+		"ACTIVE",
+		"UPDATING",
+		"DELETING",
+		"CREATION_FAILED",
+		"UPDATE_FAILED",
+		"DELETION_FAILED",
+	}
+}
+
 type LoggingConfigurationStatusCode string
 
 // Enum values for LoggingConfigurationStatusCode
@@ -78,6 +107,40 @@ func (LoggingConfigurationStatusCode) Values() []LoggingConfigurationStatusCode 
 	}
 }
 
+type QueryLoggingConfigurationStatusCode string
+
+// Enum values for QueryLoggingConfigurationStatusCode
+const (
+	// Query logging configuration is being created.
+	QueryLoggingConfigurationStatusCodeCreating QueryLoggingConfigurationStatusCode = "CREATING"
+	// Query logging configuration is active.
+	QueryLoggingConfigurationStatusCodeActive QueryLoggingConfigurationStatusCode = "ACTIVE"
+	// Query logging configuration is being updated.
+	QueryLoggingConfigurationStatusCodeUpdating QueryLoggingConfigurationStatusCode = "UPDATING"
+	// Query logging configuration is being deleted.
+	QueryLoggingConfigurationStatusCodeDeleting QueryLoggingConfigurationStatusCode = "DELETING"
+	// Query logging configuration creation failed.
+	QueryLoggingConfigurationStatusCodeCreationFailed QueryLoggingConfigurationStatusCode = "CREATION_FAILED"
+	// Query logging configuration update failed.
+	QueryLoggingConfigurationStatusCodeUpdateFailed QueryLoggingConfigurationStatusCode = "UPDATE_FAILED"
+)
+
+// Values returns all known values for QueryLoggingConfigurationStatusCode. Note
+// that this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (QueryLoggingConfigurationStatusCode) Values() []QueryLoggingConfigurationStatusCode {
+	return []QueryLoggingConfigurationStatusCode{
+		"CREATING",
+		"ACTIVE",
+		"UPDATING",
+		"DELETING",
+		"CREATION_FAILED",
+		"UPDATE_FAILED",
+	}
+}
+
 type RuleGroupsNamespaceStatusCode string
 
 // Enum values for RuleGroupsNamespaceStatusCode
@@ -107,6 +170,64 @@ const (
 // The ordering of this slice is not guaranteed to be stable across updates.
 func (RuleGroupsNamespaceStatusCode) Values() []RuleGroupsNamespaceStatusCode {
 	return []RuleGroupsNamespaceStatusCode{
+		"CREATING",
+		"ACTIVE",
+		"UPDATING",
+		"DELETING",
+		"CREATION_FAILED",
+		"UPDATE_FAILED",
+	}
+}
+
+type ScraperComponentType string
+
+// Enum values for ScraperComponentType
+const (
+	// Scraper service discoverer component
+	ScraperComponentTypeServiceDiscovery ScraperComponentType = "SERVICE_DISCOVERY"
+	// Scraper collector component
+	ScraperComponentTypeCollector ScraperComponentType = "COLLECTOR"
+	// Scraper exporter component
+	ScraperComponentTypeExporter ScraperComponentType = "EXPORTER"
+)
+
+// Values returns all known values for ScraperComponentType. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (ScraperComponentType) Values() []ScraperComponentType {
+	return []ScraperComponentType{
+		"SERVICE_DISCOVERY",
+		"COLLECTOR",
+		"EXPORTER",
+	}
+}
+
+type ScraperLoggingConfigurationStatusCode string
+
+// Enum values for ScraperLoggingConfigurationStatusCode
+const (
+	// Scraper logging configuration is being created.
+	ScraperLoggingConfigurationStatusCodeCreating ScraperLoggingConfigurationStatusCode = "CREATING"
+	// Scraper logging configuration is active.
+	ScraperLoggingConfigurationStatusCodeActive ScraperLoggingConfigurationStatusCode = "ACTIVE"
+	// Scraper logging configuration is being updated.
+	ScraperLoggingConfigurationStatusCodeUpdating ScraperLoggingConfigurationStatusCode = "UPDATING"
+	// Scraper logging configuration is being deleted.
+	ScraperLoggingConfigurationStatusCodeDeleting ScraperLoggingConfigurationStatusCode = "DELETING"
+	// Scraper logging configuration creation failed.
+	ScraperLoggingConfigurationStatusCodeCreationFailed ScraperLoggingConfigurationStatusCode = "CREATION_FAILED"
+	// Scraper logging configuration update failed.
+	ScraperLoggingConfigurationStatusCodeUpdateFailed ScraperLoggingConfigurationStatusCode = "UPDATE_FAILED"
+)
+
+// Values returns all known values for ScraperLoggingConfigurationStatusCode. Note
+// that this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (ScraperLoggingConfigurationStatusCode) Values() []ScraperLoggingConfigurationStatusCode {
+	return []ScraperLoggingConfigurationStatusCode{
 		"CREATING",
 		"ACTIVE",
 		"UPDATING",
@@ -172,6 +293,64 @@ func (ValidationExceptionReason) Values() []ValidationExceptionReason {
 		"CANNOT_PARSE",
 		"FIELD_VALIDATION_FAILED",
 		"OTHER",
+	}
+}
+
+type WorkspaceConfigurationStatusCode string
+
+// Enum values for WorkspaceConfigurationStatusCode
+const (
+	// Workspace configuration has been updated. Update is disallowed until workspace
+	// configuration is ACTIVE and workspace status is ACTIVE.
+	WorkspaceConfigurationStatusCodeActive WorkspaceConfigurationStatusCode = "ACTIVE"
+	// Workspace configuration is being updated. Update is disallowed until workspace
+	// configuration is ACTIVE and workspace status is ACTIVE.
+	WorkspaceConfigurationStatusCodeUpdating WorkspaceConfigurationStatusCode = "UPDATING"
+	// Workspace configuration update failed.
+	WorkspaceConfigurationStatusCodeUpdateFailed WorkspaceConfigurationStatusCode = "UPDATE_FAILED"
+)
+
+// Values returns all known values for WorkspaceConfigurationStatusCode. Note that
+// this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (WorkspaceConfigurationStatusCode) Values() []WorkspaceConfigurationStatusCode {
+	return []WorkspaceConfigurationStatusCode{
+		"ACTIVE",
+		"UPDATING",
+		"UPDATE_FAILED",
+	}
+}
+
+type WorkspacePolicyStatusCode string
+
+// Enum values for WorkspacePolicyStatusCode
+const (
+	// Resource-based Policy is being created. Update/Deletion is disallowed until
+	// Resource-based Policy is ACTIVE and Workspace is ACTIVE.
+	WorkspacePolicyStatusCodeCreating WorkspacePolicyStatusCode = "CREATING"
+	// Resource-based Policy has been created/updated. Update/Deletion is disallowed
+	// until Resource-based Policy is ACTIVE and Workspace is ACTIVE.
+	WorkspacePolicyStatusCodeActive WorkspacePolicyStatusCode = "ACTIVE"
+	// Resource-based Policy is being updated. Update/Deletion is disallowed until
+	// Resource-based Policy is ACTIVE and Workspace is ACTIVE.
+	WorkspacePolicyStatusCodeUpdating WorkspacePolicyStatusCode = "UPDATING"
+	// Resource-based Policy is being deleting. Update/Deletion is disallowed until
+	// Resource-based Policy is ACTIVE and Workspace is ACTIVE.
+	WorkspacePolicyStatusCodeDeleting WorkspacePolicyStatusCode = "DELETING"
+)
+
+// Values returns all known values for WorkspacePolicyStatusCode. Note that this
+// can be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (WorkspacePolicyStatusCode) Values() []WorkspacePolicyStatusCode {
+	return []WorkspacePolicyStatusCode{
+		"CREATING",
+		"ACTIVE",
+		"UPDATING",
+		"DELETING",
 	}
 }
 

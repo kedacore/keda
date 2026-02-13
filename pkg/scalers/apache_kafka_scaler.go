@@ -60,8 +60,9 @@ type apacheKafkaMetadata struct {
 
 	// If an invalid offset is found, whether to scale to 1 (false - the default) so consumption can
 	// occur or scale to 0 (true). See discussion in https://github.com/kedacore/keda/issues/2612
-	ScaleToZeroOnInvalidOffset bool `keda:"name=scaleToZeroOnInvalidOffset, order=triggerMetadata, optional"`
-	LimitToPartitionsWithLag   bool `keda:"name=limitToPartitionsWithLag,   order=triggerMetadata, optional"`
+	ScaleToZeroOnInvalidOffset         bool `keda:"name=scaleToZeroOnInvalidOffset,         order=triggerMetadata, optional"`
+	LimitToPartitionsWithLag           bool `keda:"name=limitToPartitionsWithLag,           order=triggerMetadata, optional"`
+	EnsureEvenDistributionOfPartitions bool `keda:"name=ensureEvenDistributionOfPartitions, order=triggerMetadata, optional"`
 
 	// SASL
 	SASLType kafkaSaslType `keda:"name=sasl,     order=triggerMetadata;authParams, enum=none;plaintext;scram_sha256;scram_sha512;gssapi;aws_msk_iam, default=none"`
@@ -274,7 +275,7 @@ func (s *apacheKafkaScaler) getTopicPartitions(ctx context.Context) (map[string]
 		for _, topic := range metadata.Topics {
 			partitions := make([]int, 0)
 			for _, partition := range topic.Partitions {
-				// if no partitions limitatitions are specified, all partitions are considered
+				// if no partitions limitations are specified, all partitions are considered
 				if (len(s.metadata.PartitionLimitation) == 0) ||
 					(len(s.metadata.PartitionLimitation) > 0 && kedautil.Contains(s.metadata.PartitionLimitation, partition.ID)) {
 					partitions = append(partitions, partition.ID)
@@ -505,9 +506,15 @@ func (s *apacheKafkaScaler) getTotalLag(ctx context.Context) (int64, int64, erro
 
 	s.logger.V(1).Info(fmt.Sprintf("Kafka scaler: Consumer offsets %v, producer offsets %v", consumerOffsets, producerOffsets))
 
-	if !s.metadata.AllowIdleConsumers || s.metadata.LimitToPartitionsWithLag {
+	if !s.metadata.AllowIdleConsumers || s.metadata.LimitToPartitionsWithLag || s.metadata.EnsureEvenDistributionOfPartitions {
 		// don't scale out beyond the number of topicPartitions or partitionsWithLag depending on settings
 		upperBound := totalTopicPartitions
+		// Ensure that the number of partitions is evenly distributed across the number of consumers
+		if s.metadata.EnsureEvenDistributionOfPartitions {
+			nextFactor := getNextFactorThatBalancesConsumersToTopicPartitions(totalLag, totalTopicPartitions, s.metadata.LagThreshold)
+			s.logger.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics to ensure even distribution of partitions on totalLag %v, topicPartitions %v, evenPartitions %v", totalLag, totalTopicPartitions, nextFactor))
+			totalLag = nextFactor * s.metadata.LagThreshold
+		}
 		if s.metadata.LimitToPartitionsWithLag {
 			upperBound = partitionsWithLag
 		}

@@ -23,7 +23,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -68,8 +70,9 @@ type kafkaMetadata struct {
 
 	// If an invalid offset is found, whether to scale to 1 (false - the default) so consumption can
 	// occur or scale to 0 (true). See discussion in https://github.com/kedacore/keda/issues/2612
-	scaleToZeroOnInvalidOffset bool
-	limitToPartitionsWithLag   bool
+	scaleToZeroOnInvalidOffset         bool
+	limitToPartitionsWithLag           bool
+	ensureEvenDistributionOfPartitions bool
 
 	// SASL
 	saslType kafkaSaslType
@@ -222,22 +225,21 @@ func parseKafkaAuthParams(config *scalersconfig.ScalerConfig, meta *kafkaMetadat
 		saslAuthType = val
 	}
 
-	if saslAuthType != "" {
-		saslAuthType = strings.TrimSpace(saslAuthType)
-		mode := kafkaSaslType(saslAuthType)
-
-		switch {
-		case mode == KafkaSASLTypePlaintext || mode == KafkaSASLTypeSCRAMSHA256 || mode == KafkaSASLTypeSCRAMSHA512:
+	saslAuthType = strings.TrimSpace(saslAuthType)
+	mode := kafkaSaslType(saslAuthType)
+	if saslAuthType != "" && mode != KafkaSASLTypeNone {
+		switch mode {
+		case KafkaSASLTypePlaintext, KafkaSASLTypeSCRAMSHA256, KafkaSASLTypeSCRAMSHA512:
 			err := parseSaslParams(config, meta, mode)
 			if err != nil {
 				return err
 			}
-		case mode == KafkaSASLTypeOAuthbearer:
+		case KafkaSASLTypeOAuthbearer:
 			err := parseSaslOAuthParams(config, meta, mode)
 			if err != nil {
 				return err
 			}
-		case mode == KafkaSASLTypeGSSAPI:
+		case KafkaSASLTypeGSSAPI:
 			err := parseKerberosParams(config, meta, mode)
 			if err != nil {
 				return err
@@ -595,6 +597,22 @@ func parseKafkaMetadata(config *scalersconfig.ScalerConfig, logger logr.Logger) 
 		}
 	}
 
+	meta.ensureEvenDistributionOfPartitions = false
+	if val, ok := config.TriggerMetadata["ensureEvenDistributionOfPartitions"]; ok {
+		t, err := strconv.ParseBool(val)
+		if err != nil {
+			return meta, fmt.Errorf("error parsing ensureEvenDistributionOfPartitions: %w", err)
+		}
+		meta.ensureEvenDistributionOfPartitions = t
+
+		if meta.limitToPartitionsWithLag && meta.ensureEvenDistributionOfPartitions {
+			return meta, fmt.Errorf("limitToPartitionsWithLag and ensureEvenDistributionOfPartitions cannot be set simultaneously")
+		}
+		if len(meta.topic) == 0 && meta.ensureEvenDistributionOfPartitions {
+			return meta, fmt.Errorf("topic must be specified when using ensureEvenDistributionOfPartitions")
+		}
+	}
+
 	meta.version = sarama.V1_0_0_0
 	if val, ok := config.TriggerMetadata["version"]; ok {
 		val = strings.TrimSpace(val)
@@ -720,6 +738,7 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 		if listCGOffsetResponse.Err > 0 {
 			errMsg := fmt.Errorf("error listing cg offset: %w", listCGOffsetResponse.Err)
 			s.logger.Error(errMsg, "")
+			return nil, errMsg
 		}
 
 		for topicName := range listCGOffsetResponse.Blocks {
@@ -746,6 +765,7 @@ func (s *kafkaScaler) getTopicPartitions() (map[string][]int32, error) {
 		if topicMetadata.Err > 0 {
 			errMsg := fmt.Errorf("error describing topics: %w", topicMetadata.Err)
 			s.logger.Error(errMsg, "")
+			return nil, errMsg
 		}
 		partitionMetadata := topicMetadata.Partitions
 		var partitions []int32
@@ -783,6 +803,7 @@ func (s *kafkaScaler) getConsumerOffsets(topicPartitions map[string][]int32) (*s
 	if offsets.Err > 0 {
 		errMsg := fmt.Errorf("error listing consumer group offsets: %w", offsets.Err)
 		s.logger.Error(errMsg, "")
+		return nil, errMsg
 	}
 	return offsets, nil
 }
@@ -801,29 +822,50 @@ func (s *kafkaScaler) getLagForPartition(topic string, partitionID int32, offset
 	if block.Err > 0 {
 		errMsg := fmt.Errorf("error finding offset block for topic %s and partition %d: %w", topic, partitionID, offsets.Err)
 		s.logger.Error(errMsg, "")
+		return 0, 0, errMsg
 	}
 
 	consumerOffset := block.Offset
-	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == latest {
-		retVal := int64(1)
-		if s.metadata.scaleToZeroOnInvalidOffset {
-			retVal = 0
-		}
-		msg := fmt.Sprintf(
-			"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Returning with lag of %d",
-			topic, s.metadata.group, partitionID, retVal)
-		s.logger.V(1).Info(msg)
-		return retVal, retVal, nil
-	}
 
-	if _, found := topicPartitionOffsets[topic]; !found {
-		return 0, 0, fmt.Errorf("error finding partition offset for topic %s", topic)
-	}
-	latestOffset := topicPartitionOffsets[topic][partitionID]
-	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == earliest {
+	// Handle invalid consumer offset for both latest and earliest policies
+	// This must be done before getting latestOffset, so scaleToZeroOnInvalidOffset works
+	// even when latestOffset cannot be retrieved (e.g., missing partition in response)
+	if consumerOffset == invalidOffset {
+		if s.metadata.offsetResetPolicy == latest {
+			retVal := int64(1)
+			if s.metadata.scaleToZeroOnInvalidOffset {
+				retVal = 0
+			}
+			msg := fmt.Sprintf(
+				"invalid offset found for topic %s in group %s and partition %d, probably no offset is committed yet. Returning with lag of %d",
+				topic, s.metadata.group, partitionID, retVal)
+			s.logger.V(1).Info(msg)
+			return retVal, retVal, nil
+		}
+		// offsetResetPolicy == earliest
+		// For earliest policy, we need latestOffset to return the full lag when scaleToZeroOnInvalidOffset is false
+		// But if we can't get latestOffset, we should still respect scaleToZeroOnInvalidOffset
 		if s.metadata.scaleToZeroOnInvalidOffset {
 			return 0, 0, nil
 		}
+	}
+
+	topicOffsets, found := topicPartitionOffsets[topic]
+	if !found {
+		s.logger.V(1).Info(fmt.Sprintf("Topic %s not found in latest offset response, treating partition %d as 0 lag", topic, partitionID))
+		return 0, 0, nil
+	}
+	latestOffset, partitionFound := topicOffsets[partitionID]
+	if !partitionFound {
+		// Partition missing from latest offset response - treat as 0 lag and continue
+		// This can happen with Azure Event Hub when partitions are intermittently not returned
+		s.logger.V(1).Info(fmt.Sprintf("Partition %d in topic %s not found in latest offset response, treating as 0 lag", partitionID, topic))
+		return 0, 0, nil
+	}
+
+	// If we got here with invalidOffset and earliest policy, scaleToZeroOnInvalidOffset must be false
+	// Return the full lag (latestOffset) as per earliest policy behavior
+	if consumerOffset == invalidOffset && s.metadata.offsetResetPolicy == earliest {
 		return latestOffset, latestOffset, nil
 	}
 
@@ -973,9 +1015,15 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 	}
 	s.logger.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics based on totalLag %v, topicPartitions %v, threshold %v", totalLag, len(topicPartitions), s.metadata.lagThreshold))
 
-	if !s.metadata.allowIdleConsumers || s.metadata.limitToPartitionsWithLag {
+	if !s.metadata.allowIdleConsumers || s.metadata.limitToPartitionsWithLag || s.metadata.ensureEvenDistributionOfPartitions {
 		// don't scale out beyond the number of topicPartitions or partitionsWithLag depending on settings
 		upperBound := totalTopicPartitions
+		// Ensure that the number of partitions is evenly distributed across the number of consumers
+		if s.metadata.ensureEvenDistributionOfPartitions {
+			nextFactor := getNextFactorThatBalancesConsumersToTopicPartitions(totalLag, totalTopicPartitions, s.metadata.lagThreshold)
+			s.logger.V(1).Info(fmt.Sprintf("Kafka scaler: Providing metrics to ensure even distribution of partitions on totalLag %v, topicPartitions %v, evenPartitions %v", totalLag, totalTopicPartitions, nextFactor))
+			totalLag = nextFactor * s.metadata.lagThreshold
+		}
 		if s.metadata.limitToPartitionsWithLag {
 			upperBound = partitionsWithLag
 		}
@@ -985,6 +1033,16 @@ func (s *kafkaScaler) getTotalLag() (int64, int64, error) {
 		}
 	}
 	return totalLag, totalLagWithPersistent, nil
+}
+
+func getNextFactorThatBalancesConsumersToTopicPartitions(totalLag int64, totalTopicPartitions int64, lagThreshold int64) int64 {
+	factors := FindFactors(totalTopicPartitions)
+	for _, factor := range factors {
+		if factor*lagThreshold >= totalLag {
+			return factor
+		}
+	}
+	return totalTopicPartitions
 }
 
 type brokerOffsetResult struct {
@@ -1051,4 +1109,29 @@ func (s *kafkaScaler) getProducerOffsets(topicPartitions map[string][]int32) (ma
 	}
 
 	return topicPartitionsOffsets, nil
+}
+
+// FindFactors returns all factors of a given number
+func FindFactors(n int64) []int64 {
+	if n < 1 {
+		return nil
+	}
+
+	var factors []int64
+	sqrtN := int64(math.Sqrt(float64(n)))
+
+	for i := int64(1); i <= sqrtN; i++ {
+		if n%i == 0 {
+			factors = append(factors, i)
+			if i != n/i {
+				factors = append(factors, n/i)
+			}
+		}
+	}
+
+	sort.Slice(factors, func(i, j int) bool {
+		return factors[i] < factors[j]
+	})
+
+	return factors
 }

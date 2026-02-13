@@ -1,33 +1,13 @@
-// The MIT License
-//
-// Copyright (c) 2024 Temporal Technologies Inc.  All rights reserved.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 import (
 	"errors"
 	"fmt"
 
-	commonpb "go.temporal.io/api/common/v1"
 	deploymentpb "go.temporal.io/api/deployment/v1"
+
+	commonpb "go.temporal.io/api/common/v1"
+	enumspb "go.temporal.io/api/enums/v1"
 	workflowpb "go.temporal.io/api/workflow/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
@@ -35,6 +15,7 @@ import (
 
 type (
 	// UpdateWorkflowExecutionOptionsRequest is a request for [Client.UpdateWorkflowExecutionOptions].
+	//
 	// NOTE: Experimental
 	UpdateWorkflowExecutionOptionsRequest struct {
 		// ID of the workflow.
@@ -46,40 +27,56 @@ type (
 	}
 
 	// WorkflowExecutionOptions describes options for a workflow execution.
+	//
 	// NOTE: Experimental
 	WorkflowExecutionOptions struct {
 		// If set, it takes precedence over the Versioning Behavior provided with code annotations.
 		VersioningOverride VersioningOverride
 	}
 
-	// WorkflowExecutionOptionsChanges describes changes to the options of a workflow execution in [WorkflowExecutionOptions].
-	// An entry with a `nil` pointer means do not change.
-	// An entry with a pointer to an empty value means delete the entry, i.e., the empty value is a tombstone.
-	// An entry with a pointer to a non-empty value means replace the entry, i.e., there is no deep merging.
+	// WorkflowExecutionOptionsChanges describes changes to the options of a workflow execution in
+	// [WorkflowExecutionOptions]. An entry with a `nil` pointer means do not change.
+	//
 	// NOTE: Experimental
 	WorkflowExecutionOptionsChanges struct {
-		VersioningOverride *VersioningOverride
+		// If non-nil, change the versioning override.
+		VersioningOverride *VersioningOverrideChange
+	}
+
+	// VersioningOverrideChange sets or removes a versioning override when used with
+	// [WorkflowExecutionOptionsChanges].
+	//
+	// NOTE: Experimental
+	VersioningOverrideChange struct {
+		// Set the override entry if non-nil. If nil, remove any previously set override.
+		Value VersioningOverride
 	}
 
 	// VersioningOverride changes the versioning configuration of a specific workflow execution.
-	// If set, it takes precedence over the Versioning Behavior provided with workflow type registration or
-	// default worker options.
-	// To remove the override, the [UpdateWorkflowExecutionOptionsRequest] should include a pointer to
-	// an empty [VersioningOverride] value in [WorkflowExecutionOptionsChanges].
-	// See [WorkflowExecutionOptionsChanges] for details.
+	// If set, it takes precedence over the Versioning Behavior provided with workflow type
+	// registration or default worker options.
+	//
+	// To remove the override, the [UpdateWorkflowExecutionOptionsRequest] should include a pointer
+	// to an empty [VersioningOverride] value in [WorkflowExecutionOptionsChanges]. See
+	// [WorkflowExecutionOptionsChanges] for details.
+	//
 	// NOTE: Experimental
-	VersioningOverride struct {
-		// Behavior - The new Versioning Behavior. This field is required.
-		Behavior VersioningBehavior
-		// Identifies the Build ID and Deployment Series Name to pin the workflow to. Ignored when Behavior is not
-		// [VersioningBehaviorPinned].
-		//
-		// Deprecated: Use [PinnedVersion]
-		Deployment Deployment
-		// PinnedVersion - Identifies the Worker Deployment Version to pin the workflow to, using the format
-		// "<deployment_name>.<build_id>".
-		// Required if behavior is [VersioningBehaviorPinned]. Must be absent if behavior is not [VersioningBehaviorPinned].
-		PinnedVersion string
+	VersioningOverride interface {
+		behavior() VersioningBehavior
+	}
+
+	// PinnedVersioningOverride means the workflow will be pinned to a specific deployment version.
+	//
+	// NOTE: Experimental
+	PinnedVersioningOverride struct {
+		Version WorkerDeploymentVersion
+	}
+
+	// AutoUpgradeVersioningOverride means the workflow will auto-upgrade to the current deployment
+	// version on the next workflow task.
+	//
+	// NOTE: Experimental
+	AutoUpgradeVersioningOverride struct {
 	}
 
 	// OnConflictOptions specifies the actions to be taken when using the workflow ID conflict policy
@@ -92,6 +89,14 @@ type (
 		AttachLinks               bool
 	}
 )
+
+func (*PinnedVersioningOverride) behavior() VersioningBehavior {
+	return VersioningBehaviorPinned
+}
+
+func (*AutoUpgradeVersioningOverride) behavior() VersioningBehavior {
+	return VersioningBehaviorAutoUpgrade
+}
 
 // Mapping WorkflowExecutionOptions field names to proto ones.
 var workflowExecutionOptionsMap map[string]string = map[string]string{
@@ -120,47 +125,76 @@ func workflowExecutionOptionsMaskToProto(mask []string) *fieldmaskpb.FieldMask {
 	return protoMask
 }
 
-func workerDeploymentToProto(d Deployment) *deploymentpb.Deployment {
-	// Server 1.26.2 requires a nil Deployment pointer, and not just a pointer to an empty Deployment,
-	// to indicate that there is no Deployment.
-	// It is a server error to override versioning behavior to AutoUpgrade while providing a Deployment,
-	// and we need to replace it by nil. See https://github.com/temporalio/sdk-go/issues/1764.
-	//
-	// Future server versions may relax this requirement.
-	if (Deployment{}) == d {
-		return nil
-	}
-	return &deploymentpb.Deployment{
-		SeriesName: d.SeriesName,
-		BuildId:    d.BuildID,
-	}
-}
-
 func versioningOverrideToProto(versioningOverride VersioningOverride) *workflowpb.VersioningOverride {
-	if (VersioningOverride{}) == versioningOverride {
+	if versioningOverride == nil {
 		return nil
 	}
-	return &workflowpb.VersioningOverride{
-		Behavior:      versioningBehaviorToProto(versioningOverride.Behavior),
-		Deployment:    workerDeploymentToProto(versioningOverride.Deployment),
-		PinnedVersion: versioningOverride.PinnedVersion,
+	behavior := versioningOverride.behavior()
+	switch v := versioningOverride.(type) {
+	case *PinnedVersioningOverride:
+		return &workflowpb.VersioningOverride{
+			Behavior:      versioningBehaviorToProto(behavior),
+			PinnedVersion: v.Version.toCanonicalString(),
+			Deployment: &deploymentpb.Deployment{
+				SeriesName: v.Version.DeploymentName,
+				BuildId:    v.Version.BuildID,
+			},
+			Override: &workflowpb.VersioningOverride_Pinned{
+				Pinned: &workflowpb.VersioningOverride_PinnedOverride{
+					Behavior: workflowpb.VersioningOverride_PINNED_OVERRIDE_BEHAVIOR_PINNED,
+					Version:  v.Version.toProto(),
+				},
+			},
+		}
+	case *AutoUpgradeVersioningOverride:
+		return &workflowpb.VersioningOverride{
+			Behavior: versioningBehaviorToProto(behavior),
+			Override: &workflowpb.VersioningOverride_AutoUpgrade{AutoUpgrade: true},
+		}
+	default:
+		return nil
 	}
 }
 
 func versioningOverrideFromProto(versioningOverride *workflowpb.VersioningOverride) VersioningOverride {
 	if versioningOverride == nil {
-		return VersioningOverride{}
+		return nil
 	}
 
-	return VersioningOverride{
-		Behavior: VersioningBehavior(versioningOverride.GetBehavior()),
-		Deployment: Deployment{
-			//lint:ignore SA1019 ignore deprecated versioning APIs
-			SeriesName: versioningOverride.GetDeployment().GetSeriesName(),
-			//lint:ignore SA1019 ignore deprecated versioning APIs
-			BuildID: versioningOverride.GetDeployment().GetBuildId(),
-		},
-		PinnedVersion: versioningOverride.GetPinnedVersion(),
+	if versioningOverride.Override != nil {
+		switch ot := versioningOverride.Override.(type) {
+		case *workflowpb.VersioningOverride_AutoUpgrade:
+			return &AutoUpgradeVersioningOverride{}
+		case *workflowpb.VersioningOverride_Pinned:
+			return &PinnedVersioningOverride{
+				Version: workerDeploymentVersionFromProto(ot.Pinned.Version),
+			}
+		}
+	}
+
+	//lint:ignore SA1019 ignore deprecated versioning APIs
+	behavior := versioningOverride.GetBehavior()
+	switch behavior {
+	case enumspb.VERSIONING_BEHAVIOR_AUTO_UPGRADE:
+		return &AutoUpgradeVersioningOverride{}
+	case enumspb.VERSIONING_BEHAVIOR_PINNED:
+		//lint:ignore SA1019 ignore deprecated versioning APIs
+		if versioningOverride.PinnedVersion != "" {
+			return &PinnedVersioningOverride{
+				//lint:ignore SA1019 ignore deprecated versioning APIs
+				Version: *workerDeploymentVersionFromString(versioningOverride.PinnedVersion),
+			}
+		}
+		return &PinnedVersioningOverride{
+			Version: WorkerDeploymentVersion{
+				//lint:ignore SA1019 ignore deprecated versioning APIs
+				DeploymentName: versioningOverride.GetDeployment().SeriesName,
+				//lint:ignore SA1019 ignore deprecated versioning APIs
+				BuildID: versioningOverride.GetDeployment().BuildId,
+			},
+		}
+	default:
+		return nil
 	}
 }
 
@@ -175,7 +209,7 @@ func workflowExecutionOptionsChangesToProto(changes WorkflowExecutionOptionsChan
 	options := WorkflowExecutionOptions{}
 	if changes.VersioningOverride != nil {
 		mask = append(mask, "VersioningOverride")
-		options.VersioningOverride = *changes.VersioningOverride
+		options.VersioningOverride = changes.VersioningOverride.Value
 	}
 	return workflowExecutionOptionsToProto(options), workflowExecutionOptionsMaskToProto(mask)
 }

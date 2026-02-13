@@ -26,6 +26,7 @@ import (
 	"k8s.io/apiserver/pkg/server/resourceconfig"
 	serverstore "k8s.io/apiserver/pkg/server/storage"
 	cliflag "k8s.io/component-base/cli/flag"
+	"k8s.io/klog/v2"
 )
 
 // APIEnablementOptions contains the options for which resources to turn on and off.
@@ -95,7 +96,35 @@ func (s *APIEnablementOptions) ApplyTo(c *server.Config, defaultResourceConfig *
 	}
 
 	mergedResourceConfig, err := resourceconfig.MergeAPIResourceConfigs(defaultResourceConfig, s.RuntimeConfig, registry)
+	if err != nil {
+		return err
+	}
+	// apply emulation forward compatibility to the api enablement if applicable.
+	if c.EmulationForwardCompatible {
+		mergedResourceConfig, err = resourceconfig.EmulationForwardCompatibleResourceConfig(mergedResourceConfig, s.RuntimeConfig, registry)
+	}
+
 	c.MergedResourceConfig = mergedResourceConfig
+
+	binVersion, emulatedVersion := c.EffectiveVersion.BinaryVersion(), c.EffectiveVersion.EmulationVersion()
+	if binVersion != nil && emulatedVersion != nil && (binVersion.Major() != emulatedVersion.Major() || binVersion.Minor() != emulatedVersion.Minor()) {
+		for _, version := range registry.PrioritizedVersionsAllGroups() {
+			if strings.Contains(version.Version, "alpha") {
+				// Check if this alpha API is actually enabled before warning
+				entireVersionEnabled := c.MergedResourceConfig.ExplicitGroupVersionConfigs[version]
+				individualResourceEnabled := false
+				for resource, enabled := range c.MergedResourceConfig.ExplicitResourceConfigs {
+					if enabled && resource.Group == version.Group && resource.Version == version.Version {
+						individualResourceEnabled = true
+						break
+					}
+				}
+				if entireVersionEnabled || individualResourceEnabled {
+					klog.Warningf("alpha api enabled with emulated version %s instead of the binary's version %s, this is unsupported, proceed at your own risk: api=%s", emulatedVersion, binVersion, version.String())
+				}
+			}
+		}
+	}
 
 	return err
 }

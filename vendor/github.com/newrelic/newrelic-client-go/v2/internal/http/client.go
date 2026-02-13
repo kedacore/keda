@@ -440,6 +440,7 @@ func (c *Client) innerDo(req *Request, errorValue ErrorResponse, i int) (*http.R
 		return resp, nil, false, retryErr
 	}
 
+	//nolint:errcheck
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {

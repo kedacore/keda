@@ -70,6 +70,9 @@ const (
 	// SSRF protection.
 	RequestHeaderName = "X-Vault-Request"
 
+	SnapshotHeaderName          = "X-Vault-Recover-Snapshot-Id"
+	RecoverSourcePathHeaderName = "X-Vault-Recover-Source-Path"
+
 	TLSErrorString = "This error usually means that the server is running with TLS disabled\n" +
 		"but the client is configured to use TLS. Please either enable TLS\n" +
 		"on the server or run the client with -address set to an address\n" +
@@ -258,7 +261,7 @@ func DefaultConfig() *Config {
 		MinRetryWait: time.Millisecond * 1000,
 		MaxRetryWait: time.Millisecond * 1500,
 		MaxRetries:   2,
-		Backoff:      retryablehttp.LinearJitterBackoff,
+		Backoff:      retryablehttp.RateLimitLinearJitterBackoff,
 	}
 
 	transport := config.HttpClient.Transport.(*http.Transport)

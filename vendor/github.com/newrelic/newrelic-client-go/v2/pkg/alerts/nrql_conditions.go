@@ -88,12 +88,12 @@ var NrqlConditionAggregationMethodTypes = struct {
 
 // AlertsFillOption - The available fill options.
 // nolint:revive
-type AlertsFillOption string // nolint:golint
+type AlertsFillOption string
 
 // nolint:revive
 var AlertsFillOptionTypes = struct {
 	// Fill using the last known value.
-	LAST_VALUE AlertsFillOption // nolint:golint
+	LAST_VALUE AlertsFillOption
 	// Do not fill data.
 	NONE AlertsFillOption
 	// Fill using a static value.
@@ -128,9 +128,11 @@ var (
 	// NrqlConditionTypes enumerates the possible NRQL condition type values for NRQL alert conditions.
 	NrqlConditionTypes = struct {
 		Baseline NrqlConditionType
+		Outlier  NrqlConditionType
 		Static   NrqlConditionType
 	}{
 		Baseline: "BASELINE",
+		Outlier:  "OUTLIER",
 		Static:   "STATIC",
 	}
 )
@@ -203,6 +205,42 @@ var (
 	}
 )
 
+type NrqlSignalSeasonality string
+
+var (
+	// NrqlSignalSeasonalities enumerates the possible signal seasonality values for a baseline NRQL alert condition.
+	NrqlSignalSeasonalities = struct {
+		NewRelicCalculation NrqlSignalSeasonality
+		Hourly              NrqlSignalSeasonality
+		Daily               NrqlSignalSeasonality
+		Weekly              NrqlSignalSeasonality
+		None                NrqlSignalSeasonality
+	}{
+		NewRelicCalculation: "NEW_RELIC_CALCULATION",
+		Hourly:              "HOURLY",
+		Daily:               "DAILY",
+		Weekly:              "WEEKLY",
+		None:                "NONE",
+	}
+)
+
+type NrqlOutlierDbScanConfigurationInput struct {
+	Epsilon              float64 `json:"epsilon"`
+	MinimumPoints        int     `json:"minimumPoints"`
+	EvaluationGroupFacet *string `json:"evaluationGroupFacet,omitempty"`
+}
+
+type NrqlOutlierConfigurationInput struct {
+	DBSCAN NrqlOutlierDbScanConfigurationInput `json:"dbscan"`
+}
+
+type NrqlOutlierConfigurationOutput struct {
+	Algorithm            string  `json:"algorithm"`
+	Epsilon              float64 `json:"epsilon"`
+	MinimumPoints        int     `json:"minimumPoints"`
+	EvaluationGroupFacet *string `json:"evaluationGroupFacet,omitempty"`
+}
+
 type NrqlConditionThresholdPrediction struct {
 	PredictBy                 int  `json:"predictBy,omitempty"`
 	PreferPredictionViolation bool `json:"preferPredictionViolation"`
@@ -210,12 +248,13 @@ type NrqlConditionThresholdPrediction struct {
 
 // NrqlConditionTerm represents the a single term of a New Relic alert condition.
 type NrqlConditionTerm struct {
-	Operator             AlertsNRQLConditionTermsOperator  `json:"operator,omitempty"`
-	Priority             NrqlConditionPriority             `json:"priority,omitempty"`
-	Threshold            *float64                          `json:"threshold"`
-	ThresholdDuration    int                               `json:"thresholdDuration,omitempty"`
-	ThresholdOccurrences ThresholdOccurrence               `json:"thresholdOccurrences,omitempty"`
-	Prediction           *NrqlConditionThresholdPrediction `json:"prediction,omitempty"`
+	Operator                     AlertsNRQLConditionTermsOperator  `json:"operator,omitempty"`
+	Priority                     NrqlConditionPriority             `json:"priority,omitempty"`
+	Threshold                    *float64                          `json:"threshold"`
+	ThresholdDuration            int                               `json:"thresholdDuration,omitempty"`
+	ThresholdOccurrences         ThresholdOccurrence               `json:"thresholdOccurrences,omitempty"`
+	Prediction                   *NrqlConditionThresholdPrediction `json:"prediction,omitempty"`
+	DisableHealthStatusReporting *bool                             `json:"disableHealthStatusReporting,omitempty"`
 }
 
 // NrqlConditionQuery represents the NRQL query object returned in a NerdGraph response object.
@@ -254,6 +293,7 @@ type NrqlConditionBase struct {
 	Signal                    *AlertsNrqlConditionSignal      `json:"signal,omitempty"`
 	EntityGUID                common.EntityGUID               `json:"entityGuid,omitempty"`
 	TitleTemplate             *string                         `json:"titleTemplate,omitempty"`
+	TargetEntity              *common.EntityGUID              `json:"targetEntity,omitempty"`
 }
 
 // NrqlConditionCreateBase represents the base fields for creating a New Relic NRQL Alert condition.
@@ -270,6 +310,7 @@ type NrqlConditionCreateBase struct {
 	Expiration                *AlertsNrqlConditionExpiration   `json:"expiration,omitempty"`
 	Signal                    *AlertsNrqlConditionCreateSignal `json:"signal,omitempty"`
 	TitleTemplate             *string                          `json:"titleTemplate,omitempty"`
+	TargetEntity              *common.EntityGUID               `json:"targetEntity,omitempty"`
 }
 
 // NrqlConditionUpdateBase represents the base fields for updating a New Relic NRQL Alert condition.
@@ -286,6 +327,7 @@ type NrqlConditionUpdateBase struct {
 	Expiration                *AlertsNrqlConditionExpiration   `json:"expiration,omitempty"`
 	Signal                    *AlertsNrqlConditionUpdateSignal `json:"signal"`
 	TitleTemplate             *string                          `json:"titleTemplate"`
+	TargetEntity              *common.EntityGUID               `json:"targetEntity"`
 }
 
 // NrqlConditionCreateInput represents the input options for creating a Nrql Condition.
@@ -294,6 +336,10 @@ type NrqlConditionCreateInput struct {
 
 	// BaselineDirection ONLY applies to NRQL conditions of type BASELINE.
 	BaselineDirection *NrqlBaselineDirection `json:"baselineDirection,omitempty"`
+	// OutlierConfiguration ONLY applies to NRQL conditions of type OUTLIER.
+	OutlierConfiguration *NrqlOutlierConfigurationInput `json:"outlierConfiguration,omitempty"`
+	// SignalSeasonality ONLY applies to NRQL conditions of type BASELINE.
+	SignalSeasonality *NrqlSignalSeasonality `json:"signalSeasonality,omitempty"`
 }
 
 // NrqlConditionUpdateInput represents the input options for updating a Nrql Condition.
@@ -302,6 +348,10 @@ type NrqlConditionUpdateInput struct {
 
 	// BaselineDirection ONLY applies to NRQL conditions of type BASELINE.
 	BaselineDirection *NrqlBaselineDirection `json:"baselineDirection,omitempty"`
+	// OutlierConfiguration ONLY applies to NRQL conditions of type OUTLIER.
+	OutlierConfiguration *NrqlOutlierConfigurationInput `json:"outlierConfiguration,omitempty"`
+	// SignalSeasonality ONLY applies to NRQL conditions of type BASELINE.
+	SignalSeasonality *NrqlSignalSeasonality `json:"signalSeasonality,omitempty"`
 }
 
 type NrqlConditionsSearchCriteria struct {
@@ -316,12 +366,15 @@ type NrqlConditionsSearchCriteria struct {
 // NrqlAlertCondition could be a baseline condition or static condition.
 type NrqlAlertCondition struct {
 	NrqlConditionBase
-
 	ID       string `json:"id,omitempty"`
 	PolicyID string `json:"policyId,omitempty"`
 
 	// BaselineDirection exists ONLY for NRQL conditions of type BASELINE.
 	BaselineDirection *NrqlBaselineDirection `json:"baselineDirection,omitempty"`
+	// OutlierConfiguration ONLY applies to NRQL conditions of type OUTLIER.
+	OutlierConfiguration *NrqlOutlierConfigurationOutput `json:"outlierConfiguration,omitempty"`
+	// SignalSeasonality exists ONLY for NRQL conditions of type BASELINE.
+	SignalSeasonality *NrqlSignalSeasonality `json:"signalSeasonality,omitempty"`
 }
 
 // NrqlCondition represents a New Relic NRQL Alert condition.
@@ -336,6 +389,7 @@ type NrqlCondition struct {
 	Type                string             `json:"type,omitempty"`
 	EntityGUID          *common.EntityGUID `json:"entity_guid,omitempty"`
 	TitleTemplate       *string            `json:"titleTemplate,omitempty"`
+	TargetEntity        *common.EntityGUID `json:"target_entity,omitempty"`
 }
 
 // NrqlQuery represents a NRQL query to use with a NRQL alert condition
@@ -584,6 +638,66 @@ func (a *Alerts) UpdateNrqlConditionBaselineMutationWithContext(
 	return &resp.AlertsNrqlConditionBaselineUpdate, nil
 }
 
+// CreateNrqlConditionOutlierMutation creates an outlier NRQL alert condition via New Relic's NerdGraph API.
+func (a *Alerts) CreateNrqlConditionOutlierMutation(
+	accountID int,
+	policyID string,
+	nrqlCondition NrqlConditionCreateInput,
+) (*NrqlAlertCondition, error) {
+	return a.CreateNrqlConditionOutlierMutationWithContext(context.Background(), accountID, policyID, nrqlCondition)
+}
+
+// CreateNrqlConditionOutlierMutationWithContext creates an outlier NRQL alert condition via New Relic's NerdGraph API.
+func (a *Alerts) CreateNrqlConditionOutlierMutationWithContext(
+	ctx context.Context,
+	accountID int,
+	policyID string,
+	nrqlCondition NrqlConditionCreateInput,
+) (*NrqlAlertCondition, error) {
+	resp := nrqlConditionOutlierCreateResponse{}
+	vars := map[string]interface{}{
+		"accountId": accountID,
+		"policyId":  policyID,
+		"condition": nrqlCondition,
+	}
+
+	if err := a.NerdGraphQueryWithContext(ctx, createNrqlConditionOutlierMutation, vars, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp.AlertsNrqlConditionOutlierCreate, nil
+}
+
+// UpdateNrqlConditionOutlierMutation updates an outlier NRQL alert condition via New Relic's NerdGraph API.
+func (a *Alerts) UpdateNrqlConditionOutlierMutation(
+	accountID int,
+	conditionID string,
+	nrqlCondition NrqlConditionUpdateInput,
+) (*NrqlAlertCondition, error) {
+	return a.UpdateNrqlConditionOutlierMutationWithContext(context.Background(), accountID, conditionID, nrqlCondition)
+}
+
+// UpdateNrqlConditionOutlierMutationWithContext updates an outlier NRQL alert condition via New Relic's NerdGraph API.
+func (a *Alerts) UpdateNrqlConditionOutlierMutationWithContext(
+	ctx context.Context,
+	accountID int,
+	conditionID string,
+	nrqlCondition NrqlConditionUpdateInput,
+) (*NrqlAlertCondition, error) {
+	resp := nrqlConditionOutlierUpdateResponse{}
+	vars := map[string]interface{}{
+		"accountId": accountID,
+		"id":        conditionID,
+		"condition": nrqlCondition,
+	}
+
+	if err := a.NerdGraphQueryWithContext(ctx, updateNrqlConditionOutlierMutation, vars, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp.AlertsNrqlConditionOutlierUpdate, nil
+}
+
 // CreateNrqlConditionStaticMutation creates a static NRQL alert condition via New Relic's NerdGraph API.
 func (a *Alerts) CreateNrqlConditionStaticMutation(
 	accountID int,
@@ -687,6 +801,14 @@ type nrqlConditionBaselineUpdateResponse struct {
 	AlertsNrqlConditionBaselineUpdate NrqlAlertCondition `json:"alertsNrqlConditionBaselineUpdate"`
 }
 
+type nrqlConditionOutlierCreateResponse struct {
+	AlertsNrqlConditionOutlierCreate NrqlAlertCondition `json:"alertsNrqlConditionOutlierCreate"`
+}
+
+type nrqlConditionOutlierUpdateResponse struct {
+	AlertsNrqlConditionOutlierUpdate NrqlAlertCondition `json:"alertsNrqlConditionOutlierUpdate"`
+}
+
 type nrqlConditionStaticCreateResponse struct {
 	AlertsNrqlConditionStaticCreate NrqlAlertCondition `json:"alertsNrqlConditionStaticCreate"`
 }
@@ -733,12 +855,14 @@ const (
     titleTemplate
     policyId
     runbookUrl
+    targetEntity
     terms {
       operator
       priority
       threshold
       thresholdDuration
       thresholdOccurrences
+      disableHealthStatusReporting
     }
     type
     violationTimeLimit
@@ -765,8 +889,22 @@ const (
 	graphqlFragmentNrqlBaselineConditionFields = `
 		... on AlertsNrqlBaselineCondition {
 			baselineDirection
+			signalSeasonality
 		}
 	`
+
+	graphqlFragmentNrqlOutlierConditionFields = `
+        ... on AlertsNrqlOutlierCondition {
+            outlierConfiguration {
+              ... on AlertsOutlierDbScanConfiguration {
+				algorithm
+                epsilon
+                minimumPoints
+                evaluationGroupFacet
+              }
+            }
+        }
+    `
 
 	graphqlFragmentNrqlStaticConditionFields = `
 		... on AlertsNrqlStaticCondition {
@@ -790,6 +928,7 @@ const (
 							nrqlConditions {` +
 		graphqlNrqlConditionStructFields +
 		graphqlFragmentNrqlBaselineConditionFields +
+		graphqlFragmentNrqlOutlierConditionFields +
 		graphqlFragmentNrqlStaticConditionFields +
 		`} } } } } }`
 
@@ -801,23 +940,40 @@ const (
 						nrqlCondition(id: $id) {` +
 		graphqlNrqlConditionStructFields +
 		graphqlFragmentNrqlBaselineConditionFields +
+		graphqlFragmentNrqlOutlierConditionFields +
 		graphqlFragmentNrqlStaticConditionFields +
 		`} } } } }`
 
 	// Baseline
 	createNrqlConditionBaselineMutation = `
 		mutation($accountId: Int!, $policyId: ID!, $condition: AlertsNrqlConditionBaselineInput!) {
-			alertsNrqlConditionBaselineCreate(accountId: $accountId, policyId: $policyId, condition: $condition) {
-				baselineDirection` +
+			alertsNrqlConditionBaselineCreate(accountId: $accountId, policyId: $policyId, condition: $condition) {` +
 		graphqlNrqlConditionStructFields +
+		graphqlFragmentNrqlBaselineConditionFields +
 		` } }`
 
 	// Baseline
 	updateNrqlConditionBaselineMutation = `
 		mutation($accountId: Int!, $id: ID!, $condition: AlertsNrqlConditionUpdateBaselineInput!) {
-			alertsNrqlConditionBaselineUpdate(accountId: $accountId, id: $id, condition: $condition) {
-				baselineDirection` +
+			alertsNrqlConditionBaselineUpdate(accountId: $accountId, id: $id, condition: $condition) { ` +
 		graphqlNrqlConditionStructFields +
+		graphqlFragmentNrqlBaselineConditionFields +
+		` } }`
+
+	// Outlier
+	createNrqlConditionOutlierMutation = `
+        mutation($accountId: Int!, $policyId: ID!, $condition: AlertsNrqlConditionOutlierInput!) {
+            alertsNrqlConditionOutlierCreate(accountId: $accountId, policyId: $policyId, condition: $condition) {` +
+		graphqlNrqlConditionStructFields +
+		graphqlFragmentNrqlOutlierConditionFields +
+		` } }`
+
+	// Outlier
+	updateNrqlConditionOutlierMutation = `
+        mutation($accountId: Int!, $id: ID!, $condition: AlertsNrqlConditionUpdateOutlierInput!) {
+            alertsNrqlConditionOutlierUpdate(accountId: $accountId, id: $id, condition: $condition) { ` +
+		graphqlNrqlConditionStructFields +
+		graphqlFragmentNrqlOutlierConditionFields +
 		` } }`
 
 	// Static

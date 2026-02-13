@@ -1,25 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2022 Temporal Technologies Inc.  All rights reserved.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 import (
@@ -35,9 +13,6 @@ import (
 )
 
 // WorkerTuner allows for the dynamic customization of some aspects of worker behavior.
-//
-// WARNING: Custom implementations of SlotSupplier are currently experimental.
-//
 // Exposed as: [go.temporal.io/sdk/worker.WorkerTuner]
 type WorkerTuner interface {
 	// GetWorkflowTaskSlotSupplier returns the SlotSupplier used for workflow tasks.
@@ -53,9 +28,6 @@ type WorkerTuner interface {
 }
 
 // SlotPermit is a permit to use a slot.
-//
-// WARNING: Custom implementations of SlotSupplier are currently experimental.
-//
 // Exposed as: [go.temporal.io/sdk/worker.SlotPermit]
 type SlotPermit struct {
 	// UserData is a field that can be used to store arbitrary on a permit by SlotSupplier
@@ -78,7 +50,8 @@ type SlotReservationInfo interface {
 	WorkerBuildId() string
 	// WorkerBuildId returns the build ID of the worker that is reserving the slot.
 	WorkerIdentity() string
-	// NumIssuedSlots returns the number of slots that have already been issued by the supplier.
+	// NumIssuedSlots returns the current number of slots that have already been issued by the
+	// supplier. This value may change over the course of the reservation.
 	NumIssuedSlots() int
 	// Logger returns an appropriately tagged logger.
 	Logger() log.Logger
@@ -127,9 +100,6 @@ type SlotReleaseInfo interface {
 
 // SlotSupplier controls how slots are handed out for workflow and activity tasks as well as
 // local activities when used in conjunction with a WorkerTuner.
-//
-// WARNING: Custom implementations of SlotSupplier are currently experimental.
-//
 // Exposed as: [go.temporal.io/sdk/worker.SlotSupplier]
 type SlotSupplier interface {
 	// ReserveSlot is called before polling for new tasks. The implementation should block until
@@ -161,8 +131,6 @@ type SlotSupplier interface {
 }
 
 // CompositeTuner allows you to build a tuner from multiple slot suppliers.
-//
-// WARNING: Custom implementations of SlotSupplier are currently experimental.
 type CompositeTuner struct {
 	workflowSlotSupplier        SlotSupplier
 	activitySlotSupplier        SlotSupplier
@@ -204,9 +172,6 @@ type CompositeTunerOptions struct {
 }
 
 // NewCompositeTuner creates a WorkerTuner that uses a combination of slot suppliers.
-//
-// WARNING: Custom implementations of SlotSupplier are currently experimental.
-//
 // Exposed as: [go.temporal.io/sdk/worker.NewCompositeTuner]
 func NewCompositeTuner(options CompositeTunerOptions) (WorkerTuner, error) {
 	return &CompositeTuner{
@@ -328,7 +293,7 @@ type slotReserveInfoImpl struct {
 	taskQueue      string
 	workerBuildId  string
 	workerIdentity string
-	issuedSlots    int
+	issuedSlots    *atomic.Int32
 	logger         log.Logger
 	metrics        metrics.Handler
 }
@@ -346,7 +311,7 @@ func (s slotReserveInfoImpl) WorkerIdentity() string {
 }
 
 func (s slotReserveInfoImpl) NumIssuedSlots() int {
-	return s.issuedSlots
+	return int(s.issuedSlots.Load())
 }
 
 func (s slotReserveInfoImpl) Logger() log.Logger {
@@ -442,7 +407,7 @@ func (t *trackingSlotSupplier) ReserveSlot(
 		taskQueue:      data.taskQueue,
 		workerBuildId:  t.workerBuildId,
 		workerIdentity: t.workerIdentity,
-		issuedSlots:    int(t.issuedSlotsAtomic.Load()),
+		issuedSlots:    &t.issuedSlotsAtomic,
 		logger:         t.logger,
 		metrics:        t.metrics,
 	})
@@ -465,7 +430,7 @@ func (t *trackingSlotSupplier) TryReserveSlot(data *slotReservationData) *SlotPe
 		taskQueue:      data.taskQueue,
 		workerBuildId:  t.workerBuildId,
 		workerIdentity: t.workerIdentity,
-		issuedSlots:    int(t.issuedSlotsAtomic.Load()),
+		issuedSlots:    &t.issuedSlotsAtomic,
 		logger:         t.logger,
 		metrics:        t.metrics,
 	})

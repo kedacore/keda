@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blockblob"
@@ -261,7 +261,7 @@ var eventHubMetricIdentifiers = []eventHubMetricIdentifier{
 
 var testEventHubScaler = azureEventHubScaler{
 	metadata: &eventHubMetadata{
-		eventHubInfo: azure.EventHubInfo{
+		EventHubInfo: azure.EventHubInfo{
 			EventHubConnection: "none",
 			StorageConnection:  "none",
 		},
@@ -326,10 +326,10 @@ func TestGetUnprocessedEventCountInPartition(t *testing.T) {
 		}
 
 		// Can actually test that numbers return
-		testEventHubScaler.metadata.eventHubInfo.EventHubConnection = eventHubConnectionString
+		testEventHubScaler.metadata.EventHubInfo.EventHubConnection = eventHubConnectionString
 		testEventHubScaler.eventHubClient = eventHubProducer
 		testEventHubScaler.blobStorageClient = blobClient
-		testEventHubScaler.metadata.eventHubInfo.EventHubConsumerGroup = "$Default"
+		testEventHubScaler.metadata.EventHubInfo.EventHubConsumerGroup = "$Default"
 
 		// Send 1 message to event hub first
 		t.Log("Sending message to event hub")
@@ -411,10 +411,10 @@ func TestGetUnprocessedEventCountIfNoCheckpointExists(t *testing.T) {
 		}
 
 		// Can actually test that numbers return
-		testEventHubScaler.metadata.eventHubInfo.EventHubConnection = eventHubConnectionString
+		testEventHubScaler.metadata.EventHubInfo.EventHubConnection = eventHubConnectionString
 		testEventHubScaler.eventHubClient = client
 		testEventHubScaler.blobStorageClient = blobClient
-		testEventHubScaler.metadata.eventHubInfo.EventHubConsumerGroup = "$Default"
+		testEventHubScaler.metadata.EventHubInfo.EventHubConsumerGroup = "$Default"
 
 		// Send 1 message to event hub first
 		t.Log("Sending message to event hub")
@@ -569,12 +569,12 @@ func CreatePartitionFile(ctx context.Context, urlPathToPartition string, partiti
 	}
 
 	if partitionID == "0" {
-		_, err = f.WriteString(fmt.Sprintf(checkpointFormat, partitionInfo.LastEnqueuedSequenceNumber-1, partitionID))
+		_, err = fmt.Fprintf(f, checkpointFormat, partitionInfo.LastEnqueuedSequenceNumber-1, partitionID)
 		if err != nil {
 			return fmt.Errorf("unable to write to file: %w", err)
 		}
 	} else {
-		_, err = f.WriteString(fmt.Sprintf(checkpointFormat, partitionInfo.LastEnqueuedSequenceNumber, partitionID))
+		_, err = fmt.Fprintf(f, checkpointFormat, partitionInfo.LastEnqueuedSequenceNumber, partitionID)
 		if err != nil {
 			return fmt.Errorf("unable to write to file: %w", err)
 		}

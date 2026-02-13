@@ -4,10 +4,11 @@ SCRIPTDIR := $(shell pwd)
 CURR=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ROOTDIR:=$(CURR)
 
-GOVERSION ?= 1.22.11
+GOVERSION ?= 1.24.9
+GOTOOLCHAIN ?= auto
 GOIMAGE ?= golang:$(GOVERSION)
 GOV2IMAGE ?= $(GOIMAGE)
-ALPINE_IMAGE ?= alpine:3.17
+ALPINE_IMAGE ?= alpine:3.21
 TMPDIR := ${SCRIPTDIR}/.tmp
 
 DOCKER_CMD:=docker run
@@ -15,12 +16,9 @@ DOCKER_CMD:=docker run
 GOBUILDTAGS:=$(TAGS)
 GOBUILDTAGSOPT=-tags "$(GOBUILDTAGS)"
 
-ARANGODB ?= arangodb/arangodb:latest
+ARANGODB ?= arangodb/enterprise:latest
 STARTER ?= arangodb/arangodb-starter:latest
 
-ifndef TESTOPTIONS
-	TESTOPTIONS := 
-endif
 ifdef VERBOSE
 	TESTVERBOSEOPTIONS := -v
 endif
@@ -113,8 +111,11 @@ endif
 endif
 
 ifeq ("$(TEST_BENCHMARK)", "true")
-	TAGS := -bench=. -run=notests -cpu=1,2,4
+	TAGS := -bench=. -benchmem -run=notests -cpu=1,2,4
 	TESTS := $(REPOPATH)/test
+ifndef TESTOPTIONS
+	TESTOPTIONS := $(TAGS)
+endif
 endif
 
 ifdef TEST_ENDPOINTS_OVERRIDE
@@ -138,14 +139,18 @@ endif
 
 ifeq ("$(DEBUG)", "true")
 	GOIMAGE := go-driver-tests:debug
-	DOCKER_DEBUG_ARGS := --security-opt=seccomp:unconfined
+	DOCKER_DEBUG_ARGS := --security-opt=seccomp:unconfined -e GOTOOLCHAIN=$(GOTOOLCHAIN)
 	DEBUG_PORT := 2345
 
-	DOCKER_RUN_CMD := $(DOCKER_DEBUG_ARGS) $(GOIMAGE) /go/bin/dlv --listen=:$(DEBUG_PORT) --headless=true --api-version=2 exec /test_debug.test -- $(TESTOPTIONS)
+	DOCKER_RUN_CMD := $(DOCKER_DEBUG_ARGS) $(GOIMAGE) /go/bin/dlv --listen=:$(DEBUG_PORT) --headless=true --api-version=2 --accept-multiclient exec /test_debug.test -- $(TESTOPTIONS)
 	DOCKER_V2_RUN_CMD := $(DOCKER_RUN_CMD)
 else
     DOCKER_RUN_CMD := $(GOIMAGE) go test -timeout 120m $(GOBUILDTAGSOPT) $(TESTOPTIONS) $(TESTVERBOSEOPTIONS) $(TESTS)
     DOCKER_V2_RUN_CMD := $(GOV2IMAGE) go test -timeout 120m $(GOBUILDTAGSOPT) $(TESTOPTIONS) $(TESTVERBOSEOPTIONS) -parallel $(TESTV2PARALLEL) ./tests
+endif
+
+ifeq ("$(ADD_TIMESTAMP)", "true")
+	ADD_TIMESTAMP :=| go run ./test/timestamp_output/timestamp_output.go 
 endif
 
 .PHONY: all build clean linter run-tests vulncheck
@@ -182,6 +187,7 @@ run-unit-tests: run-v2-unit-tests
 		--rm \
 		-v "${ROOTDIR}":/usr/code \
 		-e CGO_ENABLED=$(CGO_ENABLED) \
+		-e GOTOOLCHAIN=$(GOTOOLCHAIN) \
 		-w /usr/code/ \
 		$(GOIMAGE) \
 		go test $(TESTOPTIONS) $(REPOPATH) $(REPOPATH)/http $(REPOPATH)/agency $(REPOPATH)/vst/protocol
@@ -191,6 +197,7 @@ run-v2-unit-tests:
 		--rm \
 		-v "${ROOTDIR}"/v2:/usr/code \
 		-e CGO_ENABLED=$(CGO_ENABLED) \
+		-e GOTOOLCHAIN=$(GOTOOLCHAIN) \
 		-w /usr/code/ \
 		$(GOIMAGE) \
 		go test $(TESTOPTIONS) $(REPOPATH)/v2/connection $(REPOPATH)/v2/arangodb/...
@@ -410,13 +417,15 @@ COMMON_DOCKER_CMD_PARAMS = \
 	-e TEST_AUTHENTICATION=$(TEST_AUTHENTICATION) \
 	-e TEST_JWTSECRET=$(TEST_JWTSECRET) \
 	-e TEST_MODE=$(TEST_MODE) \
+	-e TEST_MODE_K8S=$(TEST_MODE_K8S) \
 	-e TEST_BACKUP_REMOTE_REPO=$(TEST_BACKUP_REMOTE_REPO) \
 	-e TEST_BACKUP_REMOTE_CONFIG='$(TEST_BACKUP_REMOTE_CONFIG)' \
 	-e TEST_DEBUG='$(TEST_DEBUG)' \
 	-e TEST_ENABLE_SHUTDOWN=$(TEST_ENABLE_SHUTDOWN) \
 	-e ENABLE_DATABASE_EXTRA_FEATURES=$(ENABLE_DATABASE_EXTRA_FEATURES) \
 	-e GODEBUG=tls13=1 \
-	-e CGO_ENABLED=$(CGO_ENABLED)
+	-e CGO_ENABLED=$(CGO_ENABLED) \
+	-e GOTOOLCHAIN=$(GOTOOLCHAIN)
 
 
 # Internal test tasks
@@ -435,8 +444,7 @@ DOCKER_V1_CMD_PARAMS=\
 	-w /usr/code/
 
 __test_go_test:
-	$(DOCKER_CMD) $(DOCKER_V1_CMD_PARAMS) $(DOCKER_RUN_CMD) \
-	&& echo "success!" \
+	($(DOCKER_CMD) $(DOCKER_V1_CMD_PARAMS) $(DOCKER_RUN_CMD) $(ADD_TIMESTAMP)) && echo "success!" \
 	|| ( $(ON_FAILURE_PARAMS) MAJOR_VERSION=1 . ./test/on_failure.sh)
 
 			
@@ -449,18 +457,17 @@ DOCKER_CMD_V2_PARAMS=\
 	-w /usr/code/v2/
 
 __test_v2_go_test:
-	$(DOCKER_CMD) $(DOCKER_CMD_V2_PARAMS) $(DOCKER_V2_RUN_CMD) \
-	&& echo "success!" \
+	($(DOCKER_CMD) $(DOCKER_CMD_V2_PARAMS) $(DOCKER_V2_RUN_CMD) $(ADD_TIMESTAMP)) && echo "success!" \
 	|| ($(ON_FAILURE_PARAMS) MAJOR_VERSION=2 . ./test/on_failure.sh)
 
 __test_debug__:
 ifeq ("$(DEBUG)", "true")
-	@docker build -f Dockerfile.debug --build-arg GOVERSION=$(GOVERSION) --build-arg "TESTS_DIRECTORY=./test" -t $(GOIMAGE) .
+	@docker build -f Dockerfile.debug --build-arg GOVERSION=$(GOVERSION) --build-arg GOTOOLCHAIN=$(GOTOOLCHAIN) --build-arg "TESTS_DIRECTORY=./test" -t $(GOIMAGE) .
 endif
 
 __test_v2_debug__:
 ifeq ("$(DEBUG)", "true")
-	@docker build -f Dockerfile.debug --build-arg GOVERSION=$(GOVERSION) --build-arg "TESTS_DIRECTORY=./tests" --build-arg "TESTS_ROOT_PATH=v2" -t $(GOIMAGE) .
+	@docker build -f Dockerfile.debug --build-arg GOVERSION=$(GOVERSION) --build-arg GOTOOLCHAIN=$(GOTOOLCHAIN) --build-arg "TESTS_DIRECTORY=./tests" --build-arg "TESTS_ROOT_PATH=v2" -t $(GOIMAGE) .
 endif
 
 __dir_setup:
@@ -502,14 +509,59 @@ run-benchmarks-single-vpack-no-auth:
 	@echo "Benchmarks: Single server, Velocypack, no authentication"
 	@${MAKE} TEST_MODE="single" TEST_AUTH="none" TEST_CONTENT_TYPE="vpack" TEST_BENCHMARK="true" __run_tests
 
+# V1 Cluster benchmarks
+run-benchmarks-cluster-json-no-auth: 
+	@echo "V1 Benchmarks: Cluster server, JSON no authentication"
+	@${MAKE} TEST_MODE="cluster" TEST_AUTH="none" TEST_CONTENT_TYPE="json" TEST_BENCHMARK="true" __run_tests
+
+run-benchmarks-remote-with-auth:
+	@echo "V1 Benchmarks: Remote server with authentication"
+	@echo "Usage: TEST_ENDPOINTS_OVERRIDE=https://host:port TEST_AUTHENTICATION=basic:user:pass make run-benchmarks-remote-with-auth"
+ifndef TEST_AUTHENTICATION
+	@echo "ERROR: TEST_AUTHENTICATION is not set. Please export it first."
+	@echo "Example: export TEST_AUTHENTICATION='basic:root:password'"
+	@exit 1
+endif
+ifndef TEST_ENDPOINTS_OVERRIDE
+	@echo "ERROR: TEST_ENDPOINTS_OVERRIDE is not set. Please export it first."
+	@echo "Example: export TEST_ENDPOINTS_OVERRIDE='https://host:port'"
+	@exit 1
+endif
+	@${MAKE} TEST_MODE="cluster" TEST_MODE_K8S="k8s" TEST_NOT_WAIT_UNTIL_READY="1" TEST_CONTENT_TYPE="json" TEST_BENCHMARK="true" __run_tests
+	
+
+# V2 Cluster benchmarks
+run-benchmarks-v2-cluster-json-no-auth: 
+	@echo "V2 Benchmarks: Cluster server, JSON no authentication (from benchmark_tests/)"
+	@${MAKE} TEST_MODE="cluster" TEST_AUTH="none" TEST_CONTENT_TYPE="json" TEST_BENCHMARK="true" __run_v2_tests
+
+run-benchmarks-v2-cluster-json-ssl: 
+	@echo "V2 Benchmarks: Cluster server, JSON with SSL"
+	@${MAKE} TEST_MODE="cluster" TEST_AUTH="none" TEST_SSL="auto" TEST_CONTENT_TYPE="json" TEST_BENCHMARK="true" __run_v2_tests
+
+run-benchmarks-v2-remote-with-auth:
+	@echo "V2 Benchmarks: Remote server with authentication"
+	@echo "Usage: TEST_ENDPOINTS_OVERRIDE=https://host:port TEST_AUTHENTICATION=basic:user:pass make run-benchmarks-v2-remote-with-auth"
+ifndef TEST_AUTHENTICATION
+	@echo "ERROR: TEST_AUTHENTICATION is not set. Please export it first."
+	@echo "Example: export TEST_AUTHENTICATION='basic:root:password'"
+	@exit 1
+endif
+ifndef TEST_ENDPOINTS_OVERRIDE
+	@echo "ERROR: TEST_ENDPOINTS_OVERRIDE is not set. Please export it first."
+	@echo "Example: export TEST_ENDPOINTS_OVERRIDE='https://host:port'"
+	@exit 1
+endif
+	@${MAKE} TEST_MODE="cluster" TEST_MODE_K8S="k8s" TEST_NOT_WAIT_UNTIL_READY="1" TEST_CONTENT_TYPE="json" TEST_BENCHMARK="true" __run_v2_tests
+
 ## Lint
 
 .PHONY: tools
 tools: __dir_setup
 	@echo ">> Fetching golangci-lint linter"
-	@GOBIN=$(TMPDIR)/bin go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.52.2
+	@GOBIN=$(TMPDIR)/bin go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.6.1
 	@echo ">> Fetching goimports"
-	@GOBIN=$(TMPDIR)/bin go install golang.org/x/tools/cmd/goimports@v0.1.12
+	@GOBIN=$(TMPDIR)/bin go install golang.org/x/tools/cmd/goimports@v0.38.0
 	@echo ">> Fetching license check"
 	@GOBIN=$(TMPDIR)/bin go install github.com/google/addlicense@v1.0.0
 	@echo ">> Fetching govulncheck"
@@ -539,6 +591,7 @@ fmt-verify: license-verify
 
 .PHONY: linter
 linter: fmt-verify
+	@echo ">> Running linter"
 	@$(TMPDIR)/bin/golangci-lint run ./...
 
 .PHONY: vulncheck

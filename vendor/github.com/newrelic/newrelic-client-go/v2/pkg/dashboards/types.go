@@ -511,6 +511,8 @@ type DashboardVariableOptions struct {
 	Excluded bool `json:"excluded,omitempty"`
 	// Only applies to variables of type NRQL. With this turned on, the time range for the NRQL query will override the time picker on dashboards and other pages. Turn this off to use the time picker as normal.
 	IgnoreTimeRange bool `json:"ignoreTimeRange,omitempty"`
+	// Determines whether or not an Apply action will be shown when selecting multiple values in ENUM and NRQL variables.
+	ShowApplyAction bool `json:"showApplyAction,omitempty"`
 }
 
 // DashboardVariableOptionsInput - Options applied to the variable
@@ -519,6 +521,8 @@ type DashboardVariableOptionsInput struct {
 	Excluded *bool `json:"excluded,omitempty"`
 	// Only applies to variables of type NRQL. With this turned on, the time range for the NRQL query will override the time picker on dashboards and other pages. Turn this off to use the time picker as normal.
 	IgnoreTimeRange *bool `json:"ignoreTimeRange,omitempty"`
+	// Determines whether or not an Apply action will be shown when selecting multiple values in ENUM and NRQL variables.
+	ShowApplyAction *bool `json:"showApplyAction,omitempty"`
 }
 
 // DashboardWidgetConfigurationInput - Typed configuration for known visualizations. At most one may be populated.
@@ -572,7 +576,9 @@ type DashboardWidgetLayoutInput struct {
 // DashboardWidgetNRQLQueryInput - NRQL query used by a widget.
 type DashboardWidgetNRQLQueryInput struct {
 	// New Relic account ID to issue the query against.
-	AccountID int `json:"accountId"`
+	AccountID int `json:"accountId,omitempty"`
+	// New Relic account IDs to issue the query against.
+	AccountIDS []int `json:"accountIds,omitempty"`
 	// NRQL formatted query.
 	Query nrdb.NRQL `json:"query"`
 }

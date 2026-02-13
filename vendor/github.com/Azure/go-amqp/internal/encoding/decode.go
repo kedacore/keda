@@ -169,6 +169,8 @@ func Unmarshal(r *buffer.Buffer, i any) error {
 		return (*arrayBinary)(t).Unmarshal(r)
 	case *[]time.Time:
 		return (*arrayTimestamp)(t).Unmarshal(r)
+	case *[]map[any]any:
+		return (*arrayMap)(t).Unmarshal(r)
 	case *[]UUID:
 		return (*arrayUUID)(t).Unmarshal(r)
 	case *[]any:
@@ -580,13 +582,34 @@ func ReadAny(r *buffer.Buffer) (any, error) {
 	}
 }
 
+func readMap8(r *buffer.Buffer) (any, error) {
+	var m map[any]any
+	err := (*mapAnyAny)(&m).unmarshalMap8(r)
+	if err != nil {
+		return nil, err
+	}
+	return readMapItems(m)
+}
+
+func readMap32(r *buffer.Buffer) (any, error) {
+	var m map[any]any
+	err := (*mapAnyAny)(&m).unmarshalMap32(r)
+	if err != nil {
+		return nil, err
+	}
+	return readMapItems(m)
+}
+
 func readAnyMap(r *buffer.Buffer) (any, error) {
 	var m map[any]any
 	err := (*mapAnyAny)(&m).Unmarshal(r)
 	if err != nil {
 		return nil, err
 	}
+	return readMapItems(m)
+}
 
+func readMapItems(m map[any]any) (any, error) {
 	if len(m) == 0 {
 		return m, nil
 	}
@@ -709,6 +732,10 @@ func readAnyArray(r *buffer.Buffer) (any, error) {
 	case TypeCodeUUID:
 		var a []UUID
 		err := (*arrayUUID)(&a).Unmarshal(r)
+		return a, err
+	case TypeCodeMap8, TypeCodeMap32:
+		var a []map[any]any
+		err := (*arrayMap)(&a).Unmarshal(r)
 		return a, err
 	default:
 		return nil, fmt.Errorf("array decoding not implemented for %#02x", buf[typeIdx])
@@ -842,7 +869,7 @@ func readTimestamp(r *buffer.Buffer) (time.Time, error) {
 
 	n, err := r.ReadUint64()
 	ms := int64(n)
-	return time.Unix(ms/1000, (ms%1000)*1000000).UTC(), err
+	return time.UnixMilli(ms), err
 }
 
 func readInt(r *buffer.Buffer) (int, error) {
@@ -1106,41 +1133,64 @@ func readUUID(r *buffer.Buffer) (UUID, error) {
 }
 
 func readMapHeader(r *buffer.Buffer) (count uint32, _ error) {
-	type_, err := readType(r)
+	type_, err := peekType(r)
 	if err != nil {
 		return 0, err
 	}
 
-	length := r.Len()
-
 	switch type_ {
 	case TypeCodeMap8:
-		buf, ok := r.Next(2)
-		if !ok {
-			return 0, errors.New("invalid length")
+		_, err := r.ReadByte() // consume type byte
+		if err != nil {
+			return 0, err
 		}
-		_ = buf[1]
-
-		size := int(buf[0])
-		if size > length-1 {
-			return 0, errors.New("invalid length")
-		}
-		count = uint32(buf[1])
+		return readMap8Header(r)
 	case TypeCodeMap32:
-		buf, ok := r.Next(8)
-		if !ok {
-			return 0, errors.New("invalid length")
+		_, err := r.ReadByte() // consume type byte
+		if err != nil {
+			return 0, err
 		}
-		_ = buf[7]
-
-		size := int(binary.BigEndian.Uint32(buf[:4]))
-		if size > length-4 {
-			return 0, errors.New("invalid length")
-		}
-		count = binary.BigEndian.Uint32(buf[4:8])
+		return readMap32Header(r)
 	default:
 		return 0, fmt.Errorf("invalid map type %#02x", type_)
 	}
+}
+
+func readMap8Header(r *buffer.Buffer) (count uint32, _ error) {
+	// TypeCodeMap8 byte was already consumed
+	length := r.Len()
+	buf, ok := r.Next(2)
+	if !ok {
+		return 0, errors.New("invalid length")
+	}
+	_ = buf[1]
+
+	size := int(buf[0])
+	if size > length-1 {
+		return 0, errors.New("invalid length")
+	}
+	count = uint32(buf[1])
+
+	if int(count) > r.Len() {
+		return 0, errors.New("invalid length")
+	}
+	return count, nil
+}
+
+func readMap32Header(r *buffer.Buffer) (count uint32, _ error) {
+	// TypeCodeMap32 byte was already consumed
+	length := r.Len()
+	buf, ok := r.Next(8)
+	if !ok {
+		return 0, errors.New("invalid length")
+	}
+	_ = buf[7]
+
+	size := int(binary.BigEndian.Uint32(buf[:4]))
+	if size > length-4 {
+		return 0, errors.New("invalid length")
+	}
+	count = binary.BigEndian.Uint32(buf[4:8])
 
 	if int(count) > r.Len() {
 		return 0, errors.New("invalid length")

@@ -57,10 +57,13 @@ const ScaledObjectExcludedLabelsAnnotation = "scaledobject.keda.sh/hpa-excluded-
 const ValidationsHpaOwnershipAnnotation = "validations.keda.sh/hpa-ownership"
 const PausedReplicasAnnotation = "autoscaling.keda.sh/paused-replicas"
 const PausedAnnotation = "autoscaling.keda.sh/paused"
+const PausedScaleInAnnotation = "autoscaling.keda.sh/paused-scale-in"
+const PausedScaleOutAnnotation = "autoscaling.keda.sh/paused-scale-out"
 const FallbackBehaviorStatic = "static"
 const FallbackBehaviorCurrentReplicas = "currentReplicas"
 const FallbackBehaviorCurrentReplicasIfHigher = "currentReplicasIfHigher"
 const FallbackBehaviorCurrentReplicasIfLower = "currentReplicasIfLower"
+const ForceActivationAnnotation = "autoscaling.keda.sh/force-activation"
 
 // HealthStatus is the status for a ScaledObject's health
 type HealthStatus struct {
@@ -68,6 +71,12 @@ type HealthStatus struct {
 	NumberOfFailures *int32 `json:"numberOfFailures,omitempty"`
 	// +optional
 	Status HealthStatusType `json:"status,omitempty"`
+}
+
+// TriggerActivityStatus represents the activity status of an external trigger
+type TriggerActivityStatus struct {
+	// +optional
+	IsActive bool `json:"isActive"`
 }
 
 // HealthStatusType is an indication of whether the health status is happy or failing
@@ -184,6 +193,8 @@ type ScaledObjectStatus struct {
 	// +optional
 	Health map[string]HealthStatus `json:"health,omitempty"`
 	// +optional
+	TriggersActivity map[string]TriggerActivityStatus `json:"triggersActivity,omitempty"`
+	// +optional
 	PausedReplicaCount *int32 `json:"pausedReplicaCount,omitempty"`
 	// +optional
 	HpaName string `json:"hpaName,omitempty"`
@@ -211,11 +222,6 @@ func (so *ScaledObject) GenerateIdentifier() string {
 	return GenerateIdentifier("ScaledObject", so.Namespace, so.Name)
 }
 
-func (so *ScaledObject) HasPausedReplicaAnnotation() bool {
-	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
-	return pausedReplicasAnnotationFound
-}
-
 // HasPausedAnnotation returns whether this ScaledObject has PausedAnnotation or PausedReplicasAnnotation
 func (so *ScaledObject) HasPausedAnnotation() bool {
 	_, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
@@ -227,19 +233,38 @@ func (so *ScaledObject) HasPausedAnnotation() bool {
 func (so *ScaledObject) NeedToBePausedByAnnotation() bool {
 	_, pausedReplicasAnnotationFound := so.GetAnnotations()[PausedReplicasAnnotation]
 	if pausedReplicasAnnotationFound {
-		return so.Status.PausedReplicaCount != nil
-	}
-
-	pausedAnnotationValue, pausedAnnotationFound := so.GetAnnotations()[PausedAnnotation]
-	if !pausedAnnotationFound {
-		return false
-	}
-	shouldPause, err := strconv.ParseBool(pausedAnnotationValue)
-	if err != nil {
-		// if annotation value is not a boolean, we assume user wants to pause the ScaledObject
 		return true
 	}
-	return shouldPause
+
+	return getBoolAnnotation(so, PausedAnnotation)
+}
+
+// NeedToPauseScaleIn checks whether Scale In actions for a ScaledObject need to be blocked based on the PausedScaleIn annotation
+func (so *ScaledObject) NeedToPauseScaleIn() bool {
+	return getBoolAnnotation(so, PausedScaleInAnnotation)
+}
+
+// NeedToForceActivation checks whether activation of a scale target needs to be forced because the ForceActivation annotation is set
+func (so *ScaledObject) NeedToForceActivation() bool {
+	return getBoolAnnotation(so, ForceActivationAnnotation)
+}
+
+// NeedToPauseScaleOut checks whether Scale Out actions for a ScaledObject need to be blocked based on the PausedScaleOut annotation
+func (so *ScaledObject) NeedToPauseScaleOut() bool {
+	return getBoolAnnotation(so, PausedScaleOutAnnotation)
+}
+
+func getBoolAnnotation(so *ScaledObject, annotation string) bool {
+	value, found := so.GetAnnotations()[annotation]
+	if !found {
+		return false
+	}
+	boolVal, err := strconv.ParseBool(value)
+	if err != nil {
+		// if annotation value is not a boolean, we assume true
+		return true
+	}
+	return boolVal
 }
 
 // IsUsingModifiers determines whether scalingModifiers are defined or not
@@ -296,26 +321,14 @@ func CheckFallbackValid(scaledObject *ScaledObject) error {
 			scaledObject.Spec.Fallback.FailureThreshold, scaledObject.Spec.Fallback.Replicas)
 	}
 
-	if scaledObject.IsUsingModifiers() {
-		if scaledObject.Spec.Advanced.ScalingModifiers.MetricType == autoscalingv2.ValueMetricType {
-			return fmt.Errorf("when using ScalingModifiers, ScaledObject.Spec.Advanced.ScalingModifiers.MetricType must be AverageValue to have fallback enabled")
-		}
-	} else {
+	if !scaledObject.IsUsingModifiers() {
 		fallbackValid := false
 		for _, trigger := range scaledObject.Spec.Triggers {
 			if trigger.Type == cpuString || trigger.Type == memoryString {
 				continue
 			}
-
-			effectiveMetricType := trigger.MetricType
-			if effectiveMetricType == "" {
-				effectiveMetricType = autoscalingv2.AverageValueMetricType
-			}
-
-			if effectiveMetricType == autoscalingv2.AverageValueMetricType {
-				fallbackValid = true
-				break
-			}
+			fallbackValid = true
+			break
 		}
 
 		if !fallbackValid {

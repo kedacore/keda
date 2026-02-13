@@ -75,6 +75,8 @@ type link struct {
 
 	closeInProgress bool // indicates that the detach performative has been sent
 	dynamicAddr     bool // request a dynamic link address from the server
+
+	desiredCapabilities encoding.MultiSymbol // maps to the ATTACH frame's desired-capabilities field
 }
 
 func newLink(s *Session, r encoding.Role) link {
@@ -130,14 +132,15 @@ func (l *link) attach(ctx context.Context, beforeAttach func(*frames.PerformAtta
 	}
 
 	attach := &frames.PerformAttach{
-		Name:               l.key.name,
-		Handle:             l.outputHandle,
-		ReceiverSettleMode: l.receiverSettleMode,
-		SenderSettleMode:   l.senderSettleMode,
-		MaxMessageSize:     l.maxMessageSize,
-		Source:             l.source,
-		Target:             l.target,
-		Properties:         l.properties,
+		Name:                l.key.name,
+		Handle:              l.outputHandle,
+		ReceiverSettleMode:  l.receiverSettleMode,
+		SenderSettleMode:    l.senderSettleMode,
+		MaxMessageSize:      l.maxMessageSize,
+		Source:              l.source,
+		Target:              l.target,
+		Properties:          l.properties,
+		DesiredCapabilities: l.desiredCapabilities,
 	}
 
 	// link-specific configuration of the attach frame
@@ -171,8 +174,13 @@ func (l *link) attach(ctx context.Context, beforeAttach func(*frames.PerformAtta
 	//   that the link endpoint has no associated local terminus. In this case, the
 	//   session endpoint MUST immediately detach the newly created link endpoint.
 	//
-	// http://docs.oasis-open.org/amqp/core/v1.0/csprd01/amqp-core-transport-v1.0-csprd01.html#doc-idp386144
-	if resp.Source == nil && resp.Target == nil {
+	// https://docs.oasis-open.org/amqp/core/v1.0/csprd01/amqp-core-transport-v1.0-csprd01.html#doc-idp358800
+	//
+	// For receiver links, check if Source is nil. For sender links, check if Target is nil.
+	nilTerminus := (l.key.role == encoding.RoleReceiver && resp.Source == nil) ||
+		(l.key.role == encoding.RoleSender && resp.Target == nil)
+
+	if nilTerminus {
 		// wait for detach
 		fr, err := l.waitForFrame(ctx)
 		if err != nil {

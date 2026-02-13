@@ -42,7 +42,7 @@ type arangoDBMetadata struct {
 
 	// The name of the database to be queried.
 	// +required
-	dbName string
+	DbName string `keda:"name=dbName, order=triggerMetadata;authParams"`
 	// The name of the Collection to be queried.
 	// +required
 	Collection string `keda:"name=collection, order=triggerMetadata"`
@@ -61,6 +61,8 @@ type arangoDBMetadata struct {
 	// Specify the max size of the active connection pool.
 	// +optional
 	ConnectionLimit int64 `keda:"name=connectionLimit, order=triggerMetadata, optional"`
+	// +optional
+	AuthModes string `keda:"name=authModes, order=triggerMetadata, optional"`
 
 	// The index of the scaler inside the ScaledObject
 	// +internal
@@ -126,7 +128,6 @@ func getNewArangoDBClient(meta *arangoDBMetadata) (driver.Client, error) {
 }
 
 func parseArangoDBMetadata(config *scalersconfig.ScalerConfig) (*arangoDBMetadata, error) {
-	// setting default metadata
 	meta := &arangoDBMetadata{}
 	meta.triggerIndex = config.TriggerIndex
 	if err := config.TypedConfig(meta); err != nil {
@@ -137,12 +138,6 @@ func parseArangoDBMetadata(config *scalersconfig.ScalerConfig) (*arangoDBMetadat
 		return nil, fmt.Errorf("no QueryValue given")
 	}
 
-	dbName, err := GetFromAuthOrMeta(config, "dbName")
-	if err != nil {
-		return nil, err
-	}
-	meta.dbName = dbName
-
 	return meta, nil
 }
 
@@ -152,18 +147,18 @@ func (s *arangoDBScaler) Close(_ context.Context) error {
 }
 
 func (s *arangoDBScaler) getQueryResult(ctx context.Context) (float64, error) {
-	dbExists, err := s.client.DatabaseExists(ctx, s.metadata.dbName)
+	dbExists, err := s.client.DatabaseExists(ctx, s.metadata.DbName)
 	if err != nil {
-		return -1, fmt.Errorf("failed to check if %s database exists, %w", s.metadata.dbName, err)
+		return -1, fmt.Errorf("failed to check if %s database exists, %w", s.metadata.DbName, err)
 	}
 
 	if !dbExists {
-		return -1, fmt.Errorf("%s database not found", s.metadata.dbName)
+		return -1, fmt.Errorf("%s database not found", s.metadata.DbName)
 	}
 
-	db, err := s.client.Database(ctx, s.metadata.dbName)
+	db, err := s.client.Database(ctx, s.metadata.DbName)
 	if err != nil {
-		return -1, fmt.Errorf("failed to connect to %s db, %w", s.metadata.dbName, err)
+		return -1, fmt.Errorf("failed to connect to %s db, %w", s.metadata.DbName, err)
 	}
 
 	collectionExists, err := db.CollectionExists(ctx, s.metadata.Collection)
@@ -172,7 +167,7 @@ func (s *arangoDBScaler) getQueryResult(ctx context.Context) (float64, error) {
 	}
 
 	if !collectionExists {
-		return -1, fmt.Errorf("%s collection not found in %s database", s.metadata.Collection, s.metadata.dbName)
+		return -1, fmt.Errorf("%s collection not found in %s database", s.metadata.Collection, s.metadata.DbName)
 	}
 
 	ctx = driver.WithQueryCount(ctx)
@@ -190,7 +185,7 @@ func (s *arangoDBScaler) getQueryResult(ctx context.Context) (float64, error) {
 
 	var result dbResult
 	if _, err = cursor.ReadDocument(ctx, &result); err != nil {
-		return -1, fmt.Errorf("query result is not in the specified format, pleast check the query, %w", err)
+		return -1, fmt.Errorf("query result is not in the specified format, please check the query, %w", err)
 	}
 
 	return result.Value, nil

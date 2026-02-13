@@ -29,8 +29,12 @@ type gcpCloudTaskMetadata struct {
 	ActivationValue float64 `keda:"name=activationValue, order=triggerMetadata, optional, default=0"`
 	FilterDuration  int64   `keda:"name=filterDuration, order=triggerMetadata, optional"`
 
-	QueueName        string `keda:"name=queueName, order=triggerMetadata"`
-	ProjectID        string `keda:"name=projectID, order=triggerMetadata"`
+	QueueName string `keda:"name=queueName, order=triggerMetadata"`
+	ProjectID string `keda:"name=projectID, order=triggerMetadata, deprecatedAnnounce=This scaler is deprecated. More info -> 'https://keda.sh/blog/2025-09-15-gcp-deprecations'"`
+
+	Credentials            string `keda:"name=credentials, order=triggerMetadata;resolvedEnv, optional"`
+	CredentialsFromEnvFile string `keda:"name=credentialsFromEnvFile, order=triggerMetadata;resolvedEnv, optional"`
+
 	gcpAuthorization *gcp.AuthorizationMetadata
 	triggerIndex     int
 }

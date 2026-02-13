@@ -40,7 +40,8 @@ func (c *Client) AddTagsToStream(ctx context.Context, params *AddTagsToStreamInp
 // Represents the input for AddTagsToStream .
 type AddTagsToStreamInput struct {
 
-	// A set of up to 10 key-value pairs to use to create the tags.
+	// A set of up to 50 key-value pairs to use to create the tags. A tag consists of
+	// a required key and an optional value. You can add up to 50 tags per resource.
 	//
 	// This member is required.
 	Tags map[string]string
@@ -155,16 +156,13 @@ func (c *Client) addOperationAddTagsToStreamMiddlewares(stack *middleware.Stack,
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

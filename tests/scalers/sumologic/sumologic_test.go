@@ -66,7 +66,7 @@ type templateData struct {
 	MinReplicaCount       string
 	MaxReplicaCount       string
 	TargetValue           string
-	ActivationValue       string
+	ActivationThreshold   string
 }
 
 const (
@@ -94,7 +94,7 @@ spec:
     name: {{.DeploymentName}}
   minReplicaCount: {{.MinReplicaCount}}
   maxReplicaCount: {{.MaxReplicaCount}}
-  pollingInterval: 3
+  pollingInterval: 5
   cooldownPeriod: 1
   fallback:
     failureThreshold: 3
@@ -111,7 +111,8 @@ spec:
         timezone: "{{.TimeZone}}"
         queryAggregator: "{{.QueryAggregator}}"
         threshold: "{{.TargetValue}}"
-        activationValue: "{{.ActivationValue}}"
+        activationThreshold: "{{.ActivationThreshold}}"
+        maxRetries: "3"
       authenticationRef:
         name: keda-trigger-auth-sumologic
 `
@@ -171,7 +172,7 @@ func TestSumologicScaler(t *testing.T) {
 
 	// Ensure deployment is at min replica count
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+		"replica count should be %d after 9 minutes", minReplicaCount)
 
 	// Test scaling
 	testActivation(t, kc)
@@ -270,7 +271,7 @@ func getTemplateData() (templateData, []Template) {
 			MinReplicaCount:       fmt.Sprintf("%v", minReplicaCount),
 			MaxReplicaCount:       fmt.Sprintf("%v", maxReplicaCount),
 			TargetValue:           scaleInTargetValue,
-			ActivationValue:       scaleInActivationValue,
+			ActivationThreshold:   scaleInActivationValue,
 		}, []Template{
 			{Name: "secretTemplate", Config: secretTemplate},
 			{Name: "triggerAuthenticationTemplate", Config: triggerAuthenticationTemplate},
@@ -279,21 +280,21 @@ func getTemplateData() (templateData, []Template) {
 		}
 }
 
-func getScaledObjectTemplateData(targetValue, activationValue string) templateData {
+func getScaledObjectTemplateData(targetValue, activationThreshold string) templateData {
 	return templateData{
-		TestNamespace:    testNamespace,
-		DeploymentName:   deploymentName,
-		ScaledObjectName: scaledObjectName,
-		Host:             host,
-		Query:            query,
-		QueryType:        queryType,
-		ResultField:      resultField,
-		TimeRange:        timeRange,
-		TimeZone:         timeZone,
-		QueryAggregator:  queryAggregator,
-		MinReplicaCount:  fmt.Sprintf("%v", minReplicaCount),
-		MaxReplicaCount:  fmt.Sprintf("%v", maxReplicaCount),
-		TargetValue:      targetValue,
-		ActivationValue:  activationValue,
+		TestNamespace:       testNamespace,
+		DeploymentName:      deploymentName,
+		ScaledObjectName:    scaledObjectName,
+		Host:                host,
+		Query:               query,
+		QueryType:           queryType,
+		ResultField:         resultField,
+		TimeRange:           timeRange,
+		TimeZone:            timeZone,
+		QueryAggregator:     queryAggregator,
+		MinReplicaCount:     fmt.Sprintf("%v", minReplicaCount),
+		MaxReplicaCount:     fmt.Sprintf("%v", maxReplicaCount),
+		TargetValue:         targetValue,
+		ActivationThreshold: activationThreshold,
 	}
 }

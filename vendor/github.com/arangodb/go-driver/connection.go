@@ -131,7 +131,7 @@ type Response interface {
 
 // RawObject is a raw encoded object.
 // Connection implementations must be able to unmarshal *RawObject into Go objects.
-type RawObject []byte
+type RawObject []byte //nolint
 
 // MarshalJSON returns *r as the JSON encoding of r.
 func (r *RawObject) MarshalJSON() ([]byte, error) {

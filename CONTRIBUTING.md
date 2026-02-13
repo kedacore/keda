@@ -95,7 +95,7 @@ Every change should be added to our changelog under `Unreleased` which is locate
 Here are some guidelines to follow:
 - Always use `General: ` or `<Scaler Name>: ` as a prefix and sort them alphabetically
   - General changes, however, should always be at the top
-- Entries should always follow the `<Scaler Name / General>: <Description> (#<ID>)` where `<ID>` is preferrably the ID of an issue, otherwise a PR is OK.
+- Entries should always follow the `<Scaler Name / General>: <Description> (#<ID>)` where `<ID>` is preferably the ID of an issue, otherwise a PR is OK.
 - New scalers should use `General:` and use this template: `**General:** Introduce new XXXXXX Scaler ([#ISSUE](https://github.com/kedacore/keda/issues/ISSUE))`
 
 ## Including Documentation Changes
@@ -164,7 +164,7 @@ For more installation options visit the [pre-commits](https://pre-commit.com).
 
 Before running pre-commit, you must install the [golangci-lint](https://golangci-lint.run/) tool as a static check tool for golang code (contains a series of linter)
 ```shell script
-curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.63.4
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.5.0
 # or
 brew install golangci/tap/golangci-lint
 ```

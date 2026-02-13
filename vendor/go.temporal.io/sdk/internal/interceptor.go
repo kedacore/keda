@@ -1,25 +1,3 @@
-// The MIT License
-//
-// Copyright (c) 2021 Temporal Technologies Inc.  All rights reserved.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package internal
 
 import (
@@ -319,10 +297,22 @@ type WorkflowOutboundInterceptor interface {
 	// SideEffect intercepts workflow.SideEffect.
 	SideEffect(ctx Context, f func(ctx Context) interface{}) converter.EncodedValue
 
+	// SideEffectWithOptions intercepts workflow.SideEffectWithOptions.
+	SideEffectWithOptions(ctx Context, options SideEffectOptions, f func(ctx Context) interface{}) converter.EncodedValue
+
 	// MutableSideEffect intercepts workflow.MutableSideEffect.
 	MutableSideEffect(
 		ctx Context,
 		id string,
+		f func(ctx Context) interface{},
+		equals func(a, b interface{}) bool,
+	) converter.EncodedValue
+
+	// MutableSideEffectWithOptions intercepts workflow.MutableSideEffectWithOptions.
+	MutableSideEffectWithOptions(
+		ctx Context,
+		id string,
+		options MutableSideEffectOptions,
 		f func(ctx Context) interface{},
 		equals func(a, b interface{}) bool,
 	) converter.EncodedValue
@@ -419,13 +409,14 @@ type ClientOutboundInterceptor interface {
 	UpdateWorkflow(context.Context, *ClientUpdateWorkflowInput) (WorkflowUpdateHandle, error)
 
 	// UpdateWithStartWorkflow intercepts client.Client.UpdateWithStartWorkflow.
-	//
-	// NOTE: Experimental
 	UpdateWithStartWorkflow(context.Context, *ClientUpdateWithStartWorkflowInput) (WorkflowUpdateHandle, error)
 
 	// PollWorkflowUpdate requests the outcome of a specific update from the
 	// server.
 	PollWorkflowUpdate(context.Context, *ClientPollWorkflowUpdateInput) (*ClientPollWorkflowUpdateOutput, error)
+
+	// DescribeWorkflow intercepts client.Client.DescribeWorkflow.
+	DescribeWorkflow(context.Context, *ClientDescribeWorkflowInput) (*ClientDescribeWorkflowOutput, error)
 
 	mustEmbedClientOutboundInterceptorBase()
 }
@@ -538,6 +529,23 @@ type ClientQueryWorkflowInput struct {
 	QueryRejectCondition enumspb.QueryRejectCondition
 }
 
+// ClientDescribeWorkflowInput is the input to
+// ClientOutboundInterceptor.DescribeWorkflow.
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientDescribeWorkflowInput]
+type ClientDescribeWorkflowInput struct {
+	WorkflowID string
+	RunID      string
+}
+
+// ClientDescribeWorkflowInput is the output to
+// ClientOutboundInterceptor.DescribeWorkflow.
+//
+// Exposed as: [go.temporal.io/sdk/interceptor.ClientDescribeWorkflowOutput]
+type ClientDescribeWorkflowOutput struct {
+	Response *WorkflowExecutionDescription
+}
+
 // NexusOutboundInterceptor intercepts Nexus operation method invocations. See documentation in the interceptor package
 // for more details.
 //
@@ -564,6 +572,8 @@ type NexusOperationInboundInterceptor interface {
 //
 // Note: Experimental
 type NexusOperationOutboundInterceptor interface {
+	// GetOperationInfo intercepts temporalnexus.GetOperationInfo.
+	GetOperationInfo(ctx context.Context) NexusOperationInfo
 	// GetClient intercepts temporalnexus.GetClient.
 	GetClient(ctx context.Context) Client
 	// GetLogger intercepts temporalnexus.GetLogger.

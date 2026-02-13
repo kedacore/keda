@@ -272,7 +272,7 @@ spec:
     spec:
       containers:
       - name: curl-client
-        image: curlimages/curl
+        image: docker.io/curlimages/curl
         imagePullPolicy: Always
         command: ["curl", "-X", "POST", "{{.MetricsServerEndpoint}}/{{.MetricValue}}"]
       restartPolicy: Never`
@@ -344,7 +344,7 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	KubectlReplaceWithTemplate(t, data, "updateMetricTemplate", updateMetricTemplate)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 60, maxReplicaCount),
-		"replica count should be %d after 3 minutes", maxReplicaCount)
+		"replica count should be %d after 1 minute", maxReplicaCount)
 }
 
 func testScaleIn(t *testing.T, kc *kubernetes.Clientset, data templateData) {

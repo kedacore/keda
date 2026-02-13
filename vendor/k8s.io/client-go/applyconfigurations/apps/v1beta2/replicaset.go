@@ -82,12 +82,13 @@ func extractReplicaSet(replicaSet *appsv1beta2.ReplicaSet, fieldManager string, 
 	b.WithAPIVersion("apps/v1beta2")
 	return b, nil
 }
+func (b ReplicaSetApplyConfiguration) IsApplyConfiguration() {}
 
 // WithKind sets the Kind field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Kind field is set to the value of the last call.
 func (b *ReplicaSetApplyConfiguration) WithKind(value string) *ReplicaSetApplyConfiguration {
-	b.Kind = &value
+	b.TypeMetaApplyConfiguration.Kind = &value
 	return b
 }
 
@@ -95,7 +96,7 @@ func (b *ReplicaSetApplyConfiguration) WithKind(value string) *ReplicaSetApplyCo
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the APIVersion field is set to the value of the last call.
 func (b *ReplicaSetApplyConfiguration) WithAPIVersion(value string) *ReplicaSetApplyConfiguration {
-	b.APIVersion = &value
+	b.TypeMetaApplyConfiguration.APIVersion = &value
 	return b
 }
 
@@ -104,7 +105,7 @@ func (b *ReplicaSetApplyConfiguration) WithAPIVersion(value string) *ReplicaSetA
 // If called multiple times, the Name field is set to the value of the last call.
 func (b *ReplicaSetApplyConfiguration) WithName(value string) *ReplicaSetApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Name = &value
+	b.ObjectMetaApplyConfiguration.Name = &value
 	return b
 }
 
@@ -113,7 +114,7 @@ func (b *ReplicaSetApplyConfiguration) WithName(value string) *ReplicaSetApplyCo
 // If called multiple times, the GenerateName field is set to the value of the last call.
 func (b *ReplicaSetApplyConfiguration) WithGenerateName(value string) *ReplicaSetApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.GenerateName = &value
+	b.ObjectMetaApplyConfiguration.GenerateName = &value
 	return b
 }
 
@@ -122,7 +123,7 @@ func (b *ReplicaSetApplyConfiguration) WithGenerateName(value string) *ReplicaSe
 // If called multiple times, the Namespace field is set to the value of the last call.
 func (b *ReplicaSetApplyConfiguration) WithNamespace(value string) *ReplicaSetApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Namespace = &value
+	b.ObjectMetaApplyConfiguration.Namespace = &value
 	return b
 }
 
@@ -131,7 +132,7 @@ func (b *ReplicaSetApplyConfiguration) WithNamespace(value string) *ReplicaSetAp
 // If called multiple times, the UID field is set to the value of the last call.
 func (b *ReplicaSetApplyConfiguration) WithUID(value types.UID) *ReplicaSetApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.UID = &value
+	b.ObjectMetaApplyConfiguration.UID = &value
 	return b
 }
 
@@ -140,7 +141,7 @@ func (b *ReplicaSetApplyConfiguration) WithUID(value types.UID) *ReplicaSetApply
 // If called multiple times, the ResourceVersion field is set to the value of the last call.
 func (b *ReplicaSetApplyConfiguration) WithResourceVersion(value string) *ReplicaSetApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ResourceVersion = &value
+	b.ObjectMetaApplyConfiguration.ResourceVersion = &value
 	return b
 }
 
@@ -149,7 +150,7 @@ func (b *ReplicaSetApplyConfiguration) WithResourceVersion(value string) *Replic
 // If called multiple times, the Generation field is set to the value of the last call.
 func (b *ReplicaSetApplyConfiguration) WithGeneration(value int64) *ReplicaSetApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Generation = &value
+	b.ObjectMetaApplyConfiguration.Generation = &value
 	return b
 }
 
@@ -158,7 +159,7 @@ func (b *ReplicaSetApplyConfiguration) WithGeneration(value int64) *ReplicaSetAp
 // If called multiple times, the CreationTimestamp field is set to the value of the last call.
 func (b *ReplicaSetApplyConfiguration) WithCreationTimestamp(value metav1.Time) *ReplicaSetApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.CreationTimestamp = &value
+	b.ObjectMetaApplyConfiguration.CreationTimestamp = &value
 	return b
 }
 
@@ -167,7 +168,7 @@ func (b *ReplicaSetApplyConfiguration) WithCreationTimestamp(value metav1.Time) 
 // If called multiple times, the DeletionTimestamp field is set to the value of the last call.
 func (b *ReplicaSetApplyConfiguration) WithDeletionTimestamp(value metav1.Time) *ReplicaSetApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionTimestamp = &value
+	b.ObjectMetaApplyConfiguration.DeletionTimestamp = &value
 	return b
 }
 
@@ -176,7 +177,7 @@ func (b *ReplicaSetApplyConfiguration) WithDeletionTimestamp(value metav1.Time) 
 // If called multiple times, the DeletionGracePeriodSeconds field is set to the value of the last call.
 func (b *ReplicaSetApplyConfiguration) WithDeletionGracePeriodSeconds(value int64) *ReplicaSetApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionGracePeriodSeconds = &value
+	b.ObjectMetaApplyConfiguration.DeletionGracePeriodSeconds = &value
 	return b
 }
 
@@ -186,11 +187,11 @@ func (b *ReplicaSetApplyConfiguration) WithDeletionGracePeriodSeconds(value int6
 // overwriting an existing map entries in Labels field with the same key.
 func (b *ReplicaSetApplyConfiguration) WithLabels(entries map[string]string) *ReplicaSetApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Labels == nil && len(entries) > 0 {
-		b.Labels = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Labels == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Labels = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Labels[k] = v
+		b.ObjectMetaApplyConfiguration.Labels[k] = v
 	}
 	return b
 }
@@ -201,11 +202,11 @@ func (b *ReplicaSetApplyConfiguration) WithLabels(entries map[string]string) *Re
 // overwriting an existing map entries in Annotations field with the same key.
 func (b *ReplicaSetApplyConfiguration) WithAnnotations(entries map[string]string) *ReplicaSetApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Annotations == nil && len(entries) > 0 {
-		b.Annotations = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Annotations == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Annotations = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Annotations[k] = v
+		b.ObjectMetaApplyConfiguration.Annotations[k] = v
 	}
 	return b
 }
@@ -219,7 +220,7 @@ func (b *ReplicaSetApplyConfiguration) WithOwnerReferences(values ...*v1.OwnerRe
 		if values[i] == nil {
 			panic("nil value passed to WithOwnerReferences")
 		}
-		b.OwnerReferences = append(b.OwnerReferences, *values[i])
+		b.ObjectMetaApplyConfiguration.OwnerReferences = append(b.ObjectMetaApplyConfiguration.OwnerReferences, *values[i])
 	}
 	return b
 }
@@ -230,7 +231,7 @@ func (b *ReplicaSetApplyConfiguration) WithOwnerReferences(values ...*v1.OwnerRe
 func (b *ReplicaSetApplyConfiguration) WithFinalizers(values ...string) *ReplicaSetApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
 	for i := range values {
-		b.Finalizers = append(b.Finalizers, values[i])
+		b.ObjectMetaApplyConfiguration.Finalizers = append(b.ObjectMetaApplyConfiguration.Finalizers, values[i])
 	}
 	return b
 }
@@ -257,8 +258,24 @@ func (b *ReplicaSetApplyConfiguration) WithStatus(value *ReplicaSetStatusApplyCo
 	return b
 }
 
+// GetKind retrieves the value of the Kind field in the declarative configuration.
+func (b *ReplicaSetApplyConfiguration) GetKind() *string {
+	return b.TypeMetaApplyConfiguration.Kind
+}
+
+// GetAPIVersion retrieves the value of the APIVersion field in the declarative configuration.
+func (b *ReplicaSetApplyConfiguration) GetAPIVersion() *string {
+	return b.TypeMetaApplyConfiguration.APIVersion
+}
+
 // GetName retrieves the value of the Name field in the declarative configuration.
 func (b *ReplicaSetApplyConfiguration) GetName() *string {
 	b.ensureObjectMetaApplyConfigurationExists()
-	return b.Name
+	return b.ObjectMetaApplyConfiguration.Name
+}
+
+// GetNamespace retrieves the value of the Namespace field in the declarative configuration.
+func (b *ReplicaSetApplyConfiguration) GetNamespace() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Namespace
 }

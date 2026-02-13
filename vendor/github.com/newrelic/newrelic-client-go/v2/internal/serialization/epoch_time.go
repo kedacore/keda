@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// EpochTime is a type used for unmarshaling timestamps represented in epoch time.
+// EpochTime is a type used for unmarshalling timestamps represented in epoch time.
 // Its underlying type is time.Time.
 type EpochTime time.Time
 
@@ -26,7 +26,7 @@ func (e EpochTime) MarshalJSON() ([]byte, error) {
 	return []byte(ret), nil
 }
 
-// UnmarshalJSON is responsible for unmarshaling the EpochTime type.
+// UnmarshalJSON is responsible for unmarshalling the EpochTime type.
 func (e *EpochTime) UnmarshalJSON(s []byte) error {
 	var (
 		err   error
@@ -34,6 +34,11 @@ func (e *EpochTime) UnmarshalJSON(s []byte) error {
 		milli int64
 		nano  int64
 	)
+
+	// Handle null values
+	if string(s) == "null" {
+		return nil
+	}
 
 	// detect type of timestamp based on length
 	switch l := len(s); {

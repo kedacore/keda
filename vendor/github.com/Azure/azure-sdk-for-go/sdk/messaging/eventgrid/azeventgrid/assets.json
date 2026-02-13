@@ -1,0 +1,6 @@
+{
+  "AssetsRepo": "Azure/azure-sdk-assets",
+  "AssetsRepoPrefixPath": "go",
+  "TagPrefix": "go/messaging/eventgrid/azeventgrid",
+  "Tag": "go/messaging/eventgrid/azeventgrid_6e6d3970c6"
+}

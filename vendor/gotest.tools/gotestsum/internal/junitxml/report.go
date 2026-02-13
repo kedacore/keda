@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"time"
 
@@ -47,6 +48,7 @@ type JUnitTestCase struct {
 	Classname   string            `xml:"classname,attr"`
 	Name        string            `xml:"name,attr"`
 	Time        string            `xml:"time,attr"`
+	Properties  *JUnitProperties  `xml:"properties,omitempty"`
 	SkipMessage *JUnitSkipMessage `xml:"skipped,omitempty"`
 	Failure     *JUnitFailure     `xml:"failure,omitempty"`
 }
@@ -54,6 +56,12 @@ type JUnitTestCase struct {
 // JUnitSkipMessage contains the reason why a testcase was skipped.
 type JUnitSkipMessage struct {
 	Message string `xml:"message,attr"`
+}
+
+// JUnitProperties is a wrapper for the <properties> tag as
+// encoding/xml would otherwise always create an empty one.
+type JUnitProperties struct {
+	Properties []JUnitProperty `xml:"property,omitempty"`
 }
 
 // JUnitProperty represents a key/value pair used to define properties.
@@ -75,6 +83,7 @@ type Config struct {
 	FormatTestSuiteName     FormatFunc
 	FormatTestCaseClassname FormatFunc
 	HideEmptyPackages       bool
+	HideSkippedTests        bool
 	// This is used for tests to have a consistent timestamp
 	customTimestamp string
 	customElapsed   string
@@ -94,22 +103,35 @@ func Write(out io.Writer, exec *testjson.Execution, cfg Config) error {
 func generate(exec *testjson.Execution, cfg Config) JUnitTestSuites {
 	cfg = configWithDefaults(cfg)
 	version := goVersion()
+
+	total := exec.Total()
+	if cfg.HideSkippedTests && len(exec.Skipped()) > 0 {
+		total -= len(exec.Skipped())
+	}
+
 	suites := JUnitTestSuites{
 		Name:     cfg.ProjectName,
-		Tests:    exec.Total(),
+		Tests:    total,
 		Failures: len(exec.Failed()),
 		Errors:   len(exec.Errors()),
-		Time:     formatDurationAsSeconds(time.Since(exec.Started())),
+		Time:     formatDurationAsSeconds(exec.Elapsed()),
 	}
 
 	if cfg.customElapsed != "" {
 		suites.Time = cfg.customElapsed
 	}
+
 	for _, pkgname := range exec.Packages() {
 		pkg := exec.Package(pkgname)
 		if cfg.HideEmptyPackages && pkg.IsEmpty() {
 			continue
 		}
+
+		if cfg.HideSkippedTests && len(pkg.Skipped) > 0 {
+			pkg.Total -= len(pkg.Skipped)
+			pkg.Skipped = nil
+		}
+
 		junitpkg := JUnitTestSuite{
 			Name:       cfg.FormatTestSuiteName(pkgname),
 			Tests:      pkg.Total,
@@ -121,7 +143,7 @@ func generate(exec *testjson.Execution, cfg Config) JUnitTestSuites {
 			Timestamp:  cfg.customTimestamp,
 		}
 		if cfg.customTimestamp == "" {
-			junitpkg.Timestamp = exec.Started().Format(time.RFC3339)
+			junitpkg.Timestamp = pkg.Start.Format(time.RFC3339)
 		}
 		suites.Suites = append(suites.Suites, junitpkg)
 	}
@@ -211,10 +233,30 @@ func packageTestCases(pkg *testjson.Package, formatClassname FormatFunc) []JUnit
 
 func newJUnitTestCase(tc testjson.TestCase, formatClassname FormatFunc) JUnitTestCase {
 	return JUnitTestCase{
-		Classname: formatClassname(tc.Package),
-		Name:      tc.Test.Name(),
-		Time:      formatDurationAsSeconds(tc.Elapsed),
+		Classname:  formatClassname(tc.Package),
+		Name:       tc.Test.Name(),
+		Time:       formatDurationAsSeconds(tc.Elapsed),
+		Properties: encodeAttributes(tc.Attributes),
 	}
+}
+
+// encodeAttributes encodes the given attributes into a JUnitProperties wrapper.
+// Properties are sorted in lexicographic order.
+func encodeAttributes(attributes map[string]string) *JUnitProperties {
+	if len(attributes) == 0 {
+		return nil
+	}
+
+	properties := make([]JUnitProperty, 0, len(attributes))
+	for k, v := range attributes {
+		p := JUnitProperty{Name: k, Value: v}
+		properties = append(properties, p)
+	}
+
+	slices.SortFunc(properties, func(a, b JUnitProperty) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+	return &JUnitProperties{Properties: properties}
 }
 
 func write(out io.Writer, suites JUnitTestSuites) error {

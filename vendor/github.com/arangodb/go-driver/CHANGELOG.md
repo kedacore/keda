@@ -1,6 +1,11 @@
 # Change Log
 
 ## [master](https://github.com/arangodb/go-driver/tree/master) (N/A)
+- Switch to Go 1.24.9
+
+## [1.6.7](https://github.com/arangodb/go-driver/tree/v1.6.7) (2025-08-31)
+- Switch to Go 1.22.12
+- Switch to Go 1.23.12
 
 ## [1.6.6](https://github.com/arangodb/go-driver/tree/v1.6.6) (2025-02-21)
 - Switch to Go 1.22.11

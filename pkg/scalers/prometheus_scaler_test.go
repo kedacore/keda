@@ -425,7 +425,7 @@ func TestPrometheusScalerExecutePromQueryParameters(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestPrometheusScaler_ExecutePromQuery_WithGCPNativeAuthentication(t *testing.T) {
+func TestPrometheusScaler_ExecutePromQuery_WithGcpNativeAuthentication(t *testing.T) {
 	fakeGoogleOAuthServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `{"token_type": "Bearer", "access_token": "fake_access_token"}`)
 	}))
@@ -433,15 +433,33 @@ func TestPrometheusScaler_ExecutePromQuery_WithGCPNativeAuthentication(t *testin
 
 	fakeGCPCredsJSON, err := json.Marshal(map[string]string{
 		"type": "service_account",
-		"private_key": `-----BEGIN RSA PRIVATE KEY-----
-MIIBOwIBAAJBAOfgBHLEOcXo2X+8SSzF1rEsTewRzZIOZAak4XRULY+dBd1bsGBM
-+dOb9a65cJbDuL3zmTZnfAxjmh2ueNTZvOcCAwEAAQJBAMwwibpG8llF48KInCfB
-UH5U9YmdY9nqskrnh2JZfoWnpBbGxtqg0vbdmvEL2bcbeUnudF25mPpoONw1F6G6
-5IECIQD0ouUBttDMacs5XqQppYCb8eAmiMkJxwgtJfPb9iGm0wIhAPKlXzNgIsMP
-v3sqXcOO3tNjEohptOpEyLWyCt3Htm0dAiB9w/CvfOjC7fCIQdtrfaYshaCSrueL
-m0Lc0xIXFuYd+QIgZ9DpkomnVd3/BytxQqJ2I+tXmpXfmfwkA9lRXOJ94uECIQC8
-IisErx3ap2o99Zn+Yotv/TGZkS+lfMLdbcOBr8a57Q==
------END RSA PRIVATE KEY-----`,
+		"private_key": `-----BEGIN PRIVATE KEY-----
+MIIEqQIBADANBgkqhkiG9w0BAQEFAASCBJMwggSPAgEAAoH+CsvDUv0BSnSWoskb
+qks0RmzwoVMvMGKm2/SaPF5JHWnlZaQuuGKkXpFTO7grFXaFD1cFTiVWPh950xo1
+PXpeVDKtL2AMtzGYvYlIkcm2obHcrTHX+JwNw13cOVdg4qfdE1a2cW95mzf2ptgv
+stvGYgt7MqfolYAcvuQJjDuL9EAqsLBxXHzPHhHl/v5WayK/UIiz4EKKuJeeP7df
+1MkWDhWbk6X4hOqg+E50BfB6oFDg9hvdc/K2Rr08vkA8ZW32haOT2ubExdjfb3ZW
+Va3E/V89f+OinaNbX3d6uBfnvopWKL7NyK0H6o1VwDT7VlgFQU4J/KZ2TjhVg+CH
+fncCAwEAAQKB/gpTaCfI++IV7zoVtlNECOTPL7xtjrXttYCtzJOu7qmmbpWv2kvb
+dTFKOFznQrYNnSjV56odxgY3HtNNvtxlXTGVItYsPR0+38NxOirOztKLBvHUuaf8
+wqE49fkWXQGM4sOrbWbD44EVnuFn5v9ge7etGZGSzb+oQFZIT+WD0tFPslnntxeD
+lXLwrnPEvcdgk2GCNDtR1Va3R+K/cRIeI5Rs33xRRDdd1PEbcfTMfHDLv0vd7PCb
+WcOFhkaRTBOMT8OYCNS+PmYQc6AwA3a3+xRmvnYJ73M4Vzw8wToPgldtwrAF9HFI
+r2hQH1WmBpx0Gd8DXfjsBlAYF2D/+WfpAn810aH/wUJdSAAef8gCzGOxg1nTEIHd
+fDa+lk5JpzwGxNflTCpWMH/d2TEzPJ6E585zBfLxOXhRxcq/BHX72Imlswco7GCg
+P0t/6Lp+S0izuBcPvO7eZaB0dNpSh28KukbGBZSCgiCa1cI27slkuKDs0p2B1DsO
+zfstCUmk/dzdAn8zWmDOyIDVhFZz9ZAUSUauqMIWnWM2si5eD+kyqqSyIzLUbHfz
+KlL5JrYo+KGajzdthPzY/0zIDxUffk2FXl7FspWfy/1o4DMW+qZEkTmNYQJJdmTe
+zzrP77xEReXqoQnOxPmhqeQHQ6Mkeeo9yhjGx/fhBKs/pkgpn7mvl5ljAn8Tas/0
+82gbOaf5WQbzo4RwfkCBOxpvq6ogtyAFyNWKZ6ixLPq1YAgyJXNv1fYnY28D5uiR
+CbgUYLVWl6htteFrrBzwMeBm0I9P1cq7WDQhy1BeuD7CdI4glixSzFRO3Yg9V7QO
+Jh7XXjoVEbANq+M7rn1vYv/vxndR92Dfq0vtAn8Ealn2jbDeKwHP+KZJyD8ml2YQ
+0bmNI2bvOYkAjUGZ+4LMVwM9Sj9WIuj4vuAOTRAj/5JKCjGM5hcX3SFHPWUCtKc+
+1ShV0ykxaZ3QOXhsWpH6xQ5JRiI1bNSQPj5VnUEdoTwhlV0A7uThJwZoB693sAv1
+MhSTZXXA9nXdzjgnAn8LiwbEGLMkriPM8pqxCljqTeZrI1kTi5kmcJQbvZWPuxpz
+ty6dmG9Th1cILb1itM/4sQsakGrdsVXp8/eKhzvq49LeAk6G2FfH09hePvJR8Es2
+h+VRH7M7/22LuSxeKoQaRqeBRbvGup/oHGr9Ks/sVi0EQRUqwB45QLNiF1bi
+-----END PRIVATE KEY-----`,
 		"token_uri": fakeGoogleOAuthServer.URL,
 	})
 	require.NoError(t, err)

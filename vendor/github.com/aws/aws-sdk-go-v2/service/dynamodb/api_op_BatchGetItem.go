@@ -62,6 +62,9 @@ import (
 // for nonexistent items consume the minimum read capacity units according to the
 // type of read. For more information, see [Working with Tables]in the Amazon DynamoDB Developer Guide.
 //
+// BatchGetItem will result in a ValidationException if the same key is specified
+// multiple times.
+//
 // [Batch Operations and Error Handling]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ErrorHandling.html#BatchOperations
 // [Working with Tables]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithTables.html#CapacityUnitCalculations
 func (c *Client) BatchGetItem(ctx context.Context, params *BatchGetItemInput, optFns ...func(*Options)) (*BatchGetItemOutput, error) {
@@ -328,16 +331,13 @@ func (c *Client) addOperationBatchGetItemMiddlewares(stack *middleware.Stack, op
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -6,19 +6,24 @@
 
 _Provide a description of what has been changed_
 
+<!-- Checklist
+     Please don't delete the checklist. Go through the entire list and check off what has been completed
+-->
+
 ### Checklist
 
 - [ ] When introducing a new scaler, I agree with the [scaling governance policy](https://github.com/kedacore/governance/blob/main/SCALERS.md)
 - [ ] I have verified that my change is according to the [deprecations & breaking changes policy](https://github.com/kedacore/governance/blob/main/DEPRECATIONS.md)
-- [ ] Tests have been added
-- [ ] Changelog has been updated and is aligned with our [changelog requirements](https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md#Changelog)
+- [ ] Tests have been added *(if applicable)*
+- [ ] Ensure `make generate-scalers-schema` has been run to update any outdated generated files
+- [ ] Changelog has been updated and is aligned with our [changelog requirements](https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md#Changelog), only when the change impacts end users
 - [ ] A PR is opened to update our Helm chart ([repo](https://github.com/kedacore/charts)) *(if applicable, ie. when deployment manifests are modified)*
 - [ ] A PR is opened to update the documentation on ([repo](https://github.com/kedacore/keda-docs)) *(if applicable)*
 - [ ] Commits are signed with Developer Certificate of Origin (DCO - [learn more](https://github.com/kedacore/keda/blob/main/CONTRIBUTING.md#developer-certificate-of-origin-signing-your-work))
 
 <!--
   Make sure to link the related issue for this change
-  If it requires multiple PRs and/or a PR on another repo as well, please use "Relates to" instead.
+  If it requires multiple PRs and/or a PR on another repo as well, please use "Relates to" instead
 -->
 Fixes #
 

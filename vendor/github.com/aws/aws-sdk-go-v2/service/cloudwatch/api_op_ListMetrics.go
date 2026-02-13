@@ -47,8 +47,9 @@ func (c *Client) ListMetrics(ctx context.Context, params *ListMetricsInput, optF
 
 type ListMetricsInput struct {
 
-	// The dimensions to filter against. Only the dimensions that match exactly will
-	// be returned.
+	// The dimensions to filter against. Only the dimension with names that match
+	// exactly will be returned. If you specify one dimension name and a metric has
+	// that dimension and also other dimensions, it will be returned.
 	Dimensions []types.DimensionFilter
 
 	// If you are using this operation in a monitoring account, specify true to
@@ -112,11 +113,11 @@ func (c *Client) addOperationListMetricsMiddlewares(stack *middleware.Stack, opt
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsquery_serializeOpListMetrics{}, middleware.After)
+	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpListMetrics{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsquery_deserializeOpListMetrics{}, middleware.After)
+	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpListMetrics{}, middleware.After)
 	if err != nil {
 		return err
 	}
@@ -172,6 +173,9 @@ func (c *Client) addOperationListMetricsMiddlewares(stack *middleware.Stack, opt
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
+		return err
+	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
@@ -196,16 +200,13 @@ func (c *Client) addOperationListMetricsMiddlewares(stack *middleware.Stack, opt
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

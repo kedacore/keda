@@ -39,8 +39,13 @@ const (
 	defaultFailedJobsHistoryLimit     = int32(100)
 )
 
-func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive, isError bool, scaleTo int64, maxScale int64) {
+func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob, isActive, isError bool, scaleTo int64, maxScale int64, options *ScaleExecutorOptions) {
 	logger := e.logger.WithValues("scaledJob.Name", scaledJob.Name, "scaledJob.Namespace", scaledJob.Namespace)
+
+	var activeTriggers []string
+	if options != nil {
+		activeTriggers = options.ActiveTriggers
+	}
 
 	runningJobCount := e.getRunningJobCount(ctx, scaledJob)
 	pendingJobCount := e.getPendingJobCount(ctx, scaledJob)
@@ -68,13 +73,25 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 
 	readyCondition := scaledJob.Status.Conditions.GetReadyCondition()
 	if isError {
-		// some triggers responded with error
-		// Set ScaledJob.Status.ReadyCondition to Unknown
-		msg := "Some triggers defined in ScaledJob are not working correctly"
-		logger.V(1).Info(msg)
-		if !readyCondition.IsUnknown() {
-			if err := e.setReadyCondition(ctx, logger, scaledJob, metav1.ConditionUnknown, "PartialTriggerError", msg); err != nil {
-				logger.Error(err, "error setting ready condition")
+		if isActive {
+			// some triggers responded with error, but at least one is active
+			// Set ScaledJob.Status.ReadyCondition to Unknown
+			msg := "Some triggers defined in ScaledJob are not working correctly"
+			logger.V(1).Info(msg)
+			if !readyCondition.IsUnknown() {
+				if err := e.setReadyCondition(ctx, logger, scaledJob, metav1.ConditionUnknown, "PartialTriggerError", msg); err != nil {
+					logger.Error(err, "error setting ready condition")
+				}
+			}
+		} else {
+			// all triggers responded with error (no active triggers)
+			// Set ScaledJob.Status.ReadyCondition to False
+			msg := "Triggers defined in ScaledJob are not working correctly"
+			logger.V(1).Info(msg)
+			if !readyCondition.IsFalse() {
+				if err := e.setReadyCondition(ctx, logger, scaledJob, metav1.ConditionFalse, "TriggerError", msg); err != nil {
+					logger.Error(err, "error setting ready condition")
+				}
 			}
 		}
 	} else if !readyCondition.IsTrue() {
@@ -91,11 +108,17 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	condition := scaledJob.Status.Conditions.GetActiveCondition()
 	if condition.IsUnknown() || condition.IsTrue() != isActive {
 		if isActive {
+			if !condition.IsTrue() {
+				e.recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.ScaledJobActive, "Scaling is performed because triggers are active")
+			}
 			if err := e.setActiveCondition(ctx, logger, scaledJob, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active"); err != nil {
 				logger.Error(err, "Error setting active condition when triggers are active")
 				return
 			}
 		} else {
+			if !condition.IsFalse() {
+				e.recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.ScaledJobInactive, "Scaling is not performed because triggers are not active")
+			}
 			if err := e.setActiveCondition(ctx, logger, scaledJob, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
 				logger.Error(err, "Error setting active condition when triggers are not active")
 				return
@@ -106,6 +129,11 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	err := e.cleanUp(ctx, scaledJob)
 	if err != nil {
 		logger.Error(err, "Failed to cleanUp jobs")
+	}
+
+	// Update triggers activity if individual trigger states have changed
+	if err := e.updateTriggersActivity(ctx, logger, scaledJob, activeTriggers); err != nil {
+		logger.Error(err, "Error updating triggers activity")
 	}
 }
 
@@ -139,6 +167,7 @@ func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scal
 		err := e.client.Create(ctx, job)
 		if err != nil {
 			logger.Error(err, "Failed to create a new Job")
+			e.recorder.Eventf(scaledJob, corev1.EventTypeWarning, eventreason.KEDAJobCreateFailed, "Failed to create job %s: %v", job.GenerateName, err)
 		}
 	}
 
@@ -163,13 +192,13 @@ func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1
 
 	excludedLabels := map[string]struct{}{}
 
-	if labels, ok := scaledJob.ObjectMeta.Annotations[kedav1alpha1.ScaledJobExcludedLabelsAnnotation]; ok {
+	if labels, ok := scaledJob.Annotations[kedav1alpha1.ScaledJobExcludedLabelsAnnotation]; ok {
 		for _, excludedLabel := range strings.Split(labels, ",") {
 			excludedLabels[excludedLabel] = struct{}{}
 		}
 	}
 
-	for key, value := range scaledJob.ObjectMeta.Labels {
+	for key, value := range scaledJob.Labels {
 		if _, ok := excludedLabels[key]; ok {
 			continue
 		}
@@ -180,7 +209,7 @@ func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1
 	annotations := map[string]string{
 		"scaledjob.keda.sh/generation": strconv.FormatInt(scaledJob.Generation, 10),
 	}
-	for key, value := range scaledJob.ObjectMeta.Annotations {
+	for key, value := range scaledJob.Annotations {
 		annotations[key] = value
 	}
 
@@ -281,19 +310,29 @@ func (e *scaleExecutor) areAllPendingPodConditionsFulfilled(ctx context.Context,
 		return false
 	}
 
-	var fulfilledConditionsCount int
+	// Convert pendingPodConditions to a map for faster lookup
+	requiredConditions := make(map[string]struct{})
+	for _, condition := range pendingPodConditions {
+		requiredConditions[condition] = struct{}{}
+	}
 
+	// Check if any pod has all required conditions fulfilled
 	for _, pod := range pods.Items {
-		for _, pendingConditionType := range pendingPodConditions {
-			for _, podCondition := range pod.Status.Conditions {
-				if string(podCondition.Type) == pendingConditionType && podCondition.Status == corev1.ConditionTrue {
-					fulfilledConditionsCount++
-				}
+		fulfilledConditions := make(map[string]struct{})
+
+		for _, podCondition := range pod.Status.Conditions {
+			if _, isRequired := requiredConditions[string(podCondition.Type)]; isRequired && podCondition.Status == corev1.ConditionTrue {
+				fulfilledConditions[string(podCondition.Type)] = struct{}{}
 			}
+		}
+
+		// If this pod has all required conditions fulfilled, the job is no longer pending
+		if len(fulfilledConditions) == len(pendingPodConditions) {
+			return true
 		}
 	}
 
-	return len(pendingPodConditions) == fulfilledConditionsCount
+	return false
 }
 
 func (e *scaleExecutor) getPendingJobCount(ctx context.Context, scaledJob *kedav1alpha1.ScaledJob) int64 {
@@ -392,7 +431,7 @@ func (e *scaleExecutor) deleteJobsWithHistoryLimit(ctx context.Context, logger l
 		if err != nil {
 			return err
 		}
-		logger.Info("Remove a job by reaching the historyLimit", "job.Name", j.ObjectMeta.Name, "historyLimit", historyLimit)
+		logger.Info("Remove a job by reaching the historyLimit", "job.Name", j.Name, "historyLimit", historyLimit)
 	}
 	return nil
 }
@@ -468,7 +507,7 @@ type accurateScalingStrategy struct {
 }
 
 func (s accurateScalingStrategy) GetEffectiveMaxScale(maxScale, runningJobCount, pendingJobCount, maxReplicaCount, scaleTo int64) (int64, int64) {
-	if (maxScale + runningJobCount) > maxReplicaCount {
+	if (maxScale + runningJobCount - pendingJobCount) > maxReplicaCount {
 		return maxReplicaCount - runningJobCount, scaleTo
 	}
 	return maxScale - pendingJobCount, scaleTo

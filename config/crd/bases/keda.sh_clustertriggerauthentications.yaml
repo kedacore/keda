@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.5
+    controller-gen.kubebuilder.io/version: v0.20.0
   name: clustertriggerauthentications.keda.sh
 spec:
   group: keda.sh
@@ -26,6 +26,9 @@ spec:
       type: string
     - jsonPath: .spec.env[*].name
       name: Env
+      type: string
+    - jsonPath: .spec.filePath
+      name: FilePath
       type: string
     - jsonPath: .spec.hashiCorpVault.address
       name: VaultAddress
@@ -360,6 +363,11 @@ spec:
                   - parameter
                   type: object
                 type: array
+              filePath:
+                description: |-
+                  FilePath specifies a file containing auth parameters as JSON map[string]string.
+                  When set, auth params are read directly from this file instead.
+                type: string
               gcpSecretManager:
                 properties:
                   credentials:
@@ -465,6 +473,8 @@ spec:
                       depending on the authentication method
                     properties:
                       serviceAccount:
+                        type: string
+                      serviceAccountName:
                         type: string
                       token:
                         type: string

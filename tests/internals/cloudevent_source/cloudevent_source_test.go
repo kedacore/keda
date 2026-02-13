@@ -140,7 +140,7 @@ metadata:
 spec:
   containers:
   - name: {{.ClientName}}
-    image: curlimages/curl
+    image: docker.io/curlimages/curl
     command:
       - sh
       - -c

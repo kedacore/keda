@@ -18,7 +18,9 @@ package metricsservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -33,11 +35,18 @@ import (
 )
 
 type GrpcClient struct {
-	client     api.MetricsServiceClient
-	connection *grpc.ClientConn
+	client           api.MetricsServiceClient
+	rawMetricsClient api.RawMetricsServiceClient
+	connection       *grpc.ClientConn
 }
 
-func NewGrpcClient(ctx context.Context, url, certDir, authority string, clientMetrics *grpcprom.ClientMetrics) (*GrpcClient, error) {
+type Measurement struct {
+	Name      string
+	Value     float64
+	Timestamp *time.Time
+}
+
+func NewGrpcClient(ctx context.Context, url, certDir, authority, confOptions string, clientMetrics *grpcprom.ClientMetrics, rawStream bool) (*GrpcClient, error) {
 	defaultConfig := `{
 		"methodConfig": [{
 		  "timeout": "3s",
@@ -49,6 +58,9 @@ func NewGrpcClient(ctx context.Context, url, certDir, authority string, clientMe
 			  "RetryableStatusCodes": [ "UNAVAILABLE" ]
 		  }
 		}]}`
+	if confOptions == "" {
+		confOptions = defaultConfig
+	}
 
 	creds, err := utils.LoadGrpcTLSCredentials(ctx, certDir, false)
 	if err != nil {
@@ -56,7 +68,7 @@ func NewGrpcClient(ctx context.Context, url, certDir, authority string, clientMe
 	}
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(creds),
-		grpc.WithDefaultServiceConfig(defaultConfig),
+		grpc.WithDefaultServiceConfig(confOptions),
 	}
 
 	opts = append(
@@ -76,8 +88,12 @@ func NewGrpcClient(ctx context.Context, url, certDir, authority string, clientMe
 	if err != nil {
 		return nil, err
 	}
+	grpcClient := GrpcClient{client: api.NewMetricsServiceClient(conn), connection: conn}
+	if rawStream {
+		grpcClient.rawMetricsClient = api.NewRawMetricsServiceClient(conn)
+	}
 
-	return &GrpcClient{client: api.NewMetricsServiceClient(conn), connection: conn}, nil
+	return &grpcClient, nil
 }
 
 func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {
@@ -95,8 +111,110 @@ func (c *GrpcClient) GetMetrics(ctx context.Context, scaledObjectName, scaledObj
 	return extMetrics, nil
 }
 
+// Subscribe will create a subscription on KEDA side indicating that this particular metric (identified by SO's ns, SO's name and trigger name)
+// should be sent in the raw metric stream
+func (c *GrpcClient) Subscribe(ctx context.Context, subscriber, scaledObjectName, scaledObjectNamespace, metricName string) (bool, error) {
+	if c.rawMetricsClient == nil {
+		return false, errors.New("rawMetricsClient is not initialized, initialize the client using NewGrpcClient(...,true)")
+	}
+	req := &api.SubscriptionRequest{
+		Subscriber: subscriber,
+		MetricMetadata: &api.ScaledObjectRef{
+			Name:       scaledObjectName,
+			Namespace:  scaledObjectNamespace,
+			MetricName: metricName,
+		},
+	}
+	ack, err := c.rawMetricsClient.SubscribeMetric(ctx, req)
+	if err != nil {
+		return false, err
+	}
+	return ack.WasSubscribed, nil
+}
+
+// Unsubscribe cancels the subscription on KEDA side -> will stop sending the metric
+func (c *GrpcClient) Unsubscribe(ctx context.Context, subscriber, scaledObjectName, scaledObjectNamespace, metricName string) (bool, error) {
+	if c.rawMetricsClient == nil {
+		return false, errors.New("rawMetricsClient is not initialized, initialize the client using NewGrpcClient(...,true)")
+	}
+	req := &api.SubscriptionRequest{
+		Subscriber: subscriber,
+		MetricMetadata: &api.ScaledObjectRef{
+			Name:       scaledObjectName,
+			Namespace:  scaledObjectNamespace,
+			MetricName: metricName,
+		},
+	}
+	ack, err := c.rawMetricsClient.UnsubscribeMetric(ctx, req)
+	if err != nil {
+		return false, err
+	}
+	return ack.WasSubscribed, nil
+}
+
+// GetRawMetricsStream opens the gRPC connection for receiving the raw metrics from KEDA
+// channel with metrics is returned as well as the channel that indicates closed connection or error
+// it is up to the caller to make sure the connection is reopened in case of error
+// if true is sent to done channel the connection was closed by server
+// false represents the gRPC connection error
+// note: no metrics will be sent until Subscribe is called
+func (c *GrpcClient) GetRawMetricsStream(ctx context.Context, subscriber string) (chan Measurement, chan bool, error) {
+	if c.rawMetricsClient == nil {
+		return nil, nil, errors.New("rawMetricsClient is not initialized, initialize the client using NewGrpcClient(...,true)")
+	}
+	logger := log.WithName("GrpcClient").WithValues("subscriber", subscriber)
+	req := &api.RawMetricsRequest{
+		Subscriber: subscriber,
+	}
+	metricStream, err := c.rawMetricsClient.GetRawMetricsStream(ctx, req)
+	doneChan := make(chan bool)
+	metricsChan := make(chan Measurement)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	go func() {
+		for {
+			resp, e := metricStream.Recv()
+			if e == io.EOF {
+				logger.Info("Received EOF - stream was closed by server")
+				select {
+				case doneChan <- true:
+				default:
+				}
+				break
+			}
+			if e != nil {
+				logger.Error(e, "error receiving metric response")
+				select {
+				case doneChan <- false:
+				default:
+				}
+				break
+			}
+			for _, m := range resp.Metrics {
+				if m == nil {
+					continue
+				}
+				measurement := Measurement{
+					Name:  m.Metadata.MetricName,
+					Value: m.Value,
+				}
+				if m.Timestamp != nil {
+					t := m.Timestamp.AsTime()
+					measurement.Timestamp = &t
+				}
+				metricsChan <- measurement
+				logger.V(10).Info("Received raw metric", "name", m.Metadata.MetricName, "value", m.Value)
+			}
+		}
+	}()
+
+	return metricsChan, doneChan, nil
+}
+
 // WaitForConnectionReady waits for gRPC connection to be ready
-// returns true if the connection was successful, false if we hit a timeut from context
+// returns true if the connection was successful, false if we hit a timeout from context
 func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, logger logr.Logger) bool {
 	currentState := c.connection.GetState()
 	if currentState != connectivity.Ready {

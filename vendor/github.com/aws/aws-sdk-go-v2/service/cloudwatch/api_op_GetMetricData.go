@@ -130,12 +130,12 @@ type GetMetricDataInput struct {
 	//   - Start time greater than 63 days ago - Round down to the nearest 1-hour
 	//   clock interval. For example, 12:32:34 is rounded down to 12:00:00.
 	//
-	// If you set Period to 5, 10, or 30, the start time of your request is rounded
-	// down to the nearest time that corresponds to even 5-, 10-, or 30-second
-	// divisions of a minute. For example, if you make a query at (HH:mm:ss) 01:05:23
-	// for the previous 10-second period, the start time of your request is rounded
-	// down and you receive data from 01:05:10 to 01:05:20. If you make a query at
-	// 15:07:17 for the previous 5 minutes of data, using a period of 5 seconds, you
+	// If you set Period to 5, 10, 20, or 30, the start time of your request is
+	// rounded down to the nearest time that corresponds to even 5-, 10-, 20-, or
+	// 30-second divisions of a minute. For example, if you make a query at (HH:mm:ss)
+	// 01:05:23 for the previous 10-second period, the start time of your request is
+	// rounded down and you receive data from 01:05:10 to 01:05:20. If you make a query
+	// at 15:07:17 for the previous 5 minutes of data, using a period of 5 seconds, you
 	// receive data timestamped between 15:02:15 and 15:07:15.
 	//
 	// For better performance, specify StartTime and EndTime values that align with
@@ -200,11 +200,11 @@ func (c *Client) addOperationGetMetricDataMiddlewares(stack *middleware.Stack, o
 	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
 		return err
 	}
-	err = stack.Serialize.Add(&awsAwsquery_serializeOpGetMetricData{}, middleware.After)
+	err = stack.Serialize.Add(&smithyRpcv2cbor_serializeOpGetMetricData{}, middleware.After)
 	if err != nil {
 		return err
 	}
-	err = stack.Deserialize.Add(&awsAwsquery_deserializeOpGetMetricData{}, middleware.After)
+	err = stack.Deserialize.Add(&smithyRpcv2cbor_deserializeOpGetMetricData{}, middleware.After)
 	if err != nil {
 		return err
 	}
@@ -260,6 +260,9 @@ func (c *Client) addOperationGetMetricDataMiddlewares(stack *middleware.Stack, o
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addUserAgentFeatureProtocolRPCV2CBOR(stack, options); err != nil {
+		return err
+	}
 	if err = addCredentialSource(stack, options); err != nil {
 		return err
 	}
@@ -284,16 +287,13 @@ func (c *Client) addOperationGetMetricDataMiddlewares(stack *middleware.Stack, o
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

@@ -51,6 +51,8 @@ type prometheusMetadata struct {
 	UnsafeSSL           bool                   `keda:"name=unsafeSsl,           order=triggerMetadata,            optional"`
 	AwsRegion           string                 `keda:"name=awsRegion,           order=triggerMetadata;authParams, optional"`
 	Timeout             time.Duration          `keda:"name=timeout,             order=triggerMetadata,            optional"` // custom HTTP client timeout
+	IdentityOwner       string                 `keda:"name=identityOwner,       order=triggerMetadata,            optional"`
+	AuthModes           string                 `keda:"name=authModes,           order=triggerMetadata,            optional"`
 }
 
 type promQueryResult struct {
@@ -82,7 +84,7 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	// handle HTTP client timeout
 	httpClientTimeout := config.GlobalHTTPTimeout
 	if meta.Timeout > 0 {
-		httpClientTimeout = meta.Timeout * time.Millisecond
+		httpClientTimeout = meta.Timeout
 	}
 
 	httpClient := kedautil.CreateHTTPClient(httpClientTimeout, meta.UnsafeSSL)
@@ -162,7 +164,7 @@ func checkAuthConfigWithPodIdentity(config *scalersconfig.ScalerConfig, meta *pr
 	if meta == nil || meta.PrometheusAuth.Disabled() {
 		return nil
 	}
-	if !(config.PodIdentity.Provider == kedav1alpha1.PodIdentityProviderNone || config.PodIdentity.Provider == "") {
+	if config.PodIdentity.Provider != kedav1alpha1.PodIdentityProviderNone && config.PodIdentity.Provider != "" {
 		return fmt.Errorf("pod identity cannot be enabled with other auth types")
 	}
 	return nil
@@ -236,7 +238,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 	}
 	defer r.Body.Close()
 
-	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
+	if r.StatusCode < 200 || r.StatusCode > 299 {
 		err := fmt.Errorf("prometheus query api returned error. status: %d response: %s", r.StatusCode, string(b))
 		s.logger.Error(err, "prometheus query api returned error")
 		return -1, err
@@ -284,7 +286,7 @@ func (s *prometheusScaler) ExecutePromQuery(ctx context.Context) (float64, error
 		if s.metadata.IgnoreNullValues {
 			return 0, nil
 		}
-		err := fmt.Errorf("promtheus query returns %f", v)
+		err := fmt.Errorf("prometheus query returns %f", v)
 		s.logger.Error(err, "Error converting prometheus value")
 		return -1, err
 	}

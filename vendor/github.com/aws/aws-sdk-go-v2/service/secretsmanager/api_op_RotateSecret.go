@@ -88,17 +88,42 @@ type RotateSecretInput struct {
 	// [UUID-type]: https://wikipedia.org/wiki/Universally_unique_identifier
 	ClientRequestToken *string
 
+	// The metadata needed to successfully rotate a managed external secret. A list of
+	// key value pairs in JSON format specified by the partner. For more information
+	// about the required information, see [Using Secrets Manager managed external secrets]
+	//
+	// [Using Secrets Manager managed external secrets]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/managed-external-secrets.html
+	ExternalSecretRotationMetadata []types.ExternalSecretRotationMetadataItem
+
+	// The Amazon Resource Name (ARN) of the role that allows Secrets Manager to
+	// rotate a secret held by a third-party partner. For more information, see [Security and permissions].
+	//
+	// [Security and permissions]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/mes-security.html
+	ExternalSecretRotationRoleArn *string
+
 	// Specifies whether to rotate the secret immediately or wait until the next
 	// scheduled rotation window. The rotation schedule is defined in RotateSecretRequest$RotationRules.
 	//
-	// For secrets that use a Lambda rotation function to rotate, if you don't
-	// immediately rotate the secret, Secrets Manager tests the rotation configuration
-	// by running the [testSecret step]testSecret of the Lambda rotation function. The test creates an
-	// AWSPENDING version of the secret and then removes it.
+	// The default for RotateImmediately is true . If you don't specify this value,
+	// Secrets Manager rotates the secret immediately.
 	//
-	// By default, Secrets Manager rotates the secret immediately.
+	// If you set RotateImmediately to false , Secrets Manager tests the rotation
+	// configuration by running the [testSecret step]testSecret of the Lambda rotation function. This
+	// test creates an AWSPENDING version of the secret and then removes it.
 	//
-	// [testSecret step]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotate-secrets_lambda-functions.html#rotate-secrets_lambda-functions-code
+	// When changing an existing rotation schedule and setting RotateImmediately to
+	// false :
+	//
+	//   - If using AutomaticallyAfterDays or a ScheduleExpression with rate() , the
+	//   previously scheduled rotation might still occur.
+	//
+	//   - To prevent unintended rotations, use a ScheduleExpression with cron() for
+	//   granular control over rotation windows.
+	//
+	// Rotation is an asynchronous process. For more information, see [How rotation works].
+	//
+	// [How rotation works]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotate-secrets_how.html
+	// [testSecret step]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotate-secrets_how.html
 	RotateImmediately *bool
 
 	// For secrets that use a Lambda rotation function to rotate, the ARN of the
@@ -111,6 +136,15 @@ type RotateSecretInput struct {
 	RotationLambdaARN *string
 
 	// A structure that defines the rotation configuration for this secret.
+	//
+	// When changing an existing rotation schedule and setting RotateImmediately to
+	// false :
+	//
+	//   - If using AutomaticallyAfterDays or a ScheduleExpression with rate() , the
+	//   previously scheduled rotation might still occur.
+	//
+	//   - To prevent unintended rotations, use a ScheduleExpression with cron() for
+	//   granular control over rotation windows.
 	RotationRules *types.RotationRulesType
 
 	noSmithyDocumentSerde
@@ -224,16 +258,13 @@ func (c *Client) addOperationRotateSecretMiddlewares(stack *middleware.Stack, op
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

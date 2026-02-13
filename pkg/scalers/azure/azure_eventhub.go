@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
 	"github.com/go-logr/logr"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -14,15 +14,15 @@ import (
 
 // EventHubInfo to keep event hub connection and resources
 type EventHubInfo struct {
-	EventHubConnection       string
-	EventHubConsumerGroup    string
-	StorageConnection        string
-	StorageAccountName       string
+	EventHubConnection       string `keda:"name=connection,                order=authParams;resolvedEnv, optional"`
+	EventHubConsumerGroup    string `keda:"name=consumerGroup,             order=triggerMetadata, default=$Default"`
+	StorageConnection        string `keda:"name=storageConnection,         order=authParams;resolvedEnv, optional"`
+	StorageAccountName       string `keda:"name=storageAccountName,        order=triggerMetadata, optional"`
 	BlobStorageEndpoint      string
-	BlobContainer            string
-	Namespace                string
-	EventHubName             string
-	CheckpointStrategy       string
+	BlobContainer            string `keda:"name=blobContainer,             order=triggerMetadata, optional"`
+	Namespace                string `keda:"name=eventHubNamespace,         order=triggerMetadata;resolvedEnv, optional"`
+	EventHubName             string `keda:"name=eventHubName,              order=triggerMetadata;resolvedEnv, optional"`
+	CheckpointStrategy       string `keda:"name=checkpointStrategy,        order=triggerMetadata, optional"`
 	ServiceBusEndpointSuffix string
 	PodIdentity              kedav1alpha1.AuthPodIdentity
 }

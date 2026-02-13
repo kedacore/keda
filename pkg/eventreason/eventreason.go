@@ -38,8 +38,44 @@ const (
 	// ScaledObjectDeleted is for event when ScaledObject is deleted
 	ScaledObjectDeleted = "ScaledObjectDeleted"
 
+	// ScaledObjectPaused is for event when ScaledObject is paused
+	ScaledObjectPaused = "ScaledObjectPaused"
+
+	// ScaledObjectUnpaused is for event when ScaledObject is unpaused
+	ScaledObjectUnpaused = "ScaledObjectUnpaused"
+
+	// ScaledObjectFallbackActivated is for event when ScaledObject fallback is activated
+	ScaledObjectFallbackActivated = "ScaledObjectFallbackActivated"
+
+	// ScaledObjectFallbackDeactivated is for event when ScaledObject fallback is deactivated
+	ScaledObjectFallbackDeactivated = "ScaledObjectFallbackDeactivated"
+
 	// ScaledJobDeleted is for event when ScaledJob is deleted
 	ScaledJobDeleted = "ScaledJobDeleted"
+
+	// ScaledJobPaused is for event when ScaledJob is paused
+	ScaledJobPaused = "ScaledJobPaused"
+
+	// ScaledJobUnpaused is for event when ScaledJob is unpaused
+	ScaledJobUnpaused = "ScaledJobUnpaused"
+
+	// ScaledJobPauseFailed is for event when pausing ScaledJob fails
+	ScaledJobPauseFailed = "ScaledJobPauseFailed"
+
+	// ScaledJobRolloutCleanupStarted is for event when ScaledJob rollout cleanup starts
+	ScaledJobRolloutCleanupStarted = "ScaledJobRolloutCleanupStarted"
+
+	// ScaledJobRolloutCleanupCompleted is for event when ScaledJob rollout cleanup completes
+	ScaledJobRolloutCleanupCompleted = "ScaledJobRolloutCleanupCompleted"
+
+	// ScaledJobRolloutCleanupFailed is for event when ScaledJob rollout cleanup fails
+	ScaledJobRolloutCleanupFailed = "ScaledJobRolloutCleanupFailed"
+
+	// ScaledJobActive is for event when ScaledJob becomes active
+	ScaledJobActive = "ScaledJobActive"
+
+	// ScaledJobInactive is for event when ScaledJob becomes inactive
+	ScaledJobInactive = "ScaledJobInactive"
 
 	// KEDAScalersInfo is for event when Scaler has additional info
 	KEDAScalersInfo = "KEDAScalerInfo"
@@ -67,6 +103,9 @@ const (
 
 	// KEDAScaleTargetDeactivationFailed is for event when the deactivation of the scale target for ScaledObject fails
 	KEDAScaleTargetDeactivationFailed = "KEDAScaleTargetDeactivationFailed"
+
+	// KEDAJobCreateFailed is for event when a Job creation fails for ScaledJob
+	KEDAJobCreateFailed = "KEDAJobCreateFailed"
 
 	// KEDAJobsCreated is for event when jobs for ScaledJob are created
 	KEDAJobsCreated = "KEDAJobsCreated"

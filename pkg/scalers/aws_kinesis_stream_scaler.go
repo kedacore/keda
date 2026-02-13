@@ -47,6 +47,8 @@ type awsKinesisStreamMetadata struct {
 	AwsEndpoint                string `keda:"name=awsEndpoint, order=triggerMetadata, optional"`
 	awsAuthorization           awsutils.AuthorizationMetadata
 	triggerIndex               int
+
+	IdentityOwner string `keda:"name=identityOwner, order=triggerMetadata, optional"`
 }
 
 // NewAwsKinesisStreamScaler creates a new awsKinesisStreamScaler

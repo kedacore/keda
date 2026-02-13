@@ -149,8 +149,9 @@ func main() {
 * [GoDaddy](https://godaddy.com) employs Expr for the customization of its GoDaddy Pro product.
 * [ByteDance](https://bytedance.com) incorporates Expr into its internal business rule engine.
 * [Aviasales](https://aviasales.ru) utilizes Expr as a business rule engine for its flight search engine.
-* [Wish.com](https://www.wish.com) employs Expr in its decision-making rule engine for the Wish Assistant.
+* [Alibaba](https://alibaba.com) uses Expr in a web framework for building recommendation services.
 * [Argo](https://argoproj.github.io) integrates Expr into Argo Rollouts and Argo Workflows for Kubernetes.
+* [Wish.com](https://www.wish.com) employs Expr in its decision-making rule engine for the Wish Assistant.
 * [OpenTelemetry](https://opentelemetry.io) integrates Expr into the OpenTelemetry Collector.
 * [Philips Labs](https://github.com/philips-labs/tabia) employs Expr in Tabia, a tool designed to collect insights on their code bases.
 * [CrowdSec](https://crowdsec.net) incorporates Expr into its security automation tool.
@@ -171,6 +172,7 @@ func main() {
 * [FastSchema](https://github.com/fastschema/fastschema) - A BaaS leveraging Expr for its customizable and dynamic Access Control system.
 * [WunderGraph Cosmo](https://github.com/wundergraph/cosmo) - GraphQL Federeration Router uses Expr to customize Middleware behaviour
 * [SOLO](https://solo.one) uses Expr interally to allow dynamic code execution with custom defined functions.
+* [Naoma.AI](https://www.naoma.ai) uses Expr as a part of its call scoring engine.
 
 [Add your company too](https://github.com/expr-lang/expr/edit/master/README.md)
 

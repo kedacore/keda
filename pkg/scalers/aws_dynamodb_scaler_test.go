@@ -3,7 +3,6 @@ package scalers
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -48,6 +47,10 @@ var (
 	ErrAwsDynamoNoKeyConditionExpression = errors.New(`missing required parameter "keyConditionExpression"`)
 )
 
+var year = "year"
+var target = "1994"
+var yearAttr = &types.AttributeValueMemberN{Value: target}
+
 var dynamoTestCases = []parseDynamoDBMetadataTestData{
 	{
 		name:          "no tableName given",
@@ -78,7 +81,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"keyConditionExpression": "#yr = :yyyy",
 		},
 		authParams:    map[string]string{},
-		expectedError: ErrAwsDynamoNoExpressionAttributeNames,
+		expectedError: errors.New(`missing required parameter "expressionAttributeNames"`),
 	},
 	{
 		name: "no expressionAttributeValues given",
@@ -89,7 +92,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			"expressionAttributeNames": "{ \"#yr\" : \"year\" }",
 		},
 		authParams:    map[string]string{},
-		expectedError: ErrAwsDynamoNoExpressionAttributeValues,
+		expectedError: errors.New(`missing required parameter "expressionAttributeValues"`),
 	},
 	{
 		name: "no targetValue given",
@@ -198,6 +201,8 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			TableName:                 "test",
 			AwsRegion:                 "eu-west-1",
 			KeyConditionExpression:    "#yr = :yyyy",
+			ExpressionAttributeNames:  "{ \"#yr\" : \"year\" }",
+			ExpressionAttributeValues: "{\":yyyy\": {\"N\": \"1994\"}}",
 			expressionAttributeNames:  map[string]string{"#yr": year},
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			TargetValue:               3,
@@ -207,7 +212,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 				AwsAccessKeyID:     "none",
 				AwsSecretAccessKey: "none",
 				PodIdentityOwner:   true,
-				AwsRegion:          testAWSRegion,
+				AwsRegion:          "eu-west-1",
 			},
 		},
 	},
@@ -229,6 +234,8 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			AwsRegion:                 "eu-west-1",
 			AwsEndpoint:               "http://localhost:4566",
 			KeyConditionExpression:    "#yr = :yyyy",
+			ExpressionAttributeNames:  "{ \"#yr\" : \"year\" }",
+			ExpressionAttributeValues: "{\":yyyy\": {\"N\": \"1994\"}}",
 			expressionAttributeNames:  map[string]string{"#yr": year},
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			TargetValue:               3,
@@ -238,7 +245,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 				AwsAccessKeyID:     "none",
 				AwsSecretAccessKey: "none",
 				PodIdentityOwner:   true,
-				AwsRegion:          testAWSRegion,
+				AwsRegion:          "eu-west-1",
 			},
 		},
 	},
@@ -259,6 +266,8 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			TableName:                 "test",
 			AwsRegion:                 "eu-west-1",
 			KeyConditionExpression:    "#yr = :yyyy",
+			ExpressionAttributeNames:  "{ \"#yr\" : \"year\" }",
+			ExpressionAttributeValues: "{\":yyyy\": {\"N\": \"1994\"}}",
 			expressionAttributeNames:  map[string]string{"#yr": year},
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			ActivationTargetValue:     1,
@@ -269,7 +278,7 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 				AwsAccessKeyID:     "none",
 				AwsSecretAccessKey: "none",
 				PodIdentityOwner:   true,
-				AwsRegion:          testAWSRegion,
+				AwsRegion:          "eu-west-1",
 			},
 		},
 	},
@@ -291,6 +300,8 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 			AwsRegion:                 "eu-west-1",
 			IndexName:                 "test-index",
 			KeyConditionExpression:    "#yr = :yyyy",
+			ExpressionAttributeNames:  "{ \"#yr\" : \"year\" }",
+			ExpressionAttributeValues: "{\":yyyy\": {\"N\": \"1994\"}}",
 			expressionAttributeNames:  map[string]string{"#yr": year},
 			expressionAttributeValues: map[string]types.AttributeValue{":yyyy": yearAttr},
 			TargetValue:               3,
@@ -300,9 +311,71 @@ var dynamoTestCases = []parseDynamoDBMetadataTestData{
 				AwsAccessKeyID:     "none",
 				AwsSecretAccessKey: "none",
 				PodIdentityOwner:   true,
-				AwsRegion:          testAWSRegion,
+				AwsRegion:          "eu-west-1",
 			},
 		},
+	},
+	{
+		name: "with AWS static credentials from TriggerAuthentication, missing Secret Access Key",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
+			"targetValue":               "3",
+		},
+		authParams: map[string]string{
+			"awsAccessKeyId": testAWSDynamoAccessKeyID,
+		},
+		expectedError: awsutils.ErrAwsNoSecretAccessKey,
+	},
+	{
+		name: "with AWS temporary credentials from TriggerAuthentication, missing Secret Access Key",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
+			"targetValue":               "3",
+		},
+		authParams: map[string]string{
+			"awsAccessKeyId":  testAWSDynamoAccessKeyID,
+			"awsSessionToken": "none",
+		},
+		expectedError: awsutils.ErrAwsNoSecretAccessKey,
+	},
+	{
+		name: "with AWS static credentials from TriggerAuthentication, missing Access Key Id",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
+			"targetValue":               "3",
+		},
+		authParams: map[string]string{
+			"awsSecretAccessKey": testAWSDynamoSecretAccessKey,
+		},
+		expectedError: awsutils.ErrAwsNoAccessKey,
+	},
+	{
+		name: "with AWS temporary credentials from TriggerAuthentication, missing Access Key Id",
+		metadata: map[string]string{
+			"tableName":                 "test",
+			"awsRegion":                 "eu-west-1",
+			"keyConditionExpression":    "#yr = :yyyy",
+			"expressionAttributeNames":  "{ \"#yr\" : \"year\" }",
+			"expressionAttributeValues": "{\":yyyy\": {\"N\": \"1994\"}}",
+			"targetValue":               "3",
+		},
+		authParams: map[string]string{
+			"awsSecretAccessKey": testAWSDynamoSecretAccessKey,
+			"awsSessionToken":    "none",
+		},
+		expectedError: awsutils.ErrAwsNoAccessKey,
 	},
 }
 
@@ -319,7 +392,6 @@ func TestParseDynamoMetadata(t *testing.T) {
 				assert.ErrorContains(t, err, tc.expectedError.Error())
 			} else {
 				assert.NoError(t, err)
-				fmt.Println(tc.name)
 				assert.Equal(t, tc.expectedMetadata, metadata)
 			}
 		})
@@ -335,9 +407,9 @@ var empty int32
 
 func (c *mockDynamoDB) Query(_ context.Context, input *dynamodb.QueryInput, _ ...func(*dynamodb.Options)) (*dynamodb.QueryOutput, error) {
 	switch *input.TableName {
-	case testAWSCloudwatchErrorMetric:
+	case testAWSDynamoErrorTable:
 		return nil, errors.New("error")
-	case testAWSCloudwatchNoValueMetric:
+	case testAWSDynamoNoValueTable:
 		return &dynamodb.QueryOutput{
 			Count: empty,
 		}, nil
@@ -353,10 +425,6 @@ func (c *mockDynamoDB) Query(_ context.Context, input *dynamodb.QueryInput, _ ..
 		Count: result,
 	}, nil
 }
-
-var year = "year"
-var target = "1994"
-var yearAttr = &types.AttributeValueMemberN{Value: target}
 
 var awsDynamoDBGetMetricTestData = []awsDynamoDBMetadata{
 	{

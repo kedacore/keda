@@ -173,7 +173,10 @@ type LeaderElectionConfig struct {
 type LeaderCallbacks struct {
 	// OnStartedLeading is called when a LeaderElector client starts leading
 	OnStartedLeading func(context.Context)
-	// OnStoppedLeading is called when a LeaderElector client stops leading
+	// OnStoppedLeading is called when a LeaderElector client stops leading.
+	// This callback is always called when the LeaderElector exits, even if it did not start leading.
+	// Users should not assume that OnStoppedLeading is only called after OnStartedLeading.
+	// see: https://github.com/kubernetes/kubernetes/pull/127675#discussion_r1780059887
 	OnStoppedLeading func()
 	// OnNewLeader is called when the client observes a leader that is
 	// not the previously observed leader. This includes the first observed
@@ -277,16 +280,13 @@ func (le *LeaderElector) renew(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	wait.Until(func() {
-		timeoutCtx, timeoutCancel := context.WithTimeout(ctx, le.config.RenewDeadline)
-		defer timeoutCancel()
-		err := wait.PollImmediateUntil(le.config.RetryPeriod, func() (bool, error) {
+		err := wait.PollUntilContextTimeout(ctx, le.config.RetryPeriod, le.config.RenewDeadline, true, func(ctx context.Context) (done bool, err error) {
 			if !le.config.Coordinated {
-				return le.tryAcquireOrRenew(timeoutCtx), nil
+				return le.tryAcquireOrRenew(ctx), nil
 			} else {
-				return le.tryCoordinatedRenew(timeoutCtx), nil
+				return le.tryCoordinatedRenew(ctx), nil
 			}
-		}, timeoutCtx.Done())
-
+		})
 		le.maybeReportTransition()
 		desc := le.config.Lock.Describe()
 		if err == nil {
@@ -306,18 +306,30 @@ func (le *LeaderElector) renew(ctx context.Context) {
 
 // release attempts to release the leader lease if we have acquired it.
 func (le *LeaderElector) release() bool {
+	ctx := context.Background()
+	timeoutCtx, timeoutCancel := context.WithTimeout(ctx, le.config.RenewDeadline)
+	defer timeoutCancel()
+	// update the resourceVersion of lease
+	oldLeaderElectionRecord, _, err := le.config.Lock.Get(timeoutCtx)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Errorf("error retrieving resource lock %v: %v", le.config.Lock.Describe(), err)
+			return false
+		}
+		klog.Infof("lease lock not found: %v", le.config.Lock.Describe())
+		return false
+	}
+
 	if !le.IsLeader() {
 		return true
 	}
 	now := metav1.NewTime(le.clock.Now())
 	leaderElectionRecord := rl.LeaderElectionRecord{
-		LeaderTransitions:    le.observedRecord.LeaderTransitions,
+		LeaderTransitions:    oldLeaderElectionRecord.LeaderTransitions,
 		LeaseDurationSeconds: 1,
 		RenewTime:            now,
 		AcquireTime:          now,
 	}
-	timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), le.config.RenewDeadline)
-	defer timeoutCancel()
 	if err := le.config.Lock.Update(timeoutCtx, leaderElectionRecord); err != nil {
 		klog.Errorf("Failed to release lock: %v", err)
 		return false
@@ -426,7 +438,7 @@ func (le *LeaderElector) tryAcquireOrRenew(ctx context.Context) bool {
 			le.setObservedRecord(&leaderElectionRecord)
 			return true
 		}
-		klog.Errorf("Failed to update lock optimitically: %v, falling back to slow path", err)
+		klog.Errorf("Failed to update lock optimistically: %v, falling back to slow path", err)
 	}
 
 	// 2. obtain or create the ElectionRecord

@@ -52,6 +52,9 @@ type DescribeStreamInput struct {
 	// The maximum number of shard objects to return. The upper limit is 100.
 	Limit *int32
 
+	// This optional field contains the filter definition for the DescribeStream API.
+	ShardFilter *types.ShardFilter
+
 	noSmithyDocumentSerde
 }
 
@@ -157,16 +160,13 @@ func (c *Client) addOperationDescribeStreamMiddlewares(stack *middleware.Stack, 
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

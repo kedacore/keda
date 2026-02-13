@@ -43,7 +43,8 @@ func (c *Client) StopReplicationToReplica(ctx context.Context, params *StopRepli
 
 type StopReplicationToReplicaInput struct {
 
-	// The ARN of the primary secret.
+	// The name of the secret or the replica ARN. The replica ARN is the same as the
+	// original primary secret ARN expect the Region is changed to the replica Region.
 	//
 	// This member is required.
 	SecretId *string
@@ -151,16 +152,13 @@ func (c *Client) addOperationStopReplicationToReplicaMiddlewares(stack *middlewa
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeStart(stack); err != nil {
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanInitializeEnd(stack); err != nil {
+	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

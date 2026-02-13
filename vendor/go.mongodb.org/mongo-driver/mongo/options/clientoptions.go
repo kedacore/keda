@@ -1062,9 +1062,6 @@ func (c *ClientOptions) SetSRVServiceName(srvName string) *ClientOptions {
 // MergeClientOptions combines the given *ClientOptions into a single *ClientOptions in a last one wins fashion.
 // The specified options are merged with the existing options on the client, with the specified options taking
 // precedence.
-//
-// Deprecated: Merging options structs will not be supported in Go Driver 2.0. Users should create a
-// single options struct instead.
 func MergeClientOptions(opts ...*ClientOptions) *ClientOptions {
 	c := Client()
 

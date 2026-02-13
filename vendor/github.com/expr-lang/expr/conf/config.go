@@ -10,12 +10,12 @@ import (
 	"github.com/expr-lang/expr/vm/runtime"
 )
 
-const (
-	// DefaultMemoryBudget represents an upper limit of memory usage
+var (
+	// DefaultMemoryBudget represents default maximum allowed memory usage by the vm.VM.
 	DefaultMemoryBudget uint = 1e6
 
-	// DefaultMaxNodes represents an upper limit of AST nodes
-	DefaultMaxNodes uint = 10000
+	// DefaultMaxNodes represents default maximum allowed AST nodes by the compiler.
+	DefaultMaxNodes uint = 1e4
 )
 
 type FunctionsTable map[string]*builtin.Function
@@ -27,22 +27,28 @@ type Config struct {
 	ExpectAny    bool
 	Optimize     bool
 	Strict       bool
+	ShortCircuit bool
 	Profile      bool
 	MaxNodes     uint
-	MemoryBudget uint
 	ConstFns     map[string]reflect.Value
 	Visitors     []ast.Visitor
 	Functions    FunctionsTable
 	Builtins     FunctionsTable
 	Disabled     map[string]bool // disabled builtins
+	NtCache      nature.Cache
+	// DisableIfOperator disables the built-in `if ... { } else { }` operator syntax
+	// so that users can use a custom function named `if(...)` without conflicts.
+	// When enabled, the lexer treats `if`/`else` as identifiers and the parser
+	// will not parse `if` statements.
+	DisableIfOperator bool
 }
 
 // CreateNew creates new config with default values.
 func CreateNew() *Config {
 	c := &Config{
 		Optimize:     true,
+		ShortCircuit: true,
 		MaxNodes:     DefaultMaxNodes,
-		MemoryBudget: DefaultMemoryBudget,
 		ConstFns:     make(map[string]reflect.Value),
 		Functions:    make(map[string]*builtin.Function),
 		Builtins:     make(map[string]*builtin.Function),
@@ -63,7 +69,7 @@ func New(env any) *Config {
 
 func (c *Config) WithEnv(env any) {
 	c.EnvObject = env
-	c.Env = Env(env)
+	c.Env = EnvWithCache(&c.NtCache, env)
 	c.Strict = c.Env.Strict
 }
 
@@ -94,7 +100,7 @@ func (c *Config) IsOverridden(name string) bool {
 	if _, ok := c.Functions[name]; ok {
 		return true
 	}
-	if _, ok := c.Env.Get(name); ok {
+	if _, ok := c.Env.Get(&c.NtCache, name); ok {
 		return true
 	}
 	return false

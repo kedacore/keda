@@ -19,14 +19,46 @@ syntax = "proto3";
 package api;
 option go_package = ".;api";
 
+import "google/protobuf/timestamp.proto";
 import "k8s.io/metrics/pkg/apis/external_metrics/v1beta1/generated.proto";
 
 service MetricsService {
     rpc GetMetrics (ScaledObjectRef) returns (k8s.io.metrics.pkg.apis.external_metrics.v1beta1.ExternalMetricValueList) {};
 }
 
+service RawMetricsService {
+    rpc GetRawMetricsStream (RawMetricsRequest) returns (stream RawMetricsResponse) {};
+    rpc SubscribeMetric (SubscriptionRequest) returns (SubscriptionAck) {};
+    rpc UnsubscribeMetric (SubscriptionRequest) returns (SubscriptionAck) {};
+}
+
 message ScaledObjectRef {
     string name = 1;
     string namespace = 2;
     string metricName = 3;
+}
+
+message RawMetricsRequest {
+    string subscriber = 1;
+}
+
+message SubscriptionRequest {
+    string subscriber = 1;
+    ScaledObjectRef metricMetadata = 2;
+}
+
+message SubscriptionAck {
+    bool wasSubscribed = 1;
+    optional string message = 2;
+}
+
+message RawMetricsResponse {
+    repeated RawMetric metrics = 1;
+}
+
+message RawMetric {
+    double value = 1;
+    google.protobuf.Timestamp timestamp = 2;
+    ScaledObjectRef metadata = 3;
+    bool isActive = 4;
 }

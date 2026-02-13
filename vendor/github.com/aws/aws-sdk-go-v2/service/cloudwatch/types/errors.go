@@ -33,6 +33,32 @@ func (e *ConcurrentModificationException) ErrorCode() string {
 }
 func (e *ConcurrentModificationException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
+// This operation attempted to create a resource that already exists.
+type ConflictException struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *ConflictException) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *ConflictException) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *ConflictException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "ConflictException"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *ConflictException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
 // Some part of the dashboard data is invalid.
 type DashboardInvalidInputError struct {
 	Message *string
@@ -55,7 +81,7 @@ func (e *DashboardInvalidInputError) ErrorMessage() string {
 }
 func (e *DashboardInvalidInputError) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InvalidParameterInput"
+		return "DashboardInvalidInputError"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -81,7 +107,7 @@ func (e *DashboardNotFoundError) ErrorMessage() string {
 }
 func (e *DashboardNotFoundError) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "ResourceNotFound"
+		return "DashboardNotFoundError"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -107,7 +133,7 @@ func (e *InternalServiceFault) ErrorMessage() string {
 }
 func (e *InternalServiceFault) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InternalServiceError"
+		return "InternalServiceFault"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -133,7 +159,7 @@ func (e *InvalidFormatFault) ErrorMessage() string {
 }
 func (e *InvalidFormatFault) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InvalidFormat"
+		return "InvalidFormatFault"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -185,7 +211,7 @@ func (e *InvalidParameterCombinationException) ErrorMessage() string {
 }
 func (e *InvalidParameterCombinationException) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InvalidParameterCombination"
+		return "InvalidParameterCombinationException"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -213,7 +239,7 @@ func (e *InvalidParameterValueException) ErrorMessage() string {
 }
 func (e *InvalidParameterValueException) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "InvalidParameterValue"
+		return "InvalidParameterValueException"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -265,7 +291,7 @@ func (e *LimitExceededFault) ErrorMessage() string {
 }
 func (e *LimitExceededFault) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "LimitExceeded"
+		return "LimitExceededFault"
 	}
 	return *e.ErrorCodeOverride
 }
@@ -291,7 +317,7 @@ func (e *MissingRequiredParameterException) ErrorMessage() string {
 }
 func (e *MissingRequiredParameterException) ErrorCode() string {
 	if e == nil || e.ErrorCodeOverride == nil {
-		return "MissingParameter"
+		return "MissingRequiredParameterException"
 	}
 	return *e.ErrorCodeOverride
 }

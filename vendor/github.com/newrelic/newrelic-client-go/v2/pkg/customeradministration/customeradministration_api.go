@@ -48,6 +48,9 @@ const getAccountSharesQuery = `query(
 	items {
 		accountId
 		id
+		limitingDataAccessPolicy {
+			id
+		}
 		limitingRole {
 			id
 		}
@@ -119,6 +122,55 @@ const getAccountsQuery = `query(
 	}
 	nextCursor
 	totalCount
+} } }`
+
+func (a *Customeradministration) GetAccountsMinimized(
+	cursor string,
+	filter OrganizationAccountFilterInput,
+	sort []OrganizationAccountSortInput,
+) (*OrganizationAccountCollection, error) {
+	return a.GetAccountsWithContextMinimized(context.Background(),
+		cursor,
+		filter,
+		sort,
+	)
+}
+
+// accounts
+func (a *Customeradministration) GetAccountsWithContextMinimized(
+	ctx context.Context,
+	cursor string,
+	filter OrganizationAccountFilterInput,
+	sort []OrganizationAccountSortInput,
+) (*OrganizationAccountCollection, error) {
+
+	resp := accountsResponse{}
+	vars := map[string]interface{}{
+		"cursor": cursor,
+		"filter": filter,
+		"sort":   sort,
+	}
+
+	if err := a.client.NerdGraphQueryWithContext(ctx, getAccountsQueryMinimized, vars, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp.CustomerAdministration.Accounts, nil
+}
+
+const getAccountsQueryMinimized = `query(
+	$filter: OrganizationAccountFilterInput!,
+	$sort: [OrganizationAccountSortInput!],
+) { customerAdministration { accounts(
+	filter: $filter,
+	sort: $sort,
+) {
+	items {
+		id
+		name
+		regionCode
+		status
+	}
 } } }`
 
 // Authentication domains
@@ -299,6 +351,14 @@ const getGrantsQuery = `query(
 	sort: $sort,
 ) {
 	items {
+		dataAccessPolicy {
+			id
+			name
+		}
+		grantee {
+			id
+			type
+		}
 		group {
 			id
 		}
@@ -310,9 +370,11 @@ const getGrantsQuery = `query(
 		scope {
 			id
 			type
+			typev2
 		}
 	}
 	nextCursor
+	totalCount
 } } }`
 
 // Named sets of New Relic users within an authentication domain
@@ -492,6 +554,7 @@ const getOrganizationsQuery = `query { customerAdministration { organizations {
 		customerId
 		id
 		name
+		storageAccountId
 	}
 	nextCursor
 } } }`
@@ -531,6 +594,8 @@ const getPermissionsQuery = `query { customerAdministration { permissions {
 	items {
 		category
 		feature
+		featureDescription
+		featureDocumentationPath
 		id
 		name
 		product
@@ -611,9 +676,11 @@ func (a *Customeradministration) GetUserWithContext(
 }
 
 const getUserQuery = `query { customerAdministration { user {
+	createdAt
 	email
 	id
 	name
+	timeZoneName
 } } }`
 
 // A collection of New Relic users

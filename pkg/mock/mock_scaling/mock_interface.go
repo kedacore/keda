@@ -13,6 +13,8 @@ import (
 	context "context"
 	reflect "reflect"
 
+	api "github.com/kedacore/keda/v2/pkg/metricsservice/api"
+	scaling "github.com/kedacore/keda/v2/pkg/scaling"
 	cache "github.com/kedacore/keda/v2/pkg/scaling/cache"
 	gomock "go.uber.org/mock/gomock"
 	external_metrics "k8s.io/metrics/pkg/apis/external_metrics"
@@ -70,6 +72,21 @@ func (mr *MockScaleHandlerMockRecorder) DeleteScalableObject(ctx, scalableObject
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScalableObject", reflect.TypeOf((*MockScaleHandler)(nil).DeleteScalableObject), ctx, scalableObject)
 }
 
+// GetRawMetricsChan mocks base method.
+func (m *MockScaleHandler) GetRawMetricsChan(subscriber string) (chan scaling.RawMetrics, chan bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRawMetricsChan", subscriber)
+	ret0, _ := ret[0].(chan scaling.RawMetrics)
+	ret1, _ := ret[1].(chan bool)
+	return ret0, ret1
+}
+
+// GetRawMetricsChan indicates an expected call of GetRawMetricsChan.
+func (mr *MockScaleHandlerMockRecorder) GetRawMetricsChan(subscriber any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRawMetricsChan", reflect.TypeOf((*MockScaleHandler)(nil).GetRawMetricsChan), subscriber)
+}
+
 // GetScaledObjectMetrics mocks base method.
 func (m *MockScaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectName, scaledObjectNamespace, metricName string) (*external_metrics.ExternalMetricValueList, error) {
 	m.ctrl.T.Helper()
@@ -112,4 +129,32 @@ func (m *MockScaleHandler) HandleScalableObject(ctx context.Context, scalableObj
 func (mr *MockScaleHandlerMockRecorder) HandleScalableObject(ctx, scalableObject any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleScalableObject", reflect.TypeOf((*MockScaleHandler)(nil).HandleScalableObject), ctx, scalableObject)
+}
+
+// SubscribeMetric mocks base method.
+func (m *MockScaleHandler) SubscribeMetric(ctx context.Context, subscriber string, metricMetadata *api.ScaledObjectRef) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubscribeMetric", ctx, subscriber, metricMetadata)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// SubscribeMetric indicates an expected call of SubscribeMetric.
+func (mr *MockScaleHandlerMockRecorder) SubscribeMetric(ctx, subscriber, metricMetadata any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeMetric", reflect.TypeOf((*MockScaleHandler)(nil).SubscribeMetric), ctx, subscriber, metricMetadata)
+}
+
+// UnsubscribeMetric mocks base method.
+func (m *MockScaleHandler) UnsubscribeMetric(ctx context.Context, subscriber string, metadata *api.ScaledObjectRef) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnsubscribeMetric", ctx, subscriber, metadata)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// UnsubscribeMetric indicates an expected call of UnsubscribeMetric.
+func (mr *MockScaleHandlerMockRecorder) UnsubscribeMetric(ctx, subscriber, metadata any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsubscribeMetric", reflect.TypeOf((*MockScaleHandler)(nil).UnsubscribeMetric), ctx, subscriber, metadata)
 }

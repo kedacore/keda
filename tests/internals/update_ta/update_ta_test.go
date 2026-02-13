@@ -275,7 +275,7 @@ func TestTriggerAuthenticationGeneral(t *testing.T) {
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicas)
+		"replica count should be %d after 9 minutes", minReplicas)
 
 	testTriggerAuthenticationStatusValue(t, data, triggerAuthKind)
 
@@ -287,7 +287,7 @@ func TestTriggerAuthenticationGeneral(t *testing.T) {
 	CreateKubernetesResources(t, kc, namespace, data, templates)
 
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, namespace, minReplicas, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicas)
+		"replica count should be %d after 9 minutes", minReplicas)
 
 	testTriggerAuthenticationStatusValue(t, data, clusterTriggerAuthKind)
 	DeleteKubernetesResources(t, namespace, data, templates)
@@ -305,7 +305,7 @@ func testTriggerAuthenticationStatusValue(t *testing.T, data templateData, kind 
 	KubectlApplyWithTemplate(t, data, "scaledObjectTrigger2Template", scaledObjectTrigger2Template)
 	CheckKubectlGetResult(t, kind, triggerAuthName, namespace, otherparameter, scaledObjectName+","+scaledObject2Name)
 
-	t.Log("--- test reomve scaledObject ---")
+	t.Log("--- test remove scaledObject ---")
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTriggerTemplate", scaledObjectTriggerTemplate)
 	CheckKubectlGetResult(t, kind, triggerAuthName, namespace, otherparameter, scaledObject2Name)
 	KubectlDeleteWithTemplate(t, data, "scaledObjectTrigger2Template", scaledObjectTrigger2Template)
@@ -320,7 +320,7 @@ func testTriggerAuthenticationStatusValue(t *testing.T, data templateData, kind 
 	KubectlApplyWithTemplate(t, data, "scaledJob2Template", scaledJob2Template)
 	CheckKubectlGetResult(t, kind, triggerAuthName, namespace, otherparameter, scaledJobName+","+scaledJob2Name)
 
-	t.Log("--- test reomve scaledObject ---")
+	t.Log("--- test remove scaledJob ---")
 	KubectlDeleteWithTemplate(t, data, "scaledJobTemplate", scaledJobTemplate)
 	CheckKubectlGetResult(t, kind, triggerAuthName, namespace, otherparameter, scaledJob2Name)
 	KubectlDeleteWithTemplate(t, data, "scaledJob2Template", scaledJob2Template)

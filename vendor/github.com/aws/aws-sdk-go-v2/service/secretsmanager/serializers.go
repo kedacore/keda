@@ -1431,6 +1431,36 @@ func awsAwsjson11_serializeDocumentAddReplicaRegionListType(v []types.ReplicaReg
 	return nil
 }
 
+func awsAwsjson11_serializeDocumentExternalSecretRotationMetadataItem(v *types.ExternalSecretRotationMetadataItem, value smithyjson.Value) error {
+	object := value.Object()
+	defer object.Close()
+
+	if v.Key != nil {
+		ok := object.Key("Key")
+		ok.String(*v.Key)
+	}
+
+	if v.Value != nil {
+		ok := object.Key("Value")
+		ok.String(*v.Value)
+	}
+
+	return nil
+}
+
+func awsAwsjson11_serializeDocumentExternalSecretRotationMetadataType(v []types.ExternalSecretRotationMetadataItem, value smithyjson.Value) error {
+	array := value.Array()
+	defer array.Close()
+
+	for i := range v {
+		av := array.Value()
+		if err := awsAwsjson11_serializeDocumentExternalSecretRotationMetadataItem(&v[i], av); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func awsAwsjson11_serializeDocumentFilter(v *types.Filter, value smithyjson.Value) error {
 	object := value.Object()
 	defer object.Close()
@@ -1683,6 +1713,11 @@ func awsAwsjson11_serializeOpDocumentCreateSecretInput(v *CreateSecretInput, val
 		}
 	}
 
+	if v.Type != nil {
+		ok := object.Key("Type")
+		ok.String(*v.Type)
+	}
+
 	return nil
 }
 
@@ -1837,6 +1872,11 @@ func awsAwsjson11_serializeOpDocumentListSecretsInput(v *ListSecretsInput, value
 	if v.NextToken != nil {
 		ok := object.Key("NextToken")
 		ok.String(*v.NextToken)
+	}
+
+	if len(v.SortBy) > 0 {
+		ok := object.Key("SortBy")
+		ok.String(string(v.SortBy))
 	}
 
 	if len(v.SortOrder) > 0 {
@@ -1999,6 +2039,18 @@ func awsAwsjson11_serializeOpDocumentRotateSecretInput(v *RotateSecretInput, val
 		ok.String(*v.ClientRequestToken)
 	}
 
+	if v.ExternalSecretRotationMetadata != nil {
+		ok := object.Key("ExternalSecretRotationMetadata")
+		if err := awsAwsjson11_serializeDocumentExternalSecretRotationMetadataType(v.ExternalSecretRotationMetadata, ok); err != nil {
+			return err
+		}
+	}
+
+	if v.ExternalSecretRotationRoleArn != nil {
+		ok := object.Key("ExternalSecretRotationRoleArn")
+		ok.String(*v.ExternalSecretRotationRoleArn)
+	}
+
 	if v.RotateImmediately != nil {
 		ok := object.Key("RotateImmediately")
 		ok.Boolean(*v.RotateImmediately)
@@ -2106,6 +2158,11 @@ func awsAwsjson11_serializeOpDocumentUpdateSecretInput(v *UpdateSecretInput, val
 	if v.SecretString != nil {
 		ok := object.Key("SecretString")
 		ok.String(*v.SecretString)
+	}
+
+	if v.Type != nil {
+		ok := object.Key("Type")
+		ok.String(*v.Type)
 	}
 
 	return nil

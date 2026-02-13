@@ -130,7 +130,6 @@ spec:
       queryValue: "1"
       query: '{ "selector": { "feet": { "$gt": 0 } }, "fields": ["_id", "feet", "greeting"] }'
       activationQueryValue: "1"
-      metricName: "global-metric"
     authenticationRef:
       name: {{.TriggerAuthName}}
 `
@@ -144,7 +143,7 @@ metadata:
 spec:
   containers:
   - name: {{.ClientName}}
-    image: curlimages/curl
+    image: docker.io/curlimages/curl
     command:
       - sh
       - -c

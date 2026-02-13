@@ -46,7 +46,7 @@ func (batch *Batch) Throttle() time.Duration {
 	return batch.throttle
 }
 
-// Watermark returns the current highest watermark in a partition.
+// HighWaterMark returns the current highest watermark in a partition.
 func (batch *Batch) HighWaterMark() int64 {
 	return batch.highWaterMark
 }
