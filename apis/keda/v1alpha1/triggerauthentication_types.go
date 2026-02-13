@@ -163,7 +163,7 @@ type AuthPodIdentity struct {
 	RoleArn *string `json:"roleArn,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// ExternalID sets the External ID to be used when assuming an identity. eg: This is only applicable when using AWS pod identity with a RoleArn
+	// ExternalID sets the External ID to be used when assuming an identity. This is only applicable when using AWS pod identity with a RoleArn.
 	ExternalID *string `json:"externalID,omitempty"`
 
 	// +kubebuilder:validation:Enum=keda;workload
