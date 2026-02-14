@@ -68,7 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **RabbitMQ Scaler** add support for authentication to Rabbitmq with OAuth2 (HTTP only) ([#7454](https://github.com/kedacore/keda/issues/7454))
+- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 #### Experimental
 
@@ -76,7 +76,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **RabbitMQ Scaler** add support for authentication to Rabbitmq with OAuth2 (HTTP only) ([#7454](https://github.com/kedacore/keda/issues/7454
 
 ### Fixes
 

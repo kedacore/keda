@@ -513,7 +513,6 @@ spec:
                 - secrets
                 type: object
               oauth2:
-                description: OAuth2 defines OAuth2 client credentials authentication
                 properties:
                   clientId:
                     type: string
