@@ -1,0 +1,33 @@
+---
+# Secret for OAuth2 credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oauth-secret
+  namespace: default
+type: Opaque
+stringData:
+  client-secret: "your-client-secret-here"
+---
+# TriggerAuthentication using OAuth2 client credentials
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: oauth-auth
+  namespace: default
+spec:
+  oauth2:
+    type: clientCredentials
+    clientId: my-client-id
+    clientSecret:
+      valueFrom:
+        secretKeyRef:
+          name: oauth-secret
+          key: client-secret
+    tokenUrl: https://keycloak-internal-staging.placer.team/realms/rmq-main-pe-dev/protocol/openid-connect/token
+    scopes:
+      - rabbitmq.read
+      - rabbitmq.write
+    # Note: Use 'endpointParams' not 'tokenUrlParams'
+    tokenUrlParams:
+      audience: rabbitmq

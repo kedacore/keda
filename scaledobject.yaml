@@ -1,0 +1,25 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rabbitmq-scaledobject
+  namespace: default
+spec:
+  scaleTargetRef:
+    name: rabbitmq-consumer
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  pollingInterval: 30
+  cooldownPeriod: 300
+  triggers:
+  - type: rabbitmq
+    metadata:
+      # IMPORTANT: protocol must be 'http' for OAuth2 (Phase 1)
+      # OAuth2 is not supported with 'amqp' or 'auto' protocol
+      protocol: http
+      mode: QueueLength
+      value: "1"
+      queueName: default
+      # RabbitMQ Management API endpoint (HTTP/HTTPS)
+      host: http://rmq-main-pe-dev-k8s-cluster.placer.team:15672
+    authenticationRef:
+      name: oauth-auth
