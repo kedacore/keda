@@ -15,6 +15,8 @@ import (
 
 	"github.com/go-logr/logr"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/clientcredentials"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -118,6 +120,18 @@ type rabbitMQMetadata struct {
 	workloadIdentityClientID      string
 	workloadIdentityTenantID      string
 	workloadIdentityAuthorityHost string
+
+	// OAuth2 authentication fields (parsed from authParams via scale resolver)
+	OAuthTokenURI       string `keda:"name=oauthTokenURI,    order=authParams, optional"`
+	OAuthClientID       string `keda:"name=clientID,         order=authParams, optional"`
+	OAuthClientSecret   string `keda:"name=clientSecret,     order=authParams, optional"`
+	OAuthScopes         string `keda:"name=scopes,           order=authParams, optional"`
+	OAuthEndpointParams string `keda:"name=endpointParams,   order=authParams, optional"`
+
+	// Auth method detection flags (computed, not parsed)
+	hasOAuth2           bool
+	hasBasicAuth        bool
+	hasWorkloadIdentity bool
 }
 
 func (r *rabbitMQMetadata) Validate() error {
@@ -164,6 +178,10 @@ func (r *rabbitMQMetadata) Validate() error {
 		return fmt.Errorf("workload identity is not supported for the AMQP protocol at the moment")
 	}
 
+	if err := r.validateOAuth2(); err != nil {
+		return err
+	}
+
 	if r.UseRegex && r.Protocol != httpProtocol {
 		return fmt.Errorf("configure useRegex=true only with HTTP protocol")
 	}
@@ -174,6 +192,31 @@ func (r *rabbitMQMetadata) Validate() error {
 
 	if err := r.validateTrigger(); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (r *rabbitMQMetadata) validateOAuth2() error {
+	// OAuth2 validation - check if any OAuth2 parameter is present
+	hasAnyOAuth2Param := r.OAuthTokenURI != "" || r.OAuthClientID != "" || r.OAuthClientSecret != ""
+	if !hasAnyOAuth2Param {
+		return nil
+	}
+
+	// Validate required OAuth2 parameters are present
+	if r.OAuthTokenURI == "" || r.OAuthClientID == "" || r.OAuthClientSecret == "" {
+		return fmt.Errorf("OAuth2 requires tokenUrl clientId and clientSecret to be configured in TriggerAuthentication")
+	}
+
+	// Phase 1: OAuth2 only works with HTTP protocol
+	if r.Protocol == amqpProtocol {
+		return fmt.Errorf("OAuth2 authentication is only supported with HTTP protocol, not AMQP")
+	}
+
+	// OAuth2 is exclusive - don't mix with other auth methods
+	if r.hasBasicAuth || r.hasWorkloadIdentity {
+		return fmt.Errorf("OAuth2 authentication cannot be combined with username/password authentication or Azure Workload Identity")
 	}
 
 	return nil
@@ -292,13 +335,20 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		timeout = s.metadata.Timeout
 	}
 
-	s.httpClient = kedautil.CreateHTTPClient(timeout, meta.UnsafeSsl)
-	if meta.EnableTLS == rmqTLSEnable {
-		tlsConfig, tlsErr := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
-		if tlsErr != nil {
-			return nil, tlsErr
+	// Create HTTP client based on auth method
+	if meta.hasOAuth2 {
+		// OAuth2 client with automatic token management
+		s.httpClient = s.createOAuth2HTTPClient(timeout, meta)
+	} else {
+		// Standard HTTP client for basic auth or workload identity
+		s.httpClient = kedautil.CreateHTTPClient(timeout, meta.UnsafeSsl)
+		if meta.EnableTLS == rmqTLSEnable {
+			tlsConfig, tlsErr := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
+			if tlsErr != nil {
+				return nil, tlsErr
+			}
+			s.httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
 		}
-		s.httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
 	}
 
 	if meta.Protocol == amqpProtocol {
@@ -349,8 +399,16 @@ func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadat
 	}
 
 	meta.triggerIndex = config.TriggerIndex
+	meta.determineAuthMethod()
 
 	return meta, nil
+}
+
+// determineAuthMethod sets boolean flags for auth method detection
+func (r *rabbitMQMetadata) determineAuthMethod() {
+	r.hasOAuth2 = r.OAuthTokenURI != "" && r.OAuthClientID != "" && r.OAuthClientSecret != ""
+	r.hasBasicAuth = r.Username != "" && r.Password != ""
+	r.hasWorkloadIdentity = r.WorkloadIdentityResource != ""
 }
 
 // getConnectionAndChannel returns an amqp connection. If enableTLS is true tls connection is made using
@@ -400,6 +458,56 @@ func (s *rabbitMQScaler) Close(context.Context) error {
 	return nil
 }
 
+// createOAuth2HTTPClient creates an HTTP client with OAuth2 client credentials flow
+// The client automatically handles token acquisition, caching, and refresh
+func (s *rabbitMQScaler) createOAuth2HTTPClient(timeout time.Duration, meta *rabbitMQMetadata) *http.Client {
+	config := clientcredentials.Config{
+		ClientID:     meta.OAuthClientID,
+		ClientSecret: meta.OAuthClientSecret,
+		TokenURL:     meta.OAuthTokenURI,
+	}
+
+	// Parse scopes from comma-separated string
+	if meta.OAuthScopes != "" {
+		config.Scopes = strings.Split(meta.OAuthScopes, ",")
+	}
+
+	// Parse additional endpoint parameters (URL-encoded string from scale resolver)
+	if meta.OAuthEndpointParams != "" {
+		params, err := url.ParseQuery(meta.OAuthEndpointParams)
+		if err == nil {
+			config.EndpointParams = params
+		} else {
+			s.logger.Error(err, "Failed to parse OAuth2 endpoint parameters, ignoring")
+		}
+	}
+
+	// Create OAuth2 client with automatic token management
+	oauth2Client := config.Client(context.Background())
+
+	// Apply timeout and optional TLS config
+	if transport, ok := oauth2Client.Transport.(*oauth2.Transport); ok {
+		baseTransport := &http.Transport{
+			IdleConnTimeout: timeout,
+		}
+
+		// Apply TLS configuration if enabled
+		if meta.EnableTLS == rmqTLSEnable {
+			tlsConfig, err := kedautil.NewTLSConfigWithPassword(meta.Cert, meta.Key, meta.KeyPassword, meta.Ca, meta.UnsafeSsl)
+			if err != nil {
+				s.logger.Error(err, "Failed to configure TLS for OAuth2 client, proceeding without TLS")
+			} else {
+				baseTransport.TLSClientConfig = tlsConfig
+			}
+		}
+
+		transport.Base = baseTransport
+	}
+
+	oauth2Client.Timeout = timeout
+	return oauth2Client
+}
+
 func (s *rabbitMQScaler) getQueueStatus(ctx context.Context) (int64, float64, float64, error) {
 	if s.metadata.Protocol == httpProtocol {
 		info, err := s.getQueueInfoViaHTTP(ctx)
@@ -432,6 +540,9 @@ func getJSON(ctx context.Context, s *rabbitMQScaler, url string) (queueInfo, err
 		return result, err
 	}
 
+	// OAuth2: Authorization header automatically added by oauth2.Transport
+	// Azure Workload Identity: Manually add bearer token
+	// Basic auth: Handled automatically via URL userinfo (see getQueueInfoViaHTTP)
 	if s.metadata.WorkloadIdentityResource != "" {
 		if s.azureOAuth == nil {
 			s.azureOAuth = azure.NewAzureADWorkloadIdentityTokenProvider(ctx, s.metadata.workloadIdentityClientID, s.metadata.workloadIdentityTenantID, s.metadata.workloadIdentityAuthorityHost, s.metadata.WorkloadIdentityResource)

@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -199,5 +200,34 @@ func validateSpec(spec *TriggerAuthenticationSpec) (admission.Warnings, error) {
 			return nil, nil
 		}
 	}
+
+	if spec.OAuth2 != nil {
+		oauth2 := spec.OAuth2
+
+		if oauth2.Type != OAuth2GrantTypeClientCredentials {
+			return nil, fmt.Errorf("oauth2.type must be 'clientCredentials', got '%s'", oauth2.Type)
+		}
+
+		if oauth2.ClientID == "" {
+			return nil, fmt.Errorf("oauth2.clientId is required when oauth2 is configured")
+		}
+
+		if oauth2.TokenURL == "" {
+			return nil, fmt.Errorf("oauth2.tokenUrl is required when oauth2 is configured")
+		}
+
+		if oauth2.ClientSecret.ValueFrom.SecretKeyRef.Name == "" {
+			return nil, fmt.Errorf("oauth2.clientSecret.valueFrom.secretKeyRef.name is required")
+		}
+
+		if oauth2.ClientSecret.ValueFrom.SecretKeyRef.Key == "" {
+			return nil, fmt.Errorf("oauth2.clientSecret.valueFrom.secretKeyRef.key is required")
+		}
+
+		if _, err := url.Parse(oauth2.TokenURL); err != nil {
+			return nil, fmt.Errorf("oauth2.tokenUrl must be a valid URL: %w", err)
+		}
+	}
+
 	return nil, nil
 }
