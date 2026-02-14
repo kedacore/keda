@@ -104,6 +104,9 @@ type TriggerAuthenticationSpec struct {
 
 	// +optional
 	BoundServiceAccountToken []BoundServiceAccountToken `json:"boundServiceAccountToken,omitempty"`
+
+	// +optional
+	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
 }
 
 // TriggerAuthenticationStatus defines the observed state of TriggerAuthentication
@@ -395,6 +398,33 @@ type AwsSecretManagerSecret struct {
 type BoundServiceAccountToken struct {
 	Parameter          string `json:"parameter"`
 	ServiceAccountName string `json:"serviceAccountName"`
+}
+
+type OAuth2 struct {
+	// +kubebuilder:validation:Enum=clientCredentials
+	Type OAuth2GrantType `json:"type"`
+
+	ClientID string `json:"clientId"`
+
+	ClientSecret OAuth2ClientSecret `json:"clientSecret"`
+
+	TokenURL string `json:"tokenUrl"`
+
+	// +optional
+	Scopes []string `json:"scopes,omitempty"`
+
+	// +optional
+	TokenURLParams map[string]string `json:"tokenUrlParams,omitempty"`
+}
+
+type OAuth2GrantType string
+
+const (
+	OAuth2GrantTypeClientCredentials OAuth2GrantType = "clientCredentials"
+)
+
+type OAuth2ClientSecret struct {
+	ValueFrom ValueFromSecret `json:"valueFrom"`
 }
 
 func init() {

@@ -512,6 +512,50 @@ spec:
                 - authentication
                 - secrets
                 type: object
+              oauth2:
+                properties:
+                  clientId:
+                    type: string
+                  clientSecret:
+                    properties:
+                      valueFrom:
+                        properties:
+                          secretKeyRef:
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        required:
+                        - secretKeyRef
+                        type: object
+                    required:
+                    - valueFrom
+                    type: object
+                  scopes:
+                    items:
+                      type: string
+                    type: array
+                  tokenUrl:
+                    type: string
+                  tokenUrlParams:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  type:
+                    enum:
+                    - clientCredentials
+                    type: string
+                required:
+                - clientId
+                - clientSecret
+                - tokenUrl
+                - type
+                type: object
               podIdentity:
                 description: |-
                   AuthPodIdentity allows users to select the platform native identity
