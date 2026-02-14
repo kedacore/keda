@@ -191,6 +191,26 @@ var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "http"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, false, rmqTLSDisable, true},
 	// failure, WorkloadIdentity not supported for amqp
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "amqp"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, true, rmqTLSDisable, false},
+	// success, OAuth2 with HTTP protocol (minimal config)
+	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientID": "my-client", "clientSecret": "my-secret"}, false, rmqTLSDisable, false},
+	// success, OAuth2 with scopes
+	{map[string]string{"queueName": "sample", "host": "https://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientID": "my-client", "clientSecret": "my-secret", "scopes": "rabbitmq.read,rabbitmq.write"}, false, rmqTLSDisable, false},
+	// success, OAuth2 with endpoint params
+	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientID": "my-client", "clientSecret": "my-secret", "endpointParams": "audience=rabbitmq&resource=api"}, false, rmqTLSDisable, false},
+	// success, OAuth2 with TLS
+	{map[string]string{"queueName": "sample", "host": "https://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientID": "my-client", "clientSecret": "my-secret", "tls": "enable", "ca": "caaa"}, false, rmqTLSEnable, false},
+	// failure, OAuth2 with AMQP protocol
+	{map[string]string{"queueName": "sample", "host": "amqp://localhost:5672", "protocol": "amqp"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientID": "my-client", "clientSecret": "my-secret"}, true, rmqTLSDisable, false},
+	// failure, OAuth2 + basic auth
+	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientID": "my-client", "clientSecret": "my-secret", "username": "user", "password": "pass"}, true, rmqTLSDisable, false},
+	// failure, OAuth2 + workload identity
+	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientID": "my-client", "clientSecret": "my-secret", "workloadIdentityResource": "rabbitmq-resource-id"}, true, rmqTLSDisable, false},
+	// failure, OAuth2 missing tokenUrl
+	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"clientID": "my-client", "clientSecret": "my-secret"}, true, rmqTLSDisable, false},
+	// failure, OAuth2 missing clientId
+	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientSecret": "my-secret"}, true, rmqTLSDisable, false},
+	// failure, OAuth2 missing clientSecret
+	{map[string]string{"queueName": "sample", "host": "http://localhost:15672", "protocol": "http"}, v1alpha1.AuthPodIdentity{}, map[string]string{"oauthTokenURI": "https://oauth.example.com/token", "clientID": "my-client"}, true, rmqTLSDisable, false},
 }
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
 	{&testRabbitMQMetadata[1], 0, "s0-rabbitmq-sample"},
@@ -223,6 +243,10 @@ func TestRabbitMQParseAuthParamData(t *testing.T) {
 		metadata, err := parseRabbitMQMetadata(&scalersconfig.ScalerConfig{ResolvedEnv: sampleRabbitMqResolvedEnv, TriggerMetadata: testData.metadata, AuthParams: testData.authParams, PodIdentity: testData.podIdentity})
 		if err != nil && !testData.isError {
 			t.Error("Expected success but got error", err)
+		}
+		// Also run validation to catch validation errors
+		if err == nil && metadata != nil {
+			err = metadata.Validate()
 		}
 		if testData.isError && err == nil {
 			t.Error("Expected error but got success")
@@ -828,5 +852,74 @@ func TestConnectionName(t *testing.T) {
 
 	if connectionName != "keda-test-namespace-test-name" {
 		t.Error("Expected connection name to be keda-test-namespace-test-name but got", connectionName)
+	}
+}
+
+func TestOAuth2HTTPClientCreation(t *testing.T) {
+	metadata := map[string]string{
+		"queueName": "sample",
+		"host":      "http://localhost:15672",
+		"protocol":  "http",
+	}
+
+	authParams := map[string]string{
+		"oauthTokenURI":  "https://oauth.example.com/token",
+		"clientID":       "my-client",
+		"clientSecret":   "my-secret",
+		"scopes":         "rabbitmq.read,rabbitmq.write",
+		"endpointParams": "audience=rabbitmq",
+	}
+
+	config := &scalersconfig.ScalerConfig{
+		ResolvedEnv:       sampleRabbitMqResolvedEnv,
+		TriggerMetadata:   metadata,
+		AuthParams:        authParams,
+		GlobalHTTPTimeout: 3000 * time.Millisecond,
+	}
+
+	s, err := NewRabbitMQScaler(config)
+	if err != nil {
+		t.Fatalf("Expected success but got error: %v", err)
+	}
+
+	scaler, ok := s.(*rabbitMQScaler)
+	if !ok {
+		t.Fatal("Expected rabbitMQScaler type")
+	}
+
+	// Verify that an HTTP client was created
+	if scaler.httpClient == nil {
+		t.Error("Expected HTTP client to be created for OAuth2")
+	}
+
+	// Verify OAuth2 metadata was parsed correctly
+	if !scaler.metadata.hasOAuth2 {
+		t.Error("Expected hasOAuth2 to be true")
+	}
+
+	if scaler.metadata.OAuthTokenURI != "https://oauth.example.com/token" {
+		t.Errorf("Expected OAuthTokenURI to be 'https://oauth.example.com/token' but got '%s'", scaler.metadata.OAuthTokenURI)
+	}
+
+	if scaler.metadata.OAuthClientID != "my-client" {
+		t.Errorf("Expected OAuthClientID to be 'my-client' but got '%s'", scaler.metadata.OAuthClientID)
+	}
+
+	if scaler.metadata.OAuthClientSecret != "my-secret" {
+		t.Errorf("Expected OAuthClientSecret to be 'my-secret' but got '%s'", scaler.metadata.OAuthClientSecret)
+	}
+
+	if scaler.metadata.OAuthScopes != "rabbitmq.read,rabbitmq.write" {
+		t.Errorf("Expected OAuthScopes to be 'rabbitmq.read,rabbitmq.write' but got '%s'", scaler.metadata.OAuthScopes)
+	}
+
+	if scaler.metadata.OAuthEndpointParams != "audience=rabbitmq" {
+		t.Errorf("Expected OAuthEndpointParams to be 'audience=rabbitmq' but got '%s'", scaler.metadata.OAuthEndpointParams)
+	}
+
+	// Clean up
+	err = scaler.Close(context.Background())
+	if err != nil {
+		t.Errorf("Error closing scaler: %v", err)
 	}
 }
