@@ -4,7 +4,7 @@ run:
   concurrency: 4
   # add the build tags to include e2e tests files
   build-tags:
-  - e2e
+    - e2e
   modules-download-mode: vendor
 linters:
   default: none
@@ -57,28 +57,32 @@ linters:
       # Exclude for utils packages with meaningful package names
       - linters:
           - revive
-        text: 'var-naming: avoid meaningless package names'
+        text: "var-naming: avoid meaningless package names"
         path: pkg/metricsservice/utils/tls.go
       - linters:
           - revive
-        text: 'var-naming: avoid meaningless package names'
+        text: "var-naming: avoid meaningless package names"
         path: pkg/scalers/openstack/utils/serviceTypes.go
       - linters:
           - revive
-        text: 'var-naming: avoid meaningless package names'
+        text: "var-naming: avoid meaningless package names"
         path: controllers/keda/util/string_lists.go
       - linters:
           - revive
-        text: 'var-naming: avoid meaningless package names'
+        text: "var-naming: avoid meaningless package names"
         path: controllers/keda/util/finalizer.go
       - linters:
           - revive
-        text: 'var-naming: avoid meaningless package names'
+        text: "var-naming: avoid meaningless package names"
         path: controllers/keda/util/predicate.go
       - linters:
           - revive
-        text: 'var-naming: avoid meaningless package names'
+        text: "var-naming: avoid meaningless package names"
         path: pkg/util/
+      - linters:
+          - revive
+        text: "var-naming: avoid package names that conflict with Go standard library package names"
+        path: version/version.go
       - linters:
           - gocyclo
         path: scalers_builder.go
@@ -99,10 +103,10 @@ linters:
       # https://github.com/go-critic/go-critic/issues/926
       - linters:
           - gocritic
-        text: 'unnecessaryDefer:'
+        text: "unnecessaryDefer:"
       - linters:
           - staticcheck
-        text: 'ST1000:'
+        text: "ST1000:"
         # The call to autorest.Send() in scalers/azure_app_insights.go is marked as not closing the response body. However, autorest.DoCloseIfError()
         # and autorest.ByClosing() should ensure that the response body is closed.
       - linters:
