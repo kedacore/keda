@@ -10,7 +10,7 @@ replace (
 	github.com/google/cel-go => github.com/google/cel-go v0.22.0
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.23.0
 	github.com/prometheus/client_model => github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common => github.com/prometheus/common v0.62.0
+	github.com/prometheus/common => github.com/prometheus/common v0.67.5
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.304.2
 	k8s.io/api => k8s.io/api v0.35.1
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.35.1
