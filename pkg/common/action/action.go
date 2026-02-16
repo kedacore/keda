@@ -17,51 +17,51 @@ limitations under the License.
 package action
 
 const (
-	// Unknown is a placeholder action and should not be used.
+	// Unknown is a placeholder action and should not be used
 	Unknown = "Unknown"
 
-	// Created indicates a resource was created.
+	// Created indicates a resource was created
 	Created = "Created"
 
-	// Updated indicates a resource was updated.
+	// Updated indicates a resource was updated
 	Updated = "Updated"
 
-	// Deleted indicates a resource was deleted.
+	// Deleted indicates a resource was deleted
 	Deleted = "Deleted"
 
-	// Paused indicates a resource was paused.
+	// Paused indicates a resource was paused
 	Paused = "Paused"
 
-	// Unpaused indicates a resource was unpaused.
+	// Unpaused indicates a resource was unpaused
 	Unpaused = "Unpaused"
 
-	// Ready indicates a resource is ready.
+	// Ready indicates a resource is ready
 	Ready = "Ready"
 
-	// Activated indicates a resource or feature was activated.
+	// Activated indicates a resource or feature was activated
 	Activated = "Activated"
 
-	// Deactivated indicates a resource or feature was deactivated.
+	// Deactivated indicates a resource or feature was deactivated
 	Deactivated = "Deactivated"
 
-	// Active indicates a resource is active.
+	// Active indicates a resource is active
 	Active = "Active"
 
-	// Inactive indicates a resource is inactive.
+	// Inactive indicates a resource is inactive
 	Inactive = "Inactive"
 
-	// Started indicates an operation started.
+	// Started indicates an operation started
 	Started = "Started"
 
-	// Stopped indicates an operation stopped.
+	// Stopped indicates an operation stopped
 	Stopped = "Stopped"
 
-	// Completed indicates an operation completed.
+	// Completed indicates an operation completed
 	Completed = "Completed"
 
-	// Failed indicates an operation failed.
+	// Failed indicates an operation failed
 	Failed = "Failed"
 
-	// Info indicates an informational message.
+	// Info indicates an informational message
 	Info = "Info"
 )
