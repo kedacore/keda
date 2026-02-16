@@ -23,6 +23,7 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
+	"github.com/kedacore/keda/v2/pkg/common/action"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -187,7 +188,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if !scaledObject.Status.Conditions.AreInitialized() {
 		conditions := kedav1alpha1.GetInitializedConditions()
 		if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, conditions); err != nil {
-			r.EventEmitter.Emit(scaledObject, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectUpdateFailed, err.Error())
+			r.EventEmitter.Emit(scaledObject, nil, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectUpdateFailed, action.Unknown, err.Error())
 			return ctrl.Result{}, err
 		}
 	}
@@ -200,11 +201,11 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		fullErrMsg := fmt.Sprintf("%s: %s", msg, err.Error())
 		conditions.SetReadyCondition(metav1.ConditionFalse, "ScaledObjectCheckFailed", fullErrMsg)
 		conditions.SetActiveCondition(metav1.ConditionUnknown, "UnknownState", "ScaledObject check failed")
-		r.EventEmitter.Emit(scaledObject, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, fullErrMsg)
+		r.EventEmitter.Emit(scaledObject, nil, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, action.Unknown, fullErrMsg)
 	} else {
 		wasReady := conditions.GetReadyCondition()
 		if wasReady.IsFalse() || wasReady.IsUnknown() {
-			r.EventEmitter.Emit(scaledObject, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectReadyType, eventreason.ScaledObjectReady, message.ScalerReadyMsg)
+			r.EventEmitter.Emit(scaledObject, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectReadyType, eventreason.ScaledObjectReady, action.Unknown, message.ScalerReadyMsg)
 		}
 		reqLogger.V(1).Info(msg)
 		conditions.SetReadyCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionReadySuccessReason, msg)
@@ -217,7 +218,7 @@ func (r *ScaledObjectReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	metricscollector.RecordScaledObjectPaused(scaledObject.Namespace, scaledObject.Name, conditions.GetPausedCondition().Status == metav1.ConditionTrue)
 
 	if err := kedastatus.SetStatusConditions(ctx, r.Client, reqLogger, scaledObject, &conditions); err != nil {
-		r.EventEmitter.Emit(scaledObject, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectUpdateFailed, err.Error())
+		r.EventEmitter.Emit(scaledObject, nil, req.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectUpdateFailed, action.Unknown, err.Error())
 		return ctrl.Result{}, err
 	}
 
@@ -277,19 +278,19 @@ func (r *ScaledObjectReconciler) reconcileScaledObject(ctx context.Context, logg
 			// Condition already set above, just ensure it's still set in conditions object
 			conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, msg)
 			if !isPausedInStatus {
-				r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectPausedType, eventreason.ScaledObjectPaused, kedav1alpha1.ScaledObjectConditionPausedMessage)
+				r.EventEmitter.Emit(scaledObject, nil, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectPausedType, eventreason.ScaledObjectPaused, action.Unknown, kedav1alpha1.ScaledObjectConditionPausedMessage)
 			}
 			return msg, nil
 		}
 	case scaledObject.NeedToPauseScaleIn() || scaledObject.NeedToPauseScaleOut():
 		conditions.SetPausedCondition(metav1.ConditionTrue, kedav1alpha1.ScaledObjectConditionPausedReason, kedav1alpha1.ScaledObjectConditionPausedMessage)
 		if !isPausedInStatus {
-			r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectPausedType, eventreason.ScaledObjectPaused, kedav1alpha1.ScaledObjectConditionPausedMessage)
+			r.EventEmitter.Emit(scaledObject, nil, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectPausedType, eventreason.ScaledObjectPaused, action.Unknown, kedav1alpha1.ScaledObjectConditionPausedMessage)
 		}
 	case isPausedInStatus:
 		unpausedMessage := "pause annotation removed for ScaledObject"
 		conditions.SetPausedCondition(metav1.ConditionFalse, "ScaledObjectUnpaused", unpausedMessage)
-		r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectUnpausedType, eventreason.ScaledObjectUnpaused, unpausedMessage)
+		r.EventEmitter.Emit(scaledObject, nil, scaledObject.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ScaledObjectUnpausedType, eventreason.ScaledObjectUnpaused, action.Unknown, unpausedMessage)
 	}
 
 	// Check scale target Name is specified
@@ -405,7 +406,7 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 	if err != nil {
 		msg := "Failed to parse Group, Version, Kind, Resource"
 		logger.Error(err, msg, "apiVersion", scaledObject.Spec.ScaleTargetRef.APIVersion, "kind", scaledObject.Spec.ScaleTargetRef.Kind)
-		r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectUpdateFailed, err.Error())
+		r.EventEmitter.Emit(scaledObject, nil, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectUpdateFailed, action.Unknown, err.Error())
 		return gvkr, err
 	}
 	gvkString := gvkr.GVKString()
@@ -442,12 +443,12 @@ func (r *ScaledObjectReconciler) checkTargetResourceIsScalable(ctx context.Conte
 			if err := r.Client.Get(ctx, client.ObjectKey{Namespace: scaledObject.Namespace, Name: scaledObject.Spec.ScaleTargetRef.Name}, unstruct); err != nil {
 				// resource doesn't exist
 				logger.Error(err, message.ScaleTargetNotFoundMsg, "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
-				r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNotFoundMsg)
+				r.EventEmitter.Emit(scaledObject, nil, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, action.Unknown, message.ScaleTargetNotFoundMsg)
 				return gvkr, err
 			}
 			// resource exist but doesn't expose /scale subresource
 			logger.Error(errScale, message.ScaleTargetNoSubresourceMsg, "resource", gvkString, "name", scaledObject.Spec.ScaleTargetRef.Name)
-			r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, message.ScaleTargetNoSubresourceMsg)
+			r.EventEmitter.Emit(scaledObject, nil, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectFailedType, eventreason.ScaledObjectCheckFailed, action.Unknown, message.ScaleTargetNoSubresourceMsg)
 			return gvkr, errScale
 		}
 		isScalableCache.Store(gr.String(), true)

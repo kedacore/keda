@@ -21,22 +21,21 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
+	"github.com/kedacore/keda/v2/pkg/mock/mock_scale"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
-
-	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
-	"github.com/kedacore/keda/v2/pkg/mock/mock_scale"
+	"k8s.io/client-go/tools/events"
 )
 
 func TestScaleToMinReplicasWhenNotActive(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
@@ -97,7 +96,7 @@ func TestScaleToMinReplicasWhenNotActive(t *testing.T) {
 func TestScaleToMinReplicasFromLowerInitialReplicaCount(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
@@ -158,7 +157,7 @@ func TestScaleToMinReplicasFromLowerInitialReplicaCount(t *testing.T) {
 func TestScaleFromMinReplicasWhenActive(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
@@ -219,7 +218,7 @@ func TestScaleFromMinReplicasWhenActive(t *testing.T) {
 func TestScaleToIdleReplicasWhenNotActive(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
@@ -282,7 +281,7 @@ func TestScaleToIdleReplicasWhenNotActive(t *testing.T) {
 func TestScaleFromIdleToMinReplicasWhenActive(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
@@ -345,7 +344,7 @@ func TestScaleFromIdleToMinReplicasWhenActive(t *testing.T) {
 func TestScaleToPausedReplicasCount(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
@@ -407,7 +406,7 @@ func TestScaleToPausedReplicasCount(t *testing.T) {
 func TestEventWitTriggerInfo(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
@@ -468,7 +467,7 @@ func TestEventWitTriggerInfo(t *testing.T) {
 func TestNoScaleToMinReplicasWhenNotActiveAndPauseScaleInAnnotationSet(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
@@ -533,7 +532,7 @@ func TestNoScaleToMinReplicasWhenNotActiveAndPauseScaleInAnnotationSet(t *testin
 func TestNoScaleToIdleReplicasWhenNotActiveAndPauseScaleInAnnotationSet(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
@@ -600,7 +599,7 @@ func TestNoScaleToIdleReplicasWhenNotActiveAndPauseScaleInAnnotationSet(t *testi
 func TestScaleFromMinReplicasWhenActivationForced(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
@@ -664,7 +663,7 @@ func TestScaleFromMinReplicasWhenActivationForced(t *testing.T) {
 func TestNoScaleFromMinReplicasWhenActiveAndPausedScaleOutAnnotationSet(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
@@ -727,7 +726,7 @@ func TestNoScaleFromMinReplicasWhenActiveAndPausedScaleOutAnnotationSet(t *testi
 func TestNoScaleFromIdleReplicasToMinReplicasWhenActiveAndPausedScaleOutAnnotationSet(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	mockScaleInterface := mock_scale.NewMockScaleInterface(ctrl)
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)

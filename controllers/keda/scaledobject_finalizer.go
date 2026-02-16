@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	"github.com/kedacore/keda/v2/pkg/common/action"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -88,7 +89,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 	}
 
 	logger.Info("Successfully finalized ScaledObject")
-	r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectRemovedType, eventreason.ScaledObjectDeleted, message.ScaledObjectRemoved)
+	r.EventEmitter.Emit(scaledObject, nil, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectRemovedType, eventreason.ScaledObjectDeleted, action.Unknown, message.ScaledObjectRemoved)
 	return nil
 }
 

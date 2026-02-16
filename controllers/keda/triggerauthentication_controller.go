@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/kedacore/keda/v2/pkg/common/action"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -84,10 +85,10 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 	r.updatePromMetrics(triggerAuthentication, req.String())
 
 	if triggerAuthentication.Generation == 1 {
-		r.Emit(triggerAuthentication, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationCreatedType, eventreason.TriggerAuthenticationAdded, message.TriggerAuthenticationCreatedMsg)
+		r.Emit(triggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationCreatedType, eventreason.TriggerAuthenticationAdded, action.Unknown, message.TriggerAuthenticationCreatedMsg)
 	} else {
 		msg := fmt.Sprintf(message.TriggerAuthenticationUpdatedMsg, triggerAuthentication.Name)
-		r.Emit(triggerAuthentication, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationUpdatedType, eventreason.TriggerAuthenticationUpdated, msg)
+		r.Emit(triggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationUpdatedType, eventreason.TriggerAuthenticationUpdated, action.Unknown, msg)
 	}
 
 	return ctrl.Result{}, nil

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/kedacore/keda/v2/pkg/common/action"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -92,7 +93,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 		// nosemgrep: invalid-usage-of-modified-variable
 		scaler, config, err := factory()
 		if err != nil {
-			h.recorder.Event(withTriggers, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+			h.recorder.Eventf(withTriggers, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, action.Unknown, err.Error())
 			logger.Error(err, "error resolving auth params", "triggerIndex", triggerIndex)
 			if scaler != nil {
 				if closeErr := scaler.Close(ctx); closeErr != nil {
@@ -107,7 +108,7 @@ func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alp
 			return nil, err
 		}
 		msg := fmt.Sprintf(message.ScalerIsBuiltMsg, trigger.Type)
-		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, msg)
+		h.recorder.Eventf(withTriggers, nil, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, action.Unknown, msg)
 
 		result = append(result, cache.ScalerBuilder{
 			Scaler:       scaler,

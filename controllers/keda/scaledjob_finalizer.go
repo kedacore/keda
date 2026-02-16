@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	"github.com/kedacore/keda/v2/pkg/common/action"
 	corev1 "k8s.io/api/core/v1"
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
@@ -59,7 +60,7 @@ func (r *ScaledJobReconciler) finalizeScaledJob(ctx context.Context, logger logr
 	}
 
 	logger.Info("Successfully finalized ScaledJob")
-	r.EventEmitter.Emit(scaledJob, namespacedName, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobRemovedType, eventreason.ScaledJobDeleted, message.ScaledJobRemoved)
+	r.EventEmitter.Emit(scaledJob, nil, namespacedName, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobRemovedType, eventreason.ScaledJobDeleted, action.Unknown, message.ScaledJobRemoved)
 	return nil
 }
 

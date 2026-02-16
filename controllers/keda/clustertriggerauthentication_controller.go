@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/kedacore/keda/v2/pkg/common/action"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -83,10 +84,10 @@ func (r *ClusterTriggerAuthenticationReconciler) Reconcile(ctx context.Context, 
 	r.updatePromMetrics(clusterTriggerAuthentication, req.String())
 
 	if clusterTriggerAuthentication.Generation == 1 {
-		r.Emit(clusterTriggerAuthentication, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationCreatedType, eventreason.ClusterTriggerAuthenticationAdded, message.ClusterTriggerAuthenticationCreatedMsg)
+		r.Emit(clusterTriggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationCreatedType, eventreason.ClusterTriggerAuthenticationAdded, action.Unknown, message.ClusterTriggerAuthenticationCreatedMsg)
 	} else {
 		msg := fmt.Sprintf(message.ClusterTriggerAuthenticationUpdatedMsg, clusterTriggerAuthentication.Name)
-		r.Emit(clusterTriggerAuthentication, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationUpdatedType, eventreason.ClusterTriggerAuthenticationUpdated, msg)
+		r.Emit(clusterTriggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationUpdatedType, eventreason.ClusterTriggerAuthenticationUpdated, action.Unknown, msg)
 	}
 
 	return ctrl.Result{}, nil

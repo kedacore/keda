@@ -26,13 +26,14 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/kedacore/keda/v2/pkg/common/action"
 	v2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/scale"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -78,7 +79,7 @@ type scaleHandler struct {
 	scaleLoopContexts        *sync.Map
 	scaleExecutor            executor.ScaleExecutor
 	globalHTTPTimeout        time.Duration
-	recorder                 record.EventRecorder
+	recorder                 events.EventRecorder
 	scalerCaches             map[string]*cache.ScalersCache
 	scalerCachesLock         *sync.RWMutex
 	scaledObjectsMetricCache metricscache.MetricsCache
@@ -90,7 +91,7 @@ type scaleHandler struct {
 }
 
 // NewScaleHandler creates a ScaleHandler object
-func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder record.EventRecorder, authClientSet *authentication.AuthClientSet) ScaleHandler {
+func NewScaleHandler(client client.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, globalHTTPTimeout time.Duration, recorder events.EventRecorder, authClientSet *authentication.AuthClientSet) ScaleHandler {
 	return &scaleHandler{
 		client:                   client,
 		scaleClient:              scaleClient,
@@ -132,7 +133,7 @@ func (h *scaleHandler) HandleScalableObject(ctx context.Context, scalableObject 
 		}
 		h.scaleLoopContexts.Store(key, cancel)
 	} else {
-		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, message.ScalerStartMsg)
+		h.recorder.Eventf(withTriggers, nil, corev1.EventTypeNormal, eventreason.KEDAScalersStarted, action.Unknown, message.ScalerStartMsg)
 	}
 
 	// a mutex is used to synchronize scale requests per scalableObject
@@ -170,7 +171,7 @@ func (h *scaleHandler) DeleteScalableObject(ctx context.Context, scalableObject 
 		if err != nil {
 			log.Error(err, "error clearing scalers cache", "scalableObject", scalableObject, "key", key)
 		}
-		h.recorder.Event(withTriggers, corev1.EventTypeNormal, eventreason.KEDAScalersStopped, "Stopped scalers watch")
+		h.recorder.Eventf(withTriggers, nil, corev1.EventTypeNormal, eventreason.KEDAScalersStopped, action.Unknown, "Stopped scalers watch")
 	} else {
 		log.V(1).Info("ScalableObject was not found in controller cache", "key", key)
 	}
@@ -274,9 +275,9 @@ func (h *scaleHandler) checkScalers(ctx context.Context, scalableObject interfac
 		}
 
 		if isFallbackActive && fallbackStatus != metav1.ConditionTrue {
-			h.recorder.Event(obj, corev1.EventTypeNormal, eventreason.ScaledObjectFallbackActivated, message.ScaledObjectFallbackActivatedMsg)
+			h.recorder.Eventf(obj, nil, corev1.EventTypeNormal, eventreason.ScaledObjectFallbackActivated, action.Unknown, message.ScaledObjectFallbackActivatedMsg)
 		} else if !isFallbackActive && fallbackStatus == metav1.ConditionTrue {
-			h.recorder.Event(obj, corev1.EventTypeNormal, eventreason.ScaledObjectFallbackDeactivated, message.ScaledObjectFallbackDeactivatedMsg)
+			h.recorder.Eventf(obj, nil, corev1.EventTypeNormal, eventreason.ScaledObjectFallbackDeactivated, action.Unknown, message.ScaledObjectFallbackDeactivatedMsg)
 		}
 
 		h.scaleExecutor.RequestScale(ctx, obj, isActive, isError, &executor.ScaleExecutorOptions{ActiveTriggers: activeTriggers})
@@ -536,13 +537,13 @@ func (h *scaleHandler) GetScaledObjectMetrics(ctx context.Context, scaledObjectN
 		if err != nil {
 			isScalerError = true
 			logger.Error(err, "error getting metric spec for the scaler", "scaler", triggerName)
-			cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+			cache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, action.Unknown, err.Error())
 		}
 
 		if len(metricsArray) == 0 {
 			err = fmt.Errorf("no metrics found getting metricsArray array %s", metricsName)
 			logger.Error(err, "error metricsArray is empty")
-			cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+			cache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, action.Unknown, err.Error())
 		}
 		for _, spec := range metricSpecs {
 			// skip cpu/memory resource scaler
@@ -823,7 +824,7 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 	if err != nil {
 		result.Err = err
 		logger.Error(err, "error getting metric spec for the scaler", "scaler", result.TriggerName)
-		cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+		cache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, action.Unknown, err.Error())
 	}
 
 	for _, spec := range metricSpecs {
@@ -867,10 +868,10 @@ func (h *scaleHandler) getScalerState(ctx context.Context, scaler scalers.Scaler
 			result.Err = err
 			if scaledObject.IsUsingModifiers() {
 				logger.Error(err, "error getting metric source", "source", result.TriggerName)
-				cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAMetricSourceFailed, err.Error())
+				cache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAMetricSourceFailed, action.Unknown, err.Error())
 			} else {
 				logger.Error(err, "error getting scale decision", "scaler", result.TriggerName)
-				cache.Recorder.Event(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+				cache.Recorder.Eventf(scaledObject, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, action.Unknown, err.Error())
 			}
 		} else {
 			result.IsActive = isActiveOrFallback
@@ -944,7 +945,7 @@ func (h *scaleHandler) getScaledJobMetrics(ctx context.Context, scaledJob *kedav
 			}
 			if err != nil {
 				scalerLogger.Error(err, "Error getting scaler metrics and activity, but continue")
-				cache.Recorder.Event(scaledJob, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, err.Error())
+				cache.Recorder.Eventf(scaledJob, nil, corev1.EventTypeWarning, eventreason.KEDAScalerFailed, action.Unknown, err.Error())
 				isError = true
 				continue
 			}

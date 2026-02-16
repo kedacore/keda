@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	"github.com/kedacore/keda/v2/pkg/common/action"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -72,6 +73,6 @@ func FinalizeAuthenticationResource(ctx context.Context, logger logr.Logger, rec
 	}
 
 	logger.Info(fmt.Sprintf("Successfully finalized %s", authResourceType))
-	reconciler.Emit(authResource, namespacedName, corev1.EventTypeNormal, cloudEventType, reason, fmt.Sprintf("%s was deleted", authResourceType))
+	reconciler.Emit(authResource, nil, namespacedName, corev1.EventTypeNormal, cloudEventType, reason, action.Unknown, fmt.Sprintf("%s was deleted", authResourceType))
 	return nil
 }
