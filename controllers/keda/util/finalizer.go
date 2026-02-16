@@ -73,6 +73,6 @@ func FinalizeAuthenticationResource(ctx context.Context, logger logr.Logger, rec
 	}
 
 	logger.Info(fmt.Sprintf("Successfully finalized %s", authResourceType))
-	reconciler.Emit(authResource, nil, namespacedName, corev1.EventTypeNormal, cloudEventType, reason, action.Unknown, fmt.Sprintf("%s was deleted", authResourceType))
+	reconciler.Emit(authResource, nil, namespacedName, corev1.EventTypeNormal, cloudEventType, reason, action.Deleted, fmt.Sprintf("%s was deleted", authResourceType))
 	return nil
 }

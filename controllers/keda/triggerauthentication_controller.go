@@ -85,10 +85,10 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 	r.updatePromMetrics(triggerAuthentication, req.String())
 
 	if triggerAuthentication.Generation == 1 {
-		r.Emit(triggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationCreatedType, eventreason.TriggerAuthenticationAdded, action.Unknown, message.TriggerAuthenticationCreatedMsg)
+		r.Emit(triggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationCreatedType, eventreason.TriggerAuthenticationAdded, action.Created, message.TriggerAuthenticationCreatedMsg)
 	} else {
 		msg := fmt.Sprintf(message.TriggerAuthenticationUpdatedMsg, triggerAuthentication.Name)
-		r.Emit(triggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationUpdatedType, eventreason.TriggerAuthenticationUpdated, action.Unknown, msg)
+		r.Emit(triggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationUpdatedType, eventreason.TriggerAuthenticationUpdated, action.Updated, msg)
 	}
 
 	return ctrl.Result{}, nil

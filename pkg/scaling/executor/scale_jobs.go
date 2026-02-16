@@ -110,7 +110,7 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	if condition.IsUnknown() || condition.IsTrue() != isActive {
 		if isActive {
 			if !condition.IsTrue() {
-				e.recorder.Eventf(scaledJob, nil, corev1.EventTypeNormal, eventreason.ScaledJobActive, action.Unknown, "Scaling is performed because triggers are active")
+				e.recorder.Eventf(scaledJob, nil, corev1.EventTypeNormal, eventreason.ScaledJobActive, action.Active, "Scaling is performed because triggers are active")
 			}
 			if err := e.setActiveCondition(ctx, logger, scaledJob, metav1.ConditionTrue, "ScalerActive", "Scaling is performed because triggers are active"); err != nil {
 				logger.Error(err, "Error setting active condition when triggers are active")
@@ -118,7 +118,7 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 			}
 		} else {
 			if !condition.IsFalse() {
-				e.recorder.Eventf(scaledJob, nil, corev1.EventTypeNormal, eventreason.ScaledJobInactive, action.Unknown, "Scaling is not performed because triggers are not active")
+				e.recorder.Eventf(scaledJob, nil, corev1.EventTypeNormal, eventreason.ScaledJobInactive, action.Inactive, "Scaling is not performed because triggers are not active")
 			}
 			if err := e.setActiveCondition(ctx, logger, scaledJob, metav1.ConditionFalse, "ScalerNotActive", "Scaling is not performed because triggers are not active"); err != nil {
 				logger.Error(err, "Error setting active condition when triggers are not active")
@@ -168,12 +168,12 @@ func (e *scaleExecutor) createJobs(ctx context.Context, logger logr.Logger, scal
 		err := e.client.Create(ctx, job)
 		if err != nil {
 			logger.Error(err, "Failed to create a new Job")
-			e.recorder.Eventf(scaledJob, nil, corev1.EventTypeWarning, eventreason.KEDAJobCreateFailed, action.Unknown, "Failed to create job %s: %v", job.GenerateName, err)
+			e.recorder.Eventf(scaledJob, nil, corev1.EventTypeWarning, eventreason.KEDAJobCreateFailed, action.Failed, "Failed to create job %s: %v", job.GenerateName, err)
 		}
 	}
 
 	logger.Info("Created jobs", "Number of jobs", scaleTo)
-	e.recorder.Eventf(scaledJob, nil, corev1.EventTypeNormal, eventreason.KEDAJobsCreated, action.Unknown, "Created %d jobs", scaleTo)
+	e.recorder.Eventf(scaledJob, nil, corev1.EventTypeNormal, eventreason.KEDAJobsCreated, action.Created, "Created %d jobs", scaleTo)
 }
 
 func (e *scaleExecutor) generateJobs(logger logr.Logger, scaledJob *kedav1alpha1.ScaledJob, scaleTo int64) []*batchv1.Job {

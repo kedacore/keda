@@ -84,10 +84,10 @@ func (r *ClusterTriggerAuthenticationReconciler) Reconcile(ctx context.Context, 
 	r.updatePromMetrics(clusterTriggerAuthentication, req.String())
 
 	if clusterTriggerAuthentication.Generation == 1 {
-		r.Emit(clusterTriggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationCreatedType, eventreason.ClusterTriggerAuthenticationAdded, action.Unknown, message.ClusterTriggerAuthenticationCreatedMsg)
+		r.Emit(clusterTriggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationCreatedType, eventreason.ClusterTriggerAuthenticationAdded, action.Created, message.ClusterTriggerAuthenticationCreatedMsg)
 	} else {
 		msg := fmt.Sprintf(message.ClusterTriggerAuthenticationUpdatedMsg, clusterTriggerAuthentication.Name)
-		r.Emit(clusterTriggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationUpdatedType, eventreason.ClusterTriggerAuthenticationUpdated, action.Unknown, msg)
+		r.Emit(clusterTriggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationUpdatedType, eventreason.ClusterTriggerAuthenticationUpdated, action.Updated, msg)
 	}
 
 	return ctrl.Result{}, nil

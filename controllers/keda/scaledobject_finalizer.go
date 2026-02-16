@@ -89,7 +89,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 	}
 
 	logger.Info("Successfully finalized ScaledObject")
-	r.EventEmitter.Emit(scaledObject, nil, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectRemovedType, eventreason.ScaledObjectDeleted, action.Unknown, message.ScaledObjectRemoved)
+	r.EventEmitter.Emit(scaledObject, nil, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectRemovedType, eventreason.ScaledObjectDeleted, action.Deleted, message.ScaledObjectRemoved)
 	return nil
 }
 
