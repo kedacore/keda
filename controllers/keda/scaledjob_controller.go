@@ -24,18 +24,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
-	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
-	"github.com/kedacore/keda/v2/pkg/common/action"
-	"github.com/kedacore/keda/v2/pkg/common/message"
-	"github.com/kedacore/keda/v2/pkg/eventemitter"
-	"github.com/kedacore/keda/v2/pkg/eventreason"
-	"github.com/kedacore/keda/v2/pkg/metricscollector"
-	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
-	"github.com/kedacore/keda/v2/pkg/scaling"
-	kedastatus "github.com/kedacore/keda/v2/pkg/status"
-	"github.com/kedacore/keda/v2/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -48,6 +36,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
+	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	kedacontrollerutil "github.com/kedacore/keda/v2/controllers/keda/util"
+	"github.com/kedacore/keda/v2/pkg/common/action"
+	"github.com/kedacore/keda/v2/pkg/common/message"
+	"github.com/kedacore/keda/v2/pkg/eventemitter"
+	"github.com/kedacore/keda/v2/pkg/eventreason"
+	"github.com/kedacore/keda/v2/pkg/metricscollector"
+	"github.com/kedacore/keda/v2/pkg/scalers/authentication"
+	"github.com/kedacore/keda/v2/pkg/scaling"
+	kedastatus "github.com/kedacore/keda/v2/pkg/status"
+	"github.com/kedacore/keda/v2/pkg/util"
 )
 
 // +kubebuilder:rbac:groups=keda.sh,resources=scaledjobs;scaledjobs/finalizers;scaledjobs/status,verbs=get;list;watch;update;patch

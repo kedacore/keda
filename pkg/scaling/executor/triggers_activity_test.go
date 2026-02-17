@@ -20,13 +20,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
-	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
-	"github.com/kedacore/keda/v2/pkg/mock/mock_scale"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/events"
+
+	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
+	"github.com/kedacore/keda/v2/pkg/mock/mock_scale"
 )
 
 func TestDynamicTriggersActivityUpdates(t *testing.T) {
