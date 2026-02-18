@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -384,6 +385,33 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 			if triggerAuthSpec.BoundServiceAccountToken != nil {
 				for _, e := range triggerAuthSpec.BoundServiceAccountToken {
 					result[e.Parameter] = resolveBoundServiceAccountToken(ctx, client, logger, triggerNamespace, &e, authClientSet)
+				}
+			}
+			if triggerAuthSpec.OAuth2 != nil {
+				oauth2Config := triggerAuthSpec.OAuth2
+
+				clientSecretName := oauth2Config.ClientSecret.ValueFrom.SecretKeyRef.Name
+				clientSecretKey := oauth2Config.ClientSecret.ValueFrom.SecretKeyRef.Key
+				clientSecret := resolveAuthSecret(ctx, client, logger, clientSecretName,
+					triggerNamespace, clientSecretKey,
+					authClientSet.SecretLister)
+
+				result["oauthTokenURI"] = oauth2Config.TokenURL
+				result["clientID"] = oauth2Config.ClientID
+				result["clientSecret"] = clientSecret
+
+				// Convert scopes array to comma-separated string (for compatibility)
+				if len(oauth2Config.Scopes) > 0 {
+					result["scopes"] = strings.Join(oauth2Config.Scopes, ",")
+				}
+
+				// URL-encode additional token endpoint parameters
+				if len(oauth2Config.TokenURLParams) > 0 {
+					endpointParams := url.Values{}
+					for k, v := range oauth2Config.TokenURLParams {
+						endpointParams.Add(k, v)
+					}
+					result["endpointParams"] = endpointParams.Encode()
 				}
 			}
 		}
