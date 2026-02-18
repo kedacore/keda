@@ -39,20 +39,25 @@ import (
 // buildScalers returns list of Scalers for the specified triggers
 func (h *scaleHandler) buildScalers(ctx context.Context, withTriggers *kedav1alpha1.WithTriggers, podTemplateSpec *corev1.PodTemplateSpec, containerName string, asMetricSource bool) ([]cache.ScalerBuilder, error) {
 	logger := log.WithValues("type", withTriggers.Kind, "namespace", withTriggers.Namespace, "name", withTriggers.Name)
-	var err error
-	resolvedEnv := make(map[string]string)
 	result := make([]cache.ScalerBuilder, 0, len(withTriggers.Spec.Triggers))
 
 	for i, t := range withTriggers.Spec.Triggers {
 		triggerIndex, trigger := i, t
 
 		factory := func() (scalers.Scaler, *scalersconfig.ScalerConfig, error) {
+			// Resolve container environment each time factory is called to ensure we get
+			// fresh values, especially important for secret rotation and when refreshScaler
+			// reuses this factory closure. This is called once per trigger during initial
+			// build, and again when refreshScaler rebuilds scalers.
+			var resolvedEnv map[string]string
 			if podTemplateSpec != nil {
-				resolvedEnv, err = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.authClientSet.SecretLister)
-				if err != nil {
-					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %w", err)
+				var resolveErr error
+				resolvedEnv, resolveErr = resolver.ResolveContainerEnv(ctx, h.client, logger, &podTemplateSpec.Spec, containerName, withTriggers.Namespace, h.authClientSet.SecretLister)
+				if resolveErr != nil {
+					return nil, nil, fmt.Errorf("error resolving secrets for ScaleTarget: %w", resolveErr)
 				}
 			}
+
 			config := &scalersconfig.ScalerConfig{
 				ScalableObjectName:      withTriggers.Name,
 				ScalableObjectNamespace: withTriggers.Namespace,
