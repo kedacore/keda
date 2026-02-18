@@ -10,6 +10,7 @@ import (
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/common/action"
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
@@ -72,6 +73,6 @@ func FinalizeAuthenticationResource(ctx context.Context, logger logr.Logger, rec
 	}
 
 	logger.Info(fmt.Sprintf("Successfully finalized %s", authResourceType))
-	reconciler.Emit(authResource, namespacedName, corev1.EventTypeNormal, cloudEventType, reason, fmt.Sprintf("%s was deleted", authResourceType))
+	reconciler.Emit(authResource, nil, namespacedName, corev1.EventTypeNormal, cloudEventType, reason, action.Deleted, fmt.Sprintf("%s was deleted", authResourceType))
 	return nil
 }

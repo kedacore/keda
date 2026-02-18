@@ -97,6 +97,10 @@ New deprecation(s):
 
 ### Other
 
+- **General**: Implement generics in webhooks ([#7413](https://github.com/kedacore/keda/issues/7413))
+- **General**: Implement new events recorder ([#7413](https://github.com/kedacore/keda/issues/7413))
+- **General**: Update k8s.io dependencies to v0.35.1 ([#7413](https://github.com/kedacore/keda/issues/7413))
+- **General**: Update sigs.k8s.io/controller-runtime to v0.23.1 ([#7413](https://github.com/kedacore/keda/issues/7413))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ## v2.19.0

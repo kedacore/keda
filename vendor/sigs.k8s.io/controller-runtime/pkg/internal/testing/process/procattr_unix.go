@@ -1,5 +1,4 @@
 //go:build aix || darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris || zos
-// +build aix darwin dragonfly freebsd linux netbsd openbsd solaris zos
 
 /*
 Copyright 2023 The Kubernetes Authors.

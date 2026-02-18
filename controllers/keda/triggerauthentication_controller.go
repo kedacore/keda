@@ -31,6 +31,7 @@ import (
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/common/action"
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
@@ -84,10 +85,10 @@ func (r *TriggerAuthenticationReconciler) Reconcile(ctx context.Context, req ctr
 	r.updatePromMetrics(triggerAuthentication, req.String())
 
 	if triggerAuthentication.Generation == 1 {
-		r.Emit(triggerAuthentication, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationCreatedType, eventreason.TriggerAuthenticationAdded, message.TriggerAuthenticationCreatedMsg)
+		r.Emit(triggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationCreatedType, eventreason.TriggerAuthenticationAdded, action.Created, message.TriggerAuthenticationCreatedMsg)
 	} else {
 		msg := fmt.Sprintf(message.TriggerAuthenticationUpdatedMsg, triggerAuthentication.Name)
-		r.Emit(triggerAuthentication, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationUpdatedType, eventreason.TriggerAuthenticationUpdated, msg)
+		r.Emit(triggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.TriggerAuthenticationUpdatedType, eventreason.TriggerAuthenticationUpdated, action.Updated, msg)
 	}
 
 	return ctrl.Result{}, nil

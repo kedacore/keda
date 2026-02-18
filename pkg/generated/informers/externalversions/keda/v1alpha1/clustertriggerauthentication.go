@@ -56,7 +56,7 @@ func NewClusterTriggerAuthenticationInformer(client versioned.Interface, resyncP
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredClusterTriggerAuthenticationInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
@@ -81,7 +81,7 @@ func NewFilteredClusterTriggerAuthenticationInformer(client versioned.Interface,
 				}
 				return client.KedaV1alpha1().ClusterTriggerAuthentications().Watch(ctx, options)
 			},
-		},
+		}, client),
 		&apiskedav1alpha1.ClusterTriggerAuthentication{},
 		resyncPeriod,
 		indexers,

@@ -17,6 +17,7 @@ limitations under the License.
 package scalersconfig
 
 import (
+	"fmt"
 	"net/url"
 	"testing"
 	"time"
@@ -718,8 +719,11 @@ func (m *MockEventRecorder) Event(object runtime.Object, eventtype, reason, mess
 	m.Messages = append(m.Messages, message)
 }
 
-func (m *MockEventRecorder) Eventf(object runtime.Object, eventtype, reason, messageFmt string, args ...interface{}) {
-	// Not needed
+func (m *MockEventRecorder) Eventf(object, related runtime.Object, eventtype, reason, action, messageFmt string, args ...interface{}) {
+	msg := fmt.Sprintf(messageFmt, args...)
+	m.EventCalled = true
+	m.Message = msg
+	m.Messages = append(m.Messages, msg)
 }
 
 func (m *MockEventRecorder) AnnotatedEventf(object runtime.Object, annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{}) {

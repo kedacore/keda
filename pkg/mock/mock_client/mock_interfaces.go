@@ -337,6 +337,25 @@ func (m *MockStatusWriter) EXPECT() *MockStatusWriterMockRecorder {
 	return m.recorder
 }
 
+// Apply mocks base method.
+func (m *MockStatusWriter) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.SubResourceApplyOption) error {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, obj}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Apply", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Apply indicates an expected call of Apply.
+func (mr *MockStatusWriterMockRecorder) Apply(ctx, obj any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, obj}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Apply", reflect.TypeOf((*MockStatusWriter)(nil).Apply), varargs...)
+}
+
 // Create mocks base method.
 func (m *MockStatusWriter) Create(ctx context.Context, obj, subResource client.Object, opts ...client.SubResourceCreateOption) error {
 	m.ctrl.T.Helper()

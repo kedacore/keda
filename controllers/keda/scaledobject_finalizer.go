@@ -27,6 +27,7 @@ import (
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/controllers/keda/util"
+	"github.com/kedacore/keda/v2/pkg/common/action"
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
@@ -88,7 +89,7 @@ func (r *ScaledObjectReconciler) finalizeScaledObject(ctx context.Context, logge
 	}
 
 	logger.Info("Successfully finalized ScaledObject")
-	r.EventEmitter.Emit(scaledObject, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectRemovedType, eventreason.ScaledObjectDeleted, message.ScaledObjectRemoved)
+	r.EventEmitter.Emit(scaledObject, nil, scaledObject.Namespace, corev1.EventTypeWarning, eventingv1alpha1.ScaledObjectRemovedType, eventreason.ScaledObjectDeleted, action.Deleted, message.ScaledObjectRemoved)
 	return nil
 }
 

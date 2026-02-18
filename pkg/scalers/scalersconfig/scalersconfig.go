@@ -21,7 +21,7 @@ import (
 
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 )
@@ -75,7 +75,7 @@ type ScalerConfig struct {
 	AsMetricSource bool
 
 	// For events
-	Recorder record.EventRecorder
+	Recorder events.EventRecorder
 
 	// ScaledObject
 	ScaledObject runtime.Object

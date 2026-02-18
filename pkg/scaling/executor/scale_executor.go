@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/scale"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -54,11 +54,11 @@ type scaleExecutor struct {
 	scaleClient      scale.ScalesGetter
 	reconcilerScheme *runtime.Scheme
 	logger           logr.Logger
-	recorder         record.EventRecorder
+	recorder         events.EventRecorder
 }
 
 // NewScaleExecutor creates a ScaleExecutor object
-func NewScaleExecutor(client runtimeclient.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, recorder record.EventRecorder) ScaleExecutor {
+func NewScaleExecutor(client runtimeclient.Client, scaleClient scale.ScalesGetter, reconcilerScheme *runtime.Scheme, recorder events.EventRecorder) ScaleExecutor {
 	return &scaleExecutor{
 		client:           client,
 		scaleClient:      scaleClient,

@@ -31,6 +31,7 @@ import (
 
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
+	"github.com/kedacore/keda/v2/pkg/common/action"
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventemitter"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
@@ -83,10 +84,10 @@ func (r *ClusterTriggerAuthenticationReconciler) Reconcile(ctx context.Context, 
 	r.updatePromMetrics(clusterTriggerAuthentication, req.String())
 
 	if clusterTriggerAuthentication.Generation == 1 {
-		r.Emit(clusterTriggerAuthentication, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationCreatedType, eventreason.ClusterTriggerAuthenticationAdded, message.ClusterTriggerAuthenticationCreatedMsg)
+		r.Emit(clusterTriggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationCreatedType, eventreason.ClusterTriggerAuthenticationAdded, action.Created, message.ClusterTriggerAuthenticationCreatedMsg)
 	} else {
 		msg := fmt.Sprintf(message.ClusterTriggerAuthenticationUpdatedMsg, clusterTriggerAuthentication.Name)
-		r.Emit(clusterTriggerAuthentication, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationUpdatedType, eventreason.ClusterTriggerAuthenticationUpdated, msg)
+		r.Emit(clusterTriggerAuthentication, nil, req.Namespace, corev1.EventTypeNormal, eventingv1alpha1.ClusterTriggerAuthenticationUpdatedType, eventreason.ClusterTriggerAuthenticationUpdated, action.Updated, msg)
 	}
 
 	return ctrl.Result{}, nil

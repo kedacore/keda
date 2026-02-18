@@ -36,7 +36,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -58,7 +58,7 @@ const (
 type EventEmitter struct {
 	log                      logr.Logger
 	client                   client.Client
-	recorder                 record.EventRecorder
+	recorder                 events.EventRecorder
 	clusterName              string
 	eventHandlersCache       map[string]EventDataHandler
 	eventFilterCache         map[string]*EventFilter
@@ -73,7 +73,7 @@ type EventEmitter struct {
 type EventHandler interface {
 	DeleteCloudEventSource(cloudEventSource eventingv1alpha1.CloudEventSourceInterface) error
 	HandleCloudEventSource(ctx context.Context, cloudEventSource eventingv1alpha1.CloudEventSourceInterface) error
-	Emit(object runtime.Object, namespace string, eventType string, cloudeventType eventingv1alpha1.CloudEventType, reason string, message string)
+	Emit(object, related runtime.Object, namespace string, eventType string, cloudeventType eventingv1alpha1.CloudEventType, reason, action, message string)
 }
 
 // EventDataHandler defines the behavior for different event handlers
@@ -96,7 +96,7 @@ const (
 )
 
 // NewEventEmitter creates a new EventEmitter
-func NewEventEmitter(client client.Client, recorder record.EventRecorder, clusterName string, authClientSet *authentication.AuthClientSet) EventHandler {
+func NewEventEmitter(client client.Client, recorder events.EventRecorder, clusterName string, authClientSet *authentication.AuthClientSet) EventHandler {
 	return &EventEmitter{
 		log:                      logf.Log.WithName("event_emitter"),
 		client:                   client,
@@ -328,8 +328,8 @@ func (e *EventEmitter) checkEventHandlers(ctx context.Context, cloudEventSourceI
 }
 
 // Emit is emitting event to both local kubernetes and custom CloudEventSource handler. After emit event to local kubernetes, event will inqueue and waitng for handler's consuming.
-func (e *EventEmitter) Emit(object runtime.Object, namespace string, eventType string, cloudeventType eventingv1alpha1.CloudEventType, reason, message string) {
-	e.recorder.Event(object, eventType, reason, message)
+func (e *EventEmitter) Emit(object, related runtime.Object, namespace string, eventType string, cloudeventType eventingv1alpha1.CloudEventType, reason, action, message string) {
+	e.recorder.Eventf(object, related, eventType, reason, action, message)
 
 	e.eventHandlersCacheLock.RLock()
 	defer e.eventHandlersCacheLock.RUnlock()

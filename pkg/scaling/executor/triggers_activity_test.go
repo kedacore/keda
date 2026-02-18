@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
@@ -33,7 +33,7 @@ import (
 func TestDynamicTriggersActivityUpdates(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 
@@ -265,7 +265,7 @@ func TestDynamicTriggersActivityUpdates(t *testing.T) {
 func TestTriggersActivityStateTransitions(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := mock_client.NewMockClient(ctrl)
-	recorder := record.NewFakeRecorder(1)
+	recorder := events.NewFakeRecorder(1)
 	mockScaleClient := mock_scale.NewMockScalesGetter(ctrl)
 	statusWriter := mock_client.NewMockStatusWriter(ctrl)
 

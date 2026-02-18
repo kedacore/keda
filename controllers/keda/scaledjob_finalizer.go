@@ -25,6 +25,7 @@ import (
 	eventingv1alpha1 "github.com/kedacore/keda/v2/apis/eventing/v1alpha1"
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/controllers/keda/util"
+	"github.com/kedacore/keda/v2/pkg/common/action"
 	"github.com/kedacore/keda/v2/pkg/common/message"
 	"github.com/kedacore/keda/v2/pkg/eventreason"
 )
@@ -59,7 +60,7 @@ func (r *ScaledJobReconciler) finalizeScaledJob(ctx context.Context, logger logr
 	}
 
 	logger.Info("Successfully finalized ScaledJob")
-	r.EventEmitter.Emit(scaledJob, namespacedName, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobRemovedType, eventreason.ScaledJobDeleted, message.ScaledJobRemoved)
+	r.EventEmitter.Emit(scaledJob, nil, namespacedName, corev1.EventTypeWarning, eventingv1alpha1.ScaledJobRemovedType, eventreason.ScaledJobDeleted, action.Deleted, message.ScaledJobRemoved)
 	return nil
 }
 
