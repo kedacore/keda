@@ -46,6 +46,8 @@ require (
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0
 	github.com/DataDog/datadog-api-client-go v1.16.0
 	github.com/Huawei/gophercloud v1.0.21
+	github.com/akeylesslabs/akeyless-go-cloud-id v0.3.5
+	github.com/akeylesslabs/akeyless-go/v5 v5.0.14
 	github.com/IBM/sarama v1.46.3
 	github.com/InfluxCommunity/influxdb3-go/v2 v2.12.0
 	github.com/arangodb/go-driver v1.6.9
