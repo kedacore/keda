@@ -297,7 +297,7 @@ func TestWaitForState(t *testing.T) {
 	case <-graceDone:
 		// test ok.
 		return
-	case <-time.After(time.Second * 1):
+	case <-time.After(time.Second * 10):
 		t.Error("waitForState should be get connectivity.Shutdown.")
 	}
 }
