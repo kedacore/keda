@@ -191,6 +191,18 @@ var testRabbitMQAuthParamData = []parseRabbitMQAuthParamTestData{
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "http"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, false, rmqTLSDisable, true},
 	// failure, WorkloadIdentity not supported for amqp
 	{map[string]string{"queueName": "sample", "hostFromEnv": host, "protocol": "amqp"}, v1alpha1.AuthPodIdentity{Provider: v1alpha1.PodIdentityProviderAzureWorkload, IdentityID: kedautil.StringPointer("client-id")}, map[string]string{"workloadIdentityResource": "rabbitmq-resource-id"}, true, rmqTLSDisable, false},
+	// success, TLS with username but empty password (certificate-based auth)
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"tls": "enable", "username": "user", "password": "", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, rmqTLSEnable, false},
+	// success, TLS with username but no password field (certificate-based auth)
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"tls": "enable", "username": "user", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, rmqTLSEnable, false},
+	// success, TLS with username and password (TLS + basic auth)
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"tls": "enable", "username": "user", "password": "PASSWORD", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, rmqTLSEnable, false},
+	// success, TLS with only certificates (no username, certificate-based auth)
+	{map[string]string{"queueName": "sample", "hostFromEnv": host}, v1alpha1.AuthPodIdentity{}, map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, rmqTLSEnable, false},
+	// success, TLS with username from env but empty password (certificate-based auth)
+	{map[string]string{"queueName": "sample", "hostFromEnv": host, "usernameFromEnv": rabbitMQUsername}, v1alpha1.AuthPodIdentity{}, map[string]string{"tls": "enable", "password": "", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, rmqTLSEnable, false},
+	// success, TLS with username from env but no password field (certificate-based auth)
+	{map[string]string{"queueName": "sample", "hostFromEnv": host, "usernameFromEnv": rabbitMQUsername}, v1alpha1.AuthPodIdentity{}, map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, rmqTLSEnable, false},
 }
 var rabbitMQMetricIdentifiers = []rabbitMQMetricIdentifier{
 	{&testRabbitMQMetadata[1], 0, "s0-rabbitmq-sample"},
