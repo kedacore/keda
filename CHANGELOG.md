@@ -81,7 +81,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 ### Fixes
 
 - **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
-- **Redis Streams Scaler**: Handle missing Redis keys and consumer groups gracefully ([[#7447](https://github.com/kedacore/keda/issues/7447)])
+- **Redis Streams Scaler**: Handle missing Redis keys and consumer groups gracefully ([#7447](https://github.com/kedacore/keda/issues/7447))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Deprecations
