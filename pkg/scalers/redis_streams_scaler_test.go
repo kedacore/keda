@@ -2,6 +2,7 @@ package scalers
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
 
@@ -2075,4 +2076,121 @@ func TestActivityCount(t *testing.T) {
 
 		assert.Equal(t, isActive, true, "redis scaler should be active when lag is greater than activation")
 	})
+}
+
+func TestIsRedisKeyNotFoundError(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil error", nil, false},
+		{"exact redis message", fmt.Errorf("ERR no such key"), true},
+		{"valkey mixed-case variant", fmt.Errorf("ERR No Such Key"), true},
+		{"message embedded in longer string", fmt.Errorf("some prefix: err no such key (reading stream)"), true},
+		{"NOGROUP error (not a missing-key error)", fmt.Errorf("NOGROUP No such consumer group"), false},
+		{"unrelated error", fmt.Errorf("WRONGTYPE Operation against a key holding the wrong kind of value"), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, isRedisKeyNotFoundError(tc.err))
+		})
+	}
+}
+
+func TestIsRedisNoGroupError(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil error", nil, false},
+		{"standard NOGROUP message", fmt.Errorf("NOGROUP No such consumer group 'mygroup' for key name 'mystream'"), true},
+		{"lowercase nogroup", fmt.Errorf("nogroup consumer group not found"), true},
+		{"NOGROUP embedded in longer string", fmt.Errorf("ERR: NOGROUP -consumer group missing"), true},
+		{"no such key error (not a nogroup error)", fmt.Errorf("ERR no such key"), false},
+		{"unrelated error", fmt.Errorf("WRONGTYPE Operation against a key holding the wrong kind of value"), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, isRedisNoGroupError(tc.err))
+		})
+	}
+}
+
+// TestRedisStreamsGetMetricsAndActivityErrorPaths verifies that:
+// - a zero count from a missing key/group is treated as inactive with no error,
+// - a count above the activation threshold is active,
+// - a genuine redis error is propagated.
+func TestRedisStreamsGetMetricsAndActivityErrorPaths(t *testing.T) {
+	config := &scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"stream":              "my-stream",
+			"consumerGroup":       "my-group",
+			"pendingEntriesCount": "5",
+			"address":             "myredis:6379",
+		},
+		AuthParams:  map[string]string{},
+		ResolvedEnv: map[string]string{},
+	}
+	meta, err := parseRedisStreamsMetadata(config)
+	assert.NoError(t, err)
+
+	metricType, err := GetMetricTargetType(config)
+	assert.NoError(t, err)
+
+	logger := InitializeLogger(config, "redis_streams_scaler")
+	ctx := context.Background()
+
+	cases := []struct {
+		name          string
+		countFnReturn int64
+		countFnErr    error
+		wantActive    bool
+		wantErr       bool
+	}{
+		{
+			name:          "missing key or group (count=0, no error) → inactive, no error",
+			countFnReturn: 0,
+			countFnErr:    nil,
+			wantActive:    false,
+			wantErr:       false,
+		},
+		{
+			name:          "pending count above activation threshold (default 0) → active",
+			countFnReturn: 10,
+			countFnErr:    nil,
+			wantActive:    true,
+			wantErr:       false,
+		},
+		{
+			name:          "genuine redis error is propagated",
+			countFnReturn: -1,
+			countFnErr:    fmt.Errorf("WRONGTYPE Operation against a key"),
+			wantActive:    false,
+			wantErr:       true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			scaler := &redisStreamsScaler{
+				metricType: metricType,
+				metadata:   meta,
+				closeFn:    func() error { return nil },
+				getEntriesCountFn: func(_ context.Context) (int64, error) {
+					return tc.countFnReturn, tc.countFnErr
+				},
+				logger: logger,
+			}
+			metricSpec := scaler.GetMetricSpecForScaling(ctx)
+			metricName := metricSpec[0].External.Metric.Name
+			_, isActive, err := scaler.GetMetricsAndActivity(ctx, metricName)
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.wantActive, isActive)
+		})
+	}
 }

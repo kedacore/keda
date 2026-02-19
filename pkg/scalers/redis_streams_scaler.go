@@ -185,6 +185,10 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 		entriesCountFn = func(ctx context.Context) (int64, error) {
 			pendingEntries, err := client.XPending(ctx, meta.StreamName, meta.ConsumerGroupName).Result()
 			if err != nil {
+				// Stream key or consumer group doesn't exist yet — nothing to scale on.
+				if isRedisKeyNotFoundError(err) || isRedisNoGroupError(err) {
+					return 0, nil
+				}
 				return -1, err
 			}
 			return pendingEntries.Count, nil
@@ -237,7 +241,7 @@ func createEntriesCountFn(client redis.Cmdable, meta *redisStreamsMetadata) (ent
 
 			// If XINFO GROUPS can't find the stream key, it hasn't been created
 			// yet. In that case, we return a lag of 0.
-			if fmt.Sprint(err) == "ERR no such key" {
+			if isRedisKeyNotFoundError(err) {
 				return 0, nil
 			}
 
@@ -280,6 +284,20 @@ var (
 	// ErrRedisStreamParse is returned when missing parameters or parsing parameters error.
 	ErrRedisStreamParse = errors.New("error parsing redis stream metadata")
 )
+
+// isRedisKeyNotFoundError reports whether err indicates that a Redis key does
+// not exist. It uses substring matching to handle differences between Redis,
+// Valkey, and proxy-based deployments (e.g. ElastiCache serverless) that may
+// vary the exact error text.
+func isRedisKeyNotFoundError(err error) bool {
+	return err != nil && strings.Contains(strings.ToLower(err.Error()), "no such key")
+}
+
+// isRedisNoGroupError reports whether err indicates that a consumer group does
+// not exist on the stream yet.
+func isRedisNoGroupError(err error) bool {
+	return err != nil && strings.Contains(strings.ToUpper(err.Error()), "NOGROUP")
+}
 
 func parseRedisStreamsMetadata(config *scalersconfig.ScalerConfig) (*redisStreamsMetadata, error) {
 	meta := &redisStreamsMetadata{}
