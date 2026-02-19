@@ -229,7 +229,14 @@ func getTemporalClient(ctx context.Context, meta *temporalMetadata, log logr.Log
 
 	if meta.APIKey != "" {
 		options.Credentials = sdk.NewAPIKeyStaticCredentials(meta.APIKey)
-		tlsConfig = kedautil.CreateTLSClientConfig(meta.UnsafeSsl)
+		// When using API key auth, the Temporal SDK auto-enables TLS with
+		// the correct configuration for Temporal Cloud. Only set an explicit
+		// TLS config if the user provided custom TLS settings (certs, CA, or
+		// server name), otherwise let the SDK handle TLS automatically.
+		// See: https://github.com/temporalio/sdk-go/pull/2126
+		if meta.CA != "" || meta.TLSServerName != "" || meta.UnsafeSsl {
+			tlsConfig = kedautil.CreateTLSClientConfig(meta.UnsafeSsl)
+		}
 	}
 
 	if meta.Cert != "" && meta.Key != "" {
