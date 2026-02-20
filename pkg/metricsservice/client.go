@@ -27,6 +27,7 @@ import (
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/keepalive"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 	"k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 
@@ -69,6 +70,14 @@ func NewGrpcClient(ctx context.Context, url, certDir, authority, confOptions str
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(creds),
 		grpc.WithDefaultServiceConfig(confOptions),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                30 * time.Second, // Send keepalive pings every 30s
+			Timeout:             10 * time.Second, // Wait 10s for ping ack before considering connection dead
+			PermitWithoutStream: true,             // Send pings even without active RPCs
+		}),
+		grpc.WithConnectParams(grpc.ConnectParams{
+			MinConnectTimeout: 5 * time.Second,
+		}),
 	}
 
 	opts = append(
@@ -213,27 +222,35 @@ func (c *GrpcClient) GetRawMetricsStream(ctx context.Context, subscriber string)
 	return metricsChan, doneChan, nil
 }
 
-// WaitForConnectionReady waits for gRPC connection to be ready
-// returns true if the connection was successful, false if we hit a timeout from context
+// WaitForConnectionReady waits for the gRPC connection to reach the Ready state.
+// It uses WaitForStateChange to efficiently wait for state transitions rather than
+// busy-polling, which allows the gRPC transport to properly handle reconnection
+// with its built-in backoff logic.
+// Returns true if the connection is ready, false if the context is cancelled.
 func (c *GrpcClient) WaitForConnectionReady(ctx context.Context, logger logr.Logger) bool {
-	currentState := c.connection.GetState()
-	if currentState != connectivity.Ready {
-		logger.Info("Waiting for establishing a gRPC connection to KEDA Metrics Server")
-		for {
-			select {
-			case <-ctx.Done():
-				return false
-			default:
-				c.connection.Connect()
-				time.Sleep(500 * time.Millisecond)
-				currentState := c.connection.GetState()
-				if currentState == connectivity.Ready {
-					return true
-				}
-			}
+	for {
+		currentState := c.connection.GetState()
+		if currentState == connectivity.Ready {
+			return true
+		}
+
+		logger.Info("Waiting for establishing a gRPC connection to KEDA Metrics Server",
+			"currentState", currentState.String())
+
+		// Trigger a connection attempt if the connection is idle
+		if currentState == connectivity.Idle {
+			c.connection.Connect()
+		}
+
+		// Wait for the state to change or context to be cancelled.
+		// WaitForStateChange blocks until the connection transitions away from
+		// the given state, allowing gRPC's internal reconnection backoff to
+		// work properly instead of interfering with it via busy-polling.
+		if !c.connection.WaitForStateChange(ctx, currentState) {
+			// Context was cancelled
+			return false
 		}
 	}
-	return true
 }
 
 // GetServerURL returns url of the gRPC server this client is connected to
