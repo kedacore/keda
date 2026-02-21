@@ -76,6 +76,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
+- **General**: Use informer cache for ReplicaSet lookups in GetCurrentReplicas to reduce API server load ([#XXX](https://github.com/kedacore/keda/pull/XXX))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ### Fixes
