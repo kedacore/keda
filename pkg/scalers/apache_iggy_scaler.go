@@ -48,7 +48,8 @@ type apacheIggyMetadata struct {
 	ConsumerGroupID        string `keda:"name=consumerGroupId,        order=triggerMetadata"`
 	LagThreshold           int64  `keda:"name=lagThreshold,           order=triggerMetadata, default=10"`
 	ActivationLagThreshold int64  `keda:"name=activationLagThreshold, order=triggerMetadata, default=0"`
-	PartitionLimitation    []int  `keda:"name=partitionLimitation,    order=triggerMetadata, optional, range"`
+	PartitionLimitation      []int `keda:"name=partitionLimitation,      order=triggerMetadata, optional, range"`
+	LimitToPartitionsWithLag bool  `keda:"name=limitToPartitionsWithLag, order=triggerMetadata, optional"`
 
 	// Auth - username/password
 	Username string `keda:"name=username, order=authParams;resolvedEnv, optional"`
@@ -179,7 +180,7 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 		partitionLags = append(partitionLags, lag)
 	}
 
-	totalLag, isActive := calculateIggyLag(partitionLags, s.metadata.LagThreshold, s.metadata.ActivationLagThreshold)
+	totalLag, isActive := calculateIggyLag(partitionLags, s.metadata.LagThreshold, s.metadata.ActivationLagThreshold, s.metadata.LimitToPartitionsWithLag)
 
 	s.logger.V(1).Info("Found iggy consumer group lag",
 		"stream", s.metadata.StreamID,
@@ -202,20 +203,27 @@ func (s *apacheIggyScaler) Close(_ context.Context) error {
 }
 
 // calculateIggyLag computes total lag and activity from per-partition lags.
-// It caps total lag so that desiredReplicas never exceeds partition count.
-func calculateIggyLag(partitionLags []int64, lagThreshold, activationLagThreshold int64) (int64, bool) {
+// It caps total lag so that desiredReplicas never exceeds partition count
+// (or partitions-with-lag count when limitToPartitionsWithLag is true).
+func calculateIggyLag(partitionLags []int64, lagThreshold, activationLagThreshold int64, limitToPartitionsWithLag bool) (int64, bool) {
 	var totalLag int64
+	var partitionsWithLag int64
 	for _, lag := range partitionLags {
 		if lag > 0 {
 			totalLag += lag
+			partitionsWithLag++
 		}
 	}
 
 	isActive := totalLag > activationLagThreshold
 
-	partitionCount := int64(len(partitionLags))
-	if partitionCount > 0 && lagThreshold > 0 {
-		maxLag := partitionCount * lagThreshold
+	upperBound := int64(len(partitionLags))
+	if limitToPartitionsWithLag {
+		upperBound = partitionsWithLag
+	}
+
+	if upperBound > 0 && lagThreshold > 0 {
+		maxLag := upperBound * lagThreshold
 		if totalLag > maxLag {
 			totalLag = maxLag
 		}

@@ -182,12 +182,13 @@ func TestApacheIggyGetMetricSpecForScaling(t *testing.T) {
 }
 
 type apacheIggyLagTestData struct {
-	description    string
-	partitionLags  []int64
-	lagThreshold   int64
-	activationLag  int64
-	expectedMetric int64
-	expectedActive bool
+	description              string
+	partitionLags            []int64
+	lagThreshold             int64
+	activationLag            int64
+	limitToPartitionsWithLag bool
+	expectedMetric           int64
+	expectedActive           bool
 }
 
 var apacheIggyLagTestDataset = []apacheIggyLagTestData{
@@ -239,6 +240,24 @@ var apacheIggyLagTestDataset = []apacheIggyLagTestData{
 		expectedMetric: 0,
 		expectedActive: false,
 	},
+	{
+		description:              "limitToPartitionsWithLag caps to partitions with lag",
+		partitionLags:            []int64{50, 0, 50, 0, 0},
+		lagThreshold:             10,
+		activationLag:            0,
+		limitToPartitionsWithLag: true,
+		expectedMetric:           20, // 2 partitions with lag * 10 threshold
+		expectedActive:           true,
+	},
+	{
+		description:              "limitToPartitionsWithLag no lag",
+		partitionLags:            []int64{0, 0, 0},
+		lagThreshold:             10,
+		activationLag:            0,
+		limitToPartitionsWithLag: true,
+		expectedMetric:           0,
+		expectedActive:           false,
+	},
 }
 
 func TestApacheIggyCalculateLag(t *testing.T) {
@@ -248,6 +267,7 @@ func TestApacheIggyCalculateLag(t *testing.T) {
 				testData.partitionLags,
 				testData.lagThreshold,
 				testData.activationLag,
+				testData.limitToPartitionsWithLag,
 			)
 			if metric != testData.expectedMetric {
 				t.Errorf("expected metric %d, got %d", testData.expectedMetric, metric)
