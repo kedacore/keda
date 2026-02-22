@@ -547,7 +547,7 @@ func TestNewGitHubRunnerScaler_404(t *testing.T) {
 		t.Fail()
 	}
 
-	if !strings.HasSuffix(err.Error(), "404 response: not found") {
+	if !strings.HasSuffix(err.Error(), "status: 404") {
 		t.Fail()
 	}
 }

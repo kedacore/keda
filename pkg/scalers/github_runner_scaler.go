@@ -489,12 +489,7 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 	if err != nil {
 		return []byte{}, -1, err
 	}
-
-	b, err := io.ReadAll(r.Body)
-	if err != nil {
-		return []byte{}, -1, err
-	}
-	_ = r.Body.Close()
+	defer r.Body.Close()
 
 	if r.StatusCode != 200 {
 		if r.StatusCode == 304 && s.metadata.EnableEtags {
@@ -507,11 +502,17 @@ func (s *githubRunnerScaler) getGithubRequest(ctx context.Context, url string, m
 
 			if githubAPIRemaining == 0 {
 				resetTime, _ := strconv.ParseInt(r.Header.Get("X-RateLimit-Reset"), 10, 64)
+				_, _ = io.Copy(io.Discard, r.Body)
 				return []byte{}, r.StatusCode, fmt.Errorf("GitHub API rate limit exceeded, resets at %s", time.Unix(resetTime, 0))
 			}
 		}
+		_, _ = io.Copy(io.Discard, r.Body)
+		return []byte{}, r.StatusCode, fmt.Errorf("the GitHub REST API returned error. url: %s status: %d", url, r.StatusCode)
+	}
 
-		return []byte{}, r.StatusCode, fmt.Errorf("the GitHub REST API returned error. url: %s status: %d response: %s", url, r.StatusCode, string(b))
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
+		return []byte{}, -1, err
 	}
 
 	if s.metadata.EnableEtags {
