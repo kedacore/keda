@@ -51,7 +51,9 @@ type apacheIggyMetadata struct {
 	ActivationLagThreshold int64  `keda:"name=activationLagThreshold, order=triggerMetadata, default=0"`
 	PartitionLimitation      []int `keda:"name=partitionLimitation,      order=triggerMetadata, optional, range"`
 	LimitToPartitionsWithLag bool  `keda:"name=limitToPartitionsWithLag, order=triggerMetadata, optional"`
-	ExcludePersistentLag     bool  `keda:"name=excludePersistentLag,     order=triggerMetadata, optional"`
+	ExcludePersistentLag     bool              `keda:"name=excludePersistentLag,     order=triggerMetadata, optional"`
+	OffsetResetPolicy        offsetResetPolicy `keda:"name=offsetResetPolicy,        order=triggerMetadata, enum=earliest;latest, default=latest"`
+	ScaleToZeroOnInvalidOffset bool            `keda:"name=scaleToZeroOnInvalidOffset, order=triggerMetadata, optional"`
 
 	// Auth - username/password
 	Username string `keda:"name=username, order=authParams;resolvedEnv, optional"`
@@ -177,7 +179,19 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 		partitionID := i
 		offset, err := s.client.GetConsumerOffset(consumer, streamID, topicID, &partitionID)
 		if err != nil {
-			return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting offset for partition %d: %w", i, err)
+			// No committed offset — apply offset reset policy
+			s.logger.V(1).Info("No committed offset for partition, applying offset reset policy",
+				"partition", i, "policy", s.metadata.OffsetResetPolicy, "error", err)
+			retVal := int64(1)
+			if s.metadata.ScaleToZeroOnInvalidOffset {
+				retVal = 0
+			} else if s.metadata.OffsetResetPolicy == earliest {
+				// Can't determine full lag without offset info; use 1 as safe default
+				retVal = 1
+			}
+			partitionLags = append(partitionLags, retVal)
+			partitionLagsWithPersistent = append(partitionLagsWithPersistent, retVal)
+			continue
 		}
 
 		fullLag := max(int64(offset.CurrentOffset)-int64(offset.StoredOffset), 0)
