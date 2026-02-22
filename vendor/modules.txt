@@ -324,6 +324,13 @@ github.com/apache/arrow-go/v18/internal/bitutils
 github.com/apache/arrow-go/v18/internal/hashing
 github.com/apache/arrow-go/v18/internal/json
 github.com/apache/arrow-go/v18/internal/utils
+# github.com/apache/iggy/foreign/go v0.6.0
+## explicit; go 1.23.0
+github.com/apache/iggy/foreign/go/binary_serialization
+github.com/apache/iggy/foreign/go/contracts
+github.com/apache/iggy/foreign/go/errors
+github.com/apache/iggy/foreign/go/iggycli
+github.com/apache/iggy/foreign/go/tcp
 # github.com/apapsch/go-jsonmerge/v2 v2.0.0
 ## explicit; go 1.12
 github.com/apapsch/go-jsonmerge/v2

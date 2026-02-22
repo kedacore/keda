@@ -48,6 +48,7 @@ require (
 	github.com/Huawei/gophercloud v1.0.21
 	github.com/IBM/sarama v1.46.3
 	github.com/InfluxCommunity/influxdb3-go/v2 v2.12.0
+	github.com/apache/iggy/foreign/go v0.6.0
 	github.com/arangodb/go-driver v1.6.9
 	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4
 	github.com/aws/aws-sdk-go-v2 v1.41.1
