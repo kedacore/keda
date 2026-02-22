@@ -73,6 +73,16 @@ var parseApacheIggyMetadataTestDataset = []parseApacheIggyMetadataTestData{
 		"serverAddress": "localhost:8090", "streamId": "s", "topicId": "t",
 		"consumerGroupId": "g", "activationLagThreshold": "-1",
 	}, map[string]string{"accessToken": "tok"}, true},
+	// success - partitionLimitation with list
+	{map[string]string{
+		"serverAddress": "localhost:8090", "streamId": "s", "topicId": "t",
+		"consumerGroupId": "g", "partitionLimitation": "1,2,3",
+	}, map[string]string{"accessToken": "tok"}, false},
+	// success - partitionLimitation with range
+	{map[string]string{
+		"serverAddress": "localhost:8090", "streamId": "s", "topicId": "t",
+		"consumerGroupId": "g", "partitionLimitation": "1-4,8,10-12",
+	}, map[string]string{"accessToken": "tok"}, false},
 }
 
 func TestApacheIggyParseMetadata(t *testing.T) {
@@ -105,6 +115,32 @@ func TestApacheIggyDefaultValues(t *testing.T) {
 	}
 	if meta.ActivationLagThreshold != 0 {
 		t.Errorf("expected default activationLagThreshold 0, got %d", meta.ActivationLagThreshold)
+	}
+}
+
+func TestApacheIggyPartitionLimitation(t *testing.T) {
+	config := &scalersconfig.ScalerConfig{
+		TriggerMetadata: map[string]string{
+			"serverAddress":      "localhost:8090",
+			"streamId":           "s",
+			"topicId":            "t",
+			"consumerGroupId":    "g",
+			"partitionLimitation": "1,3,5-7",
+		},
+		AuthParams: map[string]string{"accessToken": "tok"},
+	}
+	meta, err := parseApacheIggyMetadata(config)
+	if err != nil {
+		t.Fatalf("expected success but got error: %v", err)
+	}
+	expected := []int{1, 3, 5, 6, 7}
+	if len(meta.PartitionLimitation) != len(expected) {
+		t.Fatalf("expected %d partitions, got %d", len(expected), len(meta.PartitionLimitation))
+	}
+	for i, v := range expected {
+		if meta.PartitionLimitation[i] != v {
+			t.Errorf("expected partition %d at index %d, got %d", v, i, meta.PartitionLimitation[i])
+		}
 	}
 }
 
