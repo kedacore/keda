@@ -182,98 +182,136 @@ func TestApacheIggyGetMetricSpecForScaling(t *testing.T) {
 }
 
 type apacheIggyLagTestData struct {
-	description              string
-	partitionLags            []int64
-	lagThreshold             int64
-	activationLag            int64
-	limitToPartitionsWithLag bool
-	expectedMetric           int64
-	expectedActive           bool
+	description                  string
+	partitionLags                []int64
+	partitionLagsWithPersistent  []int64 // nil means same as partitionLags
+	lagThreshold                 int64
+	activationLagThreshold       int64
+	limitToPartitionsWithLag     bool
+	expectedMetric               int64
+	expectedLagWithPersistent    int64
+	expectedActive               bool
 }
 
 var apacheIggyLagTestDataset = []apacheIggyLagTestData{
 	{
-		description:    "no lag, inactive",
-		partitionLags:  []int64{0, 0, 0},
-		lagThreshold:   10,
-		activationLag:  0,
-		expectedMetric: 0,
-		expectedActive: false,
+		description:               "no lag, inactive",
+		partitionLags:             []int64{0, 0, 0},
+		lagThreshold:              10,
+		activationLagThreshold:    0,
+		expectedMetric:            0,
+		expectedLagWithPersistent: 0,
+		expectedActive:            false,
 	},
 	{
-		description:    "some lag, active",
-		partitionLags:  []int64{5, 3, 2},
-		lagThreshold:   10,
-		activationLag:  0,
-		expectedMetric: 10,
-		expectedActive: true,
+		description:               "some lag, active",
+		partitionLags:             []int64{5, 3, 2},
+		lagThreshold:              10,
+		activationLagThreshold:    0,
+		expectedMetric:            10,
+		expectedLagWithPersistent: 10,
+		expectedActive:            true,
 	},
 	{
-		description:    "lag below activation threshold, inactive",
-		partitionLags:  []int64{2, 1, 0},
-		lagThreshold:   10,
-		activationLag:  5,
-		expectedMetric: 3,
-		expectedActive: false,
+		description:               "lag below activation threshold, inactive",
+		partitionLags:             []int64{2, 1, 0},
+		lagThreshold:              10,
+		activationLagThreshold:    5,
+		expectedMetric:            3,
+		expectedLagWithPersistent: 3,
+		expectedActive:            false,
 	},
 	{
-		description:    "lag exceeds partition cap",
-		partitionLags:  []int64{50, 50, 50},
-		lagThreshold:   10,
-		activationLag:  0,
-		expectedMetric: 30,
-		expectedActive: true,
+		description:               "lag exceeds partition cap",
+		partitionLags:             []int64{50, 50, 50},
+		lagThreshold:              10,
+		activationLagThreshold:    0,
+		expectedMetric:            30,
+		expectedLagWithPersistent: 150,
+		expectedActive:            true,
 	},
 	{
-		description:    "single partition with lag",
-		partitionLags:  []int64{7},
-		lagThreshold:   10,
-		activationLag:  0,
-		expectedMetric: 7,
-		expectedActive: true,
+		description:               "single partition with lag",
+		partitionLags:             []int64{7},
+		lagThreshold:              10,
+		activationLagThreshold:    0,
+		expectedMetric:            7,
+		expectedLagWithPersistent: 7,
+		expectedActive:            true,
 	},
 	{
-		description:    "zero partitions",
-		partitionLags:  []int64{},
-		lagThreshold:   10,
-		activationLag:  0,
-		expectedMetric: 0,
-		expectedActive: false,
+		description:               "zero partitions",
+		partitionLags:             []int64{},
+		lagThreshold:              10,
+		activationLagThreshold:    0,
+		expectedMetric:            0,
+		expectedLagWithPersistent: 0,
+		expectedActive:            false,
 	},
 	{
-		description:              "limitToPartitionsWithLag caps to partitions with lag",
-		partitionLags:            []int64{50, 0, 50, 0, 0},
-		lagThreshold:             10,
-		activationLag:            0,
-		limitToPartitionsWithLag: true,
-		expectedMetric:           20, // 2 partitions with lag * 10 threshold
-		expectedActive:           true,
+		description:               "limitToPartitionsWithLag caps to partitions with lag",
+		partitionLags:             []int64{50, 0, 50, 0, 0},
+		lagThreshold:              10,
+		activationLagThreshold:    0,
+		limitToPartitionsWithLag:  true,
+		expectedMetric:            20, // 2 partitions with lag * 10 threshold
+		expectedLagWithPersistent: 100,
+		expectedActive:            true,
 	},
 	{
-		description:              "limitToPartitionsWithLag no lag",
-		partitionLags:            []int64{0, 0, 0},
-		lagThreshold:             10,
-		activationLag:            0,
-		limitToPartitionsWithLag: true,
-		expectedMetric:           0,
-		expectedActive:           false,
+		description:               "limitToPartitionsWithLag no lag",
+		partitionLags:             []int64{0, 0, 0},
+		lagThreshold:              10,
+		activationLagThreshold:    0,
+		limitToPartitionsWithLag:  true,
+		expectedMetric:            0,
+		expectedLagWithPersistent: 0,
+		expectedActive:            false,
+	},
+	{
+		description:                 "excludePersistentLag - persistent partition excluded from scaling but counts for activation",
+		partitionLags:               []int64{0, 5, 3},            // lag=0 for stuck partition
+		partitionLagsWithPersistent: []int64{10, 5, 3},           // full lag includes stuck partition
+		lagThreshold:                10,
+		activationLagThreshold:      0,
+		expectedMetric:              8,
+		expectedLagWithPersistent:   18,
+		expectedActive:              true,
+	},
+	{
+		description:                 "excludePersistentLag - all partitions persistent, scale to zero but still active",
+		partitionLags:               []int64{0, 0, 0},
+		partitionLagsWithPersistent: []int64{10, 20, 30},
+		lagThreshold:                10,
+		activationLagThreshold:      0,
+		expectedMetric:              0,
+		expectedLagWithPersistent:   60,
+		expectedActive:              true,
 	},
 }
 
 func TestApacheIggyCalculateLag(t *testing.T) {
 	for _, testData := range apacheIggyLagTestDataset {
 		t.Run(testData.description, func(t *testing.T) {
-			metric, active := calculateIggyLag(
+			lagsWithPersistent := testData.partitionLagsWithPersistent
+			if lagsWithPersistent == nil {
+				lagsWithPersistent = testData.partitionLags
+			}
+			metric, lagWithPersistent := calculateIggyLag(
 				testData.partitionLags,
+				lagsWithPersistent,
 				testData.lagThreshold,
-				testData.activationLag,
 				testData.limitToPartitionsWithLag,
 			)
 			if metric != testData.expectedMetric {
 				t.Errorf("expected metric %d, got %d", testData.expectedMetric, metric)
 			}
-			if active != testData.expectedActive {
-				t.Errorf("expected active %v, got %v", testData.expectedActive, active)
+			if lagWithPersistent != testData.expectedLagWithPersistent {
+				t.Errorf("expected lagWithPersistent %d, got %d", testData.expectedLagWithPersistent, lagWithPersistent)
+			}
+			isActive := lagWithPersistent > testData.activationLagThreshold
+			if isActive != testData.expectedActive {
+				t.Errorf("expected active %v, got %v", testData.expectedActive, isActive)
 			}
 		})
 	}

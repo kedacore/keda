@@ -35,10 +35,11 @@ import (
 const apacheIggyMetricType = "External"
 
 type apacheIggyScaler struct {
-	metricType v2.MetricTargetType
-	metadata   *apacheIggyMetadata
-	client     iggycli.Client
-	logger     logr.Logger
+	metricType      v2.MetricTargetType
+	metadata        *apacheIggyMetadata
+	client          iggycli.Client
+	logger          logr.Logger
+	previousOffsets map[uint32]int64
 }
 
 type apacheIggyMetadata struct {
@@ -50,6 +51,7 @@ type apacheIggyMetadata struct {
 	ActivationLagThreshold int64  `keda:"name=activationLagThreshold, order=triggerMetadata, default=0"`
 	PartitionLimitation      []int `keda:"name=partitionLimitation,      order=triggerMetadata, optional, range"`
 	LimitToPartitionsWithLag bool  `keda:"name=limitToPartitionsWithLag, order=triggerMetadata, optional"`
+	ExcludePersistentLag     bool  `keda:"name=excludePersistentLag,     order=triggerMetadata, optional"`
 
 	// Auth - username/password
 	Username string `keda:"name=username, order=authParams;resolvedEnv, optional"`
@@ -127,6 +129,7 @@ func NewApacheIggyScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	s.client = client
+	s.previousOffsets = make(map[uint32]int64)
 	return s, nil
 }
 
@@ -163,6 +166,7 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 	partitionCount := topic.PartitionsCount
 	consumer := iggcon.NewGroupConsumer(groupID)
 	var partitionLags []int64
+	var partitionLagsWithPersistent []int64
 
 	for i := uint32(1); i <= partitionCount; i++ {
 		// Skip partitions not in the limitation list (if specified)
@@ -176,17 +180,35 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 			return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting offset for partition %d: %w", i, err)
 		}
 
-		lag := max(int64(offset.CurrentOffset)-int64(offset.StoredOffset), 0)
+		fullLag := max(int64(offset.CurrentOffset)-int64(offset.StoredOffset), 0)
+		lag := fullLag
+
+		if s.metadata.ExcludePersistentLag {
+			storedOffset := int64(offset.StoredOffset)
+			previousOffset, found := s.previousOffsets[partitionID]
+			if !found {
+				s.previousOffsets[partitionID] = storedOffset
+			} else if previousOffset == storedOffset {
+				// Consumer hasn't progressed — exclude this partition's lag from scaling
+				lag = 0
+			} else {
+				s.previousOffsets[partitionID] = storedOffset
+			}
+		}
+
 		partitionLags = append(partitionLags, lag)
+		partitionLagsWithPersistent = append(partitionLagsWithPersistent, fullLag)
 	}
 
-	totalLag, isActive := calculateIggyLag(partitionLags, s.metadata.LagThreshold, s.metadata.ActivationLagThreshold, s.metadata.LimitToPartitionsWithLag)
+	totalLag, totalLagWithPersistent := calculateIggyLag(partitionLags, partitionLagsWithPersistent, s.metadata.LagThreshold, s.metadata.LimitToPartitionsWithLag)
+	isActive := totalLagWithPersistent > s.metadata.ActivationLagThreshold
 
 	s.logger.V(1).Info("Found iggy consumer group lag",
 		"stream", s.metadata.StreamID,
 		"topic", s.metadata.TopicID,
 		"consumerGroup", s.metadata.ConsumerGroupID,
 		"totalLag", totalLag,
+		"totalLagWithPersistent", totalLagWithPersistent,
 		"partitionCount", partitionCount)
 
 	metric := GenerateMetricInMili(metricName, float64(totalLag))
@@ -202,10 +224,10 @@ func (s *apacheIggyScaler) Close(_ context.Context) error {
 	return nil
 }
 
-// calculateIggyLag computes total lag and activity from per-partition lags.
-// It caps total lag so that desiredReplicas never exceeds partition count
-// (or partitions-with-lag count when limitToPartitionsWithLag is true).
-func calculateIggyLag(partitionLags []int64, lagThreshold, activationLagThreshold int64, limitToPartitionsWithLag bool) (int64, bool) {
+// calculateIggyLag computes total lag from per-partition lags.
+// partitionLags may exclude persistent lag; partitionLagsWithPersistent always includes all lag.
+// Returns (totalLag, totalLagWithPersistent) where totalLag is capped for scaling.
+func calculateIggyLag(partitionLags, partitionLagsWithPersistent []int64, lagThreshold int64, limitToPartitionsWithLag bool) (int64, int64) {
 	var totalLag int64
 	var partitionsWithLag int64
 	for _, lag := range partitionLags {
@@ -215,7 +237,12 @@ func calculateIggyLag(partitionLags []int64, lagThreshold, activationLagThreshol
 		}
 	}
 
-	isActive := totalLag > activationLagThreshold
+	var totalLagWithPersistent int64
+	for _, lag := range partitionLagsWithPersistent {
+		if lag > 0 {
+			totalLagWithPersistent += lag
+		}
+	}
 
 	upperBound := int64(len(partitionLags))
 	if limitToPartitionsWithLag {
@@ -229,5 +256,5 @@ func calculateIggyLag(partitionLags []int64, lagThreshold, activationLagThreshol
 		}
 	}
 
-	return totalLag, isActive
+	return totalLag, totalLagWithPersistent
 }
