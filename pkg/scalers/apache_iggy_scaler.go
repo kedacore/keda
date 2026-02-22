@@ -48,6 +48,7 @@ type apacheIggyMetadata struct {
 	ConsumerGroupID        string `keda:"name=consumerGroupId,        order=triggerMetadata"`
 	LagThreshold           int64  `keda:"name=lagThreshold,           order=triggerMetadata, default=10"`
 	ActivationLagThreshold int64  `keda:"name=activationLagThreshold, order=triggerMetadata, default=0"`
+	PartitionLimitation    []int  `keda:"name=partitionLimitation,    order=triggerMetadata, optional, range"`
 
 	// Auth - username/password
 	Username string `keda:"name=username, order=authParams;resolvedEnv, optional"`
@@ -160,20 +161,22 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 
 	partitionCount := topic.PartitionsCount
 	consumer := iggcon.NewGroupConsumer(groupID)
-	partitionLags := make([]int64, partitionCount)
+	var partitionLags []int64
 
 	for i := uint32(1); i <= partitionCount; i++ {
+		// Skip partitions not in the limitation list (if specified)
+		if len(s.metadata.PartitionLimitation) > 0 && !kedautil.Contains(s.metadata.PartitionLimitation, int(i)) {
+			continue
+		}
+
 		partitionID := i
 		offset, err := s.client.GetConsumerOffset(consumer, streamID, topicID, &partitionID)
 		if err != nil {
 			return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting offset for partition %d: %w", i, err)
 		}
 
-		lag := int64(offset.CurrentOffset) - int64(offset.StoredOffset)
-		if lag < 0 {
-			lag = 0
-		}
-		partitionLags[i-1] = lag
+		lag := max(int64(offset.CurrentOffset)-int64(offset.StoredOffset), 0)
+		partitionLags = append(partitionLags, lag)
 	}
 
 	totalLag, isActive := calculateIggyLag(partitionLags, s.metadata.LagThreshold, s.metadata.ActivationLagThreshold)
