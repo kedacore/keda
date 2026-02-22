@@ -1,0 +1,19 @@
+Apache Iggy (Incubating)
+Copyright 2025 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+================================================================
+
+This product includes various dependencies and code components that are subject to separate copyright notices and license terms.
+Your use of these components is governed by their respective licenses.
+For a complete list of dependencies, including their licenses and repository links,
+please refer to the DEPENDENCIES file.
+
+================================================================
+
+The Iggy project code was originally created, designed, developed by Piotr Gankiewicz in April 2023.
+It was released as an open-source project under MIT License, later converted to Apache 2.0 License,
+and donated by LaserData, Inc. to the Apache Software Foundation (ASF) in February 2025.
+Copyright April 2023 - February 2025 Piotr Gankiewicz, LaserData, Inc.
