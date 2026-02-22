@@ -83,6 +83,26 @@ var parseApacheIggyMetadataTestDataset = []parseApacheIggyMetadataTestData{
 		"serverAddress": "localhost:8090", "streamId": "s", "topicId": "t",
 		"consumerGroupId": "g", "partitionLimitation": "1-4,8,10-12",
 	}, map[string]string{"accessToken": "tok"}, false},
+	// success - offsetResetPolicy=earliest
+	{map[string]string{
+		"serverAddress": "localhost:8090", "streamId": "s", "topicId": "t",
+		"consumerGroupId": "g", "offsetResetPolicy": "earliest",
+	}, map[string]string{"accessToken": "tok"}, false},
+	// success - offsetResetPolicy=latest
+	{map[string]string{
+		"serverAddress": "localhost:8090", "streamId": "s", "topicId": "t",
+		"consumerGroupId": "g", "offsetResetPolicy": "latest",
+	}, map[string]string{"accessToken": "tok"}, false},
+	// success - scaleToZeroOnInvalidOffset
+	{map[string]string{
+		"serverAddress": "localhost:8090", "streamId": "s", "topicId": "t",
+		"consumerGroupId": "g", "scaleToZeroOnInvalidOffset": "true",
+	}, map[string]string{"accessToken": "tok"}, false},
+	// failure - invalid offsetResetPolicy
+	{map[string]string{
+		"serverAddress": "localhost:8090", "streamId": "s", "topicId": "t",
+		"consumerGroupId": "g", "offsetResetPolicy": "invalid",
+	}, map[string]string{"accessToken": "tok"}, true},
 }
 
 func TestApacheIggyParseMetadata(t *testing.T) {
@@ -115,6 +135,12 @@ func TestApacheIggyDefaultValues(t *testing.T) {
 	}
 	if meta.ActivationLagThreshold != 0 {
 		t.Errorf("expected default activationLagThreshold 0, got %d", meta.ActivationLagThreshold)
+	}
+	if meta.OffsetResetPolicy != latest {
+		t.Errorf("expected default offsetResetPolicy 'latest', got %q", meta.OffsetResetPolicy)
+	}
+	if meta.ScaleToZeroOnInvalidOffset {
+		t.Errorf("expected default scaleToZeroOnInvalidOffset false, got true")
 	}
 }
 
