@@ -1,4 +1,3 @@
-# .github/workflows/build-custom.yaml
 name: Build Custom KEDA Image
 
 on:
