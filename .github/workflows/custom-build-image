@@ -3,7 +3,8 @@ name: Build Custom KEDA Image
 
 on:
   push:
-    branches: [feature/temporal-scaler-composite-metric]
+    branches:
+    - feature/temporal-scaler-composite-metric
 
 jobs:
   build:
