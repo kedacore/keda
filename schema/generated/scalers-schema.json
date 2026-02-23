@@ -3083,6 +3083,16 @@
                     "name": "aggregate",
                     "type": "string",
                     "default": "namespace",
+                    "allowedValue": [
+                        "cluster",
+                        "node",
+                        "namespace",
+                        "controllerKind",
+                        "controller",
+                        "service",
+                        "pod",
+                        "container"
+                    ],
                     "metadataVariableReadable": true
                 },
                 {
@@ -3106,6 +3116,14 @@
                     "name": "costType",
                     "type": "string",
                     "default": "totalCost",
+                    "allowedValue": [
+                        "totalCost",
+                        "cpuCost",
+                        "gpuCost",
+                        "ramCost",
+                        "pvCost",
+                        "networkCost"
+                    ],
                     "metadataVariableReadable": true
                 },
                 {

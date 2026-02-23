@@ -59,7 +59,7 @@ type openCostScalerMetadata struct {
 	// Window for cost query (e.g., "1h", "24h", "7d")
 	Window string `keda:"name=window,order=triggerMetadata,default=1h"`
 	// Aggregate by: cluster, node, namespace, controllerKind, controller, service, pod, container
-	Aggregate string `keda:"name=aggregate,order=triggerMetadata,default=namespace"`
+	Aggregate string `keda:"name=aggregate,order=triggerMetadata,enum=cluster;node;namespace;controllerKind;controller;service;pod;container,default=namespace"`
 	// Filter to apply (e.g., namespace name, pod name)
 	Filter string `keda:"name=filter,order=triggerMetadata,optional"`
 	// Cost threshold in dollars - with inverse scaling (default), scale down when cost exceeds this
@@ -67,7 +67,7 @@ type openCostScalerMetadata struct {
 	// Activation cost threshold - scaler becomes active when cost exceeds this
 	ActivationCostThreshold float64 `keda:"name=activationCostThreshold,order=triggerMetadata,default=0"`
 	// Cost type: totalCost, cpuCost, gpuCost, ramCost, pvCost, networkCost
-	CostType string `keda:"name=costType,order=triggerMetadata,default=totalCost"`
+	CostType string `keda:"name=costType,order=triggerMetadata,enum=totalCost;cpuCost;gpuCost;ramCost;pvCost;networkCost,default=totalCost"`
 	// Whether to use unsafe SSL
 	UnsafeSsl bool `keda:"name=unsafeSsl,order=triggerMetadata,default=false"`
 	// Inverse scaling: when true (default), scale DOWN when costs are high to reduce expenses.
@@ -82,34 +82,6 @@ func (m *openCostScalerMetadata) Validate() error {
 	// Validate cost threshold
 	if m.CostThreshold <= 0 && !m.asMetricSource {
 		return fmt.Errorf("costThreshold must be a positive number")
-	}
-
-	// Validate cost type
-	validCostTypes := map[string]bool{
-		"totalCost":   true,
-		"cpuCost":     true,
-		"gpuCost":     true,
-		"ramCost":     true,
-		"pvCost":      true,
-		"networkCost": true,
-	}
-	if !validCostTypes[m.CostType] {
-		return fmt.Errorf("invalid costType: %s. Valid options: totalCost, cpuCost, gpuCost, ramCost, pvCost, networkCost", m.CostType)
-	}
-
-	// Validate aggregate
-	validAggregates := map[string]bool{
-		"cluster":        true,
-		"node":           true,
-		"namespace":      true,
-		"controllerKind": true,
-		"controller":     true,
-		"service":        true,
-		"pod":            true,
-		"container":      true,
-	}
-	if !validAggregates[m.Aggregate] {
-		return fmt.Errorf("invalid aggregate: %s. Valid options: cluster, node, namespace, controllerKind, controller, service, pod, container", m.Aggregate)
 	}
 
 	return nil

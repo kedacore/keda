@@ -169,10 +169,10 @@ func testScaling(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 
 	// Test 2: With very low activation threshold, should activate and scale
-	// Any cluster will have some cost > 0, so threshold of 0.0001 should trigger
+	// Any cluster will have some cost > 0, so threshold of 1 should trigger
 	t.Log("--- testing scale out with low threshold ---")
-	data.ActivationCostThreshold = "0.0001"
-	data.CostThreshold = "0.0001"
+	data.ActivationCostThreshold = "1"
+	data.CostThreshold = "1"
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 120, 3),
 		"replica count should be %d after scaling", maxReplicaCount)

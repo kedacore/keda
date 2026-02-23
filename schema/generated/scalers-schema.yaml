@@ -2011,6 +2011,15 @@ scalers:
         - name: aggregate
           type: string
           default: namespace
+          allowedValue:
+            - cluster
+            - node
+            - namespace
+            - controllerKind
+            - controller
+            - service
+            - pod
+            - container
           metadataVariableReadable: true
         - name: filter
           type: string
@@ -2026,6 +2035,13 @@ scalers:
         - name: costType
           type: string
           default: totalCost
+          allowedValue:
+            - totalCost
+            - cpuCost
+            - gpuCost
+            - ramCost
+            - pvCost
+            - networkCost
           metadataVariableReadable: true
         - name: unsafeSsl
           type: string
