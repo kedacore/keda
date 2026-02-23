@@ -9,7 +9,6 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -23,27 +22,101 @@ const (
 )
 
 var (
-	testNamespace       = fmt.Sprintf("%s-ns", testName)
-	deploymentName      = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName    = fmt.Sprintf("%s-so", testName)
-	opencostReleaseName = fmt.Sprintf("%s-opencost", testName)
-	opencostEndpoint    = fmt.Sprintf("http://%s.%s.svc.cluster.local:9003", opencostReleaseName, testNamespace)
-	minReplicaCount     = 0
-	maxReplicaCount     = 2
+	testNamespace        = fmt.Sprintf("%s-ns", testName)
+	deploymentName       = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName     = fmt.Sprintf("%s-so", testName)
+	mockServerName       = fmt.Sprintf("%s-mock-server", testName)
+	mockServerConfigMap  = fmt.Sprintf("%s-mock-config", testName)
+	mockServerEndpoint   = fmt.Sprintf("http://%s.%s.svc.cluster.local:9003", mockServerName, testNamespace)
+	minReplicaCount      = 0
+	maxReplicaCount      = 2
 )
 
 type templateData struct {
 	TestNamespace           string
 	DeploymentName          string
 	ScaledObjectName        string
+	MockServerName          string
+	MockServerConfigMap     string
 	OpenCostEndpoint        string
 	MinReplicaCount         int
 	MaxReplicaCount         int
 	CostThreshold           string
 	ActivationCostThreshold string
+	MockCostValue           string
 }
 
 const (
+	// Mock server ConfigMap with nginx config to return OpenCost-like responses
+	mockServerConfigMapTemplate = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{.MockServerConfigMap}}
+  namespace: {{.TestNamespace}}
+data:
+  nginx.conf: |
+    events {
+      worker_connections 1024;
+    }
+    http {
+      server {
+        listen 9003;
+        location /allocation {
+          default_type application/json;
+          return 200 '{"code":200,"status":"success","data":[{"test-namespace":{"name":"test-namespace","properties":{"cluster":"test","namespace":"test-namespace"},"window":{"start":"2024-01-01T00:00:00Z","end":"2024-01-02T00:00:00Z"},"start":"2024-01-01T00:00:00Z","end":"2024-01-02T00:00:00Z","cpuCost":10.5,"gpuCost":0,"ramCost":5.25,"pvCost":2.0,"networkCost":1.25,"totalCost":19.0}}]}';
+        }
+        location /health {
+          return 200 'OK';
+        }
+      }
+    }
+`
+
+	mockServerDeploymentTemplate = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.MockServerName}}
+  namespace: {{.TestNamespace}}
+  labels:
+    app: {{.MockServerName}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{.MockServerName}}
+  template:
+    metadata:
+      labels:
+        app: {{.MockServerName}}
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 9003
+        volumeMounts:
+        - name: config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+      volumes:
+      - name: config
+        configMap:
+          name: {{.MockServerConfigMap}}
+`
+
+	mockServerServiceTemplate = `apiVersion: v1
+kind: Service
+metadata:
+  name: {{.MockServerName}}
+  namespace: {{.TestNamespace}}
+spec:
+  selector:
+    app: {{.MockServerName}}
+  ports:
+  - port: 9003
+    targetPort: 9003
+`
+
 	deploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -100,79 +173,43 @@ func TestOpenCostScaler(t *testing.T) {
 	kc := GetKubernetesClient(t)
 	data, templates := getTemplateData()
 
-	// Install OpenCost using Helm
-	installOpenCost(t, kc)
+	CreateNamespace(t, kc, testNamespace)
 
-	// Create test resources
+	// Create test resources (including mock server)
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
 
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 180, 3),
-		"replica count should be %d after 3 minutes", minReplicaCount)
+	// Wait for mock server to be ready
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, mockServerName, testNamespace, 1, 60, 3),
+		"mock server should be ready")
 
-	// test scaling based on OpenCost metrics
-	// OpenCost will report actual cluster costs, so we test with very high thresholds
-	// to ensure the scaler is working correctly
+	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, minReplicaCount, 60, 3),
+		"replica count should be %d after 1 minute", minReplicaCount)
+
+	// test scaling based on mock OpenCost metrics
 	testScaling(t, kc, data)
 
 	// cleanup
 	DeleteKubernetesResources(t, testNamespace, data, templates)
-	uninstallOpenCost(t)
-}
-
-func installOpenCost(t *testing.T, kc *kubernetes.Clientset) {
-	t.Log("--- installing OpenCost ---")
-	CreateNamespace(t, kc, testNamespace)
-
-	// Add OpenCost Helm repo
-	_, err := ExecuteCommand("helm repo add opencost https://opencost.github.io/opencost-helm-chart")
-	require.NoErrorf(t, err, "cannot add opencost helm repo - %s", err)
-
-	_, err = ExecuteCommand("helm repo update")
-	require.NoErrorf(t, err, "cannot update helm repos - %s", err)
-
-	// Install OpenCost with minimal configuration for testing
-	// Disable Prometheus since we just need the API endpoint
-	_, err = ExecuteCommand(fmt.Sprintf(
-		`helm install --wait --timeout 300s %s opencost/opencost --namespace %s `+
-			`--set opencost.prometheus.internal.enabled=false `+
-			`--set opencost.prometheus.external.enabled=false `+
-			`--set opencost.ui.enabled=false`,
-		opencostReleaseName,
-		testNamespace))
-	require.NoErrorf(t, err, "cannot install opencost - %s", err)
-
-	// Wait for OpenCost to be ready
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, opencostReleaseName, testNamespace, 1, 120, 3),
-		"opencost deployment should be ready")
-}
-
-func uninstallOpenCost(t *testing.T) {
-	t.Log("--- uninstalling OpenCost ---")
-	_, err := ExecuteCommand(fmt.Sprintf(
-		`helm uninstall --wait --timeout 120s %s --namespace %s`,
-		opencostReleaseName,
-		testNamespace))
-	assert.NoErrorf(t, err, "cannot uninstall opencost - %s", err)
 	DeleteNamespace(t, testNamespace)
 }
 
 func testScaling(t *testing.T, kc *kubernetes.Clientset, data templateData) {
 	t.Log("--- testing scaling ---")
 
-	// Test 1: With very high activation threshold, should NOT activate
-	// OpenCost will report some cost (even if minimal), but with threshold of 999999
-	// it should not trigger scaling
+	// The mock server returns totalCost of 19.0
+	// Test 1: With very high activation threshold (999999), should NOT activate
+	// since 19.0 < 999999
 	t.Log("--- testing no activation with high threshold ---")
 	data.ActivationCostThreshold = "999999"
 	data.CostThreshold = "999999"
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, minReplicaCount, 60)
 
-	// Test 2: With very low activation threshold, should activate and scale
-	// Any cluster will have some cost > 0, so threshold of 1 should trigger
+	// Test 2: With low activation threshold (10), should activate and scale
+	// since 19.0 > 10
 	t.Log("--- testing scale out with low threshold ---")
-	data.ActivationCostThreshold = "1"
-	data.CostThreshold = "1"
+	data.ActivationCostThreshold = "10"
+	data.CostThreshold = "10"
 	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, maxReplicaCount, 120, 3),
 		"replica count should be %d after scaling", maxReplicaCount)
@@ -191,12 +228,17 @@ func getTemplateData() (templateData, []Template) {
 			TestNamespace:           testNamespace,
 			DeploymentName:          deploymentName,
 			ScaledObjectName:        scaledObjectName,
-			OpenCostEndpoint:        opencostEndpoint,
+			MockServerName:          mockServerName,
+			MockServerConfigMap:     mockServerConfigMap,
+			OpenCostEndpoint:        mockServerEndpoint,
 			MinReplicaCount:         minReplicaCount,
 			MaxReplicaCount:         maxReplicaCount,
 			CostThreshold:           "999999",
 			ActivationCostThreshold: "999999",
 		}, []Template{
+			{Name: "mockServerConfigMapTemplate", Config: mockServerConfigMapTemplate},
+			{Name: "mockServerDeploymentTemplate", Config: mockServerDeploymentTemplate},
+			{Name: "mockServerServiceTemplate", Config: mockServerServiceTemplate},
 			{Name: "deploymentTemplate", Config: deploymentTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
