@@ -30,4 +30,4 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/atlanhq/keda:2.18.3-temporal-composite
+          tags: ghcr.io/atlanhq/keda:2.18.3-temporal-composite-${{ github.sha }} 
