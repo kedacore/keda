@@ -82,6 +82,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 - **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
 - **GCP Scaler**: Validate Pub/Sub resource name in BuildMQLQuery ([#7468](https://github.com/kedacore/keda/pull/7468))
+- **Solr Scaler**: Use net/url to safely encode query parameters ([#7467](https://github.com/kedacore/keda/pull/7467))
 
 ### Deprecations
 
