@@ -20,13 +20,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
-	v2 "k8s.io/api/autoscaling/v2"
-	"k8s.io/metrics/pkg/apis/external_metrics"
-
 	iggcon "github.com/apache/iggy/foreign/go/contracts"
 	"github.com/apache/iggy/foreign/go/iggycli"
 	"github.com/apache/iggy/foreign/go/tcp"
+	"github.com/go-logr/logr"
+	v2 "k8s.io/api/autoscaling/v2"
+	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
@@ -40,6 +39,10 @@ type apacheIggyScaler struct {
 	client          iggycli.Client
 	logger          logr.Logger
 	previousOffsets map[uint32]int64
+	streamID        iggcon.Identifier
+	topicID         iggcon.Identifier
+	consumer        iggcon.Consumer
+	cancel          context.CancelFunc
 }
 
 type apacheIggyMetadata struct {
@@ -119,10 +122,37 @@ func NewApacheIggyScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 	s.metadata = meta
 
+	// Cache identifiers — these are immutable value types derived from constant metadata
+	streamID, err := iggcon.NewIdentifier(meta.StreamID)
+	if err != nil {
+		return nil, fmt.Errorf("error creating stream identifier: %w", err)
+	}
+	s.streamID = streamID
+
+	topicID, err := iggcon.NewIdentifier(meta.TopicID)
+	if err != nil {
+		return nil, fmt.Errorf("error creating topic identifier: %w", err)
+	}
+	s.topicID = topicID
+
+	groupID, err := iggcon.NewIdentifier(meta.ConsumerGroupID)
+	if err != nil {
+		return nil, fmt.Errorf("error creating consumer group identifier: %w", err)
+	}
+	s.consumer = iggcon.NewGroupConsumer(groupID)
+
+	// Use a cancellable context so Close() can stop the SDK's heartbeat goroutine
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+
 	client, err := iggycli.NewIggyClient(
-		iggycli.WithTcp(tcp.WithServerAddress(meta.ServerAddress)),
+		iggycli.WithTcp(
+			tcp.WithServerAddress(meta.ServerAddress),
+			tcp.WithContext(ctx),
+		),
 	)
 	if err != nil {
+		cancel()
 		return nil, fmt.Errorf("error creating iggy client: %w", err)
 	}
 
@@ -132,6 +162,7 @@ func NewApacheIggyScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		_, err = client.LoginUser(meta.Username, meta.Password)
 	}
 	if err != nil {
+		cancel()
 		return nil, fmt.Errorf("error authenticating with iggy: %w", err)
 	}
 
@@ -143,7 +174,7 @@ func NewApacheIggyScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 func (s *apacheIggyScaler) GetMetricSpecForScaling(_ context.Context) []v2.MetricSpec {
 	externalMetric := &v2.ExternalMetricSource{
 		Metric: v2.MetricIdentifier{
-			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("iggy-%s-%s", s.metadata.StreamID, s.metadata.TopicID))),
+			Name: GenerateMetricNameWithIndex(s.metadata.TriggerIndex, kedautil.NormalizeString(fmt.Sprintf("iggy-%s-%s-%s", s.metadata.StreamID, s.metadata.TopicID, s.metadata.ConsumerGroupID))),
 		},
 		Target: GetMetricTarget(s.metricType, s.metadata.LagThreshold),
 	}
@@ -152,28 +183,14 @@ func (s *apacheIggyScaler) GetMetricSpecForScaling(_ context.Context) []v2.Metri
 }
 
 func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName string) ([]external_metrics.ExternalMetricValue, bool, error) {
-	streamID, err := iggcon.NewIdentifier(s.metadata.StreamID)
-	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error creating stream identifier: %w", err)
-	}
-	topicID, err := iggcon.NewIdentifier(s.metadata.TopicID)
-	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error creating topic identifier: %w", err)
-	}
-	groupID, err := iggcon.NewIdentifier(s.metadata.ConsumerGroupID)
-	if err != nil {
-		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error creating consumer group identifier: %w", err)
-	}
-
-	topic, err := s.client.GetTopic(streamID, topicID)
+	topic, err := s.client.GetTopic(s.streamID, s.topicID)
 	if err != nil {
 		return []external_metrics.ExternalMetricValue{}, false, fmt.Errorf("error getting topic: %w", err)
 	}
 
 	partitionCount := topic.PartitionsCount
-	consumer := iggcon.NewGroupConsumer(groupID)
-	var partitionLags []int64
-	var partitionLagsWithPersistent []int64
+	partitionLags := make([]int64, 0, partitionCount)
+	partitionLagsWithPersistent := make([]int64, 0, partitionCount)
 
 	for i := uint32(1); i <= partitionCount; i++ {
 		// Skip partitions not in the limitation list (if specified)
@@ -182,18 +199,21 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 		}
 
 		partitionID := i
-		offset, err := s.client.GetConsumerOffset(consumer, streamID, topicID, &partitionID)
+		offset, err := s.client.GetConsumerOffset(s.consumer, s.streamID, s.topicID, &partitionID)
 		if err != nil {
-			// No committed offset — apply offset reset policy
-			s.logger.V(1).Info("No committed offset for partition, applying offset reset policy",
+			// All GetConsumerOffset errors are treated as "no committed offset" because
+			// the Iggy SDK does not expose typed errors to distinguish missing offsets
+			// from transient failures (network, auth, etc.) in this path.
+			s.logger.V(1).Info("Error fetching consumer offset, treating as no committed offset",
 				"partition", i, "policy", s.metadata.OffsetResetPolicy, "error", err)
 			retVal := int64(1)
 			if s.metadata.ScaleToZeroOnInvalidOffset {
 				retVal = 0
-			} else if s.metadata.OffsetResetPolicy == earliest {
-				// Can't determine full lag without offset info; use 1 as safe default
-				retVal = 1
 			}
+			// Note: when offsetResetPolicy=earliest, the ideal behavior is to return the
+			// partition's latest offset as lag (like Kafka). However, when GetConsumerOffset
+			// errors, CurrentOffset is unavailable, so we fall back to retVal=1 as a safe
+			// default that keeps one replica alive.
 			partitionLags = append(partitionLags, retVal)
 			partitionLagsWithPersistent = append(partitionLagsWithPersistent, retVal)
 			continue
@@ -205,12 +225,12 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 		if s.metadata.ExcludePersistentLag {
 			storedOffset := int64(offset.StoredOffset)
 			previousOffset, found := s.previousOffsets[partitionID]
-			if !found {
+			switch {
+			case !found:
 				s.previousOffsets[partitionID] = storedOffset
-			} else if previousOffset == storedOffset {
-				// Consumer hasn't progressed — exclude this partition's lag from scaling
+			case previousOffset == storedOffset:
 				lag = 0
-			} else {
+			default:
 				s.previousOffsets[partitionID] = storedOffset
 			}
 		}
@@ -239,6 +259,10 @@ func (s *apacheIggyScaler) Close(_ context.Context) error {
 		if err := s.client.LogoutUser(); err != nil {
 			s.logger.V(1).Info("Error logging out from iggy", "error", err)
 		}
+	}
+	// Cancel the context to stop the SDK's heartbeat goroutine and release the TCP connection
+	if s.cancel != nil {
+		s.cancel()
 	}
 	return nil
 }

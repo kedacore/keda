@@ -182,9 +182,9 @@ type apacheIggyMetricIdentifier struct {
 }
 
 var apacheIggyMetricIdentifiers = []apacheIggyMetricIdentifier{
-	{&parseApacheIggyMetadataTestDataset[0], 0, "s0-iggy-test-stream-test-topic"},
-	{&parseApacheIggyMetadataTestDataset[0], 1, "s1-iggy-test-stream-test-topic"},
-	{&parseApacheIggyMetadataTestDataset[1], 0, "s0-iggy-test-stream-test-topic"},
+	{&parseApacheIggyMetadataTestDataset[0], 0, "s0-iggy-test-stream-test-topic-test-group"},
+	{&parseApacheIggyMetadataTestDataset[0], 1, "s1-iggy-test-stream-test-topic-test-group"},
+	{&parseApacheIggyMetadataTestDataset[1], 0, "s0-iggy-test-stream-test-topic-test-group"},
 }
 
 func TestApacheIggyGetMetricSpecForScaling(t *testing.T) {
