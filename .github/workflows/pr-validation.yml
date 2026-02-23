@@ -42,63 +42,88 @@ jobs:
         with:
           fetch-depth: 1
 
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
+        id: filter
+        with:
+          filters: |
+            go:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - '**/*.proto'
+              - 'hack/*.sh'
+
+      - name: Register workspace path
+        if: steps.filter.outputs.go == 'true'
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Install prerequisites
+        if: steps.filter.outputs.go == 'true'
         run: |
           apt-get update
           apt-get install -y jq python3-yaml
 
-      - name: Register workspace path
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
       - name: Check go version
+        if: steps.filter.outputs.go == 'true'
         run: go version
 
       - name: Set Go paths
+        if: steps.filter.outputs.go == 'true'
         id: go-paths
         run: |
           echo "mod_cache=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
           echo "build_cache=$(go env GOCACHE)" >> $GITHUB_OUTPUT
 
       - name: Go modules cache
+        if: steps.filter.outputs.go == 'true'
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: ${{ steps.go-paths.outputs.mod_cache }}
           key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
 
       - name: Go build cache
+        if: steps.filter.outputs.go == 'true'
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: ${{ steps.go-paths.outputs.build_cache }}
           key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
 
       - name: Go modules sync
+        if: steps.filter.outputs.go == 'true'
         run: go mod tidy -compat=1.25
 
       - name: Verify generated Clientset is up to date
+        if: steps.filter.outputs.go == 'true'
         run: make clientset-verify
 
       - name: Verify generated Manifests are up to date
+        if: steps.filter.outputs.go == 'true'
         run: make verify-manifests
 
       - name: Verify generated Scalers schema is up to date
+        if: steps.filter.outputs.go == 'true'
         run: make verify-scalers-schema
 
       - name: Build
+        if: steps.filter.outputs.go == 'true'
         run: make build
 
       - name: Test
+        if: steps.filter.outputs.go == 'true'
         run: make test
 
       - name: Test with race detector enabled
+        if: steps.filter.outputs.go == 'true'
         run: make test-race
 
       - name: Create test Summary
+        if: always() && steps.filter.outputs.go == 'true'
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86 # v2.4
         with:
           paths: |
             report.xml
             report-race.xml
-        if: always()
 
   validate-dockerfiles:
     permissions:
