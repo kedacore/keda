@@ -98,6 +98,11 @@ var parseApacheIggyMetadataTestDataset = []parseApacheIggyMetadataTestData{
 		"serverAddress": "localhost:8090", "streamId": "s", "topicId": "t",
 		"consumerGroupId": "g", "scaleToZeroOnInvalidOffset": "true",
 	}, map[string]string{"accessToken": "tok"}, false},
+	// failure - allowIdleConsumers and limitToPartitionsWithLag conflict
+	{map[string]string{
+		"serverAddress": "localhost:8090", "streamId": "s", "topicId": "t",
+		"consumerGroupId": "g", "allowIdleConsumers": "true", "limitToPartitionsWithLag": "true",
+	}, map[string]string{"accessToken": "tok"}, true},
 	// failure - invalid offsetResetPolicy
 	{map[string]string{
 		"serverAddress": "localhost:8090", "streamId": "s", "topicId": "t",
@@ -208,15 +213,17 @@ func TestApacheIggyGetMetricSpecForScaling(t *testing.T) {
 }
 
 type apacheIggyLagTestData struct {
-	description                  string
-	partitionLags                []int64
-	partitionLagsWithPersistent  []int64 // nil means same as partitionLags
-	lagThreshold                 int64
-	activationLagThreshold       int64
-	limitToPartitionsWithLag     bool
-	expectedMetric               int64
-	expectedLagWithPersistent    int64
-	expectedActive               bool
+	description                    string
+	partitionLags                  []int64
+	partitionLagsWithPersistent    []int64 // nil means same as partitionLags
+	lagThreshold                   int64
+	activationLagThreshold         int64
+	allowIdleConsumers             bool
+	limitToPartitionsWithLag       bool
+	ensureEvenDistribution         bool
+	expectedMetric                 int64
+	expectedLagWithPersistent      int64
+	expectedActive                 bool
 }
 
 var apacheIggyLagTestDataset = []apacheIggyLagTestData{
@@ -314,6 +321,36 @@ var apacheIggyLagTestDataset = []apacheIggyLagTestData{
 		expectedLagWithPersistent:   60,
 		expectedActive:              true,
 	},
+	{
+		description:               "allowIdleConsumers removes partition cap",
+		partitionLags:             []int64{50, 50, 50},
+		lagThreshold:              10,
+		activationLagThreshold:    0,
+		allowIdleConsumers:        true,
+		expectedMetric:            150, // no cap applied
+		expectedLagWithPersistent: 150,
+		expectedActive:            true,
+	},
+	{
+		description:               "ensureEvenDistribution rounds to factor of partitions",
+		partitionLags:             []int64{15, 15, 15, 15, 15, 15}, // 6 partitions, total=90
+		lagThreshold:              10,
+		activationLagThreshold:    0,
+		ensureEvenDistribution:    true,
+		expectedMetric:            60, // 90/10=9 replicas, but nearest factor of 6 is 6, so 6*10=60
+		expectedLagWithPersistent: 90,
+		expectedActive:            true,
+	},
+	{
+		description:               "ensureEvenDistribution with 12 partitions",
+		partitionLags:             []int64{5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5}, // 12 partitions, total=60
+		lagThreshold:              10,
+		activationLagThreshold:    0,
+		ensureEvenDistribution:    true,
+		expectedMetric:            60, // 60/10=6 replicas, 6 is a factor of 12, so 6*10=60
+		expectedLagWithPersistent: 60,
+		expectedActive:            true,
+	},
 }
 
 func TestApacheIggyCalculateLag(t *testing.T) {
@@ -327,7 +364,9 @@ func TestApacheIggyCalculateLag(t *testing.T) {
 				testData.partitionLags,
 				lagsWithPersistent,
 				testData.lagThreshold,
+				testData.allowIdleConsumers,
 				testData.limitToPartitionsWithLag,
+				testData.ensureEvenDistribution,
 			)
 			if metric != testData.expectedMetric {
 				t.Errorf("expected metric %d, got %d", testData.expectedMetric, metric)
