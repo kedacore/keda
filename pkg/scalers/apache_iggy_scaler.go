@@ -53,7 +53,9 @@ type apacheIggyMetadata struct {
 	LimitToPartitionsWithLag bool  `keda:"name=limitToPartitionsWithLag, order=triggerMetadata, optional"`
 	ExcludePersistentLag     bool              `keda:"name=excludePersistentLag,     order=triggerMetadata, optional"`
 	OffsetResetPolicy        offsetResetPolicy `keda:"name=offsetResetPolicy,        order=triggerMetadata, enum=earliest;latest, default=latest"`
-	ScaleToZeroOnInvalidOffset bool            `keda:"name=scaleToZeroOnInvalidOffset, order=triggerMetadata, optional"`
+	ScaleToZeroOnInvalidOffset         bool            `keda:"name=scaleToZeroOnInvalidOffset,         order=triggerMetadata, optional"`
+	AllowIdleConsumers                 bool            `keda:"name=allowIdleConsumers,                 order=triggerMetadata, optional"`
+	EnsureEvenDistributionOfPartitions bool            `keda:"name=ensureEvenDistributionOfPartitions, order=triggerMetadata, optional"`
 
 	// Auth - username/password
 	Username string `keda:"name=username, order=authParams;resolvedEnv, optional"`
@@ -71,6 +73,9 @@ func (m *apacheIggyMetadata) Validate() error {
 	}
 	if m.ActivationLagThreshold < 0 {
 		return fmt.Errorf("activationLagThreshold must be a positive number or zero")
+	}
+	if m.AllowIdleConsumers && m.LimitToPartitionsWithLag {
+		return fmt.Errorf("allowIdleConsumers and limitToPartitionsWithLag cannot be set simultaneously")
 	}
 
 	hasUserPass := m.Username != "" || m.Password != ""
@@ -214,7 +219,7 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 		partitionLagsWithPersistent = append(partitionLagsWithPersistent, fullLag)
 	}
 
-	totalLag, totalLagWithPersistent := calculateIggyLag(partitionLags, partitionLagsWithPersistent, s.metadata.LagThreshold, s.metadata.LimitToPartitionsWithLag)
+	totalLag, totalLagWithPersistent := calculateIggyLag(partitionLags, partitionLagsWithPersistent, s.metadata.LagThreshold, s.metadata.AllowIdleConsumers, s.metadata.LimitToPartitionsWithLag, s.metadata.EnsureEvenDistributionOfPartitions)
 	isActive := totalLagWithPersistent > s.metadata.ActivationLagThreshold
 
 	s.logger.V(1).Info("Found iggy consumer group lag",
@@ -241,7 +246,7 @@ func (s *apacheIggyScaler) Close(_ context.Context) error {
 // calculateIggyLag computes total lag from per-partition lags.
 // partitionLags may exclude persistent lag; partitionLagsWithPersistent always includes all lag.
 // Returns (totalLag, totalLagWithPersistent) where totalLag is capped for scaling.
-func calculateIggyLag(partitionLags, partitionLagsWithPersistent []int64, lagThreshold int64, limitToPartitionsWithLag bool) (int64, int64) {
+func calculateIggyLag(partitionLags, partitionLagsWithPersistent []int64, lagThreshold int64, allowIdleConsumers, limitToPartitionsWithLag, ensureEvenDistribution bool) (int64, int64) {
 	var totalLag int64
 	var partitionsWithLag int64
 	for _, lag := range partitionLags {
@@ -258,15 +263,22 @@ func calculateIggyLag(partitionLags, partitionLagsWithPersistent []int64, lagThr
 		}
 	}
 
-	upperBound := int64(len(partitionLags))
-	if limitToPartitionsWithLag {
-		upperBound = partitionsWithLag
-	}
+	totalPartitions := int64(len(partitionLags))
 
-	if upperBound > 0 && lagThreshold > 0 {
-		maxLag := upperBound * lagThreshold
-		if totalLag > maxLag {
-			totalLag = maxLag
+	if !allowIdleConsumers || limitToPartitionsWithLag || ensureEvenDistribution {
+		upperBound := totalPartitions
+
+		if ensureEvenDistribution {
+			nextFactor := getNextFactorThatBalancesConsumersToTopicPartitions(totalLag, totalPartitions, lagThreshold)
+			totalLag = nextFactor * lagThreshold
+		}
+
+		if limitToPartitionsWithLag {
+			upperBound = partitionsWithLag
+		}
+
+		if lagThreshold > 0 && upperBound > 0 && (totalLag/lagThreshold) > upperBound {
+			totalLag = upperBound * lagThreshold
 		}
 	}
 
