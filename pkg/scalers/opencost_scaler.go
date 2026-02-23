@@ -74,7 +74,45 @@ type openCostScalerMetadata struct {
 	// When false, scale UP when costs are high (useful for time-based cost optimization scenarios).
 	InverseScaling bool `keda:"name=inverseScaling,order=triggerMetadata,default=true"`
 
-	triggerIndex int
+	triggerIndex   int
+	asMetricSource bool
+}
+
+func (m *openCostScalerMetadata) Validate() error {
+	// Validate cost threshold
+	if m.CostThreshold <= 0 && !m.asMetricSource {
+		return fmt.Errorf("costThreshold must be a positive number")
+	}
+
+	// Validate cost type
+	validCostTypes := map[string]bool{
+		"totalCost":   true,
+		"cpuCost":     true,
+		"gpuCost":     true,
+		"ramCost":     true,
+		"pvCost":      true,
+		"networkCost": true,
+	}
+	if !validCostTypes[m.CostType] {
+		return fmt.Errorf("invalid costType: %s. Valid options: totalCost, cpuCost, gpuCost, ramCost, pvCost, networkCost", m.CostType)
+	}
+
+	// Validate aggregate
+	validAggregates := map[string]bool{
+		"cluster":        true,
+		"node":           true,
+		"namespace":      true,
+		"controllerKind": true,
+		"controller":     true,
+		"service":        true,
+		"pod":            true,
+		"container":      true,
+	}
+	if !validAggregates[m.Aggregate] {
+		return fmt.Errorf("invalid aggregate: %s. Valid options: cluster, node, namespace, controllerKind, controller, service, pod, container", m.Aggregate)
+	}
+
+	return nil
 }
 
 // OpenCost API response structures
@@ -136,45 +174,14 @@ func NewOpenCostScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 }
 
 func parseOpenCostMetadata(config *scalersconfig.ScalerConfig) (*openCostScalerMetadata, error) {
-	meta := &openCostScalerMetadata{}
+	meta := &openCostScalerMetadata{
+		asMetricSource: config.AsMetricSource,
+	}
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing OpenCost metadata: %w", err)
 	}
 
 	meta.triggerIndex = config.TriggerIndex
-
-	// Validate cost threshold
-	if meta.CostThreshold <= 0 && !config.AsMetricSource {
-		return nil, fmt.Errorf("costThreshold must be a positive number")
-	}
-
-	// Validate cost type
-	validCostTypes := map[string]bool{
-		"totalCost":   true,
-		"cpuCost":     true,
-		"gpuCost":     true,
-		"ramCost":     true,
-		"pvCost":      true,
-		"networkCost": true,
-	}
-	if !validCostTypes[meta.CostType] {
-		return nil, fmt.Errorf("invalid costType: %s. Valid options: totalCost, cpuCost, gpuCost, ramCost, pvCost, networkCost", meta.CostType)
-	}
-
-	// Validate aggregate
-	validAggregates := map[string]bool{
-		"cluster":        true,
-		"node":           true,
-		"namespace":      true,
-		"controllerKind": true,
-		"controller":     true,
-		"service":        true,
-		"pod":            true,
-		"container":      true,
-	}
-	if !validAggregates[meta.Aggregate] {
-		return nil, fmt.Errorf("invalid aggregate: %s. Valid options: cluster, node, namespace, controllerKind, controller, service, pod, container", meta.Aggregate)
-	}
 
 	return meta, nil
 }
