@@ -4,13 +4,10 @@
 package replicaset_scale_test
 
 import (
-	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/kedacore/keda/v2/tests/helper"
@@ -114,7 +111,7 @@ func TestReplicaSetScaling(t *testing.T) {
 	})
 
 	CreateKubernetesResources(t, kc, testNamespace, data, templates)
-	assert.True(t, waitForReplicaSetReplicaCount(t, kc, replicaSetName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForReplicaSetReplicaReadyCount(t, kc, replicaSetName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
 
 	// test scaling
@@ -127,12 +124,12 @@ func testScaleOut(t *testing.T, kc *kubernetes.Clientset) {
 
 	// scale monitored deployment to 5 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)
-	assert.True(t, waitForReplicaSetReplicaCount(t, kc, replicaSetName, testNamespace, 5, 60, 1),
+	assert.True(t, WaitForReplicaSetReplicaReadyCount(t, kc, replicaSetName, testNamespace, 5, 60, 1),
 		"replica count should be 5 after 1 minute")
 
 	// scale monitored deployment to 10 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 10, testNamespace)
-	assert.True(t, waitForReplicaSetReplicaCount(t, kc, replicaSetName, testNamespace, 10, 60, 1),
+	assert.True(t, WaitForReplicaSetReplicaReadyCount(t, kc, replicaSetName, testNamespace, 10, 60, 1),
 		"replica count should be 10 after 1 minute")
 }
 
@@ -141,12 +138,12 @@ func testScaleIn(t *testing.T, kc *kubernetes.Clientset) {
 
 	// scale monitored deployment to 5 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 5, testNamespace)
-	assert.True(t, waitForReplicaSetReplicaCount(t, kc, replicaSetName, testNamespace, 5, 60, 1),
+	assert.True(t, WaitForReplicaSetReplicaReadyCount(t, kc, replicaSetName, testNamespace, 5, 60, 1),
 		"replica count should be 5 after 1 minute")
 
 	// scale monitored deployment to 0 replicas
 	KubernetesScaleDeployment(t, kc, monitoredDeploymentName, 0, testNamespace)
-	assert.True(t, waitForReplicaSetReplicaCount(t, kc, replicaSetName, testNamespace, 0, 60, 1),
+	assert.True(t, WaitForReplicaSetReplicaReadyCount(t, kc, replicaSetName, testNamespace, 0, 60, 1),
 		"replica count should be 0 after 1 minute")
 }
 
@@ -161,32 +158,4 @@ func getTemplateData() (templateData, []Template) {
 			{Name: "replicaSetTemplate", Config: replicaSetTemplate},
 			{Name: "scaledObjectTemplate", Config: scaledObjectTemplate},
 		}
-}
-
-// waitForReplicaSetReplicaCount waits until replicaset replica count hits target or iterations are exhausted
-func waitForReplicaSetReplicaCount(t *testing.T, kc *kubernetes.Clientset, name, namespace string, target, iterations, intervalSeconds int) bool {
-	for i := 0; i < iterations; i++ {
-		rs, _ := kc.AppsV1().ReplicaSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
-
-		// Use spec.replicas when target is 0 (status.readyReplicas won't be set)
-		var replicas int32
-		if target == 0 {
-			if rs.Spec.Replicas != nil {
-				replicas = *rs.Spec.Replicas
-			}
-		} else {
-			replicas = rs.Status.ReadyReplicas
-		}
-
-		t.Logf("Waiting for replicaset replicas to hit target. ReplicaSet - %s, Current - %d, Target - %d",
-			name, replicas, target)
-
-		if replicas == int32(target) {
-			return true
-		}
-
-		time.Sleep(time.Duration(intervalSeconds) * time.Second)
-	}
-
-	return false
 }
