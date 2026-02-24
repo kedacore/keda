@@ -56,6 +56,7 @@ const (
 	appsGroup             = "apps"
 	deploymentKind        = "Deployment"
 	statefulSetKind       = "StatefulSet"
+	replicaSetKind        = "ReplicaSet"
 )
 
 var (
@@ -748,6 +749,13 @@ func GetCurrentReplicas(ctx context.Context, client client.Client, scaleClient s
 			return 0, err
 		}
 		return *statefulSet.Spec.Replicas, nil
+	case targetGVKR.Group == appsGroup && targetGVKR.Kind == replicaSetKind:
+		replicaSet := &appsv1.ReplicaSet{}
+		if err := client.Get(ctx, types.NamespacedName{Name: targetName, Namespace: scaledObject.Namespace}, replicaSet); err != nil {
+			logger.Error(err, "target replicaset doesn't exist")
+			return 0, err
+		}
+		return *replicaSet.Spec.Replicas, nil
 	default:
 		scale, err := scaleClient.Scales(scaledObject.Namespace).Get(ctx, targetGVKR.GroupResource(), targetName, metav1.GetOptions{})
 		if err != nil {

@@ -28,7 +28,7 @@ jobs:
       - name: Install Kubernetes
         run: |
           go install sigs.k8s.io/kind@v0.29.0
-          kind create cluster --name ${{ runner.name }} --image vishnubijukumar/kindest-node-s390x:v0.29.0
+          kind create cluster --name ${{ runner.name }} --image vishnubijukumar/kindest-node-s390x:v1.35.0
           kubectl -n kube-system set image daemonset/kindnet kindnet-cni=docker.io/vishnubijukumar/kindnetd:v20250512-s390x
           kubectl -n local-path-storage set image deployment/local-path-provisioner local-path-provisioner=docker.io/vishnubijukumar/local-path-provisioner:v1
 
