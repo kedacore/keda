@@ -24,6 +24,9 @@ import (
 var validPubSubName = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9\-_.~+%]{2,254}$`)
 
 func validateResourceName(name string) error {
+	if strings.HasPrefix(strings.ToLower(name), "goog") {
+		return fmt.Errorf("invalid Pub/Sub resource name %q: names cannot start with \"goog\"", name)
+	}
 	if !validPubSubName.MatchString(name) {
 		return fmt.Errorf("invalid Pub/Sub resource name %q", name)
 	}
