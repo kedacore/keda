@@ -219,6 +219,20 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 			continue
 		}
 
+		// The Iggy SDK returns nil offset with nil error when the server
+		// responds with an empty payload (e.g., no committed offset yet).
+		if offset == nil {
+			s.logger.V(1).Info("Nil offset returned for partition, treating as no committed offset",
+				"partition", i, "policy", s.metadata.OffsetResetPolicy)
+			retVal := int64(1)
+			if s.metadata.ScaleToZeroOnInvalidOffset {
+				retVal = 0
+			}
+			partitionLags = append(partitionLags, retVal)
+			partitionLagsWithPersistent = append(partitionLagsWithPersistent, retVal)
+			continue
+		}
+
 		fullLag := max(int64(offset.CurrentOffset)-int64(offset.StoredOffset), 0)
 		lag := fullLag
 
