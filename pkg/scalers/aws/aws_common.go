@@ -67,7 +67,11 @@ func GetAwsConfig(ctx context.Context, awsAuthorization AuthorizationMetadata) (
 
 	if awsAuthorization.AwsRoleArn != "" {
 		stsSvc := sts.NewFromConfig(cfg)
-		stsCredentialProvider := stscreds.NewAssumeRoleProvider(stsSvc, awsAuthorization.AwsRoleArn, func(_ *stscreds.AssumeRoleOptions) {})
+		stsCredentialProvider := stscreds.NewAssumeRoleProvider(stsSvc, awsAuthorization.AwsRoleArn, func(options *stscreds.AssumeRoleOptions) {
+			if awsAuthorization.AwsExternalID != "" {
+				options.ExternalID = aws.String(awsAuthorization.AwsExternalID)
+			}
+		})
 		cfg.Credentials = aws.NewCredentialsCache(stsCredentialProvider)
 	}
 	return &cfg, err
@@ -83,9 +87,17 @@ func GetAwsAuthorization(uniqueKey, awsRegion string, podIdentity kedav1alpha1.A
 
 	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAws {
 		meta.UsingPodIdentity = true
-		if val, ok := authParams["awsRoleArn"]; ok && val != "" {
-			meta.AwsRoleArn = val
+		if podIdentity.RoleArn != nil && *podIdentity.RoleArn != "" {
+			meta.AwsRoleArn = *podIdentity.RoleArn
+			if podIdentity.ExternalID != nil && *podIdentity.ExternalID != "" {
+				meta.AwsExternalID = *podIdentity.ExternalID
+			}
+		} else {
+			if val, ok := authParams["awsRoleArn"]; ok && val != "" {
+				meta.AwsRoleArn = val
+			}
 		}
+
 		return meta, nil
 	}
 
