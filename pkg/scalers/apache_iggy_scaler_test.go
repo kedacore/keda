@@ -1,12 +1,117 @@
 package scalers
 
 import (
+	"errors"
 	"testing"
 
+	iggcon "github.com/apache/iggy/foreign/go/contracts"
+	"github.com/go-logr/logr"
 	v2 "k8s.io/api/autoscaling/v2"
 
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
 )
+
+// mockIggyClient implements the subset of iggycli.Client used by apacheIggyScaler.
+type mockIggyClient struct {
+	topic   *iggcon.TopicDetails
+	offsets map[uint32]*iggcon.ConsumerOffsetInfo
+	errors  map[uint32]error
+}
+
+func (m *mockIggyClient) GetTopic(_, _ iggcon.Identifier) (*iggcon.TopicDetails, error) {
+	return m.topic, nil
+}
+
+func (m *mockIggyClient) GetConsumerOffset(_ iggcon.Consumer, _, _ iggcon.Identifier, partitionID *uint32) (*iggcon.ConsumerOffsetInfo, error) {
+	if err, ok := m.errors[*partitionID]; ok {
+		return nil, err
+	}
+	return m.offsets[*partitionID], nil
+}
+
+// Stub methods to satisfy iggycli.Client interface.
+func (m *mockIggyClient) GetStream(_ iggcon.Identifier) (*iggcon.StreamDetails, error) {
+	return nil, nil
+}
+func (m *mockIggyClient) GetStreams() ([]iggcon.Stream, error) { return nil, nil }
+func (m *mockIggyClient) CreateStream(_ string) (*iggcon.StreamDetails, error) {
+	return nil, nil
+}
+func (m *mockIggyClient) UpdateStream(_ iggcon.Identifier, _ string) error { return nil }
+func (m *mockIggyClient) DeleteStream(_ iggcon.Identifier) error            { return nil }
+func (m *mockIggyClient) GetTopics(_ iggcon.Identifier) ([]iggcon.Topic, error) {
+	return nil, nil
+}
+func (m *mockIggyClient) CreateTopic(_ iggcon.Identifier, _ string, _ uint32, _ iggcon.CompressionAlgorithm, _ iggcon.Duration, _ uint64, _ *uint8) (*iggcon.TopicDetails, error) {
+	return nil, nil
+}
+func (m *mockIggyClient) UpdateTopic(_ iggcon.Identifier, _ iggcon.Identifier, _ string, _ iggcon.CompressionAlgorithm, _ iggcon.Duration, _ uint64, _ *uint8) error {
+	return nil
+}
+func (m *mockIggyClient) DeleteTopic(_, _ iggcon.Identifier) error { return nil }
+func (m *mockIggyClient) SendMessages(_ iggcon.Identifier, _ iggcon.Identifier, _ iggcon.Partitioning, _ []iggcon.IggyMessage) error {
+	return nil
+}
+func (m *mockIggyClient) PollMessages(_ iggcon.Identifier, _ iggcon.Identifier, _ iggcon.Consumer, _ iggcon.PollingStrategy, _ uint32, _ bool, _ *uint32) (*iggcon.PolledMessage, error) {
+	return nil, nil
+}
+func (m *mockIggyClient) StoreConsumerOffset(_ iggcon.Consumer, _ iggcon.Identifier, _ iggcon.Identifier, _ uint64, _ *uint32) error {
+	return nil
+}
+func (m *mockIggyClient) GetConsumerGroups(_ iggcon.Identifier, _ iggcon.Identifier) ([]iggcon.ConsumerGroup, error) {
+	return nil, nil
+}
+func (m *mockIggyClient) DeleteConsumerOffset(_ iggcon.Consumer, _ iggcon.Identifier, _ iggcon.Identifier, _ *uint32) error {
+	return nil
+}
+func (m *mockIggyClient) GetConsumerGroup(_, _, _ iggcon.Identifier) (*iggcon.ConsumerGroupDetails, error) {
+	return nil, nil
+}
+func (m *mockIggyClient) CreateConsumerGroup(_, _ iggcon.Identifier, _ string) (*iggcon.ConsumerGroupDetails, error) {
+	return nil, nil
+}
+func (m *mockIggyClient) DeleteConsumerGroup(_, _, _ iggcon.Identifier) error { return nil }
+func (m *mockIggyClient) JoinConsumerGroup(_, _, _ iggcon.Identifier) error   { return nil }
+func (m *mockIggyClient) LeaveConsumerGroup(_, _, _ iggcon.Identifier) error  { return nil }
+func (m *mockIggyClient) CreatePartitions(_, _ iggcon.Identifier, _ uint32) error {
+	return nil
+}
+func (m *mockIggyClient) DeletePartitions(_, _ iggcon.Identifier, _ uint32) error {
+	return nil
+}
+func (m *mockIggyClient) GetUser(_ iggcon.Identifier) (*iggcon.UserInfoDetails, error) {
+	return nil, nil
+}
+func (m *mockIggyClient) GetUsers() ([]iggcon.UserInfo, error) { return nil, nil }
+func (m *mockIggyClient) CreateUser(_ string, _ string, _ iggcon.UserStatus, _ *iggcon.Permissions) (*iggcon.UserInfoDetails, error) {
+	return nil, nil
+}
+func (m *mockIggyClient) UpdateUser(_ iggcon.Identifier, _ *string, _ *iggcon.UserStatus) error {
+	return nil
+}
+func (m *mockIggyClient) UpdatePermissions(_ iggcon.Identifier, _ *iggcon.Permissions) error {
+	return nil
+}
+func (m *mockIggyClient) ChangePassword(_ iggcon.Identifier, _, _ string) error { return nil }
+func (m *mockIggyClient) DeleteUser(_ iggcon.Identifier) error                  { return nil }
+func (m *mockIggyClient) CreatePersonalAccessToken(_ string, _ uint32) (*iggcon.RawPersonalAccessToken, error) {
+	return nil, nil
+}
+func (m *mockIggyClient) DeletePersonalAccessToken(_ string) error { return nil }
+func (m *mockIggyClient) GetPersonalAccessTokens() ([]iggcon.PersonalAccessTokenInfo, error) {
+	return nil, nil
+}
+func (m *mockIggyClient) LoginWithPersonalAccessToken(_ string) (*iggcon.IdentityInfo, error) {
+	return nil, nil
+}
+func (m *mockIggyClient) LoginUser(_, _ string) (*iggcon.IdentityInfo, error) { return nil, nil }
+func (m *mockIggyClient) LogoutUser() error                                   { return nil }
+func (m *mockIggyClient) GetStats() (*iggcon.Stats, error)                    { return nil, nil }
+func (m *mockIggyClient) Ping() error                                         { return nil }
+func (m *mockIggyClient) GetClients() ([]iggcon.ClientInfo, error)            { return nil, nil }
+func (m *mockIggyClient) GetClient(_ uint32) (*iggcon.ClientInfoDetails, error) {
+	return nil, nil
+}
 
 type parseApacheIggyMetadataTestData struct {
 	metadata   map[string]string
@@ -379,5 +484,234 @@ func TestApacheIggyCalculateLag(t *testing.T) {
 				t.Errorf("expected active %v, got %v", testData.expectedActive, isActive)
 			}
 		})
+	}
+}
+
+func newTestIggyScaler(client *mockIggyClient, meta *apacheIggyMetadata) *apacheIggyScaler {
+	streamID, _ := iggcon.NewIdentifier(meta.StreamID)
+	topicID, _ := iggcon.NewIdentifier(meta.TopicID)
+	groupID, _ := iggcon.NewIdentifier(meta.ConsumerGroupID)
+	return &apacheIggyScaler{
+		metricType:      v2.AverageValueMetricType,
+		metadata:        meta,
+		client:          client,
+		logger:          logr.Discard(),
+		previousOffsets: make(map[uint32]int64),
+		streamID:        streamID,
+		topicID:         topicID,
+		consumer:        iggcon.NewGroupConsumer(groupID),
+	}
+}
+
+func TestApacheIggyGetMetricsAndActivity_NilOffset(t *testing.T) {
+	client := &mockIggyClient{
+		topic: &iggcon.TopicDetails{
+			Topic: iggcon.Topic{PartitionsCount: 2},
+		},
+		offsets: map[uint32]*iggcon.ConsumerOffsetInfo{
+			1: nil, // nil offset, nil error
+			2: {PartitionId: 2, CurrentOffset: 10, StoredOffset: 5},
+		},
+	}
+	meta := &apacheIggyMetadata{
+		StreamID:        "test-stream",
+		TopicID:         "test-topic",
+		ConsumerGroupID: "test-group",
+		LagThreshold:    10,
+	}
+	scaler := newTestIggyScaler(client, meta)
+
+	metrics, isActive, err := scaler.GetMetricsAndActivity(t.Context(), "s0-iggy-test-stream-test-topic-test-group")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if !isActive {
+		t.Error("expected active, got inactive")
+	}
+	if len(metrics) != 1 {
+		t.Fatalf("expected 1 metric, got %d", len(metrics))
+	}
+	// partition 1: nil offset → lag=1, partition 2: lag=max(10-5,0)=5, total=6
+	expectedLag := int64(6)
+	gotLag := metrics[0].Value.MilliValue() / 1000
+	if gotLag != expectedLag {
+		t.Errorf("expected lag %d, got %d", expectedLag, gotLag)
+	}
+}
+
+func TestApacheIggyGetMetricsAndActivity_NilOffsetScaleToZero(t *testing.T) {
+	client := &mockIggyClient{
+		topic: &iggcon.TopicDetails{
+			Topic: iggcon.Topic{PartitionsCount: 1},
+		},
+		offsets: map[uint32]*iggcon.ConsumerOffsetInfo{
+			1: nil,
+		},
+	}
+	meta := &apacheIggyMetadata{
+		StreamID:                   "test-stream",
+		TopicID:                    "test-topic",
+		ConsumerGroupID:            "test-group",
+		LagThreshold:               10,
+		ScaleToZeroOnInvalidOffset: true,
+	}
+	scaler := newTestIggyScaler(client, meta)
+
+	metrics, isActive, err := scaler.GetMetricsAndActivity(t.Context(), "s0-iggy-test-stream-test-topic-test-group")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if isActive {
+		t.Error("expected inactive, got active")
+	}
+	gotLag := metrics[0].Value.MilliValue() / 1000
+	if gotLag != 0 {
+		t.Errorf("expected lag 0, got %d", gotLag)
+	}
+}
+
+func TestApacheIggyGetMetricsAndActivity_AllNilOffsets(t *testing.T) {
+	client := &mockIggyClient{
+		topic: &iggcon.TopicDetails{
+			Topic: iggcon.Topic{PartitionsCount: 3},
+		},
+		offsets: map[uint32]*iggcon.ConsumerOffsetInfo{
+			1: nil,
+			2: nil,
+			3: nil,
+		},
+	}
+	meta := &apacheIggyMetadata{
+		StreamID:        "test-stream",
+		TopicID:         "test-topic",
+		ConsumerGroupID: "test-group",
+		LagThreshold:    10,
+	}
+	scaler := newTestIggyScaler(client, meta)
+
+	metrics, isActive, err := scaler.GetMetricsAndActivity(t.Context(), "s0-iggy-test-stream-test-topic-test-group")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if !isActive {
+		t.Error("expected active, got inactive")
+	}
+	// 3 partitions each with lag=1 → total=3
+	gotLag := metrics[0].Value.MilliValue() / 1000
+	if gotLag != 3 {
+		t.Errorf("expected lag 3, got %d", gotLag)
+	}
+}
+
+func TestApacheIggyGetMetricsAndActivity_ErrorOffset(t *testing.T) {
+	client := &mockIggyClient{
+		topic: &iggcon.TopicDetails{
+			Topic: iggcon.Topic{PartitionsCount: 2},
+		},
+		offsets: map[uint32]*iggcon.ConsumerOffsetInfo{
+			2: {PartitionId: 2, CurrentOffset: 20, StoredOffset: 10},
+		},
+		errors: map[uint32]error{
+			1: errors.New("connection refused"),
+		},
+	}
+	meta := &apacheIggyMetadata{
+		StreamID:        "test-stream",
+		TopicID:         "test-topic",
+		ConsumerGroupID: "test-group",
+		LagThreshold:    10,
+	}
+	scaler := newTestIggyScaler(client, meta)
+
+	metrics, isActive, err := scaler.GetMetricsAndActivity(t.Context(), "s0-iggy-test-stream-test-topic-test-group")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if !isActive {
+		t.Error("expected active, got inactive")
+	}
+	// partition 1: error → lag=1, partition 2: lag=max(20-10,0)=10, total=11
+	gotLag := metrics[0].Value.MilliValue() / 1000
+	if gotLag != 11 {
+		t.Errorf("expected lag 11, got %d", gotLag)
+	}
+}
+
+func TestApacheIggyGetMetricsAndActivity_NormalLag(t *testing.T) {
+	client := &mockIggyClient{
+		topic: &iggcon.TopicDetails{
+			Topic: iggcon.Topic{PartitionsCount: 3},
+		},
+		offsets: map[uint32]*iggcon.ConsumerOffsetInfo{
+			1: {PartitionId: 1, CurrentOffset: 100, StoredOffset: 95},
+			2: {PartitionId: 2, CurrentOffset: 100, StoredOffset: 100},
+			3: {PartitionId: 3, CurrentOffset: 100, StoredOffset: 90},
+		},
+	}
+	meta := &apacheIggyMetadata{
+		StreamID:        "test-stream",
+		TopicID:         "test-topic",
+		ConsumerGroupID: "test-group",
+		LagThreshold:    10,
+	}
+	scaler := newTestIggyScaler(client, meta)
+
+	metrics, isActive, err := scaler.GetMetricsAndActivity(t.Context(), "s0-iggy-test-stream-test-topic-test-group")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if !isActive {
+		t.Error("expected active, got inactive")
+	}
+	// partition 1: lag=5, partition 2: lag=0, partition 3: lag=10, total=15
+	gotLag := metrics[0].Value.MilliValue() / 1000
+	if gotLag != 15 {
+		t.Errorf("expected lag 15, got %d", gotLag)
+	}
+}
+
+func TestApacheIggyGetMetricsAndActivity_ExcludePersistentLag(t *testing.T) {
+	client := &mockIggyClient{
+		topic: &iggcon.TopicDetails{
+			Topic: iggcon.Topic{PartitionsCount: 2},
+		},
+		offsets: map[uint32]*iggcon.ConsumerOffsetInfo{
+			1: {PartitionId: 1, CurrentOffset: 100, StoredOffset: 50},
+			2: {PartitionId: 2, CurrentOffset: 100, StoredOffset: 90},
+		},
+	}
+	meta := &apacheIggyMetadata{
+		StreamID:             "test-stream",
+		TopicID:              "test-topic",
+		ConsumerGroupID:      "test-group",
+		LagThreshold:         10,
+		ExcludePersistentLag: true,
+	}
+	scaler := newTestIggyScaler(client, meta)
+
+	// First call: offsets are recorded, no previous to compare
+	metrics1, _, err := scaler.GetMetricsAndActivity(t.Context(), "s0-iggy-test-stream-test-topic-test-group")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	// partition 1: lag=50, partition 2: lag=10, total=20 (capped to 2 partitions * 10)
+	gotLag1 := metrics1[0].Value.MilliValue() / 1000
+	if gotLag1 != 20 {
+		t.Errorf("first call: expected lag 20, got %d", gotLag1)
+	}
+
+	// Second call with same offsets: persistent lag excluded
+	metrics2, isActive, err := scaler.GetMetricsAndActivity(t.Context(), "s0-iggy-test-stream-test-topic-test-group")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	// StoredOffset unchanged → persistent lag, both partitions get lag=0 for scaling
+	// But totalLagWithPersistent=60 so still active
+	if !isActive {
+		t.Error("second call: expected active, got inactive")
+	}
+	gotLag2 := metrics2[0].Value.MilliValue() / 1000
+	if gotLag2 != 0 {
+		t.Errorf("second call: expected lag 0, got %d", gotLag2)
 	}
 }
