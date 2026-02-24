@@ -22,14 +22,14 @@ const (
 )
 
 var (
-	testNamespace        = fmt.Sprintf("%s-ns", testName)
-	deploymentName       = fmt.Sprintf("%s-deployment", testName)
-	scaledObjectName     = fmt.Sprintf("%s-so", testName)
-	mockServerName       = fmt.Sprintf("%s-mock-server", testName)
-	mockServerConfigMap  = fmt.Sprintf("%s-mock-config", testName)
-	mockServerEndpoint   = fmt.Sprintf("http://%s.%s.svc.cluster.local:9003", mockServerName, testNamespace)
-	minReplicaCount      = 0
-	maxReplicaCount      = 2
+	testNamespace       = fmt.Sprintf("%s-ns", testName)
+	deploymentName      = fmt.Sprintf("%s-deployment", testName)
+	scaledObjectName    = fmt.Sprintf("%s-so", testName)
+	mockServerName      = fmt.Sprintf("%s-mock-server", testName)
+	mockServerConfigMap = fmt.Sprintf("%s-mock-config", testName)
+	mockServerEndpoint  = fmt.Sprintf("http://%s.%s.svc.cluster.local:9003", mockServerName, testNamespace)
+	minReplicaCount     = 0
+	maxReplicaCount     = 2
 )
 
 type templateData struct {
