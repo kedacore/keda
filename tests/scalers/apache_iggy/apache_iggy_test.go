@@ -828,22 +828,22 @@ func iggyStoreConsumerOffsetAll(t *testing.T, topicID, groupID string, partition
 
 func getTemplateData() (templateData, []Template) {
 	return templateData{
-		TestNamespace:     testNamespace,
-		DeploymentName:    deploymentName,
-		ScaledObjectName:  scaledObjectName,
-		IggyServerName:    iggyServerName,
-		IggyClientName:    iggyClientName,
-		IggyServiceName:   iggyServiceName,
-		IggyServerAddress: iggyServerAddress,
-		IggyImage:         iggyImage,
-		SecretName:        secretName,
-		TriggerAuthName:   triggerAuthName,
-		StreamID:          streamID,
-	}, []Template{
-		{Name: "iggyServerDeploymentTemplate", Config: iggyServerDeploymentTemplate},
-		{Name: "iggyServiceTemplate", Config: iggyServiceTemplate},
-		{Name: "iggyClientPodTemplate", Config: iggyClientPodTemplate},
-		{Name: "secretTemplate", Config: secretTemplate},
-		{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
-	}
+			TestNamespace:     testNamespace,
+			DeploymentName:    deploymentName,
+			ScaledObjectName:  scaledObjectName,
+			IggyServerName:    iggyServerName,
+			IggyClientName:    iggyClientName,
+			IggyServiceName:   iggyServiceName,
+			IggyServerAddress: iggyServerAddress,
+			IggyImage:         iggyImage,
+			SecretName:        secretName,
+			TriggerAuthName:   triggerAuthName,
+			StreamID:          streamID,
+		}, []Template{
+			{Name: "iggyServerDeploymentTemplate", Config: iggyServerDeploymentTemplate},
+			{Name: "iggyServiceTemplate", Config: iggyServiceTemplate},
+			{Name: "iggyClientPodTemplate", Config: iggyClientPodTemplate},
+			{Name: "secretTemplate", Config: secretTemplate},
+			{Name: "triggerAuthTemplate", Config: triggerAuthTemplate},
+		}
 }

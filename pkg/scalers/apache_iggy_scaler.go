@@ -46,19 +46,19 @@ type apacheIggyScaler struct {
 }
 
 type apacheIggyMetadata struct {
-	ServerAddress          string `keda:"name=serverAddress,          order=triggerMetadata;authParams;resolvedEnv"`
-	StreamID               string `keda:"name=streamId,               order=triggerMetadata"`
-	TopicID                string `keda:"name=topicId,                order=triggerMetadata"`
-	ConsumerGroupID        string `keda:"name=consumerGroupId,        order=triggerMetadata"`
-	LagThreshold           int64  `keda:"name=lagThreshold,           order=triggerMetadata, default=10"`
-	ActivationLagThreshold int64  `keda:"name=activationLagThreshold, order=triggerMetadata, default=0"`
-	PartitionLimitation      []int `keda:"name=partitionLimitation,      order=triggerMetadata, optional, range"`
-	LimitToPartitionsWithLag bool  `keda:"name=limitToPartitionsWithLag, order=triggerMetadata, optional"`
-	ExcludePersistentLag     bool              `keda:"name=excludePersistentLag,     order=triggerMetadata, optional"`
-	OffsetResetPolicy        offsetResetPolicy `keda:"name=offsetResetPolicy,        order=triggerMetadata, enum=earliest;latest, default=latest"`
-	ScaleToZeroOnInvalidOffset         bool            `keda:"name=scaleToZeroOnInvalidOffset,         order=triggerMetadata, optional"`
-	AllowIdleConsumers                 bool            `keda:"name=allowIdleConsumers,                 order=triggerMetadata, optional"`
-	EnsureEvenDistributionOfPartitions bool            `keda:"name=ensureEvenDistributionOfPartitions, order=triggerMetadata, optional"`
+	ServerAddress                      string            `keda:"name=serverAddress,          order=triggerMetadata;authParams;resolvedEnv"`
+	StreamID                           string            `keda:"name=streamId,               order=triggerMetadata"`
+	TopicID                            string            `keda:"name=topicId,                order=triggerMetadata"`
+	ConsumerGroupID                    string            `keda:"name=consumerGroupId,        order=triggerMetadata"`
+	LagThreshold                       int64             `keda:"name=lagThreshold,           order=triggerMetadata, default=10"`
+	ActivationLagThreshold             int64             `keda:"name=activationLagThreshold, order=triggerMetadata, default=0"`
+	PartitionLimitation                []int             `keda:"name=partitionLimitation,      order=triggerMetadata, optional, range"`
+	LimitToPartitionsWithLag           bool              `keda:"name=limitToPartitionsWithLag, order=triggerMetadata, optional"`
+	ExcludePersistentLag               bool              `keda:"name=excludePersistentLag,     order=triggerMetadata, optional"`
+	OffsetResetPolicy                  offsetResetPolicy `keda:"name=offsetResetPolicy,        order=triggerMetadata, enum=earliest;latest, default=latest"`
+	ScaleToZeroOnInvalidOffset         bool              `keda:"name=scaleToZeroOnInvalidOffset,         order=triggerMetadata, optional"`
+	AllowIdleConsumers                 bool              `keda:"name=allowIdleConsumers,                 order=triggerMetadata, optional"`
+	EnsureEvenDistributionOfPartitions bool              `keda:"name=ensureEvenDistributionOfPartitions, order=triggerMetadata, optional"`
 
 	// Auth - username/password
 	Username string `keda:"name=username, order=authParams;resolvedEnv, optional"`
