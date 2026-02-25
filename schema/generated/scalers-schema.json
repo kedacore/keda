@@ -3705,6 +3705,36 @@
                     "type": "string",
                     "optional": true,
                     "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "oauthTokenURI",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientID",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "clientSecret",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "scopes",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
+                },
+                {
+                    "name": "endpointParams",
+                    "type": "string",
+                    "optional": true,
+                    "triggerAuthenticationVariableReadable": true
                 }
             ]
         },
