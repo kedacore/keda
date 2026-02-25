@@ -26,9 +26,9 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	v1beta1 "k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
-	"reflect"
-	"sync"
-	"unsafe"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
