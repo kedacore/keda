@@ -38,7 +38,7 @@ func (m *mockIggyClient) CreateStream(_ string) (*iggcon.StreamDetails, error) {
 	return nil, nil
 }
 func (m *mockIggyClient) UpdateStream(_ iggcon.Identifier, _ string) error { return nil }
-func (m *mockIggyClient) DeleteStream(_ iggcon.Identifier) error            { return nil }
+func (m *mockIggyClient) DeleteStream(_ iggcon.Identifier) error           { return nil }
 func (m *mockIggyClient) GetTopics(_ iggcon.Identifier) ([]iggcon.Topic, error) {
 	return nil, nil
 }
@@ -257,10 +257,10 @@ func TestApacheIggyDefaultValues(t *testing.T) {
 func TestApacheIggyPartitionLimitation(t *testing.T) {
 	config := &scalersconfig.ScalerConfig{
 		TriggerMetadata: map[string]string{
-			"serverAddress":      "localhost:8090",
-			"streamId":           "s",
-			"topicId":            "t",
-			"consumerGroupId":    "g",
+			"serverAddress":       "localhost:8090",
+			"streamId":            "s",
+			"topicId":             "t",
+			"consumerGroupId":     "g",
 			"partitionLimitation": "1,3,5-7",
 		},
 		AuthParams: map[string]string{"accessToken": "tok"},
@@ -318,17 +318,17 @@ func TestApacheIggyGetMetricSpecForScaling(t *testing.T) {
 }
 
 type apacheIggyLagTestData struct {
-	description                    string
-	partitionLags                  []int64
-	partitionLagsWithPersistent    []int64 // nil means same as partitionLags
-	lagThreshold                   int64
-	activationLagThreshold         int64
-	allowIdleConsumers             bool
-	limitToPartitionsWithLag       bool
-	ensureEvenDistribution         bool
-	expectedMetric                 int64
-	expectedLagWithPersistent      int64
-	expectedActive                 bool
+	description                 string
+	partitionLags               []int64
+	partitionLagsWithPersistent []int64 // nil means same as partitionLags
+	lagThreshold                int64
+	activationLagThreshold      int64
+	allowIdleConsumers          bool
+	limitToPartitionsWithLag    bool
+	ensureEvenDistribution      bool
+	expectedMetric              int64
+	expectedLagWithPersistent   int64
+	expectedActive              bool
 }
 
 var apacheIggyLagTestDataset = []apacheIggyLagTestData{
@@ -408,8 +408,8 @@ var apacheIggyLagTestDataset = []apacheIggyLagTestData{
 	},
 	{
 		description:                 "excludePersistentLag - persistent partition excluded from scaling but counts for activation",
-		partitionLags:               []int64{0, 5, 3},            // lag=0 for stuck partition
-		partitionLagsWithPersistent: []int64{10, 5, 3},           // full lag includes stuck partition
+		partitionLags:               []int64{0, 5, 3},  // lag=0 for stuck partition
+		partitionLagsWithPersistent: []int64{10, 5, 3}, // full lag includes stuck partition
 		lagThreshold:                10,
 		activationLagThreshold:      0,
 		expectedMetric:              8,
