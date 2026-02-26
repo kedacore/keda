@@ -76,11 +76,16 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
 
 ### Fixes
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
+- **Forgejo Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
+- **Github Runner Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
+- **Loki Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
+- **Prometheus Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
+- **Solr Scaler**: Use net/url to safely encode query parameters ([#7467](https://github.com/kedacore/keda/pull/7467))
 
 ### Deprecations
 
@@ -93,9 +98,11 @@ New deprecation(s):
 ### Breaking Changes
 
 - **Huawei Cloudeye Scaler**: The `minMetricValue` setting is DEPRECATED and is removed - Use `activationTargetMetricValue` instead ([#7436](https://github.com/kedacore/keda/issues/7436))
+- **IBM MQ scaler**: The `tls` setting code is removed ([#6094](https://github.com/kedacore/keda/issues/6094))
 
 ### Other
 
+- **General**: Use informer cache for ReplicaSet lookups in GetCurrentReplicas to reduce API server load ([#7466](https://github.com/kedacore/keda/pull/7466))
 - TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 ## v2.19.0
