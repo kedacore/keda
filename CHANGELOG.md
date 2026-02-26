@@ -68,8 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General:** Introduce new Apache Iggy Scaler ([#7484](https://github.com/kedacore/keda/issues/7484))
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Introduce new Apache Iggy Scaler ([#7484](https://github.com/kedacore/keda/issues/7484))
 
 #### Experimental
 
