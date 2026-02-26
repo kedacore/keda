@@ -80,6 +80,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Fixes
 
+- **General**: Update Fallback condition when health status changes between `HealthStatusHappy` and `HealthStatusFailing` ([#7488](https://github.com/kedacore/keda/issues/7488))
 - **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
 - **Forgejo Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Github Runner Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
