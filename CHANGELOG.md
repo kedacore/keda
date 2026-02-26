@@ -76,7 +76,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
 
 ### Fixes
 
