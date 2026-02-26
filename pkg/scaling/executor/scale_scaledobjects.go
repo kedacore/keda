@@ -277,6 +277,9 @@ func (e *scaleExecutor) scaleToZeroOrIdle(ctx context.Context, logger logr.Logge
 				logger.Error(err, "Error in setting active condition")
 				return
 			}
+			if err := e.setFallbackCondition(ctx, logger, scaledObject, metav1.ConditionUnknown, "ScalerIdle", "Fallback state is not evaluated while ScaledObject is idled"); err != nil {
+				logger.Error(err, "Error in setting fallback condition")
+			}
 		} else {
 			e.recorder.Eventf(scaledObject, corev1.EventTypeWarning, eventreason.KEDAScaleTargetDeactivationFailed,
 				"Failed to deactivate %s %s/%s from %d to %d", scaledObject.Status.ScaleTargetKind, scaledObject.Namespace, scaledObject.Spec.ScaleTargetRef.Name, currentReplicas, scaleToReplicas)
