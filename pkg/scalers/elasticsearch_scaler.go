@@ -149,6 +149,17 @@ func (s *elasticsearchScaler) Close(_ context.Context) error {
 	return nil
 }
 
+// checkHTTPStatus returns a clear error for authentication and authorization failures
+func (s *elasticsearchScaler) checkHTTPStatus(statusCode int) error {
+	if statusCode == 401 {
+		return fmt.Errorf("elasticsearch authentication failed (HTTP 401): check username and password")
+	}
+	if statusCode == 403 {
+		return fmt.Errorf("elasticsearch authorization failed (HTTP 403): user has insufficient permissions")
+	}
+	return nil
+}
+
 // getQueryResult returns result of the scaler query
 func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (float64, error) {
 	// Build the request body.
@@ -181,6 +192,11 @@ func (s *elasticsearchScaler) getQueryResult(ctx context.Context) (float64, erro
 	}
 
 	defer res.Body.Close()
+
+	if err := s.checkHTTPStatus(res.StatusCode); err != nil {
+		return 0, err
+	}
+
 	b, err := io.ReadAll(res.Body)
 	if err != nil {
 		return 0, err
