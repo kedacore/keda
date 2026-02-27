@@ -318,7 +318,7 @@ jobs:
             {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Upload test logs
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: e2e-test-logs
           path: "${{ github.workspace }}/**/*.log"
@@ -413,7 +413,7 @@ jobs:
             {"summary": "❌ Tests Failed. [**View Logs**](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}/job/${{job.check_run_id}})"}
 
       - name: Upload test logs
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: arm-smoke-test-logs
           path: "${{ github.workspace }}/**/*.log"
@@ -522,7 +522,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
 
       - name: Upload test logs
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: s390x-smoke-test-logs
           path: "${{ github.workspace }}/**/*.log"
