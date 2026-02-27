@@ -86,6 +86,7 @@ const (
 	ExclusiveSetTag       = "exclusiveSet"
 	RangeTag              = "range"
 	SeparatorTag          = "separator"
+	AllowEmptyTag         = "allowEmpty"
 )
 
 // Params is a struct that represents the parameter list that can be used in the keda tag
@@ -126,6 +127,9 @@ type Params struct {
 
 	// Separator is the tag parameter to define which separator will be used
 	Separator string
+
+	// AllowEmpty is the 'allowEmpty' tag parameter defining if the parameter can be empty
+	AllowEmpty bool
 }
 
 // Name returns the name of the parameter (or comma separated list of names if it has multiple)
@@ -515,8 +519,10 @@ func (sc *ScalerConfig) configParamValue(params Params) (string, bool) {
 			}
 			param, ok := m[key]
 			param = strings.TrimSpace(param)
-			if ok && param != "" {
-				return param, true
+			if ok {
+				if params.AllowEmpty || param != "" {
+					return param, true
+				}
 			}
 		}
 	}
@@ -615,6 +621,13 @@ func paramsFromTag(tag string, field reflect.StructField) (Params, error) {
 		case SeparatorTag:
 			if len(tsplit) > 1 {
 				params.Separator = strings.TrimSpace(tsplit[1])
+			}
+		case AllowEmptyTag:
+			if len(tsplit) == 1 {
+				params.AllowEmpty = true
+			}
+			if len(tsplit) > 1 {
+				params.AllowEmpty, _ = strconv.ParseBool(strings.TrimSpace(tsplit[1]))
 			}
 		case "":
 			continue
