@@ -345,7 +345,20 @@ func getNATSJetStreamMonitoringURL(useHTTPS bool, natsServerEndpoint string, id 
 	if useHTTPS {
 		scheme = natsHTTPSProtocol
 	}
-	return fmt.Sprintf("%s://%s/jsz?acc=%s&consumers=true&config=true", scheme, natsServerEndpoint, id)
+
+	params := url.Values{}
+	params.Set("acc", id)
+	params.Set("consumers", "true")
+	params.Set("config", "true")
+
+	monitoringURL := url.URL{
+		Scheme:   scheme,
+		Host:     natsServerEndpoint,
+		Path:     "/jsz",
+		RawQuery: params.Encode(),
+	}
+
+	return monitoringURL.String()
 }
 
 func (s *natsJetStreamScaler) getNATSJetStreamMonitoringServerURL(nodeHostname string) (string, error) {
@@ -379,7 +392,14 @@ func (s *natsJetStreamScaler) getNATSJetStreamMonitoringNodeURL(nodeHostname str
 		nodeHostname = net.JoinHostPort(nodeHostname, port)
 	}
 
-	return fmt.Sprintf("%s://%s%s?%s", jsURL.Scheme, nodeHostname, jsURL.Path, jsURL.RawQuery), nil
+	nodeURL := url.URL{
+		Scheme:   jsURL.Scheme,
+		Host:     nodeHostname,
+		Path:     jsURL.Path,
+		RawQuery: jsURL.Query().Encode(),
+	}
+
+	return nodeURL.String(), nil
 }
 
 func (s *natsJetStreamScaler) getNATSJetStreamMonitoringNodeURLByNode(node string) (string, error) {
@@ -388,7 +408,15 @@ func (s *natsJetStreamScaler) getNATSJetStreamMonitoringNodeURLByNode(node strin
 		s.logger.Error(err, "unable to parse monitoring URL to create node URL", "natsServerMonitoringURL", s.metadata.monitoringURL)
 		return "", err
 	}
-	return fmt.Sprintf("%s://%s.%s%s?%s", jsURL.Scheme, node, jsURL.Host, jsURL.Path, jsURL.RawQuery), nil
+
+	nodeURL := url.URL{
+		Scheme:   jsURL.Scheme,
+		Host:     fmt.Sprintf("%s.%s", node, jsURL.Host),
+		Path:     jsURL.Path,
+		RawQuery: jsURL.Query().Encode(),
+	}
+
+	return nodeURL.String(), nil
 }
 
 func (s *natsJetStreamScaler) getMaxMsgLag() int64 {
