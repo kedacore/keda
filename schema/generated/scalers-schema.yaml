@@ -1999,6 +1999,58 @@ scalers:
           type: string
           default: "0"
           metadataVariableReadable: true
+    - type: opencost
+      parameters:
+        - name: serverAddress
+          type: string
+          metadataVariableReadable: true
+        - name: window
+          type: string
+          default: 1h
+          metadataVariableReadable: true
+        - name: aggregate
+          type: string
+          default: namespace
+          allowedValue:
+            - cluster
+            - node
+            - namespace
+            - controllerKind
+            - controller
+            - service
+            - pod
+            - container
+          metadataVariableReadable: true
+        - name: filter
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: costThreshold
+          type: string
+          metadataVariableReadable: true
+        - name: activationCostThreshold
+          type: string
+          default: "0"
+          metadataVariableReadable: true
+        - name: costType
+          type: string
+          default: totalCost
+          allowedValue:
+            - totalCost
+            - cpuCost
+            - gpuCost
+            - ramCost
+            - pvCost
+            - networkCost
+          metadataVariableReadable: true
+        - name: unsafeSsl
+          type: string
+          default: "false"
+          metadataVariableReadable: true
+        - name: inverseScaling
+          type: string
+          default: "true"
+          metadataVariableReadable: true
     - type: openstack-metric
       parameters:
         - name: metricsURL
