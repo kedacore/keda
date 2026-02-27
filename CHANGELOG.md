@@ -117,6 +117,7 @@ New deprecation(s):
 - **General**: Emit more events about what is happening with ScaledObject/ScaledJob ([#7382](https://github.com/kedacore/keda/issues/7382))
 - **General**: Raw metrics stream - include trigger activity status in response ([#7369](https://github.com/kedacore/keda/issues/7369))
 - **AWS CloudWatch Scaler**: Add cross-account observability support ([#7189](https://github.com/kedacore/keda/issues/7189))
+- **AWS Scalers**: Add support for `externalId` in AssumeRole via TriggerAuthentication annotation `keda.sh/aws-role-external-id` ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 - **Dynamodb Scaler**: Add FilterExpression support ([#7102](https://github.com/kedacore/keda/issues/7102))
 - **Dynatrace Scaler**: Support DQL querying ([#7377](https://github.com/kedacore/keda/issues/7377))
 - **MongoDB Scaler**: Add TLS support ([#6976](https://github.com/kedacore/keda/issues/6976))

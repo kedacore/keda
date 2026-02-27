@@ -259,12 +259,16 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 	var err error
 
 	if namespace != "" && triggerAuthRef != nil && triggerAuthRef.Name != "" {
-		triggerAuthSpec, triggerNamespace, err := getTriggerAuthSpec(ctx, client, triggerAuthRef, namespace)
+		triggerAuthSpec, triggerAuthAnnotations, triggerNamespace, err := getTriggerAuthSpec(ctx, client, triggerAuthRef, namespace)
 		if err != nil {
 			logger.Error(err, "error getting triggerAuth", "triggerAuthRef.Name", triggerAuthRef.Name)
 		} else {
 			if triggerAuthSpec.PodIdentity != nil {
 				podIdentity = *triggerAuthSpec.PodIdentity
+			}
+			// Extract AWS role external ID from annotations if present
+			if externalID, ok := triggerAuthAnnotations[kedav1alpha1.AwsRoleExternalIDAnnotation]; ok && externalID != "" {
+				result["awsRoleExternalId"] = externalID
 			}
 			if triggerAuthSpec.Env != nil {
 				for _, e := range triggerAuthSpec.Env {
@@ -393,28 +397,28 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 	return result, podIdentity, err
 }
 
-func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.AuthenticationRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, string, error) {
+func getTriggerAuthSpec(ctx context.Context, client client.Client, triggerAuthRef *kedav1alpha1.AuthenticationRef, namespace string) (*kedav1alpha1.TriggerAuthenticationSpec, map[string]string, string, error) {
 	switch triggerAuthRef.Kind {
 	case "", "TriggerAuthentication":
 		triggerAuth := &kedav1alpha1.TriggerAuthentication{}
 		err := client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name, Namespace: namespace}, triggerAuth)
 		if err != nil {
-			return nil, "", err
+			return nil, nil, "", err
 		}
-		return &triggerAuth.Spec, namespace, nil
+		return &triggerAuth.Spec, triggerAuth.Annotations, namespace, nil
 	case "ClusterTriggerAuthentication":
 		clusterNamespace, err := util.GetClusterObjectNamespace()
 		if err != nil {
-			return nil, "", err
+			return nil, nil, "", err
 		}
 		triggerAuth := &kedav1alpha1.ClusterTriggerAuthentication{}
 		err = client.Get(ctx, types.NamespacedName{Name: triggerAuthRef.Name}, triggerAuth)
 		if err != nil {
-			return nil, "", err
+			return nil, nil, "", err
 		}
-		return &triggerAuth.Spec, clusterNamespace, nil
+		return &triggerAuth.Spec, triggerAuth.Annotations, clusterNamespace, nil
 	default:
-		return nil, "", fmt.Errorf("unknown trigger auth kind %s", triggerAuthRef.Kind)
+		return nil, nil, "", fmt.Errorf("unknown trigger auth kind %s", triggerAuthRef.Kind)
 	}
 }
 
