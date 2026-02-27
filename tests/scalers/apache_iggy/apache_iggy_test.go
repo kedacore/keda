@@ -40,55 +40,43 @@ var (
 	streamName = "test-stream"
 
 	// Topics — each test scenario gets its own topic to avoid cross-test interference
-	earliestTopicID   = "1"
-	earliestTopicName = "earliest-topic"
-	topicPartitions   = 3
+	basicTopicID    = "1"
+	basicTopicName  = "basic-topic"
+	topicPartitions = 3
 
-	latestTopicID   = "2"
-	latestTopicName = "latest-topic"
-
-	zeroInvalidOffsetTopicID   = "3"
+	zeroInvalidOffsetTopicID   = "2"
 	zeroInvalidOffsetTopicName = "zero-invalid-offset-topic"
 
-	oneInvalidOffsetTopicID   = "4"
+	oneInvalidOffsetTopicID   = "3"
 	oneInvalidOffsetTopicName = "one-invalid-offset-topic"
 
-	persistentLagTopicID   = "5"
+	persistentLagTopicID   = "4"
 	persistentLagTopicName = "persistent-lag-topic"
 
-	limitPartitionsTopicID   = "6"
+	limitPartitionsTopicID   = "5"
 	limitPartitionsTopicName = "limit-partitions-topic"
 
-	evenDistributionTopicID         = "7"
+	evenDistributionTopicID         = "6"
 	evenDistributionTopicName       = "even-distribution-topic"
 	evenDistributionTopicPartitions = 10
 
 	// Consumer groups — one per test scenario
-	earliestGroupID = "1"
-	earliestGroup   = "earliest-group"
+	basicGroupID = "1"
+	basicGroup   = "basic-group"
 
-	latestGroupID = "2"
-	latestGroup   = "latest-group"
+	zeroInvalidGroupID = "2"
+	zeroInvalidGroup   = "zero-invalid-group"
 
-	zeroInvalidLatestGroupID = "3"
-	zeroInvalidLatestGroup   = "zero-invalid-latest-group"
+	oneInvalidGroupID = "3"
+	oneInvalidGroup   = "one-invalid-group"
 
-	zeroInvalidEarliestGroupID = "4"
-	zeroInvalidEarliestGroup   = "zero-invalid-earliest-group"
-
-	oneInvalidLatestGroupID = "5"
-	oneInvalidLatestGroup   = "one-invalid-latest-group"
-
-	oneInvalidEarliestGroupID = "6"
-	oneInvalidEarliestGroup   = "one-invalid-earliest-group"
-
-	persistentLagGroupID = "7"
+	persistentLagGroupID = "4"
 	persistentLagGroup   = "persistent-lag-group"
 
-	limitPartitionsGroupID = "8"
+	limitPartitionsGroupID = "5"
 	limitPartitionsGroup   = "limit-partitions-group"
 
-	evenDistributionGroupID = "9"
+	evenDistributionGroupID = "6"
 	evenDistributionGroup   = "even-distribution-group"
 )
 
@@ -106,7 +94,6 @@ type templateData struct {
 	StreamID                           string
 	TopicID                            string
 	ConsumerGroupID                    string
-	ResetPolicy                        string
 	ScaleToZeroOnInvalid               string
 	ExcludePersistentLag               string
 	LimitToPartitionsWithLag           string
@@ -258,12 +245,11 @@ spec:
       consumerGroupId: '{{.ConsumerGroupID}}'
       lagThreshold: '1'
       activationLagThreshold: '1'
-      offsetResetPolicy: '{{.ResetPolicy}}'
 `
 
 	// Note: activationLagThreshold is intentionally omitted (defaults to 0) so that
 	// lag=1 from the invalid-offset fallback path triggers activation (1 > 0 = true).
-	invalidOffsetLatestScaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
+	invalidOffsetScaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: {{.ScaledObjectName}}
@@ -301,49 +287,6 @@ spec:
       consumerGroupId: '{{.ConsumerGroupID}}'
       lagThreshold: '1'
       scaleToZeroOnInvalidOffset: '{{.ScaleToZeroOnInvalid}}'
-      offsetResetPolicy: 'latest'
-`
-
-	// Note: activationLagThreshold is intentionally omitted (defaults to 0) — same as above.
-	invalidOffsetEarliestScaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
-metadata:
-  name: {{.ScaledObjectName}}
-  namespace: {{.TestNamespace}}
-  labels:
-    app: {{.DeploymentName}}
-spec:
-  pollingInterval: 5
-  cooldownPeriod: 0
-  scaleTargetRef:
-    name: {{.DeploymentName}}
-  advanced:
-    horizontalPodAutoscalerConfig:
-      behavior:
-        scaleUp:
-          stabilizationWindowSeconds: 0
-          policies:
-          - type: Percent
-            value: 100
-            periodSeconds: 15
-        scaleDown:
-          stabilizationWindowSeconds: 0
-          policies:
-          - type: Percent
-            value: 100
-            periodSeconds: 15
-  triggers:
-  - type: apache-iggy
-    authenticationRef:
-      name: {{.TriggerAuthName}}
-    metadata:
-      serverAddress: {{.IggyServerAddress}}
-      streamId: '{{.StreamID}}'
-      topicId: '{{.TopicID}}'
-      consumerGroupId: '{{.ConsumerGroupID}}'
-      lagThreshold: '1'
-      scaleToZeroOnInvalidOffset: '{{.ScaleToZeroOnInvalid}}'
-      offsetResetPolicy: 'earliest'
 `
 
 	persistentLagScaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
@@ -384,7 +327,6 @@ spec:
       consumerGroupId: '{{.ConsumerGroupID}}'
       lagThreshold: '1'
       excludePersistentLag: '{{.ExcludePersistentLag}}'
-      offsetResetPolicy: 'latest'
 `
 
 	limitPartitionsScaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
@@ -426,7 +368,6 @@ spec:
       lagThreshold: '1'
       activationLagThreshold: '1'
       limitToPartitionsWithLag: '{{.LimitToPartitionsWithLag}}'
-      offsetResetPolicy: 'latest'
 `
 
 	evenDistributionScaledObjectTemplate = `apiVersion: keda.sh/v1alpha1
@@ -468,7 +409,6 @@ spec:
       lagThreshold: '1'
       activationLagThreshold: '1'
       ensureEvenDistributionOfPartitions: '{{.EnsureEvenDistributionOfPartitions}}'
-      offsetResetPolicy: 'latest'
 `
 )
 
@@ -499,8 +439,7 @@ func TestScaler(t *testing.T) {
 	iggyCreateStream(t)
 
 	// Create topics (each test gets its own topic)
-	iggyCreateTopic(t, earliestTopicID, earliestTopicName, topicPartitions)
-	iggyCreateTopic(t, latestTopicID, latestTopicName, topicPartitions)
+	iggyCreateTopic(t, basicTopicID, basicTopicName, topicPartitions)
 	iggyCreateTopic(t, zeroInvalidOffsetTopicID, zeroInvalidOffsetTopicName, 1)
 	iggyCreateTopic(t, oneInvalidOffsetTopicID, oneInvalidOffsetTopicName, 1)
 	iggyCreateTopic(t, persistentLagTopicID, persistentLagTopicName, topicPartitions)
@@ -508,23 +447,17 @@ func TestScaler(t *testing.T) {
 	iggyCreateTopic(t, evenDistributionTopicID, evenDistributionTopicName, evenDistributionTopicPartitions)
 
 	// Create consumer groups (one per test scenario)
-	iggyCreateConsumerGroup(t, earliestTopicID, earliestGroupID, earliestGroup)
-	iggyCreateConsumerGroup(t, latestTopicID, latestGroupID, latestGroup)
-	iggyCreateConsumerGroup(t, zeroInvalidOffsetTopicID, zeroInvalidLatestGroupID, zeroInvalidLatestGroup)
-	iggyCreateConsumerGroup(t, zeroInvalidOffsetTopicID, zeroInvalidEarliestGroupID, zeroInvalidEarliestGroup)
-	iggyCreateConsumerGroup(t, oneInvalidOffsetTopicID, oneInvalidLatestGroupID, oneInvalidLatestGroup)
-	iggyCreateConsumerGroup(t, oneInvalidOffsetTopicID, oneInvalidEarliestGroupID, oneInvalidEarliestGroup)
+	iggyCreateConsumerGroup(t, basicTopicID, basicGroupID, basicGroup)
+	iggyCreateConsumerGroup(t, zeroInvalidOffsetTopicID, zeroInvalidGroupID, zeroInvalidGroup)
+	iggyCreateConsumerGroup(t, oneInvalidOffsetTopicID, oneInvalidGroupID, oneInvalidGroup)
 	iggyCreateConsumerGroup(t, persistentLagTopicID, persistentLagGroupID, persistentLagGroup)
 	iggyCreateConsumerGroup(t, limitPartitionsTopicID, limitPartitionsGroupID, limitPartitionsGroup)
 	iggyCreateConsumerGroup(t, evenDistributionTopicID, evenDistributionGroupID, evenDistributionGroup)
 
 	// Test scenarios
-	testEarliestPolicy(t, kc, data)
-	testLatestPolicy(t, kc, data)
-	testScaleToZeroOnInvalidOffsetWithLatestPolicy(t, kc, data)
-	testScaleToZeroOnInvalidOffsetWithEarliestPolicy(t, kc, data)
-	testOneOnInvalidOffsetWithLatestPolicy(t, kc, data)
-	testOneOnInvalidOffsetWithEarliestPolicy(t, kc, data)
+	testBasicLagScaling(t, kc, data)
+	testScaleToZeroOnInvalidOffset(t, kc, data)
+	testOneOnInvalidOffset(t, kc, data)
 	testPersistentLag(t, kc, data)
 	testLimitToPartitionsWithLag(t, kc, data)
 	testEnsureEvenDistributionOfPartitions(t, kc, data)
@@ -532,15 +465,14 @@ func TestScaler(t *testing.T) {
 
 // --- Test scenarios ---
 
-func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing earliest policy ---")
-	data.TopicID = earliestTopicID
-	data.ConsumerGroupID = earliestGroupID
-	data.ResetPolicy = "earliest"
+func testBasicLagScaling(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing basic lag scaling ---")
+	data.TopicID = basicTopicID
+	data.ConsumerGroupID = basicGroupID
 
 	// Initialize consumer group offsets at 0 for all partitions.
 	// On an empty topic CurrentOffset=0, so lag = max(0-0, 0) = 0.
-	iggyStoreConsumerOffsetAll(t, earliestTopicID, earliestGroupID, topicPartitions)
+	iggyStoreConsumerOffsetAll(t, basicTopicID, basicGroupID, topicPartitions)
 
 	KubectlApplyWithTemplate(t, data, "targetDeploymentTemplate", targetDeploymentTemplate)
 	defer KubectlDeleteWithTemplate(t, data, "targetDeploymentTemplate", targetDeploymentTemplate)
@@ -551,111 +483,41 @@ func testEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateDat
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 
 	// Publish 1 message to partition 1 — total lag=1, activationLagThreshold=1, 1 is NOT > 1
-	iggyPublishMessage(t, earliestTopicID, 1)
+	iggyPublishMessage(t, basicTopicID, 1)
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 
 	// Publish 1 more to partition 2 — total lag=2, 2 > 1 → active, scale to 2
-	iggyPublishMessage(t, earliestTopicID, 2)
+	iggyPublishMessage(t, basicTopicID, 2)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
 		"replica count should be 2")
 
 	// Publish 5 more spread across partitions — total lag=7, but capped at partition count (3)
 	for i := 0; i < 5; i++ {
-		iggyPublishMessage(t, earliestTopicID, (i%topicPartitions)+1)
+		iggyPublishMessage(t, basicTopicID, (i%topicPartitions)+1)
 	}
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, topicPartitions, 60, 2),
 		"replica count should be capped at partition count %d", topicPartitions)
 }
 
-func testLatestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing latest policy ---")
-	data.TopicID = latestTopicID
-	data.ConsumerGroupID = latestGroupID
-	data.ResetPolicy = "latest"
-
-	// Initialize consumer group offsets at 0 on empty topic — lag=0
-	iggyStoreConsumerOffsetAll(t, latestTopicID, latestGroupID, topicPartitions)
-
-	KubectlApplyWithTemplate(t, data, "targetDeploymentTemplate", targetDeploymentTemplate)
-	defer KubectlDeleteWithTemplate(t, data, "targetDeploymentTemplate", targetDeploymentTemplate)
-	KubectlApplyWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-	defer KubectlDeleteWithTemplate(t, data, "scaledObjectTemplate", scaledObjectTemplate)
-
-	// No lag — should stay at 0
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
-
-	// Publish 1 message — total lag=1, not > activationLagThreshold(1)
-	iggyPublishMessage(t, latestTopicID, 1)
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
-
-	// Publish 1 more to different partition — total lag=2, 2 > 1 → active, scale to 2
-	iggyPublishMessage(t, latestTopicID, 2)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 2, 60, 2),
-		"replica count should be 2")
-
-	// Publish 5 more — capped at partition count
-	for i := 0; i < 5; i++ {
-		iggyPublishMessage(t, latestTopicID, (i%topicPartitions)+1)
-	}
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, topicPartitions, 60, 2),
-		"replica count should be capped at partition count %d", topicPartitions)
-}
-
-func testScaleToZeroOnInvalidOffsetWithLatestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scaleToZeroOnInvalidOffset with latest policy ---")
+func testScaleToZeroOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing scaleToZeroOnInvalidOffset ---")
 	data.TopicID = zeroInvalidOffsetTopicID
-	data.ConsumerGroupID = zeroInvalidLatestGroupID
+	data.ConsumerGroupID = zeroInvalidGroupID
 	data.ScaleToZeroOnInvalid = StringTrue
 
 	KubectlApplyWithTemplate(t, data, "targetDeploymentTemplate", targetDeploymentTemplate)
 	defer KubectlDeleteWithTemplate(t, data, "targetDeploymentTemplate", targetDeploymentTemplate)
-	KubectlApplyWithTemplate(t, data, "invalidOffsetLatestScaledObjectTemplate", invalidOffsetLatestScaledObjectTemplate)
-	defer KubectlDeleteWithTemplate(t, data, "invalidOffsetLatestScaledObjectTemplate", invalidOffsetLatestScaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
 
 	// No committed offsets, scaleToZeroOnInvalidOffset=true → lag=0 → inactive → stay at 0
 	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
 }
 
-func testScaleToZeroOnInvalidOffsetWithEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing scaleToZeroOnInvalidOffset with earliest policy ---")
-	data.TopicID = zeroInvalidOffsetTopicID
-	data.ConsumerGroupID = zeroInvalidEarliestGroupID
-	data.ScaleToZeroOnInvalid = StringTrue
-
-	KubectlApplyWithTemplate(t, data, "targetDeploymentTemplate", targetDeploymentTemplate)
-	defer KubectlDeleteWithTemplate(t, data, "targetDeploymentTemplate", targetDeploymentTemplate)
-	KubectlApplyWithTemplate(t, data, "invalidOffsetEarliestScaledObjectTemplate", invalidOffsetEarliestScaledObjectTemplate)
-	defer KubectlDeleteWithTemplate(t, data, "invalidOffsetEarliestScaledObjectTemplate", invalidOffsetEarliestScaledObjectTemplate)
-
-	// scaleToZeroOnInvalidOffset=true → lag=0 → inactive → stay at 0
-	AssertReplicaCountNotChangeDuringTimePeriod(t, kc, deploymentName, testNamespace, 0, 30)
-}
-
-func testOneOnInvalidOffsetWithLatestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing oneOnInvalidOffset with latest policy ---")
+func testOneOnInvalidOffset(t *testing.T, kc *kubernetes.Clientset, data templateData) {
+	t.Log("--- testing oneOnInvalidOffset ---")
 	data.TopicID = oneInvalidOffsetTopicID
-	data.ConsumerGroupID = oneInvalidLatestGroupID
-	data.ScaleToZeroOnInvalid = StringFalse
-
-	KubectlApplyWithTemplate(t, data, "targetDeploymentTemplate", targetDeploymentTemplate)
-	defer KubectlDeleteWithTemplate(t, data, "targetDeploymentTemplate", targetDeploymentTemplate)
-	KubectlApplyWithTemplate(t, data, "invalidOffsetLatestScaledObjectTemplate", invalidOffsetLatestScaledObjectTemplate)
-	defer KubectlDeleteWithTemplate(t, data, "invalidOffsetLatestScaledObjectTemplate", invalidOffsetLatestScaledObjectTemplate)
-
-	// No committed offsets, scaleToZeroOnInvalidOffset=false → lag=1 per partition → active → scale to 1
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
-		"replica count should be 1")
-
-	// Store offset 0 — on empty topic, lag=max(0-0,0)=0 → scale to 0
-	iggyStoreConsumerOffset(t, oneInvalidOffsetTopicID, oneInvalidLatestGroupID, 1, 0)
-	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 10),
-		"replica count should be 0")
-}
-
-func testOneOnInvalidOffsetWithEarliestPolicy(t *testing.T, kc *kubernetes.Clientset, data templateData) {
-	t.Log("--- testing oneOnInvalidOffset with earliest policy ---")
-	data.TopicID = oneInvalidOffsetTopicID
-	data.ConsumerGroupID = oneInvalidEarliestGroupID
+	data.ConsumerGroupID = oneInvalidGroupID
 	data.ScaleToZeroOnInvalid = StringFalse
 
 	// Publish 1 message so latest offset is not 0
@@ -663,17 +525,17 @@ func testOneOnInvalidOffsetWithEarliestPolicy(t *testing.T, kc *kubernetes.Clien
 
 	KubectlApplyWithTemplate(t, data, "targetDeploymentTemplate", targetDeploymentTemplate)
 	defer KubectlDeleteWithTemplate(t, data, "targetDeploymentTemplate", targetDeploymentTemplate)
-	KubectlApplyWithTemplate(t, data, "invalidOffsetEarliestScaledObjectTemplate", invalidOffsetEarliestScaledObjectTemplate)
-	defer KubectlDeleteWithTemplate(t, data, "invalidOffsetEarliestScaledObjectTemplate", invalidOffsetEarliestScaledObjectTemplate)
+	KubectlApplyWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
+	defer KubectlDeleteWithTemplate(t, data, "invalidOffsetScaledObjectTemplate", invalidOffsetScaledObjectTemplate)
 
-	// No committed offsets for this group, scaleToZeroOnInvalidOffset=false → lag=1 → scale to 1
+	// No committed offsets, scaleToZeroOnInvalidOffset=false → lag=1 per partition → active → scale to 1
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 1, 60, 2),
 		"replica count should be 1")
 
 	// Store a very large offset to guarantee stored >= current regardless of the topic's
 	// actual current offset value. This ensures lag = max(current - stored, 0) = 0.
 	// The Iggy CLI requires explicit offset values (no "commit to current" shorthand).
-	iggyStoreConsumerOffset(t, oneInvalidOffsetTopicID, oneInvalidEarliestGroupID, 1, 999999)
+	iggyStoreConsumerOffset(t, oneInvalidOffsetTopicID, oneInvalidGroupID, 1, 999999)
 	assert.True(t, WaitForDeploymentReplicaReadyCount(t, kc, deploymentName, testNamespace, 0, 60, 10),
 		"replica count should be 0")
 }

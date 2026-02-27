@@ -78,13 +78,6 @@ scalers:
           type: string
           optional: true
           metadataVariableReadable: true
-        - name: offsetResetPolicy
-          type: string
-          default: latest
-          allowedValue:
-            - earliest
-            - latest
-          metadataVariableReadable: true
         - name: scaleToZeroOnInvalidOffset
           type: string
           optional: true
