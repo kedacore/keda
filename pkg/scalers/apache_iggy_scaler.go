@@ -46,19 +46,18 @@ type apacheIggyScaler struct {
 }
 
 type apacheIggyMetadata struct {
-	ServerAddress                      string            `keda:"name=serverAddress,          order=triggerMetadata;authParams;resolvedEnv"`
-	StreamID                           string            `keda:"name=streamId,               order=triggerMetadata"`
-	TopicID                            string            `keda:"name=topicId,                order=triggerMetadata"`
-	ConsumerGroupID                    string            `keda:"name=consumerGroupId,        order=triggerMetadata"`
-	LagThreshold                       int64             `keda:"name=lagThreshold,           order=triggerMetadata, default=10"`
-	ActivationLagThreshold             int64             `keda:"name=activationLagThreshold, order=triggerMetadata, default=0"`
-	PartitionLimitation                []int             `keda:"name=partitionLimitation,      order=triggerMetadata, optional, range"`
-	LimitToPartitionsWithLag           bool              `keda:"name=limitToPartitionsWithLag, order=triggerMetadata, optional"`
-	ExcludePersistentLag               bool              `keda:"name=excludePersistentLag,     order=triggerMetadata, optional"`
-	OffsetResetPolicy                  offsetResetPolicy `keda:"name=offsetResetPolicy,        order=triggerMetadata, enum=earliest;latest, default=latest"`
-	ScaleToZeroOnInvalidOffset         bool              `keda:"name=scaleToZeroOnInvalidOffset,         order=triggerMetadata, optional"`
-	AllowIdleConsumers                 bool              `keda:"name=allowIdleConsumers,                 order=triggerMetadata, optional"`
-	EnsureEvenDistributionOfPartitions bool              `keda:"name=ensureEvenDistributionOfPartitions, order=triggerMetadata, optional"`
+	ServerAddress                      string `keda:"name=serverAddress,          order=triggerMetadata;authParams;resolvedEnv"`
+	StreamID                           string `keda:"name=streamId,               order=triggerMetadata"`
+	TopicID                            string `keda:"name=topicId,                order=triggerMetadata"`
+	ConsumerGroupID                    string `keda:"name=consumerGroupId,        order=triggerMetadata"`
+	LagThreshold                       int64  `keda:"name=lagThreshold,           order=triggerMetadata, default=10"`
+	ActivationLagThreshold             int64  `keda:"name=activationLagThreshold, order=triggerMetadata, default=0"`
+	PartitionLimitation                []int  `keda:"name=partitionLimitation,      order=triggerMetadata, optional, range"`
+	LimitToPartitionsWithLag           bool   `keda:"name=limitToPartitionsWithLag, order=triggerMetadata, optional"`
+	ExcludePersistentLag               bool   `keda:"name=excludePersistentLag,     order=triggerMetadata, optional"`
+	ScaleToZeroOnInvalidOffset         bool   `keda:"name=scaleToZeroOnInvalidOffset,         order=triggerMetadata, optional"`
+	AllowIdleConsumers                 bool   `keda:"name=allowIdleConsumers,                 order=triggerMetadata, optional"`
+	EnsureEvenDistributionOfPartitions bool   `keda:"name=ensureEvenDistributionOfPartitions, order=triggerMetadata, optional"`
 
 	// Auth - username/password
 	Username string `keda:"name=username, order=authParams;resolvedEnv, optional"`
@@ -205,15 +204,11 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 			// the Iggy SDK does not expose typed errors to distinguish missing offsets
 			// from transient failures (network, auth, etc.) in this path.
 			s.logger.V(1).Info("Error fetching consumer offset, treating as no committed offset",
-				"partition", i, "policy", s.metadata.OffsetResetPolicy, "error", err)
+				"partition", i, "error", err)
 			retVal := int64(1)
 			if s.metadata.ScaleToZeroOnInvalidOffset {
 				retVal = 0
 			}
-			// Note: when offsetResetPolicy=earliest, the ideal behavior is to return the
-			// partition's latest offset as lag (like Kafka). However, when GetConsumerOffset
-			// errors, CurrentOffset is unavailable, so we fall back to retVal=1 as a safe
-			// default that keeps one replica alive.
 			partitionLags = append(partitionLags, retVal)
 			partitionLagsWithPersistent = append(partitionLagsWithPersistent, retVal)
 			continue
@@ -223,7 +218,7 @@ func (s *apacheIggyScaler) GetMetricsAndActivity(_ context.Context, metricName s
 		// responds with an empty payload (e.g., no committed offset yet).
 		if offset == nil {
 			s.logger.V(1).Info("Nil offset returned for partition, treating as no committed offset",
-				"partition", i, "policy", s.metadata.OffsetResetPolicy)
+				"partition", i)
 			retVal := int64(1)
 			if s.metadata.ScaleToZeroOnInvalidOffset {
 				retVal = 0
