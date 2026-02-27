@@ -1,0 +1,9 @@
+ignore:
+  # We have only auxiliary binaries in internal/ no actual user-facing code.
+  - internal/**
+coverage:
+  status:
+    patch: false
+    project:
+      default:
+        threshold: 0.5%
