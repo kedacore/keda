@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +20,18 @@ import (
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
+
+var validPubSubName = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9\-_.~+%]{2,254}$`)
+
+func validateResourceName(name string) error {
+	if strings.HasPrefix(strings.ToLower(name), "goog") {
+		return fmt.Errorf("invalid Pub/Sub resource name %q: names cannot start with \"goog\"", name)
+	}
+	if !validPubSubName.MatchString(name) {
+		return fmt.Errorf("invalid Pub/Sub resource name %q", name)
+	}
+	return nil
+}
 
 const (
 	// Although the "common" value could be 1m
@@ -347,6 +360,11 @@ func getActualProjectID(s *StackDriverClient, projectID string) string {
 // | every 3m
 // | group_by [], count(value)
 func (s StackDriverClient) BuildMQLQuery(projectID, resourceType, metric, resourceName, aggregation string, timeHorizon time.Duration) (string, error) {
+	if err := validateResourceName(resourceName); err != nil {
+		return "", err
+	}
+
+	pid := getActualProjectID(&s, projectID)
 	th := timeHorizon
 	if time.Duration(0) >= timeHorizon {
 		th = defaultTimeHorizon
@@ -355,7 +373,6 @@ func (s StackDriverClient) BuildMQLQuery(projectID, resourceType, metric, resour
 		}
 	}
 
-	pid := getActualProjectID(&s, projectID)
 	q := fmt.Sprintf(
 		"fetch pubsub_%s | metric '%s' | filter (resource.project_id == '%s' && resource.%s_id == '%s') | within %s",
 		resourceType, metric, pid, resourceType, resourceName, th,
