@@ -24,6 +24,8 @@ func NewChainedCredential(logger logr.Logger, podIdentity v1alpha1.AuthPodIdenti
 			logger.V(1).Info("az-cli token provider registered")
 			creds = append(creds, cliCred)
 		}
+	} else {
+		logger.V(1).Info("az-cli token provider skipped: /bin/sh not found (expected in production images)")
 	}
 
 	switch podIdentity.Provider {
@@ -37,6 +39,11 @@ func NewChainedCredential(logger logr.Logger, podIdentity v1alpha1.AuthPodIdenti
 		}
 	default:
 		return nil, fmt.Errorf("pod identity %s not supported for azure credentials chain", podIdentity.Provider)
+	}
+
+	// Validate that at least one credential was successfully created
+	if len(creds) == 0 {
+		return nil, fmt.Errorf("failed to create any valid credentials for Azure authentication: workload identity credential creation failed (check pod configuration for AZURE_FEDERATED_TOKEN_FILE environment variable) and az-cli credential is not available")
 	}
 
 	// Create the chained credential based on the previous 3
