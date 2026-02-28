@@ -33,7 +33,7 @@ type huaweiCloudeyeMetadata struct {
 
 	TargetMetricValue           float64 `keda:"name=targetMetricValue,           order=triggerMetadata"`
 	ActivationTargetMetricValue float64 `keda:"name=activationTargetMetricValue, order=triggerMetadata, default=0"`
-	MinMetricValue              float64 `keda:"name=minMetricValue,              order=triggerMetadata, optional, deprecatedAnnounce=The 'minMetricValue' setting is DEPRECATED and will be removed in v2.20 - Use 'activationTargetMetricValue' instead"`
+	MinMetricValue              float64 `keda:"name=minMetricValue,              order=triggerMetadata, optional, deprecated=The 'minMetricValue' setting is DEPRECATED and is removed in v2.20 - Use 'activationTargetMetricValue' instead"`
 
 	MetricCollectionTime int64  `keda:"name=metricCollectionTime, order=triggerMetadata, default=300"`
 	MetricFilter         string `keda:"name=metricFilter,         order=triggerMetadata, enum=average;max;min;sum, default=average"`
@@ -51,13 +51,6 @@ type huaweiAuthorizationMetadata struct {
 	Cloud            string `keda:"name=Cloud,            order=authParams, default=myhuaweicloud.com"`
 	AccessKey        string `keda:"name=AccessKey,        order=authParams"`
 	SecretKey        string `keda:"name=SecretKey,        order=authParams"`
-}
-
-func (h *huaweiCloudeyeMetadata) Validate() error {
-	if h.MinMetricValue != 0 && h.ActivationTargetMetricValue == 0 {
-		h.ActivationTargetMetricValue = h.MinMetricValue
-	}
-	return nil
 }
 
 // NewHuaweiCloudeyeScaler creates a new huaweiCloudeyeScaler
