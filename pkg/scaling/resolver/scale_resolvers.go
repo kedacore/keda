@@ -387,6 +387,21 @@ func resolveAuthRef(ctx context.Context, client client.Client, logger logr.Logge
 					result[e.Parameter] = resolveBoundServiceAccountToken(ctx, client, logger, triggerNamespace, &e, authClientSet)
 				}
 			}
+			if triggerAuthSpec.Akeyless != nil && len(triggerAuthSpec.Akeyless.Secrets) > 0 {
+				akeylessHandler := &AkeylessHandler{
+					akeyless: triggerAuthSpec.Akeyless,
+				}
+				err := akeylessHandler.Initialize(ctx, client, logger, triggerNamespace, authClientSet.SecretLister, podSpec, podIdentity)
+				if err != nil {
+					logger.Error(err, "error authenticating to Akeyless", "triggerAuthRef.Name", triggerAuthRef.Name)
+					return result, podIdentity, err
+				}
+				result, err = akeylessHandler.GetSecretsValue(ctx, result)
+				if err != nil {
+					logger.Error(err, "error getting secrets from Akeyless", "triggerAuthRef.Name", triggerAuthRef.Name)
+					return result, podIdentity, err
+				}
+			}
 		}
 	}
 

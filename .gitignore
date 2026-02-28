@@ -7,6 +7,8 @@
 *.dylib
 bin
 testbin/*
+.envrc
+.env
 
 # Test binary, build with `go test -c`
 *.test
@@ -46,8 +48,14 @@ cover.out
 cmd/manager/debug.test
 __debug_bin
 
+# goenv
+.go-version
+
 # GO Test result
 report.xml
 
 # KEDA Certs
 certs/*
+
+# Python
+Pipfile*
