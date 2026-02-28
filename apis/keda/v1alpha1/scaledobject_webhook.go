@@ -354,6 +354,17 @@ func verifyScaledObjects(incomingSo *ScaledObject, action string, _ bool) error 
 			return err
 		}
 	}
+
+	// verify triggerScoped fallback behavior requirements
+	if incomingSo.Spec.Fallback != nil && incomingSo.Spec.Fallback.Behavior == FallbackBehaviorTriggerScoped {
+		err = validateTriggerScopedBehavior(incomingSo)
+		if err != nil {
+			scaledobjectlog.Error(err, "error validating triggerScoped fallback behavior")
+			metricscollector.RecordScaledObjectValidatingErrors(incomingSo.Namespace, action, "trigger-scoped-fallback")
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -497,7 +508,8 @@ func validateScalingModifiersFormula(so *ScaledObject) (*vm.Program, error) {
 
 	// Compile & Run with dummy values to determine if all triggers in formula are
 	// defined (have names)
-	triggersMap := make(map[string]float64)
+	// Use interface{} to support both float64 and nil values for triggerScoped behavior
+	triggersMap := make(map[string]interface{})
 	for _, trig := range so.Spec.Triggers {
 		// if resource metrics are given, skip
 		if trig.Type == cpuString || trig.Type == memoryString {
@@ -515,6 +527,20 @@ func validateScalingModifiersFormula(so *ScaledObject) (*vm.Program, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// If triggerScoped behavior is enabled, test that nil values work with the formula
+	if so.Spec.Fallback != nil && so.Spec.Fallback.Behavior == FallbackBehaviorTriggerScoped {
+		// Test formula with nil values to ensure nil-coalescing operator works
+		testMap := make(map[string]interface{})
+		for key := range triggersMap {
+			testMap[key] = nil
+		}
+		_, err = expr.Run(compiled, testMap)
+		if err != nil {
+			return nil, fmt.Errorf("formula with triggerScoped behavior must support nil values (use ?? operator): %w", err)
+		}
+	}
+
 	return compiled, nil
 }
 
@@ -534,6 +560,26 @@ func validateScalingModifiersTarget(so *ScaledObject) error {
 	if so.Spec.Advanced.ScalingModifiers.MetricType == autoscalingv2.UtilizationMetricType {
 		err := fmt.Errorf("error trigger type is Utilization, but it needs to be AverageValue or Value for external metrics")
 		return err
+	}
+
+	return nil
+}
+
+// validateTriggerScopedBehavior validates that triggerScoped behavior has required configuration
+func validateTriggerScopedBehavior(so *ScaledObject) error {
+	// triggerScoped requires formula to be defined
+	if !so.IsUsingModifiers() || so.Spec.Advanced.ScalingModifiers.Formula == "" {
+		return fmt.Errorf("triggerScoped fallback behavior requires scalingModifiers.formula to be defined")
+	}
+
+	// validate failureThreshold is non-negative
+	if so.Spec.Fallback.FailureThreshold < 0 {
+		return fmt.Errorf("fallback.failureThreshold must be non-negative, got %d", so.Spec.Fallback.FailureThreshold)
+	}
+
+	// validate replicas is non-negative
+	if so.Spec.Fallback.Replicas < 0 {
+		return fmt.Errorf("fallback.replicas must be non-negative, got %d", so.Spec.Fallback.Replicas)
 	}
 
 	return nil
