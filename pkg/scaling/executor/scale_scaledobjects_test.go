@@ -790,3 +790,74 @@ func TestNoScaleFromIdleReplicasToMinReplicasWhenActiveAndPausedScaleOutAnnotati
 	condition := scaledObject.Status.Conditions.GetActiveCondition()
 	assert.Equal(t, true, condition.IsTrue())
 }
+
+func TestGetPausedReplicaCount(t *testing.T) {
+	tests := []struct {
+		name           string
+		annotations    map[string]string
+		expectedResult *int32
+		expectedError  bool
+	}{
+		{
+			name:           "No annotations",
+			annotations:    nil,
+			expectedResult: nil,
+			expectedError:  false,
+		},
+		{
+			name:           "Annotation not present",
+			annotations:    map[string]string{"other": "value"},
+			expectedResult: nil,
+			expectedError:  false,
+		},
+		{
+			name:           "Valid numeric value",
+			annotations:    map[string]string{v1alpha1.PausedReplicasAnnotation: "5"},
+			expectedResult: func() *int32 { v := int32(5); return &v }(),
+			expectedError:  false,
+		},
+		{
+			name:           "Zero value",
+			annotations:    map[string]string{v1alpha1.PausedReplicasAnnotation: "0"},
+			expectedResult: func() *int32 { v := int32(0); return &v }(),
+			expectedError:  false,
+		},
+		{
+			name:           "Empty string value",
+			annotations:    map[string]string{v1alpha1.PausedReplicasAnnotation: ""},
+			expectedResult: nil,
+			expectedError:  false,
+		},
+		{
+			name:           "Invalid value",
+			annotations:    map[string]string{v1alpha1.PausedReplicasAnnotation: "invalid"},
+			expectedResult: nil,
+			expectedError:  true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			scaledObject := &v1alpha1.ScaledObject{
+				ObjectMeta: v1.ObjectMeta{
+					Annotations: test.annotations,
+				},
+			}
+
+			result, err := GetPausedReplicaCount(scaledObject)
+
+			if test.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			if test.expectedResult == nil {
+				assert.Nil(t, result)
+			} else {
+				assert.NotNil(t, result)
+				assert.Equal(t, *test.expectedResult, *result)
+			}
+		})
+	}
+}
