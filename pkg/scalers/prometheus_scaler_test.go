@@ -70,6 +70,10 @@ var testPromMetadata = []parsePrometheusMetadataTestData{
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "timeout": "-1"}, true},
 	// invalid - not a number - custom http client timeout with milliseconds
 	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "timeout": "a"}, true},
+	// valid proxyAddress
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "proxyAddress": "http://proxy.example.com:8080"}, false},
+	// valid proxyAddress with https
+	{map[string]string{"serverAddress": "http://localhost:9090", "metricName": "http_requests_total", "threshold": "100", "query": "up", "proxyAddress": "https://proxy.example.com:8080"}, false},
 }
 
 var prometheusMetricIdentifiers = []prometheusMetricIdentifier{
@@ -565,6 +569,80 @@ h+VRH7M7/22LuSxeKoQaRqeBRbvGup/oHGr9Ks/sVi0EQRUqwB45QLNiF1bi
 			got, err := s.ExecutePromQuery(context.TODO())
 			require.NoError(t, err)
 			assert.Equal(t, float64(777), got)
+		})
+	}
+}
+
+func TestPrometheusScalerProxyAddress(t *testing.T) {
+	tests := []struct {
+		name         string
+		proxyAddress string
+		expectProxy  bool
+		expectError  bool
+	}{
+		{
+			name:         "no proxy",
+			proxyAddress: "",
+			expectProxy:  false,
+			expectError:  false,
+		},
+		{
+			name:         "http proxy",
+			proxyAddress: "http://proxy.example.com:8080",
+			expectProxy:  true,
+			expectError:  false,
+		},
+		{
+			name:         "https proxy",
+			proxyAddress: "https://proxy.example.com:8080",
+			expectProxy:  true,
+			expectError:  false,
+		},
+		{
+			name:         "proxy with auth",
+			proxyAddress: "http://user:password@proxy.example.com:8080",
+			expectProxy:  true,
+			expectError:  false,
+		},
+		{
+			name:         "invalid proxy url",
+			proxyAddress: "://invalid",
+			expectProxy:  false,
+			expectError:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metadata := map[string]string{
+				"serverAddress": "http://localhost:9090",
+				"threshold":     "100",
+				"query":         "up",
+			}
+			if tt.proxyAddress != "" {
+				metadata["proxyAddress"] = tt.proxyAddress
+			}
+
+			config := &scalersconfig.ScalerConfig{
+				TriggerMetadata: metadata,
+			}
+
+			scaler, err := NewPrometheusScaler(config)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			s, ok := scaler.(*prometheusScaler)
+			require.True(t, ok, "Scaler must be a Prometheus Scaler")
+
+			if tt.expectProxy {
+				assert.Equal(t, tt.proxyAddress, s.metadata.ProxyAddress)
+			} else {
+				assert.Empty(t, s.metadata.ProxyAddress)
+			}
 		})
 	}
 }

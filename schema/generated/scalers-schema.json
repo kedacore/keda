@@ -3409,6 +3409,12 @@
                     "type": "string",
                     "optional": true,
                     "metadataVariableReadable": true
+                },
+                {
+                    "name": "proxyAddress",
+                    "type": "string",
+                    "optional": true,
+                    "metadataVariableReadable": true
                 }
             ]
         },

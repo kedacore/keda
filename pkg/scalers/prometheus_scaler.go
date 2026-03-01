@@ -53,6 +53,7 @@ type prometheusMetadata struct {
 	Timeout             time.Duration          `keda:"name=timeout,             order=triggerMetadata,            optional"` // custom HTTP client timeout
 	IdentityOwner       string                 `keda:"name=identityOwner,       order=triggerMetadata,            optional"`
 	AuthModes           string                 `keda:"name=authModes,           order=triggerMetadata,            optional"`
+	ProxyAddress        string                 `keda:"name=proxyAddress,        order=triggerMetadata,            optional"` // HTTP proxy address for Prometheus requests
 }
 
 type promQueryResult struct {
@@ -88,6 +89,17 @@ func NewPrometheusScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 	}
 
 	httpClient := kedautil.CreateHTTPClient(httpClientTimeout, meta.UnsafeSSL)
+
+	// Configure proxy if proxyAddress is specified
+	if meta.ProxyAddress != "" {
+		proxyURL, err := url_pkg.Parse(meta.ProxyAddress)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing proxy address: %w", err)
+		}
+		if transport, ok := httpClient.Transport.(*http.Transport); ok {
+			transport.Proxy = http.ProxyURL(proxyURL)
+		}
+	}
 
 	if !meta.PrometheusAuth.Disabled() {
 		if meta.PrometheusAuth.CA != "" || meta.PrometheusAuth.EnabledTLS() {
