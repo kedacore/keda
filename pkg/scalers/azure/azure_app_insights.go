@@ -55,7 +55,7 @@ func toISO8601(time string) (string, error) {
 	minutes, merr := strconv.Atoi(timeSegments[1])
 
 	if herr != nil || merr != nil {
-		return "", fmt.Errorf("errors parsing time: %v, %w", herr, merr)
+		return "", fmt.Errorf("errors parsing time: %w, %w", herr, merr)
 	}
 
 	return fmt.Sprintf("PT%02dH%02dM", hours, minutes), nil
