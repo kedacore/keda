@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -18,7 +19,10 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
-const gitlabDefaultPerPage = 100
+const (
+	gitlabDefaultPerPage = 100
+	gitlabMaxPages       = 100
+)
 
 type gitlabRunnerScaler struct {
 	metricType v2.MetricTargetType
@@ -28,17 +32,17 @@ type gitlabRunnerScaler struct {
 }
 
 type gitlabRunnerMetadata struct {
-	GitLabAPIURL                string   `keda:"name=gitlabAPIURL, order=triggerMetadata;resolvedEnv, default=https://gitlab.com"`
-	PersonalAccessToken         string   `keda:"name=personalAccessToken, order=authParams;resolvedEnv"`
-	ProjectID                   string   `keda:"name=projectID, order=triggerMetadata;resolvedEnv, optional"`
-	GroupID                     string   `keda:"name=groupID, order=triggerMetadata;resolvedEnv, optional"`
-	JobScopes                   string   `keda:"name=jobScopes, order=triggerMetadata;resolvedEnv, optional, default=pending"`
-	TargetQueueLength           int64    `keda:"name=targetQueueLength, order=triggerMetadata;resolvedEnv, default=1"`
+	GitLabAPIURL                string   `keda:"name=gitlabAPIURL, order=triggerMetadata, default=https://gitlab.com"`
+	PersonalAccessToken         string   `keda:"name=personalAccessToken, order=authParams"`
+	ProjectID                   string   `keda:"name=projectID, order=triggerMetadata, optional"`
+	GroupID                     string   `keda:"name=groupID, order=triggerMetadata, optional"`
+	JobScopes                   string   `keda:"name=jobScopes, order=triggerMetadata, default=pending"`
+	TargetQueueLength           int64    `keda:"name=targetQueueLength, order=triggerMetadata, default=1"`
 	ActivationTargetQueueLength int64    `keda:"name=activationTargetQueueLength, order=triggerMetadata, default=0"`
-	IncludeSubgroups            bool     `keda:"name=includeSubgroups, order=triggerMetadata;resolvedEnv, optional, default=true"`
-	TagList                     []string `keda:"name=tagList, order=triggerMetadata;resolvedEnv, optional"`
-	RunUntagged                 bool     `keda:"name=runUntagged, order=triggerMetadata;resolvedEnv, optional, default=false"`
-	UnsafeSsl                   bool     `keda:"name=unsafeSsl, order=triggerMetadata, optional, default=false"`
+	IncludeSubgroups            bool     `keda:"name=includeSubgroups, order=triggerMetadata, default=true"`
+	TagList                     []string `keda:"name=tagList, order=triggerMetadata, optional"`
+	RunUntagged                 bool     `keda:"name=runUntagged, order=triggerMetadata, default=false"`
+	UnsafeSsl                   bool     `keda:"name=unsafeSsl, order=triggerMetadata, default=false"`
 	TriggerIndex                int
 }
 
@@ -161,7 +165,7 @@ func (s *gitlabRunnerScaler) getGitLabRequest(ctx context.Context, url string) (
 			}
 		}
 
-		return nil, r.Header, r.StatusCode, fmt.Errorf("GitLab API returned error. url: %s status: %d response: %s", url, r.StatusCode, string(b))
+		return nil, r.Header, r.StatusCode, fmt.Errorf("GitLab API returned error. status: %d", r.StatusCode)
 	}
 
 	return b, r.Header, r.StatusCode, nil
@@ -172,10 +176,20 @@ func (s *gitlabRunnerScaler) getGroupProjects(ctx context.Context) ([]gitlabProj
 	page := 1
 
 	for {
-		url := fmt.Sprintf("%s/api/v4/groups/%s/projects?per_page=%d&page=%d&include_subgroups=%t&simple=true",
-			s.metadata.GitLabAPIURL, s.metadata.GroupID, gitlabDefaultPerPage, page, s.metadata.IncludeSubgroups)
+		base, err := url.Parse(fmt.Sprintf("%s/api/v4/groups/%s/projects",
+			s.metadata.GitLabAPIURL, url.PathEscape(s.metadata.GroupID)))
+		if err != nil {
+			return nil, fmt.Errorf("error constructing group projects URL: %w", err)
+		}
 
-		body, _, statusCode, err := s.getGitLabRequest(ctx, url)
+		params := url.Values{}
+		params.Set("per_page", strconv.Itoa(gitlabDefaultPerPage))
+		params.Set("page", strconv.Itoa(page))
+		params.Set("include_subgroups", strconv.FormatBool(s.metadata.IncludeSubgroups))
+		params.Set("simple", "true")
+		base.RawQuery = params.Encode()
+
+		body, _, statusCode, err := s.getGitLabRequest(ctx, base.String())
 		if err != nil {
 			return nil, fmt.Errorf("error fetching group projects (status %d): %w", statusCode, err)
 		}
@@ -192,6 +206,10 @@ func (s *gitlabRunnerScaler) getGroupProjects(ctx context.Context) ([]gitlabProj
 		}
 
 		page++
+		if page > gitlabMaxPages {
+			s.logger.Info("reached maximum page limit for group projects", "maxPages", gitlabMaxPages)
+			break
+		}
 	}
 
 	return allProjects, nil
@@ -209,10 +227,19 @@ func (s *gitlabRunnerScaler) getProjectPendingJobCount(ctx context.Context, proj
 
 		page := 1
 		for {
-			url := fmt.Sprintf("%s/api/v4/projects/%s/jobs?per_page=%d&page=%d&scope[]=%s",
-				s.metadata.GitLabAPIURL, projectID, gitlabDefaultPerPage, page, scope)
+			base, err := url.Parse(fmt.Sprintf("%s/api/v4/projects/%s/jobs",
+				s.metadata.GitLabAPIURL, url.PathEscape(projectID)))
+			if err != nil {
+				return totalCount, fmt.Errorf("error constructing project jobs URL: %w", err)
+			}
 
-			body, headers, statusCode, err := s.getGitLabRequest(ctx, url)
+			params := url.Values{}
+			params.Set("per_page", strconv.Itoa(gitlabDefaultPerPage))
+			params.Set("page", strconv.Itoa(page))
+			params.Add("scope[]", scope)
+			base.RawQuery = params.Encode()
+
+			body, headers, statusCode, err := s.getGitLabRequest(ctx, base.String())
 			if err != nil {
 				if statusCode == http.StatusNotFound {
 					s.logger.V(1).Info("project not found, skipping", "projectID", projectID)
@@ -252,6 +279,10 @@ func (s *gitlabRunnerScaler) getProjectPendingJobCount(ctx context.Context, proj
 			}
 
 			page++
+			if page > gitlabMaxPages {
+				s.logger.Info("reached maximum page limit for project jobs", "projectID", projectID, "maxPages", gitlabMaxPages)
+				break
+			}
 		}
 	}
 

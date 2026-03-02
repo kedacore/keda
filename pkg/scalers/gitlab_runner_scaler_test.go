@@ -30,7 +30,6 @@ type parseGitLabRunnerMetadataTestData struct {
 	testName      string
 	metadata      map[string]string
 	authParams    map[string]string
-	resolvedEnv   map[string]string
 	isError       bool
 	expectedError string
 }
@@ -39,19 +38,11 @@ var testGitLabRunnerAuthParams = map[string]string{
 	"personalAccessToken": "glpat-xxxxxxxxxxxxxxxxxxxx",
 }
 
-var testGitLabRunnerResolvedEnv = map[string]string{
-	"GITLAB_API_URL": "https://gitlab.example.com",
-	"ACCESS_TOKEN":   "glpat-envtoken",
-	"PROJECT_ID":     "54321",
-	"GROUP_ID":       "98765",
-}
-
 var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 	{
 		"empty metadata",
 		map[string]string{},
 		testGitLabRunnerAuthParams,
-		nil,
 		true,
 		"error parsing gitlab runner metadata: one of projectID or groupID must be provided",
 	},
@@ -59,7 +50,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"valid with projectID",
 		map[string]string{"projectID": "12345"},
 		testGitLabRunnerAuthParams,
-		nil,
 		false,
 		"",
 	},
@@ -67,7 +57,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"valid with groupID",
 		map[string]string{"groupID": "67890"},
 		testGitLabRunnerAuthParams,
-		nil,
 		false,
 		"",
 	},
@@ -75,7 +64,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"valid with custom API URL",
 		map[string]string{"gitlabAPIURL": "https://gitlab.example.com", "projectID": "12345"},
 		testGitLabRunnerAuthParams,
-		nil,
 		false,
 		"",
 	},
@@ -83,7 +71,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"valid with custom target queue length",
 		map[string]string{"projectID": "12345", "targetQueueLength": "5"},
 		testGitLabRunnerAuthParams,
-		nil,
 		false,
 		"",
 	},
@@ -91,7 +78,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"valid with custom job scopes",
 		map[string]string{"projectID": "12345", "jobScopes": "pending,created"},
 		testGitLabRunnerAuthParams,
-		nil,
 		false,
 		"",
 	},
@@ -99,7 +85,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"both projectID and groupID",
 		map[string]string{"projectID": "12345", "groupID": "67890"},
 		testGitLabRunnerAuthParams,
-		nil,
 		true,
 		"error parsing gitlab runner metadata: only one of projectID or groupID can be provided, not both",
 	},
@@ -107,15 +92,13 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"missing personalAccessToken",
 		map[string]string{"projectID": "12345"},
 		map[string]string{},
-		nil,
 		true,
-		"error parsing gitlab runner metadata: missing required parameter \"personalAccessToken\" in [authParams resolvedEnv]",
+		"error parsing gitlab runner metadata: missing required parameter \"personalAccessToken\" in [authParams]",
 	},
 	{
 		"invalid targetQueueLength",
 		map[string]string{"projectID": "12345", "targetQueueLength": "abc"},
 		testGitLabRunnerAuthParams,
-		nil,
 		true,
 		"error parsing gitlab runner metadata: unable to set param \"targetQueueLength\" value \"abc\": unable to unmarshal to field type int64: invalid character 'a' looking for beginning of value\ntargetQueueLength must be at least 1",
 	},
@@ -123,7 +106,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"valid with includeSubgroups false",
 		map[string]string{"groupID": "67890", "includeSubgroups": "false"},
 		testGitLabRunnerAuthParams,
-		nil,
 		false,
 		"",
 	},
@@ -131,7 +113,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"trailing slash on API URL",
 		map[string]string{"gitlabAPIURL": "https://gitlab.example.com/", "projectID": "12345"},
 		testGitLabRunnerAuthParams,
-		nil,
 		false,
 		"",
 	},
@@ -139,7 +120,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"empty projectID",
 		map[string]string{"projectID": ""},
 		testGitLabRunnerAuthParams,
-		nil,
 		true,
 		"error parsing gitlab runner metadata: one of projectID or groupID must be provided",
 	},
@@ -147,7 +127,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"empty groupID",
 		map[string]string{"groupID": ""},
 		testGitLabRunnerAuthParams,
-		nil,
 		true,
 		"error parsing gitlab runner metadata: one of projectID or groupID must be provided",
 	},
@@ -155,7 +134,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"valid with tagList",
 		map[string]string{"projectID": "12345", "tagList": "k8s,docker"},
 		testGitLabRunnerAuthParams,
-		nil,
 		false,
 		"",
 	},
@@ -163,7 +141,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"valid with runUntagged",
 		map[string]string{"projectID": "12345", "runUntagged": "true"},
 		testGitLabRunnerAuthParams,
-		nil,
 		false,
 		"",
 	},
@@ -171,39 +148,13 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"valid with tagList and runUntagged",
 		map[string]string{"projectID": "12345", "tagList": "k8s", "runUntagged": "true"},
 		testGitLabRunnerAuthParams,
-		nil,
 		false,
 		"",
-	},
-	{
-		"formed from resolved env",
-		map[string]string{"projectIDFromEnv": "PROJECT_ID"},
-		testGitLabRunnerAuthParams,
-		testGitLabRunnerResolvedEnv,
-		false,
-		"",
-	},
-	{
-		"API URL from resolved env",
-		map[string]string{"gitlabAPIURLFromEnv": "GITLAB_API_URL", "projectID": "12345"},
-		testGitLabRunnerAuthParams,
-		testGitLabRunnerResolvedEnv,
-		false,
-		"",
-	},
-	{
-		"missing env var reference",
-		map[string]string{"projectIDFromEnv": "NONEXISTENT"},
-		testGitLabRunnerAuthParams,
-		testGitLabRunnerResolvedEnv,
-		true,
-		"error parsing gitlab runner metadata: one of projectID or groupID must be provided",
 	},
 	{
 		"targetQueueLength zero",
 		map[string]string{"projectID": "12345", "targetQueueLength": "0"},
 		testGitLabRunnerAuthParams,
-		nil,
 		true,
 		"error parsing gitlab runner metadata: targetQueueLength must be at least 1",
 	},
@@ -211,7 +162,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"targetQueueLength negative",
 		map[string]string{"projectID": "12345", "targetQueueLength": "-1"},
 		testGitLabRunnerAuthParams,
-		nil,
 		true,
 		"error parsing gitlab runner metadata: targetQueueLength must be at least 1",
 	},
@@ -219,7 +169,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"activationTargetQueueLength negative",
 		map[string]string{"projectID": "12345", "activationTargetQueueLength": "-1"},
 		testGitLabRunnerAuthParams,
-		nil,
 		true,
 		"error parsing gitlab runner metadata: activationTargetQueueLength must be at least 0",
 	},
@@ -227,7 +176,6 @@ var testGitLabRunnerMetadata = []parseGitLabRunnerMetadataTestData{
 		"valid with unsafeSsl",
 		map[string]string{"projectID": "12345", "unsafeSsl": "true"},
 		testGitLabRunnerAuthParams,
-		nil,
 		false,
 		"",
 	},
@@ -239,7 +187,6 @@ func TestGitLabRunnerParseMetadata(t *testing.T) {
 			_, err := parseGitLabRunnerMetadata(&scalersconfig.ScalerConfig{
 				TriggerMetadata: testData.metadata,
 				AuthParams:      testData.authParams,
-				ResolvedEnv:     testData.resolvedEnv,
 			})
 
 			if testData.isError && err == nil {
@@ -318,21 +265,6 @@ func TestGitLabRunnerParseMetadata_TagListParsed(t *testing.T) {
 	}
 	if meta.TagList[0] != "k8s" || meta.TagList[1] != "docker" || meta.TagList[2] != "linux" {
 		t.Errorf("unexpected tag list: %v", meta.TagList)
-	}
-}
-
-func TestGitLabRunnerParseMetadata_ResolvedEnv(t *testing.T) {
-	meta, err := parseGitLabRunnerMetadata(&scalersconfig.ScalerConfig{
-		TriggerMetadata: map[string]string{"projectIDFromEnv": "PROJECT_ID"},
-		AuthParams:      testGitLabRunnerAuthParams,
-		ResolvedEnv:     testGitLabRunnerResolvedEnv,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
-
-	if meta.ProjectID != "54321" {
-		t.Errorf("expected projectID '54321' from resolved env, got '%s'", meta.ProjectID)
 	}
 }
 
@@ -1282,8 +1214,8 @@ func TestGitLabRunnerScaler_URLConstruction_Project(t *testing.T) {
 	if !strings.Contains(capturedURL, "/api/v4/projects/12345/jobs") {
 		t.Fatalf("expected URL to contain '/api/v4/projects/12345/jobs', got: %s", capturedURL)
 	}
-	if !strings.Contains(capturedURL, "scope[]=pending") {
-		t.Fatalf("expected URL to contain 'scope[]=pending', got: %s", capturedURL)
+	if !strings.Contains(capturedURL, "scope%5B%5D=pending") {
+		t.Fatalf("expected URL to contain 'scope%%5B%%5D=pending', got: %s", capturedURL)
 	}
 }
 
