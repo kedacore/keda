@@ -76,9 +76,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### Improvements
 
-- **RabbitMQ Scaler**: Add support for authentication to HTTP Rabbitmq with OAuth2 ([#7379](https://github.com/kedacore/keda/issues/7379))
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 - **Elasticsearch Scaler**: Add HTTP status check for Elasticsearch errors ([#7480](https://github.com/kedacore/keda/pull/7480))
+- **RabbitMQ Scaler**: Add support for authentication to HTTP Rabbitmq with OAuth2 ([#7379](https://github.com/kedacore/keda/issues/7379))
 
 ### Fixes
 
