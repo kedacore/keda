@@ -2683,7 +2683,7 @@ k8s.io/apiserver/plugin/pkg/audit/webhook
 k8s.io/apiserver/plugin/pkg/authenticator/token/webhook
 k8s.io/apiserver/plugin/pkg/authorizer/webhook
 k8s.io/apiserver/plugin/pkg/authorizer/webhook/metrics
-# k8s.io/client-go v1.5.2 => k8s.io/client-go v0.34.3
+# k8s.io/client-go v0.35.0 => k8s.io/client-go v0.34.3
 ## explicit; go 1.24.0
 k8s.io/client-go/applyconfigurations
 k8s.io/client-go/applyconfigurations/admissionregistration/v1
@@ -3428,7 +3428,6 @@ sigs.k8s.io/structured-merge-diff/v6/value
 # sigs.k8s.io/yaml v1.6.0
 ## explicit; go 1.22
 sigs.k8s.io/yaml
-# github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
 # github.com/google/cel-go => github.com/google/cel-go v0.22.0
 # github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.23.0
 # github.com/prometheus/client_model => github.com/prometheus/client_model v0.6.2
