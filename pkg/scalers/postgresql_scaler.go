@@ -170,6 +170,7 @@ func buildConnArray(meta *postgreSQLMetadata) []string {
 
 func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity kedav1alpha1.AuthPodIdentity, logger logr.Logger) (*pgxpool.Pool, string, error) {
 	connectionString := meta.Connection
+	configKey := fmt.Sprintf("postgres.%s.%s", meta.Host, meta.DBName)
 	poolKey := fmt.Sprintf("postgres.%x", sha256.Sum256([]byte(meta.UserName+"."+meta.Host+"."+meta.DBName)))
 	if podIdentity.Provider == kedav1alpha1.PodIdentityProviderAzureWorkload {
 		accessToken, err := getAzureAccessToken(ctx, meta, azureDatabasePostgresResource)
@@ -179,7 +180,7 @@ func getConnection(ctx context.Context, meta *postgreSQLMetadata, podIdentity ke
 		newPasswordField := "password=" + escapePostgreConnectionParameter(accessToken)
 		connectionString = passwordConnPattern.ReplaceAllString(meta.Connection, newPasswordField)
 	}
-	maxConns, err := strconv.ParseInt(connectionpool.LookupConfigValue(poolKey), 10, 32)
+	maxConns, err := strconv.ParseInt(connectionpool.LookupConfigValue(configKey), 10, 32)
 	if err != nil {
 		logger.Info("Invalid value in configmap; set default max connection pool", "Server", meta.Host, "dbName", meta.DBName)
 		maxConns = 0
