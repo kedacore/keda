@@ -20,20 +20,20 @@ func (p *PostgresPool) close() {
 func NewPostgresPool(ctx context.Context, connStr string, maxConns int32) (ResourcePool, error) {
 	cfg, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
-		logger.Error(err, "Failed to parse PostgreSQL connection string")
+		logger.V(0).Error(err, "Failed to parse PostgreSQL connection string")
 		return nil, err
 	}
 	if maxConns > 0 {
-		logger.Info("Initializing PostgreSQL pool with max connections", "maxConns", maxConns)
+		logger.V(1).Info("Initializing PostgreSQL pool with max connections", "maxConns", maxConns)
 		cfg.MaxConns = maxConns
 	} else {
-		logger.Info("Initialized PostgreSQL pool with default connection settings")
+		logger.V(1).Info("Initialized PostgreSQL pool with default connection settings")
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
-		logger.Error(err, "Failed to create PostgreSQL pool")
+		logger.V(0).Error(err, "Failed to create PostgreSQL pool")
 		return nil, err
 	}
-	logger.Info("PostgreSQL pool created", "maxConns", pool.Config().MaxConns)
+	logger.V(1).Info("PostgreSQL pool created", "maxConns", pool.Config().MaxConns)
 	return &PostgresPool{Pool: pool}, nil
 }

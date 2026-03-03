@@ -81,8 +81,6 @@ func startConfigWatcher(ctx context.Context) {
 }
 
 func LookupConfigValue(key string) string {
-
 	configMap := configStore.Load().(map[string]string)
-
 	return configMap[key]
 }
