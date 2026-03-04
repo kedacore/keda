@@ -3,9 +3,6 @@ module github.com/kedacore/keda/v2
 go 1.25.0
 
 replace (
-	// we need a version with a proper license
-	github.com/chzyer/logex => github.com/chzyer/logex v1.2.1
-
 	// pin k8s.io to v0.34.3 & sigs.k8s.io/controller-runtime to v0.22.4
 	github.com/google/cel-go => github.com/google/cel-go v0.22.0
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.23.0
@@ -97,8 +94,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common v1.20.99
-	github.com/prometheus/prometheus v1.99.0
+	github.com/prometheus/common v0.67.5
+	github.com/prometheus/prometheus v0.310.0
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9
 	github.com/redis/go-redis/v9 v9.17.3
@@ -136,7 +133,7 @@ require (
 	k8s.io/api v0.35.0
 	k8s.io/apimachinery v0.35.0
 	k8s.io/apiserver v0.35.0
-	k8s.io/client-go v1.5.2
+	k8s.io/client-go v0.35.0
 	k8s.io/code-generator v0.35.0
 	k8s.io/component-base v0.35.0
 	k8s.io/klog/v2 v2.130.1
