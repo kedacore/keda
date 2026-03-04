@@ -368,13 +368,12 @@ func TestElasticForecastGetMetricSpecForScaling(t *testing.T) {
 // TestElasticForecastRenewalLogic verifies that ensureForecastValid only triggers a renewal when the remaining window falls below the threshold.
 func TestElasticForecastRenewalLogic(t *testing.T) {
 	lookAhead := 10 * time.Minute
-	duration := lookAhead * forecastDurationMultiplier // 10m
+	duration := lookAhead * forecastDurationMultiplier
 
 	scaler := &elasticForecastScaler{
 		metadata: elasticForecastMetadata{LookAhead: lookAhead},
 	}
 
-	// Helper: mirrors the needsRenewal logic in ensureForecastValid.
 	needsRenewal := func() bool {
 		scaler.mu.Lock()
 		id := scaler.forecastID
@@ -384,15 +383,12 @@ func TestElasticForecastRenewalLogic(t *testing.T) {
 		return id == "" || time.Until(expiry) < threshold
 	}
 
-	// No forecast yet - must renew.
 	assert.True(t, needsRenewal(), "should renew when forecastID is empty")
 
-	// Forecast with plenty of time remaining - no renewal needed.
 	scaler.forecastID = "test-id"
 	scaler.forecastExpiry = time.Now().Add(duration)
 	assert.False(t, needsRenewal(), "should NOT renew when window is full")
 
-	// Forecast with less than threshold remaining - must renew.
 	scaler.forecastExpiry = time.Now().Add(time.Duration(float64(duration)*forecastRenewThreshold) - time.Second)
 	assert.True(t, needsRenewal(), "should renew when remaining window < threshold")
 }
@@ -401,7 +397,6 @@ func TestElasticForecastRenewalLogic(t *testing.T) {
 func TestElasticForecastPreviousForecastFallback(t *testing.T) {
 	scaler := &elasticForecastScaler{}
 
-	// Simulate first forecast creation.
 	scaler.mu.Lock()
 	scaler.forecastID = "forecast-aaa"
 	scaler.forecastExpiry = time.Now().Add(10 * time.Minute)
@@ -410,7 +405,6 @@ func TestElasticForecastPreviousForecastFallback(t *testing.T) {
 	assert.Equal(t, "forecast-aaa", scaler.forecastID)
 	assert.Empty(t, scaler.previousForecastID, "no previous yet on first forecast")
 
-	// Simulate renewal: previous is promoted, new ID stored.
 	scaler.mu.Lock()
 	if scaler.forecastID != "" {
 		scaler.previousForecastID = scaler.forecastID
@@ -422,7 +416,6 @@ func TestElasticForecastPreviousForecastFallback(t *testing.T) {
 	assert.Equal(t, "forecast-bbb", scaler.forecastID, "active forecast updated")
 	assert.Equal(t, "forecast-aaa", scaler.previousForecastID, "previous forecast retained as fallback")
 
-	// Simulate a second renewal.
 	scaler.mu.Lock()
 	if scaler.forecastID != "" {
 		scaler.previousForecastID = scaler.forecastID
@@ -436,23 +429,49 @@ func TestElasticForecastPreviousForecastFallback(t *testing.T) {
 		"previous is always the immediately preceding forecast, not the oldest")
 }
 
-// TestElasticForecastRenewalInProgressGuard verifies that the renewalInProgress flag works
-func TestElasticForecastRenewalInProgressGuard(t *testing.T) {
-	scaler := &elasticForecastScaler{
-		metadata: elasticForecastMetadata{LookAhead: 10 * time.Minute},
+// newTestScaler returns a minimal elasticForecastScaler
+func newTestScaler(lookAhead time.Duration, fn func(context.Context) error) *elasticForecastScaler {
+	return &elasticForecastScaler{
+		metadata:         elasticForecastMetadata{LookAhead: lookAhead},
+		createForecastFn: fn,
 	}
+}
 
-	// Simulate that a renewal is already in progress.
+func TestElasticForecastRenewalGuard_SkipsWhenAlreadyInProgress(t *testing.T) {
+	callCount := 0
+	scaler := newTestScaler(10*time.Minute, func(_ context.Context) error {
+		callCount++
+		return nil
+	})
+
+	scaler.mu.Lock()
+	scaler.forecastID = "forecast-existing"
+	scaler.forecastExpiry = time.Now().Add(1 * time.Second) // below renewThreshold
+	scaler.renewalInProgress = true
+	scaler.mu.Unlock()
+
+	err := scaler.ensureForecastValid(context.Background())
+
+	assert.NoError(t, err, "should return nil when renewal is already in progress")
+	assert.Equal(t, 0, callCount, "createForecastFn must not be called by the concurrent caller")
+}
+
+func TestElasticForecastRenewalGuard_ReturnsZeroWhileInitialCreationInFlight(t *testing.T) {
+	callCount := 0
+	scaler := newTestScaler(10*time.Minute, func(_ context.Context) error {
+		callCount++
+		return nil
+	})
+
 	scaler.mu.Lock()
 	scaler.renewalInProgress = true
 	scaler.mu.Unlock()
 
-	// A second call should see renewalInProgress and bail out without calling createForecast. We verify this by checking that forecastID remains empty (createForecast was never called).
-	scaler.mu.Lock()
-	needsRenewal := scaler.forecastID == ""
-	alreadyRunning := scaler.renewalInProgress
-	scaler.mu.Unlock()
+	err := scaler.ensureForecastValid(context.Background())
+	assert.NoError(t, err, "should not error while initial creation is in progress")
+	assert.Equal(t, 0, callCount, "createForecastFn must not be called by the concurrent caller")
 
-	assert.True(t, needsRenewal, "renewal is needed (no forecast yet)")
-	assert.True(t, alreadyRunning, "but renewal is already in progress — second caller must skip")
+	val, err := scaler.getForecastedValue(context.Background())
+	assert.NoError(t, err, "empty forecastID must not produce an error")
+	assert.Equal(t, float64(0), val, "value must be 0 while no forecast is available yet")
 }

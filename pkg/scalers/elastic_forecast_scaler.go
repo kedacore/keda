@@ -8,7 +8,6 @@ import (
 	"io"
 	"math"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -39,6 +38,9 @@ type elasticForecastScaler struct {
 	forecastExpiry     time.Time // when the current forecast documents expire
 	previousForecastID string    // ID of the forecast before the most recent renewal
 	renewalInProgress  bool      // guards against concurrent renewals
+
+	// createForecastFn is the function called to create a new ML forecast.
+	createForecastFn func(ctx context.Context) error
 }
 
 type elasticForecastMetadata struct {
@@ -114,12 +116,14 @@ func NewElasticForecastScaler(config *scalersconfig.ScalerConfig) (Scaler, error
 		return nil, fmt.Errorf("error creating elasticsearch client: %w", err)
 	}
 
-	return &elasticForecastScaler{
+	s := &elasticForecastScaler{
 		metricType: metricType,
 		metadata:   meta,
 		esClient:   esClient,
 		logger:     logger,
-	}, nil
+	}
+	s.createForecastFn = s.createForecast
+	return s, nil
 }
 
 func parseElasticForecastMetadata(config *scalersconfig.ScalerConfig) (elasticForecastMetadata, error) {
@@ -165,6 +169,17 @@ type forecastAPIResponse struct {
 	ForecastID   string `json:"forecast_id"`
 }
 
+func checkHTTPError(statusCode int) error {
+	switch statusCode {
+	case http.StatusUnauthorized:
+		return fmt.Errorf("elasticsearch authentication failed (HTTP 401): check username/password or apiKey")
+	case http.StatusForbidden:
+		return fmt.Errorf("elasticsearch authorization failed (HTTP 403): user has insufficient permissions")
+	default:
+		return fmt.Errorf("elasticsearch returned HTTP %d", statusCode)
+	}
+}
+
 // ensureForecastValid checks whether a new forecast needs to be created.
 func (s *elasticForecastScaler) ensureForecastValid(ctx context.Context) error {
 	duration := s.metadata.forecastDuration()
@@ -176,9 +191,10 @@ func (s *elasticForecastScaler) ensureForecastValid(ctx context.Context) error {
 		s.mu.Unlock()
 		return nil
 	}
-	// Mark renewal in progress.
-	s.renewalInProgress = true
+
 	currentID := s.forecastID
+	remainingWindow := time.Until(s.forecastExpiry).Round(time.Second)
+	s.renewalInProgress = true
 	s.mu.Unlock()
 
 	if currentID == "" {
@@ -187,12 +203,12 @@ func (s *elasticForecastScaler) ensureForecastValid(ctx context.Context) error {
 		s.logger.Info("renewing ML forecast (window near expiry)",
 			"jobID", s.metadata.JobID,
 			"currentForecastID", currentID,
-			"remainingWindow", time.Until(s.forecastExpiry).Round(time.Second),
+			"remainingWindow", remainingWindow,
 			"renewThreshold", renewThreshold,
 		)
 	}
 
-	err := s.createForecast(ctx)
+	err := s.createForecastFn(ctx)
 
 	s.mu.Lock()
 	s.renewalInProgress = false
@@ -232,7 +248,7 @@ func (s *elasticForecastScaler) createForecast(ctx context.Context) error {
 		return fmt.Errorf("read forecast response: %w", err)
 	}
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("forecast API returned HTTP %d: %s", resp.StatusCode, string(body))
+		return checkHTTPError(resp.StatusCode)
 	}
 
 	var fr forecastAPIResponse
@@ -240,7 +256,7 @@ func (s *elasticForecastScaler) createForecast(ctx context.Context) error {
 		return fmt.Errorf("unmarshal forecast response: %w", err)
 	}
 	if fr.ForecastID == "" {
-		return fmt.Errorf("forecast API response contained no forecast_id: %s", string(body))
+		return fmt.Errorf("forecast API response contained no forecast_id")
 	}
 
 	expiry := time.Now().Add(duration)
@@ -271,7 +287,11 @@ func (s *elasticForecastScaler) getForecastedValue(ctx context.Context) (float64
 	s.mu.Unlock()
 
 	if forecastID == "" {
-		return 0, fmt.Errorf("no active forecast ID available")
+		// Initial creation is still in progress
+		s.logger.V(1).Info("initial forecast not yet available, returning 0/inactive",
+			"jobID", s.metadata.JobID,
+		)
+		return 0, nil
 	}
 
 	val, found, err := s.queryForecastBucket(ctx, forecastID)
@@ -282,7 +302,7 @@ func (s *elasticForecastScaler) getForecastedValue(ctx context.Context) (float64
 		return val, nil
 	}
 
-	// The new forecast may not yet be indexed, then fall back to the previous forecast
+	// The new forecast may not yet be indexed, fall back to the previous forecast.
 	if previousID != "" {
 		s.logger.V(1).Info("new forecast not yet indexed, falling back to previous",
 			"jobID", s.metadata.JobID,
@@ -298,7 +318,7 @@ func (s *elasticForecastScaler) getForecastedValue(ctx context.Context) (float64
 		}
 	}
 
-	// No forecast bucket available, return 0 (like ignoreNullValues).
+	// No forecast bucket available yet; return 0 (like ignoreNullValues).
 	s.logger.V(1).Info("forecast not yet indexed, returning 0",
 		"jobID", s.metadata.JobID,
 		"forecastID", forecastID,
@@ -335,7 +355,6 @@ func (s *elasticForecastScaler) queryForecastBucket(ctx context.Context, forecas
 		}})
 	}
 
-	// Select the bucket whose timestamp is closest to (but not after) the target moment.
 	filters = append(filters, map[string]interface{}{"range": map[string]interface{}{
 		"timestamp": map[string]interface{}{"lte": targetMs},
 	}})
@@ -364,7 +383,7 @@ func (s *elasticForecastScaler) queryForecastBucket(ctx context.Context, forecas
 
 	res, err := s.esClient.Search(
 		s.esClient.Search.WithIndex(index),
-		s.esClient.Search.WithBody(strings.NewReader(string(queryBytes))),
+		s.esClient.Search.WithBody(bytes.NewReader(queryBytes)),
 		s.esClient.Search.WithContext(ctx),
 	)
 	if err != nil {
@@ -372,12 +391,13 @@ func (s *elasticForecastScaler) queryForecastBucket(ctx context.Context, forecas
 	}
 	defer res.Body.Close()
 
+	if res.IsError() {
+		return 0, false, checkHTTPError(res.StatusCode)
+	}
+
 	respBody, err := io.ReadAll(res.Body)
 	if err != nil {
 		return 0, false, fmt.Errorf("reading forecast query response: %w", err)
-	}
-	if res.IsError() {
-		return 0, false, fmt.Errorf("forecast query returned error %d: %s", res.StatusCode, string(respBody))
 	}
 
 	r := gjson.GetBytes(respBody, "hits.hits.0._source.forecast_prediction")

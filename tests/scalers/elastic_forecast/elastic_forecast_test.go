@@ -365,7 +365,7 @@ func execAndVerify(t *testing.T, stepName, cmd string, validate func(body string
 	require.NoErrorf(t, err, "[%s] command execution failed: %v", stepName, err)
 	body := string(out)
 	require.NoErrorf(t, validate(body), "[%s] response validation failed", stepName)
-	t.Logf("[%s] OK — response: %s", stepName, truncate(body, 200))
+	t.Logf("[%s] OK — response: %s", stepName, body)
 }
 
 // activateTrialAndVerify starts the 30-day trial and confirms the licence type is "trial" afterwards.
@@ -377,7 +377,7 @@ func activateTrialAndVerify(t *testing.T) {
 		"%s -XPOST 'http://127.0.0.1:9200/_license/start_trial?acknowledge=true'",
 		forecastKubectlExecCmd,
 	))
-	t.Logf("[activate trial] response: %s", truncate(string(out), 300))
+	t.Logf("[activate trial] response: %s", string(out))
 
 	// GET current licence and confirm it is "trial".
 	execAndVerify(t, "verify trial licence",
@@ -414,7 +414,7 @@ func requireDatafeedStopped(t *testing.T, timeout time.Duration) {
 				t.Log("[datafeed] state is stopped — historical processing complete")
 				return
 			}
-			t.Logf("[datafeed] not yet stopped, waiting… (body: %s)", truncate(body, 150))
+			t.Logf("[datafeed] not yet stopped, waiting… (body: %s)", body)
 		}
 		time.Sleep(3 * time.Second)
 	}
@@ -463,14 +463,6 @@ func ingestForecastTrainingData(t *testing.T, count int, window time.Duration) {
 	t.Logf("[training data] ingested %d documents over the past %s", count, window)
 }
 
-// truncate shortens a string to max n runes for log output.
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n] + "…"
-}
-
 // waitForForecastDocs polls .ml-anomalies-shared until at least one model_forecast document exists.
 func waitForForecastDocs(t *testing.T) {
 	t.Helper()
@@ -490,7 +482,7 @@ func waitForForecastDocs(t *testing.T) {
 				t.Logf("[forecast] %d forecast document(s) indexed — proceeding", countResp.Count)
 				return
 			}
-			t.Logf("[forecast] 0 documents yet, waiting... (response: %s)", truncate(body, 100))
+			t.Logf("[forecast] 0 documents yet, waiting... (response: %s)", body)
 		}
 		time.Sleep(5 * time.Second)
 	}
