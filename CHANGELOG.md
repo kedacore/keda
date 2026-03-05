@@ -68,7 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General:** Introduce new IONOS Monitoring Scaler ([#XXX](https://github.com/kedacore/keda/issues/XXX))
 
 #### Experimental
 

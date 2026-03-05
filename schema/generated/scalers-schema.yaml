@@ -1531,6 +1531,28 @@ scalers:
           type: string
           optional: true
           triggerAuthenticationVariableReadable: true
+    - type: ionos-monitoring
+      parameters:
+        - name: host
+          type: string
+          metadataVariableReadable: true
+        - name: apiKey
+          type: string
+          triggerAuthenticationVariableReadable: true
+        - name: query
+          type: string
+          metadataVariableReadable: true
+        - name: threshold
+          type: string
+          metadataVariableReadable: true
+        - name: activationThreshold
+          type: string
+          optional: true
+          metadataVariableReadable: true
+        - name: ignoreNullValues
+          type: string
+          default: "true"
+          metadataVariableReadable: true
     - type: influxdb
       parameters:
         - name: authToken
