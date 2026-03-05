@@ -204,6 +204,8 @@ func buildScaler(ctx context.Context, client client.Client, triggerType string, 
 		return scalers.NewIBMMQScaler(config)
 	case "influxdb":
 		return scalers.NewInfluxDBScaler(config)
+	case "ionos-monitoring":
+		return scalers.NewIONOSMonitoringScaler(config)
 	case "kafka":
 		return scalers.NewKafkaScaler(ctx, config)
 	case "kubernetes-resource":
