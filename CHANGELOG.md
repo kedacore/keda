@@ -87,7 +87,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Loki Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Prometheus Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Solr Scaler**: Use net/url to safely encode query parameters ([#7467](https://github.com/kedacore/keda/pull/7467))
-- **Prometheus Scaler**: Handle NaN results in the same manner as Inf ([#TODO](https://github.com/kedacore/keda/pull/TODO))
+- **Prometheus Scaler**: Handle NaN results in the same manner as Inf ([#7522](https://github.com/kedacore/keda/pull/7522))
 
 ### Deprecations
 
