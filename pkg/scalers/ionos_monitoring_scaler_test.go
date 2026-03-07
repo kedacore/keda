@@ -19,7 +19,6 @@ package scalers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -319,7 +318,7 @@ func TestIONOSMonitoringActivityThreshold(t *testing.T) {
 			},
 		}
 		b, _ := json.Marshal(result)
-		fmt.Fprint(w, string(b))
+		_, _ = w.Write(b)
 	}))
 	defer apiStub.Close()
 
