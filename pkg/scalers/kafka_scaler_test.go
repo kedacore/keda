@@ -221,6 +221,7 @@ var parseKafkaAuthParamsTestDataset = []parseKafkaAuthParamsTestData{
 	// success, SASL none
 	{map[string]string{"sasl": "none"}, false, false},
 }
+
 var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	// success, SASL plaintext
 	{map[string]string{"sasl": "plaintext", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin"}, false, false},
@@ -256,7 +257,7 @@ var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	{map[string]string{"sasl": "gssapi", "tls": "disable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "test.com"}, false, false},
 	// success, SASL GSSAPI/keytab + TLS
 	{map[string]string{"sasl": "gssapi", "tls": "disable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "keytab": "/path/to/keytab", "kerberosConfig": "<config>", "realm": "test.com", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, false},
-	// failure, SASL OAUTHBEARER + TLS explicitly disable +  bad SASL type
+	// failure, SASL OAUTHBEARER + TLS explicitly disable + bad SASL type
 	{map[string]string{"sasl": "foo", "tls": "disable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "scopes": "scope", "oauthTokenEndpointUri": "https://website.com"}, true, false},
 	// success, SASL OAUTHBEARER + TLS missing scope
 	{map[string]string{"sasl": "oauthbearer", "tls": "disable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "oauthTokenEndpointUri": "https://website.com"}, false, false},
@@ -285,7 +286,7 @@ var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	// failure, SASL + TLS, missing cert
 	{map[string]string{"sasl": "plaintext", "tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "key": "keey"}, true, false},
 	// failure, SASL + TLS, missing key
-	{map[string]string{"sasl": "plaintext", "tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "plaintext", "username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert"}, true, true},
+	{map[string]string{"sasl": "plaintext", "tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "password": "admin", "ca": "caaa", "cert": "ceert"}, true, false},
 	// failure, SASL GSSAPI missing keytab and password
 	{map[string]string{"sasl": "gssapi", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "realm": "test.com"}, true, false},
 	// failure, SASL GSSAPI values in both keytab and password
@@ -296,10 +297,10 @@ var parseAuthParamsTestDataset = []parseAuthParamsTestDataSecondAuthMethod{
 	{map[string]string{"sasl": "gssapi", "tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"realm": "test.com", "keytab": "/path/to/keytab", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, true},
 	// failure, SASL GSSAPI + TLS missing kerberosConfig
 	{map[string]string{"sasl": "gssapi", "tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"username": "admin", "realm": "test.com", "keytab": "/path/to/keytab", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, true},
-	// failure, setting SASL values in both places
-	{map[string]string{"sasl": "scram_sha512", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "scram_sha512", "username": "admin", "password": "admin"}, true, false},
-	// failure, setting TLS values in both places
-	{map[string]string{"tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, true, true},
+	// success, setting SASL values in both places (triggerMetadata takes precedence)
+	{map[string]string{"sasl": "scram_sha512", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "scram_sha512", "username": "admin", "password": "admin"}, false, false},
+	// success, setting TLS values in both places (triggerMetadata takes precedence)
+	{map[string]string{"tls": "enable", "bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"tls": "enable", "ca": "caaa", "cert": "ceert", "key": "keey"}, false, true},
 	// success, setting SASL plaintext value with extra \n in TriggerAuthentication
 	{map[string]string{"bootstrapServers": "foobar:9092", "consumerGroup": "my-group", "topic": "my-topic", "allowIdleConsumers": "true", "version": "1.0.0"}, map[string]string{"sasl": "plaintext\n", "username": "admin", "password": "admin"}, false, true},
 	// success, setting SASL plaintext value with extra space in TriggerAuthentication
@@ -370,43 +371,43 @@ func getBrokerTestBase(t *testing.T, meta kafkaMetadata, testData parseKafkaMeta
 	if testData.isError && err == nil {
 		t.Error("Expected error but got success")
 	}
-	if len(meta.bootstrapServers) != testData.numBrokers {
-		t.Errorf("Expected %d bootstrap servers but got %d\n", testData.numBrokers, len(meta.bootstrapServers))
+	if len(meta.BootstrapServers) != testData.numBrokers {
+		t.Errorf("Expected %d bootstrap servers but got %d\n", testData.numBrokers, len(meta.BootstrapServers))
 	}
-	if !reflect.DeepEqual(testData.brokers, meta.bootstrapServers) {
-		t.Errorf("Expected %v but got %v\n", testData.brokers, meta.bootstrapServers)
+	if !reflect.DeepEqual(testData.brokers, meta.BootstrapServers) {
+		t.Errorf("Expected %v but got %v\n", testData.brokers, meta.BootstrapServers)
 	}
-	if meta.group != testData.group {
-		t.Errorf("Expected group %s but got %s\n", testData.group, meta.group)
+	if meta.Group != testData.group {
+		t.Errorf("Expected group %s but got %s\n", testData.group, meta.Group)
 	}
-	if meta.topic != testData.topic {
-		t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.topic)
+	if meta.Topic != testData.topic {
+		t.Errorf("Expected topic %s but got %s\n", testData.topic, meta.Topic)
 	}
-	if !reflect.DeepEqual(testData.partitionLimitation, meta.partitionLimitation) {
-		t.Errorf("Expected %v but got %v\n", testData.partitionLimitation, meta.partitionLimitation)
+	if !reflect.DeepEqual(testData.partitionLimitation, meta.PartitionLimitation) {
+		t.Errorf("Expected %v but got %v\n", testData.partitionLimitation, meta.PartitionLimitation)
 	}
-	if err == nil && meta.offsetResetPolicy != testData.offsetResetPolicy {
-		t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.offsetResetPolicy)
+	if err == nil && meta.OffsetResetPolicy != testData.offsetResetPolicy {
+		t.Errorf("Expected offsetResetPolicy %s but got %s\n", testData.offsetResetPolicy, meta.OffsetResetPolicy)
 	}
-	if err == nil && meta.allowIdleConsumers != testData.allowIdleConsumers {
-		t.Errorf("Expected allowIdleConsumers %t but got %t\n", testData.allowIdleConsumers, meta.allowIdleConsumers)
+	if err == nil && meta.AllowIdleConsumers != testData.allowIdleConsumers {
+		t.Errorf("Expected allowIdleConsumers %t but got %t\n", testData.allowIdleConsumers, meta.AllowIdleConsumers)
 	}
-	if err == nil && meta.excludePersistentLag != testData.excludePersistentLag {
-		t.Errorf("Expected excludePersistentLag %t but got %t\n", testData.excludePersistentLag, meta.excludePersistentLag)
+	if err == nil && meta.ExcludePersistentLag != testData.excludePersistentLag {
+		t.Errorf("Expected excludePersistentLag %t but got %t\n", testData.excludePersistentLag, meta.ExcludePersistentLag)
 	}
-	if err == nil && meta.limitToPartitionsWithLag != testData.limitToPartitionsWithLag {
-		t.Errorf("Expected limitToPartitionsWithLag %t but got %t\n", testData.limitToPartitionsWithLag, meta.limitToPartitionsWithLag)
+	if err == nil && meta.LimitToPartitionsWithLag != testData.limitToPartitionsWithLag {
+		t.Errorf("Expected limitToPartitionsWithLag %t but got %t\n", testData.limitToPartitionsWithLag, meta.LimitToPartitionsWithLag)
 	}
-	if err == nil && meta.ensureEvenDistributionOfPartitions != testData.ensureEvenDistributionOfPartitions {
-		t.Errorf("Expected ensureEvenDistributionOfPartitions %t but got %t\n", testData.ensureEvenDistributionOfPartitions, meta.ensureEvenDistributionOfPartitions)
+	if err == nil && meta.EnsureEvenDistributionOfPartitions != testData.ensureEvenDistributionOfPartitions {
+		t.Errorf("Expected ensureEvenDistributionOfPartitions %t but got %t\n", testData.ensureEvenDistributionOfPartitions, meta.EnsureEvenDistributionOfPartitions)
 	}
 	expectedLagThreshold, er := parseExpectedLagThreshold(testData.metadata)
 	if er != nil {
 		t.Errorf("Unable to convert test data lagThreshold %s to string", testData.metadata["lagThreshold"])
 	}
 
-	if meta.lagThreshold != expectedLagThreshold && meta.lagThreshold != defaultKafkaLagThreshold {
-		t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.lagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
+	if meta.LagThreshold != expectedLagThreshold && meta.LagThreshold != defaultKafkaLagThreshold {
+		t.Errorf("Expected lagThreshold to be either %v or %v got %v ", meta.LagThreshold, defaultKafkaLagThreshold, expectedLagThreshold)
 	}
 }
 
@@ -424,17 +425,17 @@ func TestKafkaAuthParamsInTriggerAuthentication(t *testing.T) {
 			t.Errorf("Expected enableTLS to be set to %v but got %v\n", testData.enableTLS, meta.enableTLS)
 		}
 		if meta.enableTLS {
-			if meta.ca != testData.authParams["ca"] {
-				t.Errorf("Expected ca to be set to %v but got %v\n", testData.authParams["ca"], meta.enableTLS)
+			if meta.CA != testData.authParams["ca"] {
+				t.Errorf("Expected ca to be set to %v but got %v\n", testData.authParams["ca"], meta.CA)
 			}
-			if meta.cert != testData.authParams["cert"] {
-				t.Errorf("Expected cert to be set to %v but got %v\n", testData.authParams["cert"], meta.cert)
+			if meta.Cert != testData.authParams["cert"] {
+				t.Errorf("Expected cert to be set to %v but got %v\n", testData.authParams["cert"], meta.Cert)
 			}
-			if meta.key != testData.authParams["key"] {
-				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["key"], meta.key)
+			if meta.Key != testData.authParams["key"] {
+				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["key"], meta.Key)
 			}
-			if meta.keyPassword != testData.authParams["keyPassword"] {
-				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["keyPassword"], meta.key)
+			if meta.KeyPassword != testData.authParams["keyPassword"] {
+				t.Errorf("Expected key to be set to %v but got %v\n", testData.authParams["keyPassword"], meta.KeyPassword)
 			}
 		}
 		if meta.saslType == KafkaSASLTypeGSSAPI && !testData.isError {
@@ -450,8 +451,8 @@ func TestKafkaAuthParamsInTriggerAuthentication(t *testing.T) {
 					t.Error(err.Error())
 				}
 			}
-			if meta.kerberosServiceName != testData.authParams["kerberosServiceName"] {
-				t.Errorf("Expected kerberos ServiceName to be set to %v but got %v\n", testData.authParams["kerberosServiceName"], meta.kerberosServiceName)
+			if meta.KerberosServiceName != testData.authParams["kerberosServiceName"] {
+				t.Errorf("Expected kerberos ServiceName to be set to %v but got %v\n", testData.authParams["kerberosServiceName"], meta.KerberosServiceName)
 			}
 		}
 	}
@@ -472,25 +473,25 @@ func TestKafkaAuthParamsInScaledObject(t *testing.T) {
 				t.Errorf("Test case: %v. Expected tls to be set to %v but got %v\n", id, testData.metadata["tls"], meta.enableTLS)
 			}
 			if meta.enableTLS {
-				if meta.ca != testData.authParams["ca"] {
-					t.Errorf("Test case: %v. Expected ca to be set to %v but got %v\n", id, testData.authParams["ca"], meta.ca)
+				if meta.CA != testData.authParams["ca"] {
+					t.Errorf("Test case: %v. Expected ca to be set to %v but got %v\n", id, testData.authParams["ca"], meta.CA)
 				}
-				if meta.cert != testData.authParams["cert"] {
-					t.Errorf("Test case: %v. Expected cert to be set to %v but got %v\n", id, testData.authParams["cert"], meta.cert)
+				if meta.Cert != testData.authParams["cert"] {
+					t.Errorf("Test case: %v. Expected cert to be set to %v but got %v\n", id, testData.authParams["cert"], meta.Cert)
 				}
-				if meta.key != testData.authParams["key"] {
-					t.Errorf("Test case: %v. Expected key to be set to %v but got %v\n", id, testData.authParams["key"], meta.key)
+				if meta.Key != testData.authParams["key"] {
+					t.Errorf("Test case: %v. Expected key to be set to %v but got %v\n", id, testData.authParams["key"], meta.Key)
 				}
-				if meta.keyPassword != testData.authParams["keyPassword"] {
-					t.Errorf("Test case: %v. Expected key to be set to %v but got %v\n", id, testData.authParams["keyPassword"], meta.keyPassword)
+				if meta.KeyPassword != testData.authParams["keyPassword"] {
+					t.Errorf("Test case: %v. Expected key to be set to %v but got %v\n", id, testData.authParams["keyPassword"], meta.KeyPassword)
 				}
 				if val, ok := testData.authParams["unsafeSsl"]; ok && err == nil {
 					boolVal, err := strconv.ParseBool(val)
 					if err != nil && !testData.isError {
-						t.Errorf("Expect error but got success in test case %s", meta.key)
+						t.Errorf("Expect error but got success in test case %s", meta.Key)
 					}
-					if boolVal != meta.unsafeSsl {
-						t.Errorf("Expected unsafeSsl key to be set to %v but got %v\n", boolVal, meta.unsafeSsl)
+					if boolVal != meta.UnsafeSsl {
+						t.Errorf("Expected unsafeSsl key to be set to %v but got %v\n", boolVal, meta.UnsafeSsl)
 					}
 				}
 			}
@@ -556,8 +557,8 @@ func TestKafkaOAuthbearerAuthParams(t *testing.T) {
 				t.Errorf("Expected tokenProvider to be set to %v but got %v\n", KafkaSASLOAuthTokenProviderAWSMSKIAM, meta.tokenProvider)
 			}
 
-			if testData.metadata["awsRegion"] != "" && meta.awsRegion != testData.metadata["awsRegion"] {
-				t.Errorf("Expected awsRegion to be set to %v but got %v\n", testData.metadata["awsRegion"], meta.awsRegion)
+			if testData.metadata["awsRegion"] != "" && meta.AWSRegion != testData.metadata["awsRegion"] {
+				t.Errorf("Expected awsRegion to be set to %v but got %v\n", testData.metadata["awsRegion"], meta.AWSRegion)
 			}
 
 			if testData.authParams["awsAccessKeyID"] != "" {
@@ -966,7 +967,6 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create mock OffsetFetchResponse
 			offsetResponse := &sarama.OffsetFetchResponse{
 				Blocks: make(map[string]map[int32]*sarama.OffsetFetchResponseBlock),
 			}
@@ -976,12 +976,11 @@ func TestGetLagForPartition_MissingPartition(t *testing.T) {
 				Err:    sarama.ErrNoError,
 			}
 
-			// Create scaler with test configuration
 			scaler := &kafkaScaler{
 				metadata: kafkaMetadata{
-					group:                      "test-group",
-					offsetResetPolicy:          tt.offsetResetPolicy,
-					scaleToZeroOnInvalidOffset: tt.scaleToZeroOnInvalidOffset,
+					Group:                      "test-group",
+					OffsetResetPolicy:          tt.offsetResetPolicy,
+					ScaleToZeroOnInvalidOffset: tt.scaleToZeroOnInvalidOffset,
 				},
 				logger:          logr.Discard(),
 				previousOffsets: make(map[string]map[int32]int64),
