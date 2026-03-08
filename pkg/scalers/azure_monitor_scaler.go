@@ -259,7 +259,7 @@ func (s *azureMonitorScaler) GetMetricsAndActivity(ctx context.Context, metricNa
 	return []external_metrics.ExternalMetricValue{metric}, val > s.metadata.ActivationTargetValue, nil
 }
 func (s *azureMonitorScaler) requestMetric(ctx context.Context) (float64, error) {
-	timespan, err := formatTimeSpan(s.metadata.AggregationInterval)
+	timespan, interval, err := formatTimeSpan(s.metadata.AggregationInterval)
 	if err != nil {
 		return -1, err
 	}
@@ -267,7 +267,7 @@ func (s *azureMonitorScaler) requestMetric(ctx context.Context) (float64, error)
 		MetricNames:     &s.metadata.Name,
 		MetricNamespace: s.metadata.NamespaceRef,
 		Filter:          s.metadata.FilterRef,
-		Interval:        nil,
+		Interval:        interval,
 		Top:             nil,
 		ResultType:      nil,
 		OrderBy:         nil,
@@ -305,10 +305,12 @@ func (s *azureMonitorScaler) requestMetric(ctx context.Context) (float64, error)
 	return val, nil
 }
 
-// formatTimeSpan defaults to a 5 minute timespan if the user does not provide one
-func formatTimeSpan(timeSpan string) (*azquery.TimeInterval, error) {
+// formatTimeSpan defaults to a 5 minute timespan if the user does not provide one.
+// It returns the timespan and an optional ISO 8601 duration interval for the Azure Monitor API.
+func formatTimeSpan(timeSpan string) (*azquery.TimeInterval, *string, error) {
 	endtime := time.Now().UTC()
 	starttime := time.Now().Add(-(5 * time.Minute)).UTC()
+	var interval *string
 	if timeSpan != "" {
 		aggregationInterval := strings.Split(timeSpan, ":")
 		hours, herr := strconv.Atoi(aggregationInterval[0])
@@ -316,13 +318,34 @@ func formatTimeSpan(timeSpan string) (*azquery.TimeInterval, error) {
 		seconds, serr := strconv.Atoi(aggregationInterval[2])
 
 		if herr != nil || merr != nil || serr != nil {
-			return nil, fmt.Errorf("errors parsing metricAggregationInterval: %v, %v, %w", herr, merr, serr)
+			return nil, nil, fmt.Errorf("errors parsing metricAggregationInterval: %v, %v, %w", herr, merr, serr)
 		}
 
 		starttime = time.Now().Add(-(time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second)).UTC()
+
+		iso8601 := formatISO8601Duration(hours, minutes, seconds)
+		interval = &iso8601
 	}
-	interval := azquery.NewTimeInterval(starttime, endtime)
-	return &interval, nil
+	timeInterval := azquery.NewTimeInterval(starttime, endtime)
+	return &timeInterval, interval, nil
+}
+
+// formatISO8601Duration converts hours, minutes, and seconds into an ISO 8601 duration string.
+func formatISO8601Duration(hours, minutes, seconds int) string {
+	d := "PT"
+	if hours > 0 {
+		d += fmt.Sprintf("%dH", hours)
+	}
+	if minutes > 0 {
+		d += fmt.Sprintf("%dM", minutes)
+	}
+	if seconds > 0 {
+		d += fmt.Sprintf("%dS", seconds)
+	}
+	if d == "PT" {
+		d = "PT0S"
+	}
+	return d
 }
 
 func verifyAggregationTypeIsSupported(aggregationType azquery.AggregationType, data []*azquery.MetricValue) (float64, error) {

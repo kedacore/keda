@@ -115,6 +115,112 @@ func TestAzMonitorParseMetadata(t *testing.T) {
 	}
 }
 
+func TestFormatTimeSpan(t *testing.T) {
+	tests := []struct {
+		name             string
+		timeSpan         string
+		expectErr        bool
+		expectedInterval *string
+	}{
+		{
+			name:             "empty timespan defaults to 5 minutes with nil interval",
+			timeSpan:         "",
+			expectErr:        false,
+			expectedInterval: nil,
+		},
+		{
+			name:             "15 minute interval",
+			timeSpan:         "0:15:0",
+			expectErr:        false,
+			expectedInterval: strPtr("PT15M"),
+		},
+		{
+			name:             "1 hour interval",
+			timeSpan:         "1:0:0",
+			expectErr:        false,
+			expectedInterval: strPtr("PT1H"),
+		},
+		{
+			name:             "1 hour 30 minutes interval",
+			timeSpan:         "1:30:0",
+			expectErr:        false,
+			expectedInterval: strPtr("PT1H30M"),
+		},
+		{
+			name:             "30 seconds interval",
+			timeSpan:         "0:0:30",
+			expectErr:        false,
+			expectedInterval: strPtr("PT30S"),
+		},
+		{
+			name:             "all components",
+			timeSpan:         "1:15:30",
+			expectErr:        false,
+			expectedInterval: strPtr("PT1H15M30S"),
+		},
+		{
+			name:      "invalid format",
+			timeSpan:  "abc:def:ghi",
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			timespan, interval, err := formatTimeSpan(tt.timeSpan)
+			if tt.expectErr {
+				if err == nil {
+					t.Error("Expected error but got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
+			if timespan == nil {
+				t.Error("Expected non-nil timespan")
+			}
+			if tt.expectedInterval == nil {
+				if interval != nil {
+					t.Errorf("Expected nil interval, got %s", *interval)
+				}
+			} else {
+				if interval == nil {
+					t.Errorf("Expected interval %s, got nil", *tt.expectedInterval)
+				} else if *interval != *tt.expectedInterval {
+					t.Errorf("Expected interval %s, got %s", *tt.expectedInterval, *interval)
+				}
+			}
+		})
+	}
+}
+
+func strPtr(s string) *string {
+	return &s
+}
+
+func TestFormatISO8601Duration(t *testing.T) {
+	tests := []struct {
+		hours, minutes, seconds int
+		expected                string
+	}{
+		{0, 15, 0, "PT15M"},
+		{1, 0, 0, "PT1H"},
+		{1, 30, 0, "PT1H30M"},
+		{0, 0, 30, "PT30S"},
+		{1, 15, 30, "PT1H15M30S"},
+		{0, 0, 0, "PT0S"},
+	}
+
+	for _, tt := range tests {
+		result := formatISO8601Duration(tt.hours, tt.minutes, tt.seconds)
+		if result != tt.expected {
+			t.Errorf("formatISO8601Duration(%d, %d, %d) = %s, want %s", tt.hours, tt.minutes, tt.seconds, result, tt.expected)
+		}
+	}
+}
+
 func TestAzMonitorGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azMonitorMetricIdentifiers {
 		meta, err := parseAzureMonitorMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata,
