@@ -39,6 +39,8 @@ import (
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
+const defaultAggregationInterval = "PT5M"
+
 // monitorInfo to create metric request
 type azureMonitorMetadata struct {
 	triggerIndex                 int
@@ -311,7 +313,7 @@ func (s *azureMonitorScaler) requestMetric(ctx context.Context) (float64, error)
 func formatTimeSpan(timeSpan string) (*azquery.TimeInterval, *string, error) {
 	endtime := time.Now().UTC()
 	starttime := time.Now().Add(-(5 * time.Minute)).UTC()
-	interval := "PT5M"
+	interval := defaultAggregationInterval
 	if timeSpan != "" {
 		aggregationInterval := strings.Split(timeSpan, ":")
 		hours, herr := strconv.Atoi(aggregationInterval[0])
@@ -332,7 +334,7 @@ func formatTimeSpan(timeSpan string) (*azquery.TimeInterval, *string, error) {
 // toISO8601Duration converts hours, minutes, and seconds to an ISO 8601 duration string.
 func toISO8601Duration(hours, minutes, seconds int) string {
 	if hours == 0 && minutes == 0 && seconds == 0 {
-		return "PT5M"
+		return defaultAggregationInterval
 	}
 
 	d := "P"

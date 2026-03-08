@@ -127,7 +127,7 @@ func TestToISO8601Duration(t *testing.T) {
 		{0, 0, 30, "PT30S"},
 		{1, 30, 0, "PT1H30M"},
 		{2, 15, 30, "PT2H15M30S"},
-		{0, 0, 0, "PT5M"},
+		{0, 0, 0, defaultAggregationInterval},
 	}
 
 	for _, tt := range tests {
@@ -145,7 +145,7 @@ func TestFormatTimeSpan(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	if *interval != "PT5M" {
+	if *interval != defaultAggregationInterval {
 		t.Errorf("expected default interval PT5M, got %s", *interval)
 	}
 
