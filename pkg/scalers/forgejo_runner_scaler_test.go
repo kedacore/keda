@@ -178,18 +178,13 @@ func TestForgejoRunnerScalerGetJobsList(t *testing.T) {
 		{ID: 4},
 	}
 	forgejoServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
 		if req.URL.Path == "/api/v1/repos/owner/my-repo/actions/runners/jobs" {
-			body, err := json.Marshal(repoJobList)
-			assert.NoError(t, err)
-			// nosemgrep: no-direct-write-to-responsewriter
-			_, err = rw.Write(body)
+			err := json.NewEncoder(rw).Encode(repoJobList)
 			assert.NoError(t, err)
 			return
 		}
-		body, err := json.Marshal(jobsList)
-		assert.NoError(t, err)
-		// nosemgrep: no-direct-write-to-responsewriter
-		_, err = rw.Write(body)
+		err := json.NewEncoder(rw).Encode(jobsList)
 		assert.NoError(t, err)
 	}))
 	// Close the server when test finishes
@@ -220,7 +215,6 @@ func TestForgejoRunnerScalerGetJobsList(t *testing.T) {
 				client: forgejoServer.Client(),
 				logger: logr.Logger{},
 			},
-
 			want: []ForgejoJob{
 				{ID: 1},
 				{ID: 2},
@@ -241,7 +235,6 @@ func TestForgejoRunnerScalerGetJobsList(t *testing.T) {
 				client: forgejoServer.Client(),
 				logger: logr.Logger{},
 			},
-
 			want: []ForgejoJob{
 				{ID: 3},
 				{ID: 4},
@@ -262,6 +255,63 @@ func TestForgejoRunnerScalerGetJobsList(t *testing.T) {
 				return
 			}
 			assert.Equalf(t, tt.want, got, "getJobsList()")
+		})
+	}
+}
+
+func TestForgejoRunnerScalerGetMetricsAndActivity(t *testing.T) {
+	tests := []struct {
+		name            string
+		jobsList        []ForgejoJob
+		wantActive      bool
+		wantMetricValue int64
+	}{
+		{
+			name:            "no jobs should return activity=false and metric=0",
+			jobsList:        []ForgejoJob{},
+			wantActive:      false,
+			wantMetricValue: 0,
+		},
+		{
+			name:            "one job should return activity=true and metric=1",
+			jobsList:        []ForgejoJob{{ID: 1}},
+			wantActive:      true,
+			wantMetricValue: 1000,
+		},
+		{
+			name:            "multiple jobs should return activity=true",
+			jobsList:        []ForgejoJob{{ID: 1}, {ID: 2}},
+			wantActive:      true,
+			wantMetricValue: 2000,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			forgejoServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				rw.Header().Set("Content-Type", "application/json")
+				err := json.NewEncoder(rw).Encode(tt.jobsList)
+				assert.NoError(t, err)
+			}))
+			defer forgejoServer.Close()
+
+			s := &forgejoRunnerScaler{
+				metricType: v2.AverageValueMetricType,
+				metadata: &forgejoRunnerMetadata{
+					Labels:  "ubuntu-latest",
+					Token:   "my-token",
+					Address: forgejoServer.URL,
+					Global:  true,
+				},
+				client: forgejoServer.Client(),
+				logger: logr.Logger{},
+			}
+
+			metrics, active, err := s.GetMetricsAndActivity(context.Background(), "s0-forgejo")
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantActive, active)
+			assert.Len(t, metrics, 1)
+			assert.Equal(t, tt.wantMetricValue, metrics[0].Value.MilliValue())
 		})
 	}
 }
