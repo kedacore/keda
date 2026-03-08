@@ -86,6 +86,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **Github Runner Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Loki Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Prometheus Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
+- **Azure Monitor Scaler**: Set interval (granularity) equal to timespan so Azure returns a single aggregated data point ([#7524](https://github.com/kedacore/keda/issues/7524))
 - **Solr Scaler**: Use net/url to safely encode query parameters ([#7467](https://github.com/kedacore/keda/pull/7467))
 
 ### Deprecations
