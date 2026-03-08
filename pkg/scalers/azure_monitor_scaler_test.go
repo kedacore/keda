@@ -115,6 +115,56 @@ func TestAzMonitorParseMetadata(t *testing.T) {
 	}
 }
 
+func TestToISO8601Duration(t *testing.T) {
+	tests := []struct {
+		hours    int
+		minutes  int
+		seconds  int
+		expected string
+	}{
+		{0, 15, 0, "PT15M"},
+		{1, 0, 0, "PT1H"},
+		{0, 0, 30, "PT30S"},
+		{1, 30, 0, "PT1H30M"},
+		{2, 15, 30, "PT2H15M30S"},
+		{0, 0, 0, "PT5M"},
+	}
+
+	for _, tt := range tests {
+		result := toISO8601Duration(tt.hours, tt.minutes, tt.seconds)
+		if result != tt.expected {
+			t.Errorf("toISO8601Duration(%d, %d, %d) = %s, expected %s",
+				tt.hours, tt.minutes, tt.seconds, result, tt.expected)
+		}
+	}
+}
+
+func TestFormatTimeSpan(t *testing.T) {
+	// default (empty) should return PT5M interval
+	_, interval, err := formatTimeSpan("")
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if *interval != "PT5M" {
+		t.Errorf("expected default interval PT5M, got %s", *interval)
+	}
+
+	// custom interval 0:15:0 should return PT15M
+	_, interval, err = formatTimeSpan("0:15:0")
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if *interval != "PT15M" {
+		t.Errorf("expected interval PT15M, got %s", *interval)
+	}
+
+	// invalid values should return error
+	_, _, err = formatTimeSpan("a:b:c")
+	if err == nil {
+		t.Error("expected error for invalid timespan values")
+	}
+}
+
 func TestAzMonitorGetMetricSpecForScaling(t *testing.T) {
 	for _, testData := range azMonitorMetricIdentifiers {
 		meta, err := parseAzureMonitorMetadata(&scalersconfig.ScalerConfig{TriggerMetadata: testData.metadataTestData.metadata,

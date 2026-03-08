@@ -94,6 +94,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Fix ScaledObject admission webhook to return validation error from `verifyReplicaCount`, preventing invalid ScaledObjects from being created ([#5954](https://github.com/kedacore/keda/issues/5954))
 - **General**: Handle paused scaling directly in reconciler ([#7663](https://github.com/kedacore/keda/issues/7663))
 - **Azure Data Explorer Scaler**: Remove clientSecretFromEnv support ([#7554](https://github.com/kedacore/keda/pull/7554))
+- **Azure Monitor Scaler**: Set interval (granularity) equal to timespan so Azure returns a single aggregated data point ([#7524](https://github.com/kedacore/keda/issues/7524))
 - **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
 - **Forgejo Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Forgejo Scaler**: Return correct activity to enable scale-to-zero ([#7527](https://github.com/kedacore/keda/issues/7527))
