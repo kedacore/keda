@@ -100,20 +100,27 @@ const (
 type ScaledObjectSpec struct {
 	ScaleTargetRef *ScaleTarget `json:"scaleTargetRef"`
 	// +optional
+	// +kubebuilder:validation:Minimum=0
 	PollingInterval *int32 `json:"pollingInterval,omitempty"`
 	// +optional
+	// +kubebuilder:validation:Minimum=0
 	InitialCooldownPeriod *int32 `json:"initialCooldownPeriod,omitempty"`
 	// +optional
+	// +kubebuilder:validation:Minimum=0
 	CooldownPeriod *int32 `json:"cooldownPeriod,omitempty"`
 	// +optional
+	// +kubebuilder:validation:Minimum=0
 	IdleReplicaCount *int32 `json:"idleReplicaCount,omitempty"`
 	// +optional
+	// +kubebuilder:validation:Minimum=0
 	MinReplicaCount *int32 `json:"minReplicaCount,omitempty"`
 	// +optional
+	// +kubebuilder:validation:Minimum=1
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
 	// +optional
 	Advanced *AdvancedConfig `json:"advanced,omitempty"`
 
+	// +kubebuilder:validation:MinItems=1
 	Triggers []ScaleTriggers `json:"triggers"`
 	// +optional
 	Fallback *Fallback `json:"fallback,omitempty"`
@@ -121,8 +128,10 @@ type ScaledObjectSpec struct {
 
 // Fallback is the spec for fallback options
 type Fallback struct {
+	// +kubebuilder:validation:Minimum=0
 	FailureThreshold int32 `json:"failureThreshold"`
-	Replicas         int32 `json:"replicas"`
+	// +kubebuilder:validation:Minimum=0
+	Replicas int32 `json:"replicas"`
 	// +optional
 	// +kubebuilder:default=static
 	// +kubebuilder:validation:Enum=static;currentReplicas;currentReplicasIfHigher;currentReplicasIfLower
@@ -160,6 +169,7 @@ type HorizontalPodAutoscalerConfig struct {
 
 // ScaleTarget holds the reference to the scale target Object
 type ScaleTarget struct {
+	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name"`
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`

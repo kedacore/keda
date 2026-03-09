@@ -52,6 +52,10 @@ spec:
                   kind:
                     description: Kind of the resource being referred to. Defaults
                       to TriggerAuthentication.
+                    enum:
+                    - ""
+                    - TriggerAuthentication
+                    - ClusterTriggerAuthentication
                     type: string
                   name:
                     type: string

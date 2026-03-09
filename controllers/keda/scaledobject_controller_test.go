@@ -2065,7 +2065,6 @@ var _ = Describe("ScaledObjectController", func() {
 		err := k8sClient.Create(context.Background(), generateDeployment(deploymentName))
 		Expect(err).ToNot(HaveOccurred())
 
-		// Create the ScaledObject without specifying name.
 		so := &kedav1alpha1.ScaledObject{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      soName,
@@ -2084,17 +2083,11 @@ var _ = Describe("ScaledObjectController", func() {
 				Triggers: []kedav1alpha1.ScaleTriggers{},
 			},
 		}
+		// CRD-level MinItems=1 validation on spec.triggers rejects the
+		// request before it reaches the webhook or controller.
 		err = k8sClient.Create(context.Background(), so)
-		Expect(err).ToNot(HaveOccurred())
-
-		// wait to check so's ready condition Not Ready
-		Eventually(func() metav1.ConditionStatus {
-			err := k8sClient.Get(context.Background(), types.NamespacedName{Name: soName, Namespace: "default"}, so)
-			if err != nil {
-				return metav1.ConditionUnknown
-			}
-			return so.Status.Conditions.GetReadyCondition().Status
-		}).Should(Equal(metav1.ConditionFalse))
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("spec.triggers"))
 	})
 
 })
