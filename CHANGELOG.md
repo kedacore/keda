@@ -83,6 +83,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 - **General**: Check updated status for Fallback condition instead of ScaledObject ([#7488](https://github.com/kedacore/keda/issues/7488))
 - **Cron Scaler**: Fix metric name generation so cron expressions with comma-separated values no longer produce invalid metric names ([#7448](https://github.com/kedacore/keda/issues/7448))
 - **Forgejo Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
+- **GCP Scaler**: Validate Pub/Sub resource name in BuildMQLQuery ([#7468](https://github.com/kedacore/keda/pull/7468))
 - **Github Runner Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Loki Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
 - **Prometheus Scaler**: Limit HTTP error response logging ([#7469](https://github.com/kedacore/keda/pull/7469))
