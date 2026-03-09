@@ -32,6 +32,9 @@ import (
 // +kubebuilder:printcolumn:name="Env",type="string",JSONPath=".spec.env[*].name"
 // +kubebuilder:printcolumn:name="FilePath",type="string",JSONPath=".spec.filePath"
 // +kubebuilder:printcolumn:name="VaultAddress",type="string",JSONPath=".spec.hashiCorpVault.address"
+// +kubebuilder:printcolumn:name="AkeylessGatewayUrl",type="string",JSONPath=".spec.akeyless.gatewayUrl"
+// +kubebuilder:printcolumn:name="AkeylessAccessId",type="string",JSONPath=".spec.akeyless.accessId"
+// +kubebuilder:printcolumn:name="AkeylessSecrets",type="string",JSONPath=".spec.akeyless.secrets[*].path"
 // +kubebuilder:printcolumn:name="ScaledObjects",type="string",priority=1,JSONPath=".status.scaledobjects"
 // +kubebuilder:printcolumn:name="ScaledJobs",type="string",priority=1,JSONPath=".status.scaledjobs"
 type ClusterTriggerAuthentication struct {
@@ -61,6 +64,9 @@ type ClusterTriggerAuthenticationList struct {
 // +kubebuilder:printcolumn:name="Secret",type="string",JSONPath=".spec.secretTargetRef[*].name"
 // +kubebuilder:printcolumn:name="Env",type="string",JSONPath=".spec.env[*].name"
 // +kubebuilder:printcolumn:name="VaultAddress",type="string",JSONPath=".spec.hashiCorpVault.address"
+// +kubebuilder:printcolumn:name="AkeylessGatewayUrl",type="string",JSONPath=".spec.akeyless.gatewayUrl"
+// +kubebuilder:printcolumn:name="AkeylessAccessID",type="string",JSONPath=".spec.akeyless.accessId"
+// +kubebuilder:printcolumn:name="AkeylessSecrets",type="string",JSONPath=".spec.akeyless.secrets[*].path"
 // +kubebuilder:printcolumn:name="ScaledObjects",type="string",priority=1,JSONPath=".status.scaledobjects"
 // +kubebuilder:printcolumn:name="ScaledJobs",type="string",priority=1,JSONPath=".status.scaledjobs"
 type TriggerAuthentication struct {
@@ -104,6 +110,9 @@ type TriggerAuthenticationSpec struct {
 
 	// +optional
 	BoundServiceAccountToken []BoundServiceAccountToken `json:"boundServiceAccountToken,omitempty"`
+
+	// +optional
+	Akeyless *Akeyless `json:"akeyless,omitempty"`
 }
 
 // TriggerAuthenticationStatus defines the observed state of TriggerAuthentication
@@ -236,6 +245,37 @@ type HashiCorpVault struct {
 
 	// +optional
 	Mount string `json:"mount,omitempty"`
+}
+
+// Akeyless is used to authenticate using Akeyless
+type Akeyless struct {
+	GatewayURL  string           `json:"gatewayUrl"`
+	AccessID    string           `json:"accessId"`
+	Secrets     []AkeylessSecret `json:"secrets"`
+	PodIdentity *AuthPodIdentity `json:"podIdentity,omitempty"`
+
+	// +optional
+	AccessKey *AkeylessK8sSecretValue `json:"accessKey,omitempty"`
+
+	// +optional
+	K8sAuthConfigName string `json:"k8sAuthConfigName,omitempty"`
+	// +optional
+	K8sServiceAccountToken *AkeylessK8sSecretValue `json:"k8sServiceAccountToken,omitempty"`
+	// +optional
+	K8sGatewayURL string `json:"k8sGatewayUrl,omitempty"`
+}
+
+// AkeylessK8sSecretValue is used as a reference to a Kubernetes secret
+type AkeylessK8sSecretValue struct {
+	ValueFrom ValueFromSecret `json:"valueFrom"`
+}
+
+type AkeylessSecret struct {
+	Parameter string `json:"parameter"`
+	Path      string `json:"path"`
+
+	// +optional
+	Key string `json:"key,omitempty"`
 }
 
 // Credential defines the Hashicorp Vault credentials depending on the authentication method

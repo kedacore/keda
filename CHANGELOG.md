@@ -68,7 +68,8 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- TODO ([#XXX](https://github.com/kedacore/keda/issues/XXX))
+- **General**: Introduce new Kubernetes Resource Scaler ([#7212](https://github.com/kedacore/keda/issues/7212))
+- **Secret Providers**: Introduce Akeyless secret provider ([#7272](https://github.com/kedacore/keda/pull/7272))
 
 #### Experimental
 
