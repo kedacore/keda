@@ -27,6 +27,12 @@ type elasticForecastMetricIdentifier struct {
 
 var elasticForecastTestCases = []parseElasticForecastMetadataTestData{
 	{
+		name:          "username and password provided without addresses",
+		metadata:      map[string]string{"jobID": "my-job", "targetValue": "10"},
+		authParams:    map[string]string{"username": "admin", "password": "secret"},
+		expectedError: fmt.Errorf("username and password provided but no addresses specified"),
+	},
+	{
 		name:          "must provide either endpoint addresses or cloud config",
 		metadata:      map[string]string{"jobID": "my-job", "targetValue": "10"},
 		authParams:    map[string]string{},

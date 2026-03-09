@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -75,18 +76,21 @@ func (m *elasticForecastMetadata) forecastDuration() time.Duration {
 
 func (m *elasticForecastMetadata) Validate() error {
 	cloudMode := m.CloudID != "" || m.APIKey != ""
-	addrMode := len(m.Addresses) > 0 || m.Username != "" || m.Password != ""
+	addrMode := len(m.Addresses) > 0
 
 	if cloudMode && addrMode {
 		return fmt.Errorf("cannot provide both cloud config (cloudID/apiKey) and endpoint addresses")
 	}
-	if !cloudMode && !addrMode {
-		return fmt.Errorf("must provide either cloud config (cloudID + apiKey) or endpoint addresses")
-	}
 	if (m.CloudID != "" && m.APIKey == "") || (m.CloudID == "" && m.APIKey != "") {
 		return fmt.Errorf("cloudID and apiKey must both be provided together")
 	}
-	if len(m.Addresses) > 0 && (m.Username == "" || m.Password == "") {
+	if !addrMode && (m.Username != "" || m.Password != "") {
+		return fmt.Errorf("username and password provided but no addresses specified")
+	}
+	if !cloudMode && !addrMode {
+		return fmt.Errorf("must provide either cloud config (cloudID + apiKey) or endpoint addresses")
+	}
+	if addrMode && (m.Username == "" || m.Password == "") {
 		return fmt.Errorf("username and password must both be provided when addresses is used")
 	}
 	if m.LookAhead <= 0 {
@@ -230,7 +234,7 @@ func (s *elasticForecastScaler) createForecast(ctx context.Context) error {
 		return fmt.Errorf("marshal forecast body: %w", err)
 	}
 
-	path := fmt.Sprintf("/_ml/anomaly_detectors/%s/_forecast", s.metadata.JobID)
+	path := fmt.Sprintf("/_ml/anomaly_detectors/%s/_forecast", url.PathEscape(s.metadata.JobID))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, path, bytes.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("build forecast request: %w", err)
