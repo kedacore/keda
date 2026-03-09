@@ -298,6 +298,7 @@ func TestForgejoRunnerScalerGetMetricsAndActivity(t *testing.T) {
 			forgejoServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 				body, err := json.Marshal(tt.jobsList)
 				assert.NoError(t, err)
+				// nosemgrep: no-direct-write-to-responsewriter
 				_, err = rw.Write(body)
 				assert.NoError(t, err)
 			}))
