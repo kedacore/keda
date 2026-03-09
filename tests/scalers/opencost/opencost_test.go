@@ -164,6 +164,7 @@ spec:
       costType: "totalCost"
       aggregate: "namespace"
       window: "1d"
+      inverseScaling: "false"
 `
 )
 
