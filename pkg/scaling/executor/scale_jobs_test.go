@@ -36,6 +36,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/mock/mock_client"
+	"k8s.io/utils/ptr"
 )
 
 func TestCleanUpNormalCase(t *testing.T) {
@@ -724,5 +725,85 @@ func getPodCondition(podConditionType v1.PodConditionType) v1.PodCondition {
 	return v1.PodCondition{
 		Type:   podConditionType,
 		Status: v1.ConditionTrue,
+	}
+}
+
+func TestIsScaledJobInCooldownPeriod(t *testing.T) {
+	cooldownPeriod := int32(60)
+
+	tests := []struct {
+		name            string
+		cooldownPeriod  *int32
+		lastActiveTime  *metav1.Time
+		activeCondition metav1.ConditionStatus
+		expected        bool
+	}{
+		{
+			name:            "no cooldown configured",
+			cooldownPeriod:  nil,
+			lastActiveTime:  ptr.To(metav1.NewTime(time.Now().Add(-10 * time.Second))),
+			activeCondition: metav1.ConditionFalse,
+			expected:        false,
+		},
+		{
+			name:            "cooldown zero",
+			cooldownPeriod:  ptr.To(int32(0)),
+			lastActiveTime:  ptr.To(metav1.NewTime(time.Now().Add(-10 * time.Second))),
+			activeCondition: metav1.ConditionFalse,
+			expected:        false,
+		},
+		{
+			name:            "in cooldown - recently active, now re-activating",
+			cooldownPeriod:  &cooldownPeriod,
+			lastActiveTime:  ptr.To(metav1.NewTime(time.Now().Add(-10 * time.Second))),
+			activeCondition: metav1.ConditionFalse,
+			expected:        true,
+		},
+		{
+			name:            "cooldown expired - last active long ago",
+			cooldownPeriod:  &cooldownPeriod,
+			lastActiveTime:  ptr.To(metav1.NewTime(time.Now().Add(-120 * time.Second))),
+			activeCondition: metav1.ConditionFalse,
+			expected:        false,
+		},
+		{
+			name:            "already active - no cooldown check",
+			cooldownPeriod:  &cooldownPeriod,
+			lastActiveTime:  ptr.To(metav1.NewTime(time.Now().Add(-5 * time.Second))),
+			activeCondition: metav1.ConditionTrue,
+			expected:        false,
+		},
+		{
+			name:            "condition unknown - first activation, no LastActiveTime",
+			cooldownPeriod:  &cooldownPeriod,
+			lastActiveTime:  nil,
+			activeCondition: metav1.ConditionUnknown,
+			expected:        false,
+		},
+		{
+			name:            "condition unknown - re-activation within cooldown",
+			cooldownPeriod:  &cooldownPeriod,
+			lastActiveTime:  ptr.To(metav1.NewTime(time.Now().Add(-10 * time.Second))),
+			activeCondition: metav1.ConditionUnknown,
+			expected:        true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scaledJob := &kedav1alpha1.ScaledJob{
+				Spec: kedav1alpha1.ScaledJobSpec{
+					CooldownPeriod: tt.cooldownPeriod,
+				},
+				Status: kedav1alpha1.ScaledJobStatus{
+					LastActiveTime: tt.lastActiveTime,
+					Conditions: kedav1alpha1.Conditions{
+						{Type: kedav1alpha1.ConditionActive, Status: tt.activeCondition},
+					},
+				},
+			}
+			result := isScaledJobInCooldownPeriod(scaledJob)
+			assert.Equal(t, tt.expected, result, "Test case: %s", tt.name)
+		})
 	}
 }

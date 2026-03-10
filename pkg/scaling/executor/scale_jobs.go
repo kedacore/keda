@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
@@ -58,15 +59,26 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 		effectiveMaxScale = 0
 	}
 
+	inCooldown := false
 	if isActive {
 		logger.V(1).Info("At least one scaler is active")
-		now := metav1.Now()
-		scaledJob.Status.LastActiveTime = &now
-		err := e.updateLastActiveTime(ctx, logger, scaledJob)
-		if err != nil {
-			logger.Error(err, "Failed to update last active time")
+
+		inCooldown = isScaledJobInCooldownPeriod(scaledJob)
+		if inCooldown {
+			logger.Info("ScaledJob is in cooldown period, skipping job creation",
+				"LastActiveTime", scaledJob.Status.LastActiveTime,
+				"CooldownPeriod", time.Second*time.Duration(scaledJob.CooldownPeriod()))
 		}
-		e.createJobs(ctx, logger, scaledJob, scaleTo, effectiveMaxScale)
+
+		if !inCooldown {
+			now := metav1.Now()
+			scaledJob.Status.LastActiveTime = &now
+			err := e.updateLastActiveTime(ctx, logger, scaledJob)
+			if err != nil {
+				logger.Error(err, "Failed to update last active time")
+			}
+			e.createJobs(ctx, logger, scaledJob, scaleTo, effectiveMaxScale)
+		}
 	} else {
 		logger.V(1).Info("No change in activity")
 	}
@@ -106,7 +118,14 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 	}
 
 	condition := scaledJob.Status.Conditions.GetActiveCondition()
-	if condition.IsUnknown() || condition.IsTrue() != isActive {
+	if inCooldown {
+		if !condition.IsFalse() || condition.Reason != "ScalerCooldown" {
+			if err := e.setActiveCondition(ctx, logger, scaledJob, metav1.ConditionFalse, "ScalerCooldown", "Scaling is paused due to cooldown period"); err != nil {
+				logger.Error(err, "Error setting active condition during cooldown")
+				return
+			}
+		}
+	} else if condition.IsUnknown() || condition.IsTrue() != isActive {
 		if isActive {
 			if !condition.IsTrue() {
 				e.recorder.Event(scaledJob, corev1.EventTypeNormal, eventreason.ScaledJobActive, "Scaling is performed because triggers are active")
@@ -451,6 +470,28 @@ func (e *scaleExecutor) getFinishedJobConditionType(j *batchv1.Job) batchv1.JobC
 		}
 	}
 	return ""
+}
+
+// isScaledJobInCooldownPeriod checks if a ScaledJob is within its cooldown period.
+// Cooldown applies when re-activating (condition is not True) and the time since
+// LastActiveTime is less than the configured cooldown period.
+func isScaledJobInCooldownPeriod(scaledJob *kedav1alpha1.ScaledJob) bool {
+	cooldownSeconds := scaledJob.CooldownPeriod()
+	if cooldownSeconds <= 0 {
+		return false
+	}
+
+	condition := scaledJob.Status.Conditions.GetActiveCondition()
+	if condition.IsTrue() {
+		return false
+	}
+
+	if scaledJob.Status.LastActiveTime == nil {
+		return false
+	}
+
+	cooldownPeriod := time.Second * time.Duration(cooldownSeconds)
+	return time.Since(scaledJob.Status.LastActiveTime.Time) < cooldownPeriod
 }
 
 // NewScalingStrategy returns ScalingStrategy instance

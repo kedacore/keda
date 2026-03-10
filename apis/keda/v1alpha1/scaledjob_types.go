@@ -70,6 +70,8 @@ type ScaledJobSpec struct {
 	// +optional
 	MaxReplicaCount *int32 `json:"maxReplicaCount,omitempty"`
 	// +optional
+	CooldownPeriod *int32 `json:"cooldownPeriod,omitempty"`
+	// +optional
 	ScalingStrategy ScalingStrategy `json:"scalingStrategy,omitempty"`
 	Triggers        []ScaleTriggers `json:"triggers"`
 }
@@ -151,6 +153,14 @@ func (s ScaledJob) MinReplicaCount() int64 {
 		return int64(*s.Spec.MinReplicaCount)
 	}
 	return defaultScaledJobMinReplicaCount
+}
+
+// CooldownPeriod returns the cooldown period duration, or 0 if not set
+func (s ScaledJob) CooldownPeriod() int32 {
+	if s.Spec.CooldownPeriod != nil {
+		return *s.Spec.CooldownPeriod
+	}
+	return 0
 }
 
 func (s *ScaledJob) GenerateIdentifier() string {

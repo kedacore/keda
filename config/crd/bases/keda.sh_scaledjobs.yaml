@@ -66,6 +66,9 @@ spec:
           spec:
             description: ScaledJobSpec defines the desired state of ScaledJob
             properties:
+              cooldownPeriod:
+                format: int32
+                type: integer
               envSourceContainerName:
                 type: string
               failedJobsHistoryLimit:
