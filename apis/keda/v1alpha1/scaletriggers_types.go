@@ -46,7 +46,7 @@ type AuthenticationRef struct {
 	Name string `json:"name"`
 	// Kind of the resource being referred to. Defaults to TriggerAuthentication.
 	// +optional
-	// +kubebuilder:validation:Enum="";TriggerAuthentication;ClusterTriggerAuthentication
+	// +kubebuilder:validation:Enum=TriggerAuthentication;ClusterTriggerAuthentication
 	Kind string `json:"kind,omitempty"`
 }
 

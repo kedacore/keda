@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -171,7 +172,19 @@ var _ = Describe("ScaledJobController", func() {
 			// request before it reaches the webhook or controller.
 			err := k8sClient.Create(context.Background(), sj)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("spec.triggers"))
+			Expect(apierrors.IsInvalid(err)).To(BeTrue())
+			statusErr, ok := err.(*apierrors.StatusError)
+			Expect(ok).To(BeTrue())
+			Expect(statusErr.ErrStatus.Details).ToNot(BeNil())
+			Expect(statusErr.ErrStatus.Details.Causes).ToNot(BeEmpty())
+			foundTriggersField := false
+			for _, cause := range statusErr.ErrStatus.Details.Causes {
+				if cause.Field == "spec.triggers" {
+					foundTriggersField = true
+					break
+				}
+			}
+			Expect(foundTriggersField).To(BeTrue())
 		})
 	})
 })

@@ -97,10 +97,11 @@ const (
 )
 
 // ScaledObjectSpec is the spec for a ScaledObject resource
+// +kubebuilder:validation:XValidation:rule="!has(self.minReplicaCount) || self.minReplicaCount <= (has(self.maxReplicaCount) ? self.maxReplicaCount : 100)",message="minReplicaCount must be less than or equal to maxReplicaCount"
 type ScaledObjectSpec struct {
 	ScaleTargetRef *ScaleTarget `json:"scaleTargetRef"`
 	// +optional
-	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Minimum=1
 	PollingInterval *int32 `json:"pollingInterval,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Minimum=0

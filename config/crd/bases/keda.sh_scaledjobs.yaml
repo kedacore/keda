@@ -8961,20 +8961,18 @@ spec:
                 type: integer
               pollingInterval:
                 format: int32
-                minimum: 0
+                minimum: 1
                 type: integer
               rollout:
                 description: Rollout defines the strategy for job rollouts
                 properties:
                   propagationPolicy:
                     enum:
-                    - ""
                     - foreground
                     - background
                     type: string
                   strategy:
                     enum:
-                    - ""
                     - gradual
                     - immediate
                     type: string
@@ -8982,7 +8980,6 @@ spec:
               rolloutStrategy:
                 description: 'Deprecated: Use Rollout.Strategy instead (see https://github.com/kedacore/keda/issues/3596).'
                 enum:
-                - ""
                 - gradual
                 - immediate
                 type: string
@@ -8996,7 +8993,6 @@ spec:
                     type: string
                   multipleScalersCalculation:
                     enum:
-                    - ""
                     - min
                     - avg
                     - sum
@@ -9008,7 +9004,6 @@ spec:
                     type: array
                   strategy:
                     enum:
-                    - ""
                     - custom
                     - accurate
                     - eager
@@ -9031,7 +9026,6 @@ spec:
                           description: Kind of the resource being referred to. Defaults
                             to TriggerAuthentication.
                           enum:
-                          - ""
                           - TriggerAuthentication
                           - ClusterTriggerAuthentication
                           type: string

@@ -307,7 +307,7 @@ spec:
                 type: integer
               pollingInterval:
                 format: int32
-                minimum: 0
+                minimum: 1
                 type: integer
               scaleTargetRef:
                 description: ScaleTarget holds the reference to the scale target Object
@@ -337,7 +337,6 @@ spec:
                           description: Kind of the resource being referred to. Defaults
                             to TriggerAuthentication.
                           enum:
-                          - ""
                           - TriggerAuthentication
                           - ClusterTriggerAuthentication
                           type: string
@@ -372,6 +371,10 @@ spec:
             - scaleTargetRef
             - triggers
             type: object
+            x-kubernetes-validations:
+            - message: minReplicaCount must be less than or equal to maxReplicaCount
+              rule: '!has(self.minReplicaCount) || self.minReplicaCount <= (has(self.maxReplicaCount)
+                ? self.maxReplicaCount : 100)'
           status:
             description: ScaledObjectStatus is the status for a ScaledObject resource
             properties:

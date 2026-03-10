@@ -54,7 +54,7 @@ const ScaledJobExcludedLabelsAnnotation = "scaledjob.keda.sh/job-excluded-labels
 type ScaledJobSpec struct {
 	JobTargetRef *batchv1.JobSpec `json:"jobTargetRef"`
 	// +optional
-	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Minimum=1
 	PollingInterval *int32 `json:"pollingInterval,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Minimum=0
@@ -64,7 +64,7 @@ type ScaledJobSpec struct {
 	FailedJobsHistoryLimit *int32 `json:"failedJobsHistoryLimit,omitempty"`
 	// Deprecated: Use Rollout.Strategy instead (see https://github.com/kedacore/keda/issues/3596).
 	// +optional
-	// +kubebuilder:validation:Enum="";gradual;immediate
+	// +kubebuilder:validation:Enum=gradual;immediate
 	RolloutStrategy string `json:"rolloutStrategy,omitempty"`
 	// +optional
 	Rollout Rollout `json:"rollout,omitempty"`
@@ -113,7 +113,7 @@ type ScaledJobList struct {
 // +optional
 type ScalingStrategy struct {
 	// +optional
-	// +kubebuilder:validation:Enum="";custom;accurate;eager
+	// +kubebuilder:validation:Enum=custom;accurate;eager
 	Strategy string `json:"strategy,omitempty"`
 	// +optional
 	CustomScalingQueueLengthDeduction *int32 `json:"customScalingQueueLengthDeduction,omitempty"`
@@ -122,7 +122,7 @@ type ScalingStrategy struct {
 	// +optional
 	PendingPodConditions []string `json:"pendingPodConditions,omitempty"`
 	// +optional
-	// +kubebuilder:validation:Enum="";min;avg;sum;max
+	// +kubebuilder:validation:Enum=min;avg;sum;max
 	MultipleScalersCalculation string `json:"multipleScalersCalculation,omitempty"`
 }
 
@@ -130,10 +130,10 @@ type ScalingStrategy struct {
 // +optional
 type Rollout struct {
 	// +optional
-	// +kubebuilder:validation:Enum="";gradual;immediate
+	// +kubebuilder:validation:Enum=gradual;immediate
 	Strategy string `json:"strategy,omitempty"`
 	// +optional
-	// +kubebuilder:validation:Enum="";foreground;background
+	// +kubebuilder:validation:Enum=foreground;background
 	PropagationPolicy string `json:"propagationPolicy,omitempty"`
 }
 
