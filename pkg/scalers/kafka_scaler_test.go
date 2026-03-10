@@ -664,6 +664,93 @@ func TestGetTopicPartitions(t *testing.T) {
 	}
 }
 
+func TestKafkaParsePartitionLimitation(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []int32
+		isError  bool
+	}{
+		{
+			name:     "single value",
+			input:    "1",
+			expected: []int32{1},
+		},
+		{
+			name:     "comma-separated list",
+			input:    "1,2,3,4",
+			expected: []int32{1, 2, 3, 4},
+		},
+		{
+			name:     "list with whitespace around values",
+			input:    " 1 , 2 , 3 ",
+			expected: []int32{1, 2, 3},
+		},
+		{
+			name:     "simple range",
+			input:    "1-4",
+			expected: []int32{1, 2, 3, 4},
+		},
+		{
+			name:     "single-element range (start == end)",
+			input:    "3-3",
+			expected: []int32{3},
+		},
+		{
+			name:     "range with whitespace",
+			input:    " 1 - 4 ",
+			expected: []int32{1, 2, 3, 4},
+		},
+		{
+			name:     "mixed list and ranges",
+			input:    "1-4,8,10-12",
+			expected: []int32{1, 2, 3, 4, 8, 10, 11, 12},
+		},
+		{
+			name:    "non-numeric value",
+			input:   "a,b,c",
+			isError: true,
+		},
+		{
+			name:    "invalid range: too many parts",
+			input:   "1-2-3",
+			isError: true,
+		},
+		{
+			name:    "invalid range: non-numeric start",
+			input:   "a-3",
+			isError: true,
+		},
+		{
+			name:    "invalid range: non-numeric end",
+			input:   "1-b",
+			isError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parsePartitionLimitation(tt.input)
+
+			if tt.isError {
+				if err == nil {
+					t.Errorf("expected error but got none (result: %v)", result)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+				return
+			}
+
+			if !reflect.DeepEqual(tt.expected, result) {
+				t.Errorf("expected %v but got %v", tt.expected, result)
+			}
+		})
+	}
+}
+
 func TestFindFactors(t *testing.T) {
 	factors := FindFactors(10)
 	if !reflect.DeepEqual(factors, []int64{1, 2, 5, 10}) {
