@@ -1,6 +1,7 @@
 package scalers
 
 import (
+	"math"
 	"reflect"
 	"testing"
 
@@ -109,6 +110,16 @@ func TestGetMetricTargetMili(t *testing.T) {
 			metricType:  v2.ValueMetricType,
 			metricValue: 9.3e15,
 		},
+		{
+			name:        "NaN treated as zero",
+			metricType:  v2.AverageValueMetricType,
+			metricValue: math.NaN(),
+		},
+		{
+			name:        "positive Inf treated as zero",
+			metricType:  v2.ValueMetricType,
+			metricValue: math.Inf(1),
+		},
 	}
 
 	for _, testCase := range cases {
@@ -124,8 +135,12 @@ func TestGetMetricTargetMili(t *testing.T) {
 				qty = target.Value
 			}
 			assert.NotNil(t, qty)
-			// Verify the value is positive and close to the original
-			assert.True(t, qty.AsApproximateFloat64() > 0, "expected positive quantity, got %v", qty)
+
+			if math.IsNaN(c.metricValue) || math.IsInf(c.metricValue, 0) {
+				assert.True(t, qty.IsZero(), "expected zero quantity for NaN/Inf, got %v", qty)
+			} else {
+				assert.True(t, qty.AsApproximateFloat64() > 0, "expected positive quantity, got %v", qty)
+			}
 		})
 	}
 }
@@ -147,6 +162,14 @@ func TestGenerateMetricInMili(t *testing.T) {
 			name:  "value just above int64 milli overflow threshold",
 			value: 9.3e15,
 		},
+		{
+			name:  "NaN treated as zero",
+			value: math.NaN(),
+		},
+		{
+			name:  "positive Inf treated as zero",
+			value: math.Inf(1),
+		},
 	}
 
 	for _, testCase := range cases {
@@ -154,8 +177,12 @@ func TestGenerateMetricInMili(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			metric := GenerateMetricInMili("test-metric", c.value)
 			assert.Equal(t, "test-metric", metric.MetricName)
-			// Verify the value is positive and close to the original
-			assert.True(t, metric.Value.AsApproximateFloat64() > 0, "expected positive quantity, got %v", &metric.Value)
+
+			if math.IsNaN(c.value) || math.IsInf(c.value, 0) {
+				assert.True(t, metric.Value.IsZero(), "expected zero quantity for NaN/Inf, got %v", &metric.Value)
+			} else {
+				assert.True(t, metric.Value.AsApproximateFloat64() > 0, "expected positive quantity, got %v", &metric.Value)
+			}
 		})
 	}
 }
