@@ -30,6 +30,7 @@ message MetricSpec {
     // deprecated, use targetSizeFloat instead
     int64 targetSize = 2;
     double targetSizeFloat = 3;
+    optional string metricType = 4;
 }
 
 message GetMetricsRequest {
