@@ -68,7 +68,7 @@ To learn more about active deprecations, we recommend checking [GitHub Discussio
 
 ### New
 
-- **General:** Add `cooldownPeriod` to ScaledJob to prevent duplicate job creation from stale metrics ([#7330](https://github.com/kedacore/keda/issues/7330))
+- **General**: Add `cooldownPeriod` to ScaledJob to prevent duplicate job creation from stale metrics ([#7330](https://github.com/kedacore/keda/issues/7330))
 
 #### Experimental
 
