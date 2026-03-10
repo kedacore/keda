@@ -21,6 +21,7 @@ import (
 	"github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/scalers/azure"
 	"github.com/kedacore/keda/v2/pkg/scalers/scalersconfig"
+	"github.com/kedacore/keda/v2/pkg/scalers/aws"
 	kedautil "github.com/kedacore/keda/v2/pkg/util"
 )
 
@@ -69,13 +70,15 @@ type rabbitMQScaler struct {
 	channel    *amqp.Channel
 	httpClient *http.Client
 	azureOAuth *azure.ADWorkloadIdentityTokenProvider
-	logger     logr.Logger
+	awsOAuth   *aws.TokenProvider
+
+	logger logr.Logger
 }
 
 type rabbitMQMetadata struct {
 	connectionName string // name used for the AMQP connection
 	triggerIndex   int    // scaler index
-
+	PodIdentityProvider v1alpha1.PodIdentityProvider
 	QueueName string `keda:"name=queueName,                       order=triggerMetadata"`
 	// QueueLength or MessageRate
 	Mode string `keda:"name=mode,                                 order=triggerMetadata, optional, default=Unknown"`
@@ -285,6 +288,11 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 		return nil, fmt.Errorf("error parsing RabbitMQ metadata: %w", err)
 	}
 
+	// AWS IAM auth only works with HTTP protocol
+	if config.PodIdentity.Provider == v1alpha1.PodIdentityProviderAws && meta.Protocol == amqpProtocol {
+		return nil, fmt.Errorf("AWS IAM authentication requires HTTP protocol")
+	}
+
 	s.metadata = meta
 
 	timeout := config.GlobalHTTPTimeout
@@ -299,6 +307,15 @@ func NewRabbitMQScaler(config *scalersconfig.ScalerConfig) (Scaler, error) {
 			return nil, tlsErr
 		}
 		s.httpClient.Transport = kedautil.CreateHTTPTransportWithTLSConfig(tlsConfig)
+	}
+
+	// Initialize AWS token provider if AWS pod identity is used
+	if config.PodIdentity.Provider == v1alpha1.PodIdentityProviderAws {
+		provider, err := aws.NewTokenProvider(context.Background(), "rabbitmq")
+		if err != nil {
+			return nil, err
+		}
+		s.awsOAuth = provider
 	}
 
 	if meta.Protocol == amqpProtocol {
@@ -337,6 +354,8 @@ func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadat
 		connectionName: connectionName(config),
 	}
 
+	meta.PodIdentityProvider = config.PodIdentity.Provider
+
 	if err := config.TypedConfig(meta); err != nil {
 		return nil, fmt.Errorf("error parsing RabbitMQ metadata: %w", err)
 	}
@@ -346,6 +365,10 @@ func parseRabbitMQMetadata(config *scalersconfig.ScalerConfig) (*rabbitMQMetadat
 			meta.workloadIdentityClientID = config.PodIdentity.GetIdentityID()
 			meta.workloadIdentityTenantID = config.PodIdentity.GetIdentityTenantID()
 		}
+	}
+
+	if config.PodIdentity.Provider == v1alpha1.PodIdentityProviderAws {
+		meta.WorkloadIdentityResource = "rabbitmq"
 	}
 
 	meta.triggerIndex = config.TriggerIndex
@@ -432,13 +455,33 @@ func getJSON(ctx context.Context, s *rabbitMQScaler, url string) (queueInfo, err
 		return result, err
 	}
 
-	if s.metadata.WorkloadIdentityResource != "" {
-		if s.azureOAuth == nil {
-			s.azureOAuth = azure.NewAzureADWorkloadIdentityTokenProvider(ctx, s.metadata.workloadIdentityClientID, s.metadata.workloadIdentityTenantID, s.metadata.workloadIdentityAuthorityHost, s.metadata.WorkloadIdentityResource)
+	// AWS IAM authentication
+	if s.metadata.PodIdentityProvider == v1alpha1.PodIdentityProviderAws {
+
+		if s.awsOAuth == nil {
+			return result, fmt.Errorf("AWS token provider not initialized")
+		}
+		token, err := s.awsOAuth.GetToken(ctx)
+		if err != nil {
+			return result, err
 		}
 
-		err = s.azureOAuth.Refresh()
-		if err != nil {
+		request.Header.Set("Authorization", "Bearer "+token)
+
+		// Azure Workload Identity authentication
+	} else if s.metadata.WorkloadIdentityResource != "" {
+
+		if s.azureOAuth == nil {
+			s.azureOAuth = azure.NewAzureADWorkloadIdentityTokenProvider(
+				ctx,
+				s.metadata.workloadIdentityClientID,
+				s.metadata.workloadIdentityTenantID,
+				s.metadata.workloadIdentityAuthorityHost,
+				s.metadata.WorkloadIdentityResource,
+			)
+		}
+
+		if err := s.azureOAuth.Refresh(); err != nil {
 			return result, err
 		}
 
@@ -455,13 +498,16 @@ func getJSON(ctx context.Context, s *rabbitMQScaler, url string) (queueInfo, err
 	if r.StatusCode == 200 {
 		if s.metadata.UseRegex {
 			var queues regexQueueInfo
+
 			err = json.NewDecoder(r.Body).Decode(&queues)
 			if err != nil {
 				return queueInfo{}, err
 			}
+
 			if queues.TotalPages > 1 {
 				return queueInfo{}, fmt.Errorf("regex matches more queues than can be recovered at once")
 			}
+
 			result, err := getComposedQueue(s, queues.Queues)
 			return result, err
 		}
@@ -471,7 +517,13 @@ func getJSON(ctx context.Context, s *rabbitMQScaler, url string) (queueInfo, err
 	}
 
 	body, _ := io.ReadAll(r.Body)
-	return result, fmt.Errorf("error requesting RabbitMQ API status: %s, response: %s, from: %s", r.Status, body, url)
+
+	return result, fmt.Errorf(
+		"error requesting RabbitMQ API status: %s, response: %s, from: %s",
+		r.Status,
+		body,
+		url,
+	)
 }
 
 func getVhostAndPathFromURL(rawPath, vhostName string) (resolvedVhostPath, resolvedPath string) {
