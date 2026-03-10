@@ -146,13 +146,13 @@ func GetMetricTargetMili(metricType v2.MetricTargetType, metricValue float64) v2
 		Type: metricType,
 	}
 
-	// Construct the target size as a quantity
-	metricValueMili := int64(metricValue * 1000)
-	targetQty := resource.NewMilliQuantity(metricValueMili, resource.DecimalSI)
+	// Construct the target size as a quantity using string parsing to avoid
+	// int64 overflow when metricValue * 1000 exceeds math.MaxInt64 (~9.2e15 threshold)
+	targetQty := resource.MustParse(fmt.Sprintf("%.3f", metricValue))
 	if metricType == v2.AverageValueMetricType {
-		target.AverageValue = targetQty
+		target.AverageValue = &targetQty
 	} else {
-		target.Value = targetQty
+		target.Value = &targetQty
 	}
 
 	return target
@@ -160,10 +160,12 @@ func GetMetricTargetMili(metricType v2.MetricTargetType, metricValue float64) v2
 
 // GenerateMetricInMili returns a externalMetricValue with mili as metric scale
 func GenerateMetricInMili(metricName string, value float64) external_metrics.ExternalMetricValue {
-	valueMili := int64(value * 1000)
+	// Use string parsing to avoid int64 overflow when value * 1000 exceeds
+	// math.MaxInt64 (~9.2e15 threshold)
+	qty := resource.MustParse(fmt.Sprintf("%.3f", value))
 	return external_metrics.ExternalMetricValue{
 		MetricName: metricName,
-		Value:      *resource.NewMilliQuantity(valueMili, resource.DecimalSI),
+		Value:      qty,
 		Timestamp:  metav1.Now(),
 	}
 }

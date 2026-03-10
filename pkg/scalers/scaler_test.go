@@ -88,6 +88,78 @@ func TestGetMetricTarget(t *testing.T) {
 	}
 }
 
+func TestGetMetricTargetMili(t *testing.T) {
+	cases := []struct {
+		name        string
+		metricType  v2.MetricTargetType
+		metricValue float64
+	}{
+		{
+			name:        "small value",
+			metricType:  v2.AverageValueMetricType,
+			metricValue: 100.5,
+		},
+		{
+			name:        "large value exceeding int64 milli threshold",
+			metricType:  v2.AverageValueMetricType,
+			metricValue: 1e18,
+		},
+		{
+			name:        "value metric type with large value",
+			metricType:  v2.ValueMetricType,
+			metricValue: 9.3e15,
+		},
+	}
+
+	for _, testCase := range cases {
+		c := testCase
+		t.Run(c.name, func(t *testing.T) {
+			target := GetMetricTargetMili(c.metricType, c.metricValue)
+			assert.Equal(t, c.metricType, target.Type)
+
+			var qty *resource.Quantity
+			if c.metricType == v2.AverageValueMetricType {
+				qty = target.AverageValue
+			} else {
+				qty = target.Value
+			}
+			assert.NotNil(t, qty)
+			// Verify the value is positive and close to the original
+			assert.True(t, qty.AsApproximateFloat64() > 0, "expected positive quantity, got %v", qty)
+		})
+	}
+}
+
+func TestGenerateMetricInMili(t *testing.T) {
+	cases := []struct {
+		name  string
+		value float64
+	}{
+		{
+			name:  "small value",
+			value: 42.5,
+		},
+		{
+			name:  "large value in quintillion range",
+			value: 1e18,
+		},
+		{
+			name:  "value just above int64 milli overflow threshold",
+			value: 9.3e15,
+		},
+	}
+
+	for _, testCase := range cases {
+		c := testCase
+		t.Run(c.name, func(t *testing.T) {
+			metric := GenerateMetricInMili("test-metric", c.value)
+			assert.Equal(t, "test-metric", metric.MetricName)
+			// Verify the value is positive and close to the original
+			assert.True(t, metric.Value.AsApproximateFloat64() > 0, "expected positive quantity, got %v", &metric.Value)
+		})
+	}
+}
+
 func TestRemoveIndexFromMetricName(t *testing.T) {
 	cases := []struct {
 		triggerIndex                         int
