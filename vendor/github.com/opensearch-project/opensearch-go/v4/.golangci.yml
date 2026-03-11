@@ -1,0 +1,179 @@
+version: "2"
+run:
+  modules-download-mode: readonly
+linters:
+  default: none
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - containedctx
+    - contextcheck
+    - decorder
+    - dogsled
+    - dupl
+    - dupword
+    - durationcheck
+    - errcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - exhaustive
+    - ginkgolinter
+    - gocheckcompilerdirectives
+    - gochecknoglobals
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - godox
+    - goheader
+    - gomoddirectives
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - govet
+    - grouper
+    - importas
+    - ineffassign
+    - interfacebloat
+    - lll
+    - loggercheck
+    - makezero
+    - mirror
+    - misspell
+    - musttag
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnil
+    - noctx
+    - nolintlint
+    - nonamedreturns
+    - nosprintfhostport
+    - prealloc
+    - predeclared
+    - promlinter
+    - reassign
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - tagalign
+    - testpackage
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - wastedassign
+    - whitespace
+    - zerologlint
+  settings:
+    errcheck:
+      check-type-assertions: false
+      check-blank: true
+    exhaustive:
+      default-signifies-exhaustive: false
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    godox:
+      keywords:
+        - BUG
+        - FIXME
+        - HACK
+    lll:
+      line-length: 140
+    misspell:
+      locale: US
+      ignore-rules:
+        - expect
+        - cancelled
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    prealloc:
+      simple: true
+      range-loops: true
+      for-loops: false
+    revive:
+      rules:
+        - name: exported
+          arguments:
+            - checkPrivateReceivers
+            - sayRepetitiveInsteadOfStutters
+          severity: error
+          disabled: false
+    unparam:
+      check-exported: true
+  exclusions:
+    generated: lax
+    presets:
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - cyclop
+          - dupl
+          - errcheck
+          - gochecknoglobals
+          - gochecknoinits
+          - goconst
+          - noctx
+        path: (_test\.go|internal/)
+      - linters:
+          - gosec
+        path: _test\.go
+        text: math/rand
+      - linters:
+          - gosec
+        path: (_test\.go|internal/)
+        text: TLS InsecureSkipVerify set true
+      - linters:
+          - gosec
+        path: _test\.go
+        text: 'G108: Profiling endpoint is automatically exposed on /debug/pprof'
+      - linters:
+          - goconst
+        path: -params\.go
+      - linters:
+          - errcheck
+        text: Error return value of `debugLogger.Logf` is not checked
+      - linters:
+          - errcheck
+          - gochecknoglobals
+        path: opensearchtransport\/logger\.go
+      - linters:
+          - nestif
+        path: opensearchtransport/opensearchtransport.go
+      - linters:
+          - dupl
+        path: (-params\.go|api_indices|api_dangling\.go|api_point_in_time\.go|rethrottle\.go|api_cat-.*\.go|plugins/security/api_\w+.go|plugins/security/api_.*-patch.go)
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/opensearch-project/opensearch-go)
+    goimports:
+      local-prefixes:
+        - github.com/opensearch-project/opensearch-go
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
