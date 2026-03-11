@@ -829,8 +829,8 @@ func (in *ScaledJobSpec) DeepCopyInto(out *ScaledJobSpec) {
 		*out = new(int32)
 		**out = **in
 	}
-	if in.CooldownPeriod != nil {
-		in, out := &in.CooldownPeriod, &out.CooldownPeriod
+	if in.JobCreationCooldownPeriod != nil {
+		in, out := &in.JobCreationCooldownPeriod, &out.JobCreationCooldownPeriod
 		*out = new(int32)
 		**out = **in
 	}

@@ -66,13 +66,18 @@ spec:
           spec:
             description: ScaledJobSpec defines the desired state of ScaledJob
             properties:
-              cooldownPeriod:
-                format: int32
-                type: integer
               envSourceContainerName:
                 type: string
               failedJobsHistoryLimit:
                 format: int32
+                type: integer
+              jobCreationCooldownPeriod:
+                description: |-
+                  JobCreationCooldownPeriod defines the minimum time (in seconds) to wait after the last active
+                  time before creating new jobs on re-activation. This prevents duplicate job creation caused by
+                  eventually consistent metrics. Defaults to 0 (disabled).
+                format: int32
+                minimum: 0
                 type: integer
               jobTargetRef:
                 description: JobSpec describes how the job execution will look like.

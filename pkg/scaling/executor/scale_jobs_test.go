@@ -494,6 +494,10 @@ type pendingJobTestData struct {
 }
 
 func getMockScaleExecutor(client *mock_client.MockClient) *scaleExecutor {
+	return getMockScaleExecutorWithBuffer(client, 1)
+}
+
+func getMockScaleExecutorWithBuffer(client *mock_client.MockClient, eventBufferSize int) *scaleExecutor {
 	scheme := runtime.NewScheme()
 	utilruntime.Must(kedav1alpha1.AddToScheme(scheme))
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -502,7 +506,7 @@ func getMockScaleExecutor(client *mock_client.MockClient) *scaleExecutor {
 		scaleClient:      nil,
 		reconcilerScheme: scheme,
 		logger:           logf.Log.WithName("scaleexecutor"),
-		recorder:         record.NewFakeRecorder(1),
+		recorder:         record.NewFakeRecorder(eventBufferSize),
 	}
 }
 
@@ -728,6 +732,209 @@ func getPodCondition(podConditionType v1.PodConditionType) v1.PodCondition {
 	}
 }
 
+func TestRequestJobScale_CooldownSkipsJobCreation(t *testing.T) {
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	client := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	// Mock List calls: getRunningJobCount, getPendingJobCount, and cleanUp
+	client.EXPECT().
+		List(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).AnyTimes()
+
+	// Mock Status().Patch() for setActiveCondition, setReadyCondition, updateTriggersActivity
+	client.EXPECT().Status().Return(statusWriter).AnyTimes()
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	// We should NOT see any Create calls (no jobs created during cooldown)
+	// gomock will fail if Create is called unexpectedly
+
+	scaleExecutor := getMockScaleExecutorWithBuffer(client, 10)
+
+	cooldown := int32(60)
+	scaledJob := &kedav1alpha1.ScaledJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-job",
+			Namespace: "default",
+		},
+		Spec: kedav1alpha1.ScaledJobSpec{
+			JobCreationCooldownPeriod: &cooldown,
+			JobTargetRef:              &batchv1.JobSpec{},
+		},
+		Status: kedav1alpha1.ScaledJobStatus{
+			// Last active 10s ago, well within cooldown
+			LastActiveTime: ptr.To(metav1.NewTime(time.Now().Add(-10 * time.Second))),
+			Conditions: kedav1alpha1.Conditions{
+				{Type: kedav1alpha1.ConditionActive, Status: metav1.ConditionFalse},
+			},
+		},
+	}
+
+	scaleExecutor.RequestJobScale(ctx, scaledJob, true, false, 1, 1, nil)
+
+	// Verify LastActiveTime was NOT updated (should still be ~10s ago)
+	assert.True(t, time.Since(scaledJob.Status.LastActiveTime.Time) >= 9*time.Second,
+		"LastActiveTime should not be updated during cooldown")
+}
+
+func TestRequestJobScale_CooldownSetsScalerCooldownCondition(t *testing.T) {
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	client := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	client.EXPECT().
+		List(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).AnyTimes()
+
+	client.EXPECT().Status().Return(statusWriter).AnyTimes()
+
+	// Capture the patched object to verify the condition
+	var patchedObj runtimeclient.Object
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj runtimeclient.Object, _ runtimeclient.Patch, _ ...runtimeclient.SubResourcePatchOption) error {
+			patchedObj = obj
+			return nil
+		}).AnyTimes()
+
+	scaleExecutor := getMockScaleExecutorWithBuffer(client, 10)
+
+	cooldown := int32(60)
+	scaledJob := &kedav1alpha1.ScaledJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-job",
+			Namespace: "default",
+		},
+		Spec: kedav1alpha1.ScaledJobSpec{
+			JobCreationCooldownPeriod: &cooldown,
+			JobTargetRef:              &batchv1.JobSpec{},
+		},
+		Status: kedav1alpha1.ScaledJobStatus{
+			LastActiveTime: ptr.To(metav1.NewTime(time.Now().Add(-10 * time.Second))),
+			Conditions: kedav1alpha1.Conditions{
+				{Type: kedav1alpha1.ConditionActive, Status: metav1.ConditionFalse},
+				{Type: kedav1alpha1.ConditionReady, Status: metav1.ConditionTrue},
+			},
+		},
+	}
+
+	scaleExecutor.RequestJobScale(ctx, scaledJob, true, false, 1, 1, nil)
+
+	// Verify the active condition was set to ScalerCooldown
+	assert.NotNil(t, patchedObj)
+	sj, ok := patchedObj.(*kedav1alpha1.ScaledJob)
+	if ok {
+		activeCondition := sj.Status.Conditions.GetActiveCondition()
+		assert.True(t, activeCondition.IsFalse())
+		assert.Equal(t, "ScalerCooldown", activeCondition.Reason)
+	}
+}
+
+func TestRequestJobScale_CooldownExpiredCreatesJobs(t *testing.T) {
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	client := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	client.EXPECT().
+		List(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).AnyTimes()
+
+	client.EXPECT().Status().Return(statusWriter).AnyTimes()
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	// Expect job creation since cooldown has expired
+	jobCreated := false
+	client.EXPECT().
+		Create(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj runtime.Object, _ ...runtimeclient.CreateOption) error {
+			jobCreated = true
+			return nil
+		}).Times(1)
+
+	scaleExecutor := getMockScaleExecutorWithBuffer(client, 10)
+
+	cooldown := int32(60)
+	scaledJob := &kedav1alpha1.ScaledJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-job",
+			Namespace: "default",
+		},
+		Spec: kedav1alpha1.ScaledJobSpec{
+			JobCreationCooldownPeriod: &cooldown,
+			JobTargetRef:              &batchv1.JobSpec{},
+		},
+		Status: kedav1alpha1.ScaledJobStatus{
+			// Last active 120s ago — cooldown (60s) has expired
+			LastActiveTime: ptr.To(metav1.NewTime(time.Now().Add(-120 * time.Second))),
+			Conditions: kedav1alpha1.Conditions{
+				{Type: kedav1alpha1.ConditionActive, Status: metav1.ConditionFalse},
+			},
+		},
+	}
+
+	scaleExecutor.RequestJobScale(ctx, scaledJob, true, false, 1, 1, nil)
+
+	assert.True(t, jobCreated, "Job should be created when cooldown has expired")
+	// LastActiveTime should be updated to now
+	assert.True(t, time.Since(scaledJob.Status.LastActiveTime.Time) < 2*time.Second,
+		"LastActiveTime should be updated after cooldown expires")
+}
+
+func TestRequestJobScale_NoCooldownCreatesJobsNormally(t *testing.T) {
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	client := mock_client.NewMockClient(ctrl)
+	statusWriter := mock_client.NewMockStatusWriter(ctrl)
+
+	client.EXPECT().
+		List(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).AnyTimes()
+
+	client.EXPECT().Status().Return(statusWriter).AnyTimes()
+	statusWriter.EXPECT().Patch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	jobCreated := false
+	client.EXPECT().
+		Create(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj runtime.Object, _ ...runtimeclient.CreateOption) error {
+			jobCreated = true
+			return nil
+		}).Times(1)
+
+	scaleExecutor := getMockScaleExecutorWithBuffer(client, 10)
+
+	// No cooldown configured (nil)
+	scaledJob := &kedav1alpha1.ScaledJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-job",
+			Namespace: "default",
+		},
+		Spec: kedav1alpha1.ScaledJobSpec{
+			JobTargetRef: &batchv1.JobSpec{},
+		},
+		Status: kedav1alpha1.ScaledJobStatus{
+			LastActiveTime: ptr.To(metav1.NewTime(time.Now().Add(-5 * time.Second))),
+			Conditions: kedav1alpha1.Conditions{
+				{Type: kedav1alpha1.ConditionActive, Status: metav1.ConditionFalse},
+			},
+		},
+	}
+
+	scaleExecutor.RequestJobScale(ctx, scaledJob, true, false, 1, 1, nil)
+
+	assert.True(t, jobCreated, "Job should be created when no cooldown is configured")
+}
+
 func TestIsScaledJobInCooldownPeriod(t *testing.T) {
 	cooldownPeriod := int32(60)
 
@@ -793,7 +1000,7 @@ func TestIsScaledJobInCooldownPeriod(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			scaledJob := &kedav1alpha1.ScaledJob{
 				Spec: kedav1alpha1.ScaledJobSpec{
-					CooldownPeriod: tt.cooldownPeriod,
+					JobCreationCooldownPeriod: tt.cooldownPeriod,
 				},
 				Status: kedav1alpha1.ScaledJobStatus{
 					LastActiveTime: tt.lastActiveTime,

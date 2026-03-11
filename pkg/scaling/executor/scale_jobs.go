@@ -65,9 +65,9 @@ func (e *scaleExecutor) RequestJobScale(ctx context.Context, scaledJob *kedav1al
 
 		inCooldown = isScaledJobInCooldownPeriod(scaledJob)
 		if inCooldown {
-			logger.Info("ScaledJob is in cooldown period, skipping job creation",
+			logger.Info("ScaledJob is in job creation cooldown period, skipping job creation",
 				"LastActiveTime", scaledJob.Status.LastActiveTime,
-				"CooldownPeriod", time.Second*time.Duration(scaledJob.CooldownPeriod()))
+				"JobCreationCooldownPeriod", time.Second*time.Duration(scaledJob.JobCreationCooldownPeriod()))
 		}
 
 		if !inCooldown {
@@ -472,11 +472,11 @@ func (e *scaleExecutor) getFinishedJobConditionType(j *batchv1.Job) batchv1.JobC
 	return ""
 }
 
-// isScaledJobInCooldownPeriod checks if a ScaledJob is within its cooldown period.
+// isScaledJobInCooldownPeriod checks if a ScaledJob is within its job creation cooldown period.
 // Cooldown applies when re-activating (condition is not True) and the time since
-// LastActiveTime is less than the configured cooldown period.
+// LastActiveTime is less than the configured job creation cooldown period.
 func isScaledJobInCooldownPeriod(scaledJob *kedav1alpha1.ScaledJob) bool {
-	cooldownSeconds := scaledJob.CooldownPeriod()
+	cooldownSeconds := scaledJob.JobCreationCooldownPeriod()
 	if cooldownSeconds <= 0 {
 		return false
 	}
