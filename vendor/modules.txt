@@ -340,8 +340,8 @@ github.com/arangodb/go-velocypack
 # github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4
 ## explicit; go 1.21
 github.com/aws/aws-msk-iam-sasl-signer-go/signer
-# github.com/aws/aws-sdk-go-v2 v1.41.2
-## explicit; go 1.23
+# github.com/aws/aws-sdk-go-v2 v1.41.3
+## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/aws
 github.com/aws/aws-sdk-go-v2/aws/defaults
 github.com/aws/aws-sdk-go-v2/aws/middleware
@@ -462,8 +462,8 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc/types
 github.com/aws/aws-sdk-go-v2/service/sts
 github.com/aws/aws-sdk-go-v2/service/sts/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sts/types
-# github.com/aws/smithy-go v1.24.1
-## explicit; go 1.23
+# github.com/aws/smithy-go v1.24.2
+## explicit; go 1.24
 github.com/aws/smithy-go
 github.com/aws/smithy-go/auth
 github.com/aws/smithy-go/auth/bearer
